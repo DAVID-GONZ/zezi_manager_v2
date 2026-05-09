@@ -147,7 +147,7 @@ class Estudiante(BaseModel):
         hoy = date.today()
         if v >= hoy:
             raise ValueError("La fecha de nacimiento no puede ser futura.")
-        edad = (hoy - v).days // 365
+        edad = hoy.year - v.year - ((hoy.month, hoy.day) < (v.month, v.day))
         if edad > 25:
             raise ValueError(
                 f"La fecha indica {edad} años (máximo permitido: 25). "
