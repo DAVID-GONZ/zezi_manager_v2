@@ -313,14 +313,182 @@ class InformacionInstitucionalDTO(BaseModel):
         )
 
 
+
+
+# =============================================================================
+# NivelDesempeno — SIE por año (Decreto 1290)
+# =============================================================================
+
+class NivelDesempeno(BaseModel):
+    """
+    Nivel de desempeño del SIE (Sistema Institucional de Evaluación).
+
+    Cada institución define sus propios nombres y rangos para el año lectivo.
+    Ejemplo por defecto:
+      Bajo     [ 0.0 – 59.9]
+      Básico   [60.0 – 69.9]
+      Alto     [70.0 – 84.9]
+      Superior [85.0 – 100.0]
+
+    `orden` controla el orden de presentación en la UI y en boletines.
+    El atributo `clasifica(nota)` permite resolver el nivel de una nota
+    sin consultar la BD de nuevo.
+    """
+    id:          int | None  = None
+    anio_id:     int
+    nombre:      str
+    rango_min:   float
+    rango_max:   float
+    descripcion: str | None  = None
+    orden:       int         = Field(default=0, ge=0)
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre del nivel no puede estar vacío.")
+        if len(v) > 50:
+            raise ValueError(f"El nombre no puede exceder 50 caracteres (tiene {len(v)}).")
+        return v
+
+    @field_validator("rango_min", "rango_max")
+    @classmethod
+    def validar_rango(cls, v: float) -> float:
+        if not (0 <= v <= 100):
+            raise ValueError(
+                f"El rango debe estar entre 0 y 100 (recibido: {v})."
+            )
+        return round(v, 2)
+
+    @model_validator(mode="after")
+    def validar_orden_rangos(self) -> "NivelDesempeno":
+        if self.rango_min >= self.rango_max:
+            raise ValueError(
+                f"rango_min ({self.rango_min}) debe ser menor que "
+                f"rango_max ({self.rango_max})."
+            )
+        return self
+
+    def clasifica(self, nota: float) -> bool:
+        """True si la nota cae dentro de este nivel."""
+        return self.rango_min <= nota <= self.rango_max
+
+    @property
+    def amplitud(self) -> float:
+        """Amplitud del rango en puntos."""
+        return round(self.rango_max - self.rango_min, 2)
+
+
+class CriterioPromocion(BaseModel):
+    """
+    Criterios de promoción al grado siguiente para un año lectivo.
+
+    Define cuántas asignaturas puede perder un estudiante y aun así
+    ser promovido (condicionalmente o no), y la nota mínima para
+    presentar habilitación.
+    """
+    id:                         int | None  = None
+    anio_id:                    int
+    max_asignaturas_perdidas:   int         = Field(default=2, ge=0)
+    permite_condicionada:       bool        = True
+    nota_minima_habilitacion:   float       = 60.0
+    nota_minima_anual:          float       = 60.0
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("nota_minima_habilitacion", "nota_minima_anual")
+    @classmethod
+    def validar_nota(cls, v: float) -> float:
+        if not (0 <= v <= 100):
+            raise ValueError(
+                f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
+            )
+        return round(v, 2)
+
+    def puede_ser_promovido(self, asignaturas_perdidas: int) -> bool:
+        """True si la cantidad de materias perdidas no supera el máximo."""
+        return asignaturas_perdidas <= self.max_asignaturas_perdidas
+
+    def puede_habilitar(self, nota: float) -> bool:
+        """True si la nota es suficiente para presentar habilitación."""
+        return nota >= self.nota_minima_habilitacion
+
+
+# =============================================================================
+# DTOs de NivelDesempeno y CriterioPromocion
+# =============================================================================
+
+class NuevoNivelDesempenoDTO(BaseModel):
+    """Datos para crear un nivel de desempeño."""
+    anio_id:     int
+    nombre:      str
+    rango_min:   float
+    rango_max:   float
+    descripcion: str | None = None
+    orden:       int        = 0
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre no puede estar vacío.")
+        return v
+
+    @field_validator("rango_min", "rango_max")
+    @classmethod
+    def validar_rango(cls, v: float) -> float:
+        if not (0 <= v <= 100):
+            raise ValueError(f"El rango debe estar entre 0 y 100 (recibido: {v}).")
+        return v
+
+    @model_validator(mode="after")
+    def validar_orden_rangos(self) -> "NuevoNivelDesempenoDTO":
+        if self.rango_min >= self.rango_max:
+            raise ValueError(f"rango_min debe ser menor que rango_max.")
+        return self
+
+    def to_nivel(self) -> NivelDesempeno:
+        return NivelDesempeno(**self.model_dump())
+
+
+class ActualizarNivelDesempenoDTO(BaseModel):
+    """Campos actualizables de un nivel de desempeño."""
+    nombre:      str | None   = None
+    rango_min:   float | None = None
+    rango_max:   float | None = None
+    descripcion: str | None   = None
+    orden:       int | None   = None
+
+    def aplicar_a(self, nivel: NivelDesempeno) -> NivelDesempeno:
+        cambios = {k: v for k, v in self.model_dump().items() if v is not None}
+        return nivel.model_copy(update=cambios) if cambios else nivel
+
 # =============================================================================
 # Exports
 # =============================================================================
 
 __all__ = [
     "ConfiguracionAnio",
+    "NivelDesempeno",
+    "CriterioPromocion",
     "NuevaConfiguracionAnioDTO",
     "ActualizarConfiguracionAnioDTO",
     "ActualizarInfoInstitucionalDTO",
     "InformacionInstitucionalDTO",
+    "NuevoNivelDesempenoDTO",
+    "ActualizarNivelDesempenoDTO",
 ]
