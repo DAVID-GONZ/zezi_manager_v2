@@ -84,4 +84,4 @@ Los repositorios se encargan manualmente de mapear los resultados (filas) devuel
 
 ## 6. Pruebas de los Repositorios
 
-Las pruebas para la capa de repositorios (`tests/infrastructure/db/repositories/`) se realizan como pruebas de integración. Utilizan una base de datos SQLite configurada en memoria (`:memory:`) para aislar el entorno, lo que permite verificar la sintaxis SQL, la correcta ejecución de las operaciones CRUD y el mapeo exacto de los datos a los modelos sin afectar los datos reales de la aplicación.
+Las pruebas para la capa de repositorios (`tests/integration/`) se realizan como pruebas de integración. Utilizan una base de datos SQLite configurada en memoria (`:memory:`) para aislar el entorno, lo que permite verificar la sintaxis SQL, la correcta ejecución de las operaciones CRUD y el mapeo exacto de los datos a los modelos sin afectar los datos reales de la aplicación.

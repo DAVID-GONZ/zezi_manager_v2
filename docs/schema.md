@@ -19,27 +19,31 @@ que un acudiente tuviera múltiples estudiantes a cargo y que los
 acudientes tuvieran acceso al portal.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `tipo_documento`: TipoDocumentoAcudiente
 - `numero_documento`: str
 - `nombre_completo`: str
 - `parentesco`: Parentesco
-- `celular`: 
-- `email`: 
-- `direccion`: 
+- `celular`: str | None
+- `email`: str | None
+- `direccion`: str | None
 - `activo`: bool
-- `usuario_id`: 
+- `usuario_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_documento()`
 - `validar_nombre()`
 - `limpiar_celular()`
 - `validar_email()`
 - `limpiar_direccion()`
-- `esta_activo()`
-- `tiene_contacto()`
-- `contacto_display()`
-- `documento_display()`
+
+**Propiedades:**
+- `esta_activo`
+- `tiene_contacto`
+- `contacto_display`
+- `documento_display`
+
+**Métodos de Dominio:**
 - `desactivar()`
 - `reactivar()`
 
@@ -57,7 +61,7 @@ El servicio garantiza que solo haya un acudiente principal por estudiante.
 - `acudiente_id`: int
 - `es_principal`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 
 ### NuevoAcudienteDTO
@@ -70,14 +74,16 @@ Datos para registrar un acudiente nuevo.
 - `numero_documento`: str
 - `nombre_completo`: str
 - `parentesco`: Parentesco
-- `celular`: 
-- `email`: 
-- `direccion`: 
+- `celular`: str | None
+- `email`: str | None
+- `direccion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_documento()`
 - `validar_nombre()`
 - `validar_email()`
+
+**Métodos de Dominio:**
 - `to_acudiente()`
 
 ### ActualizarAcudienteDTO
@@ -86,14 +92,16 @@ Datos para registrar un acudiente nuevo.
 Campos actualizables de un acudiente. Todos opcionales.
 
 **Atributos:**
-- `nombre_completo`: 
-- `parentesco`: 
-- `celular`: 
-- `email`: 
-- `direccion`: 
+- `nombre_completo`: str | None
+- `parentesco`: Parentesco | None
+- `celular`: str | None
+- `email`: str | None
+- `direccion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### VincularAcudienteDTO
@@ -106,8 +114,10 @@ Vincula un acudiente existente a un estudiante.
 - `acudiente_id`: int
 - `es_principal`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
+
+**Métodos de Dominio:**
 - `to_vinculo()`
 
 ### AcudienteResumenDTO
@@ -119,11 +129,11 @@ Vista mínima para mostrar en el perfil del estudiante.
 - `id`: int
 - `nombre_completo`: str
 - `parentesco`: Parentesco
-- `celular`: 
-- `email`: 
+- `celular`: str | None
+- `email`: str | None
 - `es_principal`: bool
 
-**Métodos:**
+**Métodos de Dominio:**
 - `desde_acudiente()`
 
 ## Modulo: `alerta.py`
@@ -147,7 +157,7 @@ El significado de `umbral` depende del tipo:
   - habilitacion_pendiente:    días antes de la fecha límite (ej. 1)
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `anio_id`: int
 - `tipo_alerta`: TipoAlerta
 - `umbral`: float
@@ -156,11 +166,15 @@ El significado de `umbral` depende del tipo:
 - `notificar_director`: bool
 - `notificar_acudiente`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_umbral()`
+
+**Model Validators:**
 - `validar_umbral_segun_tipo()`
-- `umbral_entero()`
-- `notifica_a_alguien()`
+
+**Propiedades:**
+- `umbral_entero`
+- `notifica_a_alguien`
 
 ### Alerta
 **Herencia**: BaseModel
@@ -171,23 +185,29 @@ Una vez resuelta, la alerta es inmutable: no puede volver a abrirse
 ni resolverse de nuevo.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `tipo_alerta`: TipoAlerta
 - `nivel`: NivelAlerta
 - `descripcion`: str
 - `fecha_generacion`: datetime
 - `resuelta`: bool
-- `fecha_resolucion`: 
-- `usuario_resolucion_id`: 
-- `observacion_resolucion`: 
+- `fecha_resolucion`: datetime | None
+- `usuario_resolucion_id`: int | None
+- `observacion_resolucion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Model Validators:**
 - `validar_coherencia_resolucion()`
-- `esta_pendiente()`
-- `dias_pendiente()`
-- `es_critica()`
+
+**Propiedades:**
+- `esta_pendiente`
+- `dias_pendiente`
+- `es_critica`
+
+**Métodos de Dominio:**
 - `resolver()`
 
 ### CrearAlertaDTO
@@ -201,8 +221,10 @@ Datos necesarios para generar una alerta nueva.
 - `nivel`: NivelAlerta
 - `descripcion`: str
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Métodos de Dominio:**
 - `to_alerta()`
 
 ### ResolverAlertaDTO
@@ -212,9 +234,9 @@ Datos para marcar una alerta como resuelta.
 
 **Atributos:**
 - `usuario_id`: int
-- `observacion`: 
+- `observacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `limpiar_observacion()`
 
 ### FiltroAlertasDTO
@@ -223,9 +245,9 @@ Datos para marcar una alerta como resuelta.
 Parámetros para listar alertas.
 
 **Atributos:**
-- `estudiante_id`: 
-- `tipo_alerta`: 
-- `nivel`: 
+- `estudiante_id`: int | None
+- `tipo_alerta`: TipoAlerta | None
+- `nivel`: NivelAlerta | None
 - `solo_pendientes`: bool
 - `pagina`: int
 - `por_pagina`: int
@@ -242,16 +264,20 @@ y notas. Una asignación inactiva (activo=False) no acepta nuevos datos
 pero mantiene el histórico intacto.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `grupo_id`: int
 - `asignatura_id`: int
 - `usuario_id`: int
 - `periodo_id`: int
 - `activo`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
-- `esta_activa()`
+
+**Propiedades:**
+- `esta_activa`
+
+**Métodos de Dominio:**
 - `desactivar()`
 - `reactivar()`
 
@@ -282,11 +308,13 @@ Uso típico en un servicio:
 - `periodo_numero`: int
 - `activo`: bool
 
-**Métodos:**
+**Field Validators:**
 - `no_vacio()`
-- `display_completo()`
-- `display_corto()`
-- `display_docente_materia()`
+
+**Propiedades:**
+- `display_completo`
+- `display_corto`
+- `display_docente_materia`
 
 ### NuevaAsignacionDTO
 **Herencia**: BaseModel
@@ -299,8 +327,10 @@ Datos necesarios para crear una asignación.
 - `usuario_id`: int
 - `periodo_id`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
+
+**Métodos de Dominio:**
 - `to_asignacion()`
 
 ### FiltroAsignacionesDTO
@@ -309,10 +339,10 @@ Datos necesarios para crear una asignación.
 Parámetros para listar asignaciones.
 
 **Atributos:**
-- `usuario_id`: 
-- `grupo_id`: 
-- `asignatura_id`: 
-- `periodo_id`: 
+- `usuario_id`: int | None
+- `grupo_id`: int | None
+- `asignatura_id`: int | None
+- `periodo_id`: int | None
 - `solo_activas`: bool
 - `pagina`: int
 - `por_pagina`: int
@@ -322,10 +352,10 @@ Parámetros para listar asignaciones.
 ### EstadoAsistencia
 **Herencia**: str, Enum
 
-**Métodos:**
-- `es_falta()`
-- `afecta_porcentaje()`
-- `descripcion()`
+**Propiedades:**
+- `es_falta`
+- `afecta_porcentaje`
+- `descripcion`
 
 ### ControlDiario
 **Herencia**: BaseModel
@@ -337,30 +367,34 @@ el trigger ON CONFLICT REPLACE recrea el registro. En el modelo,
 se inicializa al momento de construcción.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `grupo_id`: int
 - `asignacion_id`: int
 - `periodo_id`: int
 - `fecha`: date
 - `estado`: EstadoAsistencia
-- `hora_entrada`: 
-- `hora_salida`: 
+- `hora_entrada`: time | None
+- `hora_salida`: time | None
 - `uniforme`: bool
 - `materiales`: bool
-- `observacion`: 
-- `usuario_registro_id`: 
+- `observacion`: str | None
+- `usuario_registro_id`: int | None
 - `fecha_actualizacion`: datetime
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_fecha()`
 - `limpiar_observacion()`
 - `parsear_hora()`
+
+**Model Validators:**
 - `validar_horas()`
-- `es_presencia_efectiva()`
-- `requiere_justificacion()`
-- `estado_descripcion()`
+
+**Propiedades:**
+- `es_presencia_efectiva`
+- `requiere_justificacion`
+- `estado_descripcion`
 
 ### ResumenAsistenciaDTO
 **Herencia**: BaseModel
@@ -377,12 +411,14 @@ Calculado por el repositorio con GROUP BY; la página lo muestra directamente.
 - `retrasos`: int
 - `excusas`: int
 
-**Métodos:**
+**Field Validators:**
 - `no_negativo()`
-- `porcentaje_asistencia()`
-- `total_faltas()`
-- `en_riesgo_por_faltas()`
-- `resumen_display()`
+
+**Propiedades:**
+- `porcentaje_asistencia`
+- `total_faltas`
+- `en_riesgo_por_faltas`
+- `resumen_display`
 
 ### RegistroAsistenciaItemDTO
 **Herencia**: BaseModel
@@ -393,9 +429,9 @@ Representa la asistencia de un único estudiante en un registro grupal.
 **Atributos:**
 - `estudiante_id`: int
 - `estado`: EstadoAsistencia
-- `observacion`: 
+- `observacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 
 ### RegistrarAsistenciaDTO
@@ -410,15 +446,17 @@ Datos para registrar la asistencia de un único estudiante.
 - `periodo_id`: int
 - `fecha`: date
 - `estado`: EstadoAsistencia
-- `hora_entrada`: 
-- `hora_salida`: 
+- `hora_entrada`: time | None
+- `hora_salida`: time | None
 - `uniforme`: bool
 - `materiales`: bool
-- `observacion`: 
-- `usuario_registro_id`: 
+- `observacion`: str | None
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_fecha()`
+
+**Métodos de Dominio:**
 - `to_control()`
 
 ### RegistrarAsistenciaMasivaDTO
@@ -434,12 +472,16 @@ crea un ControlDiario por cada item.
 - `periodo_id`: int
 - `fecha`: date
 - `registros`: list[RegistroAsistenciaItemDTO]
-- `usuario_registro_id`: 
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_fecha()`
 - `validar_registros()`
-- `total_estudiantes()`
+
+**Propiedades:**
+- `total_estudiantes`
+
+**Métodos de Dominio:**
 - `to_controles()`
 
 ### FiltroAsistenciaDTO
@@ -448,13 +490,13 @@ crea un ControlDiario por cada item.
 Parámetros para consultar registros de asistencia.
 
 **Atributos:**
-- `estudiante_id`: 
-- `grupo_id`: 
-- `asignacion_id`: 
-- `periodo_id`: 
-- `estado`: 
-- `fecha_desde`: 
-- `fecha_hasta`: 
+- `estudiante_id`: int | None
+- `grupo_id`: int | None
+- `asignacion_id`: int | None
+- `periodo_id`: int | None
+- `estado`: EstadoAsistencia | None
+- `fecha_desde`: date | None
+- `fecha_hasta`: date | None
 - `pagina`: int
 - `por_pagina`: int
 
@@ -476,22 +518,24 @@ El trigger `tg_actualizar_ultima_sesion` de la BD reacciona
 a inserciones con tipo=LOGIN_EXITOSO para actualizar `ultima_sesion`.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `usuario`: str
-- `usuario_id`: 
+- `usuario_id`: int | None
 - `tipo_evento`: TipoEventoSesion
-- `ip_address`: 
+- `ip_address`: str | None
 - `fecha_hora`: datetime
-- `detalles`: 
+- `detalles`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_usuario()`
 - `limpiar_detalles()`
 - `limpiar_ip()`
-- `es_exitoso()`
-- `es_fallido()`
-- `es_acceso_denegado()`
-- `fecha_display()`
+
+**Propiedades:**
+- `es_exitoso`
+- `es_fallido`
+- `es_acceso_denegado`
+- `fecha_display`
 
 ### RegistroCambio
 **Herencia**: BaseModel
@@ -506,23 +550,27 @@ Reemplaza el `registrar_cambio()` del legacy, que recibía dicts
 y los serializaba implícitamente.
 
 **Atributos:**
-- `id`: 
-- `usuario_id`: 
+- `id`: int | None
+- `usuario_id`: int | None
 - `accion`: AccionCambio
 - `tabla`: str
-- `registro_id`: 
-- `valor_anterior`: 
-- `valor_nuevo`: 
+- `registro_id`: int | None
+- `valor_anterior`: str | None
+- `valor_nuevo`: str | None
 - `timestamp`: datetime
 
-**Métodos:**
+**Field Validators:**
 - `validar_tabla()`
 - `validar_json()`
-- `anterior_como_dict()`
-- `nuevo_como_dict()`
-- `es_creacion()`
-- `es_eliminacion()`
-- `timestamp_display()`
+
+**Propiedades:**
+- `anterior_como_dict`
+- `nuevo_como_dict`
+- `es_creacion`
+- `es_eliminacion`
+- `timestamp_display`
+
+**Métodos de Dominio:**
 - `para_creacion()`
 - `para_actualizacion()`
 - `para_eliminacion()`
@@ -534,12 +582,12 @@ Datos para registrar un evento de sesión.
 
 **Atributos:**
 - `usuario`: str
-- `usuario_id`: 
+- `usuario_id`: int | None
 - `tipo_evento`: TipoEventoSesion
-- `ip_address`: 
-- `detalles`: 
+- `ip_address`: str | None
+- `detalles`: str | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `to_evento()`
 
 ### CrearRegistroCambioDTO
@@ -551,14 +599,14 @@ Datos para registrar un cambio de datos.
 de v1.0 sin reescribir todo el código de servicios de una vez.
 
 **Atributos:**
-- `usuario_id`: 
+- `usuario_id`: int | None
 - `accion`: AccionCambio
 - `tabla`: str
-- `registro_id`: 
-- `valor_anterior`: 
-- `valor_nuevo`: 
+- `registro_id`: int | None
+- `valor_anterior`: dict | None
+- `valor_nuevo`: dict | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `to_registro()`
 - `desde_legacy()`
 
@@ -568,12 +616,12 @@ de v1.0 sin reescribir todo el código de servicios de una vez.
 Parámetros para consultar registros de auditoría.
 
 **Atributos:**
-- `usuario_id`: 
-- `tabla`: 
-- `accion`: 
-- `tipo_evento`: 
-- `desde`: 
-- `hasta`: 
+- `usuario_id`: int | None
+- `tabla`: str | None
+- `accion`: AccionCambio | None
+- `tipo_evento`: TipoEventoSesion | None
+- `desde`: datetime | None
+- `hasta`: datetime | None
 - `pagina`: int
 - `por_pagina`: int
 
@@ -598,22 +646,26 @@ desempeno_id:    FK al nivel de desempeño correspondiente (Bajo, Básico…).
                  configurados en niveles_desempeno.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `periodo_id`: int
 - `nota_definitiva`: float
-- `desempeno_id`: 
-- `logro_id`: 
+- `desempeno_id`: int | None
+- `logro_id`: int | None
 - `fecha_cierre`: date
-- `usuario_cierre_id`: 
+- `usuario_cierre_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_nota()`
 - `validar_fecha()`
+
+**Propiedades:**
+- `nota_display`
+
+**Métodos de Dominio:**
 - `aprobo()`
-- `nota_display()`
 
 ### CierreAnio
 **Herencia**: BaseModel
@@ -633,26 +685,30 @@ perdio:                 True si nota_definitiva_anual < nota_minima.
                         El servicio lo determina; el modelo lo almacena.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `anio_id`: int
 - `nota_promedio_periodos`: float
-- `nota_habilitacion`: 
+- `nota_habilitacion`: float | None
 - `nota_definitiva_anual`: float
 - `perdio`: bool
-- `desempeno_id`: 
+- `desempeno_id`: int | None
 - `fecha_cierre`: date
-- `usuario_cierre_id`: 
+- `usuario_cierre_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_nota()`
 - `validar_fecha()`
+
+**Model Validators:**
 - `validar_coherencia_notas()`
-- `tiene_habilitacion()`
-- `mejoro_con_habilitacion()`
-- `nota_display()`
+
+**Propiedades:**
+- `tiene_habilitacion`
+- `mejoro_con_habilitacion`
+- `nota_display`
 
 ### PromocionAnual
 **Herencia**: BaseModel
@@ -670,25 +726,31 @@ es inmutable — cambiar una decisión de promoción requiere
 intervención administrativa directa en la BD.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `anio_id`: int
 - `estado`: EstadoPromocion
 - `asignaturas_perdidas`: int
-- `observacion`: 
-- `fecha_decision`: 
-- `usuario_decision_id`: 
+- `observacion`: str | None
+- `fecha_decision`: date | None
+- `usuario_decision_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `limpiar_observacion()`
 - `validar_fecha()`
+
+**Model Validators:**
 - `validar_coherencia_estado()`
-- `esta_pendiente()`
-- `esta_finalizado()`
-- `fue_promovido()`
-- `fue_reprobado()`
-- `es_condicional()`
+
+**Propiedades:**
+- `esta_pendiente`
+- `esta_finalizado`
+- `fue_promovido`
+- `fue_reprobado`
+- `es_condicional`
+
+**Métodos de Dominio:**
 - `decidir()`
 
 ### CrearCierrePeriodoDTO
@@ -701,12 +763,14 @@ Datos para registrar el cierre de un periodo.
 - `asignacion_id`: int
 - `periodo_id`: int
 - `nota_definitiva`: float
-- `desempeno_id`: 
-- `logro_id`: 
-- `usuario_cierre_id`: 
+- `desempeno_id`: int | None
+- `logro_id`: int | None
+- `usuario_cierre_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nota()`
+
+**Métodos de Dominio:**
 - `to_cierre()`
 
 ### CrearCierreAnioDTO
@@ -719,14 +783,16 @@ Datos para registrar el cierre anual de una asignatura.
 - `asignacion_id`: int
 - `anio_id`: int
 - `nota_promedio_periodos`: float
-- `nota_habilitacion`: 
+- `nota_habilitacion`: float | None
 - `nota_definitiva_anual`: float
 - `perdio`: bool
-- `desempeno_id`: 
-- `usuario_cierre_id`: 
+- `desempeno_id`: int | None
+- `usuario_cierre_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nota()`
+
+**Métodos de Dominio:**
 - `to_cierre()`
 
 ### DecidirPromocionDTO
@@ -737,11 +803,11 @@ Datos para registrar la decisión de promoción.
 **Atributos:**
 - `estado`: EstadoPromocion
 - `asignaturas_perdidas`: int
-- `observacion`: 
-- `usuario_id`: 
-- `fecha`: 
+- `observacion`: str | None
+- `usuario_id`: int | None
+- `fecha`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_estado()`
 - `limpiar_observacion()`
 
@@ -757,31 +823,37 @@ Los módulos de notas y asistencia usan el año activo como referencia
 para determinar qué periodos y qué configuraciones están vigentes.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `anio`: int
-- `fecha_inicio_clases`: 
-- `fecha_fin_clases`: 
+- `fecha_inicio_clases`: date | None
+- `fecha_fin_clases`: date | None
 - `nota_minima_aprobacion`: float
 - `activo`: bool
 - `nombre_institucion`: str
-- `dane_code`: 
-- `rector`: 
-- `direccion`: 
-- `municipio`: 
-- `telefono_institucion`: 
-- `logo_path`: 
-- `resolucion_aprobacion`: 
+- `dane_code`: str | None
+- `rector`: str | None
+- `direccion`: str | None
+- `municipio`: str | None
+- `telefono_institucion`: str | None
+- `logo_path`: str | None
+- `resolucion_aprobacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_anio()`
 - `validar_nota_minima()`
 - `validar_nombre_institucion()`
 - `limpiar_campo_opcional()`
+
+**Model Validators:**
 - `validar_fechas()`
-- `anio_display()`
-- `rango_fechas_display()`
-- `duracion_semanas()`
-- `tiene_informacion_institucional()`
+
+**Propiedades:**
+- `anio_display`
+- `rango_fechas_display`
+- `duracion_semanas`
+- `tiene_informacion_institucional`
+
+**Métodos de Dominio:**
 - `activar()`
 - `desactivar()`
 
@@ -792,15 +864,19 @@ Datos para crear un año lectivo nuevo.
 
 **Atributos:**
 - `anio`: int
-- `fecha_inicio_clases`: 
-- `fecha_fin_clases`: 
+- `fecha_inicio_clases`: date | None
+- `fecha_fin_clases`: date | None
 - `nota_minima_aprobacion`: float
 - `nombre_institucion`: str
 
-**Métodos:**
+**Field Validators:**
 - `validar_anio()`
 - `validar_nota()`
+
+**Model Validators:**
 - `validar_fechas()`
+
+**Métodos de Dominio:**
 - `to_configuracion()`
 
 ### ActualizarConfiguracionAnioDTO
@@ -809,13 +885,15 @@ Datos para crear un año lectivo nuevo.
 Campos académicos actualizables. Todos opcionales.
 
 **Atributos:**
-- `anio`: 
-- `fecha_inicio_clases`: 
-- `fecha_fin_clases`: 
-- `nota_minima_aprobacion`: 
+- `anio`: int | None
+- `fecha_inicio_clases`: date | None
+- `fecha_fin_clases`: date | None
+- `nota_minima_aprobacion`: float | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nota()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### ActualizarInfoInstitucionalDTO
@@ -827,17 +905,19 @@ puedan actualizar la información del colegio sin
 afectar la configuración de notas.
 
 **Atributos:**
-- `nombre_institucion`: 
-- `dane_code`: 
-- `rector`: 
-- `direccion`: 
-- `municipio`: 
-- `telefono_institucion`: 
-- `logo_path`: 
-- `resolucion_aprobacion`: 
+- `nombre_institucion`: str | None
+- `dane_code`: str | None
+- `rector`: str | None
+- `direccion`: str | None
+- `municipio`: str | None
+- `telefono_institucion`: str | None
+- `logo_path`: str | None
+- `resolucion_aprobacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### InformacionInstitucionalDTO
@@ -853,13 +933,13 @@ Todos los campos son obligatorios para garantizar boletines completos.
 - `dane_code`: str
 - `rector`: str
 - `nota_minima_aprobacion`: float
-- `direccion`: 
-- `municipio`: 
-- `telefono_institucion`: 
-- `logo_path`: 
-- `resolucion_aprobacion`: 
+- `direccion`: str | None
+- `municipio`: str | None
+- `telefono_institucion`: str | None
+- `logo_path`: str | None
+- `resolucion_aprobacion`: str | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `desde_configuracion()`
 
 ### NivelDesempeno
@@ -879,21 +959,27 @@ El atributo `clasifica(nota)` permite resolver el nivel de una nota
 sin consultar la BD de nuevo.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `anio_id`: int
 - `nombre`: str
 - `rango_min`: float
 - `rango_max`: float
-- `descripcion`: 
+- `descripcion`: str | None
 - `orden`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_anio_id()`
 - `validar_nombre()`
 - `validar_rango()`
+
+**Model Validators:**
 - `validar_orden_rangos()`
+
+**Propiedades:**
+- `amplitud`
+
+**Métodos de Dominio:**
 - `clasifica()`
-- `amplitud()`
 
 ### CriterioPromocion
 **Herencia**: BaseModel
@@ -905,16 +991,18 @@ ser promovido (condicionalmente o no), y la nota mínima para
 presentar habilitación.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `anio_id`: int
 - `max_asignaturas_perdidas`: int
 - `permite_condicionada`: bool
 - `nota_minima_habilitacion`: float
 - `nota_minima_anual`: float
 
-**Métodos:**
+**Field Validators:**
 - `validar_anio_id()`
 - `validar_nota()`
+
+**Métodos de Dominio:**
 - `puede_ser_promovido()`
 - `puede_habilitar()`
 
@@ -928,13 +1016,17 @@ Datos para crear un nivel de desempeño.
 - `nombre`: str
 - `rango_min`: float
 - `rango_max`: float
-- `descripcion`: 
+- `descripcion`: str | None
 - `orden`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_rango()`
+
+**Model Validators:**
 - `validar_orden_rangos()`
+
+**Métodos de Dominio:**
 - `to_nivel()`
 
 ### ActualizarNivelDesempenoDTO
@@ -943,13 +1035,13 @@ Datos para crear un nivel de desempeño.
 Campos actualizables de un nivel de desempeño.
 
 **Atributos:**
-- `nombre`: 
-- `rango_min`: 
-- `rango_max`: 
-- `descripcion`: 
-- `orden`: 
+- `nombre`: str | None
+- `rango_min`: float | None
+- `rango_max`: float | None
+- `descripcion`: str | None
+- `orden`: int | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ## Modulo: `convivencia.py`
@@ -966,17 +1058,19 @@ Observación narrativa de un docente sobre un estudiante en un periodo.
 `es_publica=False` es para notas internas del docente.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `periodo_id`: int
 - `texto`: str
 - `es_publica`: bool
 - `fecha_registro`: datetime
-- `usuario_id`: 
+- `usuario_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_texto()`
+
+**Métodos de Dominio:**
 - `hacer_publica()`
 - `hacer_privada()`
 
@@ -994,27 +1088,33 @@ DESCARGO es la respuesta formal del estudiante ante una falta grave.
 COMPROMISO es un acuerdo entre el estudiante/acudiente y la institución.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `grupo_id`: int
 - `periodo_id`: int
 - `fecha`: date
 - `tipo`: TipoRegistro
 - `descripcion`: str
-- `seguimiento`: 
+- `seguimiento`: str | None
 - `requiere_firma`: bool
 - `acudiente_notificado`: bool
-- `usuario_registro_id`: 
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
 - `limpiar_seguimiento()`
 - `validar_fecha()`
+
+**Model Validators:**
 - `validar_notificacion()`
-- `es_negativo()`
-- `es_positivo()`
-- `pendiente_notificacion()`
-- `tiene_seguimiento()`
+
+**Propiedades:**
+- `es_negativo`
+- `es_positivo`
+- `pendiente_notificacion`
+- `tiene_seguimiento`
+
+**Métodos de Dominio:**
 - `registrar_notificacion()`
 - `agregar_seguimiento()`
 
@@ -1027,19 +1127,21 @@ No todas las instituciones la usan. Cuando existe, es independiente
 de las notas académicas y puede tener su propio nivel de desempeño.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `grupo_id`: int
 - `periodo_id`: int
 - `valor`: float
-- `desempeno_id`: 
-- `observacion`: 
-- `usuario_id`: 
+- `desempeno_id`: int | None
+- `observacion`: str | None
+- `usuario_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_valor()`
 - `limpiar_observacion()`
-- `aprobado()`
+
+**Propiedades:**
+- `aprobado`
 
 ### NuevaObservacionDTO
 **Herencia**: BaseModel
@@ -1053,8 +1155,10 @@ Datos para registrar una observación de periodo.
 - `texto`: str
 - `es_publica`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_texto()`
+
+**Métodos de Dominio:**
 - `to_observacion()`
 
 ### NuevoRegistroComportamientoDTO
@@ -1071,8 +1175,10 @@ Datos para crear un registro de comportamiento.
 - `requiere_firma`: bool
 - `fecha`: date
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Métodos de Dominio:**
 - `to_registro()`
 
 ### NuevaNotaComportamientoDTO
@@ -1085,10 +1191,12 @@ Datos para registrar la nota de comportamiento de un periodo.
 - `grupo_id`: int
 - `periodo_id`: int
 - `valor`: float
-- `observacion`: 
+- `observacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_valor()`
+
+**Métodos de Dominio:**
 - `to_nota()`
 
 ### FiltroConvivenciaDTO
@@ -1097,10 +1205,10 @@ Datos para registrar la nota de comportamiento de un periodo.
 Parámetros para consultar registros de comportamiento.
 
 **Atributos:**
-- `estudiante_id`: 
-- `grupo_id`: 
-- `periodo_id`: 
-- `tipo`: 
+- `estudiante_id`: int | None
+- `grupo_id`: int | None
+- `periodo_id`: int | None
+- `tipo`: TipoRegistro | None
 - `solo_negativos`: bool
 - `pagina`: int
 - `por_pagina`: int
@@ -1126,14 +1234,16 @@ explícitas y testeables sin estado global.
 - `usuario_id`: int
 - `anio_id`: int
 - `periodo_id`: int
-- `grupo_id`: 
-- `asignacion_id`: 
+- `grupo_id`: int | None
+- `asignacion_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_requerido()`
-- `tiene_grupo()`
-- `tiene_asignacion()`
-- `contexto_completo()`
+
+**Propiedades:**
+- `tiene_grupo`
+- `tiene_asignacion`
+- `contexto_completo`
 
 ### InformeNotasDTO
 **Herencia**: BaseModel
@@ -1150,7 +1260,7 @@ Consumido por InformeService.generar_notas() y por los exportadores.
 - `formato`: FormatoInforme
 - `incluir_piar`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 - `validar_rango_fechas()`
 
@@ -1167,7 +1277,7 @@ Parámetros para generar un informe de asistencia.
 - `fecha_hasta`: date
 - `formato`: FormatoInforme
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 - `validar_rango_fechas()`
 
@@ -1187,10 +1297,12 @@ la página las muestra directamente sin lógica adicional.
 - `actividades_publicadas`: int
 - `alertas_pendientes`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_porcentaje()`
 - `validar_no_negativo()`
-- `pct_en_riesgo()`
+
+**Propiedades:**
+- `pct_en_riesgo`
 
 ### MatriculaMasivaDTO
 **Herencia**: BaseModel
@@ -1199,13 +1311,15 @@ Entrada para carga masiva de estudiantes desde un archivo Excel/CSV.
 El servicio itera sobre `filas` y crea un Estudiante por cada una.
 
 **Atributos:**
-- `grupo_id`: 
+- `grupo_id`: int | None
 - `filas`: list[dict]
 - `omitir_errores`: bool
 
-**Métodos:**
+**Field Validators:**
 - `validar_filas()`
-- `total_filas()`
+
+**Propiedades:**
+- `total_filas`
 
 ### MatriculaMasivaResultadoDTO
 **Herencia**: BaseModel
@@ -1218,9 +1332,11 @@ Resultado de una operación de carga masiva.
 - `fallidas`: int
 - `errores`: list[dict]
 
-**Métodos:**
-- `tasa_exito()`
-- `fue_exitosa()`
+**Propiedades:**
+- `tasa_exito`
+- `fue_exitosa`
+
+**Métodos de Dominio:**
 - `agregar_error()`
 
 ### RespuestaOperacionDTO
@@ -1233,9 +1349,9 @@ más allá de una excepción.
 **Atributos:**
 - `exito`: bool
 - `mensaje`: str
-- `datos`: 
+- `datos`: dict | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `ok()`
 - `error()`
 
@@ -1276,32 +1392,38 @@ Uso típico desde un servicio:
     repo.guardar(estudiante)
 
 **Atributos:**
-- `id`: 
-- `id_publico`: 
+- `id`: int | None
+- `id_publico`: str | None
 - `tipo_documento`: TipoDocumento
 - `numero_documento`: str
 - `nombre`: str
 - `apellido`: str
-- `genero`: 
-- `fecha_nacimiento`: 
-- `direccion`: 
-- `grupo_id`: 
+- `genero`: Genero | None
+- `fecha_nacimiento`: date | None
+- `direccion`: str | None
+- `grupo_id`: int | None
 - `posee_piar`: bool
 - `fecha_ingreso`: date
 - `estado_matricula`: EstadoMatricula
 
-**Métodos:**
+**Field Validators:**
 - `validar_documento()`
 - `validar_nombre()`
 - `validar_fecha_nacimiento()`
 - `validar_id_publico()`
+
+**Model Validators:**
 - `validar_coherencia_documento_edad()`
-- `nombre_completo()`
-- `edad()`
-- `es_activo()`
-- `puede_recibir_calificaciones()`
-- `requiere_atencion_diferencial()`
-- `documento_display()`
+
+**Propiedades:**
+- `nombre_completo`
+- `edad`
+- `es_activo`
+- `puede_recibir_calificaciones`
+- `requiere_atencion_diferencial`
+- `documento_display`
+
+**Métodos de Dominio:**
 - `retirar()`
 - `reactivar()`
 - `asignar_grupo()`
@@ -1319,15 +1441,17 @@ Los campos opcionales se inicializan con valores por defecto en Estudiante.
 - `numero_documento`: str
 - `nombre`: str
 - `apellido`: str
-- `genero`: 
-- `fecha_nacimiento`: 
-- `grupo_id`: 
+- `genero`: Genero | None
+- `fecha_nacimiento`: date | None
+- `grupo_id`: int | None
 - `posee_piar`: bool
-- `direccion`: 
+- `direccion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_documento()`
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `to_estudiante()`
 
 ### ActualizarEstudianteDTO
@@ -1339,17 +1463,19 @@ Todos son opcionales: solo se actualiza lo que se provee.
 El número de documento no es actualizable (es el identificador principal).
 
 **Atributos:**
-- `nombre`: 
-- `apellido`: 
-- `genero`: 
-- `fecha_nacimiento`: 
-- `grupo_id`: 
-- `posee_piar`: 
-- `direccion`: 
-- `estado_matricula`: 
+- `nombre`: str | None
+- `apellido`: str | None
+- `genero`: Genero | None
+- `fecha_nacimiento`: date | None
+- `grupo_id`: int | None
+- `posee_piar`: bool | None
+- `direccion`: str | None
+- `estado_matricula`: EstadoMatricula | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### FiltroEstudiantesDTO
@@ -1359,14 +1485,14 @@ Parámetros de filtrado para listar estudiantes.
 Consumido por IEstudianteRepository.listar_filtrado().
 
 **Atributos:**
-- `grupo_id`: 
-- `estado_matricula`: 
-- `posee_piar`: 
-- `busqueda`: 
+- `grupo_id`: int | None
+- `estado_matricula`: EstadoMatricula | None
+- `posee_piar`: bool | None
+- `busqueda`: str | None
 - `pagina`: int
 - `por_pagina`: int
 
-**Métodos:**
+**Field Validators:**
 - `limpiar_busqueda()`
 
 ### EstudianteResumenDTO
@@ -1377,15 +1503,15 @@ No incluye campos de auditoría ni direcciones.
 
 **Atributos:**
 - `id`: int
-- `id_publico`: 
+- `id_publico`: str | None
 - `documento_display`: str
 - `nombre_completo`: str
-- `genero`: 
-- `grupo_id`: 
+- `genero`: Genero | None
+- `grupo_id`: int | None
 - `estado_matricula`: EstadoMatricula
 - `posee_piar`: bool
 
-**Métodos:**
+**Métodos de Dominio:**
 - `desde_estudiante()`
 
 ## Modulo: `evaluacion.py`
@@ -1412,17 +1538,19 @@ método CalculadorNotas.pesos_validos(). El modelo valida solo el
 rango individual (> 0 y <= 1).
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `nombre`: str
 - `peso`: float
 - `asignacion_id`: int
 - `periodo_id`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_peso()`
 - `validar_id()`
-- `peso_porcentaje()`
+
+**Propiedades:**
+- `peso_porcentaje`
 
 ### Actividad
 **Herencia**: BaseModel
@@ -1436,22 +1564,26 @@ Estado:
   cerrada   → no acepta más notas (el periodo fue cerrado)
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `nombre`: str
-- `descripcion`: 
-- `fecha`: 
+- `descripcion`: str | None
+- `fecha`: date | None
 - `valor_maximo`: float
 - `estado`: EstadoActividad
 - `categoria_id`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_valor_maximo()`
 - `limpiar_descripcion()`
 - `parsear_fecha()`
 - `validar_id()`
-- `esta_publicada()`
-- `acepta_notas()`
+
+**Propiedades:**
+- `esta_publicada`
+- `acepta_notas`
+
+**Métodos de Dominio:**
 - `publicar()`
 - `cerrar()`
 
@@ -1465,17 +1597,19 @@ valor_maximo de la actividad. El docente puede ingresar 7.5/10
 y el sistema almacena 75.0.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `actividad_id`: int
 - `valor`: float
-- `usuario_registro_id`: 
+- `usuario_registro_id`: int | None
 - `fecha_registro`: datetime
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 - `validar_valor()`
-- `es_aprobatoria()`
+
+**Propiedades:**
+- `es_aprobatoria`
 
 ### PuntosExtra
 **Herencia**: BaseModel
@@ -1491,23 +1625,26 @@ El impacto numérico de los puntos sobre la nota definitiva
 lo define el servicio según la configuración institucional.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `periodo_id`: int
 - `tipo`: TipoPuntosExtra
 - `positivos`: int
 - `negativos`: int
-- `observacion`: 
+- `observacion`: str | None
 - `fecha_actualizacion`: datetime
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
 - `limpiar_observacion()`
-- `balance()`
-- `tiene_impacto()`
+
+**Propiedades:**
+- `balance`
+- `tiene_impacto`
 
 ### CalculadorNotas
+
 Lógica de cálculo de notas definitivas y promedios.
 Todas sus operaciones son métodos estáticos: no guardan estado.
 Reciben colecciones de entidades del dominio y retornan valores.
@@ -1523,7 +1660,7 @@ No es responsabilidad de este calculador:
   - Determinar si una nota es aprobatoria (eso usa nota_minima
     de configuracion_anio, y lo hace el servicio)
 
-**Métodos:**
+**Métodos de Dominio:**
 - `calcular_definitiva()`
 - `calcular_promedio_ajustado()`
 - `pesos_validos()`
@@ -1540,9 +1677,11 @@ Datos para crear una categoría de evaluación.
 - `asignacion_id`: int
 - `periodo_id`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_peso()`
+
+**Métodos de Dominio:**
 - `to_categoria()`
 
 ### ActualizarCategoriaDTO
@@ -1551,11 +1690,13 @@ Datos para crear una categoría de evaluación.
 Campos actualizables de una categoría.
 
 **Atributos:**
-- `nombre`: 
-- `peso`: 
+- `nombre`: str | None
+- `peso`: float | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_peso()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### NuevaActividadDTO
@@ -1566,14 +1707,16 @@ Datos para crear una actividad evaluativa.
 **Atributos:**
 - `nombre`: str
 - `categoria_id`: int
-- `descripcion`: 
-- `fecha`: 
+- `descripcion`: str | None
+- `fecha`: date | None
 - `valor_maximo`: float
 - `estado`: EstadoActividad
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_valor()`
+
+**Métodos de Dominio:**
 - `to_actividad()`
 
 ### ActualizarActividadDTO
@@ -1582,12 +1725,12 @@ Datos para crear una actividad evaluativa.
 Campos actualizables de una actividad.
 
 **Atributos:**
-- `nombre`: 
-- `descripcion`: 
-- `fecha`: 
-- `valor_maximo`: 
+- `nombre`: str | None
+- `descripcion`: str | None
+- `fecha`: date | None
+- `valor_maximo`: float | None
 
-**Métodos:**
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### RegistrarNotaDTO
@@ -1599,10 +1742,12 @@ Datos para registrar la nota de un único estudiante.
 - `estudiante_id`: int
 - `actividad_id`: int
 - `valor`: float
-- `usuario_registro_id`: 
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_valor()`
+
+**Métodos de Dominio:**
 - `to_nota()`
 
 ### RegistrarNotasMasivasDTO
@@ -1614,11 +1759,13 @@ Operación del ag-grid de la planilla de notas.
 **Atributos:**
 - `actividad_id`: int
 - `notas`: list[RegistrarNotaDTO]
-- `usuario_registro_id`: 
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id()`
-- `total_notas()`
+
+**Propiedades:**
+- `total_notas`
 
 ### ResultadoEstudianteDTO
 **Herencia**: BaseModel
@@ -1642,8 +1789,8 @@ Parámetros para consultar notas.
 **Atributos:**
 - `asignacion_id`: int
 - `periodo_id`: int
-- `estudiante_id`: 
-- `actividad_id`: 
+- `estudiante_id`: int | None
+- `actividad_id`: int | None
 
 ## Modulo: `habilitacion.py`
 
@@ -1673,27 +1820,33 @@ nota_habilitacion:  nota obtenida en la habilitación.
                     o REPROBADA — nunca en PENDIENTE.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
-- `periodo_id`: 
+- `periodo_id`: int | None
 - `tipo`: TipoHabilitacion
-- `nota_antes`: 
-- `nota_habilitacion`: 
-- `fecha`: 
+- `nota_antes`: float | None
+- `nota_habilitacion`: float | None
+- `fecha`: date | None
 - `estado`: EstadoHabilitacion
-- `observacion`: 
-- `usuario_registro_id`: 
+- `observacion`: str | None
+- `usuario_registro_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_nota()`
 - `limpiar_observacion()`
+
+**Model Validators:**
 - `validar_coherencia()`
-- `esta_pendiente()`
-- `fue_realizada()`
-- `tiene_resultado_final()`
-- `mejoro_nota()`
+
+**Propiedades:**
+- `esta_pendiente`
+- `fue_realizada`
+- `tiene_resultado_final`
+- `mejoro_nota`
+
+**Métodos de Dominio:**
 - `_validar_transicion()`
 - `registrar_nota()`
 - `aprobar()`
@@ -1711,29 +1864,35 @@ estudiante tiene desempeño bajo y deben quedar documentados.
 Estado terminal: CUMPLIDO o INCUMPLIDO — un plan cerrado no se modifica.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `periodo_id`: int
 - `descripcion_dificultad`: str
 - `actividades_propuestas`: str
 - `fecha_inicio`: date
-- `fecha_seguimiento`: 
-- `fecha_cierre`: 
+- `fecha_seguimiento`: date | None
+- `fecha_cierre`: date | None
 - `estado`: EstadoPlanMejoramiento
-- `observacion_cierre`: 
-- `usuario_id`: 
+- `observacion_cierre`: str | None
+- `usuario_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_texto_requerido()`
 - `limpiar_observacion_cierre()`
+
+**Model Validators:**
 - `validar_coherencia()`
-- `esta_activo()`
-- `esta_cerrado()`
-- `tiene_seguimiento_programado()`
-- `seguimiento_vencido()`
-- `dias_activo()`
+
+**Propiedades:**
+- `esta_activo`
+- `esta_cerrado`
+- `tiene_seguimiento_programado`
+- `seguimiento_vencido`
+- `dias_activo`
+
+**Métodos de Dominio:**
 - `programar_seguimiento()`
 - `cerrar()`
 
@@ -1746,13 +1905,17 @@ Datos para programar una habilitación.
 - `estudiante_id`: int
 - `asignacion_id`: int
 - `tipo`: TipoHabilitacion
-- `periodo_id`: 
-- `nota_antes`: 
-- `fecha`: 
+- `periodo_id`: int | None
+- `nota_antes`: float | None
+- `fecha`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nota()`
+
+**Model Validators:**
 - `validar_tipo_periodo()`
+
+**Métodos de Dominio:**
 - `to_habilitacion()`
 
 ### RegistrarNotaHabilitacionDTO
@@ -1762,11 +1925,11 @@ Datos para registrar la nota cuando el estudiante presenta la habilitación.
 
 **Atributos:**
 - `nota`: float
-- `fecha`: 
-- `usuario_id`: 
-- `observacion`: 
+- `fecha`: date | None
+- `usuario_id`: int | None
+- `observacion`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nota()`
 
 ### NuevoPlanMejoramientoDTO
@@ -1780,10 +1943,12 @@ Datos para crear un plan de mejoramiento.
 - `periodo_id`: int
 - `descripcion_dificultad`: str
 - `actividades_propuestas`: str
-- `fecha_seguimiento`: 
+- `fecha_seguimiento`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_texto()`
+
+**Métodos de Dominio:**
 - `to_plan()`
 
 ### CerrarPlanMejoramientoDTO
@@ -1794,9 +1959,9 @@ Datos para cerrar un plan de mejoramiento.
 **Atributos:**
 - `estado`: EstadoPlanMejoramiento
 - `observacion`: str
-- `fecha`: 
+- `fecha`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_estado_cierre()`
 - `validar_observacion()`
 
@@ -1806,11 +1971,11 @@ Datos para cerrar un plan de mejoramiento.
 Parámetros para listar habilitaciones.
 
 **Atributos:**
-- `estudiante_id`: 
-- `asignacion_id`: 
-- `periodo_id`: 
-- `tipo`: 
-- `estado`: 
+- `estudiante_id`: int | None
+- `asignacion_id`: int | None
+- `periodo_id`: int | None
+- `tipo`: TipoHabilitacion | None
+- `estado`: EstadoHabilitacion | None
 - `pagina`: int
 - `por_pagina`: int
 
@@ -1829,11 +1994,11 @@ Parámetros para listar habilitaciones.
 Ejemplos: 'Matemáticas', 'Ciencias Naturales y Educación Ambiental'.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `nombre`: str
-- `codigo`: 
+- `codigo`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `limpiar_codigo()`
 
@@ -1844,13 +2009,13 @@ Asignatura que se dicta en la institución.
 Pertenece a un área de conocimiento.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `nombre`: str
-- `codigo`: 
-- `area_id`: 
+- `codigo`: str | None
+- `area_id`: int | None
 - `horas_semanales`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `limpiar_codigo()`
 - `validar_area_id()`
@@ -1864,19 +2029,23 @@ capacidad máxima de estudiantes.
 El código es el identificador legible: '601', '1101', 'A1', etc.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `codigo`: str
-- `nombre`: 
-- `grado`: 
+- `nombre`: str | None
+- `grado`: int | None
 - `jornada`: Jornada
 - `capacidad_maxima`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_codigo()`
 - `limpiar_nombre()`
 - `validar_grado()`
-- `descripcion_completa()`
-- `descripcion_corta()`
+
+**Propiedades:**
+- `descripcion_completa`
+- `descripcion_corta`
+
+**Métodos de Dominio:**
 - `esta_lleno()`
 - `cupos_disponibles()`
 
@@ -1889,24 +2058,28 @@ hora_inicio y hora_fin aceptan objetos time o strings "HH:MM".
 Invariante: hora_inicio < hora_fin.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `grupo_id`: int
 - `asignatura_id`: int
 - `usuario_id`: int
-- `asignacion_id`: 
+- `asignacion_id`: int | None
 - `periodo_id`: int
 - `dia_semana`: DiaSemana
 - `hora_inicio`: time
 - `hora_fin`: time
 - `sala`: str
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `parsear_hora()`
 - `validar_sala()`
+
+**Model Validators:**
 - `validar_orden_horas()`
-- `duracion_minutos()`
-- `franja_display()`
+
+**Propiedades:**
+- `duracion_minutos`
+- `franja_display`
 
 ### Logro
 **Herencia**: BaseModel
@@ -1918,13 +2091,13 @@ en el boletín junto a la nota. Ejemplo:
 'Comprende y aplica los conceptos de función cuadrática.'
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `asignacion_id`: int
 - `periodo_id`: int
 - `descripcion`: str
 - `orden`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_id_positivo()`
 - `validar_descripcion()`
 
@@ -1933,10 +2106,12 @@ en el boletín junto a la nota. Ejemplo:
 
 **Atributos:**
 - `nombre`: str
-- `codigo`: 
+- `codigo`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `to_area()`
 
 ### NuevaAsignaturaDTO
@@ -1944,12 +2119,14 @@ en el boletín junto a la nota. Ejemplo:
 
 **Atributos:**
 - `nombre`: str
-- `codigo`: 
-- `area_id`: 
+- `codigo`: str | None
+- `area_id`: int | None
 - `horas_semanales`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `to_asignatura()`
 
 ### NuevoGrupoDTO
@@ -1957,13 +2134,15 @@ en el boletín junto a la nota. Ejemplo:
 
 **Atributos:**
 - `codigo`: str
-- `nombre`: 
-- `grado`: 
+- `nombre`: str | None
+- `grado`: int | None
 - `jornada`: Jornada
 - `capacidad_maxima`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_codigo()`
+
+**Métodos de Dominio:**
 - `to_grupo()`
 
 ### NuevoHorarioDTO
@@ -1977,12 +2156,16 @@ en el boletín junto a la nota. Ejemplo:
 - `dia_semana`: DiaSemana
 - `hora_inicio`: time
 - `hora_fin`: time
-- `asignacion_id`: 
+- `asignacion_id`: int | None
 - `sala`: str
 
-**Métodos:**
+**Field Validators:**
 - `parsear_hora()`
+
+**Model Validators:**
 - `validar_horas()`
+
+**Métodos de Dominio:**
 - `to_horario()`
 
 ### NuevoLogroDTO
@@ -1994,8 +2177,10 @@ en el boletín junto a la nota. Ejemplo:
 - `descripcion`: str
 - `orden`: int
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Métodos de Dominio:**
 - `to_logro()`
 
 ### HorarioInfo
@@ -2019,7 +2204,7 @@ del JOIN; la página v2.0 los usa sin transformación adicional.
 - `asignatura_nombre`: str
 - `usuario_id`: int
 - `docente_nombre`: str
-- `asignacion_id`: 
+- `asignacion_id`: int | None
 - `periodo_id`: int
 - `periodo_nombre`: str
 - `dia_semana`: DiaSemana
@@ -2027,13 +2212,15 @@ del JOIN; la página v2.0 los usa sin transformación adicional.
 - `hora_fin`: time
 - `sala`: str
 
-**Métodos:**
+**Field Validators:**
 - `no_vacio()`
 - `parsear_hora()`
-- `franja_display()`
-- `duracion_minutos()`
-- `display_completo()`
-- `display_corto()`
+
+**Propiedades:**
+- `franja_display`
+- `duracion_minutos`
+- `display_completo`
+- `display_corto`
 
 ### HorarioEstadisticasDTO
 **Herencia**: BaseModel
@@ -2069,27 +2256,33 @@ para ese periodo. El modelo lo hace explícito para que los servicios
 puedan verificarlo antes de llegar a la BD.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `anio_id`: int
 - `numero`: int
 - `nombre`: str
-- `fecha_inicio`: 
-- `fecha_fin`: 
+- `fecha_inicio`: date | None
+- `fecha_fin`: date | None
 - `peso_porcentual`: float
 - `activo`: bool
 - `cerrado`: bool
-- `fecha_cierre_real`: 
+- `fecha_cierre_real`: datetime | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_anio_id()`
 - `validar_numero()`
 - `validar_nombre()`
 - `validar_peso()`
+
+**Model Validators:**
 - `validar_coherencia_fechas()`
-- `esta_abierto()`
-- `esta_vigente()`
-- `duracion_dias()`
-- `en_curso()`
+
+**Propiedades:**
+- `esta_abierto`
+- `esta_vigente`
+- `duracion_dias`
+- `en_curso`
+
+**Métodos de Dominio:**
 - `cerrar()`
 - `activar()`
 - `desactivar()`
@@ -2104,17 +2297,19 @@ entrega de boletines. Los hitos sirven para alertas automáticas
 y para mostrar el cronograma en el panel de director.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `periodo_id`: int
 - `tipo`: TipoHito
-- `descripcion`: 
-- `fecha_limite`: 
+- `descripcion`: str | None
+- `fecha_limite`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_periodo_id()`
 - `limpiar_descripcion()`
-- `esta_vencido()`
-- `dias_restantes()`
+
+**Propiedades:**
+- `esta_vencido`
+- `dias_restantes`
 
 ### NuevoPeriodoDTO
 **Herencia**: BaseModel
@@ -2126,13 +2321,17 @@ Datos para crear un periodo nuevo.
 - `numero`: int
 - `nombre`: str
 - `peso_porcentual`: float
-- `fecha_inicio`: 
-- `fecha_fin`: 
+- `fecha_inicio`: date | None
+- `fecha_fin`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_numero()`
 - `validar_peso()`
+
+**Model Validators:**
 - `validar_fechas()`
+
+**Métodos de Dominio:**
 - `to_periodo()`
 
 ### ActualizarPeriodoDTO
@@ -2141,14 +2340,16 @@ Datos para crear un periodo nuevo.
 Campos actualizables de un periodo. Todos opcionales.
 
 **Atributos:**
-- `nombre`: 
-- `peso_porcentual`: 
-- `fecha_inicio`: 
-- `fecha_fin`: 
-- `activo`: 
+- `nombre`: str | None
+- `peso_porcentual`: float | None
+- `fecha_inicio`: date | None
+- `fecha_fin`: date | None
+- `activo`: bool | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### NuevoHitoPeriodoDTO
@@ -2165,11 +2366,13 @@ fecha límite definida.
 - `periodo_id`: int
 - `tipo`: TipoHito
 - `descripcion`: str
-- `fecha_limite`: 
+- `fecha_limite`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
 - `validar_periodo_id()`
+
+**Métodos de Dominio:**
 - `to_hito()`
 
 ## Modulo: `piar.py`
@@ -2184,28 +2387,34 @@ y los ajustes acordados entre el equipo docente, el estudiante y su familia.
 No es un diagnóstico médico — es un instrumento pedagógico.
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `estudiante_id`: int
 - `anio_id`: int
 - `descripcion_necesidad`: str
-- `ajustes_evaluativos`: 
-- `ajustes_pedagogicos`: 
-- `profesionales_apoyo`: 
+- `ajustes_evaluativos`: str | None
+- `ajustes_pedagogicos`: str | None
+- `profesionales_apoyo`: str | None
 - `fecha_elaboracion`: date
-- `fecha_revision`: 
-- `usuario_elaboracion_id`: 
+- `fecha_revision`: date | None
+- `usuario_elaboracion_id`: int | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
 - `limpiar_campo_opcional()`
 - `validar_fecha_elaboracion()`
 - `validar_fecha_revision()`
+
+**Model Validators:**
 - `validar_orden_fechas()`
-- `tiene_revision_programada()`
-- `revision_vencida()`
-- `dias_para_revision()`
-- `tiene_ajustes_evaluativos()`
-- `tiene_ajustes_pedagogicos()`
+
+**Propiedades:**
+- `tiene_revision_programada`
+- `revision_vencida`
+- `dias_para_revision`
+- `tiene_ajustes_evaluativos`
+- `tiene_ajustes_pedagogicos`
+
+**Métodos de Dominio:**
 - `programar_revision()`
 - `actualizar_ajustes()`
 
@@ -2218,13 +2427,15 @@ Datos para registrar un PIAR nuevo.
 - `estudiante_id`: int
 - `anio_id`: int
 - `descripcion_necesidad`: str
-- `ajustes_evaluativos`: 
-- `ajustes_pedagogicos`: 
-- `profesionales_apoyo`: 
-- `fecha_revision`: 
+- `ajustes_evaluativos`: str | None
+- `ajustes_pedagogicos`: str | None
+- `profesionales_apoyo`: str | None
+- `fecha_revision`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Métodos de Dominio:**
 - `to_piar()`
 
 ### ActualizarPIARDTO
@@ -2233,14 +2444,16 @@ Datos para registrar un PIAR nuevo.
 Campos actualizables de un PIAR. Todos opcionales.
 
 **Atributos:**
-- `descripcion_necesidad`: 
-- `ajustes_evaluativos`: 
-- `ajustes_pedagogicos`: 
-- `profesionales_apoyo`: 
-- `fecha_revision`: 
+- `descripcion_necesidad`: str | None
+- `ajustes_evaluativos`: str | None
+- `ajustes_pedagogicos`: str | None
+- `profesionales_apoyo`: str | None
+- `fecha_revision`: date | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_descripcion()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ## Modulo: `usuario.py`
@@ -2265,26 +2478,30 @@ Roles y sus usos habituales:
   apoderado    → portal de acudientes (v3.0)
 
 **Atributos:**
-- `id`: 
+- `id`: int | None
 - `usuario`: str
 - `nombre_completo`: str
-- `email`: 
-- `telefono`: 
+- `email`: str | None
+- `telefono`: str | None
 - `rol`: Rol
 - `activo`: bool
 - `fecha_creacion`: date
-- `ultima_sesion`: 
+- `ultima_sesion`: datetime | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_usuario()`
 - `validar_nombre()`
 - `validar_email()`
 - `limpiar_telefono()`
-- `esta_activo()`
-- `es_docente()`
-- `es_directivo()`
-- `puede_gestionar_evaluaciones()`
-- `nombre_display()`
+
+**Propiedades:**
+- `esta_activo`
+- `es_docente`
+- `es_directivo`
+- `puede_gestionar_evaluaciones`
+- `nombre_display`
+
+**Métodos de Dominio:**
 - `desactivar()`
 - `reactivar()`
 - `registrar_sesion()`
@@ -2301,20 +2518,20 @@ JOIN con horarios y asignaciones para calcular la carga académica.
 - `id`: int
 - `usuario`: str
 - `nombre_completo`: str
-- `email`: 
-- `telefono`: 
+- `email`: str | None
+- `telefono`: str | None
 - `activo`: bool
-- `fecha_creacion`: 
-- `ultima_sesion`: 
+- `fecha_creacion`: date | None
+- `ultima_sesion`: datetime | None
 - `total_asignaciones`: int
 - `grupos_asignados`: int
 - `asignaturas_asignadas`: int
 - `horas_totales`: int
 - `bloques_horarios`: int
 
-**Métodos:**
-- `tiene_carga()`
-- `resumen_carga()`
+**Propiedades:**
+- `tiene_carga`
+- `resumen_carga`
 
 ### AsignacionDocenteInfoDTO
 **Herencia**: BaseModel
@@ -2329,20 +2546,20 @@ Incluye el comparativo entre horas teóricas y horas programadas.
 - `id`: int
 - `grupo_id`: int
 - `grupo_codigo`: str
-- `grupo_nombre`: 
+- `grupo_nombre`: str | None
 - `asignatura_id`: int
 - `asignatura_nombre`: str
-- `asignatura_codigo`: 
+- `asignatura_codigo`: str | None
 - `horas_teoricas`: int
 - `horas_programadas`: int
 - `periodo_id`: int
 - `periodo_nombre`: str
 - `activo`: bool
 
-**Métodos:**
-- `horas_pendientes()`
-- `horario_completo()`
-- `display()`
+**Propiedades:**
+- `horas_pendientes`
+- `horario_completo`
+- `display`
 
 ### NuevoUsuarioDTO
 **Herencia**: BaseModel
@@ -2356,14 +2573,16 @@ Si no se provee, el servicio usa el username como contraseña inicial.
 - `usuario`: str
 - `nombre_completo`: str
 - `rol`: Rol
-- `email`: 
-- `telefono`: 
-- `password`: 
+- `email`: str | None
+- `telefono`: str | None
+- `password`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_usuario()`
 - `validar_nombre()`
 - `validar_email()`
+
+**Métodos de Dominio:**
 - `to_usuario()`
 
 ### ActualizarUsuarioDTO
@@ -2373,13 +2592,15 @@ Campos actualizables de un usuario. Todos opcionales.
 El username y el rol no se actualizan aquí.
 
 **Atributos:**
-- `nombre_completo`: 
-- `email`: 
-- `telefono`: 
+- `nombre_completo`: str | None
+- `email`: str | None
+- `telefono`: str | None
 
-**Métodos:**
+**Field Validators:**
 - `validar_nombre()`
 - `validar_email()`
+
+**Métodos de Dominio:**
 - `aplicar_a()`
 
 ### UsuarioResumenDTO
@@ -2394,7 +2615,7 @@ Vista mínima para selects, lookups y referencias en otros módulos.
 - `rol`: Rol
 - `activo`: bool
 
-**Métodos:**
+**Métodos de Dominio:**
 - `desde_usuario()`
 
 ### FiltroUsuariosDTO
@@ -2403,12 +2624,11 @@ Vista mínima para selects, lookups y referencias en otros módulos.
 Parámetros para listar usuarios.
 
 **Atributos:**
-- `rol`: 
+- `rol`: Rol | None
 - `solo_activos`: bool
-- `busqueda`: 
+- `busqueda`: str | None
 - `pagina`: int
 - `por_pagina`: int
 
-**Métodos:**
+**Field Validators:**
 - `limpiar_busqueda()`
-

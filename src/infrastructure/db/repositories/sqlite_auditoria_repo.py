@@ -120,7 +120,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 SELECT COUNT(*) FROM auditoria
                 WHERE LOWER(usuario) = LOWER(?)
                   AND tipo_evento = 'LOGIN_FALLIDO'
-                  AND fecha_hora >= datetime('now', ?)
+                  AND fecha_hora >= datetime('now', 'localtime', ?)
                 """,
                 (usuario, f"-{ventana_minutos} minutes"),
             ).fetchone()

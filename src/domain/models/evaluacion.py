@@ -551,8 +551,11 @@ class RegistrarNotaDTO(BaseModel):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
-    def to_nota(self) -> Nota:
-        return Nota(**self.model_dump())
+    def to_nota(self, usuario_registro_id: int | None = None) -> Nota:
+        data = self.model_dump()
+        if usuario_registro_id is not None:
+            data["usuario_registro_id"] = usuario_registro_id
+        return Nota(**data)
 
 
 class RegistrarNotasMasivasDTO(BaseModel):
