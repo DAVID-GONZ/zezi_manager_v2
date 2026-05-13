@@ -73,6 +73,12 @@ class FakeUsuarioRepo(IUsuarioRepository):
     def listar_asignaciones_docente(self, uid: int, periodo_id=None):
         return []
 
+    def get_password_hash(self, usuario_id: int) -> str | None:
+        return None
+
+    def actualizar_password_hash(self, usuario_id: int, nuevo_hash: str) -> bool:
+        return True
+
 
 class FakeAuth(IAuthenticationService):
     def __init__(self, pass_ok: bool = True):

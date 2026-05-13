@@ -198,5 +198,28 @@ class IUsuarioRepository(ABC):
         """
         ...
 
+    # =========================================================================
+    # Credenciales — uso exclusivo de IAuthenticationService
+    # =========================================================================
+
+    @abstractmethod
+    def get_password_hash(self, usuario_id: int) -> str | None:
+        """
+        Retorna el hash de contraseña almacenado para el usuario.
+        None si el usuario no existe.
+        Solo debe llamarse desde IAuthenticationService — nunca exponer
+        el hash en capas superiores.
+        """
+        ...
+
+    @abstractmethod
+    def actualizar_password_hash(self, usuario_id: int, nuevo_hash: str) -> bool:
+        """
+        Persiste el hash de contraseña en la BD.
+        Retorna True si la fila fue afectada.
+        Solo debe llamarse desde IAuthenticationService.
+        """
+        ...
+
 
 __all__ = ["IUsuarioRepository"]

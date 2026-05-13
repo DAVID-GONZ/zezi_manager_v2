@@ -324,5 +324,27 @@ class SqliteUsuarioRepository(IUsuarioRepository):
                 conn.commit()
             return cursor.rowcount > 0
 
+    # ------------------------------------------------------------------
+    # Credenciales — uso exclusivo de IAuthenticationService
+    # ------------------------------------------------------------------
+
+    def get_password_hash(self, usuario_id: int) -> str | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT password_hash FROM usuarios WHERE id = ?",
+                (usuario_id,),
+            ).fetchone()
+            return row["password_hash"] if row else None
+
+    def actualizar_password_hash(self, usuario_id: int, nuevo_hash: str) -> bool:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "UPDATE usuarios SET password_hash = ? WHERE id = ?",
+                (nuevo_hash, usuario_id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount > 0
+
 
 __all__ = ["SqliteUsuarioRepository"]

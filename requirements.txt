@@ -1,0 +1,7 @@
+bcrypt
+openpyxl
+pandas
+pydantic
+pydantic-settings
+pytest
+pytest-asyncio
