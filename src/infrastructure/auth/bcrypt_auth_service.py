@@ -6,6 +6,7 @@ from __future__ import annotations
 import bcrypt
 import hashlib
 
+from src.domain.models.usuario import Usuario
 from src.domain.ports.service_ports import IAuthenticationService
 from src.domain.ports.usuario_repo import IUsuarioRepository
 
@@ -81,6 +82,50 @@ class BcryptAuthService(IAuthenticationService):
         if self._repo is None:
             raise RuntimeError("BcryptAuthService requiere un repo para resetear contraseñas.")
         self._repo.actualizar_password_hash(usuario_id, self.hashear_password(password_nueva))
+
+    def autenticar_usuario(
+        self,
+        nombre_usuario: str,
+        password_plain: str,
+    ) -> Usuario:
+        """
+        Autentica un usuario por nombre de usuario y contraseña en texto plano.
+
+        Encapsula tres comprobaciones que la vista NUNCA debe hacer por su cuenta:
+          1. Existencia del usuario en la BD.
+          2. Verificación del hash de contraseña.
+          3. Estado activo/inactivo de la cuenta.
+
+        Raises:
+            ValueError("credenciales_invalidas"): usuario no encontrado o
+                contraseña incorrecta. Mensaje genérico deliberado para no
+                facilitar enumeración de usuarios.
+            ValueError("cuenta_inactiva"): credenciales correctas pero la
+                cuenta está desactivada. Solo se lanza tras verificar la
+                contraseña para no revelar si un usuario existe.
+            RuntimeError: si el servicio fue construido sin repositorio.
+        """
+        if self._repo is None:
+            raise RuntimeError(
+                "BcryptAuthService requiere un repo para autenticar usuarios."
+            )
+
+        # 1. Buscar el usuario (incluye usuarios inactivos para distinguir
+        #    el caso "cuenta desactivada" del caso "usuario no existe").
+        user = self._repo.get_by_username(nombre_usuario)
+        if user is None:
+            raise ValueError("credenciales_invalidas")
+
+        # 2. Verificar contraseña — siempre antes de revelar estado de cuenta.
+        hash_db = self._repo.get_password_hash(user.id)
+        if not hash_db or not self.verificar_password(password_plain, hash_db):
+            raise ValueError("credenciales_invalidas")
+
+        # 3. Comprobar estado de la cuenta (solo tras validar credenciales).
+        if not user.activo:
+            raise ValueError("cuenta_inactiva")
+
+        return user
 
 
 __all__ = ["BcryptAuthService"]

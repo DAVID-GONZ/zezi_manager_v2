@@ -1,0 +1,584 @@
+/* ═══════════════════════════════════════════════════════════════
+   ZECI Manager v2.0 — Design System "Andes Minimal v2"
+   src/interface/design/styles.css
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Google Fonts ────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300,0,0');
+
+/* ── Variables CSS del design system ────────────────────── */
+:root {
+  /* Colores primarios */
+  --color-primary:          #00509E;
+  --color-primary-dark:     #003B73;
+  --color-primary-darker:   #002A54;
+  --color-primary-light:    #4281C1;
+  --color-primary-lighter:  #D6E6F7;
+  --color-primary-hover:    #004A93;
+  --color-primary-disabled: #A0BCD8;
+  --color-primary-contrast: #FFFFFF;
+
+  /* Colores secundarios */
+  --color-secondary:        #F5B041;
+  --color-secondary-dark:   #D68910;
+  --color-secondary-light:  #FAD7A1;
+
+  /* Semánticos */
+  --color-error:            #D32F2F;
+  --color-error-light:      #FFEBEE;
+  --color-warning:          #F57C00;
+  --color-warning-light:    #FFF3E0;
+  --color-success:          #2E7D32;
+  --color-success-light:    #E8F5E9;
+  --color-info:             #0288D1;
+  --color-info-light:       #E1F5FE;
+
+  /* Neutros */
+  --color-bg:               #F4F6F8;
+  --color-surface:          #FFFFFF;
+  --color-surface-alt:      #F9FAFB;
+  --color-divider:          #E0E0E0;
+  --color-border:           #D1D5DB;
+  --color-text-primary:     #1A2027;
+  --color-text-secondary:   #5C6A79;
+  --color-text-disabled:    #9CA3AF;
+
+  /* Navegación */
+  --nav-sidebar-bg:         #0A2540;
+  --nav-sidebar-text:       #B8C8D8;
+  --nav-sidebar-hover:      #1A3A5C;
+  --nav-sidebar-active:     #00509E;
+  --nav-sidebar-active-bg:  #1E3F6E;
+  --nav-topbar-bg:          #FFFFFF;
+  --nav-topbar-border:      #E0E0E0;
+
+  /* Dominio — Asistencia */
+  --attend-presente:        #2E7D32;
+  --attend-presente-bg:     #E8F5E9;
+  --attend-fj:              #F57C00;
+  --attend-fj-bg:           #FFF3E0;
+  --attend-fi:              #D32F2F;
+  --attend-fi-bg:           #FFEBEE;
+  --attend-retraso:         #7B1FA2;
+  --attend-retraso-bg:      #F3E5F5;
+  --attend-excusa:          #0288D1;
+  --attend-excusa-bg:       #E1F5FE;
+
+  /* Dominio — Desempeño */
+  --desempeno-bajo:         #D32F2F;
+  --desempeno-bajo-bg:      #FFEBEE;
+  --desempeno-basico:       #F57C00;
+  --desempeno-basico-bg:    #FFF3E0;
+  --desempeno-alto:         #0288D1;
+  --desempeno-alto-bg:      #E1F5FE;
+  --desempeno-superior:     #2E7D32;
+  --desempeno-superior-bg:  #E8F5E9;
+
+  /* Tipografía */
+  --font-family:            'Inter', system-ui, sans-serif;
+  --font-size-h1:           24px;
+  --font-size-h2:           20px;
+  --font-size-h3:           17px;
+  --font-size-h4:           15px;
+  --font-size-body:         14px;
+  --font-size-small:        12px;
+  --font-size-label:        11px;
+  --font-size-table:        13px;
+
+  /* Espaciado */
+  --space-xs:               4px;
+  --space-sm:               8px;
+  --space-md:               16px;
+  --space-lg:               24px;
+  --space-xl:               32px;
+  --space-xxl:              48px;
+
+  /* Layout */
+  --sidebar-width:          240px;
+  --sidebar-collapsed:      64px;
+  --topbar-height:          56px;
+  --content-padding:        24px;
+
+  /* Bordes */
+  --radius-sm:              4px;
+  --radius-md:              8px;
+  --radius-lg:              12px;
+  --radius-xl:              16px;
+  --radius-full:            9999px;
+
+  /* Sombras */
+  --shadow-sm:    0 1px 2px 0 rgba(0,0,0,0.05);
+  --shadow-md:    0 4px 6px -1px rgba(0,0,0,0.10);
+  --shadow-lg:    0 10px 15px -3px rgba(0,0,0,0.10);
+  --shadow-card:  0 1px 3px 0 rgba(0,0,0,0.08);
+  --shadow-modal: 0 20px 40px rgba(0,0,0,0.15);
+
+  /* Componentes */
+  --btn-height:             36px;
+  --btn-height-sm:          28px;
+  --btn-height-lg:          44px;
+  --input-height:           38px;
+  --table-row-height:       44px;
+  --table-header-height:    40px;
+
+  /* Transiciones */
+  --transition-fast:        100ms ease;
+  --transition-base:        150ms ease;
+  --transition-slow:        250ms ease;
+}
+
+/* ── Reset base ──────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  margin: 0;
+}
+
+/* ── Overrides NiceGUI ───────────────────────────────────── */
+/* Quitar el padding excesivo del body de NiceGUI */
+.nicegui-content { padding: 0 !important; }
+
+/* ── Cards ───────────────────────────────────────────────── */
+.andes-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+.andes-card-sm { padding: var(--space-md); }
+
+/* ── Botones ─────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--color-primary) !important;
+  color: var(--color-primary-contrast) !important;
+  height: var(--btn-height);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: var(--font-size-body);
+  transition: background var(--transition-base);
+}
+.btn-primary:hover { background: var(--color-primary-hover) !important; }
+
+.btn-secondary {
+  background: transparent !important;
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-primary) !important;
+  height: var(--btn-height);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.btn-danger {
+  background: var(--color-error) !important;
+  color: #FFFFFF !important;
+  height: var(--btn-height);
+  border-radius: var(--radius-md);
+}
+
+.btn-sm {
+  height: var(--btn-height-sm) !important;
+  font-size: var(--font-size-small) !important;
+  padding: 0 var(--space-sm) !important;
+}
+
+.btn-lg {
+  height: var(--btn-height-lg) !important;
+  font-size: var(--font-size-h4) !important;
+  padding: 0 var(--space-lg) !important;
+}
+
+/* ── Inputs ──────────────────────────────────────────────── */
+.andes-input .q-field__control {
+  height: var(--input-height) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: var(--font-size-body) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.andes-sidebar {
+  width: var(--sidebar-width);
+  background: var(--nav-sidebar-bg);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--transition-slow);
+  z-index: 200;
+}
+
+.andes-sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-md);
+  border-bottom: 1px solid var(--nav-sidebar-hover);
+  margin-bottom: var(--space-sm);
+}
+
+.andes-sidebar-logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.andes-sidebar-section {
+  padding: var(--space-sm) 0 var(--space-xs);
+}
+
+.andes-sidebar-section-label {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--nav-sidebar-text);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 var(--space-md);
+  margin-bottom: var(--space-xs);
+  opacity: 0.6;
+}
+
+.andes-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px var(--space-md);
+  color: var(--nav-sidebar-text);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  margin: 2px var(--space-sm);
+  transition: background var(--transition-base), color var(--transition-base);
+  font-size: var(--font-size-body);
+  text-decoration: none;
+}
+
+.andes-sidebar-item:hover {
+  background: var(--nav-sidebar-hover);
+  color: #FFFFFF;
+}
+
+.andes-sidebar-item.active {
+  background: var(--nav-sidebar-active-bg);
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.andes-sidebar-item .material-symbols-rounded {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Topbar ──────────────────────────────────────────────── */
+.andes-topbar {
+  height: var(--topbar-height);
+  background: var(--nav-topbar-bg);
+  border-bottom: 1px solid var(--nav-topbar-border);
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--content-padding);
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.andes-topbar-title {
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.andes-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ── Área de contenido principal ─────────────────────────── */
+.andes-content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--topbar-height);
+  padding: var(--content-padding);
+  min-height: calc(100vh - var(--topbar-height));
+  background: var(--color-bg);
+}
+
+/* ── Page header ─────────────────────────────────────────── */
+.andes-page-header {
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.andes-page-header-title {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.andes-page-header-subtitle {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}
+
+/* ── Tablas ──────────────────────────────────────────────── */
+.andes-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.andes-table th {
+  background: var(--color-surface-alt);
+  font-size: var(--font-size-table);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--color-text-secondary);
+  padding: 10px var(--space-md);
+  border-bottom: 2px solid var(--color-divider);
+  text-align: left;
+  height: var(--table-header-height);
+  white-space: nowrap;
+}
+
+.andes-table td {
+  font-size: var(--font-size-table);
+  padding: 10px var(--space-md);
+  border-bottom: 1px solid var(--color-divider);
+  height: var(--table-row-height);
+  vertical-align: middle;
+}
+
+.andes-table tr:last-child td { border-bottom: none; }
+.andes-table tr:hover td { background: var(--color-bg); }
+
+/* ── Stat cards ──────────────────────────────────────────── */
+.andes-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.andes-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.andes-stat-label {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.andes-stat-trend {
+  font-size: var(--font-size-small);
+  margin-top: var(--space-xs);
+}
+
+/* ── Badges de estado genérico ───────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badge-success   { background: var(--color-success-light); color: var(--color-success); }
+.badge-warning   { background: var(--color-warning-light); color: var(--color-warning); }
+.badge-error     { background: var(--color-error-light);   color: var(--color-error);   }
+.badge-info      { background: var(--color-info-light);    color: var(--color-info);    }
+.badge-neutral   { background: var(--color-divider);       color: var(--color-text-secondary); }
+
+/* ── Badges de asistencia ────────────────────────────────── */
+.badge-P   { background: var(--attend-presente-bg); color: var(--attend-presente); }
+.badge-FJ  { background: var(--attend-fj-bg);       color: var(--attend-fj);       }
+.badge-FI  { background: var(--attend-fi-bg);       color: var(--attend-fi);       }
+.badge-R   { background: var(--attend-retraso-bg);  color: var(--attend-retraso);  }
+.badge-E   { background: var(--attend-excusa-bg);   color: var(--attend-excusa);   }
+
+/* ── Badges de desempeño ─────────────────────────────────── */
+.badge-bajo     { background: var(--desempeno-bajo-bg);     color: var(--desempeno-bajo);     }
+.badge-basico   { background: var(--desempeno-basico-bg);   color: var(--desempeno-basico);   }
+.badge-alto     { background: var(--desempeno-alto-bg);     color: var(--desempeno-alto);     }
+.badge-superior { background: var(--desempeno-superior-bg); color: var(--desempeno-superior); }
+
+/* ── Formularios ─────────────────────────────────────────── */
+.andes-form-section {
+  margin-bottom: var(--space-lg);
+}
+
+.andes-form-section-title {
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* ── Diálogos / Modales ──────────────────────────────────── */
+.andes-dialog {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-modal) !important;
+  max-width: 480px;
+  width: 100%;
+}
+
+.andes-dialog-header {
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.andes-dialog-body {
+  padding: 0 var(--space-lg) var(--space-lg);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.andes-dialog-footer {
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-divider);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* ── Login ───────────────────────────────────────────────── */
+.andes-login-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-primary-darker) 0%, var(--color-primary) 60%, var(--color-primary-light) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.andes-login-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xxl);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-modal);
+}
+
+.andes-login-logo {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.andes-login-logo-title {
+  font-size: var(--font-size-h2);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: var(--space-sm) 0 0;
+}
+
+.andes-login-logo-subtitle {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  margin: var(--space-xs) 0 0;
+}
+
+/* ── Notificaciones / Alertas inline ─────────────────────── */
+.andes-alert {
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-size: var(--font-size-body);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.andes-alert-error   { background: var(--color-error-light);   color: var(--color-error);   border-left: 4px solid var(--color-error);   }
+.andes-alert-warning { background: var(--color-warning-light); color: var(--color-warning); border-left: 4px solid var(--color-warning); }
+.andes-alert-success { background: var(--color-success-light); color: var(--color-success); border-left: 4px solid var(--color-success); }
+.andes-alert-info    { background: var(--color-info-light);    color: var(--color-info);    border-left: 4px solid var(--color-info);    }
+
+/* ── Loading / Skeleton ──────────────────────────────────── */
+.andes-skeleton {
+  background: linear-gradient(90deg, var(--color-divider) 25%, var(--color-surface-alt) 50%, var(--color-divider) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Accesibilidad: focus visible ────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Scrollbar personalizado ─────────────────────────────── */
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-disabled); }
+
+/* ── Utilidades ──────────────────────────────────────────── */
+.text-primary   { color: var(--color-text-primary)   !important; }
+.text-secondary { color: var(--color-text-secondary) !important; }
+.text-disabled  { color: var(--color-text-disabled)  !important; }
+.text-success   { color: var(--color-success)        !important; }
+.text-warning   { color: var(--color-warning)        !important; }
+.text-error     { color: var(--color-error)          !important; }
+.text-info      { color: var(--color-info)           !important; }
+
+.font-h1 { font-size: var(--font-size-h1); font-weight: 700; }
+.font-h2 { font-size: var(--font-size-h2); font-weight: 700; }
+.font-h3 { font-size: var(--font-size-h3); font-weight: 600; }
+.font-h4 { font-size: var(--font-size-h4); font-weight: 600; }
+.font-sm { font-size: var(--font-size-small); }
+.font-label { font-size: var(--font-size-label); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-divider);
+  margin: var(--space-md) 0;
+}
+
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }

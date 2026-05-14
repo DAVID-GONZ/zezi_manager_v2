@@ -25,6 +25,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Solo en tiempo de análisis estático; en runtime la anotación es string
+    # gracias a `from __future__ import annotations`.
+    from src.domain.models.usuario import Usuario
 
 
 # =============================================================================
@@ -92,6 +98,38 @@ class IAuthenticationService(ABC):
         Establece una nueva contraseña sin verificar la anterior.
         Solo debe llamarse desde flujos administrativos autorizados
         (admin reseteando contraseña de un docente, por ejemplo).
+        """
+        ...
+
+    @abstractmethod
+    def autenticar_usuario(
+        self,
+        nombre_usuario: str,
+        password_plain: str,
+    ) -> "Usuario":
+        """
+        Autentica un usuario por nombre de usuario y contraseña en texto plano.
+
+        Es el único punto de entrada para el flujo de login: encapsula la
+        búsqueda del usuario, la verificación del hash y la comprobación
+        del estado de la cuenta. La capa de interfaz NO debe acceder al
+        repositorio directamente para ninguno de estos pasos.
+
+        Returns:
+            La entidad ``Usuario`` autenticada y activa.
+
+        Raises:
+            ValueError("credenciales_invalidas"):
+                Si el usuario no existe en la BD o la contraseña no coincide.
+                Se usa un mensaje genérico para no facilitar enumeración de
+                usuarios a un atacante.
+            ValueError("cuenta_inactiva"):
+                Si las credenciales son correctas pero la cuenta está
+                desactivada. Permite mostrar un mensaje diferenciado al
+                usuario sin revelar información a atacantes (el mensaje solo
+                se muestra tras verificar exitosamente la contraseña).
+            RuntimeError:
+                Si el servicio fue construido sin repositorio inyectado.
         """
         ...
 
