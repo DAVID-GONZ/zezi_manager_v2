@@ -110,6 +110,8 @@ def app_layout(
     usuario_rol: str,
     ruta_activa: str,
     contenido: Callable[[], None],
+    ctx=None,
+    on_context_change=None,
 ) -> None:
     """
     Renderiza el layout completo de la aplicación (sidebar + topbar + contenido).
@@ -219,6 +221,16 @@ def app_layout(
                     "font-size:var(--font-size-body);"
                     "flex:1;"
                 )
+
+                # Context chip (roles académicos, no admin)
+                if ctx is not None and usuario_rol != "admin":
+                    from src.interface.design.components.context_selector import context_chip
+                    mostrar_asignatura = usuario_rol == "profesor"
+                    context_chip(
+                        ctx=ctx,
+                        on_change=on_context_change,
+                        mostrar_asignatura=mostrar_asignatura,
+                    )
 
                 # Bloque de usuario + logout
                 with ui.row().classes("items-center gap-2").style("flex-shrink:0;"):

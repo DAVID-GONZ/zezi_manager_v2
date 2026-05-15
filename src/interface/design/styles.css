@@ -582,3 +582,246 @@ body {
 .gap-sm { gap: var(--space-sm); }
 .gap-md { gap: var(--space-md); }
 .gap-lg { gap: var(--space-lg); }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CONTEXT SELECTOR — Chip de topbar y diálogo de selección
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Chip de contexto (en topbar) ────────────────────────── */
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-primary-lighter);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary-dark);
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+.cs-chip:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border-color: var(--color-primary);
+}
+.cs-chip:hover .cs-chip-icon {
+  color: var(--color-primary-contrast);
+}
+.cs-chip-icon {
+  font-size: 14px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.cs-chip-sep {
+  color: var(--color-primary-light);
+  font-size: 12px;
+  margin: 0 2px;
+}
+.cs-chip-empty {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+.cs-chip-empty .cs-chip-icon {
+  color: var(--color-text-disabled);
+}
+.cs-chip-empty:hover {
+  background: var(--color-divider);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+/* ── Diálogo de selección ────────────────────────────────── */
+.cs-dialog-header {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.3px;
+}
+.cs-step-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cs-step-number {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cs-step-number-done {
+  background: var(--color-success);
+}
+.cs-step-number-pending {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+/* ── Tarjeta de periodo ──────────────────────────────────── */
+.cs-period-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  background: var(--color-surface);
+  min-width: 130px;
+  flex: 1;
+}
+.cs-period-card:hover {
+  border-color: var(--color-primary-light);
+  background: var(--color-primary-lighter);
+}
+.cs-period-card.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lighter);
+}
+.cs-period-card.closed {
+  opacity: 0.6;
+}
+.cs-period-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+  display: block;
+}
+.cs-period-bar-track {
+  width: 100%;
+  height: 5px;
+  background: var(--color-divider);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.cs-period-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  transition: width 0.5s ease;
+}
+.cs-period-bar-fill.cs-bar-warn   { background: var(--color-warning); }
+.cs-period-bar-fill.cs-bar-danger { background: var(--color-error); }
+.cs-period-bar-fill.cs-bar-done  { background: var(--color-text-disabled); }
+.cs-period-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: block;
+}
+
+/* ── Tarjeta de grupo ────────────────────────────────────── */
+.cs-group-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  background: var(--color-surface);
+  text-align: center;
+  min-width: 90px;
+  flex: 1;
+}
+.cs-group-card:hover {
+  border-color: var(--color-primary-light);
+  background: var(--color-primary-lighter);
+  transform: translateY(-2px);
+}
+.cs-group-card.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lighter);
+}
+.cs-group-code {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.5px;
+  display: block;
+}
+.cs-group-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ── Ítem de asignatura ──────────────────────────────────── */
+.cs-subject-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-base);
+  border: 1px solid transparent;
+}
+.cs-subject-item:hover {
+  background: var(--color-primary-lighter);
+  border-color: var(--color-primary-lighter);
+}
+.cs-subject-item.selected {
+  background: var(--color-primary-lighter);
+  border-color: var(--color-primary);
+}
+.cs-subject-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+.cs-subject-radio.checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+.cs-subject-radio.checked::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  display: block;
+}
+.cs-subject-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+.cs-subject-schedule {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Sección deshabilitada (steps pendientes) ────────────── */
+.cs-step-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

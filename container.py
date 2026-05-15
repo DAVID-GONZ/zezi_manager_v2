@@ -353,6 +353,14 @@ class Container:
             ),
         )
 
+    @classmethod
+    def auditoria_service(cls):
+        from src.services.auditoria_service import AuditoriaService
+        return cls._get_or_create(
+            "auditoria_service",
+            lambda: AuditoriaService(repo=cls.auditoria_repo()),
+        )
+
     # ══════════════════════════════════════════════════════
     # DIAGNÓSTICO
     # ══════════════════════════════════════════════════════
@@ -371,7 +379,7 @@ class Container:
             "estudiante_service", "periodo_service", "asignacion_service",
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "convivencia_service", "alerta_service",
-            "estadisticos_service", "informe_service",
+            "estadisticos_service", "informe_service", "auditoria_service",
         ]
         for nombre in metodos:
             try:

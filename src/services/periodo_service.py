@@ -158,6 +158,18 @@ class PeriodoService:
     # Casos de uso — hitos
     # ------------------------------------------------------------------
 
+    def listar_hitos_proximos(
+        self,
+        anio_id: int,
+        dias: int = 7,
+    ) -> list[HitoPeriodo]:
+        """
+        Retorna hitos cuya fecha_limite cae dentro de los próximos `dias`
+        para cualquier periodo del año indicado.
+        Delega al repo sin añadir lógica de negocio adicional.
+        """
+        return self._repo.listar_hitos_proximos(anio_id=anio_id, dias=dias)
+
     def agregar_hito(
         self,
         dto: NuevoHitoPeriodoDTO,

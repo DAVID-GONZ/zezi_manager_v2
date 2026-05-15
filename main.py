@@ -99,13 +99,14 @@ def registrar_rutas_ui() -> None:
         ui.navigate.to("/login")
 
     # ── Inicio / Dashboard ───────────────────────────────────────────────────
+    from src.interface.pages.inicio import inicio_page
+
     @ui.page("/inicio")
     def pagina_inicio():
         if not app.storage.user.get("autenticado"):
             ui.navigate.to("/login")
             return
-        # Placeholder hasta tener la página de dashboard completa
-        ui.label("Dashboard próximamente").classes("text-xl p-8")
+        inicio_page()
 
 
 def main() -> None:

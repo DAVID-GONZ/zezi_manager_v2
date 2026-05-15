@@ -133,6 +133,15 @@ class Alerta(BaseModel):
     usuario_resolucion_id:  int | None      = None
     observacion_resolucion: str | None      = None
 
+    @field_validator("estudiante_id", mode="before")
+    @classmethod
+    def coercer_estudiante_id(cls, v):
+        # NULL en BD indica alerta huérfana (estudiante eliminado sin CASCADE DELETE).
+        # Se acepta como 0 para que la hidratación no falle en lectura.
+        if v is None:
+            return 0
+        return int(v)
+
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
