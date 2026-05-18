@@ -94,17 +94,62 @@ def login_page() -> None:
                 try:
                     svc_auth = Container.auth_service()
 
+                    # Autenticación delegada completamente al servicio
                     user_db = svc_auth.autenticar_usuario(nombre_usuario, contrasena)
 
-                    # Guardar sesión en NiceGUI storage (server-side por cookie)
+                    rol_str = (
+                        user_db.rol.value
+                        if hasattr(user_db.rol, "value")
+                        else str(user_db.rol)
+                    )
+
+                    # 1. Marcar como autenticado en storage ANTES de inicializar
+                    #    el contexto (ContextInitializer usa Container que puede
+                    #    necesitar el usuario_id en storage para ciertos repos).
+                    app.storage.user["autenticado"]    = True
                     app.storage.user["usuario_id"]     = user_db.id
                     app.storage.user["usuario_nombre"] = user_db.nombre_completo
-                    app.storage.user["usuario_rol"]    = (
-                        user_db.rol.value if hasattr(user_db.rol, "value") else str(user_db.rol)
-                    )
-                    app.storage.user["autenticado"] = True
+                    app.storage.user["usuario_rol"]    = rol_str
 
-                    logger.info("Login exitoso: usuario_id=%s rol=%s", user_db.id, app.storage.user["usuario_rol"])
+                    # 2. Construir SessionContext con datos de identidad
+                    from src.interface.context.session_context import SessionContext
+                    from src.infrastructure.context.context_initializer import (
+                        ContextInitializer,
+                    )
+                    ctx = SessionContext(
+                        usuario_id     = user_db.id,
+                        usuario_nombre = user_db.nombre_completo,
+                        usuario_rol    = rol_str,
+                    )
+
+                    # 3. Resolver contexto académico (año → periodo → grupo)
+                    ctx = ContextInitializer.inicializar(ctx)
+
+                    # 4. Persistir contexto completo en app.storage.user
+                    ctx.guardar()
+
+                    # 5. Registrar evento de login en auditoría (best-effort)
+                    try:
+                        from src.domain.models.auditoria import (
+                            EventoSesion,
+                            TipoEventoSesion,
+                        )
+                        Container.auditoria_repo().registrar_evento(
+                            EventoSesion(
+                                usuario     = user_db.usuario,
+                                usuario_id  = user_db.id,
+                                tipo_evento = TipoEventoSesion.LOGIN_EXITOSO,
+                            )
+                        )
+                    except Exception as audit_exc:
+                        logger.warning(
+                            "No se pudo registrar evento de login: %s", audit_exc
+                        )
+
+                    logger.info(
+                        "Login exitoso: usuario_id=%s rol=%s año=%s periodo=%s",
+                        user_db.id, rol_str, ctx.anio_nombre, ctx.periodo_nombre,
+                    )
                     ui.navigate.to("/inicio")
 
                 except ValueError as exc:

@@ -7,6 +7,7 @@ Uso:
     from src.services import EvaluacionService, CierreService
 """
 
+from src.services.auditoria_service     import AuditoriaService
 from src.services.acudiente_service     import AcudienteService
 from src.services.alerta_service        import AlertaService
 from src.services.asignacion_service    import AsignacionService
@@ -37,4 +38,5 @@ __all__ = [
     "InformeService",
     "PeriodoService",
     "UsuarioService",
+    "AuditoriaService",
 ]

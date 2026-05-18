@@ -1,13 +1,17 @@
 """
-layout.py — Layout principal con sidebar + topbar del design system Andes Minimal.
+layout.py — Layout principal con sidebar colapsable + topbar (Andes Minimal v2).
+
+Sidebar colapsable:
+  - Estado en _s = {"collapsed": False} (dict mutable, accesible en closures)
+  - _toggle() alterna clase "collapsed" en sidebar y "sidebar-collapsed" en main
+  - CSS en styles.css define la transición y el ancho en ambos estados
+  - En estado collapsed: icono visible, label oculto (opacity:0; width:0)
 
 Ajustes NiceGUI 3.x:
-  - Iconos via ThemeManager.icono() (ui.html) en vez de ui.element().text()
-    que no existe como método chainable en NiceGUI 3.x.
-  - Ítems de navegación: ui.element("a") con props href; icono como ThemeManager.icono().
-  - Botón de logout: with ui.button(...): ThemeManager.icono() — no ui.button(icon=nombre)
-    porque el parámetro icon= espera nombres Quasar, no Material Symbols Rounded.
-  - Icono de perfil: ThemeManager.icono() directo, sin envoltura de botón.
+  - Sidebar es position:fixed → main area requiere margin-left (clase .andes-main)
+  - Iconos via ThemeManager.icono() en vez de ui.element().text()
+  - Ítems de navegación: ui.element("a") con props href
+  - Botón logout: with ui.button(...): ThemeManager.icono()
 
 Uso en cada página autenticada:
 
@@ -114,159 +118,161 @@ def app_layout(
     on_context_change=None,
 ) -> None:
     """
-    Renderiza el layout completo de la aplicación (sidebar + topbar + contenido).
+    Renderiza el layout completo de la aplicación (sidebar colapsable + topbar + contenido).
 
     Args:
-        titulo_pagina:  Texto que aparece en el topbar como título de la sección activa.
-        usuario_nombre: Nombre completo del usuario autenticado.
-        usuario_rol:    Rol del usuario autenticado (ej: "admin", "profesor", "director").
-                        Controla qué ítems de navegación son visibles.
-        ruta_activa:    Ruta URL de la página actual (ej: "/inicio", "/asistencia").
-                        Resalta el ítem correspondiente en el sidebar.
-        contenido:      Callable sin argumentos que renderiza el cuerpo de la página.
-
-    Ejemplo:
-        @ui.page("/inicio")
-        def inicio():
-            def _render():
-                ui.label("Bienvenido al dashboard")
-
-            app_layout(
-                titulo_pagina="Dashboard",
-                usuario_nombre="Ana García",
-                usuario_rol="coordinador",
-                ruta_activa="/inicio",
-                contenido=_render,
-            )
+        titulo_pagina:     Texto del topbar como título de la sección activa.
+        usuario_nombre:    Nombre completo del usuario autenticado.
+        usuario_rol:       Rol del usuario — controla visibilidad de ítems de nav.
+        ruta_activa:       Ruta URL de la página actual — resalta el ítem del sidebar.
+        contenido:         Callable sin argumentos que renderiza el cuerpo de la página.
+        ctx:               SessionContext opcional — activa el context chip en el topbar.
+        on_context_change: Callback llamado cuando el usuario cambia de contexto académico.
     """
-    with ui.element("div").style(
-        "display:flex;"
-        "min-height:100vh;"
-        "background:var(--color-bg);"
-    ):
-        # ── Sidebar ──────────────────────────────────────────────────────────
-        with ui.element("nav").classes("andes-sidebar"):
+    # Estado mutable del sidebar — dict para que las closures puedan mutar
+    _s: dict = {"collapsed": False}
 
-            # Logo / nombre de la app
-            with ui.element("div").style(
-                "padding:20px 16px 16px;"
-                "border-bottom:1px solid rgba(255,255,255,0.1);"
-            ):
-                ui.label("Gestor Docente").style(
-                    "color:#FFFFFF;"
-                    "font-weight:600;"
-                    "font-size:var(--font-size-body);"
-                    "display:block;"
-                )
-                ui.label("Sistema Educativo").style(
-                    "color:var(--color-sidebar-text);"
-                    "font-size:var(--font-size-small);"
-                    "margin-top:2px;"
-                    "display:block;"
-                )
+    # ── Sidebar (position:fixed en CSS) ───────────────────────────────────────
+    sidebar_el = ui.element("nav").classes("andes-sidebar")
+    with sidebar_el:
 
-            # Ítems de navegación
-            with ui.element("div").style("padding:8px 0;flex:1;overflow-y:auto;"):
-                for item in NAV_ITEMS:
-
-                    # Divisor de sección
-                    if "divider" in item:
-                        if _usuario_puede_ver(item, usuario_rol):
-                            ui.separator().style(
-                                "margin:8px 16px;"
-                                "background:rgba(255,255,255,0.1);"
-                                "border:none;"
-                                "height:1px;"
-                            )
-                        continue
-
-                    # Filtrar por rol
-                    if not _usuario_puede_ver(item, usuario_rol):
-                        continue
-
-                    is_active = ruta_activa == item["ruta"]
-                    clase = "andes-sidebar-item" + (" active" if is_active else "")
-
-                    # Ítem de navegación como enlace <a>
-                    with ui.element("a").classes(clase).props(
-                        f'href="{item["ruta"]}"'
-                    ):
-                        # Icono — ThemeManager.icono() en vez de .text()
-                        ThemeManager.icono(
-                            item["icon"],
-                            size=20,
-                            clases="nav-icon",
-                        )
-                        ui.label(item["label"]).style(
-                            "font-size:var(--font-size-small);"
-                            "white-space:nowrap;"
-                            "overflow:hidden;"
-                            "text-overflow:ellipsis;"
-                        )
-
-        # ── Área principal ────────────────────────────────────────────────────
+        # Cabecera: logo + botón toggle
         with ui.element("div").style(
-            "flex:1;"
+            "padding:16px 12px;"
+            "border-bottom:1px solid rgba(255,255,255,0.08);"
             "display:flex;"
-            "flex-direction:column;"
-            "min-width:0;"            # evita overflow en flex
+            "align-items:center;"
+            "justify-content:space-between;"
+            "gap:8px;"
         ):
-            # Topbar
-            with ui.element("header").classes("andes-topbar"):
-
-                # Título de la página activa
-                ui.label(titulo_pagina).style(
-                    "color:var(--color-text-primary);"
-                    "font-weight:600;"
-                    "font-size:var(--font-size-body);"
-                    "flex:1;"
+            with ui.element("div").style("min-width:0;overflow:hidden;flex:1;"):
+                ui.label("LumEd").classes("sidebar-logo-text").style(
+                    "color:#FFFFFF;"
+                    "font-weight:700;"
+                    "font-size:14px;"
+                    "display:block;"
+                    "white-space:nowrap;"
+                )
+                ui.label("Education Manager").classes("sidebar-sub-text").style(
+                    "color:var(--nav-sidebar-text);"
+                    "font-size:11px;"
+                    "display:block;"
+                    "margin-top:1px;"
+                    "white-space:nowrap;"
                 )
 
-                # Context chip (roles académicos, no admin)
-                if ctx is not None and usuario_rol != "admin":
-                    from src.interface.design.components.context_selector import context_chip
-                    mostrar_asignatura = usuario_rol == "profesor"
-                    context_chip(
-                        ctx=ctx,
-                        on_change=on_context_change,
-                        mostrar_asignatura=mostrar_asignatura,
-                    )
+            # Botón toggle — alterna collapsed
+            toggle_btn = ui.element("div").classes("sidebar-toggle")
+            with toggle_btn:
+                ThemeManager.icono(Icons.MENU, size=18, color="var(--nav-sidebar-text)")
 
-                # Bloque de usuario + logout
-                with ui.row().classes("items-center gap-2").style("flex-shrink:0;"):
+        # Ítems de navegación
+        with ui.element("div").style(
+            "padding:8px 0;flex:1;overflow-y:auto;overflow-x:hidden;"
+        ):
+            for item in NAV_ITEMS:
 
-                    # Icono de perfil
-                    ThemeManager.icono(
-                        Icons.PROFILE,
-                        size=24,
-                        color="var(--color-text-secondary)",
-                    )
-
-                    # Nombre y rol del usuario
-                    with ui.column().classes("gap-0").style("line-height:1.2;"):
-                        ui.label(usuario_nombre).style(
-                            "font-size:var(--font-size-small);"
-                            "font-weight:500;"
-                            "color:var(--color-text-primary);"
+                # Divisor de sección
+                if "divider" in item:
+                    if _usuario_puede_ver(item, usuario_rol):
+                        ui.element("div").style(
+                            "height:1px;"
+                            "background:rgba(255,255,255,0.07);"
+                            "margin:6px 12px;"
                         )
-                        ui.label(usuario_rol.capitalize()).style(
-                            "font-size:11px;"
-                            "color:var(--color-text-secondary);"
-                        )
+                    continue
 
-                    # Botón de logout con icono Material Symbol
-                    with ui.button(
-                        on_click=lambda: ui.navigate.to("/logout"),
-                    ).props("flat round dense").style(
+                # Filtrar por rol
+                if not _usuario_puede_ver(item, usuario_rol):
+                    continue
+
+                is_active = ruta_activa == item["ruta"]
+                clase = "andes-sidebar-item" + (" active" if is_active else "")
+
+                with ui.element("a").classes(clase).props(
+                    f'href="{item["ruta"]}"'
+                ):
+                    ThemeManager.icono(item["icon"], size=20, clases="nav-icon")
+                    ui.label(item["label"]).classes("nav-label")
+
+        # Pie del sidebar — versión (oculto en collapsed)
+        with ui.element("div").style(
+            "padding:12px;"
+            "border-top:1px solid rgba(255,255,255,0.07);"
+        ):
+            ui.label("v2.0").classes("sidebar-sub-text").style(
+                "color:var(--nav-sidebar-text);font-size:10px;"
+                "text-align:center;display:block;"
+            )
+
+    # ── Área principal (.andes-main maneja margin-left via CSS) ───────────────
+    main_el = ui.element("div").classes("andes-main")
+    with main_el:
+
+        # Topbar (position:sticky en CSS)
+        with ui.element("header").classes("andes-topbar"):
+
+            ui.label(titulo_pagina).style(
+                "color:var(--color-text-primary);"
+                "font-weight:600;"
+                "font-size:15px;"
+                "flex:1;"
+                "white-space:nowrap;"
+                "overflow:hidden;"
+                "text-overflow:ellipsis;"
+            )
+
+            # Context chip (roles académicos, no admin)
+            if ctx is not None and usuario_rol != "admin":
+                from src.interface.design.components.context_selector import context_chip
+                context_chip(
+                    ctx=ctx,
+                    on_change=on_context_change,
+                    mostrar_asignatura=(usuario_rol == "profesor"),
+                )
+
+            # Bloque de usuario + logout
+            with ui.row().classes("items-center gap-2").style("flex-shrink:0;"):
+                ThemeManager.icono(
+                    Icons.PROFILE,
+                    size=22,
+                    color="var(--color-text-secondary)",
+                )
+                with ui.column().classes("gap-0").style("line-height:1.2;"):
+                    ui.label(usuario_nombre).style(
+                        "font-size:13px;"
+                        "font-weight:500;"
+                        "color:var(--color-text-primary);"
+                        "white-space:nowrap;"
+                    )
+                    ui.label(usuario_rol.capitalize()).style(
+                        "font-size:11px;"
                         "color:var(--color-text-secondary);"
-                        "min-width:36px;"
-                        "min-height:36px;"
-                    ):
-                        ThemeManager.icono(Icons.LOGOUT, size=20)
+                    )
 
-            # Contenido de la página
-            with ui.element("main").classes("andes-content"):
-                contenido()
+                with ui.button(
+                    on_click=lambda: ui.navigate.to("/logout"),
+                ).props("flat round dense").style(
+                    "color:var(--color-text-secondary);"
+                    "min-width:34px;min-height:34px;"
+                ):
+                    ThemeManager.icono(Icons.LOGOUT, size=18)
+
+        # Contenido de la página
+        with ui.element("main").classes("andes-content"):
+            contenido()
+
+    # ── Toggle handler — definido DESPUÉS de tener refs a sidebar_el y main_el
+    def _toggle() -> None:
+        _s["collapsed"] = not _s["collapsed"]
+        if _s["collapsed"]:
+            sidebar_el.classes(add="collapsed")
+            main_el.classes(add="sidebar-collapsed")
+        else:
+            sidebar_el.classes(remove="collapsed")
+            main_el.classes(remove="sidebar-collapsed")
+
+    toggle_btn.on("click", lambda _: _toggle())
 
 
 __all__ = ["app_layout", "NAV_ITEMS"]

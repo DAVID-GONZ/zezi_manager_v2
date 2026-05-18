@@ -133,18 +133,29 @@ class Settings(BaseSettings):
         return path
 
     @model_validator(mode="after")
-    def advertir_jwt_inseguro(self) -> "Settings":
-        """Emite advertencia si JWT_SECRET tiene el valor por defecto en producción."""
-        if (
-            self.APP_ENV == "production"
-            and "cambia-esta-clave" in self.JWT_SECRET
-        ):
-            import warnings
-            warnings.warn(
-                "JWT_SECRET tiene el valor por defecto. "
-                "Define una clave segura en .env antes de desplegar.",
-                stacklevel=2,
-            )
+    def verificar_jwt_seguro(self) -> "Settings":
+        """
+        Bloquea el arranque si JWT_SECRET tiene el valor por defecto en producción.
+
+        En desarrollo solo registra una advertencia en el log (no bloquea).
+        En producción, un secret inseguro es un error irrecuperable que
+        no debe llegar a servir requests.
+        """
+        _SECRET_INSEGURO = "cambia-esta-clave" in self.JWT_SECRET
+
+        if _SECRET_INSEGURO:
+            if self.APP_ENV == "production":
+                raise ValueError(
+                    "JWT_SECRET tiene el valor por defecto inseguro. "
+                    "Define JWT_SECRET con al menos 32 caracteres de entropía "
+                    "en el archivo .env o como variable de entorno antes de desplegar."
+                )
+            else:
+                import logging as _log
+                _log.getLogger("CONFIG").warning(
+                    "JWT_SECRET usa el valor por defecto. "
+                    "Cambiarlo antes de pasar a producción."
+                )
         return self
 
     # ------------------------------------------------------------------

@@ -447,6 +447,47 @@ class CalculadorNotas:
 
 
 # =============================================================================
+# Lógica de desempeño — umbrales del sistema educativo colombiano
+# =============================================================================
+
+#: Umbrales de clasificación según el Decreto 1290 (MEN, Colombia).
+#: Escala numérica 1.0–5.0; cada institución puede ajustar estos valores
+#: mediante su PEI, pero estos son los umbrales típicos del sector público.
+_UMBRALES_DESEMPENO: list[tuple[float, str]] = [
+    (3.0, "Bajo"),
+    (3.8, "Básico"),
+    (4.6, "Alto"),
+    (float("inf"), "Superior"),
+]
+
+
+def nivel_desempeno(nota: float) -> str:
+    """
+    Clasifica una nota numérica en un nivel de desempeño académico.
+
+    Escala colombiana 1.0–5.0 según el Decreto 1290 del MEN:
+      - [1.0, 3.0) → "Bajo"
+      - [3.0, 3.8) → "Básico"
+      - [3.8, 4.6) → "Alto"
+      - [4.6, 5.0] → "Superior"
+
+    Args:
+        nota: Nota numérica en escala 1.0–5.0.
+
+    Returns:
+        Cadena con el nivel de desempeño correspondiente.
+
+    Note:
+        Los umbrales están definidos en ``_UMBRALES_DESEMPENO`` para
+        facilitar su ajuste institucional sin dispersión de literales.
+    """
+    for limite, nivel in _UMBRALES_DESEMPENO:
+        if nota < limite:
+            return nivel
+    return "Superior"  # fallback explícito para nota == 5.0
+
+
+# =============================================================================
 # DTOs
 # =============================================================================
 

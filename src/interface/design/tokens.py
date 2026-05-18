@@ -15,63 +15,63 @@ class Colors:
     """Paleta base del design system."""
 
     # Primarios
-    PRIMARY          = "#00509E"
-    PRIMARY_DARK     = "#003B73"
-    PRIMARY_DARKER   = "#002A54"
-    PRIMARY_LIGHT    = "#4281C1"
-    PRIMARY_LIGHTER  = "#D6E6F7"
-    PRIMARY_HOVER    = "#004A93"
-    PRIMARY_DISABLED = "#A0BCD8"
+    PRIMARY          = "#2563EB"
+    PRIMARY_DARK     = "#1D4ED8"
+    PRIMARY_DARKER   = "#1E3A8A"
+    PRIMARY_LIGHT    = "#60A5FA"
+    PRIMARY_LIGHTER  = "#EFF6FF"
+    PRIMARY_HOVER    = "#1D4ED8"
+    PRIMARY_DISABLED = "#93C5FD"
     PRIMARY_CONTRAST = "#FFFFFF"
 
     # Secundarios
-    SECONDARY        = "#F5B041"
-    SECONDARY_DARK   = "#D68910"
-    SECONDARY_LIGHT  = "#FAD7A1"
+    SECONDARY        = "#F59E0B"
+    SECONDARY_DARK   = "#D97706"
+    SECONDARY_LIGHT  = "#FEF3C7"
 
     # Semánticos
-    ERROR            = "#D32F2F"
-    ERROR_LIGHT      = "#FFEBEE"
-    WARNING          = "#F57C00"
-    WARNING_LIGHT    = "#FFF3E0"
-    SUCCESS          = "#2E7D32"
-    SUCCESS_LIGHT    = "#E8F5E9"
-    INFO             = "#0288D1"
-    INFO_LIGHT       = "#E1F5FE"
+    ERROR            = "#DC2626"
+    ERROR_LIGHT      = "#FEF2F2"
+    WARNING          = "#D97706"
+    WARNING_LIGHT    = "#FFFBEB"
+    SUCCESS          = "#059669"
+    SUCCESS_LIGHT    = "#ECFDF5"
+    INFO             = "#0284C7"
+    INFO_LIGHT       = "#F0F9FF"
 
     # Neutros
-    BG               = "#F4F6F8"
+    BG               = "#F8FAFC"
     SURFACE          = "#FFFFFF"
-    SURFACE_ALT      = "#F9FAFB"
-    DIVIDER          = "#E0E0E0"
-    BORDER           = "#D1D5DB"
-    TEXT_PRIMARY     = "#1A2027"
-    TEXT_SECONDARY   = "#5C6A79"
-    TEXT_DISABLED    = "#9CA3AF"
+    SURFACE_ALT      = "#F1F5F9"
+    DIVIDER          = "#E2E8F0"
+    BORDER           = "#CBD5E1"
+    TEXT_PRIMARY     = "#0F172A"
+    TEXT_SECONDARY   = "#475569"
+    TEXT_DISABLED    = "#94A3B8"
 
     # Navegación
-    SIDEBAR_BG       = "#0A2540"
-    SIDEBAR_TEXT     = "#B8C8D8"
-    SIDEBAR_HOVER    = "#1A3A5C"
-    SIDEBAR_ACTIVE   = "#00509E"
-    SIDEBAR_ACTIVE_BG = "#1E3F6E"
-    TOPBAR_BG        = "#FFFFFF"
-    TOPBAR_BORDER    = "#E0E0E0"
+    SIDEBAR_BG        = "#0F172A"
+    SIDEBAR_TEXT      = "#94A3B8"
+    SIDEBAR_HOVER     = "#1E293B"
+    SIDEBAR_ACTIVE    = "#2563EB"
+    SIDEBAR_ACTIVE_BG = "#2563EB"
+    TOPBAR_BG         = "#FFFFFF"
+    TOPBAR_BORDER     = "#E2E8F0"
 
 
 class AsistenciaColors:
     """Colores para los estados de asistencia."""
 
-    PRESENTE     = "#2E7D32"
-    PRESENTE_BG  = "#E8F5E9"
-    FJ           = "#F57C00"
-    FJ_BG        = "#FFF3E0"
-    FI           = "#D32F2F"
-    FI_BG        = "#FFEBEE"
-    RETRASO      = "#7B1FA2"
-    RETRASO_BG   = "#F3E5F5"
-    EXCUSA       = "#0288D1"
-    EXCUSA_BG    = "#E1F5FE"
+    PRESENTE     = "#059669"
+    PRESENTE_BG  = "#ECFDF5"
+    FJ           = "#D97706"
+    FJ_BG        = "#FFFBEB"
+    FI           = "#DC2626"
+    FI_BG        = "#FEF2F2"
+    RETRASO      = "#7C3AED"
+    RETRASO_BG   = "#F5F3FF"
+    EXCUSA       = "#0284C7"
+    EXCUSA_BG    = "#F0F9FF"
 
     @classmethod
     def para_estado(cls, estado: str) -> tuple[str, str]:
@@ -109,14 +109,14 @@ class AsistenciaColors:
 class DesempenoColors:
     """Colores para los niveles de desempeño académico."""
 
-    BAJO         = "#D32F2F"
-    BAJO_BG      = "#FFEBEE"
-    BASICO       = "#F57C00"
-    BASICO_BG    = "#FFF3E0"
-    ALTO         = "#0288D1"
-    ALTO_BG      = "#E1F5FE"
-    SUPERIOR     = "#2E7D32"
-    SUPERIOR_BG  = "#E8F5E9"
+    BAJO         = "#DC2626"
+    BAJO_BG      = "#FEF2F2"
+    BASICO       = "#D97706"
+    BASICO_BG    = "#FFFBEB"
+    ALTO         = "#0284C7"
+    ALTO_BG      = "#F0F9FF"
+    SUPERIOR     = "#059669"
+    SUPERIOR_BG  = "#ECFDF5"
 
     @classmethod
     def para_nivel(cls, nivel: str) -> tuple[str, str]:
@@ -141,15 +141,15 @@ class DesempenoColors:
     def para_nota(cls, nota: float) -> tuple[str, str]:
         """
         Retorna (color_texto, color_fondo) según la nota numérica.
-        Umbrales según el sistema colombiano de desempeño (1.0–5.0).
+
+        Delega la clasificación a ``nivel_desempeno()`` del dominio,
+        donde viven los umbrales reales del sistema colombiano (1.0–5.0).
+        Así tokens.py solo gestiona la presentación visual, no las
+        reglas de negocio educativas.
         """
-        if nota < 3.0:
-            return cls.BAJO,     cls.BAJO_BG
-        if nota < 3.8:
-            return cls.BASICO,   cls.BASICO_BG
-        if nota < 4.6:
-            return cls.ALTO,     cls.ALTO_BG
-        return cls.SUPERIOR, cls.SUPERIOR_BG
+        from src.domain.models.evaluacion import nivel_desempeno
+        nivel = nivel_desempeno(nota)
+        return cls.para_nivel(nivel)
 
     @classmethod
     def css_badge(cls, nivel: str) -> str:
