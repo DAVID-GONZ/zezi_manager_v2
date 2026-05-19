@@ -5,15 +5,24 @@ Orquesta los casos de uso del módulo de Estadísticas y Métricas.
 
 Este servicio es principalmente de solo lectura: delega al repositorio
 de estadísticos que ejecuta las queries de agregación.
+
+datos_tablero():
+    Método anti-corrupción para la capa de interfaz.
+    Recibe IDs de contexto, usa modelos de dominio internamente y devuelve
+    un dict plano de primitivos — la UI no necesita importar ningún modelo.
 """
 from __future__ import annotations
 
+import logging
+from collections import defaultdict
 from typing import Any
 
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
+
+logger = logging.getLogger("ESTADISTICOS_SERVICE")
 
 
 class EstadisticosService:
@@ -26,9 +35,15 @@ class EstadisticosService:
         self,
         repo: IEstadisticosRepository,
         config_repo: IConfiguracionRepository | None = None,
+        evaluacion_repo=None,
+        asistencia_repo=None,
+        estudiante_repo=None,
     ) -> None:
-        self._repo        = repo
-        self._config_repo = config_repo
+        self._repo           = repo
+        self._config_repo    = config_repo
+        self._eval_repo      = evaluacion_repo
+        self._asist_repo     = asistencia_repo
+        self._est_repo       = estudiante_repo
 
     # ------------------------------------------------------------------
     # Métricas de dashboard
@@ -213,6 +228,244 @@ class EstadisticosService:
     ) -> list[dict[str, Any]]:
         """Consolidado anual: notas + estado de promoción por estudiante."""
         return self._repo.consolidado_anual_grupo(grupo_id, anio_id)
+
+
+    # ------------------------------------------------------------------
+    # Anti-corrupción para la capa de interfaz — solo devuelve primitivos
+    # ------------------------------------------------------------------
+
+    def datos_tablero(
+        self,
+        asignacion_id: int,
+        periodo_id: int,
+        grupo_id: int,
+        anio_id: int | None = None,
+    ) -> dict:
+        """
+        Calcula todos los datos del tablero estadístico para una asignación.
+
+        Usa modelos de dominio internamente (CalculadorNotas, NivelDesempeno)
+        y devuelve únicamente primitivos Python (str, int, float, list, dict).
+
+        La capa de interfaz llama este método y recibe el dict sin necesidad
+        de importar ningún símbolo de src.domain.*.
+
+        Returns:
+            dict con claves documentadas, o {"error": str, "vacio": True}
+            si algún repositorio requerido no está disponible o falla.
+        """
+        if self._eval_repo is None or self._est_repo is None:
+            return {"error": "Repositorios requeridos no configurados.", "vacio": True}
+
+        try:
+            from src.domain.models.evaluacion import CalculadorNotas
+
+            # ── 1. Configuración de niveles y nota mínima ─────────────
+            nota_minima = 60.0
+            niveles: list[NivelDesempeno] = []
+            try:
+                if self._config_repo and anio_id:
+                    cfg = self._config_repo.get_by_id(anio_id)
+                    if cfg:
+                        nota_minima = cfg.nota_minima_aprobacion
+                        niveles = self._config_repo.listar_niveles(anio_id)
+            except Exception:
+                pass
+
+            # ── 2. Estructura evaluativa ──────────────────────────────
+            categorias  = self._eval_repo.listar_categorias(asignacion_id, periodo_id)
+            actividades = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
+
+            # ── 3. Estudiantes del grupo ──────────────────────────────
+            estudiantes = self._est_repo.listar_por_grupo(grupo_id)
+            est_ids     = [e.id for e in estudiantes if e.id]
+
+            if not est_ids:
+                return {"error": "Sin estudiantes en el grupo.", "vacio": True}
+
+            # ── 4. Notas por estudiante y mapa global ─────────────────
+            notas_por_est: dict[int, list] = {}
+            nota_map: dict[tuple, float]   = {}
+
+            for est_id in est_ids:
+                notas = self._eval_repo.listar_notas_por_estudiante(
+                    est_id, asignacion_id, periodo_id
+                )
+                notas_por_est[est_id] = notas
+                for n in notas:
+                    nota_map[(est_id, n.actividad_id)] = n.valor
+
+            # ── 5. Promedio ponderado ajustado por estudiante ─────────
+            promedios_est: dict[int, float] = {
+                est_id: round(
+                    CalculadorNotas.calcular_promedio_ajustado(
+                        notas=notas_por_est[est_id],
+                        actividades=actividades,
+                        categorias=categorias,
+                    ),
+                    2,
+                )
+                for est_id in est_ids
+            }
+
+            # ── 6. Promedio general del grupo ─────────────────────────
+            validos = [p for p in promedios_est.values() if p > 0]
+            promedio_grupo = round(sum(validos) / len(validos), 2) if validos else 0.0
+
+            # ── 7. Distribución por nivel de desempeño ────────────────
+            dist_niveles: dict[str, int]
+            if niveles:
+                dist_niveles = {n.nombre: 0 for n in niveles}
+                dist_niveles["Sin clasificar"] = 0
+                for est_id, prom in promedios_est.items():
+                    if prom == 0:
+                        continue
+                    clasificado = False
+                    for nivel in sorted(niveles, key=lambda n: n.rango_min):
+                        if nivel.clasifica(prom):
+                            dist_niveles[nivel.nombre] = dist_niveles.get(nivel.nombre, 0) + 1
+                            clasificado = True
+                            break
+                    if not clasificado:
+                        dist_niveles["Sin clasificar"] += 1
+            else:
+                dist_niveles = {"Bajo": 0, "Básico": 0, "Alto": 0, "Superior": 0}
+                for prom in promedios_est.values():
+                    if   prom < 60: dist_niveles["Bajo"]     += 1
+                    elif prom < 70: dist_niveles["Básico"]   += 1
+                    elif prom < 85: dist_niveles["Alto"]      += 1
+                    else:           dist_niveles["Superior"]  += 1
+
+            en_riesgo = [eid for eid, p in promedios_est.items() if 0 < p < nota_minima]
+
+            # ── 8. Análisis por categoría ─────────────────────────────
+            analisis_categorias = []
+            for cat in sorted(categorias, key=lambda c: c.peso, reverse=True):
+                acts_cat    = [a for a in actividades if a.categoria_id == cat.id]
+                act_ids_cat = {a.id for a in acts_cat if a.id}
+                notas_cat   = [v for (_, aid), v in nota_map.items() if aid in act_ids_cat]
+                prom_cat    = round(sum(notas_cat) / len(notas_cat), 2) if notas_cat else None
+                aprobados   = sum(
+                    1 for eid in est_ids
+                    if any(nota_map.get((eid, aid), 0) >= nota_minima for aid in act_ids_cat)
+                )
+                analisis_categorias.append({
+                    "nombre":       cat.nombre,
+                    "peso_pct":     round(cat.peso * 100, 1),
+                    "promedio":     prom_cat,
+                    "aprobados":    aprobados,
+                    "total_est":    len(est_ids),
+                    "n_actividades": len(acts_cat),
+                })
+
+            # ── 9. Análisis por actividad ─────────────────────────────
+            cat_nombre_map = {c.id: c.nombre for c in categorias}
+            analisis_actividades = []
+            for act in actividades:
+                notas_act  = [nota_map[(eid, act.id)] for eid in est_ids if (eid, act.id) in nota_map]
+                prom_act   = round(sum(notas_act) / len(notas_act), 2) if notas_act else None
+                analisis_actividades.append({
+                    "nombre":      act.nombre[:22],
+                    "nombre_full": act.nombre,
+                    "categoria":   cat_nombre_map.get(act.categoria_id, "—"),
+                    "promedio":    prom_act,
+                    "entregadas":  len(notas_act),
+                    "total":       len(est_ids),
+                    "pct_entrega": round(len(notas_act) / len(est_ids) * 100, 1) if est_ids else 0,
+                    "fecha":       str(act.fecha) if act.fecha else "—",
+                })
+
+            # ── 10. Heatmap (nota por estudiante × actividad) ─────────
+            est_nombres = {e.id: f"{e.apellido}, {e.nombre}" for e in estudiantes if e.id}
+            act_ids_ord = [a.id for a in actividades if a.id]
+            est_ids_ord = sorted(est_ids, key=lambda eid: promedios_est.get(eid, 0))
+
+            heatmap_data = [
+                [col, row, round(nota_map[(est_ids_ord[row], act_ids_ord[col])], 1)]
+                for col, act_id in enumerate(act_ids_ord)
+                for row, est_id in enumerate(est_ids_ord)
+                if (est_ids_ord[row], act_ids_ord[col]) in nota_map
+            ]
+
+            # ── 11. Asistencia por estudiante ─────────────────────────
+            asist_por_est: dict[int, float] = {}
+            pct_asistencia_grupo            = 0.0
+            if self._asist_repo is not None:
+                try:
+                    resumenes = self._asist_repo.resumen_por_grupo(
+                        grupo_id=grupo_id,
+                        asignacion_id=asignacion_id,
+                        periodo_id=periodo_id,
+                    )
+                    asist_por_est = {r.estudiante_id: r.porcentaje_asistencia for r in resumenes}
+                    if resumenes:
+                        pct_asistencia_grupo = round(
+                            sum(r.porcentaje_asistencia for r in resumenes) / len(resumenes), 1
+                        )
+                except Exception:
+                    pass
+
+            # ── 12. Tendencia de asistencia por semana ────────────────
+            tendencia_asistencia: list[dict] = []
+            try:
+                raw = self._repo.tendencia_asistencia(grupo_id, asignacion_id, periodo_id)
+                tendencia_asistencia = [
+                    {"semana": f"Sem {r['semana']}", "pct": r["porcentaje"]}
+                    for r in raw
+                ]
+            except Exception:
+                pass
+
+            # ── 13. Tabla de estudiantes ordenada por promedio ────────
+            def _nivel_nombre(prom: float) -> str:
+                if prom <= 0:
+                    return "Sin datos"
+                if niveles:
+                    for nivel in sorted(niveles, key=lambda n: n.rango_min):
+                        if nivel.clasifica(prom):
+                            return nivel.nombre
+                else:
+                    if prom >= 85:  return "Superior"
+                    if prom >= 70:  return "Alto"
+                    if prom >= 60:  return "Básico"
+                return "Bajo"
+
+            tabla_estudiantes = sorted(
+                [
+                    {
+                        "nombre":         f"{e.apellido}, {e.nombre}",
+                        "promedio":       promedios_est.get(e.id, 0),
+                        "nivel":          _nivel_nombre(promedios_est.get(e.id, 0)),
+                        "asistencia_pct": asist_por_est.get(e.id, 0),
+                        "en_riesgo":      0 < promedios_est.get(e.id, 0) < nota_minima,
+                    }
+                    for e in estudiantes if e.id
+                ],
+                key=lambda x: x["promedio"],
+            )
+
+            return {
+                "error":                None,
+                "vacio":                False,
+                "promedio_grupo":       promedio_grupo,
+                "pct_asistencia":       pct_asistencia_grupo,
+                "total_estudiantes":    len(est_ids),
+                "en_riesgo_count":      len(en_riesgo),
+                "actividades_count":    len(actividades),
+                "nota_minima":          nota_minima,
+                "dist_niveles":         dist_niveles,
+                "analisis_categorias":  analisis_categorias,
+                "analisis_actividades": analisis_actividades,
+                "heatmap_data":         heatmap_data,
+                "heatmap_actos":        [a.nombre[:18] for a in actividades if a.id],
+                "heatmap_ests":         [est_nombres.get(e, "?") for e in est_ids_ord],
+                "tendencia_asistencia": tendencia_asistencia,
+                "tabla_estudiantes":    tabla_estudiantes,
+            }
+
+        except Exception as exc:
+            logger.error("datos_tablero(%s, %s, %s): %s", asignacion_id, periodo_id, grupo_id, exc)
+            return {"error": str(exc), "vacio": True}
 
 
 __all__ = ["EstadisticosService"]

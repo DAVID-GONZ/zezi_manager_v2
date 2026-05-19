@@ -1,7 +1,7 @@
 # Análisis de Arquitectura e Ingeniería de Software
 ## ZECI Manager v2.0 — Auditoría Integral
 
-> **Fecha de auditoría:** 2026-05-17  
+> **Fecha de auditoría:** 2026-05-18 (última revisión)  
 > **Estado del proyecto:** Activo / En desarrollo  
 > **Stack:** Python 3.x · NiceGUI 3.x · SQLite · Pydantic v2 · Bcrypt · JWT (stdlib)
 
@@ -68,12 +68,12 @@ La siguiente tabla refleja el estado real del proyecto al momento del análisis,
 | `design/` | `tokens.py`, `theme.py`, `layout.py`, `styles.css` (~35 KB), `components/` |
 | `pages/` | `login.py`, `inicio.py` (dashboard, ~29 KB) |
 | `pages/admin/` | `asignaciones`, `asignaturas`, `configuracion_institucion`, `configuracion_sie`, `grupos`, `usuarios` (6 páginas) |
-| `pages/academico/` | `asistencia`, `dashboard`, `estudiantes`, `horarios` (4 páginas) |
+| `pages/academico/` | `asistencia`, `dashboard`, `estudiantes`, `horarios`, `tablero_estadisticos` (5 páginas) |
 | `pages/convivencia/` | *(en desarrollo)* |
 | `pages/evaluacion/` | `cierre_anio`, `cierre_periodo`, `configuracion_evaluacion`, `habilitaciones`, `planes_mejoramiento`, `planilla_notas` (6 páginas) |
 | `pages/informes/` | `boletin_anual`, `boletin_periodo`, `consolidado_asistencia`, `consolidado_notas`, `estadisticos` (5 páginas) |
 
-**Total de páginas NiceGUI:** ~22+ páginas implementadas.
+**Total de páginas NiceGUI:** ~23+ páginas implementadas.
 
 ---
 
@@ -191,16 +191,33 @@ El sistema de diseño **"Andes Minimal v2"** implementa una arquitectura de toke
 | `layout.py` | Layout global: sidebar + topbar con toggle y estado de sesión |
 | `components/` | Componentes NiceGUI reutilizables |
 
-### 5.2 Fortaleza: Doble Representación de Tokens
+### 5.2 Fortaleza: Representación Triple de Tokens de Color
 
-Los colores existen en **dos formas sincronizadas**:
-- Como **variables CSS** en `styles.css` (`:root { --color-primary: #2563EB; }`) para los componentes HTML/NiceGUI.
-- Como **constantes Python** en `tokens.py` (`Colors.PRIMARY = "#2563EB"`) para lógica condicional, ag-grid column defs, y estilos inline calculados.
+Los colores existen en **tres formas sincronizadas**:
+- **Variables CSS** en `styles.css` (`:root { --color-primary: #2563EB; }`) — consumidas por componentes HTML y NiceGUI.
+- **Constantes Python** en `tokens.py` (`Colors.PRIMARY = "#2563EB"`) — usadas para lógica condicional y clases CSS dinámicas.
+- **Bloque `_EC_*`** en páginas con ECharts (ej. `tablero_estadisticos.py`) — alias locales de `tokens.py` exclusivamente para opciones de gráficos ECharts.
 
 > [!NOTE]
-> La doble representación introduce un riesgo de desincronización si un valor se cambia en un lugar y no en el otro. El docstring de `tokens.py` lo documenta explícitamente: *"Si cambias un color aquí, cámbialo también en `:root { ... }` de `styles.css`"*. Una mejora futura sería generar los tokens CSS desde Python en el arranque via `ThemeManager`, eliminando la duplicación.
+> ECharts renderiza en `<canvas>` y no puede leer variables CSS ni clases HTML. El bloque `_EC_*` es la solución canónica: centraliza todos los valores de color de ECharts al inicio del módulo, todos derivados de `tokens.py`. El patrón está documentado en el docstring del módulo y es la excepción explícita a la regla de "cero colores en Python".
 
-### 5.3 Lógica de Dominio en Tokens de Diseño
+> [!WARNING]
+> La representación triple introduce un riesgo de desincronización en tres puntos. Si se cambia un color, debe actualizarse en: `styles.css` (variable CSS), `tokens.py` (constante Python) y el bloque `_EC_*` del módulo correspondiente. Una mejora futura sería generar los tokens CSS desde Python en el arranque via `ThemeManager`, reduciendo la duplicación a dos fuentes.
+
+### 5.3 Regla de Estilo: Cero Colores en Python (excepto ECharts)
+
+A partir de la refactorización de `tablero_estadisticos.py` (2026-05-18), se establece la siguiente convención para **toda la capa de interfaz**:
+
+| Componente | Color en Python | Color en CSS |
+|---|---|---|
+| Elementos HTML / NiceGUI | ❌ Prohibido | ✅ Clases CSS |
+| ag-Grid `cellClass` / `rowClassRules` | ✅ Nombre de clase (string) | ✅ Definición en CSS |
+| ag-Grid `cellRenderer` (HTML inline) | ❌ Prohibido | ✅ Clase CSS en el string |
+| ECharts (opciones JSON) | ✅ Solo bloque `_EC_*` | ❌ No aplica |
+
+Esta convención garantiza que el theming sea controlable desde `styles.css` sin tocar Python.
+
+### 5.4 Lógica de Dominio en Tokens de Diseño
 
 > [!WARNING]
 > `DesempenoColors.para_nota()` (tokens.py, línea 141) contiene lógica de dominio educativo:
@@ -210,7 +227,7 @@ Los colores existen en **dos formas sincronizadas**:
 > if nota < 4.6:  return "Alto"
 > return "Superior"
 > ```
-> Estos umbrales (3.0, 3.8, 4.6) son **reglas de negocio del sistema educativo colombiano**, no decisiones de diseño visual. Deberían vivir en el modelo de dominio `Evaluacion` o en `ConfiguracionService` (ya que la institución podría configurarlos). Tenerlos en `tokens.py` los vuelve inaccesibles para la capa de servicios sin crear una dependencia inversa.
+> Estos umbrales (3.0, 3.8, 4.6) son **reglas de negocio del sistema educativo colombiano**, no decisiones de diseño visual. Deberían vivir en el modelo de dominio `Evaluacion` o en `ConfiguracionService`. Tenerlos en `tokens.py` los vuelve inaccesibles para la capa de servicios sin crear una dependencia inversa.
 
 ---
 
@@ -278,6 +295,15 @@ El `SessionContext` y los componentes `refreshable` en NiceGUI pueden leer/mutar
 
 `src/infrastructure/exporters/excel_exporter.py` y `pdf_exporter.py` tienen **0 bytes** (stubs vacíos). `ExporterFactory` devuelve el `NullExporter` si las dependencias no están disponibles (patrón Null Object correcto), pero la funcionalidad de exportación PDF y Excel no está implementada.
 
+### 7.7 — Bug Corregido: `contexto_completo` llamado como método *(Resuelto 2026-05-18)*
+
+`SessionContext.contexto_completo` está declarado como `@property` (retorna `bool`). En `tablero_estadisticos.py` se llamaba erróneamente como `ctx.contexto_completo()`, lo que producía `TypeError: 'bool' object is not callable` al intentar llamar el resultado de la propiedad.
+
+**Corrección aplicada:** eliminar los `()` en las dos ocurrencias (líneas 701 y 726 del módulo). El error era silencioso durante el import y solo se manifestaba en tiempo de ejecución al navegar a `/academico/tablero`.
+
+> [!NOTE]
+> Patrón preventivo recomendado: las propiedades booleanas de `SessionContext` (`es_docente`, `es_directivo`, `es_admin`, `tiene_grupo`, `contexto_completo`) **nunca deben llevar paréntesis**. Deben usarse siempre como `ctx.contexto_completo`, no `ctx.contexto_completo()`.
+
 ---
 
 ## 8. Fortalezas Arquitectónicas Confirmadas
@@ -294,13 +320,24 @@ El `SessionContext` y los componentes `refreshable` en NiceGUI pueden leer/mutar
 
 6. **Sistema de contexto académico inteligente:** `ContextInitializer.refrescar_si_invalido()` protege contra sesiones con contexto desactualizado después de cierres de periodo.
 
-7. **Diseño de tokens bidireccional:** El design system "Andes Minimal v2" sincroniza colores, espaciado e iconos entre Python y CSS, permitiendo cálculos de color condicionales en la capa de presentación.
+7. **Diseño de tokens triple-capa:** El design system "Andes Minimal v2" sincroniza colores entre CSS (`:root`), Python (`tokens.py`) y ECharts (`_EC_*`). La convención "cero colores en Python excepto ECharts" mantiene el theming centralizado en `styles.css`.
 
 8. **Patrón Null Object en adaptadores externos:** `NullExporter` y `NullNotificationService` permiten que el sistema funcione en entornos sin dependencias opcionales instaladas (openpyxl, etc.).
+
+9. **Separación CSS/lógica en ag-Grid:** La refactorización de `tablero_estadisticos.py` establece el patrón de usar `cellClass` y `rowClassRules` con nombres de clase CSS en lugar de `cellStyle` con colores inline. Esto hace que ag-Grid respete el tema visual sin hardcodear valores hexadecimales en Python.
 
 ---
 
 ## 9. Hoja de Ruta de Refactorización
+
+### ✅ Completado (2026-05-18)
+
+| # | Acción | Estado |
+|---|---|---|
+| ~~C1~~ | Corregir `TypeError: 'bool' object is not callable` en `tablero_estadisticos.py` (`contexto_completo`) | ✅ Resuelto |
+| ~~C2~~ | Refactorizar paleta ECharts a bloque `_EC_*` centralizado en `tablero_estadisticos.py` | ✅ Completado |
+| ~~C3~~ | Migrar `cellStyle` con colores inline a `cellClass`/`rowClassRules` en ag-Grid | ✅ Completado |
+| ~~C4~~ | Estandarizar clases de estado vacío a `tablero-empty-hint` en toda la página | ✅ Completado |
 
 ### 🔴 Prioridad Alta (Ahora)
 
@@ -310,22 +347,24 @@ El `SessionContext` y los componentes `refreshable` en NiceGUI pueden leer/mutar
 | R2 | Reemplazar `JWT_SECRET` warning por `ValueError` en producción | `config.py` |
 | R3 | Verificar que `inicio.py` usa `Container.auditoria_service()` en vez de `auditoria_repo()` | `src/interface/pages/inicio.py` |
 | R4 | Reemplazar el bypass de repositorio en `ContextInitializer` | `src/infrastructure/context/context_initializer.py` |
+| R5 | Definir clases CSS `tablero-badge-riesgo`, `tablero-badge-normal`, `tablero-promedio-*`, `tablero-row-riesgo` en `styles.css` | `src/interface/design/styles.css` |
 
 ### 🟡 Prioridad Media (Próximo sprint)
 
 | # | Acción | Archivo(s) |
 |---|---|---|
-| R5 | Migrar umbrales de calificación de `tokens.py` al dominio | `tokens.py` → `domain/models/evaluacion.py` |
-| R6 | Encapsular mutations de `app.storage.user` para atomicidad | `SessionContext.guardar()` |
-| R7 | Tests unitarios para los 16 servicios con mocks de repositorios | `tests/unit/services/` |
+| R6 | Migrar umbrales de calificación de `tokens.py` al dominio | `tokens.py` → `domain/models/evaluacion.py` |
+| R7 | Encapsular mutations de `app.storage.user` para atomicidad | `SessionContext.guardar()` |
+| R8 | Tests unitarios para los 16 servicios con mocks de repositorios | `tests/unit/services/` |
+| R9 | Aplicar patrón `_EC_*` a todas las páginas con ECharts que aún usen `Colors.*` directamente | `pages/informes/estadisticos.py`, otros |
 
 ### 🟢 Prioridad Baja (Deuda técnica)
 
 | # | Acción | Archivo(s) |
 |---|---|---|
-| R8 | Implementar `ExcelExporter` y `PDFExporter` | `src/infrastructure/exporters/` |
-| R9 | Generar tokens CSS dinámicamente desde `tokens.py` en `ThemeManager.aplicar()` | `theme.py` |
-| R10 | Documentar `ARCHITECTURE.md` con guía de creación de nuevos clientes (API, CLI) | Raíz del proyecto |
+| R10 | Implementar `ExcelExporter` y `PDFExporter` | `src/infrastructure/exporters/` |
+| R11 | Generar tokens CSS dinámicamente desde `tokens.py` en `ThemeManager.aplicar()` | `theme.py` |
+| R12 | Documentar guía de creación de nuevos clientes (API, CLI) | Raíz del proyecto |
 
 ---
 
@@ -385,4 +424,4 @@ Dado que el núcleo del sistema (`domain/` + `services/`) es completamente agnó
 
 ---
 
-*Análisis generado el 2026-05-17. Revisiones futuras deben actualizarse cuando se completen los ítems de la hoja de ruta.*
+*Análisis generado el 2026-05-17. Última revisión: 2026-05-18 — refactorización ECharts, corrección `contexto_completo`, actualización de hoja de ruta.*

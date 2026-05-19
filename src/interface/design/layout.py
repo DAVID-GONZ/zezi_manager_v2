@@ -7,6 +7,10 @@ Sidebar colapsable:
   - CSS en styles.css define la transición y el ancho en ambos estados
   - En estado collapsed: icono visible, label oculto (opacity:0; width:0)
 
+Regla CSS:
+  Ningún componente inyecta style="" con valores estáticos.
+  Todo el CSS vive en styles.css. Solo se usan .classes("nombre-clase").
+
 Ajustes NiceGUI 3.x:
   - Sidebar es position:fixed → main area requiere margin-left (clase .andes-main)
   - Iconos via ThemeManager.icono() en vez de ui.element().text()
@@ -98,6 +102,12 @@ NAV_ITEMS: list[dict] = [
         "ruta":  "/admin/usuarios",
         "rol":   ["admin"],
     },
+    {
+        "label": "Estadísticos",
+        "icon":  "analytics",         
+        "ruta":  "/academico/tablero",
+        "rol":   ["profesor", "director", "coordinador"],
+    },
 ]
 
 
@@ -137,29 +147,10 @@ def app_layout(
     with sidebar_el:
 
         # Cabecera: logo + botón toggle
-        with ui.element("div").style(
-            "padding:16px 12px;"
-            "border-bottom:1px solid rgba(255,255,255,0.08);"
-            "display:flex;"
-            "align-items:center;"
-            "justify-content:space-between;"
-            "gap:8px;"
-        ):
-            with ui.element("div").style("min-width:0;overflow:hidden;flex:1;"):
-                ui.label("LumEd").classes("sidebar-logo-text").style(
-                    "color:#FFFFFF;"
-                    "font-weight:700;"
-                    "font-size:14px;"
-                    "display:block;"
-                    "white-space:nowrap;"
-                )
-                ui.label("Education Manager").classes("sidebar-sub-text").style(
-                    "color:var(--nav-sidebar-text);"
-                    "font-size:11px;"
-                    "display:block;"
-                    "margin-top:1px;"
-                    "white-space:nowrap;"
-                )
+        with ui.element("div").classes("sidebar-header"):
+            with ui.element("div").classes("sidebar-logo-wrap"):
+                ui.label("LumEd").classes("sidebar-logo-text")
+                ui.label("Education Manager").classes("sidebar-sub-text")
 
             # Botón toggle — alterna collapsed
             toggle_btn = ui.element("div").classes("sidebar-toggle")
@@ -167,19 +158,13 @@ def app_layout(
                 ThemeManager.icono(Icons.MENU, size=18, color="var(--nav-sidebar-text)")
 
         # Ítems de navegación
-        with ui.element("div").style(
-            "padding:8px 0;flex:1;overflow-y:auto;overflow-x:hidden;"
-        ):
+        with ui.element("div").classes("sidebar-nav-scroll"):
             for item in NAV_ITEMS:
 
                 # Divisor de sección
                 if "divider" in item:
                     if _usuario_puede_ver(item, usuario_rol):
-                        ui.element("div").style(
-                            "height:1px;"
-                            "background:rgba(255,255,255,0.07);"
-                            "margin:6px 12px;"
-                        )
+                        ui.element("div").classes("sidebar-nav-divider")
                     continue
 
                 # Filtrar por rol
@@ -196,14 +181,8 @@ def app_layout(
                     ui.label(item["label"]).classes("nav-label")
 
         # Pie del sidebar — versión (oculto en collapsed)
-        with ui.element("div").style(
-            "padding:12px;"
-            "border-top:1px solid rgba(255,255,255,0.07);"
-        ):
-            ui.label("v2.0").classes("sidebar-sub-text").style(
-                "color:var(--nav-sidebar-text);font-size:10px;"
-                "text-align:center;display:block;"
-            )
+        with ui.element("div").classes("sidebar-footer"):
+            ui.label("v2.0").classes("sidebar-version")
 
     # ── Área principal (.andes-main maneja margin-left via CSS) ───────────────
     main_el = ui.element("div").classes("andes-main")
@@ -212,15 +191,7 @@ def app_layout(
         # Topbar (position:sticky en CSS)
         with ui.element("header").classes("andes-topbar"):
 
-            ui.label(titulo_pagina).style(
-                "color:var(--color-text-primary);"
-                "font-weight:600;"
-                "font-size:15px;"
-                "flex:1;"
-                "white-space:nowrap;"
-                "overflow:hidden;"
-                "text-overflow:ellipsis;"
-            )
+            ui.label(titulo_pagina).classes("topbar-title")
 
             # Context chip (roles académicos, no admin)
             if ctx is not None and usuario_rol != "admin":
@@ -232,30 +203,19 @@ def app_layout(
                 )
 
             # Bloque de usuario + logout
-            with ui.row().classes("items-center gap-2").style("flex-shrink:0;"):
+            with ui.element("div").classes("topbar-user-block"):
                 ThemeManager.icono(
                     Icons.PROFILE,
                     size=22,
                     color="var(--color-text-secondary)",
                 )
-                with ui.column().classes("gap-0").style("line-height:1.2;"):
-                    ui.label(usuario_nombre).style(
-                        "font-size:13px;"
-                        "font-weight:500;"
-                        "color:var(--color-text-primary);"
-                        "white-space:nowrap;"
-                    )
-                    ui.label(usuario_rol.capitalize()).style(
-                        "font-size:11px;"
-                        "color:var(--color-text-secondary);"
-                    )
+                with ui.element("div").classes("topbar-user-info"):
+                    ui.label(usuario_nombre).classes("topbar-user-name")
+                    ui.label(usuario_rol.capitalize()).classes("topbar-user-role")
 
                 with ui.button(
                     on_click=lambda: ui.navigate.to("/logout"),
-                ).props("flat round dense").style(
-                    "color:var(--color-text-secondary);"
-                    "min-width:34px;min-height:34px;"
-                ):
+                ).props("flat round dense").classes("topbar-logout-btn"):
                     ThemeManager.icono(Icons.LOGOUT, size=18)
 
         # Contenido de la página

@@ -337,8 +337,11 @@ class Container:
         return cls._get_or_create(
             "estadisticos_service",
             lambda: EstadisticosService(
-                repo=cls.estadisticos_repo(),
-                config_repo=cls.configuracion_repo(),
+                repo            = cls.estadisticos_repo(),
+                config_repo     = cls.configuracion_repo(),
+                evaluacion_repo = cls.evaluacion_repo(),
+                asistencia_repo = cls.asistencia_repo(),
+                estudiante_repo = cls.estudiante_repo(),
             ),
         )
 

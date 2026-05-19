@@ -13,6 +13,7 @@ from src.domain.models.asistencia import (
     EstadoAsistencia,
     RegistrarAsistenciaDTO,
     RegistrarAsistenciaMasivaDTO,
+    RegistroAsistenciaItemDTO,
     ResumenAsistenciaDTO,
 )
 from src.domain.models.alerta import Alerta, TipoAlerta, NivelAlerta
@@ -160,9 +161,94 @@ class AsistenciaService:
         fecha: object,
     ) -> ControlDiario | None:
         """Retorna el registro de asistencia de un estudiante en una fecha."""
-        return self._repo.get_por_fecha(
-            estudiante_id, grupo_id, asignacion_id, fecha
+        return self._repo.get_por_fecha_estudiante(
+            estudiante_id, asignacion_id, fecha
         )
+
+    def listar_por_grupo_y_fecha(
+        self,
+        grupo_id: int,
+        asignacion_id: int,
+        fecha: object,
+    ) -> list[ControlDiario]:
+        """
+        Retorna todos los registros de asistencia de un grupo en una fecha.
+        Usado internamente y por informes que necesitan ControlDiario completo.
+        """
+        return self._repo.listar_por_grupo_y_fecha(grupo_id, asignacion_id, fecha)
+
+    # ------------------------------------------------------------------
+    # API primitiva para la capa de interfaz
+    # La UI solo importa Container; nunca construye ni importa modelos
+    # de dominio. Estos métodos actúan como anti-corruption layer.
+    # ------------------------------------------------------------------
+
+    def estados_por_grupo_y_fecha(
+        self,
+        grupo_id: int,
+        asignacion_id: int,
+        fecha: object,
+    ) -> dict[int, dict[str, str]]:
+        """
+        Retorna {estudiante_id: {"estado": "P"|"FJ"|..., "observacion": str}}
+        para todos los registros existentes de un grupo en una fecha.
+
+        La capa de interfaz usa este método para pre-cargar la grilla sin
+        necesitar importar ControlDiario ni EstadoAsistencia.
+        Si no hay registros, retorna dict vacío.
+        """
+        controles = self._repo.listar_por_grupo_y_fecha(grupo_id, asignacion_id, fecha)
+        return {
+            c.estudiante_id: {
+                "estado":      c.estado.value,
+                "observacion": c.observacion or "",
+            }
+            for c in controles
+        }
+
+    def guardar_asistencia_masiva(
+        self,
+        grupo_id: int,
+        asignacion_id: int,
+        periodo_id: int,
+        fecha: object,
+        lista: list[dict],
+        usuario_id: int | None = None,
+        anio_id:    int | None = None,
+    ) -> int:
+        """
+        Persiste la asistencia de un grupo a partir de una lista de dicts
+        primitivos. La capa de interfaz llama este método en lugar de
+        construir RegistrarAsistenciaMasivaDTO directamente.
+
+        Args:
+            lista: [{"estudiante_id": int, "estado": str, "observacion": str|None}]
+                   "estado" debe ser un código válido: "P","FJ","FI","R","E".
+
+        Returns:
+            Número de registros guardados.
+
+        Raises:
+            ValueError: si algún código de estado es inválido o la lista
+                        está vacía (propagado desde el DTO de dominio).
+        """
+        items = [
+            RegistroAsistenciaItemDTO(
+                estudiante_id = r["estudiante_id"],
+                estado        = EstadoAsistencia(r["estado"]),
+                observacion   = r.get("observacion") or None,
+            )
+            for r in lista
+        ]
+        dto = RegistrarAsistenciaMasivaDTO(
+            grupo_id            = grupo_id,
+            asignacion_id       = asignacion_id,
+            periodo_id          = periodo_id,
+            fecha               = fecha,
+            registros           = items,
+            usuario_registro_id = usuario_id,
+        )
+        return self.registrar_masivo(dto, usuario_id=usuario_id, anio_id=anio_id)
 
 
 __all__ = ["AsistenciaService"]

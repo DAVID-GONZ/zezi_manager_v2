@@ -3,7 +3,7 @@ main.py — Punto de entrada de ZECI Manager v2.0
 =================================================
 Orden de arranque:
   1. Configurar logging
-  2. Inicializar base de datos (schema + seed_base si es primera vez)
+  2. Inicializar base de datos (schema + seed_dev en dev / seed_base en prod)
   3. Aplicar design system (ThemeManager.aplicar — inyecta CSS global)
   4. Verificar el Container (detecta configuraciones rotas antes de servir)
   5. Registrar todas las rutas NiceGUI
@@ -17,13 +17,17 @@ from config import settings
 from container import Container
 
 
+
 def inicializar_base_de_datos() -> bool:
     """
-    Crea el schema si no existe y ejecuta seed_base si es
-    la primera vez que corre la aplicación.
+    Crea el schema si no existe y ejecuta el seed correspondiente al entorno:
+
+      - development: seed_dev() si no hay grupos (primera instalación o BD vacía).
+        seed_dev() incluye seed_base() internamente — no se llaman por separado.
+      - production/test:  seed_base() solo si la BD es nueva.
     """
     from src.infrastructure.db.schema import init_db
-    from src.infrastructure.db.connection import DB_PATH
+    from src.infrastructure.db.connection import DB_PATH, get_connection
 
     es_nueva = not DB_PATH.exists()
     ok = init_db()
@@ -31,10 +35,28 @@ def inicializar_base_de_datos() -> bool:
         logging.critical("Falló la inicialización del schema. Abortando.")
         return False
 
-    if es_nueva:
+    if settings.is_development:
+        # Verificar si ya existen datos de desarrollo (grupos creados)
+        with get_connection() as conn:
+            tiene_grupos = conn.execute(
+                "SELECT COUNT(*) FROM grupos"
+            ).fetchone()[0] > 0
+
+        if not tiene_grupos:
+            logging.info(
+                "Entorno desarrollo — datos no detectados, ejecutando seed_dev"
+            )
+            from src.infrastructure.db.seed import seed_dev
+            with get_connection() as conn:
+                seed_dev(conn)
+                conn.commit()
+            logging.info("Seed dev completado")
+        else:
+            logging.info("Entorno desarrollo — datos ya presentes, seed omitido")
+
+    elif es_nueva:
         logging.info("Base de datos nueva detectada — ejecutando seed base")
         from src.infrastructure.db.seed import seed_base
-        from src.infrastructure.db.connection import get_connection
         with get_connection() as conn:
             seed_base(conn)
             conn.commit()
@@ -97,6 +119,12 @@ def registrar_rutas_ui() -> None:
     def pagina_logout():
         app.storage.user.clear()
         ui.navigate.to("/login")
+    
+    # ──tablero estadístico──
+    from src.interface.pages.academico.tablero_estadisticos import tablero_estadisticos_page
+    
+    # ──registro de asistencia──
+    from src.interface.pages.academico.registro_asistencia  import registro_asistencia_page
 
     # ── Inicio / Dashboard ───────────────────────────────────────────────────
     from src.interface.pages.inicio import inicio_page
