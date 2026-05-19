@@ -97,6 +97,14 @@ class FakeAuth(IAuthenticationService):
     def resetear_password(self, uid: int, nueva: str) -> None:
         self._hashes[uid] = f"hash:{nueva}"
 
+    def autenticar_usuario(self, nombre_usuario: str, password_plain: str):
+        if not self._pass_ok:
+            raise ValueError("Credenciales incorrectas")
+        from unittest.mock import MagicMock
+        u = MagicMock()
+        u.id = 1
+        return u
+
 
 def _dto(usuario: str = "prof1") -> NuevoUsuarioDTO:
     return NuevoUsuarioDTO(

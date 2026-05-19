@@ -220,6 +220,7 @@ class TestHitoPeriodo:
         dto = NuevoHitoPeriodoDTO(
             periodo_id=1,
             tipo=TipoHito.INICIO_HABILITACIONES,
+            descripcion="Inicio de habilitaciones",
             fecha_limite=date(2025, 4, 15),
         )
         hito = dto.to_hito()

@@ -242,7 +242,7 @@ def abrir_selector(
                             grupos_vistos[a.grupo_id] = a.grupo_codigo
                     grupos_data = [(gid, cod, None) for gid, cod in grupos_vistos.items()]
                 else:
-                    grupos = Container.infraestructura_repo().listar_grupos()
+                    grupos = Container.infraestructura_service().listar_grupos()
                     grupos_data = [
                         (g.id, g.codigo, g.capacidad_maxima) for g in grupos if g.id
                     ]
@@ -330,7 +330,7 @@ def abrir_selector(
 
                     horario_txt = ""
                     try:
-                        horarios = Container.infraestructura_repo().listar_horario_grupo(
+                        horarios = Container.infraestructura_service().listar_horario_grupo(
                             grupo_id, periodo_id
                         )
                         h_asig = [h for h in horarios if h.asignacion_id == asig.asignacion_id]

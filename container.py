@@ -357,6 +357,20 @@ class Container:
         )
 
     @classmethod
+    def infraestructura_service(cls):
+        from src.services.infraestructura_service import InfraestructuraService
+        return cls._get_or_create(
+            "infraestructura_service",
+            lambda: InfraestructuraService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def inicializar_contexto(cls, ctx):
+        """Resuelve el contexto académico inicial tras el login."""
+        from src.infrastructure.context.context_initializer import ContextInitializer
+        return ContextInitializer.inicializar(ctx)
+
+    @classmethod
     def auditoria_service(cls):
         from src.services.auditoria_service import AuditoriaService
         return cls._get_or_create(
@@ -383,6 +397,7 @@ class Container:
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "convivencia_service", "alerta_service",
             "estadisticos_service", "informe_service", "auditoria_service",
+            "infraestructura_service",
         ]
         for nombre in metodos:
             try:

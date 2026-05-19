@@ -19,6 +19,8 @@ from src.interface.design.theme import ThemeManager
 from src.interface.design.components.status_badge import status_badge
 from src.interface.design.components.context_selector import context_chip
 from src.interface.design.layout import app_layout
+from src.services.auditoria_service import FiltroAuditoriaDTO
+from src.services.alerta_service import FiltroAlertasDTO
 
 logger = logging.getLogger("INICIO")
 
@@ -319,7 +321,6 @@ def _seccion_actividad_reciente(ctx: SessionContext) -> None:
         _panel_titulo("history", "Actividad reciente")
 
         try:
-            from src.domain.models.auditoria import FiltroAuditoriaDTO
             cambios = Container.auditoria_service().listar_cambios(
                 FiltroAuditoriaDTO(
                     usuario_id=ctx.usuario_id if ctx.usuario_rol == "profesor" else None,
@@ -362,7 +363,6 @@ def _seccion_alertas(ctx: SessionContext) -> None:
         _panel_titulo(Icons.ALERTS, "Alertas pendientes", "var(--color-error)")
 
         try:
-            from src.domain.models.alerta import FiltroAlertasDTO
             alertas = Container.alerta_service().listar_alertas(
                 FiltroAlertasDTO(solo_pendientes=True, por_pagina=10)
             )
@@ -457,6 +457,7 @@ def _seccion_hitos(config) -> None:
 
 # ── FUNCIÓN PRINCIPAL ─────────────────────────────────────────────────────────
 
+@ui.page("/inicio")
 def inicio_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:

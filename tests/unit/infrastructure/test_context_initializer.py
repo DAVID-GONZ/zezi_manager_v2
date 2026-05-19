@@ -112,7 +112,7 @@ class TestContextInitializerProfesor:
             MockC.configuracion_service.return_value.get_activa.return_value = _mock_config()
             MockC.periodo_service.return_value.get_activo.return_value       = _mock_periodo()
             MockC.periodo_service.return_value.listar_por_anio.return_value  = []
-            MockC.asignacion_repo.return_value.listar_por_docente.return_value = [asig]
+            MockC.asignacion_service.return_value.listar_por_docente.return_value = [asig]
 
             resultado = ContextInitializer.inicializar(ctx)
 
@@ -132,7 +132,7 @@ class TestContextInitializerProfesor:
             MockC.configuracion_service.return_value.get_activa.return_value = _mock_config()
             MockC.periodo_service.return_value.get_activo.return_value       = _mock_periodo()
             MockC.periodo_service.return_value.listar_por_anio.return_value  = []
-            MockC.asignacion_repo.return_value.listar_por_docente.return_value = []
+            MockC.asignacion_service.return_value.listar_por_docente.return_value = []
 
             resultado = ContextInitializer.inicializar(ctx)
 
@@ -177,7 +177,7 @@ class TestContextInitializerProfesor:
             MockC.configuracion_service.return_value.get_activa.return_value = _mock_config()
             MockC.periodo_service.return_value.get_activo.return_value       = _mock_periodo()
             MockC.periodo_service.return_value.listar_por_anio.return_value  = []
-            MockC.asignacion_repo.return_value.listar_por_docente.return_value = [
+            MockC.asignacion_service.return_value.listar_por_docente.return_value = [
                 asig1, asig2, asig3
             ]
 
@@ -210,19 +210,19 @@ class TestContextInitializerProfesor:
         assert resultado.periodo_nombre == "P2 abierto"
 
     def test_listar_por_docente_llamado_con_periodo_y_solo_activas(self):
-        """Verifica que listar_por_docente recibe periodo_id y solo_activas=True."""
+        """Verifica que listar_por_docente recibe usuario_id y periodo_id."""
         ctx = _ctx("profesor", usuario_id=42)
 
         with patch("container.Container") as MockC:
             MockC.configuracion_service.return_value.get_activa.return_value = _mock_config(anio_id=7)
             MockC.periodo_service.return_value.get_activo.return_value       = _mock_periodo(pid=3)
             MockC.periodo_service.return_value.listar_por_anio.return_value  = []
-            mock_listar = MockC.asignacion_repo.return_value.listar_por_docente
+            mock_listar = MockC.asignacion_service.return_value.listar_por_docente
             mock_listar.return_value = []
 
             ContextInitializer.inicializar(ctx)
 
-        mock_listar.assert_called_once_with(42, 3, solo_activas=True)
+        mock_listar.assert_called_once_with(42, 3)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -349,7 +349,7 @@ class TestContextoEsValido:
         with patch("container.Container") as MockC:
             MockC.configuracion_service.return_value.get_by_id.return_value = \
                 _mock_config(activo=True)
-            MockC.periodo_repo.return_value.get_by_id.return_value = None
+            MockC.periodo_service.return_value.get_by_id.side_effect = ValueError("no existe")
 
             assert ContextInitializer.contexto_es_valido(ctx) is False
 
@@ -365,8 +365,8 @@ class TestContextoEsValido:
         with patch("container.Container") as MockC:
             MockC.configuracion_service.return_value.get_by_id.return_value = \
                 _mock_config(activo=True)
-            MockC.periodo_repo.return_value.get_by_id.return_value = _mock_periodo()
-            MockC.asignacion_repo.return_value.get_by_id.return_value = asig_inactiva
+            MockC.periodo_service.return_value.get_by_id.return_value = _mock_periodo()
+            MockC.asignacion_service.return_value.get_by_id.return_value = asig_inactiva
 
             assert ContextInitializer.contexto_es_valido(ctx) is False
 
@@ -382,8 +382,8 @@ class TestContextoEsValido:
         with patch("container.Container") as MockC:
             MockC.configuracion_service.return_value.get_by_id.return_value = \
                 _mock_config(activo=True)
-            MockC.periodo_repo.return_value.get_by_id.return_value = _mock_periodo()
-            MockC.asignacion_repo.return_value.get_by_id.return_value = asig_activa
+            MockC.periodo_service.return_value.get_by_id.return_value = _mock_periodo()
+            MockC.asignacion_service.return_value.get_by_id.return_value = asig_activa
 
             assert ContextInitializer.contexto_es_valido(ctx) is True
 

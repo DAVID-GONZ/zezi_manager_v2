@@ -136,6 +136,146 @@ def registrar_rutas_ui() -> None:
             return
         inicio_page()
 
+    # ── Admin: Grupos ────────────────────────────────────────────────────────
+    from src.interface.pages.admin.grupos import grupos_page
+
+    @ui.page("/admin/grupos")
+    def pagina_admin_grupos():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        grupos_page()
+
+    # ── Admin: Asignaturas ───────────────────────────────────────────────────
+    from src.interface.pages.admin.asignaturas import asignaturas_page
+
+    @ui.page("/admin/asignaturas")
+    def pagina_admin_asignaturas():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        asignaturas_page()
+
+    # ── Admin: Usuarios ──────────────────────────────────────────────────────
+    from src.interface.pages.admin.usuarios import usuarios_page
+
+    @ui.page("/admin/usuarios")
+    def pagina_admin_usuarios():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        usuarios_page()
+
+    # ── Admin: Asignaciones ──────────────────────────────────────────────────
+    from src.interface.pages.admin.asignaciones import asignaciones_page
+
+    @ui.page("/admin/asignaciones")
+    def pagina_admin_asignaciones():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        asignaciones_page()
+
+    # ── Admin: Configuración SIE ─────────────────────────────────────────────
+    from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
+
+    @ui.page("/admin/configuracion")
+    def pagina_admin_configuracion():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        configuracion_sie_page()
+
+    # ── Admin: Información Institucional ─────────────────────────────────────
+    from src.interface.pages.admin.configuracion_institucion import configuracion_institucion_page
+
+    @ui.page("/admin/configuracion-institucion")
+    def pagina_admin_configuracion_institucion():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        configuracion_institucion_page()
+
+    # ── Académico: Estudiantes y PIAR ─────────────────────────────────────────
+    from src.interface.pages.academico.estudiantes import estudiantes_page
+
+    @ui.page("/estudiantes")
+    def pagina_estudiantes():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        estudiantes_page()
+
+    # ── Académico: Horarios ───────────────────────────────────────────────────
+    from src.interface.pages.academico.horarios import horarios_page
+
+    @ui.page("/horarios")
+    def pagina_horarios():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        horarios_page()
+
+    # ── Evaluación: Configuración de categorías ───────────────────────────────
+    from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page
+
+    @ui.page("/evaluacion/configuracion")
+    def pagina_evaluacion_configuracion():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        configuracion_evaluacion_page()
+
+    # ── Evaluación: Planilla de notas ─────────────────────────────────────────
+    from src.interface.pages.evaluacion.planilla_notas import planilla_notas_page
+
+    @ui.page("/evaluacion/planilla")
+    def pagina_planilla_notas():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        planilla_notas_page()
+
+    # ── Evaluación: Cierre de periodo ─────────────────────────────────────────
+    from src.interface.pages.evaluacion.cierre_periodo import cierre_periodo_page
+
+    @ui.page("/evaluacion/cierre-periodo")
+    def pagina_cierre_periodo():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        cierre_periodo_page()
+
+    # ── Evaluación: Cierre de año ─────────────────────────────────────────────
+    from src.interface.pages.evaluacion.cierre_anio import cierre_anio_page
+
+    @ui.page("/evaluacion/cierre-anio")
+    def pagina_cierre_anio():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        cierre_anio_page()
+
+    # ── Evaluación: Habilitaciones ────────────────────────────────────────────
+    from src.interface.pages.evaluacion.habilitaciones import habilitaciones_page
+
+    @ui.page("/evaluacion/habilitaciones")
+    def pagina_habilitaciones():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        habilitaciones_page()
+
+    # ── Evaluación: Planes de mejoramiento ────────────────────────────────────
+    from src.interface.pages.evaluacion.planes_mejoramiento import planes_mejoramiento_page
+
+    @ui.page("/evaluacion/planes")
+    def pagina_planes_mejoramiento():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        planes_mejoramiento_page()
+
 
 def main() -> None:
     configurar_logging()

@@ -599,6 +599,16 @@ body {
   color: var(--color-text-secondary);
 }
 
+.badge-primary {
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
+}
+
+.badge-purple {
+  background: #EDE9FE;
+  color: #7C3AED;
+}
+
 .badge-P {
   background: var(--attend-presente-bg);
   color: var(--attend-presente);
@@ -2763,3 +2773,11 @@ td.tablero-promedio-superior,
 .tablero-act-table tbody tr.tablero-act-row-riesgo:hover td {
   background: var(--desempeno-bajo-bg);
 }
+
+/* ── Utilidades de layout ──────────────────────────────────── */
+.col-2 { flex: 0 0 16.666%; max-width: 16.666%; }
+.col-3 { flex: 0 0 25%; max-width: 25%; }
+.col-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+
+/* ── Componente de entrada ─────────────────────────────────── */
+.andes-input { width: 100%; }

@@ -17,6 +17,7 @@ from src.domain.models.estudiante import (
     EstudianteResumenDTO,
 )
 from src.domain.models.piar import PIAR, NuevoPIARDTO
+from src.domain.models.dtos import MatriculaMasivaResultadoDTO
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 
 

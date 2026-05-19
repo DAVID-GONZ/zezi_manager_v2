@@ -27,6 +27,7 @@ from src.interface.design.theme import ThemeManager
 logger = logging.getLogger("LOGIN")
 
 
+@ui.page("/login")
 def login_page() -> None:
     """
     Página de login — sin layout de app (no hay sidebar).
@@ -113,9 +114,6 @@ def login_page() -> None:
 
                     # 2. Construir SessionContext con datos de identidad
                     from src.interface.context.session_context import SessionContext
-                    from src.infrastructure.context.context_initializer import (
-                        ContextInitializer,
-                    )
                     ctx = SessionContext(
                         usuario_id     = user_db.id,
                         usuario_nombre = user_db.nombre_completo,
@@ -123,18 +121,18 @@ def login_page() -> None:
                     )
 
                     # 3. Resolver contexto académico (año → periodo → grupo)
-                    ctx = ContextInitializer.inicializar(ctx)
+                    ctx = Container.inicializar_contexto(ctx)
 
                     # 4. Persistir contexto completo en app.storage.user
                     ctx.guardar()
 
                     # 5. Registrar evento de login en auditoría (best-effort)
                     try:
-                        from src.domain.models.auditoria import (
+                        from src.services.auditoria_service import (
                             EventoSesion,
                             TipoEventoSesion,
                         )
-                        Container.auditoria_repo().registrar_evento(
+                        Container.auditoria_service().registrar_evento(
                             EventoSesion(
                                 usuario     = user_db.usuario,
                                 usuario_id  = user_db.id,

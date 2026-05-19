@@ -16,6 +16,7 @@ from __future__ import annotations
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.models.auditoria import (
     EventoSesion,
+    TipoEventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
 )
@@ -31,6 +32,9 @@ class AuditoriaService:
 
     def __init__(self, repo: IAuditoriaRepository) -> None:
         self._repo = repo
+
+    def registrar_evento(self, evento: EventoSesion) -> EventoSesion:
+        return self._repo.registrar_evento(evento)
 
     def listar_cambios(
         self,
