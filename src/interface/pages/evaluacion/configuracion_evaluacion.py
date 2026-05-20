@@ -22,6 +22,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import confirm_dialog
 from src.services.evaluacion_service import NuevaCategoriaDTO, ActualizarCategoriaDTO
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -163,24 +164,10 @@ def configuracion_evaluacion_page() -> None:
                 btn_primary("Guardar", on_click=_guardar)
         dlg.open()
 
-    def _eliminar_categoria(cat) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Eliminar categoría '{cat.nombre}'? Esta acción es irreversible."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Eliminar",
-                    on_click=lambda: _confirmar_eliminar(dlg, cat),
-                )
-        dlg.open()
-
-    def _confirmar_eliminar(dlg, cat) -> None:
+    def _confirmar_eliminar(cat) -> None:
         try:
             Container.evaluacion_service().eliminar_categoria(cat.id)
             ui.notify(f"Categoría '{cat.nombre}' eliminada", type="positive")
-            dlg.close()
             _cargar_categorias()
             tabla_categorias.refresh()
             panel_suma.refresh()
@@ -189,7 +176,15 @@ def configuracion_evaluacion_page() -> None:
         except Exception as exc:
             logger.error("Error al eliminar categoría: %s", exc)
             ui.notify("Error al eliminar", type="negative")
-            dlg.close()
+
+    def _eliminar_categoria(cat) -> None:
+        confirm_dialog(
+            titulo          = "Eliminar categoría",
+            mensaje         = f"¿Eliminar la categoría '{cat.nombre}'? Esta acción es irreversible.",
+            on_confirm      = lambda: _confirmar_eliminar(cat),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+        )
 
     def _on_selector_cambio() -> None:
         _cargar_categorias()

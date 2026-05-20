@@ -19,6 +19,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import page_header, confirm_dialog
 from src.services.infraestructura_service import Grupo, Jornada
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -104,24 +105,10 @@ def grupos_page() -> None:
             logger.error("Error al crear grupo: %s", exc)
             ui.notify("Error al crear el grupo", type="negative")
 
-    def _eliminar_grupo(grupo_id: int, codigo: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Eliminar grupo {codigo}? Esta acción es irreversible."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Eliminar",
-                    on_click=lambda: _confirmar_eliminar(dlg, grupo_id, codigo),
-                )
-        dlg.open()
-
-    def _confirmar_eliminar(dlg, grupo_id: int, codigo: str) -> None:
+    def _confirmar_eliminar_grupo(grupo_id: int, codigo: str) -> None:
         try:
             Container.infraestructura_service().eliminar_grupo(grupo_id)
             ui.notify(f"Grupo {codigo} eliminado", type="positive")
-            dlg.close()
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
@@ -129,7 +116,15 @@ def grupos_page() -> None:
         except Exception as exc:
             logger.error("Error al eliminar grupo %s: %s", grupo_id, exc)
             ui.notify("Error al eliminar el grupo", type="negative")
-            dlg.close()
+
+    def _eliminar_grupo(grupo_id: int, codigo: str) -> None:
+        confirm_dialog(
+            titulo          = "Eliminar grupo",
+            mensaje         = f"¿Eliminar el grupo {codigo}? Esta acción es irreversible.",
+            on_confirm      = lambda: _confirmar_eliminar_grupo(grupo_id, codigo),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+        )
 
     def _abrir_editar(grupo: Grupo) -> None:
         _s["edit_id"]       = grupo.id
@@ -226,11 +221,14 @@ def grupos_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            # Encabezado
+            page_header(
+                titulo    = "Gestión de Grupos",
+                subtitulo = "Crea y administra los grupos académicos de la institución",
+                icono     = Icons.GROUPS,
+            )
+
+            # Panel de gestión
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ThemeManager.icono(Icons.GROUPS, size=22, color="var(--color-primary)")
-                    ui.label("Gestión de Grupos").classes("text-xl font-bold")
 
                 # Formulario de creación
                 ui.label("Crear nuevo grupo").classes("text-base font-semibold mb-2")

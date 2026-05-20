@@ -34,6 +34,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons, Colors, DesempenoColors
+from src.interface.design.components import stat_card
 
 logger = logging.getLogger("TABLERO_ESTADISTICOS")
 
@@ -109,35 +110,39 @@ def _render_kpis(datos: dict) -> None:
     with ui.element("div").classes("tablero-kpi-row"):
 
         var_prom = _kpi_variante(prom, nota_minima, nota_minima + 10)
-        with ui.element("div").classes(f"stat-card-wrapper {var_prom}"):
-            with ui.element("div").classes("stat-card-icon-wrap"):
-                ThemeManager.icono(Icons.GRADES, size=24)
-            ui.label(f"{prom:.1f}").classes("stat-card-value")
-            ui.label("Promedio ponderado").classes("stat-card-label")
-            ui.label("ajustado al periodo").classes("stat-card-subtitle")
+        stat_card(
+            titulo    = "Promedio ponderado",
+            valor     = f"{prom:.1f}",
+            icono     = Icons.GRADES,
+            subtitulo = "ajustado al periodo",
+            variante  = var_prom,
+        )
 
         var_asist = _kpi_variante(asist, 70.0, 80.0)
-        with ui.element("div").classes(f"stat-card-wrapper {var_asist}"):
-            with ui.element("div").classes("stat-card-icon-wrap"):
-                ThemeManager.icono(Icons.ATTENDANCE, size=24)
-            ui.label(f"{asist:.1f}%").classes("stat-card-value")
-            ui.label("Asistencia efectiva").classes("stat-card-label")
-            ui.label("promedio del grupo").classes("stat-card-subtitle")
+        stat_card(
+            titulo    = "Asistencia efectiva",
+            valor     = f"{asist:.1f}%",
+            icono     = Icons.ATTENDANCE,
+            subtitulo = "promedio del grupo",
+            variante  = var_asist,
+        )
 
         var_riesgo = "error" if riesgo > 0 else "success"
-        with ui.element("div").classes(f"stat-card-wrapper {var_riesgo}"):
-            with ui.element("div").classes("stat-card-icon-wrap"):
-                ThemeManager.icono(Icons.WARNING, size=24)
-            ui.label(str(riesgo)).classes("stat-card-value")
-            ui.label("Estudiantes en riesgo").classes("stat-card-label")
-            ui.label(f"bajo {nota_minima:.0f} puntos").classes("stat-card-subtitle")
+        stat_card(
+            titulo    = "Estudiantes en riesgo",
+            valor     = str(riesgo),
+            icono     = Icons.WARNING,
+            subtitulo = f"bajo {nota_minima:.0f} puntos",
+            variante  = var_riesgo,
+        )
 
-        with ui.element("div").classes("stat-card-wrapper info"):
-            with ui.element("div").classes("stat-card-icon-wrap"):
-                ThemeManager.icono(Icons.SUBJECTS, size=24)
-            ui.label(str(acts)).classes("stat-card-value")
-            ui.label("Actividades").classes("stat-card-label")
-            ui.label(f"para {total} estudiantes").classes("stat-card-subtitle")
+        stat_card(
+            titulo    = "Actividades",
+            valor     = str(acts),
+            icono     = Icons.SUBJECTS,
+            subtitulo = f"para {total} estudiantes",
+            variante  = "info",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

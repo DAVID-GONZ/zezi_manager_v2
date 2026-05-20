@@ -22,6 +22,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import page_header, confirm_dialog, badge_estado_general
 from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
@@ -161,27 +162,10 @@ def asignaciones_page() -> None:
 
         dlg.open()
 
-    def _desactivar_asignacion(asig_id: int, label: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Desactivar asignación '{label}'?"
-            ).classes("text-base font-medium")
-            ui.label(
-                "El histórico de notas y asistencia se conserva."
-            ).classes("text-sm text-grey-6 mt-1")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Desactivar",
-                    on_click=lambda: _confirmar_desactivar(dlg, asig_id, label),
-                )
-        dlg.open()
-
-    def _confirmar_desactivar(dlg, asig_id: int, label: str) -> None:
+    def _confirmar_desactivar(asig_id: int, label: str) -> None:
         try:
             Container.asignacion_service().desactivar(asig_id)
             ui.notify(f"Asignación '{label}' desactivada", type="positive")
-            dlg.close()
             _cargar_asignaciones()
             tabla.refresh()
         except ValueError as exc:
@@ -189,7 +173,15 @@ def asignaciones_page() -> None:
         except Exception as exc:
             logger.error("Error al desactivar asignación %s: %s", asig_id, exc)
             ui.notify("Error al desactivar la asignación", type="negative")
-            dlg.close()
+
+    def _desactivar_asignacion(asig_id: int, label: str) -> None:
+        confirm_dialog(
+            titulo          = "Desactivar asignación",
+            mensaje         = f"¿Desactivar asignación '{label}'? El histórico de notas y asistencia se conserva.",
+            on_confirm      = lambda: _confirmar_desactivar(asig_id, label),
+            variante        = "warning",
+            texto_confirmar = "Desactivar",
+        )
 
     def _on_filtros_cambio() -> None:
         _cargar_asignaciones()
@@ -221,9 +213,9 @@ def asignaciones_page() -> None:
                     ui.label(a.asignatura_nombre).classes("w-44 text-sm")
                     ui.label(a.periodo_nombre).classes("w-28 text-sm")
                     if a.activo:
-                        ui.badge("Activa").classes("w-20 badge-success")
+                        badge_estado_general(True)
                     else:
-                        ui.badge("Inactiva").classes("w-20 badge-neutral")
+                        badge_estado_general(False)
                     with ui.row().classes("w-20 justify-end"):
                         if a.activo:
                             btn_icon("link_off", on_click=lambda aid=a.asignacion_id, lbl=a.display_corto: _desactivar_asignacion(aid, lbl), tooltip="Desactivar", variante="danger")
@@ -231,11 +223,16 @@ def asignaciones_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+
+            page_header(
+                titulo    = "Asignaciones Docentes",
+                subtitulo = "Asignación de docentes a grupos y asignaturas por periodo",
+                icono     = "assignment_ind",
+            )
+
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("items-center gap-2 mb-4 flex-wrap"):
-                    ThemeManager.icono(Icons.SCHEDULE, size=22, color="var(--color-primary)")
-                    ui.label("Gestión de Asignaciones").classes("text-xl font-bold")
-                    btn_primary("Nueva asignación", on_click=_abrir_crear_asignacion, icon="add_link").classes("ml-auto")
+                    btn_primary("Nueva asignación", on_click=_abrir_crear_asignacion, icon="add_link")
 
                 # Filtros
                 docentes_filtro = {None: "Todos los docentes"}

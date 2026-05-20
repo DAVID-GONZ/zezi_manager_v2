@@ -34,6 +34,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import page_header
 from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -391,11 +392,14 @@ def horarios_page() -> None:
 
         with ui.element("div").classes("page-stack"):
 
+            page_header(
+                titulo    = "Horarios",
+                subtitulo = "Grilla semanal de bloques de clase por grupo",
+                icono     = Icons.SCHEDULE,
+            )
+
             # ── Panel de control ──────────────────────────────────────────────
             with ui.element("div").classes("panel-card"):
-                with ui.element("div").classes("panel-header"):
-                    ThemeManager.icono(Icons.SCHEDULE, size=20)
-                    ui.label("Horarios").classes("panel-title")
 
                 with ui.row().classes("w-full q-col-gutter-md items-end q-mb-sm"):
 

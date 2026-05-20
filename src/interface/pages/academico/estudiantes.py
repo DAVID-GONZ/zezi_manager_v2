@@ -33,6 +33,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost
+from src.interface.design.components import stat_card, page_header, confirm_dialog
 from src.services.estudiante_service import (
     NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
@@ -335,19 +336,11 @@ def estudiantes_page() -> None:
                     ui.label("Resultado de carga masiva").classes("panel-title")
 
                 with ui.element("div").classes("tablero-kpi-row"):
-                    with ui.element("div").classes("stat-card-wrapper info"):
-                        ui.label(str(resultado.total_procesadas)).classes("stat-card-value")
-                        ui.label("Total procesadas").classes("stat-card-label")
-
-                    variante_ok = "success" if resultado.exitosas > 0 else "info"
-                    with ui.element("div").classes(f"stat-card-wrapper {variante_ok}"):
-                        ui.label(str(resultado.exitosas)).classes("stat-card-value")
-                        ui.label("Exitosas").classes("stat-card-label")
-
-                    variante_err = "error" if resultado.fallidas > 0 else "success"
-                    with ui.element("div").classes(f"stat-card-wrapper {variante_err}"):
-                        ui.label(str(resultado.fallidas)).classes("stat-card-value")
-                        ui.label("Fallidas").classes("stat-card-label")
+                    stat_card("Total procesadas", resultado.total_procesadas, "check_circle", variante="info")
+                    stat_card("Exitosas", resultado.exitosas, "check",
+                              variante="success" if resultado.exitosas > 0 else "info")
+                    stat_card("Fallidas", resultado.fallidas, "error",
+                              variante="danger" if resultado.fallidas > 0 else "success")
 
                 if resultado.errores:
                     ui.label("Detalle de errores (máx. 10):").classes("text-weight-medium q-mt-md")
@@ -563,40 +556,29 @@ def estudiantes_page() -> None:
             if not est_id:
                 return
 
-            with ui.dialog() as dlg, ui.card():
-                ui.label(f"¿Retirar a {nombre}?").classes("text-h6")
-                ui.label(
-                    "Esta acción cambia el estado del estudiante a 'Retirado'. "
-                    "Puede reactivarse más adelante desde la edición."
-                ).classes("text-body2 q-mb-md")
+            def _ejecutar_retiro(eid=est_id, nom=nombre) -> None:
+                try:
+                    Container.estudiante_service().retirar(
+                        eid,
+                        motivo=None,
+                        usuario_id=ctx.usuario_id,
+                    )
+                    ui.notify(f"{nom} retirado.", type="positive")
+                    _cargar_estudiantes()
+                    tabla_refreshable.refresh()
+                except ValueError as exc:
+                    ui.notify(str(exc), type="warning")
+                except Exception as exc:
+                    logger.error("Error retirando estudiante %s: %s", eid, exc)
+                    ui.notify("Error inesperado al retirar.", type="negative")
 
-                motivo_inp = ui.input(
-                    label="Motivo (opcional)"
-                ).classes("w-full q-mb-md")
-
-                with ui.row().classes("justify-end gap-sm"):
-                    btn_ghost("Cancelar", on_click=dlg.close)
-
-                    def _ejecutar_retiro() -> None:
-                        try:
-                            Container.estudiante_service().retirar(
-                                est_id,
-                                motivo=motivo_inp.value or None,
-                                usuario_id=ctx.usuario_id,
-                            )
-                            ui.notify(f"{nombre} retirado.", type="positive")
-                            dlg.close()
-                            _cargar_estudiantes()
-                            tabla_refreshable.refresh()
-                        except ValueError as exc:
-                            ui.notify(str(exc), type="warning")
-                        except Exception as exc:
-                            logger.error("Error retirando estudiante %s: %s", est_id, exc)
-                            ui.notify("Error inesperado al retirar.", type="negative")
-
-                    btn_danger("Retirar", on_click=_ejecutar_retiro)
-
-            dlg.open()
+            confirm_dialog(
+                titulo          = "Retirar estudiante",
+                mensaje         = f"¿Retirar a {nombre} de la matrícula? El estado cambiará a Retirado.",
+                on_confirm      = _ejecutar_retiro,
+                variante        = "danger",
+                texto_confirmar = "Retirar",
+            )
 
         def _abrir_dialog_piar(fila: dict) -> None:
             """Dialog para ver o registrar el PIAR de un estudiante."""
@@ -721,6 +703,16 @@ def estudiantes_page() -> None:
 
         with ui.element("div").classes("page-stack"):
 
+            page_header(
+                titulo    = "Gestión de Estudiantes",
+                subtitulo = "Matrícula, estado y PIAR de estudiantes",
+                icono     = Icons.STUDENTS,
+                acciones  = [
+                    {"label": "Matricular",  "on_click": _abrir_dialog_matricula, "icono": "person_add",  "variante": "primary"},
+                    {"label": "Carga CSV",   "on_click": _abrir_dialog_csv,       "icono": "upload_file", "variante": "secondary"},
+                ],
+            )
+
             # ── 1. Panel de filtros ───────────────────────────────────────────
             with ui.element("div").classes("panel-card"):
                 with ui.element("div").classes("panel-header"):
@@ -774,20 +766,6 @@ def estudiantes_page() -> None:
                         icon=Icons.SEARCH,
                         on_click=_aplicar_filtros,
                     )
-
-            # ── 2. Botones de acción ──────────────────────────────────────────
-            with ui.row().classes("w-full justify-end gap-sm q-mb-sm"):
-                btn_primary(
-                    "Matricular",
-                    icon="add",
-                    on_click=_abrir_dialog_matricula,
-                )
-
-                btn_secondary(
-                    "Carga CSV",
-                    icon="upload_file",
-                    on_click=_abrir_dialog_csv,
-                )
 
             # ── 3. Tabla de estudiantes ───────────────────────────────────────
             with ui.element("div").classes("panel-card"):

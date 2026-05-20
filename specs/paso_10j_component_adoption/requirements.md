@@ -87,16 +87,17 @@ inputs adicionales deben reemplazarse con `confirm_dialog()`. Los CRUD forms
 Diálogos a migrar (ver tabla completa en design.md):
 - `grupos.py` — `_eliminar_grupo()` (1 confirm simple)
 - `asignaturas.py` — `_eliminar_area()` y `_eliminar_asignatura()` (2 confirms)
-- `asignaciones.py` — confirmar desactivar asignación (1 confirm)
-- `usuarios.py` — `_desactivar_usuario()` y `_cambiar_rol()` (2 confirms)
+- `asignaciones.py` — `_desactivar_asignacion()` (1 confirm simple; tiene 2 ui.label → concatenar en `mensaje`)
+- `usuarios.py` — `_desactivar_usuario()` (1 confirm simple)
 - `estudiantes.py` — `_confirmar_retiro()` (1 confirm)
-- `configuracion_evaluacion.py` — confirmar borrar categoría (1 confirm)
-- `habilitaciones.py` — confirmar eliminar habilitación (1 confirm si existe)
-- `planes_mejoramiento.py` — confirmar cerrar/eliminar plan (1 confirm)
+- `configuracion_evaluacion.py` — `_eliminar_categoria()` (1 confirm simple)
 
 Diálogos que QUEDAN INLINE (demasiado complejos para el componente):
 - `cierre_periodo.py` — muestra conteo dinámico de estudiantes + multi-párrafo
 - `cierre_anio.py` — similar
+- `usuarios.py` `_cambiar_rol()` — tiene `ui.select` para elegir nuevo rol; es CRUD
+- `planes_mejoramiento.py` `_cerrar_plan_dialog()` — tiene `ui.select` + `ui.textarea` + validación de observación; es CRUD
+- `habilitaciones.py` — no existe confirm simple de eliminar; el único dialog es `_registrar_nota_dialog()` (con inputs de nota y observación)
 - Todos los CRUD dialogs (crear/editar grupo, asignatura, usuario, etc.)
 
 ### R6 — `status_badge` / `badge_*` adoptados en páginas con `ui.badge()` semántico
@@ -161,4 +162,4 @@ estáticos y deben moverse a clases CSS:
 - Grep `_stat_card\(` en pages/ → 0 resultados (helper local eliminado)
 - Grep `stat-card-wrapper` en pages/*.py → 0 resultados (solo en styles.css)
 - Grep `page_header` en admin/*.py y academico/[estudiantes,horarios].py → presente
-- Grep `confirm_dialog` en las 8 páginas objetivo → presente
+- Grep `confirm_dialog` en las 6 páginas objetivo → presente

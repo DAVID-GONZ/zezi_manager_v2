@@ -29,6 +29,7 @@ from src.services.habilitacion_service import (
     RegistrarNotaHabilitacionDTO,
 )
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
+from src.interface.design.components import status_badge
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
@@ -240,9 +241,10 @@ def habilitaciones_page() -> None:
                         else "—"
                     )
                     ui.label(nota_hab_str).classes("w-24 text-right font-mono text-sm")
-                    ui.badge(
+                    status_badge(
                         estado_val.capitalize(),
-                    ).classes(f"w-24 text-center {_ESTADO_CLASES.get(estado_val, 'badge-neutral')}")
+                        _ESTADO_CLASES.get(estado_val, "badge-neutral").replace("badge-", ""),
+                    )
                     with ui.row().classes("w-20 justify-end"):
                         if hab.estado == EstadoHabilitacion.PENDIENTE:
                             btn_icon(

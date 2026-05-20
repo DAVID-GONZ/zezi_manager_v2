@@ -20,6 +20,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
+from src.interface.design.components import page_header, badge_estado_general
 from src.services.configuracion_service import NuevaConfiguracionAnioDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_SIE")
@@ -80,7 +81,7 @@ def configuracion_sie_page() -> None:
                 ui.label("Año lectivo activo").classes("eyebrow-label mb-2")
                 with ui.row().classes("items-center gap-4"):
                     ui.label(str(config.anio)).classes("text-4xl font-bold")
-                    ui.badge("Activo").classes("badge-success")
+                    badge_estado_general(True)
 
                 with ui.element("div").classes("mt-3 grid grid-cols-2 gap-3"):
                     _dato("Nota mínima aprobación", f"{config.nota_minima_aprobacion:.1f}")
@@ -114,11 +115,14 @@ def configuracion_sie_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
+            page_header(
+                titulo    = "Configuración del SIE",
+                subtitulo = "Periodos académicos y configuración del año escolar",
+                icono     = "settings",
+            )
+
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ThemeManager.icono(Icons.CONFIG, size=22, color="var(--color-primary)")
-                    ui.label("Configuración SIE").classes("text-xl font-bold")
-                    btn_icon("refresh", on_click=lambda: (_cargar_estado(), panel_anio.refresh()), tooltip="Recargar").classes("ml-auto")
+                btn_icon("refresh", on_click=lambda: (_cargar_estado(), panel_anio.refresh()), tooltip="Recargar").classes("ml-auto")
 
             panel_anio()
 

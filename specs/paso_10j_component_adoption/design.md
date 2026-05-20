@@ -235,15 +235,12 @@ se llama `.open()` manualmente.
 | Página | Función | Trigger | Texto del dialog |
 |---|---|---|---|
 | `grupos.py` | `_eliminar_grupo()` | Botón eliminar en tabla | "¿Eliminar grupo {codigo}? Esta acción es irreversible." |
-| `asignaturas.py` | `_eliminar_area()` aprox. | Botón eliminar área | "¿Eliminar el área {nombre}?" |
-| `asignaturas.py` | `_eliminar_asignatura()` aprox. | Botón eliminar asignatura | "¿Eliminar la asignatura {nombre}?" |
-| `asignaciones.py` | Confirm desactivar | Botón desactivar | "¿Desactivar la asignación?" |
-| `usuarios.py` | `_desactivar_usuario()` aprox. | Botón desactivar | "¿Desactivar usuario {nombre}?" |
-| `usuarios.py` | `_cambiar_rol()` aprox. | Botón cambiar rol | "¿Cambiar el rol de {nombre} a {nuevo_rol}?" |
-| `estudiantes.py` | `_confirmar_retiro()` | Botón retirar en tabla | "¿Retirar a {nombre} de la matrícula?" |
-| `configuracion_evaluacion.py` | Confirm borrar categoría | Botón eliminar categoría | "¿Eliminar la categoría {nombre}?" |
-| `habilitaciones.py` | Confirm eliminar (si existe) | Botón eliminar | "¿Eliminar esta habilitación?" |
-| `planes_mejoramiento.py` | Confirm cerrar plan | Botón cerrar plan | "¿Cerrar el plan de mejora?" variante="warning" |
+| `asignaturas.py` | `_eliminar_area()` | Botón eliminar área | "¿Eliminar el área '{nombre}'? Esta acción es irreversible." |
+| `asignaturas.py` | `_eliminar_asignatura()` | Botón eliminar asignatura | "¿Eliminar la asignatura '{nombre}'? Esta acción es irreversible." |
+| `asignaciones.py` | `_desactivar_asignacion()` | Botón desactivar | mensaje=`"¿Desactivar asignación '{label}'? El histórico de notas y asistencia se conserva."` (concatenar los 2 ui.label actuales) |
+| `usuarios.py` | `_desactivar_usuario()` | Botón desactivar | "¿Desactivar al usuario '{nombre}'? No podrá iniciar sesión." |
+| `estudiantes.py` | `_confirmar_retiro()` | Botón retirar en tabla | "¿Retirar a {nombre} de la matrícula? El estado cambiará a Retirado." |
+| `configuracion_evaluacion.py` | `_eliminar_categoria()` | Botón eliminar categoría | "¿Eliminar categoría '{cat.nombre}'? Esta acción es irreversible." |
 
 **Nota:** El implementer debe localizar las funciones exactas en cada página.
 Los nombres en la tabla son aproximados. El criterio es: `with ui.dialog()` con
@@ -251,11 +248,13 @@ solo `ui.label` (sin inputs) → candidato a `confirm_dialog()`.
 
 ### Diálogos que NO se tocan (CRUD forms)
 - `grupos.py` → `_abrir_editar()` (contiene inputs)
-- `asignaturas.py` → edit area, edit asignatura (contienen inputs)
-- `asignaciones.py` → create asignacion dialog (contiene inputs)
-- `usuarios.py` → create usuario dialog (contiene inputs)
+- `asignaturas.py` → `_editar_area()`, `_editar_asignatura()` (contienen inputs)
+- `asignaciones.py` → dialog crear asignación (contiene 4 ui.select)
+- `usuarios.py` → `_abrir_crear_usuario()` (contiene inputs), `_cambiar_rol()` (contiene ui.select para nuevo rol — **NO es confirm simple**)
 - `horarios.py` → ambos dialogs (contienen inputs)
 - `estudiantes.py` → dialogs de matricula, CSV, PIAR (contienen inputs)
+- `planes_mejoramiento.py` → `_cerrar_plan_dialog()` (contiene `ui.select` estado + `ui.textarea` observación + validación — **NO es confirm simple**)
+- `habilitaciones.py` → `_registrar_nota_dialog()` (contiene inputs de nota); **no existe confirm simple de eliminar habilitación en este módulo**
 - `cierre_periodo.py` → muestra conteo dinámico de estudiantes
 - `cierre_anio.py` → similar
 - `planilla_notas.py` → todos los dialogs con inputs de notas

@@ -23,6 +23,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import page_header, confirm_dialog, badge_estado_general, status_badge
 from src.services.usuario_service import NuevoUsuarioDTO, FiltroUsuariosDTO, Rol
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -125,27 +126,10 @@ def usuarios_page() -> None:
 
         dlg.open()
 
-    def _desactivar_usuario(usuario_id: int, nombre: str) -> None:
-        if not es_admin:
-            ui.notify("Solo el administrador puede desactivar usuarios", type="warning")
-            return
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Desactivar al usuario '{nombre}'? No podrá iniciar sesión."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Desactivar",
-                    on_click=lambda: _confirmar_desactivar(dlg, usuario_id, nombre),
-                )
-        dlg.open()
-
-    def _confirmar_desactivar(dlg, usuario_id: int, nombre: str) -> None:
+    def _confirmar_desactivar(usuario_id: int, nombre: str) -> None:
         try:
             Container.usuario_service().desactivar(usuario_id)
             ui.notify(f"Usuario '{nombre}' desactivado", type="positive")
-            dlg.close()
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
@@ -153,7 +137,18 @@ def usuarios_page() -> None:
         except Exception as exc:
             logger.error("Error al desactivar usuario %s: %s", usuario_id, exc)
             ui.notify("Error al desactivar el usuario", type="negative")
-            dlg.close()
+
+    def _desactivar_usuario(usuario_id: int, nombre: str) -> None:
+        if not es_admin:
+            ui.notify("Solo el administrador puede desactivar usuarios", type="warning")
+            return
+        confirm_dialog(
+            titulo          = "Desactivar usuario",
+            mensaje         = f"¿Desactivar la cuenta de '{nombre}'? No podrá iniciar sesión.",
+            on_confirm      = lambda: _confirmar_desactivar(usuario_id, nombre),
+            variante        = "danger",
+            texto_confirmar = "Desactivar",
+        )
 
     def _cambiar_rol(usuario_id: int, nombre: str, rol_actual: str) -> None:
         if not es_admin:
@@ -220,13 +215,14 @@ def usuarios_page() -> None:
                 with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
                     ui.label(u.nombre_completo).classes("flex-1")
                     ui.label(u.usuario).classes("w-32 font-mono text-sm")
-                    ui.badge(
+                    status_badge(
                         _ROLES_OPCIONES.get(rol_str, rol_str),
-                    ).classes(f"w-28 {_ROL_CLASES.get(rol_str, 'badge-neutral')}")
+                        _ROL_CLASES.get(rol_str, "badge-neutral").replace("badge-", ""),
+                    )
                     if u.activo:
-                        ui.badge("Activo").classes("w-20 badge-success")
+                        badge_estado_general(True)
                     else:
-                        ui.badge("Inactivo").classes("w-20 badge-neutral")
+                        badge_estado_general(False)
                     if es_admin:
                         with ui.row().classes("w-32 gap-1 justify-end"):
                             btn_icon("manage_accounts", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _cambiar_rol(uid, nom, r), tooltip="Cambiar rol")
@@ -236,13 +232,17 @@ def usuarios_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+
+            page_header(
+                titulo    = "Gestión de Usuarios",
+                subtitulo = "Cuentas de usuario y roles del sistema",
+                icono     = Icons.TEACHERS,
+                acciones  = [
+                    {"label": "Nuevo usuario", "on_click": _abrir_crear_usuario, "icono": "person_add", "variante": "primary"},
+                ] if es_admin else [],
+            )
+
             with ui.element("div").classes("panel-card"):
-                # Cabecera y botón crear
-                with ui.row().classes("items-center gap-2 mb-4 flex-wrap"):
-                    ThemeManager.icono(Icons.TEACHERS, size=22, color="var(--color-primary)")
-                    ui.label("Gestión de Usuarios").classes("text-xl font-bold")
-                    if es_admin:
-                        btn_primary("Nuevo usuario", on_click=_abrir_crear_usuario, icon="person_add").classes("ml-auto")
 
                 # Filtros
                 with ui.row().classes("gap-4 items-center flex-wrap mb-4"):

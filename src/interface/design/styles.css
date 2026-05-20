@@ -390,7 +390,8 @@ body {
   background: var(--color-warning);
 }
 
-.stat-card-wrapper.error::before {
+.stat-card-wrapper.error::before,
+.stat-card-wrapper.danger::before {
   background: var(--color-error);
 }
 
@@ -442,7 +443,8 @@ body {
   background: var(--color-warning-light);
 }
 
-.stat-card-wrapper.error .stat-card-icon-wrap {
+.stat-card-wrapper.error .stat-card-icon-wrap,
+.stat-card-wrapper.danger .stat-card-icon-wrap {
   background: var(--color-error-light);
 }
 
@@ -2912,7 +2914,9 @@ td.tablero-promedio-superior,
   color: var(--color-text-primary);
 }
 
+/* DEPRECATED paso_10j: stat_card() ahora usa .stat-card-wrapper (ver más abajo) */
 /* ── Clases para stat_card ───────────────────────────────────────────────── */
+/* DEPRECATED paso_10j: .stat-card, .stat-card-header, .stat-icon-circle ya no se usan */
 .stat-card         { min-width: 200px; flex: 1; padding: var(--space-lg); }
 .stat-card-header  { width: 100%; margin-bottom: var(--space-md); }
 .stat-card-label   { color: var(--color-text-secondary); font-size: var(--font-size-small);
@@ -2961,6 +2965,25 @@ td.tablero-promedio-superior,
 .confirm-card-inner   { flex: 1; }
 .confirm-card-body    { color: var(--color-text-primary); font-size: var(--font-size-body); line-height: 1.5; }
 .confirm-card-actions { margin-top: var(--space-sm); }
+
+/* confirmation_card.py — variantes estáticas */
+.confirmation-card-danger {
+  background: var(--color-error-light);
+  border-left: 4px solid var(--color-error);
+}
+.confirmation-card-warning {
+  background: var(--color-warning-light);
+  border-left: 4px solid var(--color-warning);
+}
+.confirmation-card-info {
+  background: var(--color-info-light);
+  border-left: 4px solid var(--color-info);
+}
+
+/* confirmation_card title color por variante */
+.confirmation-card-danger  .confirm-card-title { color: var(--color-error);   }
+.confirmation-card-warning .confirm-card-title { color: var(--color-warning); }
+.confirmation-card-info    .confirm-card-title { color: var(--color-info);    }
 
 /* Botón de acción flotante sobre celda (posición absoluta top-right) */
 .btn-cell-overlay { position: absolute; top: 0; right: 0; }

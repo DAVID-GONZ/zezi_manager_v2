@@ -20,6 +20,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
+from src.interface.design.components import page_header
 from src.services.configuracion_service import ActualizarInfoInstitucionalDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
@@ -151,11 +152,15 @@ def configuracion_institucion_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+
+            page_header(
+                titulo    = "Información Institucional",
+                subtitulo = "Datos básicos y generales de la institución educativa",
+                icono     = "business",
+            )
+
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ThemeManager.icono("business", size=22, color="var(--color-primary)")
-                    ui.label("Información Institucional").classes("text-xl font-bold")
-                    btn_icon("arrow_back", on_click=lambda: ui.navigate.to("/admin/configuracion"), tooltip="Volver a Configuración SIE").classes("ml-auto")
+                btn_icon("arrow_back", on_click=lambda: ui.navigate.to("/admin/configuracion"), tooltip="Volver a Configuración SIE").classes("ml-auto")
 
                 ui.label(
                     "Estos datos aparecen en los boletines e informes académicos."

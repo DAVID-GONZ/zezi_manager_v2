@@ -7,7 +7,7 @@
 | T1 | CSS fixes + reparación de 2 componentes | styles.css, stat_card.py, confirmation_card.py | R1, R2, R10 |
 | T2 | `stat_card()` adoptado en 3 páginas | inicio.py, tablero_estadisticos.py, estudiantes.py | R3 |
 | T3 | `page_header()` adoptado en 8 páginas | admin/*, academico/estudiantes, academico/horarios | R4 |
-| T4 | `confirm_dialog()` adoptado en ~8 páginas | admin/*, academico/estudiantes, evaluacion/* | R5 |
+| T4 | `confirm_dialog()` adoptado en 6 páginas | grupos, asignaturas, asignaciones, usuarios, estudiantes, configuracion_evaluacion | R5 |
 | T5 | `badge_*` adoptado en 6 páginas | admin/*, evaluacion/* | R6 |
 | T6 | Verificación final | — | R9 |
 
@@ -319,6 +319,10 @@ page_header(
     icono     = "settings",
 )
 ```
+**Nota**: esta página tiene múltiples `ThemeManager.icono()` en sub-secciones internas
+(líneas ~107 y ~145 con iconos de "event_busy" y "business"). **No tocarlos** — solo
+reemplazar el header principal (el `with ui.row().classes("items-center gap-2 mb-4")`
+con `ThemeManager.icono(Icons.CONFIG, ...)` y el `ui.label("Configuración SIE")`).
 
 **T3-6: `admin/configuracion_institucion.py`**
 ```python
@@ -402,29 +406,34 @@ Identificar cuáles son confirms simples (solo label + 2 botones) y migrarlos.
 Los que tienen inputs (edit area, edit asignatura) se omiten.
 
 **T4-3: `admin/asignaciones.py`**
-Localizar el dialog de desactivar asignación (~línea 165).
-Si tiene solo label + 2 botones → migrar a `confirm_dialog`.
+`_desactivar_asignacion()` (línea ~164). Tiene 2 `ui.label()` (uno principal +
+uno con nota sobre el historial). Concatenarlos en el parámetro `mensaje`:
+```python
+confirm_dialog(
+    titulo          = "Desactivar asignación",
+    mensaje         = f"¿Desactivar asignación '{label}'? El histórico de notas y asistencia se conserva.",
+    on_confirm      = lambda: _confirmar_desactivar(asig_id, label),
+    variante        = "warning",
+    texto_confirmar = "Desactivar",
+)
+```
+Renombrar `_confirmar_desactivar(dlg, asig_id, label)` → `_confirmar_desactivar(asig_id, label)`.
 
 **T4-4: `admin/usuarios.py`**
-Dialogs en líneas ~132 y ~162:
+Solo `_desactivar_usuario()` (línea ~128) es confirm simple — migrar:
 ```python
-# Deactivate:
 confirm_dialog(
     titulo          = "Desactivar usuario",
-    mensaje         = f"¿Desactivar la cuenta de {nombre}? El usuario no podrá iniciar sesión.",
-    on_confirm      = lambda: _ejecutar_desactivacion(usuario_id),
+    mensaje         = f"¿Desactivar la cuenta de '{nombre}'? No podrá iniciar sesión.",
+    on_confirm      = lambda: _confirmar_desactivar(usuario_id, nombre),
     variante        = "danger",
     texto_confirmar = "Desactivar",
 )
-# Role change:
-confirm_dialog(
-    titulo          = "Cambiar rol",
-    mensaje         = f"¿Cambiar el rol de {nombre} a {nuevo_rol}?",
-    on_confirm      = lambda: _ejecutar_cambio_rol(usuario_id, nuevo_rol),
-    variante        = "warning",
-    texto_confirmar = "Cambiar rol",
-)
 ```
+Renombrar `_confirmar_desactivar(dlg, usuario_id, nombre)` → `_confirmar_desactivar(usuario_id, nombre)` (quitar `dlg`).
+
+**`_cambiar_rol()` (línea ~158) — NO migrar**: contiene `ui.select` para elegir
+el nuevo rol; es un CRUD dialog que queda intacto.
 
 **T4-5: `academico/estudiantes.py`**
 El confirm de retiro (~línea 566, función `_confirmar_retiro`):
@@ -451,27 +460,23 @@ confirm_dialog(
 ```
 
 **T4-7: `evaluacion/habilitaciones.py`**
-Si existe un confirm de eliminar habilitación (verificar código).
+**No aplica** — el módulo no tiene confirm simple de eliminar habilitación.
+El único dialog es `_registrar_nota_dialog()` que contiene inputs (`ui.number`,
+`ui.input`). No hay nada que migrar aquí.
 
 **T4-8: `evaluacion/planes_mejoramiento.py`**
-El confirm de cerrar plan (~línea 157):
-```python
-confirm_dialog(
-    titulo          = "Cerrar plan de mejora",
-    mensaje         = "¿Cerrar este plan? Se marcará como completado y no podrá modificarse.",
-    on_confirm      = lambda: _ejecutar_cierre(plan_id),
-    variante        = "warning",
-    texto_confirmar = "Cerrar plan",
-)
-```
+**No aplica** — `_cerrar_plan_dialog()` (línea ~156) contiene `ui.select`
+(estado de cierre) + `ui.textarea` (observación obligatoria con validación).
+Es un CRUD dialog; queda intacto.
 
 **Verificación T4:**
 ```bash
 grep -rn "confirm_dialog" src/interface/pages/
-# → al menos 8 resultados en archivos distintos
+# → al menos 6 resultados en archivos distintos:
+#   grupos, asignaturas, asignaciones, usuarios, estudiantes, configuracion_evaluacion
 # Comprobar que los dialogs simples anteriores ya no tienen 'ui.dialog' solo con ui.label:
-grep -n "with ui.dialog.*dlg.*ui.card" src/interface/pages/admin/grupos.py
-# → solo debe retornar el dialog de edición (CRUD), no el de eliminar
+grep -n "with ui.dialog" src/interface/pages/admin/grupos.py
+# → solo debe retornar el dialog _abrir_editar() (CRUD), no el de eliminar
 ```
 
 ---

@@ -36,48 +36,31 @@ def stat_card(
                    - "info"     → azul claro
 
     Returns:
-        El elemento raíz de la tarjeta (ui.card) para poder encadenarlo
-        con .style() o .classes() si es necesario.
+        El elemento raíz de la tarjeta (ui.element div con .stat-card-wrapper)
+        para poder encadenarlo con .classes() si es necesario.
 
     Ejemplo:
         stat_card("Total estudiantes", 342, "school", subtitulo="+12 este mes")
         stat_card("Promedio general", "4.1", "bar_chart", variante="success")
         stat_card("Faltas sin justificar", 18, "warning", variante="danger")
     """
-    _COLOR_MAP = {
+    _ICON_COLORS = {
         "primary": "var(--color-primary)",
         "success": "var(--color-success)",
         "warning": "var(--color-warning)",
         "danger":  "var(--color-error)",
         "info":    "var(--color-info)",
     }
-    _BG_MAP = {
-        "primary": "var(--color-primary-lighter)",
-        "success": "var(--color-success-light)",
-        "warning": "var(--color-warning-light)",
-        "danger":  "var(--color-error-light)",
-        "info":    "var(--color-info-light)",
-    }
+    icono_color = _ICON_COLORS.get(variante, "var(--color-primary)")
 
-    icono_color = _COLOR_MAP.get(variante, "var(--color-primary)")
-    icono_bg    = _BG_MAP.get(variante, "var(--color-primary-lighter)")
-
-    card = ui.card().classes("andes-card stat-card")
+    card = ui.element("div").classes(f"stat-card-wrapper {variante}")
     with card:
-        with ui.row().classes("stat-card-header items-start justify-between"):
-            # Columna de textos
-            with ui.column().classes("gap-1"):
-                ui.label(titulo).classes("stat-card-label")
-                ui.label(str(valor)).classes("font-h1 stat-card-value")
-                if subtitulo:
-                    ui.label(subtitulo).classes("stat-card-sub")
-
-            # Contenedor circular del icono
-            with ui.element("div").classes("stat-icon-circle").style(
-                f"background:{icono_bg}"
-            ):
-                ThemeManager.icono(icono, size=24, color=icono_color)
-
+        with ui.element("div").classes("stat-card-icon-wrap"):
+            ThemeManager.icono(icono, size=22, color=icono_color)
+        ui.label(titulo).classes("stat-card-label")
+        ui.label(str(valor)).classes("stat-card-value")
+        if subtitulo:
+            ui.label(subtitulo).classes("stat-card-subtitle")
     return card
 
 

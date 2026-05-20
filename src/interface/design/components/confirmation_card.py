@@ -49,26 +49,22 @@ def confirmation_card(
         )
         # Para ocultar: card.set_visibility(False)
     """
-    _COLOR_MAP = {
-        "danger":  ("var(--color-error)",   "var(--color-error-light)",   "warning"),
-        "warning": ("var(--color-warning)", "var(--color-warning-light)", "warning"),
-        "info":    ("var(--color-info)",    "var(--color-info-light)",    "info"),
+    _ICONO_MAP = {
+        "danger":  ("var(--color-error)",   "warning"),
+        "warning": ("var(--color-warning)", "warning"),
+        "info":    ("var(--color-info)",    "info"),
     }
-    icono_color, bg_color, icono_nombre = _COLOR_MAP.get(
-        variante, ("var(--color-warning)", "var(--color-warning-light)", "warning")
+    icono_color, icono_nombre = _ICONO_MAP.get(
+        variante, ("var(--color-warning)", "warning")
     )
 
-    card = ui.card().classes("andes-card").style(
-        f"background:{bg_color}; border-left: 4px solid {icono_color};"
-    )
+    card = ui.card().classes(f"andes-card confirmation-card-{variante}")
     with card:
         with ui.row().classes("w-full items-start gap-3"):
             ThemeManager.icono(icono_nombre, size=24, color=icono_color)
 
             with ui.column().classes("confirm-card-inner gap-2"):
-                ui.label(titulo).classes("font-h3").style(
-                    f"color:{icono_color}"
-                )
+                ui.label(titulo).classes("font-h3 confirm-card-title")
                 ui.label(mensaje).classes("confirm-card-body")
 
                 with ui.row().classes("confirm-card-actions items-center gap-2"):

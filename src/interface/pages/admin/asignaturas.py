@@ -21,6 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import page_header, confirm_dialog
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -107,24 +108,10 @@ def asignaturas_page() -> None:
             logger.error("Error al crear área: %s", exc)
             ui.notify("Error al crear el área", type="negative")
 
-    def _eliminar_area(area_id: int, nombre: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Eliminar área '{nombre}'? Esta acción es irreversible."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Eliminar",
-                    on_click=lambda: _confirmar_eliminar_area(dlg, area_id, nombre),
-                )
-        dlg.open()
-
-    def _confirmar_eliminar_area(dlg, area_id: int, nombre: str) -> None:
+    def _confirmar_eliminar_area(area_id: int, nombre: str) -> None:
         try:
             Container.infraestructura_service().eliminar_area(area_id)
             ui.notify(f"Área '{nombre}' eliminada", type="positive")
-            dlg.close()
             _cargar_areas()
             _cargar_asignaturas()
             tabla_areas.refresh()
@@ -135,7 +122,15 @@ def asignaturas_page() -> None:
         except Exception as exc:
             logger.error("Error al eliminar área %s: %s", area_id, exc)
             ui.notify("Error al eliminar el área", type="negative")
-            dlg.close()
+
+    def _eliminar_area(area_id: int, nombre: str) -> None:
+        confirm_dialog(
+            titulo          = "Eliminar área",
+            mensaje         = f"¿Eliminar el área '{nombre}'? Esta acción es irreversible.",
+            on_confirm      = lambda: _confirmar_eliminar_area(area_id, nombre),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+        )
 
     def _editar_area(area: AreaConocimiento) -> None:
         with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
@@ -200,24 +195,10 @@ def asignaturas_page() -> None:
             logger.error("Error al crear asignatura: %s", exc)
             ui.notify("Error al crear la asignatura", type="negative")
 
-    def _eliminar_asignatura(asig_id: int, nombre: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Eliminar asignatura '{nombre}'? Esta acción es irreversible."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Eliminar",
-                    on_click=lambda: _confirmar_eliminar_asig(dlg, asig_id, nombre),
-                )
-        dlg.open()
-
-    def _confirmar_eliminar_asig(dlg, asig_id: int, nombre: str) -> None:
+    def _confirmar_eliminar_asig(asig_id: int, nombre: str) -> None:
         try:
             Container.infraestructura_service().eliminar_asignatura(asig_id)
             ui.notify(f"Asignatura '{nombre}' eliminada", type="positive")
-            dlg.close()
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
         except ValueError as exc:
@@ -225,7 +206,15 @@ def asignaturas_page() -> None:
         except Exception as exc:
             logger.error("Error al eliminar asignatura %s: %s", asig_id, exc)
             ui.notify("Error al eliminar la asignatura", type="negative")
-            dlg.close()
+
+    def _eliminar_asignatura(asig_id: int, nombre: str) -> None:
+        confirm_dialog(
+            titulo          = "Eliminar asignatura",
+            mensaje         = f"¿Eliminar la asignatura '{nombre}'? Esta acción es irreversible.",
+            on_confirm      = lambda: _confirmar_eliminar_asig(asig_id, nombre),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+        )
 
     def _editar_asignatura(asig: Asignatura) -> None:
         areas_dict = {a.id: a.nombre for a in _s["areas"]}
@@ -323,6 +312,12 @@ def asignaturas_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+
+            page_header(
+                titulo    = "Gestión de Asignaturas",
+                subtitulo = "Áreas de conocimiento y asignaturas del currículo",
+                icono     = Icons.SUBJECTS,
+            )
 
             # ── Sección: Áreas de conocimiento ───────────────────────────────
             with ui.element("div").classes("panel-card"):

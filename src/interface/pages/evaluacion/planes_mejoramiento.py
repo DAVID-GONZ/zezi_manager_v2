@@ -27,6 +27,7 @@ from src.services.habilitacion_service import (
     CerrarPlanMejoramientoDTO,
 )
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
+from src.interface.design.components import status_badge
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.PLANES")
@@ -242,9 +243,10 @@ def planes_mejoramiento_page() -> None:
                         "..." if len(plan.actividades_propuestas) > 60 else ""
                     )).classes("flex-1 text-sm text-grey-7")
                     ui.label(plan.fecha_inicio.strftime("%d/%m/%Y")).classes("w-28 text-sm")
-                    ui.badge(
+                    status_badge(
                         estado_val.capitalize(),
-                    ).classes(f"w-24 text-center {_ESTADO_CLASES.get(estado_val, 'badge-neutral')}")
+                        _ESTADO_CLASES.get(estado_val, "badge-neutral").replace("badge-", ""),
+                    )
                     with ui.row().classes("w-20 justify-end"):
                         if plan.esta_activo:
                             btn_icon(

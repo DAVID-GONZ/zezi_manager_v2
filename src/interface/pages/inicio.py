@@ -17,6 +17,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.design.components.status_badge import status_badge
+from src.interface.design.components import stat_card
 from src.interface.design.layout import app_layout
 from src.services.auditoria_service import FiltroAuditoriaDTO
 from src.services.alerta_service import FiltroAlertasDTO
@@ -161,31 +162,6 @@ def _seccion_saludo(ctx: SessionContext, config) -> None:
 
 # ── SECCIÓN 2 — Stat cards ────────────────────────────────────────────────────
 
-def _stat_card(
-    titulo: str,
-    valor: str,
-    icono: str,
-    subtitulo: str = "",
-    variante: str = "primary",
-) -> None:
-    _icon_colors = {
-        "primary": "var(--color-primary)",
-        "success": "var(--color-success)",
-        "warning": "var(--color-warning)",
-        "error":   "var(--color-error)",
-        "info":    "var(--color-info)",
-    }
-    with ui.element("div").classes(f"stat-card-wrapper {variante}"):
-        with ui.element("div").classes("stat-card-icon-wrap"):
-            ThemeManager.icono(
-                icono, size=22,
-                color=_icon_colors.get(variante, "var(--color-primary)"),
-            )
-        ui.label(titulo).classes("stat-card-label")
-        ui.label(str(valor)).classes("stat-card-value")
-        if subtitulo:
-            ui.label(subtitulo).classes("stat-card-subtitle")
-
 
 def _seccion_stats(ctx: SessionContext, config) -> None:
     _CONFIGS = {
@@ -241,7 +217,7 @@ def _seccion_stats(ctx: SessionContext, config) -> None:
 
     with ui.element("div").classes("stats-grid"):
         for i, (titulo_s, icono_s, variante_s) in enumerate(configs):
-            _stat_card(
+            stat_card(
                 titulo=titulo_s, valor=valores[i],
                 icono=icono_s, subtitulo=subtitulos[i],
                 variante=variante_s,

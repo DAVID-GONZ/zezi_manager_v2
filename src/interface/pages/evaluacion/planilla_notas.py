@@ -21,6 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components import status_badge
 from src.services.evaluacion_service import NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -408,7 +409,7 @@ def planilla_notas_page() -> None:
                         "publicada": "badge-success",
                         "cerrada":   "badge-warning",
                     }.get(estado_val, "badge-neutral")
-                    ui.badge(estado_val.capitalize()).classes(f"w-24 text-center {badge_clase}")
+                    status_badge(estado_val.capitalize(), badge_clase.replace("badge-", ""))
 
                     with ui.row().classes("w-32 justify-end gap-1"):
                         if act.estado == EstadoActividad.BORRADOR:
