@@ -21,6 +21,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.evaluacion_service import NuevaCategoriaDTO, ActualizarCategoriaDTO
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -158,8 +159,8 @@ def configuracion_evaluacion_page() -> None:
                     ui.notify("Error al actualizar", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Guardar", on_click=_guardar, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Guardar", on_click=_guardar)
         dlg.open()
 
     def _eliminar_categoria(cat) -> None:
@@ -168,10 +169,9 @@ def configuracion_evaluacion_page() -> None:
                 f"¿Eliminar categoría '{cat.nombre}'? Esta acción es irreversible."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Eliminar",
-                    color="negative",
                     on_click=lambda: _confirmar_eliminar(dlg, cat),
                 )
         dlg.open()
@@ -240,15 +240,8 @@ def configuracion_evaluacion_page() -> None:
                         "w-24 text-right text-sm font-medium"
                     )
                     with ui.row().classes("w-20 justify-end gap-1"):
-                        ui.button(
-                            icon="edit",
-                            on_click=lambda c=cat: _editar_categoria(c),
-                        ).props("flat round dense").tooltip("Editar")
-                        ui.button(
-                            icon="delete",
-                            color="negative",
-                            on_click=lambda c=cat: _eliminar_categoria(c),
-                        ).props("flat round dense").tooltip("Eliminar")
+                        btn_icon("edit", on_click=lambda c=cat: _editar_categoria(c), tooltip="Editar")
+                        btn_icon("delete", on_click=lambda c=cat: _eliminar_categoria(c), tooltip="Eliminar", variante="danger")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -299,30 +292,29 @@ def configuracion_evaluacion_page() -> None:
                         step=0.01,
                         format="%.2f",
                     ).classes("w-36").bind_value(_s, "form_peso")
-                    ui.button(
-                        "Agregar categoría",
-                        icon="add",
-                        on_click=_crear_categoria,
-                        color="primary",
-                    )
+                    btn_primary("Agregar categoría", icon="add", on_click=_crear_categoria)
 
             # Resumen de pesos y tabla
             with ui.element("div").classes("panel-card mt-4"):
                 with ui.row().classes("items-center gap-2 mb-3"):
                     ui.label("Categorías registradas").classes("text-base font-semibold")
                     ui.badge(str(len(_s["categorias"]))).classes("badge-primary")
-                    ui.button(
-                        icon="refresh",
+                    btn_icon(
+                        "refresh",
                         on_click=lambda: (
                             _cargar_categorias(),
                             tabla_categorias.refresh(),
                             panel_suma.refresh(),
                         ),
-                    ).props("flat round dense").tooltip("Recargar")
+                        tooltip="Recargar",
+                    )
 
                 panel_suma()
                 ui.separator().classes("my-3")
                 tabla_categorias()
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Evaluación · Configuración",
@@ -330,6 +322,8 @@ def configuracion_evaluacion_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/configuracion",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

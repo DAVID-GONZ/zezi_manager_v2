@@ -33,6 +33,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon
 from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -243,19 +244,13 @@ def horarios_page() -> None:
 
                                                 # Botón eliminar (solo admin/director)
                                                 if puede_escribir:
-                                                    (
-                                                        ui.button("×")
-                                                        .classes(
-                                                            "absolute top-0 right-0 "
-                                                            "text-negative"
-                                                        )
-                                                        .props("flat dense size=xs")
-                                                        .tooltip("Eliminar bloque")
-                                                        .on(
-                                                            "click",
-                                                            lambda _, bid=bloque.id: _confirmar_eliminar(bid),
-                                                        )
-                                                    )
+                                                    btn_icon(
+                                                        "close",
+                                                        on_click=lambda _, bid=bloque.id: _confirmar_eliminar(bid),
+                                                        tooltip="Eliminar bloque",
+                                                        variante="danger",
+                                                        size="sm",
+                                                    ).classes("btn-cell-overlay")
 
     # ── Helpers de diálogos ───────────────────────────────────────────────────
 
@@ -264,7 +259,7 @@ def horarios_page() -> None:
         with ui.dialog() as dlg, ui.card():
             ui.label("¿Eliminar este bloque del horario?").classes("text-subtitle1 q-mb-md")
             with ui.row().classes("justify-end gap-sm"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
+                btn_ghost("Cancelar", on_click=dlg.close)
 
                 def _ok() -> None:
                     try:
@@ -277,7 +272,7 @@ def horarios_page() -> None:
                         logger.error("Error eliminando bloque %s: %s", horario_id, exc)
                         ui.notify(str(exc), type="negative")
 
-                ui.button("Eliminar", on_click=_ok).props("color=negative")
+                btn_danger("Eliminar", on_click=_ok)
         dlg.open()
 
     def _abrir_dialog_crear() -> None:
@@ -350,7 +345,7 @@ def horarios_page() -> None:
             ).classes("w-full")
 
             with ui.row().classes("q-mt-md justify-end gap-sm"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
+                btn_ghost("Cancelar", on_click=dlg.close)
 
                 def _guardar() -> None:
                     asig_id = _form.get("asig_id")
@@ -386,7 +381,7 @@ def horarios_page() -> None:
                         logger.error("Error guardando bloque: %s", exc)
                         ui.notify("Error al guardar el bloque", type="negative")
 
-                ui.button("Guardar", on_click=_guardar).props("color=primary")
+                btn_primary("Guardar", on_click=_guardar)
 
         dlg.open()
 
@@ -461,22 +456,25 @@ def horarios_page() -> None:
                         _cargar_bloques()
                         grilla_refreshable.refresh()
 
-                    ui.button(
+                    btn_primary(
                         "Ver horario",
                         icon=Icons.SEARCH,
                         on_click=_ver_horario,
-                    ).props("color=primary")
+                    )
 
                     # Botón Agregar bloque (solo admin/director)
                     if puede_escribir:
-                        ui.button(
+                        btn_secondary(
                             "Agregar bloque",
                             icon="add",
                             on_click=_abrir_dialog_crear,
-                        ).props("outline color=primary")
+                        )
 
             # ── Grilla semanal ────────────────────────────────────────────────
             grilla_refreshable()
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Horarios",
@@ -484,6 +482,8 @@ def horarios_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/horarios",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

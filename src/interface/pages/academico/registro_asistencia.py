@@ -43,6 +43,7 @@ from src.interface.design.components.context_selector import abrir_selector
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
@@ -229,10 +230,10 @@ def _fila_estudiante(
                 with ui.element("div").classes("asis-btn-group"):
                     for codigo, etiqueta, clase_btn, larga in _ESTADOS:
                         activo = "asis-btn-active" if estado_actual == codigo else ""
+                        from src.interface.design.components.buttons import btn_ghost as _btn_ghost
                         (
-                            ui.button(etiqueta)
+                            _btn_ghost(etiqueta)
                             .classes(f"asis-btn {clase_btn} {activo}".strip())
-                            .props("flat dense no-caps")
                             .tooltip(larga)
                             .on("click", lambda _, c=codigo, eid=est.id: on_estado(eid, c))
                         )
@@ -312,22 +313,24 @@ def _toolbar(
 
         if not readonly:
             with ui.element("div").classes("asis-actions"):
-                ui.button(
+                from src.interface.design.components.buttons import btn_ghost
+                btn_ghost(
                     "Todos presentes",
                     on_click=lambda: on_marcar_todos("P"),
-                ).props("flat dense no-caps").classes("asis-action-btn asis-action-p")
+                ).classes("asis-action-btn asis-action-p")
 
-                ui.button(
+                btn_ghost(
                     "Todos ausentes",
                     on_click=lambda: on_marcar_todos("FI"),
-                ).props("flat dense no-caps").classes("asis-action-btn asis-action-fi")
+                ).classes("asis-action-btn asis-action-fi")
 
                 ui.element("div").classes("asis-toolbar-sep")
 
-                ui.button(
+                btn_primary(
                     "Guardar",
                     on_click=on_guardar,
-                ).classes("btn btn-primary btn-sm")
+                    size="sm",
+                )
 
 
 # ── Persistencia ───────────────────────────────────────────────────────────────

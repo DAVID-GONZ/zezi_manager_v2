@@ -55,15 +55,13 @@ def data_table(
         Para renderizado personalizado por celda, usa el slot 'body-cell-{name}'
         de NiceGUI/Quasar directamente sobre el objeto tabla retornado.
     """
-    with ui.column().classes("gap-3").style("width:100%"):
+    with ui.column().classes("gap-3 data-table-root"):
 
         # Cabecera: título + buscador
         if titulo or buscable:
-            with ui.row().classes("items-center justify-between").style("width:100%"):
+            with ui.row().classes("items-center justify-between data-table-root"):
                 if titulo:
-                    ui.label(titulo).classes("font-h3").style(
-                        "color:var(--color-text-primary);"
-                    )
+                    ui.label(titulo).classes("font-h3 text-primary")
                 else:
                     ui.element("div")  # spacer
 
@@ -71,8 +69,7 @@ def data_table(
                     search = (
                         ui.input(placeholder="Buscar…")
                         .props('dense outlined clearable')
-                        .classes("andes-input")
-                        .style("max-width:280px;")
+                        .classes("andes-input data-table-search")
                     )
                 else:
                     search = None
@@ -88,7 +85,7 @@ def data_table(
         if paginado:
             table_kwargs["pagination"] = filas_por_pagina
 
-        tabla = ui.table(**table_kwargs).classes("andes-table").style("width:100%;")
+        tabla = ui.table(**table_kwargs).classes("andes-table data-table-root")
 
         # Vincular búsqueda al filtro interno de la tabla
         if search is not None:
@@ -96,7 +93,7 @@ def data_table(
 
         # Cursor pointer + handler de click por fila
         if on_row_click is not None:
-            tabla.style("cursor:pointer;")
+            tabla.classes("data-table-clickable")
 
             def _handle_row_click(e) -> None:
                 # e.args en NiceGUI 3.x: [MouseEvent, row_dict, row_index]

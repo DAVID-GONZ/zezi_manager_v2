@@ -19,6 +19,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
 
@@ -139,13 +140,8 @@ def cierre_periodo_page() -> None:
                     ui.notify("Error al cerrar el periodo", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
-                    "Cerrar periodo",
-                    icon="lock",
-                    color="negative",
-                    on_click=_ejecutar_cierre,
-                )
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger("Cerrar periodo", icon="lock", on_click=_ejecutar_cierre)
 
         dlg.open()
 
@@ -239,10 +235,11 @@ def cierre_periodo_page() -> None:
                             _on_selector_cambio(),
                         ),
                     ).classes("w-64")
-                    ui.button(
-                        icon="refresh",
+                    btn_icon(
+                        "refresh",
                         on_click=lambda: (_cargar_planilla(), resumen_planilla.refresh()),
-                    ).props("flat round dense").tooltip("Recargar")
+                        tooltip="Recargar",
+                    )
 
                 resumen_planilla()
 
@@ -253,16 +250,14 @@ def cierre_periodo_page() -> None:
                     "Al cerrar el periodo se calcularán las notas definitivas para "
                     "todos los estudiantes usando las categorías y actividades registradas."
                 ).classes("text-sm text-grey-6 mb-4")
-                ui.button(
-                    "Cerrar periodo",
-                    icon="lock",
-                    color="negative",
-                    on_click=_abrir_confirmar_cierre,
-                )
+                btn_danger("Cerrar periodo", icon="lock", on_click=_abrir_confirmar_cierre)
 
             # Tabla resultado
             with ui.element("div").classes("panel-card mt-4"):
                 tabla_resultado()
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Evaluación · Cierre de Periodo",
@@ -270,6 +265,8 @@ def cierre_periodo_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/cierre-periodo",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

@@ -11,6 +11,7 @@ from typing import Callable
 from nicegui import ui
 
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 
 def confirmation_card(
@@ -49,51 +50,40 @@ def confirmation_card(
         # Para ocultar: card.set_visibility(False)
     """
     _COLOR_MAP = {
-        "danger":  ("var(--color-error)",   "#FFEBEE", "warning"),
-        "warning": ("var(--color-warning)", "#FFF3E0", "warning"),
-        "info":    ("var(--color-info)",    "#E1F5FE", "info"),
+        "danger":  ("var(--color-error)",   "var(--color-error-light)",   "warning"),
+        "warning": ("var(--color-warning)", "var(--color-warning-light)", "warning"),
+        "info":    ("var(--color-info)",    "var(--color-info-light)",    "info"),
     }
     icono_color, bg_color, icono_nombre = _COLOR_MAP.get(
-        variante, ("var(--color-warning)", "#FFF3E0", "warning")
+        variante, ("var(--color-warning)", "var(--color-warning-light)", "warning")
     )
-    btn_class = "btn-danger" if variante == "danger" else "btn-primary"
 
     card = ui.card().classes("andes-card").style(
-        f"background:{bg_color};"
-        f"border-left:4px solid {icono_color};"
-        "padding:var(--space-md);"
-        "width:100%;"
+        f"background:{bg_color}; border-left: 4px solid {icono_color};"
     )
     with card:
-        with ui.row().classes("items-start gap-3").style("width:100%;"):
+        with ui.row().classes("w-full items-start gap-3"):
             ThemeManager.icono(icono_nombre, size=24, color=icono_color)
 
-            with ui.column().classes("gap-2").style("flex:1;"):
+            with ui.column().classes("confirm-card-inner gap-2"):
                 ui.label(titulo).classes("font-h3").style(
-                    f"color:{icono_color};"
+                    f"color:{icono_color}"
                 )
-                ui.label(mensaje).style(
-                    "color:var(--color-text-primary);"
-                    "font-size:var(--font-size-body);"
-                    "line-height:1.5;"
-                )
+                ui.label(mensaje).classes("confirm-card-body")
 
-                with ui.row().classes("gap-2 items-center").style("margin-top:var(--space-sm)"):
+                with ui.row().classes("confirm-card-actions items-center gap-2"):
                     def _cancelar():
                         if on_cancelar:
                             on_cancelar()
                         else:
                             card.set_visibility(False)
 
-                    ui.button(
-                        texto_cancelar,
-                        on_click=_cancelar,
-                    ).classes("btn-secondary")
+                    btn_secondary(texto_cancelar, on_click=_cancelar)
 
-                    ui.button(
-                        texto_confirmar,
-                        on_click=on_confirm,
-                    ).classes(btn_class)
+                    if variante == "danger":
+                        btn_danger(texto_confirmar, on_click=on_confirm)
+                    else:
+                        btn_primary(texto_confirmar, on_click=on_confirm)
 
     return card
 

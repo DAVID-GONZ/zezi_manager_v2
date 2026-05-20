@@ -3,7 +3,7 @@ page_header.py — Cabecera de página del design system Andes Minimal.
 
 Ajustes NiceGUI 3.x:
   - Iconos via ThemeManager.icono() (ui.html) en vez de ui.element().text()
-  - Botones de acción usan context managers o parámetros directos, no .add()
+  - Botones de acción usan btn_*() del design system
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import Callable
 from nicegui import ui
 
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 
 def page_header(
@@ -48,12 +49,7 @@ def page_header(
             ],
         )
     """
-    with ui.row().classes("items-center justify-between").style(
-        "width:100%;"
-        "margin-bottom:var(--space-lg);"
-        "padding-bottom:var(--space-md);"
-        "border-bottom: 1px solid var(--color-divider);"
-    ):
+    with ui.row().classes("page-header-row items-center justify-between"):
         # Lado izquierdo: icono + textos
         with ui.row().classes("items-center gap-3"):
             if icono:
@@ -64,37 +60,25 @@ def page_header(
                 )
 
             with ui.column().classes("gap-0"):
-                ui.label(titulo).classes("font-h2").style(
-                    "color:var(--color-text-primary); line-height:1.2;"
-                )
+                ui.label(titulo).classes("font-h2 page-header-title")
                 if subtitulo:
-                    ui.label(subtitulo).style(
-                        "color:var(--color-text-secondary);"
-                        "font-size:var(--font-size-small);"
-                        "margin-top:2px;"
-                    )
+                    ui.label(subtitulo).classes("page-header-sub")
 
         # Lado derecho: botones de acción
         if acciones:
             with ui.row().classes("gap-2 items-center"):
                 for accion in acciones:
-                    variante = accion.get("variante", "primary")
-                    btn_class = {
-                        "primary":   "btn-primary",
-                        "secondary": "btn-secondary",
-                        "danger":    "btn-danger",
-                    }.get(variante, "btn-primary")
-
-                    icono_accion = accion.get("icono", "")
+                    variante     = accion.get("variante", "primary")
+                    icono_accion = accion.get("icono", None)
                     label_accion = accion.get("label", "")
                     on_click     = accion.get("on_click", lambda: None)
 
-                    with ui.button(on_click=on_click).classes(btn_class).style(
-                        "display:inline-flex;align-items:center;gap:6px;"
-                    ):
-                        if icono_accion:
-                            ThemeManager.icono(icono_accion, size=18, color="inherit")
-                        ui.label(label_accion)
+                    if variante == "danger":
+                        btn_danger(label_accion, on_click=on_click, icon=icono_accion)
+                    elif variante == "secondary":
+                        btn_secondary(label_accion, on_click=on_click, icon=icono_accion)
+                    else:
+                        btn_primary(label_accion, on_click=on_click, icon=icono_accion)
 
 
 __all__ = ["page_header"]

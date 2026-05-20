@@ -21,6 +21,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
@@ -155,8 +156,8 @@ def asignaciones_page() -> None:
                     ui.notify("Error al crear la asignación", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Crear", on_click=_crear, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Crear", on_click=_crear)
 
         dlg.open()
 
@@ -169,10 +170,9 @@ def asignaciones_page() -> None:
                 "El histórico de notas y asistencia se conserva."
             ).classes("text-sm text-grey-6 mt-1")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Desactivar",
-                    color="negative",
                     on_click=lambda: _confirmar_desactivar(dlg, asig_id, label),
                 )
         dlg.open()
@@ -226,11 +226,7 @@ def asignaciones_page() -> None:
                         ui.badge("Inactiva").classes("w-20 badge-neutral")
                     with ui.row().classes("w-20 justify-end"):
                         if a.activo:
-                            ui.button(
-                                icon="link_off",
-                                color="negative",
-                                on_click=lambda aid=a.asignacion_id, lbl=a.display_corto: _desactivar_asignacion(aid, lbl),
-                            ).props("flat round dense").tooltip("Desactivar")
+                            btn_icon("link_off", on_click=lambda aid=a.asignacion_id, lbl=a.display_corto: _desactivar_asignacion(aid, lbl), tooltip="Desactivar", variante="danger")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -239,11 +235,7 @@ def asignaciones_page() -> None:
                 with ui.row().classes("items-center gap-2 mb-4 flex-wrap"):
                     ThemeManager.icono(Icons.SCHEDULE, size=22, color="var(--color-primary)")
                     ui.label("Gestión de Asignaciones").classes("text-xl font-bold")
-                    ui.button(
-                        "Nueva asignación", icon="add_link",
-                        on_click=_abrir_crear_asignacion,
-                        color="primary",
-                    ).classes("ml-auto")
+                    btn_primary("Nueva asignación", on_click=_abrir_crear_asignacion, icon="add_link").classes("ml-auto")
 
                 # Filtros
                 docentes_filtro = {None: "Todos los docentes"}
@@ -272,10 +264,7 @@ def asignaciones_page() -> None:
                         ),
                     ).classes("w-32")
                     ui.badge(str(len(_s["asignaciones"]))).classes("badge-primary")
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (_cargar_asignaciones(), tabla.refresh()),
-                    ).props("flat round dense").tooltip("Recargar")
+                    btn_icon("refresh", on_click=lambda: (_cargar_asignaciones(), tabla.refresh()), tooltip="Recargar")
 
                 tabla()
 
@@ -285,6 +274,7 @@ def asignaciones_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/asignaciones",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

@@ -26,6 +26,7 @@ from src.services.habilitacion_service import (
     NuevoPlanMejoramientoDTO,
     CerrarPlanMejoramientoDTO,
 )
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.PLANES")
@@ -195,8 +196,8 @@ def planes_mejoramiento_page() -> None:
                     ui.notify("Error al cerrar el plan", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Cerrar plan", on_click=_guardar_cierre, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Cerrar plan", on_click=_guardar_cierre)
 
         dlg.open()
 
@@ -246,11 +247,11 @@ def planes_mejoramiento_page() -> None:
                     ).classes(f"w-24 text-center {_ESTADO_CLASES.get(estado_val, 'badge-neutral')}")
                     with ui.row().classes("w-20 justify-end"):
                         if plan.esta_activo:
-                            ui.button(
-                                icon="lock",
-                                color="warning",
+                            btn_icon(
+                                "lock",
                                 on_click=lambda p=plan: _cerrar_plan_dialog(p),
-                            ).props("flat round dense").tooltip("Cerrar plan")
+                                tooltip="Cerrar plan",
+                            )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -267,12 +268,7 @@ def planes_mejoramiento_page() -> None:
                         "ID Estudiante",
                         placeholder="Ej: 1023",
                     ).classes("w-40").bind_value(_s, "buscar_est_id")
-                    ui.button(
-                        "Buscar",
-                        icon="search",
-                        on_click=_buscar_planes,
-                        color="primary",
-                    )
+                    btn_primary("Buscar", icon="search", on_click=_buscar_planes)
                     ui.badge(str(len(_s["planes"])), color="primary")
 
             # Tabla de planes
@@ -321,12 +317,10 @@ def planes_mejoramiento_page() -> None:
                         "Fecha seguimiento (opcional)",
                         placeholder="YYYY-MM-DD",
                     ).classes("w-44").bind_value(_s, "form_fecha_seguimiento")
-                    ui.button(
-                        "Crear plan",
-                        icon="add",
-                        on_click=_crear_plan,
-                        color="primary",
-                    )
+                    btn_primary("Crear plan", icon="add", on_click=_crear_plan)
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Evaluación · Planes de Mejoramiento",
@@ -334,6 +328,8 @@ def planes_mejoramiento_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/planes",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

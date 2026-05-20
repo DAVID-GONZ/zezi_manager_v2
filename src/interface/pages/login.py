@@ -23,6 +23,7 @@ from nicegui import app, ui
 
 from container import Container
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components.buttons import btn_primary
 
 logger = logging.getLogger("LOGIN")
 
@@ -168,9 +169,7 @@ def login_page() -> None:
             # Enter en el campo password también dispara el login
             password_input.on("keydown.enter", lambda _: intentar_login())
 
-            login_btn = ui.button("Iniciar sesión", on_click=intentar_login).classes(
-                "btn-primary w-full"
-            ).props("unelevated").style("margin-top:var(--space-lg); height: 44px; font-size: 15px; font-weight: 600; border-radius: var(--radius-md);")
+            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full")
 
             # ── Pie ──────────────────────────────────────────────────────────
             ui.label("© 2026 Gestor Docente").style(

@@ -53,53 +53,28 @@ def stat_card(
     }
     _BG_MAP = {
         "primary": "var(--color-primary-lighter)",
-        "success": "#E8F5E9",
-        "warning": "#FFF3E0",
-        "danger":  "#FFEBEE",
-        "info":    "#E1F5FE",
+        "success": "var(--color-success-light)",
+        "warning": "var(--color-warning-light)",
+        "danger":  "var(--color-error-light)",
+        "info":    "var(--color-info-light)",
     }
 
     icono_color = _COLOR_MAP.get(variante, "var(--color-primary)")
     icono_bg    = _BG_MAP.get(variante, "var(--color-primary-lighter)")
 
-    card = ui.card().classes("andes-card").style(
-        "min-width:200px;"
-        "flex:1;"
-        "padding:var(--space-lg);"
-    )
+    card = ui.card().classes("andes-card stat-card")
     with card:
-        with ui.row().classes("items-start justify-between").style("width:100%;margin-bottom:var(--space-md)"):
+        with ui.row().classes("stat-card-header items-start justify-between"):
             # Columna de textos
             with ui.column().classes("gap-1"):
-                ui.label(titulo).style(
-                    "color:var(--color-text-secondary);"
-                    "font-size:var(--font-size-small);"
-                    "font-weight:500;"
-                    "text-transform:uppercase;"
-                    "letter-spacing:0.05em;"
-                )
-                ui.label(str(valor)).classes("font-h1").style(
-                    "color:var(--color-text-primary);"
-                    "line-height:1.1;"
-                    "margin-top:2px;"
-                )
+                ui.label(titulo).classes("stat-card-label")
+                ui.label(str(valor)).classes("font-h1 stat-card-value")
                 if subtitulo:
-                    ui.label(subtitulo).style(
-                        "color:var(--color-text-secondary);"
-                        "font-size:var(--font-size-small);"
-                        "margin-top:4px;"
-                    )
+                    ui.label(subtitulo).classes("stat-card-sub")
 
             # Contenedor circular del icono
-            with ui.element("div").style(
-                f"background:{icono_bg};"
-                "border-radius:50%;"
-                "width:48px;"
-                "height:48px;"
-                "display:flex;"
-                "align-items:center;"
-                "justify-content:center;"
-                "flex-shrink:0;"
+            with ui.element("div").classes("stat-icon-circle").style(
+                f"background:{icono_bg}"
             ):
                 ThemeManager.icono(icono, size=24, color=icono_color)
 

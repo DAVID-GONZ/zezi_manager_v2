@@ -7,6 +7,8 @@ from typing import Callable
 
 from nicegui import ui
 
+from src.interface.design.components.buttons import btn_primary, btn_secondary
+
 
 def base_form(
     campos: list[dict],
@@ -59,26 +61,15 @@ def base_form(
     def _recoger_datos() -> dict:
         return {k: w.value for k, w in _valores.items()}
 
-    card = ui.card().classes("andes-card").style(
-        "width:100%;"
-        "padding:var(--space-lg);"
-        "background:var(--color-surface);"
-    )
+    card = ui.card().classes("andes-card base-form-card")
     with card:
         if titulo:
-            ui.label(titulo).classes("font-h3").style(
-                "color:var(--color-text-primary);"
-                "margin-bottom:var(--space-md);"
-            )
-            ui.separator().style("margin-bottom:var(--space-md);background:var(--color-divider);")
+            ui.label(titulo).classes("font-h3 base-form-title")
+            ui.separator().classes("base-form-sep")
 
-        col_style = (
-            "display:grid;"
-            f"grid-template-columns:repeat({columnas},1fr);"
-            "gap:var(--space-md);"
-            "width:100%;"
-        )
-        with ui.element("div").style(col_style):
+        with ui.element("div").classes("base-form-grid").style(
+            f"grid-template-columns: repeat({columnas}, 1fr);"
+        ):
             for campo in campos:
                 key         = campo.get("key", "")
                 label       = campo.get("label", key)
@@ -90,47 +81,44 @@ def base_form(
 
                 label_text = f"{label} *" if requerido else label
 
-                with ui.column().classes("gap-1").style("width:100%;"):
+                with ui.column().classes("gap-1 w-full"):
                     if tipo == "select":
                         widget = ui.select(
                             options=opciones,
                             label=label_text,
-                        ).classes("andes-input").style("width:100%;")
+                        ).classes("andes-input w-full")
                     elif tipo == "textarea":
                         widget = ui.textarea(
                             label=label_text,
                             placeholder=placeholder,
-                        ).classes("andes-input").style("width:100%;")
+                        ).classes("andes-input w-full")
                     elif tipo == "password":
                         widget = ui.input(
                             label=label_text,
                             placeholder=placeholder,
                             password=True,
                             password_toggle_button=True,
-                        ).classes("andes-input").style("width:100%;")
+                        ).classes("andes-input w-full")
                     else:
                         widget = ui.input(
                             label=label_text,
                             placeholder=placeholder,
-                        ).classes("andes-input").style("width:100%;")
+                        ).classes("andes-input w-full")
 
                     _valores[key] = widget
                     if isinstance(ref, list):
                         ref.append(widget)
 
-        ui.separator().style("margin:var(--space-md) 0;background:var(--color-divider);")
+        ui.separator().classes("base-form-sep")
 
-        with ui.row().classes("gap-2 justify-end").style("width:100%;"):
+        with ui.row().classes("base-form-footer gap-2 justify-end"):
             if on_cancelar and texto_cancelar:
-                ui.button(
-                    texto_cancelar,
-                    on_click=on_cancelar,
-                ).classes("btn-secondary")
+                btn_secondary(texto_cancelar, on_click=on_cancelar)
 
-            ui.button(
+            btn_primary(
                 texto_submit,
                 on_click=lambda: on_submit(_recoger_datos()),
-            ).classes("btn-primary")
+            )
 
     return card
 

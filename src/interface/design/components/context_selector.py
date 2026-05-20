@@ -26,6 +26,7 @@ from datetime import date
 from nicegui import ui
 
 from container import Container
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_ghost, btn_icon
 from src.interface.context.session_context import SessionContext
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -378,9 +379,7 @@ def abrir_selector(
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono("swap_horiz", size=22, color="var(--color-primary)")
                     ui.label("Contexto de trabajo").classes("cs-dialog-header")
-                ui.button(icon="close", on_click=dialog.close).props(
-                    "flat round dense"
-                ).style("color:var(--color-text-secondary)")
+                btn_icon("close", on_click=dialog.close, tooltip="Cerrar")
 
             # PASO 1: Periodo
             with ui.column().classes("gap-2 mb-5"):
@@ -436,12 +435,8 @@ def abrir_selector(
                     on_change()
 
             with ui.row().classes("gap-2 justify-end"):
-                ui.button("Cancelar", on_click=dialog.close).props("flat").style(
-                    "color:var(--color-text-secondary)"
-                )
-                btn_aplicar = ui.button("Aplicar contexto", on_click=aplicar).classes(
-                    "btn-primary"
-                )
+                btn_ghost("Cancelar", on_click=dialog.close)
+                btn_aplicar = btn_primary("Aplicar contexto", on_click=aplicar)
                 _actualizar_btn_aplicar()
 
     dialog.open()

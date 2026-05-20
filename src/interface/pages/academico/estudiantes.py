@@ -32,6 +32,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost
 from src.services.estudiante_service import (
     NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
@@ -357,7 +358,7 @@ def estudiantes_page() -> None:
                                 f"Fila {err['fila']} — Doc: {err['dato']} — {err['motivo']}"
                             ).classes("text-caption text-negative")
 
-                ui.button(
+                btn_secondary(
                     "Limpiar resultado",
                     icon="close",
                     on_click=lambda: _limpiar_resultado(),
@@ -403,7 +404,7 @@ def estudiantes_page() -> None:
                 piar_chk = ui.checkbox("Posee PIAR")
 
                 with ui.row().classes("q-mt-md justify-end gap-sm"):
-                    ui.button("Cancelar", on_click=dlg.close).props("flat")
+                    btn_ghost("Cancelar", on_click=dlg.close)
 
                     def _guardar_matricula() -> None:
                         try:
@@ -429,7 +430,7 @@ def estudiantes_page() -> None:
                             logger.error("Error matriculando estudiante: %s", exc)
                             ui.notify("Error inesperado al matricular.", type="negative")
 
-                    ui.button("Guardar", on_click=_guardar_matricula).props("color=primary")
+                    btn_primary("Guardar", on_click=_guardar_matricula)
 
             dlg.open()
 
@@ -452,7 +453,7 @@ def estudiantes_page() -> None:
                 ).props("accept=.csv").classes("w-full")
 
                 with ui.row().classes("q-mt-md justify-end"):
-                    ui.button("Cerrar", on_click=dlg.close).props("flat")
+                    btn_ghost("Cerrar", on_click=dlg.close)
 
             dlg.open()
 
@@ -526,7 +527,7 @@ def estudiantes_page() -> None:
                 piar_chk = ui.checkbox("Posee PIAR", value=est.posee_piar)
 
                 with ui.row().classes("q-mt-md justify-end gap-sm"):
-                    ui.button("Cancelar", on_click=dlg.close).props("flat")
+                    btn_ghost("Cancelar", on_click=dlg.close)
 
                     def _guardar_edicion() -> None:
                         try:
@@ -551,7 +552,7 @@ def estudiantes_page() -> None:
                             logger.error("Error actualizando estudiante %s: %s", est_id, exc)
                             ui.notify("Error inesperado al actualizar.", type="negative")
 
-                    ui.button("Guardar", on_click=_guardar_edicion).props("color=primary")
+                    btn_primary("Guardar", on_click=_guardar_edicion)
 
             dlg.open()
 
@@ -574,7 +575,7 @@ def estudiantes_page() -> None:
                 ).classes("w-full q-mb-md")
 
                 with ui.row().classes("justify-end gap-sm"):
-                    ui.button("Cancelar", on_click=dlg.close).props("flat")
+                    btn_ghost("Cancelar", on_click=dlg.close)
 
                     def _ejecutar_retiro() -> None:
                         try:
@@ -593,7 +594,7 @@ def estudiantes_page() -> None:
                             logger.error("Error retirando estudiante %s: %s", est_id, exc)
                             ui.notify("Error inesperado al retirar.", type="negative")
 
-                    ui.button("Retirar", on_click=_ejecutar_retiro).props("color=negative")
+                    btn_danger("Retirar", on_click=_ejecutar_retiro)
 
             dlg.open()
 
@@ -657,7 +658,7 @@ def estudiantes_page() -> None:
                     ui.label(f"Fecha elaboración: {fecha_elab}").classes("text-caption text-grey")
 
                     with ui.row().classes("q-mt-md justify-end"):
-                        ui.button("Cerrar", on_click=dlg.close).props("flat")
+                        btn_ghost("Cerrar", on_click=dlg.close)
 
                 else:
                     # Modo registro — nuevo PIAR
@@ -684,7 +685,7 @@ def estudiantes_page() -> None:
                     ).classes("w-full")
 
                     with ui.row().classes("q-mt-md justify-end gap-sm"):
-                        ui.button("Cancelar", on_click=dlg.close).props("flat")
+                        btn_ghost("Cancelar", on_click=dlg.close)
 
                         def _guardar_piar() -> None:
                             try:
@@ -712,9 +713,7 @@ def estudiantes_page() -> None:
                                 )
                                 ui.notify("Error inesperado al registrar el PIAR.", type="negative")
 
-                        ui.button("Registrar PIAR", on_click=_guardar_piar).props(
-                            "color=primary"
-                        )
+                        btn_primary("Registrar PIAR", on_click=_guardar_piar)
 
             dlg.open()
 
@@ -770,25 +769,25 @@ def estudiantes_page() -> None:
                         _cargar_estudiantes()
                         tabla_refreshable.refresh()
 
-                    ui.button(
+                    btn_primary(
                         "Buscar",
                         icon=Icons.SEARCH,
                         on_click=_aplicar_filtros,
-                    ).props("color=primary")
+                    )
 
             # ── 2. Botones de acción ──────────────────────────────────────────
             with ui.row().classes("w-full justify-end gap-sm q-mb-sm"):
-                ui.button(
+                btn_primary(
                     "Matricular",
                     icon="add",
                     on_click=_abrir_dialog_matricula,
-                ).props("color=primary")
+                )
 
-                ui.button(
+                btn_secondary(
                     "Carga CSV",
                     icon="upload_file",
                     on_click=_abrir_dialog_csv,
-                ).props("outline")
+                )
 
             # ── 3. Tabla de estudiantes ───────────────────────────────────────
             with ui.element("div").classes("panel-card"):
@@ -806,12 +805,17 @@ def estudiantes_page() -> None:
             resultado_refreshable()
 
     # ── Layout principal ──────────────────────────────────────────────────────
+    def on_context_change() -> None:
+        ui.navigate.reload()
+
     app_layout(
         titulo_pagina="Estudiantes",
         usuario_nombre=ctx.usuario_nombre,
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/estudiantes",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

@@ -19,6 +19,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.cierre_service import ContextoAcademicoDTO
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
@@ -123,13 +124,8 @@ def cierre_anio_page() -> None:
                     ui.notify("Error al cerrar el año", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
-                    "Cerrar año",
-                    icon="lock",
-                    color="negative",
-                    on_click=_ejecutar_cierre,
-                )
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger("Cerrar año", icon="lock", on_click=_ejecutar_cierre)
 
         dlg.open()
 
@@ -198,10 +194,7 @@ def cierre_anio_page() -> None:
                         label="Grupo *",
                         on_change=lambda e: _s.__setitem__("grupo_id", e.value),
                     ).classes("w-48")
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (_cargar_estado()),
-                    ).props("flat round dense").tooltip("Recargar")
+                    btn_icon("refresh", on_click=lambda: (_cargar_estado()), tooltip="Recargar")
 
             # Advertencia prominente
             with ui.element("div").classes("panel-card mt-4"):
@@ -226,16 +219,14 @@ def cierre_anio_page() -> None:
             # Botón de cierre
             with ui.element("div").classes("panel-card mt-4"):
                 ui.label("Ejecutar cierre de año").classes("text-base font-semibold mb-2")
-                ui.button(
-                    "Cerrar año lectivo",
-                    icon="lock",
-                    color="negative",
-                    on_click=_abrir_confirmar_cierre,
-                )
+                btn_danger("Cerrar año lectivo", icon="lock", on_click=_abrir_confirmar_cierre)
 
             # Tabla resultado
             with ui.element("div").classes("panel-card mt-4"):
                 tabla_resultado()
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Evaluación · Cierre de Año",
@@ -243,6 +234,8 @@ def cierre_anio_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/cierre-anio",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

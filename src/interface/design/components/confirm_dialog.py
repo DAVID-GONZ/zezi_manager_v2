@@ -13,6 +13,7 @@ from typing import Callable
 from nicegui import ui
 
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 
 def confirm_dialog(
@@ -48,33 +49,30 @@ def confirm_dialog(
 
     icono_nombre = _ICONO_MAP.get(variante, "help")
     icono_color  = _COLOR_MAP.get(variante, "var(--color-primary)")
-    btn_class    = "btn-danger" if variante == "danger" else "btn-primary"
 
-    with ui.dialog() as dialog, ui.card().classes("andes-card").style("min-width:380px;max-width:480px"):
+    with ui.dialog() as dialog, ui.card().classes("andes-card confirm-dialog-card"):
         # Cabecera: icono + título
-        with ui.row().classes("items-center gap-3").style("margin-bottom:var(--space-md)"):
+        with ui.row().classes("confirm-dialog-head items-center gap-3"):
             ThemeManager.icono(icono_nombre, size=28, color=icono_color)
             ui.label(titulo).classes("font-h3")
 
         # Cuerpo: mensaje
-        ui.label(mensaje).style(
-            "color:var(--color-text-secondary);"
-            "font-size:var(--font-size-body);"
-            "line-height:1.6;"
-            "margin-bottom:var(--space-lg)"
-        )
+        ui.label(mensaje).classes("confirm-dialog-body")
 
         # Pie: botones
-        with ui.row().classes("gap-2 justify-end").style("margin-top:var(--space-md)"):
-            ui.button(
-                texto_cancelar,
-                on_click=dialog.close,
-            ).classes("btn-secondary")
+        with ui.row().classes("confirm-dialog-foot gap-2 justify-end"):
+            btn_secondary(texto_cancelar, on_click=dialog.close)
 
-            ui.button(
-                texto_confirmar,
-                on_click=lambda: (dialog.close(), on_confirm()),
-            ).classes(btn_class)
+            if variante == "danger":
+                btn_danger(
+                    texto_confirmar,
+                    on_click=lambda: (dialog.close(), on_confirm()),
+                )
+            else:
+                btn_primary(
+                    texto_confirmar,
+                    on_click=lambda: (dialog.close(), on_confirm()),
+                )
 
     dialog.open()
 

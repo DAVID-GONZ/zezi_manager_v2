@@ -28,6 +28,7 @@ from src.services.habilitacion_service import (
     NuevaHabilitacionDTO,
     RegistrarNotaHabilitacionDTO,
 )
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
@@ -185,8 +186,8 @@ def habilitaciones_page() -> None:
                     ui.notify("Error al registrar la nota", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Registrar nota", on_click=_guardar_nota, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Registrar nota", on_click=_guardar_nota)
 
         dlg.open()
 
@@ -244,10 +245,11 @@ def habilitaciones_page() -> None:
                     ).classes(f"w-24 text-center {_ESTADO_CLASES.get(estado_val, 'badge-neutral')}")
                     with ui.row().classes("w-20 justify-end"):
                         if hab.estado == EstadoHabilitacion.PENDIENTE:
-                            ui.button(
-                                icon="grade",
+                            btn_icon(
+                                "grade",
                                 on_click=lambda h=hab: _registrar_nota_dialog(h),
-                            ).props("flat round dense").tooltip("Registrar nota")
+                                tooltip="Registrar nota",
+                            )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -294,10 +296,11 @@ def habilitaciones_page() -> None:
                         ),
                     ).classes("w-36")
                     ui.badge(str(len(_s["habilitaciones"])), color="primary")
-                    ui.button(
-                        icon="refresh",
+                    btn_icon(
+                        "refresh",
                         on_click=lambda: (_cargar_habilitaciones(), tabla_habilitaciones.refresh()),
-                    ).props("flat round dense").tooltip("Recargar")
+                        tooltip="Recargar",
+                    )
 
             # Formulario nueva habilitación
             with ui.element("div").classes("panel-card mt-4"):
@@ -337,17 +340,15 @@ def habilitaciones_page() -> None:
                         max=100.0,
                         step=0.5,
                     ).classes("w-40").bind_value(_s, "form_nota_antes")
-                    ui.button(
-                        "Programar",
-                        icon="add",
-                        on_click=_programar_habilitacion,
-                        color="primary",
-                    )
+                    btn_primary("Programar", icon="add", on_click=_programar_habilitacion)
 
             # Tabla
             with ui.element("div").classes("panel-card mt-4"):
                 ui.label("Habilitaciones registradas").classes("text-base font-semibold mb-3")
                 tabla_habilitaciones()
+
+    def on_context_change() -> None:
+        ui.navigate.reload()
 
     app_layout(
         titulo_pagina="Evaluación · Habilitaciones",
@@ -355,6 +356,8 @@ def habilitaciones_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/habilitaciones",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

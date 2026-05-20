@@ -20,6 +20,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -112,10 +113,9 @@ def asignaturas_page() -> None:
                 f"¿Eliminar área '{nombre}'? Esta acción es irreversible."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Eliminar",
-                    color="negative",
                     on_click=lambda: _confirmar_eliminar_area(dlg, area_id, nombre),
                 )
         dlg.open()
@@ -165,8 +165,8 @@ def asignaturas_page() -> None:
                     ui.notify("Error al actualizar el área", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Guardar", on_click=_guardar, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Guardar", on_click=_guardar)
         dlg.open()
 
     # ── CRUD Asignaturas ──────────────────────────────────────────────────────
@@ -206,10 +206,9 @@ def asignaturas_page() -> None:
                 f"¿Eliminar asignatura '{nombre}'? Esta acción es irreversible."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Eliminar",
-                    color="negative",
                     on_click=lambda: _confirmar_eliminar_asig(dlg, asig_id, nombre),
                 )
         dlg.open()
@@ -258,8 +257,8 @@ def asignaturas_page() -> None:
                     ui.notify("Error al actualizar la asignatura", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Guardar", on_click=_guardar, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Guardar", on_click=_guardar)
         dlg.open()
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -293,15 +292,8 @@ def asignaturas_page() -> None:
                 if a.codigo:
                     ui.badge(a.codigo).classes("badge-neutral")
                 with ui.row().classes("gap-1 ml-auto"):
-                    ui.button(
-                        icon="edit",
-                        on_click=lambda area=a: _editar_area(area),
-                    ).props("flat round dense").tooltip("Editar")
-                    ui.button(
-                        icon="delete",
-                        color="negative",
-                        on_click=lambda aid=a.id, nom=a.nombre: _eliminar_area(aid, nom),
-                    ).props("flat round dense").tooltip("Eliminar")
+                    btn_icon("edit", on_click=lambda area=a: _editar_area(area), tooltip="Editar")
+                    btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_area(aid, nom), tooltip="Eliminar", variante="danger")
 
     @ui.refreshable
     def tabla_asignaturas() -> None:
@@ -325,15 +317,8 @@ def asignaturas_page() -> None:
                     ui.label(_nombre_area(a.area_id)).classes("w-36 text-sm")
                     ui.label(str(a.horas_semanales)).classes("w-20")
                     with ui.row().classes("w-24 gap-1 justify-end"):
-                        ui.button(
-                            icon="edit",
-                            on_click=lambda asig=a: _editar_asignatura(asig),
-                        ).props("flat round dense").tooltip("Editar")
-                        ui.button(
-                            icon="delete",
-                            color="negative",
-                            on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom),
-                        ).props("flat round dense").tooltip("Eliminar")
+                        btn_icon("edit", on_click=lambda asig=a: _editar_asignatura(asig), tooltip="Editar")
+                        btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom), tooltip="Eliminar", variante="danger")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -353,8 +338,7 @@ def asignaturas_page() -> None:
                     ui.input("Código", placeholder="MAT").classes("w-28").bind_value(
                         _s, "area_codigo"
                     )
-                    with ui.button("Crear área", on_click=_crear_area, color="primary"):
-                        ThemeManager.icono("add")
+                    btn_primary("Crear área", on_click=_crear_area, icon="add")
 
                 ui.separator().classes("my-3")
                 tabla_areas()
@@ -365,16 +349,13 @@ def asignaturas_page() -> None:
                     ThemeManager.icono(Icons.GRADES, size=20, color="var(--color-primary)")
                     ui.label("Asignaturas").classes("text-lg font-bold")
                     filtro_area()
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (
-                            _cargar_areas(),
-                            _cargar_asignaturas(),
-                            tabla_areas.refresh(),
-                            filtro_area.refresh(),
-                            tabla_asignaturas.refresh(),
-                        ),
-                    ).props("flat round dense").tooltip("Recargar")
+                    btn_icon("refresh", on_click=lambda: (
+                        _cargar_areas(),
+                        _cargar_asignaturas(),
+                        tabla_areas.refresh(),
+                        filtro_area.refresh(),
+                        tabla_asignaturas.refresh(),
+                    ), tooltip="Recargar")
 
                 ui.label("Nueva asignatura").classes("text-sm font-semibold mb-1")
                 areas_opts = {a.id: a.nombre for a in _s["areas"]}
@@ -392,9 +373,7 @@ def asignaturas_page() -> None:
                     ui.number("Hrs/sem", value=1, min=1).classes("w-24").bind_value(
                         _s, "asig_intensidad"
                     )
-                    ui.button(
-                        "Crear asignatura", icon="add", on_click=_crear_asignatura, color="primary"
-                    )
+                    btn_primary("Crear asignatura", on_click=_crear_asignatura, icon="add")
 
                 ui.separator().classes("my-3")
                 tabla_asignaturas()
@@ -405,6 +384,7 @@ def asignaturas_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/asignaturas",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

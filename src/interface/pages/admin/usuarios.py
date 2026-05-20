@@ -22,6 +22,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.usuario_service import NuevoUsuarioDTO, FiltroUsuariosDTO, Rol
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -119,8 +120,8 @@ def usuarios_page() -> None:
                     ui.notify("Error al crear el usuario", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Crear", on_click=_crear, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Crear", on_click=_crear)
 
         dlg.open()
 
@@ -133,10 +134,9 @@ def usuarios_page() -> None:
                 f"¿Desactivar al usuario '{nombre}'? No podrá iniciar sesión."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Desactivar",
-                    color="negative",
                     on_click=lambda: _confirmar_desactivar(dlg, usuario_id, nombre),
                 )
         dlg.open()
@@ -181,8 +181,8 @@ def usuarios_page() -> None:
                     ui.notify("Error al cambiar el rol", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Aplicar", on_click=_aplicar, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Aplicar", on_click=_aplicar)
         dlg.open()
 
     def _on_filtros_cambio() -> None:
@@ -229,16 +229,9 @@ def usuarios_page() -> None:
                         ui.badge("Inactivo").classes("w-20 badge-neutral")
                     if es_admin:
                         with ui.row().classes("w-32 gap-1 justify-end"):
-                            ui.button(
-                                icon="manage_accounts",
-                                on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _cambiar_rol(uid, nom, r),
-                            ).props("flat round dense").tooltip("Cambiar rol")
+                            btn_icon("manage_accounts", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _cambiar_rol(uid, nom, r), tooltip="Cambiar rol")
                             if u.activo:
-                                ui.button(
-                                    icon="person_off",
-                                    color="negative",
-                                    on_click=lambda uid=u.id, nom=u.nombre_completo: _desactivar_usuario(uid, nom),
-                                ).props("flat round dense").tooltip("Desactivar")
+                                btn_icon("person_off", on_click=lambda uid=u.id, nom=u.nombre_completo: _desactivar_usuario(uid, nom), tooltip="Desactivar", variante="danger")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -249,11 +242,7 @@ def usuarios_page() -> None:
                     ThemeManager.icono(Icons.TEACHERS, size=22, color="var(--color-primary)")
                     ui.label("Gestión de Usuarios").classes("text-xl font-bold")
                     if es_admin:
-                        ui.button(
-                            "Nuevo usuario", icon="person_add",
-                            on_click=_abrir_crear_usuario,
-                            color="primary",
-                        ).classes("ml-auto")
+                        btn_primary("Nuevo usuario", on_click=_abrir_crear_usuario, icon="person_add").classes("ml-auto")
 
                 # Filtros
                 with ui.row().classes("gap-4 items-center flex-wrap mb-4"):
@@ -278,10 +267,7 @@ def usuarios_page() -> None:
                         ),
                     )
                     ui.badge(str(len(_s["usuarios"]))).classes("badge-primary")
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (_cargar_estado(), tabla.refresh()),
-                    ).props("flat round dense").tooltip("Recargar")
+                    btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
 
                 tabla()
 
@@ -291,6 +277,7 @@ def usuarios_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/usuarios",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

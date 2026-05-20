@@ -19,6 +19,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.configuracion_service import NuevaConfiguracionAnioDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_SIE")
@@ -117,10 +118,7 @@ def configuracion_sie_page() -> None:
                 with ui.row().classes("items-center gap-2 mb-4"):
                     ThemeManager.icono(Icons.CONFIG, size=22, color="var(--color-primary)")
                     ui.label("Configuración SIE").classes("text-xl font-bold")
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (_cargar_estado(), panel_anio.refresh()),
-                    ).props("flat round dense").tooltip("Recargar").classes("ml-auto")
+                    btn_icon("refresh", on_click=lambda: (_cargar_estado(), panel_anio.refresh()), tooltip="Recargar").classes("ml-auto")
 
             panel_anio()
 
@@ -139,12 +137,7 @@ def configuracion_sie_page() -> None:
                         max=2100,
                         step=1,
                     ).classes("w-32").bind_value(_s, "nuevo_anio")
-                    ui.button(
-                        "Crear año lectivo",
-                        icon="add_circle",
-                        on_click=_crear_anio,
-                        color="primary",
-                    )
+                    btn_primary("Crear año lectivo", on_click=_crear_anio, icon="add_circle")
 
             # Enlace a info institucional
             with ui.element("div").classes("panel-card mt-4"):
@@ -155,11 +148,7 @@ def configuracion_sie_page() -> None:
                         ui.label(
                             "Nombre, DANE, rector y datos para boletines."
                         ).classes("text-sm text-grey-6")
-                    ui.button(
-                        "Gestionar",
-                        icon="arrow_forward",
-                        on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"),
-                    ).props("flat")
+                    btn_ghost("Gestionar", on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"), icon="arrow_forward")
 
     app_layout(
         titulo_pagina="Administración · Configuración SIE",
@@ -167,6 +156,7 @@ def configuracion_sie_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/configuracion",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

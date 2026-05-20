@@ -20,6 +20,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.evaluacion_service import NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -165,11 +166,11 @@ def planilla_notas_page() -> None:
                 f"¿Cerrar actividad '{nombre}'? Ya no aceptará más notas."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_ghost(
                     "Cerrar actividad",
-                    color="warning",
                     on_click=lambda: _confirmar_cerrar(dlg, act_id, nombre),
+                    icon="lock",
                 )
         dlg.open()
 
@@ -193,10 +194,9 @@ def planilla_notas_page() -> None:
                 f"¿Eliminar actividad '{nombre}'? Esta acción es irreversible."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Eliminar",
-                    color="negative",
                     on_click=lambda: _confirmar_eliminar_act(dlg, act_id, nombre),
                 )
         dlg.open()
@@ -243,8 +243,8 @@ def planilla_notas_page() -> None:
                     ui.notify("Error al registrar la nota", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Guardar", on_click=_guardar_nota, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Guardar", on_click=_guardar_nota)
         dlg.open()
 
     def _on_selector_cambio() -> None:
@@ -320,22 +320,22 @@ def planilla_notas_page() -> None:
                                             abierto
                                             and act.estado == EstadoActividad.PUBLICADA
                                         ):
-                                            ui.button(
-                                                icon="edit",
+                                            btn_icon(
+                                                "edit",
                                                 on_click=lambda eid=resultado.estudiante_id, aid=act.id, en=resultado.nombre_completo, an=act.nombre: _registrar_nota_dialog(eid, aid, en, an),
-                                            ).props("flat round dense size=xs").tooltip(
-                                                "Editar nota"
+                                                tooltip="Editar nota",
+                                                size="sm",
                                             )
                                     else:
                                         if (
                                             abierto
                                             and act.estado == EstadoActividad.PUBLICADA
                                         ):
-                                            ui.button(
-                                                icon="add",
+                                            btn_icon(
+                                                "add",
                                                 on_click=lambda eid=resultado.estudiante_id, aid=act.id, en=resultado.nombre_completo, an=act.nombre: _registrar_nota_dialog(eid, aid, en, an),
-                                            ).props("flat round dense size=xs").tooltip(
-                                                "Ingresar nota"
+                                                tooltip="Ingresar nota",
+                                                size="sm",
                                             )
                                         else:
                                             ui.label("—").classes("text-grey-5")
@@ -373,12 +373,7 @@ def planilla_notas_page() -> None:
                     step=0.5,
                 ).classes("w-32").bind_value(_s, "form_valor_maximo")
                 ui.input("Descripción").classes("w-52").bind_value(_s, "form_descripcion")
-                ui.button(
-                    "Agregar",
-                    icon="add",
-                    on_click=_crear_actividad,
-                    color="primary",
-                )
+                btn_primary("Agregar", icon="add", on_click=_crear_actividad)
 
         # Lista de actividades
         if not actividades:
@@ -417,23 +412,25 @@ def planilla_notas_page() -> None:
 
                     with ui.row().classes("w-32 justify-end gap-1"):
                         if act.estado == EstadoActividad.BORRADOR:
-                            ui.button(
-                                icon="publish",
+                            btn_icon(
+                                "publish",
                                 on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(aid, an),
-                            ).props("flat round dense").tooltip("Publicar")
+                                tooltip="Publicar",
+                            )
                         elif act.estado == EstadoActividad.PUBLICADA:
-                            ui.button(
-                                icon="lock",
-                                color="warning",
+                            btn_icon(
+                                "lock",
                                 on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(aid, an),
-                            ).props("flat round dense").tooltip("Cerrar")
+                                tooltip="Cerrar",
+                            )
 
                         if act.estado != EstadoActividad.CERRADA:
-                            ui.button(
-                                icon="delete",
-                                color="negative",
+                            btn_icon(
+                                "delete",
                                 on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
-                            ).props("flat round dense").tooltip("Eliminar")
+                                tooltip="Eliminar",
+                                variante="danger",
+                            )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -477,14 +474,15 @@ def planilla_notas_page() -> None:
                             (vista_planilla.refresh() if e.value == "planilla" else contenido_actividades.refresh()),
                         ),
                     ).classes("w-44")
-                    ui.button(
-                        icon="refresh",
+                    btn_icon(
+                        "refresh",
                         on_click=lambda: (
                             _cargar_datos_asignacion(),
                             vista_planilla.refresh(),
                             contenido_actividades.refresh(),
                         ),
-                    ).props("flat round dense").tooltip("Recargar")
+                        tooltip="Recargar",
+                    )
 
             with ui.element("div").classes("panel-card mt-4"):
                 if _s["modo"] == "planilla":
@@ -498,12 +496,17 @@ def planilla_notas_page() -> None:
                     )
                     contenido_actividades()
 
+    def on_context_change() -> None:
+        ui.navigate.reload()
+
     app_layout(
         titulo_pagina="Evaluación · Planilla de Notas",
         usuario_nombre=ctx.usuario_nombre,
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/planilla",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

@@ -17,7 +17,6 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.design.components.status_badge import status_badge
-from src.interface.design.components.context_selector import context_chip
 from src.interface.design.layout import app_layout
 from src.services.auditoria_service import FiltroAuditoriaDTO
 from src.services.alerta_service import FiltroAlertasDTO
@@ -485,16 +484,6 @@ def inicio_page() -> None:
         with ui.element("div").classes("page-stack"):
             _seccion_saludo(ctx, config)
 
-            # El chip de contexto se muestra en el topbar (layout.py).
-            # Se renderiza aquí también como fallback inline si el rol
-            # requiere contexto académico y layout.py no lo inyecta aún.
-            if ctx.usuario_rol in ("profesor", "director", "coordinador"):
-                context_chip(
-                    ctx=ctx,
-                    on_change=on_context_change,
-                    mostrar_asignatura=(ctx.usuario_rol == "profesor"),
-                )
-
             stats_refreshable()
 
             with ui.element("div").classes("page-body"):
@@ -511,6 +500,8 @@ def inicio_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/inicio",
         contenido=contenido,
+        ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

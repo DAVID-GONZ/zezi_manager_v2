@@ -18,6 +18,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
 from src.services.infraestructura_service import Grupo, Jornada
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -109,10 +110,9 @@ def grupos_page() -> None:
                 f"¿Eliminar grupo {codigo}? Esta acción es irreversible."
             ).classes("text-base font-medium")
             with ui.row().classes("gap-2 mt-4"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_danger(
                     "Eliminar",
-                    color="negative",
                     on_click=lambda: _confirmar_eliminar(dlg, grupo_id, codigo),
                 )
         dlg.open()
@@ -178,8 +178,8 @@ def grupos_page() -> None:
                     ui.notify("Error al actualizar el grupo", type="negative")
 
             with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button("Guardar", on_click=_guardar_edicion, color="primary")
+                btn_ghost("Cancelar", on_click=dlg.close)
+                btn_primary("Guardar", on_click=_guardar_edicion)
 
         dlg.open()
 
@@ -219,15 +219,8 @@ def grupos_page() -> None:
                     ui.label(fila["jornada_label"]).classes("w-28")
                     ui.label(f"{fila['capacidad']} estudiantes").classes("w-32")
                     with ui.row().classes("gap-2 ml-auto"):
-                        ui.button(
-                            icon="edit",
-                            on_click=lambda g=g_obj: _abrir_editar(g),
-                        ).props("flat round dense").tooltip("Editar")
-                        ui.button(
-                            icon="delete",
-                            color="negative",
-                            on_click=lambda gid=fila["id"], cod=fila["codigo"]: _eliminar_grupo(gid, cod),
-                        ).props("flat round dense").tooltip("Eliminar")
+                        btn_icon("edit", on_click=lambda g=g_obj: _abrir_editar(g), tooltip="Editar")
+                        btn_icon("delete", on_click=lambda gid=fila["id"], cod=fila["codigo"]: _eliminar_grupo(gid, cod), tooltip="Eliminar", variante="danger")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -256,22 +249,14 @@ def grupos_page() -> None:
                     cap = ui.number("Capacidad", value=40, min=1).classes("w-28").bind_value(
                         _s, "form_capacidad"
                     )
-                    ui.button(
-                        "Crear grupo",
-                        icon="add",
-                        on_click=_crear_grupo,
-                        color="primary",
-                    ).classes("mt-1")
+                    btn_primary("Crear grupo", on_click=_crear_grupo, icon="add").classes("mt-1")
 
             # Tabla de grupos
             with ui.element("div").classes("panel-card mt-4"):
                 with ui.row().classes("items-center gap-2 mb-3"):
                     ui.label("Grupos registrados").classes("text-base font-semibold")
                     ui.badge(str(len(_s["grupos"]))).classes("badge-primary")
-                    ui.button(
-                        icon="refresh",
-                        on_click=lambda: (_cargar_estado(), tabla.refresh()),
-                    ).props("flat round dense").tooltip("Recargar")
+                    btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
                 tabla()
 
     app_layout(
@@ -280,6 +265,7 @@ def grupos_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/grupos",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

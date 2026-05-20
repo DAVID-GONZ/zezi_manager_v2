@@ -19,6 +19,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.configuracion_service import ActualizarInfoInstitucionalDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
@@ -117,11 +118,7 @@ def configuracion_institucion_page() -> None:
                 ui.label(
                     "Configura un año lectivo en la sección de Configuración SIE."
                 ).classes("text-sm text-grey-6")
-                ui.button(
-                    "Ir a Configuración SIE",
-                    on_click=lambda: ui.navigate.to("/admin/configuracion"),
-                    color="primary",
-                ).classes("mt-4")
+                btn_primary("Ir a Configuración SIE", on_click=lambda: ui.navigate.to("/admin/configuracion")).classes("mt-4")
             return
 
         ui.label(f"Año lectivo: {_s['anio_label']}").classes("eyebrow-label mb-4")
@@ -148,17 +145,8 @@ def configuracion_institucion_page() -> None:
             ).classes("col-span-2").bind_value(_s, "logo_path")
 
         with ui.row().classes("gap-2 mt-6 justify-end"):
-            ui.button(
-                "Recargar datos",
-                icon="refresh",
-                on_click=_recargar,
-            ).props("flat")
-            ui.button(
-                "Guardar cambios",
-                icon="save",
-                on_click=_guardar_info,
-                color="primary",
-            )
+            btn_ghost("Recargar datos", on_click=_recargar, icon="refresh")
+            btn_primary("Guardar cambios", on_click=_guardar_info, icon="save")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -167,10 +155,7 @@ def configuracion_institucion_page() -> None:
                 with ui.row().classes("items-center gap-2 mb-4"):
                     ThemeManager.icono("business", size=22, color="var(--color-primary)")
                     ui.label("Información Institucional").classes("text-xl font-bold")
-                    ui.button(
-                        icon="arrow_back",
-                        on_click=lambda: ui.navigate.to("/admin/configuracion"),
-                    ).props("flat round dense").tooltip("Volver a Configuración SIE").classes("ml-auto")
+                    btn_icon("arrow_back", on_click=lambda: ui.navigate.to("/admin/configuracion"), tooltip="Volver a Configuración SIE").classes("ml-auto")
 
                 ui.label(
                     "Estos datos aparecen en los boletines e informes académicos."
@@ -184,6 +169,7 @@ def configuracion_institucion_page() -> None:
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/admin/configuracion",
         contenido=contenido,
+        ctx=ctx,
     )
 
 

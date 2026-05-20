@@ -18,6 +18,13 @@ _NIVEL_PORCENTAJE = {
     "Superior": 100,
 }
 
+_NIVEL_COLOR = {
+    "Bajo":     "var(--desempeno-bajo)",
+    "Básico":   "var(--desempeno-basico)",
+    "Alto":     "var(--desempeno-alto)",
+    "Superior": "var(--desempeno-superior)",
+}
+
 
 def performance_indicator(
     valor: float | None = None,
@@ -55,6 +62,10 @@ def performance_indicator(
     nivel_resuelto = nivel
     if nivel_resuelto is None and valor is not None:
         nivel_resuelto = DesempenoColors.para_nota(valor)
+        # para_nota retorna una tupla (color_texto, color_fondo) — extraemos solo el nivel
+        # Nota: para_nota delega a nivel_desempeno que retorna string
+        from src.domain.models.evaluacion import nivel_desempeno
+        nivel_resuelto = nivel_desempeno(valor) if valor is not None else None
 
     # Calcular porcentaje para la barra
     if valor is not None:
@@ -67,54 +78,29 @@ def performance_indicator(
     else:
         pct = 0
 
-    # Colores del nivel
-    if nivel_resuelto:
-        color_info = DesempenoColors.css_badge(nivel_resuelto)
-        barra_color = color_info.get("color", "var(--color-primary)")
-    else:
-        barra_color = "var(--color-primary)"
+    # Color de la barra según nivel
+    barra_color = _NIVEL_COLOR.get(nivel_resuelto or "", "var(--color-primary)")
 
-    contenedor = ui.element("div").style("width:100%;")
+    contenedor = ui.element("div").classes("perf-root")
     with contenedor:
         # Fila superior: label + valor/nivel
-        with ui.row().classes("items-center justify-between").style(
-            "width:100%;margin-bottom:4px;"
-        ):
-            ui.label(label).style(
-                "color:var(--color-text-secondary);"
-                "font-size:var(--font-size-small);"
-                "font-weight:500;"
-            )
+        with ui.row().classes("perf-header items-center justify-between"):
+            ui.label(label).classes("perf-label")
             with ui.row().classes("items-center gap-2"):
                 if mostrar_valor and valor is not None:
                     valor_texto = f"{valor:.1f}" if valor <= 5.0 else f"{valor:.0f}%"
-                    ui.label(valor_texto).style(
-                        "color:var(--color-text-primary);"
-                        "font-size:var(--font-size-small);"
-                        "font-weight:600;"
-                    )
+                    ui.label(valor_texto).classes("perf-value")
                 if mostrar_nivel and nivel_resuelto:
-                    ui.label(nivel_resuelto).style(
-                        f"color:{barra_color};"
-                        "font-size:var(--font-size-small);"
-                        "font-weight:500;"
+                    ui.label(nivel_resuelto).classes("perf-nivel").style(
+                        f"color:{barra_color}"
                     )
 
         # Barra de progreso
-        with ui.element("div").style(
-            f"height:{altura}px;"
-            "width:100%;"
-            "background:var(--color-bg);"
-            "border-radius:999px;"
-            "overflow:hidden;"
-            "border:1px solid var(--color-divider);"
+        with ui.element("div").classes("perf-bar-track").style(
+            f"height:{altura}px"
         ):
-            ui.element("div").style(
-                f"height:100%;"
-                f"width:{pct:.1f}%;"
-                f"background:{barra_color};"
-                "border-radius:999px;"
-                "transition:width 0.4s ease;"
+            ui.element("div").classes("perf-bar-fill").style(
+                f"width:{pct:.1f}%; background:{barra_color}"
             )
 
     return contenedor

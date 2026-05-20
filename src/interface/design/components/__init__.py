@@ -7,6 +7,7 @@ from .data_table import data_table
 from .context_selector import context_chip, abrir_selector
 from .performance_indicator import performance_indicator
 from .base_form import base_form
+from .buttons import btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon
 
 __all__ = [
     # Badges de estado
@@ -30,4 +31,10 @@ __all__ = [
     "performance_indicator",
     # Formulario base reutilizable
     "base_form",
+    # Botones del design system
+    "btn_primary",
+    "btn_secondary",
+    "btn_danger",
+    "btn_ghost",
+    "btn_icon",
 ]

@@ -68,7 +68,7 @@ class ThemeManager:
 
         # Configuración para modo nativo (pywebview) — no-op en modo web
         try:
-            app.native.window_args["background_color"] = "#F4F6F8"
+            app.native.window_args["background_color"] = "#F8FAFC"
         except Exception:
             pass  # Solo aplica cuando se corre con ui.run(native=True)
 
