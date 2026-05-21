@@ -34,7 +34,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import page_header
+from src.interface.design.components import form_dialog
 from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -300,103 +300,67 @@ def horarios_page() -> None:
             for a in _s["asignaciones"]
         }
 
-        # Estado temporal del formulario
-        _form: dict = {
-            "asig_id": None,
-            "dia": DiaSemana.LUNES.value,
-            "h_ini": "07:00",
-            "h_fin": "07:55",
-            "sala": "Aula",
-        }
+        def _guardar(datos: dict) -> "bool | None":
+            asig_id = datos.get("asignacion_id")
+            if not asig_id:
+                ui.notify("Selecciona una asignación.", type="warning")
+                return False
+            try:
+                asig = next(
+                    a for a in _s["asignaciones"]
+                    if a.asignacion_id == asig_id
+                )
+                dto = NuevoHorarioDTO(
+                    grupo_id=asig.grupo_id,
+                    asignatura_id=asig.asignatura_id,
+                    usuario_id=asig.usuario_id,
+                    periodo_id=_s["periodo_id"],
+                    dia_semana=datos.get("dia", DiaSemana.LUNES.value),
+                    hora_inicio=datos.get("hora_inicio", "07:00"),
+                    hora_fin=datos.get("hora_fin", "07:55"),
+                    asignacion_id=asig.asignacion_id,
+                    sala=str(datos.get("sala", "") or "Aula"),
+                )
+                Container.infraestructura_service().guardar_horario(dto.to_horario())
+                ui.notify("Bloque guardado", type="positive")
+                _cargar_bloques()
+                grilla_refreshable.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except StopIteration:
+                ui.notify("Asignación no encontrada.", type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error guardando bloque: %s", exc)
+                ui.notify("Error al guardar el bloque", type="negative")
+                return False
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-lg"):
-            ui.label("Agregar bloque de horario").classes("text-h6 q-mb-md")
-
-            asig_sel = ui.select(
-                label="Asignación",
-                options=asig_opts,
-                value=None,
-                on_change=lambda e: _form.update({"asig_id": e.value}),
-            ).classes("w-full")
-
-            dia_sel = ui.select(
-                label="Día",
-                options={d.value: d.value for d in DiaSemana},
-                value=DiaSemana.LUNES.value,
-                on_change=lambda e: _form.update({"dia": e.value}),
-            ).classes("w-full")
-
-            hora_ini_inp = ui.input(
-                label="Hora inicio",
-                value="07:00",
-                on_change=lambda e: _form.update({"h_ini": e.value}),
-            ).props("type=time").classes("w-full")
-
-            hora_fin_inp = ui.input(
-                label="Hora fin",
-                value="07:55",
-                on_change=lambda e: _form.update({"h_fin": e.value}),
-            ).props("type=time").classes("w-full")
-
-            sala_inp = ui.input(
-                label="Sala",
-                value="Aula",
-                placeholder="Aula, Lab. Química, etc.",
-                on_change=lambda e: _form.update({"sala": e.value}),
-            ).classes("w-full")
-
-            with ui.row().classes("q-mt-md justify-end gap-sm"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-
-                def _guardar() -> None:
-                    asig_id = _form.get("asig_id")
-                    if not asig_id:
-                        ui.notify("Selecciona una asignación.", type="warning")
-                        return
-                    try:
-                        asig = next(
-                            a for a in _s["asignaciones"]
-                            if a.asignacion_id == asig_id
-                        )
-                        dto = NuevoHorarioDTO(
-                            grupo_id=asig.grupo_id,
-                            asignatura_id=asig.asignatura_id,
-                            usuario_id=asig.usuario_id,
-                            periodo_id=_s["periodo_id"],
-                            dia_semana=_form["dia"],
-                            hora_inicio=_form["h_ini"],
-                            hora_fin=_form["h_fin"],
-                            asignacion_id=asig.asignacion_id,
-                            sala=_form["sala"] or "Aula",
-                        )
-                        Container.infraestructura_service().guardar_horario(dto.to_horario())
-                        ui.notify("Bloque guardado", type="positive")
-                        dlg.close()
-                        _cargar_bloques()
-                        grilla_refreshable.refresh()
-                    except ValueError as exc:
-                        ui.notify(str(exc), type="warning")
-                    except StopIteration:
-                        ui.notify("Asignación no encontrada.", type="warning")
-                    except Exception as exc:
-                        logger.error("Error guardando bloque: %s", exc)
-                        ui.notify("Error al guardar el bloque", type="negative")
-
-                btn_primary("Guardar", on_click=_guardar)
-
-        dlg.open()
+        form_dialog(
+            titulo    = "Agregar bloque de horario",
+            campos    = [
+                {"key": "asignacion_id", "label": "Asignación *",  "tipo": "select",
+                 "opciones": asig_opts, "requerido": True},
+                {"key": "dia",           "label": "Día *",          "tipo": "select",
+                 "opciones": {d.value: d.value for d in DiaSemana},
+                 "valor": DiaSemana.LUNES.value, "requerido": True},
+                {"key": "hora_inicio",   "label": "Hora inicio",    "tipo": "time",
+                 "valor": "07:00"},
+                {"key": "hora_fin",      "label": "Hora fin",       "tipo": "time",
+                 "valor": "07:55"},
+                {"key": "sala",          "label": "Sala",           "tipo": "text",
+                 "valor": "Aula", "placeholder": "Aula, Lab. Química..."},
+            ],
+            on_submit    = _guardar,
+            max_width    = "max-w-lg",
+            columnas     = 2,
+        )
 
     # ── Construcción de la UI ─────────────────────────────────────────────────
 
     def contenido() -> None:
 
         with ui.element("div").classes("page-stack"):
-
-            page_header(
-                titulo    = "Horarios",
-                subtitulo = "Grilla semanal de bloques de clase por grupo",
-                icono     = Icons.SCHEDULE,
-            )
 
             # ── Panel de control ──────────────────────────────────────────────
             with ui.element("div").classes("panel-card"):
@@ -481,13 +445,11 @@ def horarios_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Horarios",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/horarios",
-        contenido=contenido,
-        ctx=ctx,
-        on_context_change=on_context_change,
+        ctx,
+        contenido,
+        page_titulo    = "Horarios",
+        page_subtitulo = "Grilla semanal de bloques de clase por grupo",
+        page_icono     = Icons.SCHEDULE,
     )
 
 

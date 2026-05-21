@@ -29,7 +29,7 @@ from src.services.habilitacion_service import (
     RegistrarNotaHabilitacionDTO,
 )
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
-from src.interface.design.components import status_badge
+from src.interface.design.components import status_badge, form_dialog
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
@@ -153,44 +153,41 @@ def habilitaciones_page() -> None:
             ui.notify("Error al programar la habilitación", type="negative")
 
     def _registrar_nota_dialog(hab) -> None:
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-sm"):
-            ui.label(
-                f"Registrar nota — Estudiante {hab.estudiante_id}"
-            ).classes("text-base font-bold mb-2")
-            ui.label(
-                f"Tipo: {hab.tipo.value.capitalize()} | Estado: {hab.estado.value}"
-            ).classes("text-sm text-grey-6 mb-3")
+        def _guardar_nota(datos: dict) -> "bool | None":
+            try:
+                dto = RegistrarNotaHabilitacionDTO(
+                    nota=float(datos.get("nota") or 0.0),
+                    usuario_id=ctx.usuario_id,
+                    observacion=str(datos.get("observacion", "")).strip() or None,
+                )
+                Container.habilitacion_service().registrar_nota_habilitacion(
+                    hab.id, dto
+                )
+                ui.notify("Nota registrada", type="positive")
+                _cargar_habilitaciones()
+                tabla_habilitaciones.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al registrar nota habilitación: %s", exc)
+                ui.notify("Error al registrar la nota", type="negative")
+                return False
 
-            nota_inp = ui.number(
-                "Nota (0–100)", value=0.0, min=0.0, max=100.0, step=0.5
-            ).classes("w-full")
-            obs_inp = ui.input("Observación (opcional)").classes("w-full")
-
-            def _guardar_nota() -> None:
-                try:
-                    dto = RegistrarNotaHabilitacionDTO(
-                        nota=float(nota_inp.value or 0.0),
-                        usuario_id=ctx.usuario_id,
-                        observacion=str(obs_inp.value).strip() or None,
-                    )
-                    Container.habilitacion_service().registrar_nota_habilitacion(
-                        hab.id, dto
-                    )
-                    ui.notify("Nota registrada", type="positive")
-                    dlg.close()
-                    _cargar_habilitaciones()
-                    tabla_habilitaciones.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al registrar nota habilitación: %s", exc)
-                    ui.notify("Error al registrar la nota", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Registrar nota", on_click=_guardar_nota)
-
-        dlg.open()
+        form_dialog(
+            titulo    = f"Registrar nota — Estudiante {hab.estudiante_id}",
+            campos    = [
+                {"key": "hab_info",    "label": "Información",    "tipo": "readonly",
+                 "valor": f"Tipo: {hab.tipo.value.capitalize()} | Estado: {hab.estado.value}"},
+                {"key": "nota",        "label": "Nota (0–100) *", "tipo": "number",
+                 "valor": 0.0, "min": 0.0, "max": 100.0, "step": 0.5, "requerido": True},
+                {"key": "observacion", "label": "Observación",    "tipo": "text",
+                 "placeholder": "Opcional"},
+            ],
+            on_submit    = _guardar_nota,
+            texto_submit = "Registrar nota",
+            max_width    = "max-w-sm",
+        )
 
     def _on_filtros_cambio() -> None:
         _cargar_habilitaciones()

@@ -28,10 +28,18 @@ def base_form(
                              "key":         str,           # Identificador del campo
                              "label":       str,           # Etiqueta visible
                              "tipo":        str,           # "text" | "password" | "select" | "textarea"
+                                                           # | "number" | "checkbox" | "time" | "email"
+                                                           # | "readonly"
+                             "valor":       Any,           # Valor inicial (para modo edición)
                              "opciones":    list | None,   # Solo para tipo "select"
                              "placeholder": str,           # Texto de ayuda opcional
                              "requerido":   bool,          # Marca campo obligatorio
                              "ref":         list,          # Lista de 1 elemento para recibir el widget
+                             # Sólo para tipo="number":
+                             "min":    int | float,
+                             "max":    int | float,
+                             "step":   int | float,
+                             "format": str,                # ej: "%.2f"
                          }
         on_submit:       Callback con firma fn(datos: dict) al enviar el formulario.
         titulo:          Título opcional mostrado sobre el formulario.
@@ -86,23 +94,62 @@ def base_form(
                         widget = ui.select(
                             options=opciones,
                             label=label_text,
+                            value=campo.get("valor"),
                         ).classes("andes-input w-full")
                     elif tipo == "textarea":
                         widget = ui.textarea(
                             label=label_text,
                             placeholder=placeholder,
+                            value=campo.get("valor", ""),
                         ).classes("andes-input w-full")
                     elif tipo == "password":
                         widget = ui.input(
                             label=label_text,
                             placeholder=placeholder,
+                            value=campo.get("valor", ""),
                             password=True,
                             password_toggle_button=True,
                         ).classes("andes-input w-full")
+                    elif tipo == "number":
+                        min_val  = campo.get("min")
+                        max_val  = campo.get("max")
+                        step_val = campo.get("step")
+                        fmt_val  = campo.get("format")
+                        kwargs: dict = {"label": label_text, "value": campo.get("valor")}
+                        if min_val  is not None: kwargs["min"]    = min_val
+                        if max_val  is not None: kwargs["max"]    = max_val
+                        if step_val is not None: kwargs["step"]   = step_val
+                        if fmt_val  is not None: kwargs["format"] = fmt_val
+                        widget = ui.number(**kwargs).classes("andes-input w-full")
+                    elif tipo == "checkbox":
+                        widget = ui.checkbox(label_text, value=bool(campo.get("valor", False)))
+                    elif tipo == "time":
+                        widget = (
+                            ui.input(label=label_text, value=campo.get("valor", ""))
+                            .props("type=time")
+                            .classes("andes-input w-full")
+                        )
+                    elif tipo == "email":
+                        widget = (
+                            ui.input(
+                                label=label_text,
+                                placeholder=placeholder,
+                                value=campo.get("valor", ""),
+                            )
+                            .props("type=email")
+                            .classes("andes-input w-full")
+                        )
+                    elif tipo == "readonly":
+                        ui.label(str(campo.get("valor", ""))).classes(
+                            "readonly-field-value text-sm"
+                        )
+                        continue  # No añadir a _valores
                     else:
+                        # default: text
                         widget = ui.input(
                             label=label_text,
                             placeholder=placeholder,
+                            value=campo.get("valor", ""),
                         ).classes("andes-input w-full")
 
                     _valores[key] = widget

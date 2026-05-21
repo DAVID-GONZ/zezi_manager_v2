@@ -20,7 +20,6 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
-from src.interface.design.components import page_header
 from src.services.configuracion_service import ActualizarInfoInstitucionalDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
@@ -153,12 +152,6 @@ def configuracion_institucion_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Información Institucional",
-                subtitulo = "Datos básicos y generales de la institución educativa",
-                icono     = "business",
-            )
-
             with ui.element("div").classes("panel-card"):
                 btn_icon("arrow_back", on_click=lambda: ui.navigate.to("/admin/configuracion"), tooltip="Volver a Configuración SIE").classes("ml-auto")
 
@@ -169,12 +162,11 @@ def configuracion_institucion_page() -> None:
                 formulario()
 
     app_layout(
-        titulo_pagina="Administración · Información Institucional",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/configuracion",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Información Institucional",
+        page_subtitulo = "Datos básicos y generales de la institución educativa",
+        page_icono     = "business",
     )
 
 

@@ -20,7 +20,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
-from src.interface.design.components import page_header, badge_estado_general
+from src.interface.design.components import badge_estado_general
 from src.services.configuracion_service import NuevaConfiguracionAnioDTO
 
 logger = logging.getLogger("ADMIN.CONFIG_SIE")
@@ -115,12 +115,6 @@ def configuracion_sie_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Configuración del SIE",
-                subtitulo = "Periodos académicos y configuración del año escolar",
-                icono     = "settings",
-            )
-
             with ui.element("div").classes("panel-card"):
                 btn_icon("refresh", on_click=lambda: (_cargar_estado(), panel_anio.refresh()), tooltip="Recargar").classes("ml-auto")
 
@@ -155,12 +149,11 @@ def configuracion_sie_page() -> None:
                     btn_ghost("Gestionar", on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"), icon="arrow_forward")
 
     app_layout(
-        titulo_pagina="Administración · Configuración SIE",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/configuracion",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Configuración del SIE",
+        page_subtitulo = "Periodos académicos y configuración del año escolar",
+        page_icono     = "settings",
     )
 
 

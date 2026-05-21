@@ -1,19 +1,5 @@
 """
 login.py — Página de inicio de sesión de ZECI Manager v2.0
-
-Sin layout de app (no hay sidebar ni topbar): pantalla completa centrada.
-Valida credenciales usando AuthenticationService + repositorio de usuario.
-
-Ajustes NiceGUI 3.x:
-  - Icono "school" via ThemeManager.icono() en vez de ui.element().text()
-  - Mensajes de error actualizados con label.set_text() para forzar refresh
-  - ui.input() en modo password: password=True + password_toggle_button=True
-
-Encapsulamiento:
-  - La vista NO accede a svc_usuario._repo ni a ningún repositorio directamente.
-  - Toda la lógica de autenticación (lookup, verificación, estado de cuenta)
-    vive en IAuthenticationService.autenticar_usuario().
-  - login.py solo gestiona el formulario, los mensajes de error y la sesión.
 """
 from __future__ import annotations
 
@@ -30,46 +16,39 @@ logger = logging.getLogger("LOGIN")
 
 @ui.page("/login")
 def login_page() -> None:
-    """
-    Página de login — sin layout de app (no hay sidebar).
-    Valida credenciales con AuthenticationService + UsuarioRepository.
-
-    Flujo de autenticación:
-        1. Buscar usuario por nombre de usuario en la BD.
-        2. Verificar el hash de contraseña con BcryptAuthService.
-        3. Comprobar que la cuenta está activa.
-        4. Guardar sesión en app.storage.user y redirigir a /inicio.
-    """
     # Fondo usando la clase del design system
     ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
 
     with ui.element("div").classes("andes-login-bg w-full"):
-        with ui.card().classes("andes-login-card"):
+        # Reemplazo de ui.card() por ui.element("div") para control CSS absoluto
+        with ui.element("div").classes("andes-login-card"):
+            
             # ── Encabezado ──────────────────────────────────────────────────
-            with ui.column().classes("andes-login-logo items-center w-full"):
-                ThemeManager.icono("school", size=56, color="var(--color-primary)")
+            with ui.element("div").classes("andes-login-logo"):
+                with ui.element("div").classes("andes-login-icon-wrap"):
+                    ThemeManager.icono("school", size=40, color="var(--color-primary)")
                 ui.label("Gestor Docente").classes("andes-login-logo-title")
                 ui.label("Sistema de Gestión Educativa").classes("andes-login-logo-subtitle")
 
             # ── Formulario ───────────────────────────────────────────────────
-            usuario_input = (
-                ui.input(label="Usuario", placeholder="nombre.apellido")
-                .classes("w-full andes-input")
-                .props("outlined dense")
-            )
+            with ui.column().classes("w-full gap-4"):
+                usuario_input = (
+                    ui.input(label="Usuario", placeholder="nombre.apellido")
+                    .classes("w-full andes-input")
+                    .props("outlined") # Eliminado 'dense' para dar mayor altura
+                )
 
-            password_input = (
-                ui.input(label="Contraseña", password=True, password_toggle_button=True)
-                .classes("w-full andes-input")
-                .props("outlined dense")
-                .style("margin-top:var(--space-md);")
-            )
+                password_input = (
+                    ui.input(label="Contraseña", password=True, password_toggle_button=True)
+                    .classes("w-full andes-input")
+                    .props("outlined")
+                )
 
             # Contenedor para el error
-            error_container = ui.row().classes("andes-alert andes-alert-error w-full items-center hidden").style("margin-top:var(--space-md); padding: var(--space-sm);")
+            error_container = ui.row().classes("andes-alert andes-alert-error w-full items-center hidden no-wrap gap-2 q-mt-md").style("padding: 12px 16px; border-radius: var(--radius-md);")
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
-                error_label = ui.label("").style("font-size:var(--font-size-small); font-weight: 500;")
+                error_label = ui.label("").style("font-size: 13px; font-weight: 500;")
 
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
@@ -83,10 +62,9 @@ def login_page() -> None:
                     login_btn.enable()
                     login_btn.props(remove="loading")
 
-                nombre_usuario = usuario_input.value.strip()
-                contrasena     = password_input.value
+                nombre_usuario = usuario_input.value.strip() if usuario_input.value else ""
+                contrasena     = password_input.value if password_input.value else ""
 
-                # Validación de campos vacíos
                 if not nombre_usuario or not contrasena:
                     error_label.set_text("Completa usuario y contraseña.")
                     error_container.classes(remove="hidden")
@@ -95,8 +73,6 @@ def login_page() -> None:
 
                 try:
                     svc_auth = Container.auth_service()
-
-                    # Autenticación delegada completamente al servicio
                     user_db = svc_auth.autenticar_usuario(nombre_usuario, contrasena)
 
                     rol_str = (
@@ -105,15 +81,11 @@ def login_page() -> None:
                         else str(user_db.rol)
                     )
 
-                    # 1. Marcar como autenticado en storage ANTES de inicializar
-                    #    el contexto (ContextInitializer usa Container que puede
-                    #    necesitar el usuario_id en storage para ciertos repos).
                     app.storage.user["autenticado"]    = True
                     app.storage.user["usuario_id"]     = user_db.id
                     app.storage.user["usuario_nombre"] = user_db.nombre_completo
                     app.storage.user["usuario_rol"]    = rol_str
 
-                    # 2. Construir SessionContext con datos de identidad
                     from src.interface.context.session_context import SessionContext
                     ctx = SessionContext(
                         usuario_id     = user_db.id,
@@ -121,13 +93,9 @@ def login_page() -> None:
                         usuario_rol    = rol_str,
                     )
 
-                    # 3. Resolver contexto académico (año → periodo → grupo)
                     ctx = Container.inicializar_contexto(ctx)
-
-                    # 4. Persistir contexto completo en app.storage.user
                     ctx.guardar()
 
-                    # 5. Registrar evento de login en auditoría (best-effort)
                     try:
                         from src.services.auditoria_service import (
                             EventoSesion,
@@ -141,9 +109,7 @@ def login_page() -> None:
                             )
                         )
                     except Exception as audit_exc:
-                        logger.warning(
-                            "No se pudo registrar evento de login: %s", audit_exc
-                        )
+                        logger.warning("No se pudo registrar evento de login: %s", audit_exc)
 
                     logger.info(
                         "Login exitoso: usuario_id=%s rol=%s año=%s periodo=%s",
@@ -166,20 +132,13 @@ def login_page() -> None:
                     error_container.classes(remove="hidden")
                     on_finish()
 
-            # Enter en el campo password también dispara el login
             password_input.on("keydown.enter", lambda _: intentar_login())
 
-            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full")
+            # Botón instanciado mediante la fábrica
+            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full q-mt-lg")
 
             # ── Pie ──────────────────────────────────────────────────────────
-            ui.label("© 2026 Gestor Docente").style(
-                "color:var(--color-text-disabled);"
-                "font-size:12px;"
-                "text-align:center;"
-                "margin-top:var(--space-xl);"
-                "width:100%;"
-                "letter-spacing: 0.5px;"
-            )
+            ui.label("© 2026 Gestor Docente").classes("andes-login-footer w-full")
 
 
 __all__ = ["login_page"]

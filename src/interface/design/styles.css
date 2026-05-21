@@ -9,78 +9,75 @@
 
 /* ── Variables CSS del design system ────────────────────── */
 :root {
-  /* ── Primario — azul moderno, alto contraste ─────────── */
-  --color-primary: #3B5CCC;
-  --color-primary-dark: #243E93;
-  --color-primary-darker: #19307A;
-  --color-primary-light: #4E75FF;
-  --color-primary-lighter: #D4D9EE;
-  --color-primary-hover: #2B4D96;
-  --color-primary-disabled: #586EAE;
+  /* ── Primario — Escala Borgoña/Carmesí ──────── */
+  --color-primary: #B3325D;
+  --color-primary-dark: #8A2748;
+  --color-primary-darker: #611B32;
+  --color-primary-light: #DB3D72;
+  --color-primary-lighter: #FCE8ED; /* Tinte de fondo para estados interactivos y tablas */
+  --color-primary-hover: #8A2748;
+  --color-primary-disabled: #DDA8B8; /* Contraste reducido para bloqueo de acciones */
   --color-primary-contrast: #FFFFFF;
 
-  /* ── Secundario ──────────────────────────────────────── */
-  --color-secondary: #6366F1;
-  --color-secondary-dark: #D97706;
-  --color-secondary-light: #FEF3C7;
+  /* ── Secundario — Neutro puro (Escala Zinc) ────────── */
+  --color-secondary: #71717A;
+  --color-secondary-dark: #52525B;
+  --color-secondary-light: #F4F4F5;
 
-  /* ── Semánticos — más vibrantes ──────────────────────── */
-  --color-error: #DC2626;
+  /* ── Semánticos — Contraste WCAG ─────────────────────── */
+  --color-error: #DC2626; /* Suficiente diferenciación visual del primario */
   --color-error-light: #FEF2F2;
   --color-error-dark: #B91C1C;
-  --color-warning: #D97706;
+  --color-warning:#FFCB47;
   --color-warning-light: #FFFBEB;
-  --color-success: #059669;
+  --color-success: #47FF97;
   --color-success-light: #ECFDF5;
-  --color-info: #0284C7;
+  --color-info: #4778FF;
   --color-info-light: #F0F9FF;
 
-  /* ── Neutros — mayor contraste ───────────────────────── */
-  --color-bg: #F8FAFC;
+  /* ── Neutros — Superficies y Textos ──────────────────── */
+  --color-bg: #FAFAFA;
   --color-surface: #FFFFFF;
-  --color-surface-alt: #F6F8FF;
+  --color-surface-alt: #FDF8F9;
   --color-divider: rgba(0, 0, 0, 0.12);
-  --color-border: #CBD5E1;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-disabled: #94A3B8;
+  --color-border: #E4E4E7;
+  --color-text-primary: #18181B;
+  --color-text-secondary: #52525B;
+  --color-text-disabled: #A1A1AA;
   --color-text-inverse: #FFFFFF;
-  --color-disabled-bg: #E2E8F0;
-  --color-disabled-text: #475569;
+  --color-disabled-bg: #E4E4E7;
+  --color-disabled-text: #71717A;
 
-  /* ── Navegación — sidebar oscuro premium ─────────────── */
-  --nav-sidebar-bg: linear-gradient(180deg,
-      #0F172A 0%,
-      #111827 100%);
-  --nav-sidebar-text: #94A3B8;
-  --nav-sidebar-hover: #1E293B;
-  --nav-sidebar-active-bg: #2563EB;
+  /* ── Navegación — Sidebar oscuro premium ─────────────── */
+  --nav-sidebar-bg: linear-gradient(180deg, #18181B 0%, #09090B 100%);
+  --nav-sidebar-text: #A1A1AA;
+  --nav-sidebar-hover: #27272A;
+  --nav-sidebar-active-bg: #B3325D; /* Sincronizado con el nuevo primario */
   --nav-sidebar-active-text: #FFFFFF;
   --nav-topbar-bg: rgba(255, 255, 255, 0.82);
-  --nav-topbar-border: #E2E8F0;
+  --nav-topbar-border: #E4E4E7;
   --nav-border-right: 1px solid rgba(255, 255, 255, 0.04);
 
-
   /* ── Dominio — Asistencia ────────────────────────────── */
-  --attend-presente: #059669;
+  --attend-presente: #47FF59;
   --attend-presente-bg: #ECFDF5;
-  --attend-fj: #D97706;
+  --attend-fj: #FFCB47;
   --attend-fj-bg: #FFFBEB;
   --attend-fi: #DC2626;
   --attend-fi-bg: #FEF2F2;
   --attend-retraso: #7C3AED;
   --attend-retraso-bg: #F5F3FF;
-  --attend-excusa: #0284C7;
+  --attend-excusa: #4778FF;
   --attend-excusa-bg: #F0F9FF;
 
   /* ── Dominio — Desempeño ─────────────────────────────── */
   --desempeno-bajo: #DC2626;
   --desempeno-bajo-bg: #FEF2F2;
-  --desempeno-basico: #D97706;
+  --desempeno-basico: #FFCB47;
   --desempeno-basico-bg: #FFFBEB;
   --desempeno-alto: #0284C7;
   --desempeno-alto-bg: #F0F9FF;
-  --desempeno-superior: #059669;
+  --desempeno-superior: #47FF59;
   --desempeno-superior-bg: #ECFDF5;
 
   /* ── Tipografía ──────────────────────────────────────── */
@@ -105,7 +102,7 @@
   /* ── Layout ──────────────────────────────────────────── */
   --sidebar-width: 180px;
   --sidebar-collapsed: 58px;
-  --topbar-height: 58px;
+  --topbar-height: 60px;
   --content-padding: 24px;
 
   /* ── Bordes ──────────────────────────────────────────── */
@@ -156,19 +153,22 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Sidebar ─────────────────────────────────────────────── */
+/* ── Sidebar (Premium Dark Theme) ────────────────────────── */
 .andes-sidebar {
-  width: var(--sidebar-width);
-  background: var(--nav-sidebar-bg);
-  height: 100vh;
   position: fixed;
+  top: 60px;
   left: 0;
-  top: 0;
-  overflow: hidden;
-  z-index: 200;
+  height: calc(100vh - 60px);
+  width: 220px; /* Ajustado de 180px a 220px para mejor legibilidad en español */
+  z-index: 999; 
+  background: var(--nav-sidebar-bg); /* Cambiado a background para procesar el gradiente */
+  border-right: var(--nav-border-right); /* Delimitador sutil del root */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(0);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4); /* Sombra adaptada a fondos oscuros */
   display: flex;
   flex-direction: column;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-top: 12px;
 }
 
 .sidebar-logo-text,
@@ -179,8 +179,9 @@ body {
 }
 
 .andes-sidebar.collapsed {
-  width: var(--sidebar-collapsed) !important;
-  min-width: var(--sidebar-collapsed) !important;
+  transform: translateX(-100%);
+  /* Mantiene la coherencia con el ancho base */
+  width: 220px; 
 }
 
 .andes-sidebar.collapsed .sidebar-logo-text,
@@ -191,35 +192,41 @@ body {
   transition: opacity 0.15s ease;
 }
 
+/* ── Items de Navegación ─────────────────────────────────── */
 .andes-sidebar-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  margin: 2px 8px;
+  align-items:left;
+  gap: 12px;
+  padding: 10px 14px;
+  margin: 4px 12px; /* Espaciado perimetral para efecto píldora */
   border-radius: var(--radius-md);
   color: var(--nav-sidebar-text);
+  font-size: 13px;
   cursor: pointer;
   text-decoration: none;
-  transition: background var(--transition-base), color var(--transition-base);
+  /* Transición unificada incluyendo transform para el hover */
+  transition: all 0.2s ease;
   overflow: hidden;
   white-space: nowrap;
-  min-width: 0;
+  min-width: var(--sidebar-collapsed);
 }
 
 .andes-sidebar-item:hover {
   background: var(--nav-sidebar-hover);
-  color: #FFFFFF;
+  color: var(--color-text-inverse); /* Integración de variables, sin #FFFFFF duro */
+  transform: translateX(4px); /* Micro-interacción de avance */
 }
 
 .andes-sidebar-item.active {
   background: var(--nav-sidebar-active-bg);
   color: var(--nav-sidebar-active-text);
-  font-weight: 500;
+  font-weight: 600;
+  /* Resplandor sutil del color Borgoña primario */
+  box-shadow: 0 2px 8px rgba(179, 50, 93, 0.3); 
 }
 
 .andes-sidebar-item.active .nav-icon {
-  color: #FFFFFF;
+  color: var(--nav-sidebar-active-text);
 }
 
 .nav-icon {
@@ -255,29 +262,197 @@ body {
 .andes-topbar {
   height: var(--topbar-height);
   min-height: var(--topbar-height);
-  background: var(--nav-topbar-bg);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--nav-topbar-border);
+  /* Degradado actualizado a la escala Borgoña/Carmesí con opacidades */
+  background: linear-gradient(160deg,
+    rgba(97, 27, 50, 0.97) 0%,    /* --color-primary-darker  (#611B32) */
+    rgba(179, 50, 93, 0.93) 60%,  /* --color-primary         (#B3325D) */
+    rgba(219, 61, 114, 0.88) 100% /* --color-primary-light   (#DB3D72) */
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  /* Sombra de la barra ajustada al nuevo color primario */
+  box-shadow: 0 4px 24px rgba(179, 50, 93, 0.25); 
   display: flex;
   align-items: center;
   padding: 0 var(--content-padding);
   gap: 12px;
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
-  box-shadow:
-    0 1px 0 rgba(15, 23, 42, 0.04);
+  left: 0;
+  width: 100%;
+  height: 60px; /* Ajusta según tu diseño */
+  z-index: 1000; /* Asegura que quede por encima de todo */
+}
+
+/* Brand (toggle button area) */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  margin-right: 4px;
+}
+
+/* Page info (título + subtítulo) */
+.topbar-page-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topbar-page-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95); /* El blanco contrasta perfecto con el borgoña */
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-page-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* User block */
+.topbar-user-block {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-user-info {
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.topbar-user-name {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.topbar-user-role {
+  font-size: var(--font-size-label);
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+/* Logo institucional en topbar */
+.topbar-logo-inst {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  margin-left: 4px;
+}
+
+.topbar-logo-img {
+  max-height: 36px;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  opacity: 0.9;
+}
+
+/* Botones de acción en el topbar (fondo oscuro) */
+.topbar-action-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+
+.topbar-action-primary {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.topbar-action-primary:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.topbar-action-secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.topbar-action-secondary:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Se mantiene igual ya que --color-error sigue siendo #DC2626 */
+.topbar-action-danger {
+  background: rgba(220, 38, 38, 0.25);
+  border-color: rgba(220, 38, 38, 0.4);
+  color: rgba(255, 180, 180, 0.95);
+}
+
+.topbar-action-danger:hover {
+  background: rgba(220, 38, 38, 0.4);
+}
+
+/* Actions row */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Botones icon-only del topbar (toggle, logout) */
+.andes-topbar .q-btn[flat] {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.andes-topbar .q-btn[flat]:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Context chip — override para fondo oscuro */
+.andes-topbar .context-chip,
+.andes-topbar [class*="context-chip"] {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.andes-topbar .context-chip:hover,
+.andes-topbar [class*="context-chip"]:hover {
+  background: rgba(255, 255, 255, 0.20) !important;
 }
 
 /* ── Main wrapper ───────────────────────────────────────── */
 .andes-main {
-  margin-left: var(--sidebar-width);
-  width: calc(100vw - var(--sidebar-width));
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-width: 0;
-  transition:
+width: 100%;
+    margin-left: 0 !important; 
+    padding-top: 60px; 
+    min-height: 100vh;
+    transition:
     margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -740,42 +915,77 @@ body {
 }
 
 /* ── Login ───────────────────────────────────────────────── */
+/* ── Login (SaaS Moderno) ────────────────────────────────── */
 .andes-login-bg {
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #4F46E5 0%, transparent 40%),
-    radial-gradient(circle at bottom right, #2563EB 0%, transparent 35%),
-    #0F172A;
+  /* Fondo claro con destellos cálidos de la paleta Borgoña */
+  background: 
+    radial-gradient(circle at 0% 0%, var(--color-primary-lighter) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, var(--color-primary-lighter) 0%, transparent 40%),
+    var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-lg);
+  padding: 24px;
 }
 
 .andes-login-card {
   background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  padding: var(--space-xxl);
+  border-radius: 24px;
+  padding: 48px 40px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: var(--shadow-modal);
+  max-width: 420px;
+  /* Sombra profunda y difuminada para elevar la tarjeta */
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
 }
 
 .andes-login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: 32px;
+}
+
+/* Cápsula de icono premium */
+.andes-login-icon-wrap {
+  width: 72px;
+  height: 72px;
+  background: var(--color-primary-lighter);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  /* Sombra interior para volumen y exterior para irradiar el color primario */
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 8px 16px rgba(179, 50, 93, 0.12);
+  border: 1px solid rgba(179, 50, 93, 0.15);
 }
 
 .andes-login-logo-title {
-  font-size: var(--font-size-h2);
+  font-size: 26px;
   font-weight: 700;
-  color: var(--color-primary);
-  margin: var(--space-sm) 0 0;
+  color: var(--color-text-primary);
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+  margin: 0 0 6px 0;
 }
 
 .andes-login-logo-subtitle {
-  font-size: var(--font-size-small);
+  font-size: 14px;
   color: var(--color-text-secondary);
-  margin: var(--space-xs) 0 0;
+  margin: 0;
+}
+
+.andes-login-footer {
+  color: var(--color-text-disabled);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 32px;
+  letter-spacing: 0.5px;
 }
 
 /* ── Notificaciones / Alertas inline ─────────────────────── */
@@ -1236,38 +1446,107 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
-/* ── Greeting hero ───────────────────────────────────────── */
+/* ── Greeting hero (Variante Clara con Acento Borgoña) ───────────── */
 .greeting-hero {
-  background: linear-gradient(135deg, #243E93 0%, #19307A 100%);
+  background: var(--color-surface);
   border-radius: var(--radius-xl);
-  padding: var(--space-xl);
-  color: white;
+  border: 1px solid var(--color-border);
+  border-left: 6px solid var(--color-primary); 
+  padding: 32px 40px;
   position: relative;
   overflow: hidden;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  color: var(--color-text-primary);
+}
+/* Tipografía y jerarquía (z-index previene superposición de decoraciones) */
+.greeting-name,
+.greeting-desc,
+.greeting-meta {
+  position: relative;
+  z-index: 2;
 }
 
+.greeting-name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+  color: var(--color-text-primary);
+}
+
+.greeting-desc {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  margin-bottom: 24px;
+}
+
+/* Cápsula de Metadata del usuario */
+.greeting-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-primary-lighter); 
+  padding: 6px 14px;
+  border-radius: 99px;
+  width: fit-content;
+  border: 1px solid rgba(179, 50, 93, 0.15); 
+}
+
+.greeting-user {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.greeting-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+}
+.greeting-role {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Selector universal para corregir el color del icono inyectado */
+.greeting-meta [class*="material-symbols"] {
+  color: var(--color-primary-dark) !important; 
+}
+
+/* ── Elementos decorativos (Fondo) ───────────────────────── */
 .greeting-hero::before {
   content: '';
   position: absolute;
   right: -60px;
   top: -60px;
-  width: 240px;
-  height: 240px;
+  width: 260px;
+  height: 260px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(135deg, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .greeting-hero::after {
   content: '';
   position: absolute;
-  right: 40px;
+  right: 15%;
   bottom: -80px;
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: radial-gradient(circle, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Period status card ──────────────────────────────────── */
@@ -1490,57 +1769,6 @@ body {
   font-weight: 600;
   color: var(--color-text-primary);
 }
-
-/* ═══════════════════════════════════════════════════════
-   GREETING HERO — hijos del card de bienvenida
-   ═══════════════════════════════════════════════════════ */
-
-.greeting-name {
-  font-size: 26px;
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-bottom: 8px;
-  position: relative;
-  z-index: 1;
-  line-height: 1.2;
-}
-
-.greeting-desc {
-  color: rgba(255, 255, 255, 0.80);
-  font-size: 14px;
-  position: relative;
-  z-index: 1;
-}
-
-.greeting-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: var(--space-md);
-  position: relative;
-  z-index: 1;
-}
-
-.greeting-user {
-  color: rgba(255, 255, 255, 0.90);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.greeting-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.40);
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.greeting-role {
-  color: rgba(255, 255, 255, 0.70);
-  font-size: 12px;
-}
-
 /* ═══════════════════════════════════════════════════════
    PERIOD STATUS CARD — hijos de la tarjeta de periodo
    ═══════════════════════════════════════════════════════ */
@@ -1834,11 +2062,13 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   TOPBAR — título de página, bloque de usuario, logout
+   TOPBAR — clases heredadas / compatibilidad
+   (Las clases principales están en la sección .andes-topbar)
    ═══════════════════════════════════════════════════════ */
 
+/* Título legacy — mantenido por compatibilidad */
 .topbar-title {
-  color: var(--color-text-primary);
+  color: rgba(255, 255, 255, 0.95);
   font-weight: 600;
   font-size: 15px;
   flex: 1;
@@ -1847,37 +2077,25 @@ body {
   text-overflow: ellipsis;
 }
 
-.topbar-user-block {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.topbar-user-info {
-  line-height: 1.2;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.topbar-user-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-}
-
-.topbar-user-role {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-/* Quasar flat+round+dense button — override de color y tamaño mínimo */
+/* Logout button override */
 .topbar-logout-btn {
-  color: var(--color-text-secondary) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
   min-width: 34px !important;
   min-height: 34px !important;
+}
+.topbar-logout-btn:hover {
+  color:--var(--color-primary-contrast) !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+}
+
+/* Sidebar logo institucional */
+.sidebar-logo-img {
+  max-width: 120px;
+  max-height: 40px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  opacity: 0.9;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1980,6 +2198,7 @@ body {
 }
 
 /* ── Stats ───────────────────────────────────────────────────── */
+/* ── Estadísticas de Asistencia ──────────────────────────────── */
 .asis-stats-row {
   display: flex;
   gap: 10px;
@@ -2000,28 +2219,28 @@ body {
 }
 
 .asis-stat-p {
-  border-color: #059669;
-  background: #ECFDF5;
+  border-color: var(--attend-presente);
+  background: var(--attend-presente-bg);
 }
 
 .asis-stat-fj {
-  border-color: #D97706;
-  background: #FFFBEB;
+  border-color: var(--attend-fj);
+  background: var(--attend-fj-bg);
 }
 
 .asis-stat-fi {
-  border-color: #DC2626;
-  background: #FEF2F2;
+  border-color: var(--attend-fi);
+  background: var(--attend-fi-bg);
 }
 
 .asis-stat-r {
-  border-color: #7C3AED;
-  background: #F5F3FF;
+  border-color: var(--attend-retraso);
+  background: var(--attend-retraso-bg);
 }
 
 .asis-stat-e {
-  border-color: #0284C7;
-  background: #F0F9FF;
+  border-color: var(--attend-excusa);
+  background: var(--attend-excusa-bg);
 }
 
 .asis-stat-num {
@@ -2031,25 +2250,11 @@ body {
   color: var(--color-text-primary);
 }
 
-.asis-stat-p .asis-stat-num {
-  color: #059669;
-}
-
-.asis-stat-fj .asis-stat-num {
-  color: #D97706;
-}
-
-.asis-stat-fi .asis-stat-num {
-  color: #DC2626;
-}
-
-.asis-stat-r .asis-stat-num {
-  color: #7C3AED;
-}
-
-.asis-stat-e .asis-stat-num {
-  color: #0284C7;
-}
+.asis-stat-p .asis-stat-num { color: var(--attend-presente); }
+.asis-stat-fj .asis-stat-num { color: var(--attend-fj); }
+.asis-stat-fi .asis-stat-num { color: var(--attend-fi); }
+.asis-stat-r .asis-stat-num { color: var(--attend-retraso); }
+.asis-stat-e .asis-stat-num { color: var(--attend-excusa); }
 
 .asis-stat-desc {
   font-size: 10px;
@@ -2076,7 +2281,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0;
-  border-bottom: 1px solid var(--color-border-light, #F1F5F9);
+  border-bottom: 1px solid var(--color-border);
   min-height: 52px;
   transition: background 0.12s ease;
 }
@@ -2142,79 +2347,58 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* ── Botones de estado ───────────────────────────────────────── */
+/* ── Botones de estado (Sin !important) ──────────────────────── */
 .asis-btn-group {
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
-.asis-btn {
-  min-width: 38px !important;
-  height: 28px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  border-radius: 6px !important;
-  padding: 0 8px !important;
-  border: 1.5px solid transparent !important;
-  transition: all 0.1s ease !important;
+/* Se aumenta la especificidad para asegurar la cascada sobre Quasar */
+.asis-btn-group .asis-btn {
+  min-width: 38px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0 8px;
+  border: 1.5px solid transparent;
+  transition: all 0.1s ease;
+  background: transparent;
 }
 
 /* Colores base (inactivo — outline) */
-.asis-btn-p {
-  border-color: #059669 !important;
-  color: #059669 !important;
-}
-
-.asis-btn-fj {
-  border-color: #D97706 !important;
-  color: #D97706 !important;
-}
-
-.asis-btn-fi {
-  border-color: #DC2626 !important;
-  color: #DC2626 !important;
-}
-
-.asis-btn-r {
-  border-color: #7C3AED !important;
-  color: #7C3AED !important;
-}
-
-.asis-btn-e {
-  border-color: #0284C7 !important;
-  color: #0284C7 !important;
-}
+.asis-btn-group .asis-btn-p { border-color: var(--attend-presente); color: var(--attend-presente); }
+.asis-btn-group .asis-btn-fj { border-color: var(--attend-fj); color: var(--attend-fj); }
+.asis-btn-group .asis-btn-fi { border-color: var(--attend-fi); color: var(--attend-fi); }
+.asis-btn-group .asis-btn-r { border-color: var(--attend-retraso); color: var(--attend-retraso); }
+.asis-btn-group .asis-btn-e { border-color: var(--attend-excusa); color: var(--attend-excusa); }
 
 /* Activo — fondo sólido */
-.asis-btn-p.asis-btn-active {
-  background: #059669 !important;
-  color: #fff !important;
+.asis-btn-group .asis-btn-p.asis-btn-active {
+  background: var(--attend-presente);
+  color: var(--color-text-primary); /* Texto oscuro por el alto brillo de #47FF59 */
 }
-
-.asis-btn-fj.asis-btn-active {
-  background: #D97706 !important;
-  color: #fff !important;
+.asis-btn-group .asis-btn-fj.asis-btn-active {
+  background: var(--attend-fj);
+  color: var(--color-text-primary); /* Texto oscuro por el alto brillo de #FFCB47 */
 }
-
-.asis-btn-fi.asis-btn-active {
-  background: #DC2626 !important;
-  color: #fff !important;
+.asis-btn-group .asis-btn-fi.asis-btn-active {
+  background: var(--attend-fi);
+  color: var(--color-text-inverse);
 }
-
-.asis-btn-r.asis-btn-active {
-  background: #7C3AED !important;
-  color: #fff !important;
+.asis-btn-group .asis-btn-r.asis-btn-active {
+  background: var(--attend-retraso);
+  color: var(--color-text-inverse);
 }
-
-.asis-btn-e.asis-btn-active {
-  background: #0284C7 !important;
-  color: #fff !important;
+.asis-btn-group .asis-btn-e.asis-btn-active {
+  background: var(--attend-excusa);
+  color: var(--color-text-inverse);
 }
 
 /* ── Input de observación ────────────────────────────────────── */
 .asis-obs-input {
-  font-size: 12px !important;
+  font-size: 12px;
   max-width: 180px;
 }
 
@@ -2230,30 +2414,11 @@ body {
   text-transform: uppercase;
 }
 
-.asis-badge-p {
-  background: #ECFDF5;
-  color: #059669;
-}
-
-.asis-badge-fj {
-  background: #FFFBEB;
-  color: #D97706;
-}
-
-.asis-badge-fi {
-  background: #FEF2F2;
-  color: #DC2626;
-}
-
-.asis-badge-r {
-  background: #F5F3FF;
-  color: #7C3AED;
-}
-
-.asis-badge-e {
-  background: #F0F9FF;
-  color: #0284C7;
-}
+.asis-badge-p { background: var(--attend-presente-bg); color: var(--attend-presente); }
+.asis-badge-fj { background: var(--attend-fj-bg); color: var(--attend-fj); }
+.asis-badge-fi { background: var(--attend-fi-bg); color: var(--attend-fi); }
+.asis-badge-r { background: var(--attend-retraso-bg); color: var(--attend-retraso); }
+.asis-badge-e { background: var(--attend-excusa-bg); color: var(--attend-excusa); }
 
 /* ── Estado vacío ────────────────────────────────────────────── */
 .asis-empty {
@@ -2858,7 +3023,7 @@ td.tablero-promedio-superior,
 .andes-sidebar.collapsed .sidebar-nav-sub-item .nav-label,
 .andes-sidebar.collapsed .nav-expand-icon {
   opacity: 0;
-  width: 0;
+  width: var(--sidebar-collapsed);
   overflow: hidden;
 }
 .andes-sidebar.collapsed .sidebar-nav-children {
@@ -2953,6 +3118,31 @@ td.tablero-promedio-superior,
 .base-form-sep    { margin: var(--space-md) 0; background: var(--color-divider); }
 .base-form-footer { width: 100%; }
 .base-form-grid   { display: grid; gap: var(--space-md); width: 100%; }
+
+/* ── Clases para form_dialog ─────────────────────────────────────────────── */
+.form-dialog-card {
+  width: 100%;
+  min-width: 320px;
+}
+
+.form-dialog-title {
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text-primary);
+}
+
+/* base_form — campo readonly */
+.readonly-field-value {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  display: block;
+  width: 100%;
+}
 
 /* ── Clases para confirm_dialog ─────────────────────────────────────────── */
 .confirm-dialog-card  { min-width: 380px; max-width: 480px; }

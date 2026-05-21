@@ -22,6 +22,10 @@ def page_header(
     acciones: list[dict] | None = None,
 ) -> None:
     """
+    .. deprecated::
+        Usar los parámetros page_titulo/page_subtitulo/page_icono/page_acciones
+        en app_layout() en su lugar. Este componente se mantiene por compatibilidad.
+
     Renderiza la cabecera estándar de una página/sección.
 
     Args:

@@ -27,7 +27,7 @@ from src.services.habilitacion_service import (
     CerrarPlanMejoramientoDTO,
 )
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
-from src.interface.design.components import status_badge
+from src.interface.design.components import status_badge, form_dialog
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.PLANES")
@@ -155,52 +155,48 @@ def planes_mejoramiento_page() -> None:
             ui.notify("Error al crear el plan de mejoramiento", type="negative")
 
     def _cerrar_plan_dialog(plan) -> None:
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            ui.label("Cerrar plan de mejoramiento").classes("text-lg font-bold mb-2")
-            ui.label(
-                f"Estudiante: {plan.estudiante_id} — Iniciado: {plan.fecha_inicio}"
-            ).classes("text-sm text-grey-6 mb-3")
+        def _guardar_cierre(datos: dict) -> "bool | None":
+            obs = str(datos.get("observacion", "")).strip()
+            if not obs:
+                ui.notify("La observación es obligatoria", type="warning")
+                return False
+            try:
+                dto = CerrarPlanMejoramientoDTO(
+                    estado=EstadoPlanMejoramiento(datos.get("estado")),
+                    observacion=obs,
+                )
+                Container.habilitacion_service().cerrar_plan(plan.id, dto)
+                ui.notify("Plan cerrado", type="positive")
+                # Refrescar si aplica
+                est_id_raw = str(_s["buscar_est_id"]).strip()
+                if est_id_raw.isdigit() and int(est_id_raw) == plan.estudiante_id:
+                    _buscar_planes()
+                else:
+                    tabla_planes.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al cerrar plan: %s", exc)
+                ui.notify("Error al cerrar el plan", type="negative")
+                return False
 
-            estado_sel = ui.select(
-                _ESTADOS_CIERRE,
-                value=EstadoPlanMejoramiento.CUMPLIDO.value,
-                label="Estado de cierre *",
-            ).classes("w-full")
-            obs_inp = ui.textarea(
-                "Observación de cierre *",
-                placeholder="Describa el resultado del plan...",
-            ).classes("w-full")
-
-            def _guardar_cierre() -> None:
-                obs = str(obs_inp.value).strip()
-                if not obs:
-                    ui.notify("La observación es obligatoria", type="warning")
-                    return
-                try:
-                    dto = CerrarPlanMejoramientoDTO(
-                        estado=EstadoPlanMejoramiento(estado_sel.value),
-                        observacion=obs,
-                    )
-                    Container.habilitacion_service().cerrar_plan(plan.id, dto)
-                    ui.notify("Plan cerrado", type="positive")
-                    dlg.close()
-                    # Refrescar si aplica
-                    est_id_raw = str(_s["buscar_est_id"]).strip()
-                    if est_id_raw.isdigit() and int(est_id_raw) == plan.estudiante_id:
-                        _buscar_planes()
-                    else:
-                        tabla_planes.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al cerrar plan: %s", exc)
-                    ui.notify("Error al cerrar el plan", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Cerrar plan", on_click=_guardar_cierre)
-
-        dlg.open()
+        form_dialog(
+            titulo    = "Cerrar plan de mejoramiento",
+            campos    = [
+                {"key": "plan_info",   "label": "Plan",                    "tipo": "readonly",
+                 "valor": f"Estudiante: {plan.estudiante_id} — Iniciado: {plan.fecha_inicio}"},
+                {"key": "estado",      "label": "Estado de cierre *",      "tipo": "select",
+                 "opciones": _ESTADOS_CIERRE,
+                 "valor": EstadoPlanMejoramiento.CUMPLIDO.value,
+                 "requerido": True},
+                {"key": "observacion", "label": "Observación de cierre *", "tipo": "textarea",
+                 "placeholder": "Describa el resultado del plan...", "requerido": True},
+            ],
+            on_submit    = _guardar_cierre,
+            texto_submit = "Cerrar plan",
+            max_width    = "max-w-md",
+        )
 
     # ── Sección refreshable ───────────────────────────────────────────────────
     @ui.refreshable

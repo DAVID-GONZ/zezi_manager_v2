@@ -21,7 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import page_header, confirm_dialog
+from src.interface.design.components import confirm_dialog, form_dialog
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -133,36 +133,43 @@ def asignaturas_page() -> None:
         )
 
     def _editar_area(area: AreaConocimiento) -> None:
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            ui.label("Editar área").classes("text-lg font-bold mb-2")
-            nom = ui.input("Nombre *", value=area.nombre).classes("w-full")
-            cod = ui.input("Código", value=area.codigo or "").classes("w-full")
+        def _guardar(datos: dict) -> "bool | None":
+            try:
+                nombre = str(datos.get("nombre", "")).strip()
+                if not nombre:
+                    ui.notify("El nombre es obligatorio", type="warning")
+                    return False
+                area_act = AreaConocimiento(
+                    id=area.id,
+                    nombre=nombre,
+                    codigo=str(datos.get("codigo", "")).strip() or None,
+                )
+                Container.infraestructura_service().actualizar_area(area_act)
+                ui.notify(f"Área '{area_act.nombre}' actualizada", type="positive")
+                _cargar_areas()
+                _cargar_asignaturas()
+                tabla_areas.refresh()
+                filtro_area.refresh()
+                tabla_asignaturas.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al actualizar área: %s", exc)
+                ui.notify("Error al actualizar el área", type="negative")
+                return False
 
-            def _guardar() -> None:
-                try:
-                    area_act = AreaConocimiento(
-                        id=area.id,
-                        nombre=str(nom.value).strip(),
-                        codigo=str(cod.value).strip() or None,
-                    )
-                    Container.infraestructura_service().actualizar_area(area_act)
-                    ui.notify(f"Área '{area_act.nombre}' actualizada", type="positive")
-                    dlg.close()
-                    _cargar_areas()
-                    _cargar_asignaturas()
-                    tabla_areas.refresh()
-                    filtro_area.refresh()
-                    tabla_asignaturas.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al actualizar área: %s", exc)
-                    ui.notify("Error al actualizar el área", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Guardar", on_click=_guardar)
-        dlg.open()
+        form_dialog(
+            titulo    = "Editar área",
+            campos    = [
+                {"key": "nombre", "label": "Nombre *", "tipo": "text",
+                 "valor": area.nombre, "requerido": True},
+                {"key": "codigo", "label": "Código",   "tipo": "text",
+                 "valor": area.codigo or ""},
+            ],
+            on_submit    = _guardar,
+            max_width    = "max-w-md",
+        )
 
     # ── CRUD Asignaturas ──────────────────────────────────────────────────────
     def _crear_asignatura() -> None:
@@ -218,37 +225,48 @@ def asignaturas_page() -> None:
 
     def _editar_asignatura(asig: Asignatura) -> None:
         areas_dict = {a.id: a.nombre for a in _s["areas"]}
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            ui.label("Editar asignatura").classes("text-lg font-bold mb-2")
-            nom = ui.input("Nombre *", value=asig.nombre).classes("w-full")
-            cod = ui.input("Código", value=asig.codigo or "").classes("w-full")
-            are = ui.select(areas_dict, value=asig.area_id, label="Área").classes("w-full")
-            hor = ui.number("Horas semanales", value=asig.horas_semanales, min=1).classes("w-full")
 
-            def _guardar() -> None:
-                try:
-                    asig_act = Asignatura(
-                        id=asig.id,
-                        nombre=str(nom.value).strip(),
-                        codigo=str(cod.value).strip() or None,
-                        area_id=are.value if are.value else None,
-                        horas_semanales=int(hor.value),
-                    )
-                    Container.infraestructura_service().actualizar_asignatura(asig_act)
-                    ui.notify(f"Asignatura '{asig_act.nombre}' actualizada", type="positive")
-                    dlg.close()
-                    _cargar_asignaturas()
-                    tabla_asignaturas.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al actualizar asignatura: %s", exc)
-                    ui.notify("Error al actualizar la asignatura", type="negative")
+        def _guardar(datos: dict) -> "bool | None":
+            try:
+                nombre = str(datos.get("nombre", "")).strip()
+                if not nombre:
+                    ui.notify("El nombre es obligatorio", type="warning")
+                    return False
+                asig_act = Asignatura(
+                    id=asig.id,
+                    nombre=nombre,
+                    codigo=str(datos.get("codigo", "")).strip() or None,
+                    area_id=datos.get("area_id") if datos.get("area_id") else None,
+                    horas_semanales=int(datos["horas_semanales"]) if datos.get("horas_semanales") is not None else asig.horas_semanales,
+                )
+                Container.infraestructura_service().actualizar_asignatura(asig_act)
+                ui.notify(f"Asignatura '{asig_act.nombre}' actualizada", type="positive")
+                _cargar_asignaturas()
+                tabla_asignaturas.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al actualizar asignatura: %s", exc)
+                ui.notify("Error al actualizar la asignatura", type="negative")
+                return False
 
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Guardar", on_click=_guardar)
-        dlg.open()
+        form_dialog(
+            titulo    = "Editar asignatura",
+            campos    = [
+                {"key": "nombre",          "label": "Nombre *",        "tipo": "text",
+                 "valor": asig.nombre,     "requerido": True},
+                {"key": "codigo",          "label": "Código",          "tipo": "text",
+                 "valor": asig.codigo or ""},
+                {"key": "area_id",         "label": "Área",            "tipo": "select",
+                 "valor": asig.area_id,    "opciones": areas_dict},
+                {"key": "horas_semanales", "label": "Horas semanales", "tipo": "number",
+                 "valor": asig.horas_semanales, "min": 1},
+            ],
+            on_submit    = _guardar,
+            max_width    = "max-w-md",
+            columnas     = 2,
+        )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
     @ui.refreshable
@@ -313,12 +331,6 @@ def asignaturas_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Gestión de Asignaturas",
-                subtitulo = "Áreas de conocimiento y asignaturas del currículo",
-                icono     = Icons.SUBJECTS,
-            )
-
             # ── Sección: Áreas de conocimiento ───────────────────────────────
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("items-center gap-2 mb-3"):
@@ -374,12 +386,11 @@ def asignaturas_page() -> None:
                 tabla_asignaturas()
 
     app_layout(
-        titulo_pagina="Administración · Asignaturas",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/asignaturas",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Gestión de Asignaturas",
+        page_subtitulo = "Áreas de conocimiento y asignaturas del currículo",
+        page_icono     = Icons.SUBJECTS,
     )
 
 

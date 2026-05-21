@@ -22,7 +22,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import page_header, confirm_dialog, badge_estado_general
+from src.interface.design.components import confirm_dialog, badge_estado_general, form_dialog
 from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
@@ -126,41 +126,46 @@ def asignaciones_page() -> None:
             ui.notify("No hay periodos disponibles para el año activo", type="warning")
             return
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-lg"):
-            ui.label("Nueva asignación").classes("text-lg font-bold mb-2")
+        def _crear(datos: dict) -> "bool | None":
+            try:
+                if not all([datos.get("usuario_id"), datos.get("grupo_id"),
+                            datos.get("asignatura_id"), datos.get("periodo_id")]):
+                    ui.notify("Todos los campos son obligatorios", type="warning")
+                    return False
+                dto = NuevaAsignacionDTO(
+                    usuario_id=datos["usuario_id"],
+                    grupo_id=datos["grupo_id"],
+                    asignatura_id=datos["asignatura_id"],
+                    periodo_id=datos["periodo_id"],
+                )
+                Container.asignacion_service().crear_asignacion(dto)
+                ui.notify("Asignación creada", type="positive")
+                _cargar_asignaciones()
+                tabla.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al crear asignación: %s", exc)
+                ui.notify("Error al crear la asignación", type="negative")
+                return False
 
-            doc_sel  = ui.select(docentes_opts,  label="Docente *").classes("w-full")
-            grp_sel  = ui.select(grupos_opts,    label="Grupo *").classes("w-full")
-            asig_sel = ui.select(asigs_opts,     label="Asignatura *").classes("w-full")
-            per_sel  = ui.select(periodos_opts,  label="Periodo *").classes("w-full")
-
-            def _crear() -> None:
-                try:
-                    if not all([doc_sel.value, grp_sel.value, asig_sel.value, per_sel.value]):
-                        ui.notify("Todos los campos son obligatorios", type="warning")
-                        return
-                    dto = NuevaAsignacionDTO(
-                        usuario_id=doc_sel.value,
-                        grupo_id=grp_sel.value,
-                        asignatura_id=asig_sel.value,
-                        periodo_id=per_sel.value,
-                    )
-                    Container.asignacion_service().crear_asignacion(dto)
-                    ui.notify("Asignación creada", type="positive")
-                    dlg.close()
-                    _cargar_asignaciones()
-                    tabla.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al crear asignación: %s", exc)
-                    ui.notify("Error al crear la asignación", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Crear", on_click=_crear)
-
-        dlg.open()
+        form_dialog(
+            titulo    = "Nueva asignación",
+            campos    = [
+                {"key": "usuario_id",    "label": "Docente *",    "tipo": "select",
+                 "opciones": docentes_opts, "requerido": True},
+                {"key": "grupo_id",      "label": "Grupo *",      "tipo": "select",
+                 "opciones": grupos_opts,   "requerido": True},
+                {"key": "asignatura_id", "label": "Asignatura *", "tipo": "select",
+                 "opciones": asigs_opts,    "requerido": True},
+                {"key": "periodo_id",    "label": "Periodo *",    "tipo": "select",
+                 "opciones": periodos_opts, "requerido": True},
+            ],
+            on_submit    = _crear,
+            texto_submit = "Crear",
+            max_width    = "max-w-lg",
+        )
 
     def _confirmar_desactivar(asig_id: int, label: str) -> None:
         try:
@@ -224,12 +229,6 @@ def asignaciones_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Asignaciones Docentes",
-                subtitulo = "Asignación de docentes a grupos y asignaturas por periodo",
-                icono     = "assignment_ind",
-            )
-
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("items-center gap-2 mb-4 flex-wrap"):
                     btn_primary("Nueva asignación", on_click=_abrir_crear_asignacion, icon="add_link")
@@ -266,12 +265,11 @@ def asignaciones_page() -> None:
                 tabla()
 
     app_layout(
-        titulo_pagina="Administración · Asignaciones",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/asignaciones",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Asignaciones Docentes",
+        page_subtitulo = "Asignación de docentes a grupos y asignaturas por periodo",
+        page_icono     = "assignment_ind",
     )
 
 

@@ -15,32 +15,45 @@ Ajustes NiceGUI 3.x:
   - Sidebar es position:fixed → main area requiere margin-left (clase .andes-main)
   - Iconos via ThemeManager.icono() en vez de ui.element().text()
   - Ítems de navegación: ui.element("a") con props href
-  - Botón logout: btn_icon(Icons.LOGOUT, ...).classes("topbar-logout-btn")
+  - Botón logout: btn_icon(Icons.LOGOUT, ...)
 
-Uso en cada página autenticada:
-
+Uso nuevo (preferido):
     @ui.page("/mi-ruta")
     def mi_pagina():
+        ctx = SessionContext.desde_storage()
         def contenido():
-            ui.label("Mi contenido aquí")
+            ui.label("Mi contenido")
 
         app_layout(
-            titulo_pagina="Mi Página",
-            usuario_nombre=ctx.nombre,
-            usuario_rol=ctx.rol,
-            ruta_activa="/mi-ruta",
-            contenido=contenido,
+            ctx,
+            contenido,
+            page_titulo="Mi Página",
+            page_subtitulo="Descripción de la página",
+            page_icono="home",
         )
+
+Uso legacy (compatible):
+    app_layout(
+        titulo_pagina="Mi Página",
+        usuario_nombre=ctx.usuario_nombre,
+        usuario_rol=ctx.usuario_rol,
+        ruta_activa="/mi-ruta",
+        contenido=contenido,
+        ctx=ctx,
+    )
 """
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from nicegui import ui
 
 from .theme import ThemeManager
 from .tokens import Icons
 from .components.buttons import btn_icon
+
+if TYPE_CHECKING:
+    from src.interface.context.session_context import SessionContext
 
 
 # ── Definición de la navegación principal ──────────────────────────────────────
@@ -138,46 +151,211 @@ def _usuario_puede_ver(item: dict, usuario_rol: str) -> bool:
     return "*" in roles or usuario_rol in roles
 
 
-# ── Layout principal ────────────────────────────────────────────────────────────
-def app_layout(
+def _get_logo_institucional() -> str | None:
+    """
+    Obtiene la URL del logo institucional desde la BD.
+    Devuelve None si no existe o si falla la consulta.
+    """
+    try:
+        from container import Container
+        config = Container.configuracion_service().get_activa()
+        if config and hasattr(config, "logo_url") and config.logo_url:
+            return config.logo_url
+    except Exception:
+        pass
+    return None
+
+
+def _get_ruta_activa() -> str:
+    """Intenta obtener la ruta activa desde el contexto de NiceGUI."""
+    try:
+        from nicegui import context as ng_context
+        return ng_context.client.request.url.path
+    except Exception:
+        return ""
+
+
+def _btn_topbar_accion(accion: dict) -> None:
+    """Botón de acción en el topbar (fondo oscuro). Usa clase topbar-action-btn."""
+    label    = accion.get("label", "")
+    on_click = accion.get("on_click", lambda: None)
+    icono    = accion.get("icono", None)
+    variante = accion.get("variante", "primary")
+
+    clase_var = "topbar-action-danger" if variante == "danger" else (
+        "topbar-action-secondary" if variante == "secondary" else "topbar-action-primary"
+    )
+
+    if icono:
+        icon_html = (
+            f'<span class="material-symbols-rounded" '
+            f'style="font-size:16px;vertical-align:middle;margin-right:4px;">'
+            f'{icono}</span>'
+        )
+        content = f'{icon_html}{label}'
+        btn = ui.button(on_click=on_click).classes(
+            f"topbar-action-btn {clase_var}"
+        ).props("flat")
+        btn= content
+    else:
+        ui.button(label, on_click=on_click).classes(
+            f"topbar-action-btn {clase_var}"
+        ).props("flat")
+
+
+def _user_block_topbar(ctx: "SessionContext | None") -> None:
+    """Bloque de usuario en el topbar."""
+    if not ctx:
+        return
+    with ui.row().classes("topbar-user-block items-center gap-2"):
+        ThemeManager.icono(Icons.PROFILE, size=20, color="rgba(255,255,255,0.9)")
+        with ui.column().classes("gap-0 topbar-user-info"):
+            ui.label(ctx.usuario_nombre or "Usuario").classes("topbar-user-name")
+            ui.label(ctx.usuario_rol or "").classes("topbar-user-role")
+        btn_icon(
+            Icons.LOGOUT,
+            on_click=lambda: ui.navigate.to("/logout"),
+            tooltip="Cerrar sesión",
+        ).classes("topbar-logout-btn")
+
+
+def _topbar(
+    ctx: "SessionContext | None",
+    *,
+    page_titulo: str = "",
+    page_subtitulo: str = "",
+    page_icono: str = "",
+    page_acciones: "list[dict] | None" = None,
+    logo_url: str | None = None,
+    toggle_callback=None,
+) -> None:
+    """Renderiza el topbar de la aplicación."""
+    usuario_rol = ctx.usuario_rol if ctx else ""
+
+    with ui.row().classes("andes-topbar items-center gap-0"):
+        
+        # ── Brand / toggle area ──────────────────────────────────────────────
+        with ui.element("div").classes("topbar-brand"):
+            if toggle_callback:
+                toggle_btn_inner = ui.element("div").classes("topbar-toggle-btn") 
+                with toggle_btn_inner:
+                    ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
+                toggle_btn_inner.on("click", lambda _: toggle_callback())
+            else:
+                ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
+
+        # ── Page info ────────────────────────────────────────────────────────
+        if page_titulo:
+            with ui.row().classes("topbar-page-info items-center gap-2"):
+                if page_icono:
+                    ThemeManager.icono(
+                        page_icono,
+                        size=20,
+                        color="rgba(255,255,255,0.85)",
+                    )
+                with ui.column().classes("gap-0"):
+                    ui.label(page_titulo).classes("topbar-page-title")
+                    if page_subtitulo:
+                        ui.label(page_subtitulo).classes("topbar-page-sub")
+        else:
+            ui.element("div").classes("flex-1")
+
+        # ── Context chip (centro/derecha) ────────────────────────────────────
+        if ctx is not None and usuario_rol != "admin":
+            from src.interface.design.components.context_selector import context_chip
+            context_chip(
+                ctx=ctx,
+                on_change=None,
+                mostrar_asignatura=(usuario_rol == "profesor"),
+            )
+
+        # ── Acciones de página ───────────────────────────────────────────────
+        if page_acciones:
+            with ui.row().classes("topbar-actions gap-2"):
+                for accion in page_acciones:
+                    _btn_topbar_accion(accion)
+
+        # ── Logo institucional ───────────────────────────────────────────────
+        if logo_url:
+            with ui.element("div").classes("topbar-logo-inst"):
+                ui.html(
+                    f'<img src="{logo_url}" alt="Logo institución" '
+                    f'class="topbar-logo-img" />'
+                )
+
+        # ── User block ───────────────────────────────────────────────────────
+        _user_block_topbar(ctx)
+
+
+def _topbar_legacy(
     titulo_pagina: str,
     usuario_nombre: str,
     usuario_rol: str,
-    ruta_activa: str,
-    contenido: Callable[[], None],
     ctx=None,
     on_context_change=None,
+    toggle_callback=None,
 ) -> None:
-    """
-    Renderiza el layout completo de la aplicación (sidebar colapsable + topbar + contenido).
+    """Topbar legacy para llamadas antiguas a app_layout."""
 
-    Args:
-        titulo_pagina:     Texto del topbar como título de la sección activa.
-        usuario_nombre:    Nombre completo del usuario autenticado.
-        usuario_rol:       Rol del usuario — controla visibilidad de ítems de nav.
-        ruta_activa:       Ruta URL de la página actual — resalta el ítem del sidebar.
-        contenido:         Callable sin argumentos que renderiza el cuerpo de la página.
-        ctx:               SessionContext opcional — activa el context chip en el topbar.
-        on_context_change: Callback llamado cuando el usuario cambia de contexto académico.
-    """
-    # Estado mutable del sidebar — dict para que las closures puedan mutar
-    _s: dict = {"collapsed": False}
+    with ui.element("header").classes("andes-topbar"):
 
-    # ── Sidebar (position:fixed en CSS) ───────────────────────────────────────
-    sidebar_el = ui.element("nav").classes("andes-sidebar")
+        # Toggle sidebar
+        if toggle_callback:
+            toggle_btn_inner = ui.element("div").classes("topbar-brand")
+            with toggle_btn_inner:
+                ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
+            toggle_btn_inner.on("click", lambda _: toggle_callback())
+
+        ui.label(titulo_pagina).classes("topbar-title")
+
+        # Context chip (roles académicos, no admin)
+        if ctx is not None and usuario_rol != "admin":
+            from src.interface.design.components.context_selector import context_chip
+            context_chip(
+                ctx=ctx,
+                on_change=on_context_change,
+                mostrar_asignatura=(usuario_rol == "profesor"),
+            )
+
+        # Bloque de usuario + logout
+        with ui.element("div").classes("topbar-user-block"):
+            ThemeManager.icono(
+                Icons.PROFILE,
+                size=22,
+                color="rgba(255,255,255,0.9)",
+            )
+            with ui.element("div").classes("topbar-user-info"):
+                ui.label(usuario_nombre).classes("topbar-user-name")
+                ui.label(usuario_rol.capitalize()).classes("topbar-user-role")
+
+            btn_icon(
+                Icons.LOGOUT,
+                on_click=lambda: ui.navigate.to("/logout"),
+                tooltip="Cerrar sesión",
+            ).classes("topbar-logout-btn")
+
+def _sidebar(
+    usuario_rol: str,
+    ruta_activa: str,
+    *,
+    logo_url: str | None = None,
+) -> tuple:
+    # Estado mutable del sidebar
+    _s: dict = {"collapsed": True}
+
+    sidebar_el = ui.element("nav").classes("andes-sidebar collapsed")
+
     with sidebar_el:
-
-        # Cabecera: logo + botón toggle
+        # Cabecera: logo (sin el botón toggle)
         with ui.element("div").classes("sidebar-header"):
             with ui.element("div").classes("sidebar-logo-wrap"):
-                ui.label("LumEd").classes("sidebar-logo-text")
-                ui.label("Education Manager").classes("sidebar-sub-text")
-
-            # Botón toggle — alterna collapsed
-            toggle_btn = ui.element("div").classes("sidebar-toggle")
-            with toggle_btn:
-                ThemeManager.icono(Icons.MENU, size=18, color="var(--nav-sidebar-text)")
-
+                if logo_url:
+                    ui.html(
+                        f'<img src="{logo_url}" alt="Logo" class="sidebar-logo-img" />'
+                    )
+                else:
+                    ui.label("LumEd").classes("sidebar-logo-text")
+                    ui.label("Education Manager").classes("sidebar-sub-text")
         # Ítems de navegación
         with ui.element("div").classes("sidebar-nav-scroll"):
             # Pre-calcular qué grupos están abiertos (el que contiene ruta_activa)
@@ -253,7 +431,7 @@ def app_layout(
                                     ui.label(child["label"]).classes("nav-label")
 
                     if not is_pending:
-                        def _toggle(
+                        def _toggle_nav(
                             label=item["label"],
                             p_el=parent_el,
                             c_el=children_el,
@@ -266,7 +444,7 @@ def app_layout(
                                 p_el.classes(remove="open")
                                 c_el.classes(add="hidden")
 
-                        parent_el.on("click", _toggle)
+                        parent_el.on("click", _toggle_nav)
 
                 else:
                     # ── Ítem simple ──────────────────────────────────────────
@@ -282,56 +460,106 @@ def app_layout(
         with ui.element("div").classes("sidebar-footer"):
             ui.label("v2.0").classes("sidebar-version")
 
-    # ── Área principal (.andes-main maneja margin-left via CSS) ───────────────
+    return sidebar_el, _s
+
+
+# ── Layout principal ────────────────────────────────────────────────────────────
+def app_layout(
+    ctx_or_none=None,
+    contenido_arg: "Callable[[], None] | None" = None,
+    *,
+    page_titulo: str = "",
+    page_subtitulo: str = "",
+    page_icono: str = "",
+    page_acciones: "list[dict] | None" = None,
+    # ── Deprecated legacy kwargs (backward compat) ──────────────────────
+    titulo_pagina: str = "",
+    usuario_nombre: str = "",
+    usuario_rol: str = "",
+    ruta_activa: str = "",
+    contenido: "Callable[[], None] | None" = None,
+    ctx=None,
+    on_context_change=None,
+) -> None:
+    """
+    Layout principal de la aplicación Andes Minimal v2.
+
+    Uso nuevo (preferido):
+        app_layout(ctx, contenido_fn, page_titulo="...", page_icono="...", ...)
+
+    Uso legacy (compatible con código existente):
+        app_layout(titulo_pagina="...", usuario_nombre=..., usuario_rol=...,
+                   ruta_activa=..., contenido=fn, ctx=ctx)
+
+    Args (nuevo):
+        ctx_or_none:     SessionContext del usuario autenticado.
+        contenido_arg:   Callable que renderiza el cuerpo de la página.
+        page_titulo:     Título mostrado en el topbar.
+        page_subtitulo:  Subtítulo descriptivo opcional.
+        page_icono:      Material Symbol para el topbar.
+        page_acciones:   Lista de dicts de acciones para botones en el topbar.
+    """
+    from src.interface.context.session_context import SessionContext
+
+    # ── Detectar modo de llamada ─────────────────────────────────────────────
+    _new_mode = isinstance(ctx_or_none, SessionContext)
+
+    if _new_mode:
+        # Nueva llamada: app_layout(ctx, contenido, page_titulo=...)
+        _ctx: "SessionContext | None" = ctx_or_none
+        _contenido = contenido_arg
+        _usuario_rol = _ctx.usuario_rol if _ctx else ""
+        _usuario_nombre = _ctx.usuario_nombre if _ctx else ""
+        _ruta_activa = _get_ruta_activa()
+    else:
+        # Llamada legacy: app_layout(titulo_pagina=..., usuario_nombre=..., ...)
+        _ctx = ctx
+        _contenido = contenido or contenido_arg
+        _usuario_rol = usuario_rol
+        _usuario_nombre = usuario_nombre
+        _ruta_activa = ruta_activa
+
+    logo_url = _get_logo_institucional()
+
+    # ── Sidebar ──────────────────────────────────────────────────────────────
+    sidebar_el, _s = _sidebar( 
+        _usuario_rol,
+        _ruta_activa,
+        logo_url=logo_url,
+    )
+
+    # ── Área principal ───────────────────────────────────────────────────────
     main_el = ui.element("div").classes("andes-main")
+
     with main_el:
-
-        # Topbar (position:sticky en CSS)
-        with ui.element("header").classes("andes-topbar"):
-
-            ui.label(titulo_pagina).classes("topbar-title")
-
-            # Context chip (roles académicos, no admin)
-            if ctx is not None and usuario_rol != "admin":
-                from src.interface.design.components.context_selector import context_chip
-                context_chip(
-                    ctx=ctx,
-                    on_change=on_context_change,
-                    mostrar_asignatura=(usuario_rol == "profesor"),
-                )
-
-            # Bloque de usuario + logout
-            with ui.element("div").classes("topbar-user-block"):
-                ThemeManager.icono(
-                    Icons.PROFILE,
-                    size=22,
-                    color="var(--color-text-secondary)",
-                )
-                with ui.element("div").classes("topbar-user-info"):
-                    ui.label(usuario_nombre).classes("topbar-user-name")
-                    ui.label(usuario_rol.capitalize()).classes("topbar-user-role")
-
-                btn_icon(
-                    Icons.LOGOUT,
-                    on_click=lambda: ui.navigate.to("/logout"),
-                    tooltip="Cerrar sesión",
-                ).classes("topbar-logout-btn")
+        def _toggle_sidebar() -> None:
+            _s["collapsed"] = not _s["collapsed"]
+                
+            if _s["collapsed"]:
+                sidebar_el.classes("collapsed")
+            else:
+                sidebar_el.classes(remove="collapsed") 
+                           
+        if _new_mode:
+            _topbar(
+                _ctx,
+                page_titulo=page_titulo,
+                page_subtitulo=page_subtitulo,
+                toggle_callback=_toggle_sidebar,
+            )
+        else:
+            _topbar_legacy(
+                titulo_pagina=titulo_pagina,
+                usuario_nombre=_usuario_nombre,
+                usuario_rol=_usuario_rol,
+                ctx=_ctx,
+                toggle_callback=_toggle_sidebar,
+            )
 
         # Contenido de la página
         with ui.element("main").classes("andes-content"):
-            contenido()
-
-    # ── Toggle handler — definido DESPUÉS de tener refs a sidebar_el y main_el
-    def _toggle() -> None:
-        _s["collapsed"] = not _s["collapsed"]
-        if _s["collapsed"]:
-            sidebar_el.classes(add="collapsed")
-            main_el.classes(add="sidebar-collapsed")
-        else:
-            sidebar_el.classes(remove="collapsed")
-            main_el.classes(remove="sidebar-collapsed")
-
-    toggle_btn.on("click", lambda _: _toggle())
+            if _contenido:
+                _contenido()
 
 
 __all__ = ["app_layout", "NAV_ITEMS"]

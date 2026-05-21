@@ -57,6 +57,7 @@ class ConfiguracionAnio(BaseModel):
     municipio:              str | None  = None
     telefono_institucion:   str | None  = None
     logo_path:              str | None  = None
+    logo_url:               str | None  = None  # URL del logo institucional (topbar/sidebar)
     resolucion_aprobacion:  str | None  = None
 
     # ------------------------------------------------------------------
@@ -95,7 +96,7 @@ class ConfiguracionAnio(BaseModel):
 
     @field_validator(
         "dane_code", "rector", "direccion", "municipio",
-        "telefono_institucion", "logo_path", "resolucion_aprobacion",
+        "telefono_institucion", "logo_path", "logo_url", "resolucion_aprobacion",
         mode="before",
     )
     @classmethod

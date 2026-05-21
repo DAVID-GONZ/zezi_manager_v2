@@ -112,7 +112,7 @@ def _seccion_saludo(ctx: SessionContext, config) -> None:
             ui.label(f"{_saludo_temporal()}, {nombre_corto}").classes("greeting-name")
             ui.label(_MENSAJES.get(ctx.usuario_rol, "Bienvenido")).classes("greeting-desc")
             with ui.element("div").classes("greeting-meta"):
-                ThemeManager.icono(Icons.PROFILE, size=16, color="rgba(255,255,255,0.70)")
+                ThemeManager.icono(Icons.PROFILE, size=16, color="var(--color-primary)")
                 ui.label(ctx.usuario_nombre).classes("greeting-user")
                 ui.element("span").classes("greeting-dot")
                 ui.label(

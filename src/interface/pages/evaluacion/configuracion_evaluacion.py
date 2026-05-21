@@ -22,7 +22,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog
+from src.interface.design.components import confirm_dialog, form_dialog
 from src.services.evaluacion_service import NuevaCategoriaDTO, ActualizarCategoriaDTO
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -127,42 +127,40 @@ def configuracion_evaluacion_page() -> None:
             ui.notify("Error al crear la categoría", type="negative")
 
     def _editar_categoria(cat) -> None:
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            ui.label("Editar categoría").classes("text-lg font-bold mb-2")
-            nom_inp = ui.input("Nombre", value=cat.nombre).classes("w-full")
-            peso_inp = ui.number(
-                "Peso (0.01 – 1.0)",
-                value=cat.peso,
-                min=0.01,
-                max=1.0,
-                step=0.01,
-                format="%.2f",
-            ).classes("w-full")
-            ui.label(f"Porcentaje actual: {cat.peso_porcentaje:.1f}%").classes(
-                "text-sm text-grey-6"
-            )
+        def _guardar(datos: dict) -> "bool | None":
+            try:
+                nuevo_nombre = str(datos.get("nombre", "")).strip() or None
+                if not nuevo_nombre:
+                    ui.notify("El nombre es obligatorio", type="warning")
+                    return False
+                nuevo_peso = float(datos["peso"]) if datos.get("peso") is not None else None
+                dto_act = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
+                Container.evaluacion_service().actualizar_categoria(cat.id, dto_act)
+                ui.notify("Categoría actualizada", type="positive")
+                _cargar_categorias()
+                tabla_categorias.refresh()
+                panel_suma.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al actualizar categoría: %s", exc)
+                ui.notify("Error al actualizar", type="negative")
+                return False
 
-            def _guardar() -> None:
-                try:
-                    nuevo_nombre = str(nom_inp.value).strip() or None
-                    nuevo_peso = float(peso_inp.value) if peso_inp.value else None
-                    dto_act = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
-                    Container.evaluacion_service().actualizar_categoria(cat.id, dto_act)
-                    ui.notify("Categoría actualizada", type="positive")
-                    dlg.close()
-                    _cargar_categorias()
-                    tabla_categorias.refresh()
-                    panel_suma.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al actualizar categoría: %s", exc)
-                    ui.notify("Error al actualizar", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Guardar", on_click=_guardar)
-        dlg.open()
+        form_dialog(
+            titulo    = "Editar categoría",
+            campos    = [
+                {"key": "nombre",   "label": "Nombre *",          "tipo": "text",
+                 "valor": cat.nombre, "requerido": True},
+                {"key": "peso",     "label": "Peso (0.01–1.0) *", "tipo": "number",
+                 "valor": cat.peso,   "min": 0.01, "max": 1.0, "step": 0.01, "format": "%.2f"},
+                {"key": "pct_info", "label": "Porcentaje actual", "tipo": "readonly",
+                 "valor": f"{cat.peso_porcentaje:.1f}%"},
+            ],
+            on_submit    = _guardar,
+            max_width    = "max-w-md",
+        )
 
     def _confirmar_eliminar(cat) -> None:
         try:

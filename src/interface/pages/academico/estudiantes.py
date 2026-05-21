@@ -33,7 +33,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost
-from src.interface.design.components import stat_card, page_header, confirm_dialog
+from src.interface.design.components import stat_card, confirm_dialog, form_dialog
 from src.services.estudiante_service import (
     NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
@@ -203,6 +203,10 @@ def estudiantes_page() -> None:
     # CONSTRUCCIÓN DE LA UI
     # =========================================================================
 
+    # Contenedor mutable para callbacks de acciones del topbar
+    # (se populan dentro de contenido() cuando los refreshables existen)
+    _topbar_handlers: dict = {}
+
     def contenido() -> None:
 
         # ── Refreshables ──────────────────────────────────────────────────────
@@ -369,63 +373,54 @@ def estudiantes_page() -> None:
             for g in _s["grupos"]:
                 _grupos_select[g.id] = f"{g.codigo} — {g.grado}"
 
-            with ui.dialog() as dlg, ui.card().classes("w-full"):
-                ui.label("Matricular estudiante").classes("text-h6 q-mb-md")
+            def _guardar_matricula(datos: dict) -> "bool | None":
+                try:
+                    dto = NuevoEstudianteDTO(
+                        tipo_documento=datos.get("tipo_documento") or "TI",
+                        numero_documento=str(datos.get("numero_documento", "")).strip(),
+                        nombre=str(datos.get("nombre", "")).strip(),
+                        apellido=str(datos.get("apellido", "")).strip(),
+                        grupo_id=datos.get("grupo_id"),
+                        genero=datos.get("genero"),
+                        posee_piar=bool(datos.get("posee_piar", False)),
+                    )
+                    Container.estudiante_service().matricular(
+                        dto, usuario_id=ctx.usuario_id
+                    )
+                    ui.notify("Estudiante matriculado exitosamente.", type="positive")
+                    _cargar_estudiantes()
+                    tabla_refreshable.refresh()
+                except ValueError as exc:
+                    ui.notify(str(exc), type="warning")
+                    return False
+                except Exception as exc:
+                    logger.error("Error matriculando estudiante: %s", exc)
+                    ui.notify("Error inesperado al matricular.", type="negative")
+                    return False
 
-                tipo_doc = ui.select(
-                    label="Tipo documento",
-                    options={"TI": "TI", "CC": "CC", "CE": "CE", "NUIP": "NUIP"},
-                    value="TI",
-                ).classes("w-full")
-
-                num_doc = ui.input(label="Número de documento").classes("w-full")
-                nombre_inp = ui.input(label="Nombre").classes("w-full")
-                apellido_inp = ui.input(label="Apellido").classes("w-full")
-
-                grupo_sel = ui.select(
-                    label="Grupo",
-                    options=_grupos_select,
-                    value=None,
-                ).classes("w-full")
-
-                genero_sel = ui.select(
-                    label="Género",
-                    options={None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"},
-                    value=None,
-                ).classes("w-full")
-
-                piar_chk = ui.checkbox("Posee PIAR")
-
-                with ui.row().classes("q-mt-md justify-end gap-sm"):
-                    btn_ghost("Cancelar", on_click=dlg.close)
-
-                    def _guardar_matricula() -> None:
-                        try:
-                            dto = NuevoEstudianteDTO(
-                                tipo_documento=tipo_doc.value,
-                                numero_documento=num_doc.value,
-                                nombre=nombre_inp.value,
-                                apellido=apellido_inp.value,
-                                grupo_id=grupo_sel.value,
-                                genero=genero_sel.value,
-                                posee_piar=piar_chk.value,
-                            )
-                            Container.estudiante_service().matricular(
-                                dto, usuario_id=ctx.usuario_id
-                            )
-                            ui.notify("Estudiante matriculado exitosamente.", type="positive")
-                            dlg.close()
-                            _cargar_estudiantes()
-                            tabla_refreshable.refresh()
-                        except ValueError as exc:
-                            ui.notify(str(exc), type="warning")
-                        except Exception as exc:
-                            logger.error("Error matriculando estudiante: %s", exc)
-                            ui.notify("Error inesperado al matricular.", type="negative")
-
-                    btn_primary("Guardar", on_click=_guardar_matricula)
-
-            dlg.open()
+            form_dialog(
+                titulo    = "Matricular estudiante",
+                campos    = [
+                    {"key": "tipo_documento",   "label": "Tipo documento",    "tipo": "select",
+                     "opciones": {"TI": "TI", "CC": "CC", "CE": "CE", "NUIP": "NUIP"}, "valor": "TI"},
+                    {"key": "numero_documento", "label": "Número documento *", "tipo": "text",
+                     "requerido": True},
+                    {"key": "nombre",           "label": "Nombre *",           "tipo": "text",
+                     "requerido": True},
+                    {"key": "apellido",         "label": "Apellido *",         "tipo": "text",
+                     "requerido": True},
+                    {"key": "grupo_id",         "label": "Grupo",              "tipo": "select",
+                     "opciones": _grupos_select},
+                    {"key": "genero",           "label": "Género",             "tipo": "select",
+                     "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
+                    {"key": "posee_piar",       "label": "Posee PIAR",         "tipo": "checkbox",
+                     "valor": False},
+                ],
+                on_submit    = _guardar_matricula,
+                texto_submit = "Matricular",
+                max_width    = "max-w-lg",
+                columnas     = 2,
+            )
 
         def _abrir_dialog_csv() -> None:
             """Dialog para carga masiva de estudiantes por CSV."""
@@ -450,6 +445,10 @@ def estudiantes_page() -> None:
 
             dlg.open()
 
+        # Registrar callbacks para el topbar (accedidos via _topbar_handlers)
+        _topbar_handlers["matricula"] = _abrir_dialog_matricula
+        _topbar_handlers["csv"]       = _abrir_dialog_csv
+
         def _abrir_dialog_edicion(fila: dict) -> None:
             """Dialog para editar datos de un estudiante existente."""
             est_id = fila.get("id")
@@ -468,86 +467,65 @@ def estudiantes_page() -> None:
                 ui.notify("No se pudo cargar el estudiante.", type="negative")
                 return
 
-            with ui.dialog() as dlg, ui.card().classes("w-full"):
-                ui.label(f"Editar — {est.nombre_completo}").classes("text-h6 q-mb-md")
+            estado_raw = (
+                est.estado_matricula.value
+                if hasattr(est.estado_matricula, "value")
+                else str(est.estado_matricula)
+            )
+            genero_actual = (
+                est.genero.value
+                if est.genero and hasattr(est.genero, "value")
+                else (str(est.genero) if est.genero else None)
+            )
 
-                nombre_inp = ui.input(
-                    label="Nombre", value=est.nombre
-                ).classes("w-full")
-                apellido_inp = ui.input(
-                    label="Apellido", value=est.apellido
-                ).classes("w-full")
+            def _guardar_edicion(datos: dict) -> "bool | None":
+                try:
+                    dto = ActualizarEstudianteDTO(
+                        nombre=str(datos.get("nombre", "")).strip() or None,
+                        apellido=str(datos.get("apellido", "")).strip() or None,
+                        genero=datos.get("genero"),
+                        grupo_id=datos.get("grupo_id"),
+                        posee_piar=bool(datos.get("posee_piar", False)),
+                        estado_matricula=datos.get("estado"),
+                    )
+                    Container.estudiante_service().actualizar(
+                        est_id, dto, usuario_id=ctx.usuario_id
+                    )
+                    ui.notify("Estudiante actualizado.", type="positive")
+                    _cargar_estudiantes()
+                    tabla_refreshable.refresh()
+                except ValueError as exc:
+                    ui.notify(str(exc), type="warning")
+                    return False
+                except Exception as exc:
+                    logger.error("Error actualizando estudiante %s: %s", est_id, exc)
+                    ui.notify("Error inesperado al actualizar.", type="negative")
+                    return False
 
-                estado_raw = (
-                    est.estado_matricula.value
-                    if hasattr(est.estado_matricula, "value")
-                    else str(est.estado_matricula)
-                )
-                estado_sel = ui.select(
-                    label="Estado",
-                    options={
-                        "activo": "Activo",
-                        "inactivo": "Inactivo",
-                        "retirado": "Retirado",
-                        "graduado": "Graduado",
-                    },
-                    value=estado_raw,
-                ).classes("w-full")
-
-                grupo_id_actual = est.grupo_id
-                grupo_sel = ui.select(
-                    label="Grupo",
-                    options=_grupos_select,
-                    value=grupo_id_actual,
-                ).classes("w-full")
-
-                genero_actual = (
-                    est.genero.value
-                    if est.genero and hasattr(est.genero, "value")
-                    else (str(est.genero) if est.genero else None)
-                )
-                genero_sel = ui.select(
-                    label="Género",
-                    options={
-                        None: "No especificado",
-                        "M": "Masculino",
-                        "F": "Femenino",
-                        "OTRO": "Otro",
-                    },
-                    value=genero_actual,
-                ).classes("w-full")
-
-                piar_chk = ui.checkbox("Posee PIAR", value=est.posee_piar)
-
-                with ui.row().classes("q-mt-md justify-end gap-sm"):
-                    btn_ghost("Cancelar", on_click=dlg.close)
-
-                    def _guardar_edicion() -> None:
-                        try:
-                            dto = ActualizarEstudianteDTO(
-                                nombre=nombre_inp.value or None,
-                                apellido=apellido_inp.value or None,
-                                genero=genero_sel.value,
-                                grupo_id=grupo_sel.value,
-                                posee_piar=piar_chk.value,
-                                estado_matricula=estado_sel.value,
-                            )
-                            Container.estudiante_service().actualizar(
-                                est_id, dto, usuario_id=ctx.usuario_id
-                            )
-                            ui.notify("Estudiante actualizado.", type="positive")
-                            dlg.close()
-                            _cargar_estudiantes()
-                            tabla_refreshable.refresh()
-                        except ValueError as exc:
-                            ui.notify(str(exc), type="warning")
-                        except Exception as exc:
-                            logger.error("Error actualizando estudiante %s: %s", est_id, exc)
-                            ui.notify("Error inesperado al actualizar.", type="negative")
-
-                    btn_primary("Guardar", on_click=_guardar_edicion)
-
-            dlg.open()
+            form_dialog(
+                titulo    = f"Editar — {est.nombre_completo}",
+                campos    = [
+                    {"key": "nombre",    "label": "Nombre *",    "tipo": "text",
+                     "valor": est.nombre,    "requerido": True},
+                    {"key": "apellido",  "label": "Apellido *",  "tipo": "text",
+                     "valor": est.apellido,  "requerido": True},
+                    {"key": "estado",    "label": "Estado",      "tipo": "select",
+                     "valor": estado_raw,
+                     "opciones": {"activo": "Activo", "inactivo": "Inactivo",
+                                  "retirado": "Retirado", "graduado": "Graduado"}},
+                    {"key": "grupo_id",  "label": "Grupo",       "tipo": "select",
+                     "valor": est.grupo_id,  "opciones": _grupos_select},
+                    {"key": "genero",    "label": "Género",      "tipo": "select",
+                     "valor": genero_actual,
+                     "opciones": {None: "No especificado", "M": "Masculino",
+                                  "F": "Femenino", "OTRO": "Otro"}},
+                    {"key": "posee_piar","label": "Posee PIAR",  "tipo": "checkbox",
+                     "valor": est.posee_piar},
+                ],
+                on_submit    = _guardar_edicion,
+                max_width    = "max-w-lg",
+                columnas     = 2,
+            )
 
         def _confirmar_retiro(fila: dict) -> None:
             """Dialog de confirmación antes de retirar un estudiante."""
@@ -703,16 +681,6 @@ def estudiantes_page() -> None:
 
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Gestión de Estudiantes",
-                subtitulo = "Matrícula, estado y PIAR de estudiantes",
-                icono     = Icons.STUDENTS,
-                acciones  = [
-                    {"label": "Matricular",  "on_click": _abrir_dialog_matricula, "icono": "person_add",  "variante": "primary"},
-                    {"label": "Carga CSV",   "on_click": _abrir_dialog_csv,       "icono": "upload_file", "variante": "secondary"},
-                ],
-            )
-
             # ── 1. Panel de filtros ───────────────────────────────────────────
             with ui.element("div").classes("panel-card"):
                 with ui.element("div").classes("panel-header"):
@@ -787,13 +755,15 @@ def estudiantes_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Estudiantes",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/estudiantes",
-        contenido=contenido,
-        ctx=ctx,
-        on_context_change=on_context_change,
+        ctx,
+        contenido,
+        page_titulo    = "Gestión de Estudiantes",
+        page_subtitulo = "Matrícula, estado y PIAR de estudiantes",
+        page_icono     = Icons.STUDENTS,
+        page_acciones  = [
+            {"label": "Matricular",  "on_click": lambda: _topbar_handlers.get("matricula", lambda: None)(), "icono": "person_add",  "variante": "primary"},
+            {"label": "Carga CSV",   "on_click": lambda: _topbar_handlers.get("csv",       lambda: None)(), "icono": "upload_file", "variante": "secondary"},
+        ],
     )
 
 

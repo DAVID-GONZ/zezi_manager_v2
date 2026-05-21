@@ -19,7 +19,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import page_header, confirm_dialog
+from src.interface.design.components import confirm_dialog, form_dialog
 from src.services.infraestructura_service import Grupo, Jornada
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -127,56 +127,51 @@ def grupos_page() -> None:
         )
 
     def _abrir_editar(grupo: Grupo) -> None:
-        _s["edit_id"]       = grupo.id
-        _s["edit_codigo"]   = grupo.codigo
-        _s["edit_grado"]    = grupo.grado or 1
-        _s["edit_jornada"]  = grupo.jornada.value if hasattr(grupo.jornada, "value") else str(grupo.jornada)
-        _s["edit_capacidad"] = grupo.capacidad_maxima
+        jornada_val = grupo.jornada.value if hasattr(grupo.jornada, "value") else str(grupo.jornada)
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            ui.label("Editar grupo").classes("text-lg font-bold mb-2")
+        def _guardar(datos: dict) -> "bool | None":
+            try:
+                codigo = str(datos.get("codigo", "")).strip().upper()
+                if not codigo:
+                    ui.notify("El código no puede estar vacío", type="warning")
+                    return False
+                grupo_act = Grupo(
+                    id=grupo.id,
+                    codigo=codigo,
+                    grado=int(datos["grado"]) if datos.get("grado") is not None else grupo.grado,
+                    jornada=Jornada(datos["jornada"]),
+                    capacidad_maxima=int(datos["capacidad"]) if datos.get("capacidad") is not None else grupo.capacidad_maxima,
+                )
+                Container.infraestructura_service().actualizar_grupo(grupo_act)
+                ui.notify(f"Grupo {codigo} actualizado", type="positive")
+                _cargar_estado()
+                tabla.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al actualizar grupo: %s", exc)
+                ui.notify("Error al actualizar el grupo", type="negative")
+                return False
 
-            cod_inp = ui.input("Código", value=_s["edit_codigo"]).classes("w-full")
-            grd_inp = ui.number("Grado", value=_s["edit_grado"], min=1, max=13).classes("w-full")
-            jor_sel = ui.select(
-                {v: k for k, v in _JORNADAS.items()},
-                value=_s["edit_jornada"],
-                label="Jornada",
-            ).classes("w-full")
-            cap_inp = ui.number("Capacidad", value=_s["edit_capacidad"], min=1).classes("w-full")
-
-            def _guardar_edicion() -> None:
-                try:
-                    codigo    = str(cod_inp.value).strip().upper()
-                    grado     = int(grd_inp.value)
-                    jornada   = Jornada(jor_sel.value)
-                    capacidad = int(cap_inp.value)
-                    if not codigo:
-                        ui.notify("El código no puede estar vacío", type="warning")
-                        return
-                    grupo_act = Grupo(
-                        id=_s["edit_id"],
-                        codigo=codigo,
-                        grado=grado,
-                        jornada=jornada,
-                        capacidad_maxima=capacidad,
-                    )
-                    Container.infraestructura_service().actualizar_grupo(grupo_act)
-                    ui.notify(f"Grupo {codigo} actualizado", type="positive")
-                    dlg.close()
-                    _cargar_estado()
-                    tabla.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al actualizar grupo: %s", exc)
-                    ui.notify("Error al actualizar el grupo", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Guardar", on_click=_guardar_edicion)
-
-        dlg.open()
+        form_dialog(
+            titulo    = "Editar grupo",
+            campos    = [
+                {"key": "codigo",    "label": "Código *",  "tipo": "text",
+                 "valor": grupo.codigo,           "requerido": True},
+                {"key": "grado",     "label": "Grado",     "tipo": "number",
+                 "valor": grupo.grado or 1,       "min": 1, "max": 13},
+                {"key": "jornada",   "label": "Jornada",   "tipo": "select",
+                 "valor": jornada_val,
+                 "opciones": {v: k for k, v in _JORNADAS.items()}},
+                {"key": "capacidad", "label": "Capacidad", "tipo": "number",
+                 "valor": grupo.capacidad_maxima, "min": 1},
+            ],
+            on_submit    = _guardar,
+            texto_submit = "Guardar",
+            max_width    = "max-w-md",
+            columnas     = 2,
+        )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
     @ui.refreshable
@@ -221,12 +216,6 @@ def grupos_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Gestión de Grupos",
-                subtitulo = "Crea y administra los grupos académicos de la institución",
-                icono     = Icons.GROUPS,
-            )
-
             # Panel de gestión
             with ui.element("div").classes("panel-card"):
 
@@ -258,12 +247,11 @@ def grupos_page() -> None:
                 tabla()
 
     app_layout(
-        titulo_pagina="Administración · Grupos",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/grupos",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Gestión de Grupos",
+        page_subtitulo = "Crea y administra los grupos académicos de la institución",
+        page_icono     = Icons.GROUPS,
     )
 
 

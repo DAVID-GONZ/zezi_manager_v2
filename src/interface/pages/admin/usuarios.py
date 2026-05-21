@@ -23,7 +23,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import page_header, confirm_dialog, badge_estado_general, status_badge
+from src.interface.design.components import confirm_dialog, badge_estado_general, status_badge, form_dialog
 from src.services.usuario_service import NuevoUsuarioDTO, FiltroUsuariosDTO, Rol
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -80,51 +80,56 @@ def usuarios_page() -> None:
             ui.notify("Solo el administrador puede crear usuarios", type="warning")
             return
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-lg"):
-            ui.label("Crear nuevo usuario").classes("text-lg font-bold mb-2")
-            nombre_inp    = ui.input("Nombre completo *", placeholder="Carlos López García").classes("w-full")
-            usuario_inp   = ui.input("Nombre de usuario *", placeholder="c.lopez").classes("w-full")
-            password_inp  = ui.input("Contraseña inicial", placeholder="dejar vacío = usa username").classes("w-full")
-            rol_sel       = ui.select(
-                _ROLES_OPCIONES, value="profesor", label="Rol"
-            ).classes("w-full")
-            email_inp     = ui.input("Email (opcional)").classes("w-full")
+        def _crear(datos: dict) -> "bool | None":
+            try:
+                nombre   = str(datos.get("nombre_completo", "")).strip()
+                usuario  = str(datos.get("usuario", "")).strip()
+                password = str(datos.get("password", "")).strip() or None
+                rol_str  = datos.get("rol", "profesor")
+                email    = str(datos.get("email", "")).strip() or None
 
-            def _crear() -> None:
-                try:
-                    nombre   = str(nombre_inp.value).strip()
-                    usuario  = str(usuario_inp.value).strip()
-                    password = str(password_inp.value).strip() or None
-                    rol_str  = rol_sel.value
-                    email    = str(email_inp.value).strip() or None
+                if not nombre or not usuario:
+                    ui.notify("Nombre completo y usuario son obligatorios", type="warning")
+                    return False
 
-                    if not nombre or not usuario:
-                        ui.notify("Nombre completo y usuario son obligatorios", type="warning")
-                        return
+                dto = NuevoUsuarioDTO(
+                    usuario=usuario,
+                    nombre_completo=nombre,
+                    rol=Rol(rol_str),
+                    email=email,
+                    password=password,
+                )
+                Container.usuario_service().crear_usuario(dto)
+                ui.notify(f"Usuario '{usuario}' creado", type="positive")
+                _cargar_estado()
+                tabla.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al crear usuario: %s", exc)
+                ui.notify("Error al crear el usuario", type="negative")
+                return False
 
-                    dto = NuevoUsuarioDTO(
-                        usuario=usuario,
-                        nombre_completo=nombre,
-                        rol=Rol(rol_str),
-                        email=email,
-                        password=password,
-                    )
-                    Container.usuario_service().crear_usuario(dto)
-                    ui.notify(f"Usuario '{usuario}' creado", type="positive")
-                    dlg.close()
-                    _cargar_estado()
-                    tabla.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al crear usuario: %s", exc)
-                    ui.notify("Error al crear el usuario", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Crear", on_click=_crear)
-
-        dlg.open()
+        form_dialog(
+            titulo    = "Crear nuevo usuario",
+            campos    = [
+                {"key": "nombre_completo", "label": "Nombre completo *",  "tipo": "text",
+                 "requerido": True, "placeholder": "Carlos López García"},
+                {"key": "usuario",         "label": "Nombre de usuario *", "tipo": "text",
+                 "requerido": True, "placeholder": "c.lopez"},
+                {"key": "password",        "label": "Contraseña inicial",  "tipo": "password",
+                 "placeholder": "dejar vacío = usa username"},
+                {"key": "rol",             "label": "Rol",                 "tipo": "select",
+                 "opciones": _ROLES_OPCIONES, "valor": "profesor"},
+                {"key": "email",           "label": "Email (opcional)",    "tipo": "email",
+                 "placeholder": "usuario@institucion.edu.co"},
+            ],
+            on_submit    = _crear,
+            texto_submit = "Crear",
+            max_width    = "max-w-lg",
+            columnas     = 2,
+        )
 
     def _confirmar_desactivar(usuario_id: int, nombre: str) -> None:
         try:
@@ -154,31 +159,34 @@ def usuarios_page() -> None:
         if not es_admin:
             ui.notify("Solo el administrador puede cambiar roles", type="warning")
             return
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-sm"):
-            ui.label(f"Cambiar rol de '{nombre}'").classes("text-lg font-bold mb-2")
-            rol_sel = ui.select(
-                _ROLES_OPCIONES,
-                value=rol_actual if rol_actual in _ROLES_OPCIONES else "profesor",
-                label="Nuevo rol",
-            ).classes("w-full")
 
-            def _aplicar() -> None:
-                try:
-                    Container.usuario_service().cambiar_rol(usuario_id, rol_sel.value)
-                    ui.notify(f"Rol actualizado a '{_ROLES_OPCIONES.get(rol_sel.value)}'", type="positive")
-                    dlg.close()
-                    _cargar_estado()
-                    tabla.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al cambiar rol %s: %s", usuario_id, exc)
-                    ui.notify("Error al cambiar el rol", type="negative")
+        def _aplicar(datos: dict) -> "bool | None":
+            try:
+                nuevo_rol = datos.get("rol", rol_actual)
+                Container.usuario_service().cambiar_rol(usuario_id, nuevo_rol)
+                ui.notify(f"Rol actualizado a '{_ROLES_OPCIONES.get(nuevo_rol, nuevo_rol)}'", type="positive")
+                _cargar_estado()
+                tabla.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al cambiar rol %s: %s", usuario_id, exc)
+                ui.notify("Error al cambiar el rol", type="negative")
+                return False
 
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Aplicar", on_click=_aplicar)
-        dlg.open()
+        form_dialog(
+            titulo    = f"Cambiar rol de '{nombre}'",
+            campos    = [
+                {"key": "rol", "label": "Nuevo rol *", "tipo": "select",
+                 "opciones": _ROLES_OPCIONES,
+                 "valor": rol_actual if rol_actual in _ROLES_OPCIONES else "profesor",
+                 "requerido": True},
+            ],
+            on_submit    = _aplicar,
+            texto_submit = "Cambiar rol",
+            max_width    = "max-w-sm",
+        )
 
     def _on_filtros_cambio() -> None:
         _cargar_estado()
@@ -233,15 +241,6 @@ def usuarios_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            page_header(
-                titulo    = "Gestión de Usuarios",
-                subtitulo = "Cuentas de usuario y roles del sistema",
-                icono     = Icons.TEACHERS,
-                acciones  = [
-                    {"label": "Nuevo usuario", "on_click": _abrir_crear_usuario, "icono": "person_add", "variante": "primary"},
-                ] if es_admin else [],
-            )
-
             with ui.element("div").classes("panel-card"):
 
                 # Filtros
@@ -271,13 +270,17 @@ def usuarios_page() -> None:
 
                 tabla()
 
+    _acciones = [
+        {"label": "Nuevo usuario", "on_click": _abrir_crear_usuario, "icono": "person_add", "variante": "primary"},
+    ] if es_admin else None
+
     app_layout(
-        titulo_pagina="Administración · Usuarios",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/admin/usuarios",
-        contenido=contenido,
-        ctx=ctx,
+        ctx,
+        contenido,
+        page_titulo    = "Gestión de Usuarios",
+        page_subtitulo = "Cuentas de usuario y roles del sistema",
+        page_icono     = Icons.TEACHERS,
+        page_acciones  = _acciones,
     )
 
 

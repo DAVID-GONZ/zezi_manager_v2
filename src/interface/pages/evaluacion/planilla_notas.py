@@ -21,7 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import status_badge
+from src.interface.design.components import status_badge, form_dialog
 from src.services.evaluacion_service import NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -217,36 +217,38 @@ def planilla_notas_page() -> None:
             dlg.close()
 
     def _registrar_nota_dialog(est_id: int, act_id: int, nombre_est: str, nom_act: str) -> None:
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-sm"):
-            ui.label(f"Registrar nota — {nombre_est}").classes("text-base font-bold mb-2")
-            ui.label(f"Actividad: {nom_act}").classes("text-sm text-grey-6 mb-2")
-            nota_inp = ui.number("Nota (0–100)", value=0.0, min=0.0, max=100.0, step=0.5).classes(
-                "w-full"
-            )
+        def _guardar_nota(datos: dict) -> "bool | None":
+            try:
+                dto = RegistrarNotaDTO(
+                    estudiante_id=est_id,
+                    actividad_id=act_id,
+                    valor=float(datos.get("nota") or 0.0),
+                    usuario_registro_id=ctx.usuario_id,
+                )
+                Container.evaluacion_service().registrar_nota(dto, ctx=None)
+                ui.notify("Nota registrada", type="positive")
+                _cargar_datos_asignacion()
+                vista_planilla.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error al registrar nota: %s", exc)
+                ui.notify("Error al registrar la nota", type="negative")
+                return False
 
-            def _guardar_nota() -> None:
-                try:
-                    dto = RegistrarNotaDTO(
-                        estudiante_id=est_id,
-                        actividad_id=act_id,
-                        valor=float(nota_inp.value or 0.0),
-                        usuario_registro_id=ctx.usuario_id,
-                    )
-                    Container.evaluacion_service().registrar_nota(dto, ctx=None)
-                    ui.notify("Nota registrada", type="positive")
-                    dlg.close()
-                    _cargar_datos_asignacion()
-                    vista_planilla.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al registrar nota: %s", exc)
-                    ui.notify("Error al registrar la nota", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_primary("Guardar", on_click=_guardar_nota)
-        dlg.open()
+        form_dialog(
+            titulo    = f"Registrar nota — {nombre_est}",
+            campos    = [
+                {"key": "act_info", "label": "Actividad", "tipo": "readonly",
+                 "valor": nom_act},
+                {"key": "nota",     "label": "Nota (0–100) *", "tipo": "number",
+                 "valor": 0.0, "min": 0.0, "max": 100.0, "step": 0.5, "requerido": True},
+            ],
+            on_submit    = _guardar_nota,
+            texto_submit = "Guardar",
+            max_width    = "max-w-sm",
+        )
 
     def _on_selector_cambio() -> None:
         _cargar_datos_asignacion()

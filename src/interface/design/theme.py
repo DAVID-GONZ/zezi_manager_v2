@@ -130,5 +130,36 @@ class ThemeManager:
             f"</span>"
         )
 
+    @classmethod
+    def render_logo(
+        cls,
+        logo_url: str,
+        max_height: int = 36,
+        max_width: int = 120,
+        clases: str = "",
+    ):
+        """
+        Renderiza la imagen del logo institucional.
+
+        Args:
+            logo_url:   URL o ruta estática de la imagen.
+            max_height: Alto máximo en px.
+            max_width:  Ancho máximo en px.
+            clases:     Clases CSS adicionales para el <img>.
+        """
+        from nicegui import ui
+
+        estilo = (
+            f"max-height:{max_height}px;"
+            f"max-width:{max_width}px;"
+            f"object-fit:contain;"
+            f"border-radius:var(--radius-sm);"
+        )
+        clase_final = f"logo-institucional {clases}".strip()
+        return ui.html(
+            f'<img src="{logo_url}" alt="Logo institución" '
+            f'class="{clase_final}" style="{estilo}" />'
+        )
+
 
 __all__ = ["ThemeManager"]
