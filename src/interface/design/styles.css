@@ -738,6 +738,18 @@ width: 100%;
   box-shadow: 0 0 0 2px var(--color-primary-lighter);
 }
 
+.andes-input.q-field--focused .q-field__control:after {
+  border-color: var(--color-primary) !important;
+  border-width: 2px;
+}
+
+.andes-input.q-field--focused .q-field__label {
+  color: var(--color-primary) !important;
+}
+.andes-input .q-field__native {
+  caret-color: var(--color-primary); 
+}
+
 /* ── Badges ──────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
@@ -782,8 +794,8 @@ width: 100%;
 }
 
 .badge-purple {
-  background: #EDE9FE;
-  color: #7C3AED;
+  background: var(--attend-retraso-bg);
+  color: var(--attend-retraso);
 }
 
 .badge-P {
@@ -2837,6 +2849,80 @@ width: 100%;
   width: 100%;
 }
 
+/* ═══════════════════════════════════════════════════════
+   CONVIVENCIA — badges tipo registro de comportamiento
+   ═══════════════════════════════════════════════════════ */
+
+.badge-fortaleza {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.badge-dificultad {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.badge-compromiso {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.badge-citacion {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.badge-descargo {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-secondary-light);
+  color: var(--color-secondary-dark);
+}
+
 /* ── 9. Indicador de tendencia bajo el KPI (positivo/negativo) ───── */
 
 .tablero-kpi-trend {
@@ -3121,15 +3207,46 @@ td.tablero-promedio-superior,
 
 /* ── Clases para form_dialog ─────────────────────────────────────────────── */
 .form-dialog-card {
-  width: 100%;
-  min-width: 320px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden; /* Esencial para que el header respete los bordes redondeados */
+  display: flex;
+  flex-direction: column;
+}
+.form-dialog-header {
+  padding: 18px 24px;
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+.form-dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.3px;
+  margin: 0;
+  line-height: 1.2;
+}
+.form-dialog-body {
+  padding: 24px;
+  background: var(--color-surface);
+}
+.andes-input input::placeholder,
+.andes-input textarea::placeholder,
+.andes-input .q-field__native::placeholder {
+  color: var(--color-text-disabled);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
 }
 
-.form-dialog-title {
-  margin-bottom: var(--space-sm);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--color-divider);
-  color: var(--color-text-primary);
+.andes-input.q-field--labeled:not(.q-field--float) .q-field__native::placeholder,
+.andes-input.q-field--labeled:not(.q-field--float) input::placeholder,
+.andes-input.q-field--labeled:not(.q-field--float) textarea::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
 }
 
 /* base_form — campo readonly */
@@ -3177,3 +3294,32 @@ td.tablero-promedio-superior,
 
 /* Botón de acción flotante sobre celda (posición absoluta top-right) */
 .btn-cell-overlay { position: absolute; top: 0; right: 0; }
+
+/* ── Grillas de formulario e informes ────────────────────── */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-lg);
+  width: 100%;
+}
+/* Alturas estándar para contenedores ECharts */
+.echart-md  { height: 280px; width: 100%; }
+.echart-lg  { height: 340px; width: 100%; }
+/* Fila de lista de items (ej: estudiantes en boletines) */
+.andes-table-row {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+.andes-table-row:last-child { border-bottom: none; }

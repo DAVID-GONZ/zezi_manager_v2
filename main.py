@@ -276,6 +276,86 @@ def registrar_rutas_ui() -> None:
             return
         planes_mejoramiento_page()
 
+    # ── Convivencia: Observaciones ────────────────────────────────────────────
+    from src.interface.pages.convivencia.observaciones import observaciones_page
+
+    @ui.page("/convivencia/observaciones")
+    def pagina_observaciones():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        observaciones_page()
+
+    # ── Convivencia: Comportamiento ───────────────────────────────────────────
+    from src.interface.pages.convivencia.comportamiento import comportamiento_page
+
+    @ui.page("/convivencia/comportamiento")
+    def pagina_comportamiento():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        comportamiento_page()
+
+    # ── Convivencia: Notas ────────────────────────────────────────────────────
+    from src.interface.pages.convivencia.notas_convivencia import notas_convivencia_page
+
+    @ui.page("/convivencia/notas")
+    def pagina_notas_convivencia():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        notas_convivencia_page()
+
+    # ── Informes: Boletín Periodo ─────────────────────────────────────────────
+    from src.interface.pages.informes.boletin_periodo import boletin_periodo_page
+
+    @ui.page("/informes/boletin-periodo")
+    def pagina_boletin_periodo():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        boletin_periodo_page()
+
+    # ── Informes: Boletín Anual ───────────────────────────────────────────────
+    from src.interface.pages.informes.boletin_anual import boletin_anual_page
+
+    @ui.page("/informes/boletin-anual")
+    def pagina_boletin_anual():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        boletin_anual_page()
+
+    # ── Informes: Consolidado de Notas ────────────────────────────────────────
+    from src.interface.pages.informes.consolidado_notas import consolidado_notas_page
+
+    @ui.page("/informes/consolidado-notas")
+    def pagina_consolidado_notas():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        consolidado_notas_page()
+
+    # ── Informes: Consolidado de Asistencia ───────────────────────────────────
+    from src.interface.pages.informes.consolidado_asistencia import consolidado_asistencia_page
+
+    @ui.page("/informes/consolidado-asistencia")
+    def pagina_consolidado_asistencia():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        consolidado_asistencia_page()
+
+    # ── Informes: Estadísticos ────────────────────────────────────────────────
+    from src.interface.pages.informes.estadisticos import estadisticos_page
+
+    @ui.page("/informes/estadisticos")
+    def pagina_estadisticos():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        estadisticos_page()
+
 
 def main() -> None:
     configurar_logging()

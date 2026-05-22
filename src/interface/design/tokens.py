@@ -7,70 +7,76 @@ color calculado en Python, estilos inline condicionales, etc.).
 Regla: los valores deben coincidir EXACTAMENTE con las variables
 CSS definidas en styles.css. Si cambias un color aquí, cámbialo
 también en :root { ... } de styles.css.
+
+FUENTE CANÓNICA: styles.css — este archivo es derivado de ella.
 """
 from __future__ import annotations
 
 
 class Colors:
-    """Paleta base del design system."""
+    """Paleta base del design system. Valores importados de styles.css :root."""
 
-    # Primarios
-    PRIMARY          = "#2563EB"
-    PRIMARY_DARK     = "#1D4ED8"
-    PRIMARY_DARKER   = "#1E3A8A"
-    PRIMARY_LIGHT    = "#60A5FA"
-    PRIMARY_LIGHTER  = "#EFF6FF"
-    PRIMARY_HOVER    = "#1D4ED8"
-    PRIMARY_DISABLED = "#93C5FD"
+    # Primario — Escala Borgoña/Carmesí
+    PRIMARY          = "#B3325D"
+    PRIMARY_DARK     = "#8A2748"
+    PRIMARY_DARKER   = "#611B32"
+    PRIMARY_LIGHT    = "#DB3D72"
+    PRIMARY_LIGHTER  = "#FCE8ED"
+    PRIMARY_HOVER    = "#8A2748"
+    PRIMARY_DISABLED = "#DDA8B8"
     PRIMARY_CONTRAST = "#FFFFFF"
 
-    # Secundarios
-    SECONDARY        = "#F59E0B"
-    SECONDARY_DARK   = "#D97706"
-    SECONDARY_LIGHT  = "#FEF3C7"
+    # Secundario — Neutro puro (Escala Zinc)
+    SECONDARY        = "#71717A"
+    SECONDARY_DARK   = "#52525B"
+    SECONDARY_LIGHT  = "#F4F4F5"
 
     # Semánticos
     ERROR            = "#DC2626"
     ERROR_LIGHT      = "#FEF2F2"
-    WARNING          = "#D97706"
+    ERROR_DARK       = "#B91C1C"
+    WARNING          = "#FFCB47"
     WARNING_LIGHT    = "#FFFBEB"
-    SUCCESS          = "#059669"
+    SUCCESS          = "#47FF97"
     SUCCESS_LIGHT    = "#ECFDF5"
-    INFO             = "#0284C7"
+    INFO             = "#4778FF"
     INFO_LIGHT       = "#F0F9FF"
 
     # Neutros
-    BG               = "#F8FAFC"
+    BG               = "#FAFAFA"
     SURFACE          = "#FFFFFF"
-    SURFACE_ALT      = "#F1F5F9"
-    DIVIDER          = "#E2E8F0"
-    BORDER           = "#CBD5E1"
-    TEXT_PRIMARY     = "#0F172A"
-    TEXT_SECONDARY   = "#475569"
-    TEXT_DISABLED    = "#94A3B8"
+    SURFACE_ALT      = "#FDF8F9"
+    DIVIDER          = "rgba(0, 0, 0, 0.12)"
+    BORDER           = "#E4E4E7"
+    TEXT_PRIMARY     = "#18181B"
+    TEXT_SECONDARY   = "#52525B"
+    TEXT_DISABLED    = "#A1A1AA"
+    TEXT_INVERSE     = "#FFFFFF"
+    DISABLED_BG      = "#E4E4E7"
+    DISABLED_TEXT    = "#71717A"
 
     # Navegación
-    SIDEBAR_BG        = "#0F172A"
-    SIDEBAR_TEXT      = "#94A3B8"
-    SIDEBAR_HOVER     = "#1E293B"
-    SIDEBAR_ACTIVE    = "#2563EB"
-    SIDEBAR_ACTIVE_BG = "#2563EB"
-    TOPBAR_BG         = "#FFFFFF"
-    TOPBAR_BORDER     = "#E2E8F0"
+    SIDEBAR_BG        = "#18181B"   # base del gradient linear-gradient(180deg, #18181B 0%, #09090B 100%)
+    SIDEBAR_TEXT      = "#A1A1AA"
+    SIDEBAR_HOVER     = "#27272A"
+    SIDEBAR_ACTIVE    = "#B3325D"
+    SIDEBAR_ACTIVE_BG = "#B3325D"
+    TOPBAR_BG         = "rgba(255, 255, 255, 0.82)"
+    TOPBAR_BORDER     = "#E4E4E7"
 
 
 class AsistenciaColors:
     """Colores para los estados de asistencia."""
 
-    PRESENTE     = "#059669"
+    PRESENTE     = "#47FF59"
     PRESENTE_BG  = "#ECFDF5"
-    FJ           = "#D97706"
+    FJ           = "#FFCB47"
     FJ_BG        = "#FFFBEB"
     FI           = "#DC2626"
     FI_BG        = "#FEF2F2"
     RETRASO      = "#7C3AED"
     RETRASO_BG   = "#F5F3FF"
-    EXCUSA       = "#0284C7"
+    EXCUSA       = "#4778FF"
     EXCUSA_BG    = "#F0F9FF"
 
     @classmethod
@@ -111,11 +117,11 @@ class DesempenoColors:
 
     BAJO         = "#DC2626"
     BAJO_BG      = "#FEF2F2"
-    BASICO       = "#D97706"
+    BASICO       = "#FFCB47"
     BASICO_BG    = "#FFFBEB"
     ALTO         = "#0284C7"
     ALTO_BG      = "#F0F9FF"
-    SUPERIOR     = "#059669"
+    SUPERIOR     = "#47FF59"
     SUPERIOR_BG  = "#ECFDF5"
 
     @classmethod
@@ -218,21 +224,21 @@ class Icons:
 
 
 class Spacing:
-    """Valores de espaciado en px (como strings CSS)."""
+    """Valores de espaciado — deben coincidir con --space-* en styles.css."""
     XS  = "4px"
     SM  = "8px"
     MD  = "16px"
-    LG  = "24px"
-    XL  = "32px"
-    XXL = "48px"
+    LG  = "28px"
+    XL  = "40px"
+    XXL = "56px"
 
 
 class Layout:
-    """Dimensiones de layout (valores numéricos, sin unidad)."""
-    SIDEBAR_WIDTH    = 240   # px
-    SIDEBAR_COLLAPSED = 64   # px
-    TOPBAR_HEIGHT    = 56    # px
-    CONTENT_PADDING  = 24    # px
+    """Dimensiones de layout — deben coincidir con las variables CSS de layout."""
+    SIDEBAR_WIDTH     = 180   # px  (--sidebar-width)
+    SIDEBAR_COLLAPSED = 58    # px  (--sidebar-collapsed)
+    TOPBAR_HEIGHT     = 60    # px  (--topbar-height)
+    CONTENT_PADDING   = 24    # px  (--content-padding)
 
 
 __all__ = [

@@ -200,6 +200,83 @@ class InformeService:
         return exporter.exportar_csv(datos, encoding=encoding)
 
     # ------------------------------------------------------------------
+    # Boletín por periodo (individual por estudiante)
+    # ------------------------------------------------------------------
+
+    def generar_boletin_periodo(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        periodo_id: int,
+        formato: str = "pdf",
+    ) -> bytes:
+        """
+        Genera el boletín de un estudiante para un periodo específico.
+
+        Combina notas consolidadas + asistencia del grupo, filtrando por
+        estudiante_id, y exporta al formato indicado.
+
+        Lanza:
+            ValueError: Si no hay exportador configurado o sin datos.
+        """
+        exporter = self._get_exporter_o_lanzar()
+        # Notas del grupo y filtrar por estudiante
+        notas_grupo = self._estadisticos_repo.consolidado_notas_grupo(grupo_id, periodo_id)
+        fila_notas  = next((r for r in notas_grupo if r.get("estudiante_id") == estudiante_id), {})
+        nombre      = fila_notas.get("nombre_completo", f"Estudiante {estudiante_id}")
+        # Asistencia del grupo y filtrar por estudiante
+        asist_grupo = self._estadisticos_repo.consolidado_asistencia_grupo(grupo_id, periodo_id)
+        filas_asist = [r for r in asist_grupo if r.get("estudiante_id") == estudiante_id]
+        # Combinar en tabla plana
+        datos: list[dict] = []
+        for r in filas_asist:
+            asig = r.get("nombre_asignatura", "")
+            datos.append({
+                "Asignatura":   asig,
+                "Nota":         fila_notas.get(asig, "—"),
+                "Asistencia %": r.get("porcentaje", 0),
+                "Faltas Inj.":  r.get("faltas_injustificadas", 0),
+            })
+        fmt = FormatoInforme(formato)
+        if fmt == FormatoInforme.EXCEL:
+            return exporter.exportar_excel(datos, nombre_hoja="Boletín Periodo")
+        html = self._datos_a_html(datos, titulo=f"Boletín Periodo — {nombre}")
+        return exporter.exportar_pdf(html)
+
+    # ------------------------------------------------------------------
+    # Boletín anual (individual por estudiante)
+    # ------------------------------------------------------------------
+
+    def generar_boletin_anual(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        anio_id: int,
+        formato: str = "pdf",
+    ) -> bytes:
+        """
+        Genera el boletín anual de un estudiante.
+
+        Obtiene el consolidado anual del grupo y filtra por estudiante_id.
+
+        Lanza:
+            ValueError: Si no hay exportador configurado o sin datos.
+        """
+        exporter   = self._get_exporter_o_lanzar()
+        datos_anual = self._estadisticos_repo.consolidado_anual_grupo(grupo_id, anio_id)
+        filas = [r for r in datos_anual if r.get("estudiante_id") == estudiante_id]
+        if not filas:
+            raise ValueError(
+                f"Sin datos anuales para estudiante {estudiante_id} en grupo {grupo_id}."
+            )
+        nombre = filas[0].get("nombre_completo", f"Estudiante {estudiante_id}")
+        fmt = FormatoInforme(formato)
+        if fmt == FormatoInforme.EXCEL:
+            return exporter.exportar_excel(filas, nombre_hoja="Boletín Anual")
+        html = self._datos_a_html(filas, titulo=f"Boletín Anual — {nombre}")
+        return exporter.exportar_pdf(html)
+
+    # ------------------------------------------------------------------
     # Helpers privados
     # ------------------------------------------------------------------
 
@@ -232,4 +309,9 @@ class InformeService:
         )
 
 
-__all__ = ["InformeService"]
+__all__ = [
+    "InformeService",
+    "InformeNotasDTO",
+    "InformeAsistenciaDTO",
+    "FormatoInforme",
+]
