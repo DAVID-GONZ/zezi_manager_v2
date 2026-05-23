@@ -91,7 +91,7 @@ def consolidado_asistencia_page() -> None:
             ui.label("Filtros del informe").classes("text-subtitle1 text-weight-medium q-mb-md")
 
             with ui.element("div").classes("form-grid-2"):
-                grupos_opts = {g.id: getattr(g, "nombre", str(g.id)) for g in _s["grupos"]}
+                grupos_opts = {g.id: g.nombre or g.codigo for g in _s["grupos"]}
                 ui.select(
                     label="Grupo",
                     options=grupos_opts,

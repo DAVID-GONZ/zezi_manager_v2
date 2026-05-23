@@ -314,3 +314,107 @@ class IEstadisticosRepository(ABC):
             habilitación si aplica, y estado de promoción.
         """
         ...
+
+    # =========================================================================
+    # Datos para boletines formales (un estudiante a la vez)
+    # =========================================================================
+
+    @abstractmethod
+    def boletin_datos_periodo(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        periodo_id: int,
+    ) -> dict[str, Any]:
+        """
+        Datos completos de un estudiante para el boletín de un periodo.
+
+        Returns un dict con la forma::
+
+            {
+              "estudiante": {
+                  "nombre": str, "documento": str,
+                  "grupo": str, "periodo": str,
+              },
+              "areas": [
+                  {
+                    "area_nombre": str,
+                    "asignaturas": [
+                        {
+                          "nombre": str,
+                          "nota": float | None,
+                          "presentes": int,
+                          "faltas_injustificadas": int,
+                          "faltas_justificadas": int,
+                          "retrasos": int,
+                          "excusas": int,
+                        },
+                        ...
+                    ],
+                  },
+                  ...
+              ],
+            }
+        """
+        ...
+
+    @abstractmethod
+    def boletin_datos_acumulado(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        hasta_periodo_id: int,
+    ) -> dict[str, Any]:
+        """
+        Datos del estudiante para el boletín acumulado hasta un periodo dado.
+
+        Incluye todos los periodos del mismo año lectivo con número ≤ al del
+        periodo solicitado.  El dict tiene la misma forma que ``boletin_datos_anual``
+        más el campo ``"es_ultimo_periodo": bool`` que indica si el periodo
+        solicitado es el último del año (para etiquetar la columna "Def." o "Prom.").
+        """
+        ...
+
+    @abstractmethod
+    def boletin_datos_anual(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        anio_id: int,
+    ) -> dict[str, Any]:
+        """
+        Datos completos de un estudiante para el boletín anual.
+
+        Returns un dict con la forma::
+
+            {
+              "estudiante": {
+                  "nombre": str, "documento": str,
+                  "grupo": str, "anio": int,
+                  "estado_promocion": str,
+              },
+              "periodos": [
+                  {"id": int, "nombre": str, "numero": int}, ...
+              ],
+              "areas": [
+                  {
+                    "area_nombre": str,
+                    "asignaturas": [
+                        {
+                          "nombre": str,
+                          "notas_periodo": {periodo_id: float | None, ...},
+                          "definitiva": float | None,
+                          "presentes": int,
+                          "faltas_injustificadas": int,
+                          "faltas_justificadas": int,
+                          "retrasos": int,
+                          "excusas": int,
+                        },
+                        ...
+                    ],
+                  },
+                  ...
+              ],
+            }
+        """
+        ...

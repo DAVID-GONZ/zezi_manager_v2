@@ -69,6 +69,15 @@ class FakeEstadRepo(IEstadisticosRepository):
     def consolidado_anual_grupo(self, grupo_id, anio_id) -> list[dict[str, Any]]:
         return []
 
+    def boletin_datos_periodo(self, estudiante_id, grupo_id, periodo_id):
+        return {"estudiante": {}, "areas": []}
+
+    def boletin_datos_acumulado(self, estudiante_id, grupo_id, hasta_periodo_id):
+        return {"estudiante": {}, "periodos": [], "areas": [], "es_ultimo_periodo": False}
+
+    def boletin_datos_anual(self, estudiante_id, grupo_id, anio_id):
+        return {"estudiante": {}, "periodos": [], "areas": []}
+
 
 # ===========================================================================
 # Tests

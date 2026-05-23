@@ -80,6 +80,7 @@ def registrar_rutas_internas(app) -> None:
     def health():
         return {"status": "ok", "version": settings.APP_VERSION}
 
+    # Ruta interna — health/diagnóstico del sistema; no aparece en NAV_ITEMS intencionalmente.
     @ui.page("/diagnostico")
     def pagina_diagnostico():
         resultado = Container.diagnostico()

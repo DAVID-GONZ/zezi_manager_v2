@@ -6,12 +6,12 @@ Ruta: /estudiantes
 
 Secciones:
   1. Panel de filtros (grupo, estado, PIAR, búsqueda)
-  2. Botones de acción (Matricular, Carga CSV)
+  2. Botones de acción (Matricular, Carga CSV) en cabecera del panel
   3. Tabla de estudiantes (@ui.refreshable)
   4. Dialog de matrícula individual
   5. Dialog de carga masiva CSV
   6. Sección resultado masivo (@ui.refreshable)
-  7. Dialog de PIAR (ver / registrar)
+  7. Dialog de PIAR (ver / registrar / editar)
 
 Reglas de capas:
   - NUNCA llama repositorios directamente (solo Container.*_service()).
@@ -32,7 +32,9 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost
+from src.interface.design.components.buttons import (
+    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+)
 from src.interface.design.components import stat_card, confirm_dialog, form_dialog
 from src.services.estudiante_service import (
     NuevoEstudianteDTO,
@@ -43,6 +45,21 @@ from src.services.estudiante_service import (
 )
 
 logger = logging.getLogger("ESTUDIANTES")
+
+
+# ── Helper de args de tabla ───────────────────────────────────────────────────
+
+def _row_from_args(args) -> dict:
+    """
+    Extrae el dict de fila de un evento de tabla de NiceGUI.
+    Admite tanto e.args = dict como e.args = [dict] según la versión.
+    """
+    if isinstance(args, list):
+        return args[0] if args else {}
+    if isinstance(args, dict):
+        return args
+    return {}
+
 
 # =============================================================================
 # Página principal
@@ -60,14 +77,14 @@ def estudiantes_page() -> None:
 
     # ── Estado mutable de la página ───────────────────────────────────────────
     _s: dict = {
-        "estudiantes": [],
+        "estudiantes":     [],
         "filtro_grupo_id": None,
-        "filtro_estado": None,       # None = todos, "activo", "retirado", etc.
-        "filtro_piar": None,         # None = todos, True = solo con PIAR
+        "filtro_estado":   None,
+        "filtro_piar":     None,
         "filtro_busqueda": "",
-        "grupos": [],                # list[Grupo] para selector de filtro
-        "config": None,              # ConfiguracionAnio activa
-        "resultado_masivo": None,    # MatriculaMasivaResultadoDTO | None
+        "grupos":          [],
+        "config":          None,
+        "resultado_masivo": None,
     }
 
     # ── Carga inicial de datos de soporte ─────────────────────────────────────
@@ -75,19 +92,15 @@ def estudiantes_page() -> None:
         _s["grupos"] = Container.infraestructura_service().listar_grupos()
     except Exception as exc:
         logger.error("Error cargando grupos: %s", exc)
-        _s["grupos"] = []
 
     try:
-        cfg_service = Container.configuracion_service()
-        _s["config"] = cfg_service.get_activa()
+        _s["config"] = Container.configuracion_service().get_activa()
     except Exception as exc:
         logger.error("Error cargando configuración activa: %s", exc)
-        _s["config"] = None
 
     # ── Función de carga de estudiantes ──────────────────────────────────────
 
     def _cargar_estudiantes() -> None:
-        """Recarga la lista de estudiantes con los filtros activos."""
         try:
             filtro = FiltroEstudiantesDTO(
                 grupo_id=_s["filtro_grupo_id"],
@@ -101,13 +114,11 @@ def estudiantes_page() -> None:
             logger.error("Error cargando estudiantes: %s", exc)
             _s["estudiantes"] = []
 
-    # Carga inicial
     _cargar_estudiantes()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _grupo_codigo(grupo_id: int | None) -> str:
-        """Devuelve el código del grupo o '—' si no está asignado."""
         if grupo_id is None:
             return "—"
         for g in _s["grupos"]:
@@ -116,32 +127,29 @@ def estudiantes_page() -> None:
         return str(grupo_id)
 
     def _estado_label(estado_str: str) -> str:
-        """Convierte el valor string del estado a etiqueta para mostrar."""
-        _mapa = {
-            "activo": "Activo",
+        return {
+            "activo":   "Activo",
             "inactivo": "Inactivo",
             "retirado": "Retirado",
             "graduado": "Graduado",
-        }
-        return _mapa.get(str(estado_str).lower(), str(estado_str))
+        }.get(str(estado_str).lower(), str(estado_str))
+
+    def _grupos_select() -> dict:
+        opts: dict = {None: "Sin grupo"}
+        for g in _s["grupos"]:
+            opts[g.id] = f"{g.codigo} — {g.grado}"
+        return opts
 
     # ── Procesador CSV ────────────────────────────────────────────────────────
 
     def _procesar_csv(content: bytes) -> None:
-        """
-        Procesa el contenido de un CSV de matrícula masiva.
-
-        Formato esperado:
-            tipo_documento,numero_documento,nombre,apellido,genero,grupo_codigo
-        """
-        # Decodificación con fallback
         try:
             texto = content.decode("utf-8")
         except UnicodeDecodeError:
             texto = content.decode("latin-1")
 
         reader = csv.DictReader(io.StringIO(texto))
-        filas = list(reader)
+        filas  = list(reader)
 
         resultado = MatriculaMasivaResultadoDTO(
             total_procesadas=len(filas),
@@ -149,21 +157,14 @@ def estudiantes_page() -> None:
             fallidas=0,
             errores=[],
         )
-
-        # Mapa grupo_codigo → grupo_id para resolver el campo del CSV
-        _mapa_grupos: dict[str, int] = {
-            g.codigo: g.id for g in _s["grupos"]
-        }
-
+        _mapa_grupos: dict[str, int] = {g.codigo: g.id for g in _s["grupos"]}
         svc = Container.estudiante_service()
 
-        for i, fila in enumerate(filas, start=2):  # start=2: fila 1 = cabeceras
+        for i, fila in enumerate(filas, start=2):
             num_doc = fila.get("numero_documento", "").strip()
             try:
-                # Resolver grupo_id desde grupo_codigo si está presente
                 codigo_grupo = fila.get("grupo_codigo", "").strip()
-                grupo_id = _mapa_grupos.get(codigo_grupo) if codigo_grupo else None
-
+                grupo_id     = _mapa_grupos.get(codigo_grupo) if codigo_grupo else None
                 dto = NuevoEstudianteDTO(
                     tipo_documento=fila.get("tipo_documento", "TI").strip() or "TI",
                     numero_documento=num_doc,
@@ -174,13 +175,8 @@ def estudiantes_page() -> None:
                 )
                 svc.matricular(dto, usuario_id=ctx.usuario_id)
                 resultado.exitosas += 1
-
-            except (ValueError, Exception) as exc:
-                resultado.agregar_error(
-                    fila=i,
-                    dato=num_doc or "?",
-                    motivo=str(exc),
-                )
+            except Exception as exc:
+                resultado.agregar_error(fila=i, dato=num_doc or "?", motivo=str(exc))
 
         _s["resultado_masivo"] = resultado
         _cargar_estudiantes()
@@ -188,10 +184,7 @@ def estudiantes_page() -> None:
         resultado_refreshable.refresh()
 
         if resultado.fue_exitosa:
-            ui.notify(
-                f"Carga completada: {resultado.exitosas} estudiantes matriculados.",
-                type="positive",
-            )
+            ui.notify(f"Carga completada: {resultado.exitosas} estudiantes matriculados.", type="positive")
         else:
             ui.notify(
                 f"{resultado.exitosas} exitosas, {resultado.fallidas} fallidas. "
@@ -202,10 +195,6 @@ def estudiantes_page() -> None:
     # =========================================================================
     # CONSTRUCCIÓN DE LA UI
     # =========================================================================
-
-    # Contenedor mutable para callbacks de acciones del topbar
-    # (se populan dentro de contenido() cuando los refreshables existen)
-    _topbar_handlers: dict = {}
 
     def contenido() -> None:
 
@@ -226,7 +215,6 @@ def estudiantes_page() -> None:
                     ).classes("tablero-panel-subtitle")
                 return
 
-            # Construir filas para ui.table
             filas = []
             for est in estudiantes:
                 estado_val = (
@@ -235,83 +223,39 @@ def estudiantes_page() -> None:
                     else str(est.estado_matricula)
                 )
                 filas.append({
-                    "id": est.id,
+                    "id":              est.id,
                     "nombre_completo": est.nombre_completo,
                     "documento_display": est.documento_display,
-                    "grupo_codigo": _grupo_codigo(est.grupo_id),
-                    "estado_str": _estado_label(estado_val),
-                    "estado_raw": estado_val,
-                    "piar_badge": "Sí" if est.posee_piar else "No",
-                    "posee_piar": est.posee_piar,
+                    "grupo_codigo":    _grupo_codigo(est.grupo_id),
+                    "estado_str":      _estado_label(estado_val),
+                    "estado_raw":      estado_val,
+                    "piar_badge":      "Sí" if est.posee_piar else "No",
+                    "posee_piar":      est.posee_piar,
                 })
 
             columnas = [
-                {
-                    "name": "nombre",
-                    "label": "Estudiante",
-                    "field": "nombre_completo",
-                    "align": "left",
-                    "sortable": True,
-                },
-                {
-                    "name": "doc",
-                    "label": "Documento",
-                    "field": "documento_display",
-                    "align": "left",
-                },
-                {
-                    "name": "grupo",
-                    "label": "Grupo",
-                    "field": "grupo_codigo",
-                    "align": "center",
-                },
-                {
-                    "name": "estado",
-                    "label": "Estado",
-                    "field": "estado_str",
-                    "align": "center",
-                    "sortable": True,
-                },
-                {
-                    "name": "piar",
-                    "label": "PIAR",
-                    "field": "piar_badge",
-                    "align": "center",
-                },
-                {
-                    "name": "acciones",
-                    "label": "Acciones",
-                    "field": "id",
-                    "align": "center",
-                },
+                {"name": "nombre",   "label": "Estudiante", "field": "nombre_completo",   "align": "left",   "sortable": True},
+                {"name": "doc",      "label": "Documento",  "field": "documento_display",  "align": "left"},
+                {"name": "grupo",    "label": "Grupo",      "field": "grupo_codigo",        "align": "center"},
+                {"name": "estado",   "label": "Estado",     "field": "estado_str",          "align": "center", "sortable": True},
+                {"name": "piar",     "label": "PIAR",       "field": "piar_badge",          "align": "center"},
+                {"name": "acciones", "label": "Acciones",   "field": "id",                  "align": "center"},
             ]
 
-            tabla = ui.table(
-                columns=columnas,
-                rows=filas,
-                row_key="id",
-            ).classes("w-full")
+            tabla = ui.table(columns=columnas, rows=filas, row_key="id").classes("w-full")
 
-            # Slot para columna de acciones con botones inline
             tabla.add_slot("body-cell-acciones", """
                 <q-td :props="props" class="q-gutter-xs">
-                    <q-btn
-                        flat dense size="sm" icon="edit" color="primary"
-                        @click="$emit('editar', props.row)"
-                    />
-                    <q-btn
-                        v-if="props.row.estado_raw !== 'retirado'"
-                        flat dense size="sm" icon="person_remove" color="negative"
-                        @click="$emit('retirar', props.row)"
-                    />
-                    <q-btn
-                        flat dense size="sm" icon="description" color="secondary"
-                        @click="$emit('piar', props.row)"
-                    />
+                    <q-btn flat dense size="sm" icon="edit" color="primary"
+                           @click="$emit('editar', props.row)" />
+                    <q-btn v-if="props.row.estado_raw !== 'retirado'"
+                           flat dense size="sm" icon="person_remove" color="negative"
+                           @click="$emit('retirar', props.row)" />
+                    <q-btn flat dense size="sm" icon="description" color="secondary"
+                           @click="$emit('piar', props.row)" />
                 </q-td>
             """)
 
-            # Slot para columna de PIAR con badge visual
             tabla.add_slot("body-cell-piar", """
                 <q-td :props="props" class="text-center">
                     <q-badge
@@ -322,14 +266,12 @@ def estudiantes_page() -> None:
                 </q-td>
             """)
 
-            # Handlers de eventos de los botones
-            tabla.on("editar", lambda e: _abrir_dialog_edicion(e.args))
-            tabla.on("retirar", lambda e: _confirmar_retiro(e.args))
-            tabla.on("piar", lambda e: _abrir_dialog_piar(e.args))
+            tabla.on("editar",  lambda e: _abrir_dialog_edicion(_row_from_args(e.args)))
+            tabla.on("retirar", lambda e: _confirmar_retiro(_row_from_args(e.args)))
+            tabla.on("piar",    lambda e: _abrir_dialog_piar(_row_from_args(e.args)))
 
         @ui.refreshable
         def resultado_refreshable() -> None:
-            """Sección de resultado de carga masiva."""
             resultado = _s.get("resultado_masivo")
             if resultado is None:
                 return
@@ -341,39 +283,26 @@ def estudiantes_page() -> None:
 
                 with ui.element("div").classes("tablero-kpi-row"):
                     stat_card("Total procesadas", resultado.total_procesadas, "check_circle", variante="info")
-                    stat_card("Exitosas", resultado.exitosas, "check",
+                    stat_card("Exitosas",  resultado.exitosas,  "check",
                               variante="success" if resultado.exitosas > 0 else "info")
-                    stat_card("Fallidas", resultado.fallidas, "error",
-                              variante="danger" if resultado.fallidas > 0 else "success")
+                    stat_card("Fallidas",  resultado.fallidas,  "error",
+                              variante="danger"  if resultado.fallidas > 0 else "success")
 
                 if resultado.errores:
                     ui.label("Detalle de errores (máx. 10):").classes("text-weight-medium q-mt-md")
-                    errores_mostrar = resultado.errores[:10]
-                    for err in errores_mostrar:
-                        with ui.element("div").classes("q-mb-xs"):
-                            ui.label(
-                                f"Fila {err['fila']} — Doc: {err['dato']} — {err['motivo']}"
-                            ).classes("text-caption text-negative")
+                    for err in resultado.errores[:10]:
+                        ui.label(
+                            f"Fila {err['fila']} — Doc: {err['dato']} — {err['motivo']}"
+                        ).classes("text-caption text-negative q-mb-xs")
 
-                btn_secondary(
-                    "Limpiar resultado",
-                    icon="close",
-                    on_click=lambda: _limpiar_resultado(),
-                ).classes("q-mt-sm")
+                btn_secondary("Limpiar resultado", icon="close",
+                              on_click=lambda: (_s.update({"resultado_masivo": None}),
+                                                resultado_refreshable.refresh())).classes("q-mt-sm")
 
-        # ── Funciones de acción ───────────────────────────────────────────────
-
-        def _limpiar_resultado() -> None:
-            _s["resultado_masivo"] = None
-            resultado_refreshable.refresh()
+        # ── Acciones de página ────────────────────────────────────────────────
 
         def _abrir_dialog_matricula() -> None:
-            """Dialog para matricular un estudiante individual."""
-            _grupos_select: dict = {None: "Sin grupo"}
-            for g in _s["grupos"]:
-                _grupos_select[g.id] = f"{g.codigo} — {g.grado}"
-
-            def _guardar_matricula(datos: dict) -> "bool | None":
+            def _guardar(datos: dict) -> "bool | None":
                 try:
                     dto = NuevoEstudianteDTO(
                         tipo_documento=datos.get("tipo_documento") or "TI",
@@ -384,9 +313,7 @@ def estudiantes_page() -> None:
                         genero=datos.get("genero"),
                         posee_piar=bool(datos.get("posee_piar", False)),
                     )
-                    Container.estudiante_service().matricular(
-                        dto, usuario_id=ctx.usuario_id
-                    )
+                    Container.estudiante_service().matricular(dto, usuario_id=ctx.usuario_id)
                     ui.notify("Estudiante matriculado exitosamente.", type="positive")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -394,72 +321,48 @@ def estudiantes_page() -> None:
                     ui.notify(str(exc), type="warning")
                     return False
                 except Exception as exc:
-                    logger.error("Error matriculando estudiante: %s", exc)
+                    logger.error("Error matriculando: %s", exc)
                     ui.notify("Error inesperado al matricular.", type="negative")
                     return False
 
             form_dialog(
-                titulo    = "Matricular estudiante",
-                campos    = [
+                titulo="Matricular estudiante",
+                campos=[
                     {"key": "tipo_documento",   "label": "Tipo documento",    "tipo": "select",
                      "opciones": {"TI": "TI", "CC": "CC", "CE": "CE", "NUIP": "NUIP"}, "valor": "TI"},
-                    {"key": "numero_documento", "label": "Número documento *", "tipo": "text",
-                     "requerido": True},
-                    {"key": "nombre",           "label": "Nombre *",           "tipo": "text",
-                     "requerido": True},
-                    {"key": "apellido",         "label": "Apellido *",         "tipo": "text",
-                     "requerido": True},
-                    {"key": "grupo_id",         "label": "Grupo",              "tipo": "select",
-                     "opciones": _grupos_select},
-                    {"key": "genero",           "label": "Género",             "tipo": "select",
+                    {"key": "numero_documento", "label": "Número documento",  "tipo": "text",   "requerido": True},
+                    {"key": "nombre",           "label": "Nombre",            "tipo": "text",   "requerido": True},
+                    {"key": "apellido",         "label": "Apellido",          "tipo": "text",   "requerido": True},
+                    {"key": "grupo_id",         "label": "Grupo",             "tipo": "select", "opciones": _grupos_select()},
+                    {"key": "genero",           "label": "Género",            "tipo": "select",
                      "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
-                    {"key": "posee_piar",       "label": "Posee PIAR",         "tipo": "checkbox",
-                     "valor": False},
+                    {"key": "posee_piar",       "label": "Posee PIAR",        "tipo": "checkbox", "valor": False},
                 ],
-                on_submit    = _guardar_matricula,
-                texto_submit = "Matricular",
-                max_width    = "max-w-lg",
-                columnas     = 2,
+                on_submit=_guardar,
+                texto_submit="Matricular",
+                max_width="max-w-lg",
+                columnas=2,
             )
 
         def _abrir_dialog_csv() -> None:
-            """Dialog para carga masiva de estudiantes por CSV."""
             with ui.dialog() as dlg, ui.card().classes("w-full"):
                 ui.label("Carga masiva por CSV").classes("text-h6")
                 ui.label(
-                    "Formato: tipo_documento, numero_documento, nombre, apellido, "
-                    "genero, grupo_codigo"
+                    "Formato: tipo_documento, numero_documento, nombre, apellido, genero, grupo_codigo"
                 ).classes("text-caption text-grey q-mb-md")
-
                 ui.upload(
                     label="Seleccionar archivo CSV",
-                    on_upload=lambda e: (
-                        _procesar_csv(e.content.read()),
-                        dlg.close(),
-                    ),
+                    on_upload=lambda e: (_procesar_csv(e.content.read()), dlg.close()),
                     auto_upload=True,
                 ).props("accept=.csv").classes("w-full")
-
                 with ui.row().classes("q-mt-md justify-end"):
                     btn_ghost("Cerrar", on_click=dlg.close)
-
             dlg.open()
 
-        # Registrar callbacks para el topbar (accedidos via _topbar_handlers)
-        _topbar_handlers["matricula"] = _abrir_dialog_matricula
-        _topbar_handlers["csv"]       = _abrir_dialog_csv
-
         def _abrir_dialog_edicion(fila: dict) -> None:
-            """Dialog para editar datos de un estudiante existente."""
             est_id = fila.get("id")
             if not est_id:
                 return
-
-            _grupos_select: dict = {None: "Sin grupo"}
-            for g in _s["grupos"]:
-                _grupos_select[g.id] = f"{g.codigo} — {g.grado}"
-
-            # Buscar datos completos del estudiante
             try:
                 est = Container.estudiante_service().get_by_id(est_id)
             except Exception as exc:
@@ -467,14 +370,9 @@ def estudiantes_page() -> None:
                 ui.notify("No se pudo cargar el estudiante.", type="negative")
                 return
 
-            estado_raw = (
-                est.estado_matricula.value
-                if hasattr(est.estado_matricula, "value")
-                else str(est.estado_matricula)
-            )
+            estado_raw  = est.estado_matricula.value if hasattr(est.estado_matricula, "value") else str(est.estado_matricula)
             genero_actual = (
-                est.genero.value
-                if est.genero and hasattr(est.genero, "value")
+                est.genero.value if est.genero and hasattr(est.genero, "value")
                 else (str(est.genero) if est.genero else None)
             )
 
@@ -488,9 +386,7 @@ def estudiantes_page() -> None:
                         posee_piar=bool(datos.get("posee_piar", False)),
                         estado_matricula=datos.get("estado"),
                     )
-                    Container.estudiante_service().actualizar(
-                        est_id, dto, usuario_id=ctx.usuario_id
-                    )
+                    Container.estudiante_service().actualizar(est_id, dto, usuario_id=ctx.usuario_id)
                     ui.notify("Estudiante actualizado.", type="positive")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -498,68 +394,54 @@ def estudiantes_page() -> None:
                     ui.notify(str(exc), type="warning")
                     return False
                 except Exception as exc:
-                    logger.error("Error actualizando estudiante %s: %s", est_id, exc)
+                    logger.error("Error actualizando %s: %s", est_id, exc)
                     ui.notify("Error inesperado al actualizar.", type="negative")
                     return False
 
             form_dialog(
-                titulo    = f"Editar — {est.nombre_completo}",
-                campos    = [
-                    {"key": "nombre",    "label": "Nombre *",    "tipo": "text",
-                     "valor": est.nombre,    "requerido": True},
-                    {"key": "apellido",  "label": "Apellido *",  "tipo": "text",
-                     "valor": est.apellido,  "requerido": True},
-                    {"key": "estado",    "label": "Estado",      "tipo": "select",
-                     "valor": estado_raw,
-                     "opciones": {"activo": "Activo", "inactivo": "Inactivo",
-                                  "retirado": "Retirado", "graduado": "Graduado"}},
-                    {"key": "grupo_id",  "label": "Grupo",       "tipo": "select",
-                     "valor": est.grupo_id,  "opciones": _grupos_select},
-                    {"key": "genero",    "label": "Género",      "tipo": "select",
-                     "valor": genero_actual,
-                     "opciones": {None: "No especificado", "M": "Masculino",
-                                  "F": "Femenino", "OTRO": "Otro"}},
-                    {"key": "posee_piar","label": "Posee PIAR",  "tipo": "checkbox",
-                     "valor": est.posee_piar},
+                titulo=f"Editar — {est.nombre_completo}",
+                campos=[
+                    {"key": "nombre",     "label": "Nombre",    "tipo": "text",     "valor": est.nombre,   "requerido": True},
+                    {"key": "apellido",   "label": "Apellido",  "tipo": "text",     "valor": est.apellido, "requerido": True},
+                    {"key": "estado",     "label": "Estado",    "tipo": "select",   "valor": estado_raw,
+                     "opciones": {"activo": "Activo", "inactivo": "Inactivo", "retirado": "Retirado", "graduado": "Graduado"}},
+                    {"key": "grupo_id",   "label": "Grupo",     "tipo": "select",   "valor": est.grupo_id, "opciones": _grupos_select()},
+                    {"key": "genero",     "label": "Género",    "tipo": "select",   "valor": genero_actual,
+                     "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
+                    {"key": "posee_piar", "label": "Posee PIAR","tipo": "checkbox", "valor": est.posee_piar},
                 ],
-                on_submit    = _guardar_edicion,
-                max_width    = "max-w-lg",
-                columnas     = 2,
+                on_submit=_guardar_edicion,
+                max_width="max-w-lg",
+                columnas=2,
             )
 
         def _confirmar_retiro(fila: dict) -> None:
-            """Dialog de confirmación antes de retirar un estudiante."""
             est_id = fila.get("id")
             nombre = fila.get("nombre_completo", "este estudiante")
             if not est_id:
                 return
 
-            def _ejecutar_retiro(eid=est_id, nom=nombre) -> None:
+            def _ejecutar() -> None:
                 try:
-                    Container.estudiante_service().retirar(
-                        eid,
-                        motivo=None,
-                        usuario_id=ctx.usuario_id,
-                    )
-                    ui.notify(f"{nom} retirado.", type="positive")
+                    Container.estudiante_service().retirar(est_id, motivo=None, usuario_id=ctx.usuario_id)
+                    ui.notify(f"{nombre} retirado.", type="positive")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
                 except ValueError as exc:
                     ui.notify(str(exc), type="warning")
                 except Exception as exc:
-                    logger.error("Error retirando estudiante %s: %s", eid, exc)
+                    logger.error("Error retirando %s: %s", est_id, exc)
                     ui.notify("Error inesperado al retirar.", type="negative")
 
             confirm_dialog(
-                titulo          = "Retirar estudiante",
-                mensaje         = f"¿Retirar a {nombre} de la matrícula? El estado cambiará a Retirado.",
-                on_confirm      = _ejecutar_retiro,
-                variante        = "danger",
-                texto_confirmar = "Retirar",
+                titulo="Retirar estudiante",
+                mensaje=f"¿Retirar a {nombre} de la matrícula? El estado cambiará a Retirado.",
+                on_confirm=_ejecutar,
+                variante="danger",
+                texto_confirmar="Retirar",
             )
 
         def _abrir_dialog_piar(fila: dict) -> None:
-            """Dialog para ver o registrar el PIAR de un estudiante."""
             est_id = fila.get("id")
             nombre = fila.get("nombre_completo", "Estudiante")
             if not est_id:
@@ -567,61 +449,81 @@ def estudiantes_page() -> None:
 
             anio_id = _s["config"].id if _s["config"] else None
             if not anio_id:
-                ui.notify(
-                    "No hay año escolar activo configurado. "
-                    "Contacta al administrador.",
-                    type="warning",
-                )
+                ui.notify("No hay año escolar activo configurado.", type="warning")
                 return
 
-            # Cargar PIAR existente si hay
             piar = None
             try:
                 piar = Container.estudiante_service().get_piar(est_id, anio_id)
             except Exception as exc:
                 logger.error("Error cargando PIAR est=%s anio=%s: %s", est_id, anio_id, exc)
 
-            with ui.dialog() as dlg, ui.card().classes("w-full"):
-                ui.label(f"PIAR — {nombre}").classes("text-h6 q-mb-md")
+            with ui.dialog() as dlg, ui.card().classes("w-full max-w-lg"):
+                with ui.row().classes("items-center justify-between w-full q-mb-md"):
+                    ui.label(f"PIAR — {nombre}").classes("text-h6")
+                    btn_icon("close", on_click=dlg.close, variante="ghost")
 
                 if piar is not None:
-                    # Modo lectura — PIAR ya registrado
-                    ui.label("PIAR registrado (solo lectura en esta versión).").classes(
+                    # ── Modo edición de PIAR existente ────────────────────────
+                    ui.label("PIAR registrado — puedes actualizar los campos:").classes(
                         "text-caption text-grey q-mb-sm"
                     )
 
-                    ui.label("Descripción de necesidades:").classes("text-weight-medium")
-                    ui.label(piar.descripcion_necesidad or "—").classes(
-                        "text-body2 q-mb-sm"
-                    )
+                    descripcion_ta = ui.textarea(
+                        label="Descripción de necesidades",
+                        value=piar.descripcion_necesidad or "",
+                    ).classes("w-full q-mb-sm")
 
-                    ui.label("Ajustes evaluativos:").classes("text-weight-medium")
-                    ui.label(piar.ajustes_evaluativos or "—").classes(
-                        "text-body2 q-mb-sm"
-                    )
+                    ajustes_eval_ta = ui.textarea(
+                        label="Ajustes evaluativos",
+                        value=piar.ajustes_evaluativos or "",
+                    ).classes("w-full q-mb-sm")
 
-                    ui.label("Ajustes pedagógicos:").classes("text-weight-medium")
-                    ui.label(piar.ajustes_pedagogicos or "—").classes(
-                        "text-body2 q-mb-sm"
-                    )
+                    ajustes_ped_ta = ui.textarea(
+                        label="Ajustes pedagógicos",
+                        value=piar.ajustes_pedagogicos or "",
+                    ).classes("w-full q-mb-sm")
 
-                    ui.label("Profesionales de apoyo:").classes("text-weight-medium")
-                    ui.label(piar.profesionales_apoyo or "—").classes(
-                        "text-body2 q-mb-sm"
-                    )
+                    profesionales_inp = ui.input(
+                        label="Profesionales de apoyo",
+                        value=piar.profesionales_apoyo or "",
+                    ).classes("w-full")
 
                     fecha_elab = (
                         piar.fecha_elaboracion.strftime("%d/%m/%Y")
-                        if piar.fecha_elaboracion
+                        if getattr(piar, "fecha_elaboracion", None)
                         else "—"
                     )
-                    ui.label(f"Fecha elaboración: {fecha_elab}").classes("text-caption text-grey")
+                    ui.label(f"Fecha elaboración: {fecha_elab}").classes("text-caption text-grey q-mt-xs")
 
-                    with ui.row().classes("q-mt-md justify-end"):
-                        btn_ghost("Cerrar", on_click=dlg.close)
+                    def _actualizar_piar() -> None:
+                        try:
+                            dto = NuevoPIARDTO(
+                                estudiante_id=est_id,
+                                anio_id=anio_id,
+                                descripcion_necesidad=descripcion_ta.value,
+                                ajustes_evaluativos=ajustes_eval_ta.value or None,
+                                ajustes_pedagogicos=ajustes_ped_ta.value or None,
+                                profesionales_apoyo=profesionales_inp.value or None,
+                            )
+                            Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
+                            ui.notify("PIAR actualizado.", type="positive")
+                            dlg.close()
+                            _cargar_estudiantes()
+                            tabla_refreshable.refresh()
+                        except ValueError as exc:
+                            # Si ya existe, intentar actualizar (servicio puede lanzar ValueError)
+                            ui.notify(str(exc), type="warning")
+                        except Exception as exc:
+                            logger.error("Error actualizando PIAR est=%s: %s", est_id, exc)
+                            ui.notify("Error inesperado al actualizar el PIAR.", type="negative")
+
+                    with ui.row().classes("q-mt-md justify-end gap-2"):
+                        btn_ghost("Cancelar", on_click=dlg.close)
+                        btn_primary("Actualizar PIAR", on_click=_actualizar_piar)
 
                 else:
-                    # Modo registro — nuevo PIAR
+                    # ── Modo registro de PIAR nuevo ───────────────────────────
                     ui.label("Registrar PIAR nuevo").classes("text-subtitle2 q-mb-sm")
 
                     descripcion_ta = ui.textarea(
@@ -644,35 +546,32 @@ def estudiantes_page() -> None:
                         placeholder="Fonoaudióloga, psicóloga, etc.",
                     ).classes("w-full")
 
-                    with ui.row().classes("q-mt-md justify-end gap-sm"):
+                    def _guardar_piar() -> None:
+                        if not descripcion_ta.value.strip():
+                            ui.notify("La descripción de necesidades es obligatoria.", type="warning")
+                            return
+                        try:
+                            dto = NuevoPIARDTO(
+                                estudiante_id=est_id,
+                                anio_id=anio_id,
+                                descripcion_necesidad=descripcion_ta.value,
+                                ajustes_evaluativos=ajustes_eval_ta.value or None,
+                                ajustes_pedagogicos=ajustes_ped_ta.value or None,
+                                profesionales_apoyo=profesionales_inp.value or None,
+                            )
+                            Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
+                            ui.notify("PIAR registrado exitosamente.", type="positive")
+                            dlg.close()
+                            _cargar_estudiantes()
+                            tabla_refreshable.refresh()
+                        except ValueError as exc:
+                            ui.notify(str(exc), type="warning")
+                        except Exception as exc:
+                            logger.error("Error registrando PIAR est=%s: %s", est_id, exc)
+                            ui.notify("Error inesperado al registrar el PIAR.", type="negative")
+
+                    with ui.row().classes("q-mt-md justify-end gap-2"):
                         btn_ghost("Cancelar", on_click=dlg.close)
-
-                        def _guardar_piar() -> None:
-                            try:
-                                dto = NuevoPIARDTO(
-                                    estudiante_id=est_id,
-                                    anio_id=anio_id,
-                                    descripcion_necesidad=descripcion_ta.value,
-                                    ajustes_evaluativos=ajustes_eval_ta.value or None,
-                                    ajustes_pedagogicos=ajustes_ped_ta.value or None,
-                                    profesionales_apoyo=profesionales_inp.value or None,
-                                )
-                                Container.estudiante_service().registrar_piar(
-                                    dto, usuario_id=ctx.usuario_id
-                                )
-                                ui.notify("PIAR registrado exitosamente.", type="positive")
-                                dlg.close()
-                                # Recargar para actualizar badge posee_piar
-                                _cargar_estudiantes()
-                                tabla_refreshable.refresh()
-                            except ValueError as exc:
-                                ui.notify(str(exc), type="warning")
-                            except Exception as exc:
-                                logger.error(
-                                    "Error registrando PIAR est=%s: %s", est_id, exc
-                                )
-                                ui.notify("Error inesperado al registrar el PIAR.", type="negative")
-
                         btn_primary("Registrar PIAR", on_click=_guardar_piar)
 
             dlg.open()
@@ -688,82 +587,78 @@ def estudiantes_page() -> None:
                     ui.label("Filtros").classes("panel-title")
 
                 with ui.row().classes("w-full q-col-gutter-md items-end"):
-
                     _grupos_opts: dict = {None: "Todos los grupos"}
                     for g in _s["grupos"]:
                         _grupos_opts[g.id] = g.codigo
 
-                    grupo_filtro = ui.select(
+                    ui.select(
                         label="Grupo",
                         options=_grupos_opts,
                         value=None,
                         on_change=lambda e: _s.update({"filtro_grupo_id": e.value}),
                     ).classes("col-3")
 
-                    estado_filtro = ui.select(
+                    ui.select(
                         label="Estado",
-                        options={
-                            None: "Todos",
-                            "activo": "Activo",
-                            "inactivo": "Inactivo",
-                            "retirado": "Retirado",
-                            "graduado": "Graduado",
-                        },
+                        options={None: "Todos", "activo": "Activo", "inactivo": "Inactivo",
+                                 "retirado": "Retirado", "graduado": "Graduado"},
                         value=None,
                         on_change=lambda e: _s.update({"filtro_estado": e.value}),
                     ).classes("col-3")
 
-                    piar_filtro = ui.checkbox(
+                    ui.checkbox(
                         "Solo con PIAR",
-                        on_change=lambda e: _s.update(
-                            {"filtro_piar": True if e.value else None}
-                        ),
+                        on_change=lambda e: _s.update({"filtro_piar": True if e.value else None}),
                     )
 
-                    busqueda_inp = ui.input(
+                    ui.input(
                         label="Buscar (nombre / documento)",
                         on_change=lambda e: _s.update({"filtro_busqueda": e.value}),
                     ).classes("col-4")
 
-                    def _aplicar_filtros() -> None:
-                        _cargar_estudiantes()
-                        tabla_refreshable.refresh()
-
                     btn_primary(
                         "Buscar",
                         icon=Icons.SEARCH,
-                        on_click=_aplicar_filtros,
+                        on_click=lambda: (_cargar_estudiantes(), tabla_refreshable.refresh()),
                     )
 
-            # ── 3. Tabla de estudiantes ───────────────────────────────────────
+            # ── 2. Tabla de estudiantes (con botones de acción en cabecera) ───
             with ui.element("div").classes("panel-card"):
                 with ui.element("div").classes("panel-header"):
                     ThemeManager.icono(Icons.STUDENTS, size=20)
-                    with ui.element("div"):
+                    with ui.element("div").classes("flex-1"):
                         ui.label("Estudiantes").classes("panel-title")
                         ui.label(
                             f"{len(_s['estudiantes'])} resultado(s)"
                         ).classes("tablero-panel-subtitle")
 
+                    # ── 2a. Botones de acción ─────────────────────────────────
+                    with ui.row().classes("gap-2"):
+                        btn_primary(
+                            "Matricular",
+                            icon="person_add",
+                            on_click=_abrir_dialog_matricula,
+                            size="sm",
+                        )
+                        btn_secondary(
+                            "Carga CSV",
+                            icon="upload_file",
+                            on_click=_abrir_dialog_csv,
+                            size="sm",
+                        )
+
                 tabla_refreshable()
 
-            # ── 4. Sección resultado masivo ───────────────────────────────────
+            # ── 3. Sección resultado masivo ───────────────────────────────────
             resultado_refreshable()
 
     # ── Layout principal ──────────────────────────────────────────────────────
-    def on_context_change() -> None:
-        ui.navigate.reload()
-
     app_layout(
         ctx,
         contenido,
         page_titulo    = "Gestión de Estudiantes",
-        page_subtitulo = "Matrícula, estado y PIAR de estudiantes",
+        page_subtitulo = "Matrícula, estado y PIAR",
         page_icono     = Icons.STUDENTS,
-        page_acciones  = [
-            {"label": "Matricular",  "on_click": lambda: _topbar_handlers.get("matricula", lambda: None)(), "icono": "person_add",  "variante": "primary"},
-            {"label": "Carga CSV",   "on_click": lambda: _topbar_handlers.get("csv",       lambda: None)(), "icono": "upload_file", "variante": "secondary"},
-        ],
     )
 
 

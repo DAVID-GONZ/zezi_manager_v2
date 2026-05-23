@@ -80,9 +80,17 @@ def cierre_periodo_page() -> None:
         if not asig_id or not per_id:
             _s["planilla"] = []
             return
+        # Obtener grupo_id desde la asignacion seleccionada
+        asig_info = next(
+            (a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None
+        )
+        grupo_id = asig_info.grupo_id if asig_info else None
+        if not grupo_id:
+            _s["planilla"] = []
+            return
         try:
             _s["planilla"] = Container.evaluacion_service().obtener_planilla(
-                asig_id, per_id, ctx=None
+                grupo_id, asig_id, per_id
             )
         except Exception as exc:
             logger.error("Error cargando planilla: %s", exc)

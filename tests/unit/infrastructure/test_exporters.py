@@ -12,6 +12,7 @@ import openpyxl
 from src.domain.ports.service_ports import IExporterService
 from src.infrastructure.exporters.null_exporter import NullExporter
 from src.infrastructure.exporters.openpyxl_exporter import OpenpyxlExporter
+from src.infrastructure.exporters.pdf_exporter import WeasyPrintExporter
 from src.infrastructure.exporters.exporter_factory import crear_exporter
 
 
@@ -221,10 +222,10 @@ class TestCrearExporter:
         exporter = crear_exporter()
         assert isinstance(exporter, IExporterService)
 
-    def test_retorna_openpyxl_cuando_disponible(self):
-        # openpyxl está instalado en el entorno de prueba
+    def test_retorna_weasyprint_cuando_reportlab_disponible(self):
+        # reportlab + openpyxl están instalados → nivel 1b → WeasyPrintExporter (PDF via reportlab)
         exporter = crear_exporter()
-        assert isinstance(exporter, OpenpyxlExporter)
+        assert isinstance(exporter, WeasyPrintExporter)
 
     def test_factory_puede_exportar_csv(self):
         exporter = crear_exporter()

@@ -295,6 +295,22 @@ body {
   margin-right: 4px;
 }
 
+/* Botón de toggle dentro del brand (abre/cierra el sidebar) */
+.topbar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.topbar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 /* Page info (título + subtítulo) */
 .topbar-page-info {
   flex: 1;
@@ -625,33 +641,6 @@ width: 100%;
 
 .stat-card-wrapper.info .stat-card-icon-wrap {
   background: var(--color-info-light);
-}
-
-/* ── Compatibilidad ───────────────────────────────────────── */
-.andes-stat-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.andes-stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.1;
-}
-
-.andes-stat-label {
-  font-size: var(--font-size-small);
-  color: var(--color-text-secondary);
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.5px;
 }
 
 /* ── Botones ─────────────────────────────────────────────── */
@@ -1776,11 +1765,6 @@ width: 100%;
   margin-bottom: var(--space-md);
 }
 
-.panel-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
 /* ═══════════════════════════════════════════════════════
    PERIOD STATUS CARD — hijos de la tarjeta de periodo
    ═══════════════════════════════════════════════════════ */
@@ -3027,11 +3011,6 @@ td.tablero-promedio-superior,
   background: var(--desempeno-bajo-bg);
 }
 
-/* ── Utilidades de layout ──────────────────────────────────── */
-.col-2 { flex: 0 0 16.666%; max-width: 16.666%; }
-.col-3 { flex: 0 0 25%; max-width: 25%; }
-.col-4 { flex: 0 0 33.333%; max-width: 33.333%; }
-
 /* ── Componente de entrada ─────────────────────────────────── */
 .andes-input { width: 100%; }
 
@@ -3164,18 +3143,6 @@ td.tablero-promedio-superior,
   background: var(--color-surface-alt);
   color: var(--color-text-primary);
 }
-
-/* DEPRECATED paso_10j: stat_card() ahora usa .stat-card-wrapper (ver más abajo) */
-/* ── Clases para stat_card ───────────────────────────────────────────────── */
-/* DEPRECATED paso_10j: .stat-card, .stat-card-header, .stat-icon-circle ya no se usan */
-.stat-card         { min-width: 200px; flex: 1; padding: var(--space-lg); }
-.stat-card-header  { width: 100%; margin-bottom: var(--space-md); }
-.stat-card-label   { color: var(--color-text-secondary); font-size: var(--font-size-small);
-                     font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
-.stat-card-value   { color: var(--color-text-primary); line-height: 1.1; margin-top: 2px; }
-.stat-card-sub     { color: var(--color-text-secondary); font-size: var(--font-size-small); margin-top: 4px; }
-.stat-icon-circle  { border-radius: 50%; width: 48px; height: 48px; flex-shrink: 0;
-                     display: flex; align-items: center; justify-content: center; }
 
 /* ── Clases para performance_indicator ───────────────────────────────────── */
 .perf-root         { width: 100%; }
@@ -3322,4 +3289,30 @@ td.tablero-promedio-superior,
   padding: var(--space-xs) var(--space-sm);
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Planilla de notas — colores de desempeño en ag-Grid */
+.grade-bajo     { background-color: #fee2e2 !important; color: #991b1b !important; }
+.grade-basico   { background-color: #fef3c7 !important; color: #92400e !important; }
+.grade-alto     { background-color: #dbeafe !important; color: #1e40af !important; }
+.grade-superior { background-color: #dcfce7 !important; color: #166534 !important; }
 .andes-table-row:last-child { border-bottom: none; }
+
+/* ── Estadísticos: aggrid scrollable ─────────────────────────── */
+.aggrid-scroll-wrapper {
+    width: 100%;
+    height: 420px;
+    overflow: hidden;
+}
+
+/* ── Estadísticos: fila de tarjetas de resumen ───────────────── */
+.stats-summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stats-summary-row .stat-card-wrapper {
+    flex: 1 1 160px;
+    min-width: 140px;
+}

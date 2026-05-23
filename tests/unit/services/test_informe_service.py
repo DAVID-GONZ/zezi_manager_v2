@@ -67,6 +67,15 @@ class FakeEstadRepo(IEstadisticosRepository):
     def consolidado_anual_grupo(self, g, anio) -> list[dict[str, Any]]:
         return [{"nombre": "Est A", "nota_anual": 75.0}]
 
+    def boletin_datos_periodo(self, estudiante_id, grupo_id, periodo_id):
+        return {"estudiante": {}, "areas": []}
+
+    def boletin_datos_acumulado(self, estudiante_id, grupo_id, hasta_periodo_id):
+        return {"estudiante": {}, "periodos": [], "areas": [], "es_ultimo_periodo": False}
+
+    def boletin_datos_anual(self, estudiante_id, grupo_id, anio_id):
+        return {"estudiante": {}, "periodos": [], "areas": []}
+
 
 class FakeExporter(IExporterService):
     def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None) -> bytes:

@@ -118,7 +118,7 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["admin", "director", "coordinador"],
     },
     {
-        "label": "Estadísticos",
+        "label": "Tablero",
         "icon":  "analytics",
         "ruta":  "/academico/tablero",
         "rol":   ["profesor", "director", "coordinador"],
@@ -194,7 +194,8 @@ def _btn_topbar_accion(accion: dict) -> None:
         btn = ui.button(on_click=on_click).classes(
             f"topbar-action-btn {clase_var}"
         ).props("flat")
-        btn= content
+        with btn:
+            ui.html(content)
     else:
         ui.button(label, on_click=on_click).classes(
             f"topbar-action-btn {clase_var}"
@@ -543,6 +544,8 @@ def app_layout(
                 _ctx,
                 page_titulo=page_titulo,
                 page_subtitulo=page_subtitulo,
+                page_icono=page_icono,
+                page_acciones=page_acciones,
                 toggle_callback=_toggle_sidebar,
             )
         else:

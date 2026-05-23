@@ -6,3 +6,6 @@ pydantic-settings
 pytest
 pytest-asyncio
 nicegui
+weasyprint
+reportlab
+pypdf

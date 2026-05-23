@@ -597,4 +597,370 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
         return resultado
 
 
+    # ------------------------------------------------------------------
+    # Datos para boletines formales
+    # ------------------------------------------------------------------
+
+    def boletin_datos_periodo(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        periodo_id: int,
+    ) -> dict[str, Any]:
+        with self._get_conn() as conn:
+            # Datos del estudiante, grupo y periodo
+            est = conn.execute(
+                """
+                SELECT e.nombre || ' ' || e.apellido AS nombre,
+                       e.tipo_documento || ' ' || e.numero_documento AS documento,
+                       g.nombre AS grupo_nombre, g.codigo AS grupo_codigo,
+                       p.nombre AS periodo_nombre
+                FROM estudiantes e
+                JOIN grupos g ON g.id = e.grupo_id
+                JOIN periodos p ON p.id = ?
+                WHERE e.id = ?
+                """,
+                (periodo_id, estudiante_id),
+            ).fetchone()
+
+            # Asignaturas con área + nota + asistencia para ese estudiante/periodo
+            rows = conn.execute(
+                """
+                SELECT
+                    ar.id   AS area_id,
+                    ar.nombre AS area_nombre,
+                    s.nombre  AS asignatura_nombre,
+                    a.id      AS asignacion_id,
+                    cp.nota_definitiva AS nota,
+                    COALESCE(SUM(CASE WHEN cd.estado='P'  THEN 1 ELSE 0 END), 0) AS presentes,
+                    COALESCE(SUM(CASE WHEN cd.estado='FI' THEN 1 ELSE 0 END), 0) AS faltas_injustificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='FJ' THEN 1 ELSE 0 END), 0) AS faltas_justificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='R'  THEN 1 ELSE 0 END), 0) AS retrasos,
+                    COALESCE(SUM(CASE WHEN cd.estado='E'  THEN 1 ELSE 0 END), 0) AS excusas
+                FROM asignaciones a
+                JOIN asignaturas s  ON s.id  = a.asignatura_id
+                JOIN areas_conocimiento ar ON ar.id = s.area_id
+                LEFT JOIN cierres_periodo cp
+                    ON cp.asignacion_id = a.id
+                    AND cp.periodo_id   = ?
+                    AND cp.estudiante_id = ?
+                LEFT JOIN control_diario cd
+                    ON cd.asignacion_id  = a.id
+                    AND cd.periodo_id    = ?
+                    AND cd.estudiante_id = ?
+                WHERE a.grupo_id   = ?
+                  AND a.periodo_id = ?
+                  AND a.activo     = 1
+                GROUP BY ar.id, a.id
+                ORDER BY ar.nombre, s.nombre
+                """,
+                (
+                    periodo_id, estudiante_id,
+                    periodo_id, estudiante_id,
+                    grupo_id, periodo_id,
+                ),
+            ).fetchall()
+
+        # Agrupar por área
+        areas: dict[int, dict] = {}
+        for r in rows:
+            aid = r["area_id"]
+            if aid not in areas:
+                areas[aid] = {"area_nombre": r["area_nombre"], "asignaturas": []}
+            areas[aid]["asignaturas"].append({
+                "nombre":               r["asignatura_nombre"],
+                "nota":                 r["nota"],
+                "presentes":            r["presentes"],
+                "faltas_injustificadas": r["faltas_injustificadas"],
+                "faltas_justificadas":  r["faltas_justificadas"],
+                "retrasos":             r["retrasos"],
+                "excusas":              r["excusas"],
+            })
+
+        return {
+            "estudiante": {
+                "nombre":   est["nombre"]  if est else f"Estudiante {estudiante_id}",
+                "documento": est["documento"] if est else "",
+                "grupo":    (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "periodo":  est["periodo_nombre"] if est else str(periodo_id),
+            },
+            "areas": list(areas.values()),
+        }
+
+    def boletin_datos_acumulado(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        hasta_periodo_id: int,
+    ) -> dict[str, Any]:
+        with self._get_conn() as conn:
+            # Datos básicos del periodo destino (anio_id, numero, total periodos del año)
+            meta_per = conn.execute(
+                "SELECT anio_id, numero FROM periodos WHERE id = ?",
+                (hasta_periodo_id,),
+            ).fetchone()
+            if not meta_per:
+                return {"estudiante": {}, "periodos": [], "areas": [],
+                        "es_ultimo_periodo": False}
+            anio_id    = meta_per["anio_id"]
+            numero_max = meta_per["numero"]
+
+            total_per_anio = conn.execute(
+                "SELECT COUNT(*) FROM periodos WHERE anio_id = ?",
+                (anio_id,),
+            ).fetchone()[0]
+            es_ultimo = (numero_max >= total_per_anio)
+
+            # Datos del estudiante y grupo
+            est = conn.execute(
+                """
+                SELECT e.nombre || ' ' || e.apellido AS nombre,
+                       e.tipo_documento || ' ' || e.numero_documento AS documento,
+                       g.nombre AS grupo_nombre, g.codigo AS grupo_codigo
+                FROM estudiantes e
+                JOIN grupos g ON g.id = e.grupo_id
+                WHERE e.id = ?
+                """,
+                (estudiante_id,),
+            ).fetchone()
+
+            # Periodos del año hasta el actual
+            periodos = conn.execute(
+                """
+                SELECT id, nombre, numero FROM periodos
+                WHERE anio_id = ? AND numero <= ?
+                ORDER BY numero ASC
+                """,
+                (anio_id, numero_max),
+            ).fetchall()
+
+            # Nombre del periodo actual para la ficha
+            per_actual = next((p for p in periodos if p["id"] == hasta_periodo_id), periodos[-1])
+
+            # Asignaturas únicas por área en el año
+            asigs = conn.execute(
+                """
+                SELECT DISTINCT
+                    ar.id AS area_id, ar.nombre AS area_nombre,
+                    s.id  AS asig_id, s.nombre  AS asig_nombre
+                FROM asignaciones a
+                JOIN asignaturas s ON s.id = a.asignatura_id
+                JOIN areas_conocimiento ar ON ar.id = s.area_id
+                JOIN periodos p ON p.id = a.periodo_id AND p.anio_id = ? AND p.numero <= ?
+                WHERE a.grupo_id = ? AND a.activo = 1
+                ORDER BY ar.nombre, s.nombre
+                """,
+                (anio_id, numero_max, grupo_id),
+            ).fetchall()
+
+            # Notas por periodo (asignatura_id → periodo_id → nota)
+            periodo_ids_sql = ",".join("?" * len(periodos))
+            notas_rows = conn.execute(
+                f"""
+                SELECT s.id AS asig_id, cp.periodo_id, cp.nota_definitiva
+                FROM cierres_periodo cp
+                JOIN asignaciones a ON a.id = cp.asignacion_id AND a.grupo_id = ?
+                JOIN asignaturas s  ON s.id = a.asignatura_id
+                WHERE cp.estudiante_id = ?
+                  AND cp.periodo_id IN ({periodo_ids_sql})
+                """,
+                (grupo_id, estudiante_id, *[p["id"] for p in periodos]),
+            ).fetchall()
+
+            # Asistencia acumulada por asignatura (todos los periodos incluidos)
+            asist_rows = conn.execute(
+                f"""
+                SELECT s.id AS asig_id,
+                    COALESCE(SUM(CASE WHEN cd.estado='P'  THEN 1 ELSE 0 END), 0) AS presentes,
+                    COALESCE(SUM(CASE WHEN cd.estado='FI' THEN 1 ELSE 0 END), 0) AS faltas_injustificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='FJ' THEN 1 ELSE 0 END), 0) AS faltas_justificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='R'  THEN 1 ELSE 0 END), 0) AS retrasos,
+                    COALESCE(SUM(CASE WHEN cd.estado='E'  THEN 1 ELSE 0 END), 0) AS excusas
+                FROM control_diario cd
+                JOIN asignaciones a ON a.id = cd.asignacion_id AND a.grupo_id = ?
+                JOIN asignaturas s  ON s.id = a.asignatura_id
+                WHERE cd.estudiante_id = ?
+                  AND cd.periodo_id IN ({periodo_ids_sql})
+                GROUP BY s.id
+                """,
+                (grupo_id, estudiante_id, *[p["id"] for p in periodos]),
+            ).fetchall()
+
+        notas_idx: dict[tuple[int, int], float | None] = {
+            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"]
+            for r in notas_rows
+        }
+        asist_idx: dict[int, dict] = {r["asig_id"]: dict(r) for r in asist_rows}
+        periodos_list = [
+            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]}
+            for p in periodos
+        ]
+        periodo_ids = [p["id"] for p in periodos_list]
+
+        areas: dict[int, dict] = {}
+        for r in asigs:
+            aid = r["area_id"]
+            if aid not in areas:
+                areas[aid] = {"area_nombre": r["area_nombre"], "asignaturas": []}
+            sid = r["asig_id"]
+            notas_p = {pid: notas_idx.get((sid, pid)) for pid in periodo_ids}
+            notas_validas = [v for v in notas_p.values() if v is not None]
+            definitiva = round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            asist = asist_idx.get(sid, {})
+            areas[aid]["asignaturas"].append({
+                "nombre":                r["asig_nombre"],
+                "notas_periodo":         notas_p,
+                "definitiva":            definitiva,
+                "presentes":             asist.get("presentes", 0),
+                "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
+                "faltas_justificadas":   asist.get("faltas_justificadas", 0),
+                "retrasos":              asist.get("retrasos", 0),
+                "excusas":               asist.get("excusas", 0),
+            })
+
+        return {
+            "estudiante": {
+                "nombre":    est["nombre"] if est else f"Estudiante {estudiante_id}",
+                "documento": est["documento"] if est else "",
+                "grupo":     (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "periodo":   per_actual["nombre"] if per_actual else str(hasta_periodo_id),
+                "anio":      anio_id,
+            },
+            "periodos":           periodos_list,
+            "areas":              list(areas.values()),
+            "es_ultimo_periodo":  es_ultimo,
+        }
+
+    def boletin_datos_anual(
+        self,
+        estudiante_id: int,
+        grupo_id: int,
+        anio_id: int,
+    ) -> dict[str, Any]:
+        with self._get_conn() as conn:
+            # Datos del estudiante y grupo
+            est = conn.execute(
+                """
+                SELECT e.nombre || ' ' || e.apellido AS nombre,
+                       e.tipo_documento || ' ' || e.numero_documento AS documento,
+                       g.nombre AS grupo_nombre, g.codigo AS grupo_codigo
+                FROM estudiantes e
+                JOIN grupos g ON g.id = e.grupo_id
+                WHERE e.id = ?
+                """,
+                (estudiante_id,),
+            ).fetchone()
+
+            # Periodos del año
+            periodos = conn.execute(
+                """
+                SELECT id, nombre, numero FROM periodos
+                WHERE anio_id = ? ORDER BY numero ASC
+                """,
+                (anio_id,),
+            ).fetchall()
+
+            # Asignaturas únicas por área en el año
+            asigs = conn.execute(
+                """
+                SELECT DISTINCT
+                    ar.id AS area_id, ar.nombre AS area_nombre,
+                    s.id  AS asig_id, s.nombre  AS asig_nombre
+                FROM asignaciones a
+                JOIN asignaturas s ON s.id = a.asignatura_id
+                JOIN areas_conocimiento ar ON ar.id = s.area_id
+                JOIN periodos p ON p.id = a.periodo_id AND p.anio_id = ?
+                WHERE a.grupo_id = ? AND a.activo = 1
+                ORDER BY ar.nombre, s.nombre
+                """,
+                (anio_id, grupo_id),
+            ).fetchall()
+
+            # Notas por periodo (asignatura_id → periodo_id → nota)
+            notas_rows = conn.execute(
+                """
+                SELECT s.id AS asig_id, cp.periodo_id, cp.nota_definitiva
+                FROM cierres_periodo cp
+                JOIN asignaciones a ON a.id = cp.asignacion_id AND a.grupo_id = ?
+                JOIN asignaturas s  ON s.id = a.asignatura_id
+                JOIN periodos p     ON p.id = cp.periodo_id AND p.anio_id = ?
+                WHERE cp.estudiante_id = ?
+                """,
+                (grupo_id, anio_id, estudiante_id),
+            ).fetchall()
+
+            # Asistencia anual por asignatura
+            asist_rows = conn.execute(
+                """
+                SELECT s.id AS asig_id,
+                    COALESCE(SUM(CASE WHEN cd.estado='P'  THEN 1 ELSE 0 END), 0) AS presentes,
+                    COALESCE(SUM(CASE WHEN cd.estado='FI' THEN 1 ELSE 0 END), 0) AS faltas_injustificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='FJ' THEN 1 ELSE 0 END), 0) AS faltas_justificadas,
+                    COALESCE(SUM(CASE WHEN cd.estado='R'  THEN 1 ELSE 0 END), 0) AS retrasos,
+                    COALESCE(SUM(CASE WHEN cd.estado='E'  THEN 1 ELSE 0 END), 0) AS excusas
+                FROM control_diario cd
+                JOIN asignaciones a ON a.id = cd.asignacion_id AND a.grupo_id = ?
+                JOIN asignaturas s  ON s.id = a.asignatura_id
+                JOIN periodos p     ON p.id = cd.periodo_id AND p.anio_id = ?
+                WHERE cd.estudiante_id = ?
+                GROUP BY s.id
+                """,
+                (grupo_id, anio_id, estudiante_id),
+            ).fetchall()
+
+            # Estado de promoción
+            promo = conn.execute(
+                "SELECT estado FROM promocion_anual WHERE anio_id = ? AND estudiante_id = ?",
+                (anio_id, estudiante_id),
+            ).fetchone()
+
+        # Indexar
+        notas_idx: dict[tuple[int, int], float | None] = {
+            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"]
+            for r in notas_rows
+        }
+        asist_idx: dict[int, dict] = {
+            r["asig_id"]: dict(r) for r in asist_rows
+        }
+        periodos_list = [
+            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]}
+            for p in periodos
+        ]
+        periodo_ids = [p["id"] for p in periodos_list]
+
+        # Agrupar por área
+        areas: dict[int, dict] = {}
+        for r in asigs:
+            aid = r["area_id"]
+            if aid not in areas:
+                areas[aid] = {"area_nombre": r["area_nombre"], "asignaturas": []}
+            sid = r["asig_id"]
+            notas_p = {pid: notas_idx.get((sid, pid)) for pid in periodo_ids}
+            notas_validas = [v for v in notas_p.values() if v is not None]
+            definitiva = round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            asist = asist_idx.get(sid, {})
+            areas[aid]["asignaturas"].append({
+                "nombre":                r["asig_nombre"],
+                "notas_periodo":         notas_p,
+                "definitiva":            definitiva,
+                "presentes":             asist.get("presentes", 0),
+                "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
+                "faltas_justificadas":   asist.get("faltas_justificadas", 0),
+                "retrasos":              asist.get("retrasos", 0),
+                "excusas":               asist.get("excusas", 0),
+            })
+
+        return {
+            "estudiante": {
+                "nombre":           est["nombre"] if est else f"Estudiante {estudiante_id}",
+                "documento":        est["documento"] if est else "",
+                "grupo":            (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "anio":             anio_id,
+                "estado_promocion": promo["estado"] if promo else "pendiente",
+            },
+            "periodos": periodos_list,
+            "areas":    list(areas.values()),
+        }
+
+
 __all__ = ["SqliteEstadisticosRepository"]

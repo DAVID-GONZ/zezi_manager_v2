@@ -61,8 +61,8 @@ class Colors:
     SIDEBAR_HOVER     = "#27272A"
     SIDEBAR_ACTIVE    = "#B3325D"
     SIDEBAR_ACTIVE_BG = "#B3325D"
-    TOPBAR_BG         = "rgba(255, 255, 255, 0.82)"
-    TOPBAR_BORDER     = "#E4E4E7"
+    TOPBAR_BG         = "rgba(97, 27, 50, 0.97)"
+    TOPBAR_BORDER     = "rgba(255, 255, 255, 0.12)"
 
 
 class AsistenciaColors:
@@ -235,7 +235,7 @@ class Spacing:
 
 class Layout:
     """Dimensiones de layout — deben coincidir con las variables CSS de layout."""
-    SIDEBAR_WIDTH     = 180   # px  (--sidebar-width)
+    SIDEBAR_WIDTH     = 220   # px  (--sidebar-width)
     SIDEBAR_COLLAPSED = 58    # px  (--sidebar-collapsed)
     TOPBAR_HEIGHT     = 60    # px  (--topbar-height)
     CONTENT_PADDING   = 24    # px  (--content-padding)

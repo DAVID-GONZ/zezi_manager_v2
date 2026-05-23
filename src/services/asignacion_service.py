@@ -183,5 +183,14 @@ class AsignacionService:
         """Retorna una asignación por id. Lanza si no existe."""
         return self._get_asignacion_o_lanzar(asignacion_id)
 
+    def listar_por_grupo(
+        self,
+        grupo_id: int,
+        solo_activas: bool = True,
+    ) -> list[AsignacionInfo]:
+        """Retorna las asignaciones de un grupo con info completa."""
+        filtro = FiltroAsignacionesDTO(grupo_id=grupo_id, solo_activas=solo_activas)
+        return self._repo.listar_info(filtro)
+
 
 __all__ = ["AsignacionService"]

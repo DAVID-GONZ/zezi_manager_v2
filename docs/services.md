@@ -40,7 +40,7 @@ sequenceDiagram
 
 ## Servicios Principales y sus Responsabilidades
 
-El núcleo de la aplicación está compuesto por 14 servicios funcionales altamente cohesivos. 
+El núcleo de la aplicación está compuesto por 16 servicios funcionales altamente cohesivos. 
 
 ### 1. `CierreService`
 Es el corazón académico del sistema y el servicio más complejo.
@@ -79,6 +79,35 @@ Control de procesos de recuperación.
 Manejo de Actores.
 - **`EstudianteService`:** Matriculación, retiros de la institución y sincronización del flag de inclusión `posee_piar` al crear registros para estudiantes con necesidades especiales (PIAR).
 - **`UsuarioService`:** Control de acceso, perfiles de roles, y comunicación con el puerto `IAuthenticationService` (que oculta los detalles de encriptación y hashes `bcrypt` al dominio principal).
+
+### 8. `AcudienteService`
+Vinculación de responsables legales (padres, madres o tutores) a los estudiantes.
+- Gestiona la información de contacto esencial para notificaciones.
+- Permite designar un acudiente principal para las comunicaciones críticas e informes.
+
+### 9. `AsignacionService`
+Core de la relación Docente-Asignatura-Grupo. 
+- Determina qué profesor dicta qué materia y a quién. Es el pivote de validación cuando un docente intenta registrar notas o asistencia (solo puede hacerlo para sus asignaciones activas).
+
+### 10. `AuditoriaService`
+El vigilante silencioso del sistema.
+- Expone métodos para registrar trazas de eventos y cambios de estado profundos. 
+- Actúa de forma pasiva y es consumido transversalmente por los demás servicios mediante el método protegido `_auditar()`.
+
+### 11. `ConfiguracionService`
+Maneja el estado paramétrico global e institucional.
+- Gestiona el número de periodos del año.
+- Define el Sistema Institucional de Evaluación (escala valorativa, umbrales de aprobación, nota mínima de habilitación), sirviendo de fuente de verdad para los cálculos matemáticos de otros servicios.
+
+### 12. `InfraestructuraService`
+Administrador de la topología escolar.
+- Gestiona la creación de Áreas de Conocimiento, Asignaturas, Grados y Grupos.
+- Controla y valida el módulo de horarios para evitar conflictos (ej. un docente programado en dos grupos a la vez).
+
+### 13. `PeriodoService`
+Ciclo de vida del tiempo académico.
+- Controla el estado `ACTIVO`, `CERRADO` o `FUTURO` de los lapsos lectivos del año escolar.
+- Sus transiciones bloquean o permiten de forma absoluta la escritura de nuevas calificaciones a nivel de todo el colegio.
 
 ---
 

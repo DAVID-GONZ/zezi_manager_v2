@@ -103,7 +103,7 @@ def consolidado_notas_page() -> None:
             with ui.element("div").classes("form-grid-2"):
                 # Grupo
                 grupos_opts = {
-                    g.id: getattr(g, "nombre", str(g.id))
+                    g.id: g.nombre or g.codigo
                     for g in _s["grupos"]
                 }
                 ui.select(

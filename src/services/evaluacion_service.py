@@ -322,16 +322,16 @@ class EvaluacionService:
 
     def obtener_planilla(
         self,
+        grupo_id: int,
         asignacion_id: int,
         periodo_id: int,
-        ctx: ContextoAcademicoDTO,
     ) -> list[ResultadoEstudianteDTO]:
         """
         Retorna la planilla de notas del grupo con definitivas calculadas.
 
         Para cada estudiante: calcula la definitiva con CalculadorNotas.
         """
-        resultados = self._repo.listar_resultados_grupo(asignacion_id, periodo_id)
+        resultados = self._repo.listar_resultados_grupo(grupo_id, asignacion_id, periodo_id)
         categorias = self._repo.listar_categorias(asignacion_id, periodo_id)
         actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
 
