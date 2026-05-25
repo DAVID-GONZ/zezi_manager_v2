@@ -554,6 +554,7 @@ def app_layout(
                 usuario_nombre=_usuario_nombre,
                 usuario_rol=_usuario_rol,
                 ctx=_ctx,
+                on_context_change=on_context_change,
                 toggle_callback=_toggle_sidebar,
             )
 

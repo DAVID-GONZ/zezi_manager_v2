@@ -108,6 +108,29 @@ class SqliteCierreRepository(ICierreRepository):
                 conn.commit()
             return cierre.model_copy(update={"id": cursor.lastrowid})
 
+    def listar_cierres_periodo_por_asignaciones(
+        self,
+        asignacion_ids: list[int],
+        periodo_id: int,
+        nota_maxima: float | None = None,
+    ) -> list[CierrePeriodo]:
+        if not asignacion_ids:
+            return []
+        placeholders = ",".join("?" * len(asignacion_ids))
+        sql = f"""
+            SELECT * FROM cierres_periodo
+            WHERE asignacion_id IN ({placeholders})
+              AND periodo_id = ?
+        """
+        params: list = [*asignacion_ids, periodo_id]
+        if nota_maxima is not None:
+            sql += " AND nota_definitiva <= ?"
+            params.append(nota_maxima)
+        sql += " ORDER BY asignacion_id, nota_definitiva ASC"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_cierre_periodo(r) for r in rows]
+
     # ------------------------------------------------------------------
     # Cierre Año
     # ------------------------------------------------------------------

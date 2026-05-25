@@ -46,6 +46,11 @@ from src.services.evaluacion_service import (
     ContextoAcademicoDTO,
 )
 from src.services.asignacion_service import FiltroAsignacionesDTO
+from src.services.plan_mejoramiento_service import (
+    PlanMejoramientoService,
+    EjecutarCorteDTO,
+    EstadoNotaCorte,
+)
 
 logger = logging.getLogger("EVALUACION.CONFIGURACION")
 
@@ -104,6 +109,9 @@ def configuracion_evaluacion_page() -> None:
         "form_nombre":        "",
         "form_peso":          0.10,
         "form_padre_id":      None,    # solo MIXTO_SUBCATEGORIAS
+        # Corte plan de mejoramiento
+        "corte":               None,   # CortePlan | None
+        "notas_corte":         [],     # list[NotaCortePlan]
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -152,6 +160,25 @@ def configuracion_evaluacion_page() -> None:
         except Exception as exc:
             logger.error("Error cargando categorías docente: %s", exc)
             _s["cats_docente"] = []
+
+    def _cargar_corte() -> None:
+        asig_id = _s["asignacion_id"]
+        per_id  = _s["periodo_id"]
+        if not asig_id or not per_id:
+            _s["corte"] = None
+            _s["notas_corte"] = []
+            return
+        try:
+            svc = Container.plan_mejoramiento_service()
+            _s["corte"] = svc.get_corte(asig_id, per_id)
+            if _s["corte"]:
+                _s["notas_corte"] = svc.listar_notas_corte(_s["corte"].id)
+            else:
+                _s["notas_corte"] = []
+        except Exception as exc:
+            logger.error("Error cargando corte: %s", exc)
+            _s["corte"] = None
+            _s["notas_corte"] = []
 
     _cargar_estado()
     _cargar_siee()
@@ -462,7 +489,58 @@ def configuracion_evaluacion_page() -> None:
 
     def _on_selector_cambio() -> None:
         _cargar_cats_docente()
+        _cargar_corte()
         seccion_docente.refresh()
+        seccion_corte.refresh()
+
+    def _ejecutar_corte() -> None:
+        asig_id = _s["asignacion_id"]
+        per_id  = _s["periodo_id"]
+        if not asig_id or not per_id:
+            ui.notify("Selecciona periodo y asignación primero", type="warning")
+            return
+        # Obtener grupo_id de la asignacion seleccionada
+        asig_info = next(
+            (a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None
+        )
+        if not asig_info:
+            ui.notify("Asignación no encontrada", type="warning")
+            return
+        grupo_id = asig_info.grupo_id
+
+        def _confirmar() -> None:
+            try:
+                dto = EjecutarCorteDTO(
+                    asignacion_id=asig_id,
+                    periodo_id=per_id,
+                    nota_minima_aprobacion=60.0,
+                    usuario_id=ctx.usuario_id,
+                )
+                corte, notas = Container.plan_mejoramiento_service().ejecutar_corte(dto, grupo_id)
+                en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+                ui.notify(
+                    f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento.",
+                    type="positive",
+                )
+                _cargar_corte()
+                seccion_corte.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+            except Exception as exc:
+                logger.error("Error ejecutando corte: %s", exc)
+                ui.notify("Error al ejecutar el corte", type="negative")
+
+        confirm_dialog(
+            titulo          = "Ejecutar corte de Plan de Mejoramiento",
+            mensaje         = (
+                "Se calculará el corte con las notas registradas hasta ahora. "
+                "Los estudiantes con promedio ponderado menor al umbral irán a "
+                "Plan de Mejoramiento. Esta acción no se puede deshacer."
+            ),
+            on_confirm      = _confirmar,
+            texto_confirmar = "Ejecutar corte",
+            texto_cancelar  = "Cancelar",
+        )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
 
@@ -702,6 +780,98 @@ def configuracion_evaluacion_page() -> None:
                                 variante="danger",
                             )
 
+    @ui.refreshable
+    def seccion_corte() -> None:
+        """Sección C — Corte de Plan de Mejoramiento."""
+        asig_id    = _s["asignacion_id"]
+        per_id     = _s["periodo_id"]
+        corte      = _s["corte"]
+        notas      = _s["notas_corte"]
+
+        with ui.element("div").classes("panel-card mt-4"):
+            with ui.row().classes("items-center gap-2 mb-3"):
+                ui.icon("assignment_late").classes("text-orange-500 text-xl")
+                ui.label("Corte — Plan de Mejoramiento").classes("text-lg font-bold flex-1")
+
+            if not asig_id or not per_id:
+                ui.label(
+                    "Selecciona periodo y asignación para ver el estado del corte."
+                ).classes("text-empty text-sm")
+                return
+
+            if corte is None:
+                # Sin corte: mostrar botón para ejecutar (solo admin/coord/docente)
+                with ui.element("div").classes(
+                    "flex items-center gap-3 p-3 bg-blue-50 rounded border border-blue-200"
+                ):
+                    ui.icon("info").classes("text-blue-500")
+                    ui.label(
+                        "No se ha ejecutado el corte para este periodo. "
+                        "Al ejecutar, se generará una nota de corte para cada estudiante."
+                    ).classes("text-sm text-blue-700 flex-1")
+                    btn_primary(
+                        "Ejecutar corte",
+                        icon="play_arrow",
+                        on_click=_ejecutar_corte,
+                    )
+                return
+
+            # Con corte: mostrar estadísticas
+            en_plan  = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+            sin_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.SIN_PLAN)
+            aprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.APROBADO)
+            reprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.REPROBADO)
+
+            with ui.element("div").classes(
+                "p-3 bg-green-50 rounded border border-green-200 mb-3"
+            ):
+                with ui.row().classes("items-center gap-2 mb-2"):
+                    ui.icon("check_circle").classes("text-green-600")
+                    ui.label(
+                        f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
+                    ).classes("font-semibold text-sm text-green-700")
+                with ui.row().classes("gap-4 flex-wrap"):
+                    ui.label(
+                        f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
+                    ).classes("text-sm")
+                    ui.label(
+                        f"Umbral aprobación: {corte.nota_umbral:.1f}"
+                    ).classes("text-sm")
+
+            # Conteos por estado
+            with ui.row().classes("gap-3 flex-wrap mt-2"):
+                with ui.element("div").classes(
+                    "flex items-center gap-2 px-3 py-2 rounded bg-grey-1"
+                ):
+                    ui.label(f"Total: {len(notas)}").classes("text-sm font-semibold")
+                with ui.element("div").classes(
+                    "flex items-center gap-2 px-3 py-2 rounded bg-red-50"
+                ):
+                    ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-red-600")
+                with ui.element("div").classes(
+                    "flex items-center gap-2 px-3 py-2 rounded bg-green-50"
+                ):
+                    ui.label(f"Sin plan: {sin_plan}").classes("text-sm font-semibold text-green-600")
+                if aprobado or reprobado:
+                    with ui.element("div").classes(
+                        "flex items-center gap-2 px-3 py-2 rounded bg-blue-50"
+                    ):
+                        ui.label(f"Aprobó plan: {aprobado}").classes("text-sm font-semibold text-blue-600")
+                    with ui.element("div").classes(
+                        "flex items-center gap-2 px-3 py-2 rounded bg-orange-50"
+                    ):
+                        ui.label(f"Reprobó plan: {reprobado}").classes("text-sm font-semibold text-orange-600")
+
+            ui.label(
+                "Para gestionar actividades del plan y cerrar por estudiante, "
+                "ve a Planes de Mejoramiento."
+            ).classes("text-xs text-grey-6 mt-3")
+            btn_ghost(
+                "Ir a Planes de Mejoramiento",
+                icon="open_in_new",
+                on_click=lambda: ui.navigate.to("/evaluacion/planes"),
+            )
+
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
@@ -729,6 +899,9 @@ def configuracion_evaluacion_page() -> None:
 
             # Sección B — docente (si aplica según modo)
             seccion_docente()
+
+            # Sección C — Corte plan de mejoramiento
+            seccion_corte()
 
     def on_context_change() -> None:
         ui.navigate.reload()

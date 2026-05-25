@@ -167,6 +167,13 @@ class Container:
         return cls._get_or_create("habilitacion_repo", SqliteHabilitacionRepository)
 
     @classmethod
+    def nivelacion_repo(cls):
+        from src.infrastructure.db.repositories.sqlite_nivelacion_repo import (
+            SqliteNivelacionRepository,
+        )
+        return cls._get_or_create("nivelacion_repo", SqliteNivelacionRepository)
+
+    @classmethod
     def convivencia_repo(cls):
         from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
             SqliteConvivenciaRepository,
@@ -329,6 +336,37 @@ class Container:
         )
 
     @classmethod
+    def nivelacion_service(cls):
+        from src.services.nivelacion_service import NivelacionService
+        return cls._get_or_create(
+            "nivelacion_service",
+            lambda: NivelacionService(
+                repo=cls.nivelacion_repo(),
+                cierre_repo=cls.cierre_repo(),
+                config_repo=cls.configuracion_repo(),
+            ),
+        )
+
+    @classmethod
+    def plan_mejoramiento_repo(cls):
+        from src.infrastructure.db.repositories.sqlite_plan_mejoramiento_repo import (
+            SqlitePlanMejoramientoRepository,
+        )
+        return cls._get_or_create("plan_mejoramiento_repo", SqlitePlanMejoramientoRepository)
+
+    @classmethod
+    def plan_mejoramiento_service(cls):
+        from src.services.plan_mejoramiento_service import PlanMejoramientoService
+        return cls._get_or_create(
+            "plan_mejoramiento_service",
+            lambda: PlanMejoramientoService(
+                plan_repo=cls.plan_mejoramiento_repo(),
+                eval_repo=cls.evaluacion_repo(),
+                est_repo=cls.estudiante_repo(),
+            ),
+        )
+
+    @classmethod
     def convivencia_service(cls):
         from src.services.convivencia_service import ConvivenciaService
         return cls._get_or_create(
@@ -403,7 +441,7 @@ class Container:
             "configuracion_service", "usuario_service",
             "estudiante_service", "periodo_service", "asignacion_service",
             "evaluacion_service", "asistencia_service", "cierre_service",
-            "habilitacion_service", "convivencia_service", "alerta_service",
+            "habilitacion_service", "nivelacion_service", "plan_mejoramiento_service", "convivencia_service", "alerta_service",
             "estadisticos_service", "informe_service", "auditoria_service",
             "infraestructura_service",
         ]

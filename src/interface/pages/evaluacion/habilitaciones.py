@@ -1,14 +1,13 @@
 """
 src/interface/pages/evaluacion/habilitaciones.py
 ================================================
-Gestión de habilitaciones (actividades de recuperación).
+Gestión de Nivelación.
 Ruta: /evaluacion/habilitaciones
-Acceso: todos los autenticados
 
-Permite:
- - Listar habilitaciones con filtros por periodo, tipo y estado.
- - Programar nuevas habilitaciones.
- - Registrar la nota cuando el estudiante presenta la habilitación.
+Tab 1 — Nivelación: planilla automática para estudiantes con bajo desempeño.
+           El profesor selecciona periodo y asignatura (solo sus propias asignaciones).
+Tab 2 — Configuración: (implementación futura) publicación de actividades y fechas
+           de entrega visibles para los estudiantes.
 """
 from __future__ import annotations
 
@@ -21,30 +20,16 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.services.habilitacion_service import (
-    TipoHabilitacion,
-    EstadoHabilitacion,
-    FiltroHabilitacionesDTO,
-    NuevaHabilitacionDTO,
-    RegistrarNotaHabilitacionDTO,
-)
-from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
-from src.interface.design.components import status_badge, form_dialog
+from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
+from src.interface.design.components import form_dialog
 from src.services.asignacion_service import FiltroAsignacionesDTO
+from src.services.nivelacion_service import (
+    NuevaActividadNivelacionDTO,
+    CalificarNotaNivelacionDTO,
+)
+from src.domain.models.nivelacion import CalculadorNivelacion
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
-
-_TIPOS_OPTS = {
-    TipoHabilitacion.PERIODO.value: "Por periodo",
-    TipoHabilitacion.ANUAL.value: "Anual",
-}
-_ESTADOS_OPTS = {
-    "": "Todos",
-    EstadoHabilitacion.PENDIENTE.value: "Pendiente",
-    EstadoHabilitacion.REALIZADA.value: "Realizada",
-    EstadoHabilitacion.APROBADA.value: "Aprobada",
-    EstadoHabilitacion.REPROBADA.value: "Reprobada",
-}
 
 
 @ui.page("/evaluacion/habilitaciones")
@@ -56,24 +41,22 @@ def habilitaciones_page() -> None:
 
     logger.info("Habilitaciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    # ── Estado mutable ────────────────────────────────────────────────────────
+    # ── Estado mutable global ─────────────────────────────────────────────────
     _s: dict = {
-        "periodos":        [],
-        "asignaciones":    [],
-        "habilitaciones":  [],
-        "filtro_periodo_id": None,
-        "filtro_tipo":       "",
-        "filtro_estado":     "",
-        # formulario nueva habilitación
-        "form_est_id":       "",
-        "form_asig_id":      None,
-        "form_tipo":         TipoHabilitacion.PERIODO.value,
-        "form_periodo_id":   None,
-        "form_nota_antes":   None,
+        # datos base
+        "periodos":     [],
+        "asignaciones": [],   # solo las del profesor (o todas si es directivo/admin)
+        # nivelación
+        "nivel_periodo_id":  None,
+        "nivel_asig_id":     None,   # asignación seleccionada en el desplegable
+        "nivel_cierres":     [],     # list[CierrePeriodo] bajo desempeño
+        "nivel_actividades": [],     # list[ActividadNivelacion]
+        "nivel_notas":       [],     # list[NotaNivelacion]
+        "nivel_cierre":      None,   # CierreNivelacion | None (si ya cerrada)
     }
 
-    # ── Carga de datos ────────────────────────────────────────────────────────
-    def _cargar_estado() -> None:
+    # ── Carga de datos base ───────────────────────────────────────────────────
+    def _cargar_base() -> None:
         try:
             config = Container.configuracion_service().get_activa()
             anio_id = config.id if config else None
@@ -86,271 +69,440 @@ def habilitaciones_page() -> None:
             _s["periodos"] = []
 
         try:
-            filtro = FiltroAsignacionesDTO(solo_activas=True)
+            # Los profesores solo ven sus propias asignaciones.
+            # Roles superiores (admin, director, coordinador) ven todas.
+            usuario_id_filtro = ctx.usuario_id if ctx.es_docente else None
+            filtro = FiltroAsignacionesDTO(
+                solo_activas=True,
+                usuario_id=usuario_id_filtro,
+            )
             _s["asignaciones"] = Container.asignacion_service().listar_con_info(filtro)
         except Exception as exc:
             logger.error("Error cargando asignaciones: %s", exc)
             _s["asignaciones"] = []
 
-    def _cargar_habilitaciones() -> None:
+    _cargar_base()
+
+    # ── Helpers nivelación ────────────────────────────────────────────────────
+
+    def _asignaciones_del_profesor() -> list[int]:
+        """IDs de asignaciones del usuario actual en el periodo seleccionado."""
+        per_id = _s["nivel_periodo_id"]
+        if per_id is None:
+            return [a.asignacion_id for a in _s["asignaciones"]]
+        return [
+            a.asignacion_id for a in _s["asignaciones"]
+            if a.periodo_id == per_id
+        ]
+
+    def _cargar_nivelacion() -> None:
+        """Carga bajo-desempeño, actividades y notas para la asignación seleccionada."""
+        asig_id  = _s["nivel_asig_id"]
+        per_id   = _s["nivel_periodo_id"]
+        if asig_id is None or per_id is None:
+            _s["nivel_cierres"]     = []
+            _s["nivel_actividades"] = []
+            _s["nivel_notas"]       = []
+            _s["nivel_cierre"]      = None
+            return
         try:
-            tipo_val = _s["filtro_tipo"] or None
-            estado_val = _s["filtro_estado"] or None
-            filtro = FiltroHabilitacionesDTO(
-                periodo_id=_s["filtro_periodo_id"] or None,
-                tipo=TipoHabilitacion(tipo_val) if tipo_val else None,
-                estado=EstadoHabilitacion(estado_val) if estado_val else None,
-            )
-            _s["habilitaciones"] = Container.habilitacion_service().listar_habilitaciones(
-                filtro
-            )
+            svc = Container.nivelacion_service()
+            _s["nivel_cierres"]     = svc.listar_bajo_desempeno([asig_id], per_id)
+            _s["nivel_actividades"] = svc.listar_actividades(asig_id, per_id)
+            _s["nivel_notas"]       = svc.listar_notas(asig_id, per_id)
+            _s["nivel_cierre"]      = svc.get_cierre(asig_id, per_id)
         except Exception as exc:
-            logger.error("Error cargando habilitaciones: %s", exc)
-            _s["habilitaciones"] = []
+            logger.error("Error cargando nivelación: %s", exc)
+            _s["nivel_cierres"]     = []
+            _s["nivel_actividades"] = []
+            _s["nivel_notas"]       = []
+            _s["nivel_cierre"]      = None
 
-    _cargar_estado()
-    _cargar_habilitaciones()
+    # ── Acciones nivelación ───────────────────────────────────────────────────
 
-    # ── Acciones ──────────────────────────────────────────────────────────────
-    def _programar_habilitacion() -> None:
-        est_id_raw = str(_s["form_est_id"]).strip()
-        if not est_id_raw.isdigit():
-            ui.notify("Ingrese un ID de estudiante válido (número)", type="warning")
+    def _agregar_actividad_dialog() -> None:
+        asig_id = _s["nivel_asig_id"]
+        per_id  = _s["nivel_periodo_id"]
+        if asig_id is None or per_id is None:
+            ui.notify("Seleccione asignación y periodo primero.", type="warning")
             return
-        est_id = int(est_id_raw)
-        asig_id = _s["form_asig_id"]
-        if not asig_id:
-            ui.notify("Seleccione una asignación", type="warning")
-            return
-        tipo_val = _s["form_tipo"]
-        per_id = _s["form_periodo_id"] if tipo_val == TipoHabilitacion.PERIODO.value else None
-
-        if tipo_val == TipoHabilitacion.PERIODO.value and not per_id:
-            ui.notify("Seleccione el periodo para una habilitación por periodo", type="warning")
+        if _s["nivel_cierre"] is not None:
+            ui.notify("La nivelación ya está cerrada.", type="warning")
             return
 
-        try:
-            nota_antes_val = _s["form_nota_antes"]
-            nota_antes = float(nota_antes_val) if nota_antes_val is not None else None
-            dto = NuevaHabilitacionDTO(
-                estudiante_id=est_id,
-                asignacion_id=int(asig_id),
-                tipo=TipoHabilitacion(tipo_val),
-                periodo_id=int(per_id) if per_id else None,
-                nota_antes=nota_antes,
-            )
-            Container.habilitacion_service().programar_habilitacion(dto)
-            ui.notify("Habilitación programada", type="positive")
-            _s["form_est_id"] = ""
-            _s["form_asig_id"] = None
-            _s["form_nota_antes"] = None
-            _cargar_habilitaciones()
-            tabla_habilitaciones.refresh()
-        except ValueError as exc:
-            ui.notify(str(exc), type="warning")
-        except Exception as exc:
-            logger.error("Error al programar habilitación: %s", exc)
-            ui.notify("Error al programar la habilitación", type="negative")
-
-    def _registrar_nota_dialog(hab) -> None:
-        def _guardar_nota(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> "bool | None":
             try:
-                dto = RegistrarNotaHabilitacionDTO(
-                    nota=float(datos.get("nota") or 0.0),
-                    usuario_id=ctx.usuario_id,
-                    observacion=str(datos.get("observacion", "")).strip() or None,
+                dto = NuevaActividadNivelacionDTO(
+                    asignacion_id=asig_id,
+                    periodo_id=per_id,
+                    nombre=str(datos.get("nombre", "")).strip(),
+                    descripcion=str(datos.get("descripcion", "")).strip() or None,
+                    peso=float(datos.get("peso") or 0) / 100,   # UI en % → fracción
+                    fecha=None,
                 )
-                Container.habilitacion_service().registrar_nota_habilitacion(
-                    hab.id, dto
+                est_ids = [c.estudiante_id for c in _s["nivel_cierres"]]
+                Container.nivelacion_service().agregar_actividad(
+                    dto, est_ids, usuario_id=ctx.usuario_id
                 )
-                ui.notify("Nota registrada", type="positive")
-                _cargar_habilitaciones()
-                tabla_habilitaciones.refresh()
+                ui.notify("Actividad creada", type="positive")
+                _cargar_nivelacion()
+                planilla_nivelacion.refresh()
             except ValueError as exc:
                 ui.notify(str(exc), type="warning")
                 return False
             except Exception as exc:
-                logger.error("Error al registrar nota habilitación: %s", exc)
-                ui.notify("Error al registrar la nota", type="negative")
+                logger.error("Error creando actividad nivelación: %s", exc)
+                ui.notify("Error al crear actividad", type="negative")
                 return False
 
         form_dialog(
-            titulo    = f"Registrar nota — Estudiante {hab.estudiante_id}",
-            campos    = [
-                {"key": "hab_info",    "label": "Información",    "tipo": "readonly",
-                 "valor": f"Tipo: {hab.tipo.value.capitalize()} | Estado: {hab.estado.value}"},
-                {"key": "nota",        "label": "Nota (0–100) *", "tipo": "number",
-                 "valor": 0.0, "min": 0.0, "max": 100.0, "step": 0.5, "requerido": True},
-                {"key": "observacion", "label": "Observación",    "tipo": "text",
+            titulo="Nueva actividad de nivelación",
+            campos=[
+                {"key": "nombre",      "label": "Nombre *",           "tipo": "text",
+                 "placeholder": "Ej: Taller recuperación 1", "requerido": True},
+                {"key": "descripcion", "label": "Descripción",         "tipo": "text",
                  "placeholder": "Opcional"},
+                {"key": "peso",        "label": "Peso (%) *",          "tipo": "number",
+                 "valor": 30, "min": 1, "max": 100, "step": 1, "requerido": True},
             ],
-            on_submit    = _guardar_nota,
-            texto_submit = "Registrar nota",
-            max_width    = "max-w-sm",
+            on_submit=_guardar,
+            texto_submit="Crear actividad",
         )
 
-    def _on_filtros_cambio() -> None:
-        _cargar_habilitaciones()
-        tabla_habilitaciones.refresh()
+    def _calificar_nota(actividad_id: int, estudiante_id: int, valor_actual) -> None:
+        """Abre dialog para calificar una celda."""
+        if _s["nivel_cierre"] is not None:
+            ui.notify("La nivelación está cerrada.", type="warning")
+            return
 
-    # ── Sección refreshable ───────────────────────────────────────────────────
+        def _guardar(datos: dict) -> "bool | None":
+            try:
+                dto = CalificarNotaNivelacionDTO(
+                    valor=float(datos.get("nota") or 0),
+                    usuario_id=ctx.usuario_id,
+                )
+                Container.nivelacion_service().calificar_nota(
+                    actividad_id, estudiante_id, dto
+                )
+                ui.notify("Nota guardada", type="positive")
+                _cargar_nivelacion()
+                planilla_nivelacion.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return False
+            except Exception as exc:
+                logger.error("Error calificando nota: %s", exc)
+                ui.notify("Error al guardar nota", type="negative")
+                return False
+
+        form_dialog(
+            titulo=f"Calificar — Estudiante {estudiante_id}",
+            campos=[
+                {"key": "nota", "label": "Nota (0–100) *", "tipo": "number",
+                 "valor": valor_actual if valor_actual is not None else 0.0,
+                 "min": 0.0, "max": 100.0, "step": 0.5, "requerido": True},
+            ],
+            on_submit=_guardar,
+            texto_submit="Guardar nota",
+            max_width="max-w-xs",
+        )
+
+    def _cerrar_nivelacion() -> None:
+        asig_id = _s["nivel_asig_id"]
+        per_id  = _s["nivel_periodo_id"]
+        if asig_id is None or per_id is None:
+            return
+
+        async def _confirmar():
+            try:
+                Container.nivelacion_service().cerrar_nivelacion(
+                    asig_id, per_id, usuario_id=ctx.usuario_id
+                )
+                ui.notify("Nivelación cerrada correctamente", type="positive")
+                _cargar_nivelacion()
+                planilla_nivelacion.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+            except Exception as exc:
+                logger.error("Error cerrando nivelación: %s", exc)
+                ui.notify("Error al cerrar nivelación", type="negative")
+
+        with ui.dialog() as dlg, ui.card().classes("max-w-sm"):
+            ui.label("¿Confirma cerrar la nivelación?").classes("text-base font-semibold")
+            ui.label(
+                "Una vez cerrada no se podrán editar las notas. "
+                "El resultado quedará disponible para el boletín siguiente."
+            ).classes("text-sm text-gray-600 mt-1")
+            with ui.row().classes("gap-2 mt-4 justify-end"):
+                ui.button("Cancelar", on_click=dlg.close).props("flat")
+                ui.button(
+                    "Cerrar nivelación",
+                    on_click=lambda: (_confirmar(), dlg.close()),
+                ).props("color=negative")
+        dlg.open()
+
+    # ── Sección refreshable: planilla nivelación ──────────────────────────────
+
     @ui.refreshable
-    def tabla_habilitaciones() -> None:
-        habs = _s["habilitaciones"]
-        asigs_map = {a.asignacion_id: a.asignatura_nombre for a in _s["asignaciones"]}
+    def planilla_nivelacion() -> None:
+        actividades = _s["nivel_actividades"]
+        cierres     = _s["nivel_cierres"]     # list[CierrePeriodo] bajo desempeño
+        notas       = _s["nivel_notas"]
+        cerrado     = _s["nivel_cierre"] is not None
+        asig_id     = _s["nivel_asig_id"]
+        per_id      = _s["nivel_periodo_id"]
 
-        if not habs:
-            ui.label("No hay habilitaciones con los filtros actuales.").classes(
+        if asig_id is None or per_id is None:
+            ui.label("Seleccione una asignación y un periodo para ver la planilla.").classes(
                 "text-empty mt-4"
             )
             return
 
-        with ui.element("div").classes("w-full"):
-            with ui.element("div").classes(
-                "flex gap-2 p-2 font-semibold text-sm border-b"
-            ):
-                ui.label("Est. ID").classes("w-20")
-                ui.label("Asignatura").classes("flex-1")
-                ui.label("Tipo").classes("w-24")
-                ui.label("Nota antes").classes("w-24 text-right")
-                ui.label("Nota hab.").classes("w-24 text-right")
-                ui.label("Estado").classes("w-24 text-center")
-                ui.label("Acciones").classes("w-20 text-right")
+        # Construir mapa de notas: (actividad_id, estudiante_id) → NotaNivelacion
+        nota_map: dict[tuple[int, int], "NotaNivelacion"] = {
+            (n.actividad_nivelacion_id, n.estudiante_id): n
+            for n in notas
+        }
 
-            for hab in habs:
-                asig_nombre = asigs_map.get(hab.asignacion_id, f"Asig. {hab.asignacion_id}")
-                estado_val = hab.estado.value
-                _ESTADO_CLASES = {
-                    "pendiente": "badge-neutral",
-                    "realizada": "badge-info",
-                    "aprobada": "badge-success",
-                    "reprobada": "badge-error",
-                }
-                with ui.element("div").classes("flex items-center gap-2 p-2 border-b"):
-                    ui.label(str(hab.estudiante_id)).classes("w-20 font-mono text-sm")
-                    ui.label(asig_nombre).classes("flex-1 text-sm")
-                    ui.label(hab.tipo.value.capitalize()).classes("w-24 text-sm")
-                    nota_antes_str = f"{hab.nota_antes:.1f}" if hab.nota_antes is not None else "—"
-                    ui.label(nota_antes_str).classes("w-24 text-right font-mono text-sm")
-                    nota_hab_str = (
-                        f"{hab.nota_habilitacion:.1f}"
-                        if hab.nota_habilitacion is not None
-                        else "—"
+        # Construir mapa de notas previas: estudiante_id → nota_definitiva del cierre
+        cierre_map = {c.estudiante_id: c.nota_definitiva for c in cierres}
+
+        # Calcular suma de pesos actual
+        suma_pesos = sum(a.peso for a in actividades)
+
+        # ── Barra de acciones ────────────────────────────────────────────────
+        with ui.row().classes("items-center gap-3 mb-3 flex-wrap"):
+            if cerrado:
+                with ui.row().classes("items-center gap-1"):
+                    ui.icon("lock", size="sm", color="var(--color-error)")
+                    ui.label("Nivelación cerrada").classes("text-sm text-error font-semibold")
+            else:
+                btn_ghost(
+                    "Añadir actividad",
+                    icon="add_circle_outline",
+                    on_click=_agregar_actividad_dialog,
+                )
+                if actividades:
+                    ui.label(f"Pesos: {suma_pesos:.0%}").classes(
+                        "text-sm " + (
+                            "text-success font-semibold" if abs(suma_pesos - 1.0) <= 0.005
+                            else "text-warning"
+                        )
                     )
-                    ui.label(nota_hab_str).classes("w-24 text-right font-mono text-sm")
-                    status_badge(
-                        estado_val.capitalize(),
-                        _ESTADO_CLASES.get(estado_val, "badge-neutral").replace("badge-", ""),
+                    btn_secondary(
+                        "Cerrar nivelación",
+                        icon="lock",
+                        on_click=_cerrar_nivelacion,
                     )
-                    with ui.row().classes("w-20 justify-end"):
-                        if hab.estado == EstadoHabilitacion.PENDIENTE:
-                            btn_icon(
-                                "grade",
-                                on_click=lambda h=hab: _registrar_nota_dialog(h),
-                                tooltip="Registrar nota",
+
+        if not cierres:
+            ui.label("No hay estudiantes con bajo desempeño en esta asignación y periodo.").classes(
+                "text-empty"
+            )
+            return
+
+        # ── Tabla/planilla ────────────────────────────────────────────────────
+        with ui.element("div").classes("w-full overflow-x-auto"):
+            # Cabecera
+            with ui.element("div").classes(
+                "flex gap-1 p-2 font-semibold text-xs border-b bg-gray-50 rounded-t"
+            ):
+                ui.label("Estudiante").classes("w-32 shrink-0")
+                ui.label("Nota período").classes("w-24 text-right shrink-0")
+                for act in actividades:
+                    with ui.element("div").classes("w-28 text-center shrink-0"):
+                        ui.label(act.nombre).classes("truncate max-w-full")
+                        ui.label(f"{act.peso:.0%}").classes("text-gray-400 text-xs")
+                if actividades:
+                    ui.label("Promedio pond.").classes("w-28 text-right shrink-0 font-semibold")
+
+            # Filas
+            for cierre in cierres:
+                est_id     = cierre.estudiante_id
+                nota_previa = cierre_map.get(est_id)
+
+                with ui.element("div").classes(
+                    "flex gap-1 items-center p-2 border-b hover:bg-gray-50"
+                ):
+                    # Nombre/ID del estudiante
+                    ui.label(str(est_id)).classes("w-32 shrink-0 font-mono text-sm")
+
+                    # Nota del período (en rojo, era bajo desempeño)
+                    nota_str = f"{nota_previa:.1f}" if nota_previa is not None else "—"
+                    ui.label(nota_str).classes("w-24 text-right font-mono text-sm text-error shrink-0")
+
+                    # Celdas por actividad
+                    notas_est = []
+                    for act in actividades:
+                        clave = (act.id, est_id)
+                        nota_obj = nota_map.get(clave)
+                        valor = nota_obj.valor if nota_obj else None
+                        notas_est.append(nota_obj)
+
+                        with ui.element("div").classes("w-28 text-center shrink-0"):
+                            valor_str = f"{valor:.1f}" if valor is not None else "—"
+                            color_cls = (
+                                "text-success" if valor is not None and valor >= 60
+                                else "text-error" if valor is not None
+                                else "text-gray-400"
                             )
+                            if cerrado:
+                                ui.label(valor_str).classes(
+                                    f"text-sm font-mono {color_cls}"
+                                )
+                            else:
+                                ui.button(
+                                    valor_str,
+                                    on_click=lambda _act_id=act.id, _est_id=est_id, _v=valor:
+                                        _calificar_nota(_act_id, _est_id, _v),
+                                ).props("flat dense").classes(
+                                    f"text-sm font-mono {color_cls}"
+                                )
+
+                    # Promedio ponderado
+                    if actividades:
+                        prom = CalculadorNivelacion.nota_definitiva(
+                            [n for n in notas_est if n is not None],
+                            actividades,
+                        )
+                        prom_str = f"{prom:.1f}" if prom is not None else "…"
+                        prom_cls = (
+                            "text-success font-semibold" if prom is not None and prom >= 60
+                            else "text-error font-semibold" if prom is not None
+                            else "text-gray-400"
+                        )
+                        ui.label(prom_str).classes(f"w-28 text-right font-mono text-sm {prom_cls} shrink-0")
 
     # ── Contenido principal ───────────────────────────────────────────────────
+
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
-                    ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Habilitaciones").classes("text-xl font-bold")
+            with ui.tabs().classes("w-full") as tabs:
+                tab_nivel  = ui.tab("nivelacion",     label="Nivelación",             icon="school")
+                tab_config = ui.tab("configuracion",  label="Configuración",          icon="settings")
 
-                # Filtros
-                periodos_filtro = {None: "Todos los periodos"}
-                periodos_filtro.update({p.id: p.nombre for p in _s["periodos"]})
-                tipos_filtro = {"": "Todos los tipos"}
-                tipos_filtro.update(_TIPOS_OPTS)
+            with ui.tab_panels(tabs, value="nivelacion").classes("w-full mt-0"):
 
-                with ui.row().classes("gap-3 items-center flex-wrap mb-4"):
-                    ui.label("Filtros:").classes("text-sm font-semibold")
-                    ui.select(
-                        periodos_filtro,
-                        value=None,
-                        label="Periodo",
-                        on_change=lambda e: (
-                            _s.__setitem__("filtro_periodo_id", e.value),
-                            _on_filtros_cambio(),
-                        ),
-                    ).classes("w-40")
-                    ui.select(
-                        tipos_filtro,
-                        value="",
-                        label="Tipo",
-                        on_change=lambda e: (
-                            _s.__setitem__("filtro_tipo", e.value),
-                            _on_filtros_cambio(),
-                        ),
-                    ).classes("w-36")
-                    ui.select(
-                        _ESTADOS_OPTS,
-                        value="",
-                        label="Estado",
-                        on_change=lambda e: (
-                            _s.__setitem__("filtro_estado", e.value),
-                            _on_filtros_cambio(),
-                        ),
-                    ).classes("w-36")
-                    ui.badge(str(len(_s["habilitaciones"])), color="primary")
-                    btn_icon(
-                        "refresh",
-                        on_click=lambda: (_cargar_habilitaciones(), tabla_habilitaciones.refresh()),
-                        tooltip="Recargar",
-                    )
 
-            # Formulario nueva habilitación
-            with ui.element("div").classes("panel-card mt-4"):
-                ui.label("Programar habilitación").classes("text-base font-semibold mb-3")
-                asigs_opts = {
-                    a.asignacion_id: a.display_corto for a in _s["asignaciones"]
-                }
-                periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
+                # ── Tab 1: Nivelación ─────────────────────────────────────────
+                with ui.tab_panel("nivelacion"):
+                    with ui.element("div").classes("panel-card"):
+                        with ui.row().classes("items-center gap-2 mb-4"):
+                            ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
+                            ui.label("Planilla de Nivelación").classes("text-xl font-bold")
+                            ui.label(
+                                "Estudiantes con bajo desempeño al cierre del período"
+                            ).classes("text-sm text-secondary ml-2")
 
-                with ui.row().classes("gap-3 items-end flex-wrap"):
-                    ui.input(
-                        "ID Estudiante *",
-                        placeholder="Ej: 1023",
-                    ).classes("w-32").bind_value(_s, "form_est_id")
-                    ui.select(
-                        asigs_opts or {"": "Sin asignaciones"},
-                        value=None,
-                        label="Asignación *",
-                        on_change=lambda e: _s.__setitem__("form_asig_id", e.value),
-                    ).classes("w-60")
-                    ui.select(
-                        _TIPOS_OPTS,
-                        value=TipoHabilitacion.PERIODO.value,
-                        label="Tipo *",
-                        on_change=lambda e: _s.__setitem__("form_tipo", e.value),
-                    ).classes("w-36")
-                    ui.select(
-                        periodos_opts or {"": "Sin periodos"},
-                        value=None,
-                        label="Periodo (si tipo=Periodo)",
-                        on_change=lambda e: _s.__setitem__("form_periodo_id", e.value),
-                    ).classes("w-44")
-                    ui.number(
-                        "Nota anterior (opcional)",
-                        value=None,
-                        min=0.0,
-                        max=100.0,
-                        step=0.5,
-                    ).classes("w-40").bind_value(_s, "form_nota_antes")
-                    btn_primary("Programar", icon="add", on_click=_programar_habilitacion)
+                        periodos_opts  = {None: "— Seleccione periodo —"}
+                        periodos_opts.update({p.id: p.nombre for p in _s["periodos"]})
+                        asig_opts = {None: "— Seleccione asignación —"}
+                        asig_opts.update({
+                            a.asignacion_id: a.display_corto
+                            for a in _s["asignaciones"]
+                        })
 
-            # Tabla
-            with ui.element("div").classes("panel-card mt-4"):
-                ui.label("Habilitaciones registradas").classes("text-base font-semibold mb-3")
-                tabla_habilitaciones()
+                        with ui.row().classes("gap-3 items-end flex-wrap mb-4"):
+                            ui.select(
+                                periodos_opts,
+                                value=None,
+                                label="Periodo *",
+                                on_change=lambda e: (
+                                    _s.__setitem__("nivel_periodo_id", e.value),
+                                    _cargar_nivelacion(),
+                                    planilla_nivelacion.refresh(),
+                                ),
+                            ).classes("w-40")
+                            ui.select(
+                                asig_opts,
+                                value=None,
+                                label="Asignación *",
+                                on_change=lambda e: (
+                                    _s.__setitem__("nivel_asig_id", e.value),
+                                    _cargar_nivelacion(),
+                                    planilla_nivelacion.refresh(),
+                                ),
+                            ).classes("w-60")
+                            btn_icon(
+                                "refresh",
+                                on_click=lambda: (_cargar_nivelacion(), planilla_nivelacion.refresh()),
+                                tooltip="Recargar",
+                            )
+
+                        planilla_nivelacion()
+
+                # ── Tab 2: Configuración (implementación futura) ──────────────
+                with ui.tab_panel("configuracion"):
+                    with ui.element("div").classes("panel-card"):
+                        with ui.row().classes("items-center gap-2 mb-2"):
+                            ThemeManager.icono("settings", size=22, color="var(--color-secondary)")
+                            ui.label("Configuración de nivelación").classes("text-xl font-bold")
+
+                        # Banner de implementación futura
+                        with ui.element("div").classes(
+                            "flex items-start gap-3 p-4 mt-2 rounded-lg border border-dashed "
+                            "border-amber-300 bg-amber-50"
+                        ):
+                            ui.icon("construction", size="lg", color="#d97706")
+                            with ui.element("div"):
+                                ui.label("Funcionalidad en desarrollo").classes(
+                                    "text-sm font-semibold text-amber-800"
+                                )
+                                ui.label(
+                                    "Esta sección permitirá publicar las actividades de nivelación "
+                                    "con sus fechas de entrega para que los estudiantes puedan "
+                                    "consultarlas desde el portal estudiantil."
+                                ).classes("text-sm text-amber-700 mt-1")
+
+                    # Vista previa de lo que vendrá
+                    with ui.element("div").classes("panel-card mt-4"):
+                        ui.label("Próximas funcionalidades").classes(
+                            "text-base font-semibold mb-3"
+                        )
+                        funcionalidades = [
+                            (
+                                "list_alt",
+                                "Listado de nivelaciones configuradas",
+                                "Ver todas las actividades de nivelación creadas, por asignatura "
+                                "y período, con su estado de cierre.",
+                            ),
+                            (
+                                "event",
+                                "Fechas de entrega por actividad",
+                                "Asignar una fecha límite a cada actividad de nivelación para "
+                                "que los estudiantes conozcan el cronograma.",
+                            ),
+                            (
+                                "visibility",
+                                "Publicación hacia estudiantes",
+                                "Controlar qué actividades son visibles en el portal estudiantil "
+                                "y cuáles permanecen ocultas hasta que el docente las habilite.",
+                            ),
+                            (
+                                "notifications",
+                                "Notificaciones automáticas",
+                                "Enviar alertas a los estudiantes con bajo desempeño cuando una "
+                                "nueva actividad de nivelación esté disponible.",
+                            ),
+                        ]
+                        for icono, titulo, descripcion in funcionalidades:
+                            with ui.element("div").classes(
+                                "flex items-start gap-3 p-3 mb-2 rounded border border-gray-100 "
+                                "hover:bg-gray-50"
+                            ):
+                                ui.icon(icono, size="sm", color="var(--color-secondary)")
+                                with ui.element("div"):
+                                    ui.label(titulo).classes("text-sm font-medium")
+                                    ui.label(descripcion).classes(
+                                        "text-xs text-secondary mt-0.5"
+                                    )
 
     def on_context_change() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Evaluación · Habilitaciones",
+        titulo_pagina="Evaluación · Nivelación",
         usuario_nombre=ctx.usuario_nombre,
         usuario_rol=ctx.usuario_rol,
         ruta_activa="/evaluacion/habilitaciones",

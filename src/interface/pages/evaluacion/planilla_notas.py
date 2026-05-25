@@ -35,8 +35,11 @@ from src.services.evaluacion_service import (
     NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad,
     PuntosExtra, TipoPuntosExtra,
 )
+from src.services.plan_mejoramiento_service import EstadoNotaCorte
 
 logger = logging.getLogger("EVALUACION.PLANILLA")
+
+_ROL_ADMIN = {"admin", "director", "coordinador"}
 
 
 def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> "float | None":
@@ -55,6 +58,8 @@ def planilla_notas_page() -> None:
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
+    es_admin = ctx.usuario_rol in _ROL_ADMIN
+
     # ── Estado — solo lo que no viene del context_bar ─────────────────────────
     _s: dict = {
         "asignacion_id":    ctx.asignacion_id,
@@ -66,6 +71,8 @@ def planilla_notas_page() -> None:
         "puntos_extra":     {},   # {estudiante_id: PuntosExtra}
         "mostrar_puntos":   False,
         "modo":             "planilla",   # "planilla" | "actividades"
+        "corte":            None,   # CortePlan | None
+        "notas_corte":      {},     # {estudiante_id: NotaCortePlan}
         # formulario nueva actividad
         "act_nombre":       "",
         "act_categoria_id": None,
@@ -114,6 +121,25 @@ def planilla_notas_page() -> None:
             logger.error("Error cargando puntos extra: %s", exc)
             _s["puntos_extra"] = {}
 
+        try:
+            asig_id = _s["asignacion_id"]
+            per_id  = _s["periodo_id"]
+            if asig_id and per_id:
+                corte = Container.plan_mejoramiento_service().get_corte(asig_id, per_id)
+                _s["corte"] = corte
+                if corte:
+                    notas = Container.plan_mejoramiento_service().listar_notas_corte(corte.id)
+                    _s["notas_corte"] = {n.estudiante_id: n for n in notas}
+                else:
+                    _s["notas_corte"] = {}
+            else:
+                _s["corte"] = None
+                _s["notas_corte"] = {}
+        except Exception as exc:
+            logger.error("Error cargando corte plan: %s", exc)
+            _s["corte"] = None
+            _s["notas_corte"] = {}
+
     _cargar_datos()
 
     # ── Helper de periodo ─────────────────────────────────────────────────────
@@ -145,7 +171,68 @@ def planilla_notas_page() -> None:
         barra_vista.refresh()
         panel_vista.refresh()
 
+    def _guardar_definitivas() -> None:
+        """
+        El docente cierra sus notas del periodo: calcula y persiste la nota
+        definitiva de cada estudiante del grupo. Esta acción queda registrada
+        para auditoría e informe a roles superiores.
+
+        Solo puede ejecutarse mientras el periodo esté abierto.
+        La reapertura de un cierre ya guardado es exclusiva de admin/director/coordinador.
+        """
+        if not _periodo_abierto():
+            ui.notify("El periodo está cerrado — no se pueden guardar definitivas.", type="warning")
+            return
+
+        asig_id = _s["asignacion_id"]
+        per_id  = _s["periodo_id"]
+        if not asig_id or not per_id:
+            ui.notify("Contexto incompleto (periodo o asignación no definidos).", type="warning")
+            return
+
+        def _ejecutar() -> None:
+            try:
+                ctx_academico = ctx.to_contexto_academico()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+                return
+            try:
+                cierres = Container.cierre_service().cerrar_periodo(
+                    asignacion_id = asig_id,
+                    periodo_id    = per_id,
+                    ctx           = ctx_academico,
+                    usuario_id    = ctx.usuario_id,
+                )
+                ui.notify(
+                    f"Definitivas guardadas para {len(cierres)} estudiante(s). "
+                    "El cierre quedó registrado para auditoría.",
+                    type="positive",
+                )
+                _cargar_datos()
+                panel_vista.refresh()
+            except ValueError as exc:
+                ui.notify(str(exc), type="warning")
+            except Exception as exc:
+                logger.error("Error guardando definitivas: %s", exc)
+                ui.notify("Error al guardar definitivas.", type="negative")
+
+        confirm_dialog(
+            titulo          = "Guardar definitivas del periodo",
+            mensaje         = (
+                "Se calculará y registrará la nota definitiva de todos los estudiantes "
+                "del grupo para esta asignación y periodo. "
+                "Las actividades sin nota cuentan como 0. "
+                "El cierre quedará disponible para revisión de administración. "
+                "Solo un rol superior puede reabrir este cierre."
+            ),
+            on_confirm      = _ejecutar,
+            texto_confirmar = "Guardar definitivas",
+            texto_cancelar  = "Cancelar",
+        )
+
     def _guardar_puntos_extra(est_id: int, positivos: int, negativos: int) -> None:
+        if not _periodo_abierto():
+            raise ValueError("El periodo está cerrado — no se pueden modificar puntos extra.")
         asig_id = _s["asignacion_id"]
         per_id  = _s["periodo_id"]
         pe_actual = _s["puntos_extra"].get(est_id)
@@ -290,6 +377,13 @@ def planilla_notas_page() -> None:
         mostrar_puntos  = _s["mostrar_puntos"]
         periodo_abierto = _periodo_abierto()
 
+        _ESTADO_CORTE_LABELS = {
+            EstadoNotaCorte.SIN_PLAN.value:  "Sin plan",
+            EstadoNotaCorte.EN_PLAN.value:   "En plan",
+            EstadoNotaCorte.APROBADO.value:  "Aprobó",
+            EstadoNotaCorte.REPROBADO.value: "Reprobó",
+        }
+
         if not _s["asignacion_id"] or not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
                 ui.icon("tune").classes("text-grey-5 text-3xl mb-2")
@@ -360,6 +454,31 @@ def planilla_notas_page() -> None:
                 "children":   children,
             })
 
+        # Columna de corte plan de mejoramiento (solo si hay corte activo)
+        corte = _s["corte"]
+        if corte:
+            col_defs.append({
+                "headerName": "Plan Mejoramiento",
+                "children": [
+                    {
+                        "headerName":    "Corte",
+                        "field":         "corte_nota",
+                        "editable":      False,
+                        "width":         70,
+                        "type":          "numericColumn",
+                        "valueFormatter":"value != null ? Number(value).toFixed(1) : '—'",
+                        "cellClassRules": color_rules,
+                    },
+                    {
+                        "headerName": "Estado",
+                        "field":      "corte_estado",
+                        "editable":   False,
+                        "width":      85,
+                        "cellStyle":  {"fontSize": "11px"},
+                    },
+                ],
+            })
+
         col_defs.append({
             "headerName":    "Definitiva",
             "field":         "definitiva",
@@ -423,6 +542,10 @@ def planilla_notas_page() -> None:
                 row["pts_pos"] = pe.positivos if pe else 0
                 row["pts_neg"] = pe.negativos if pe else 0
                 row["pts_bal"] = pe.balance   if pe else 0
+            # Datos de corte plan
+            nc = _s["notas_corte"].get(resultado.estudiante_id)
+            row["corte_nota"]   = nc.nota_al_corte if nc else None
+            row["corte_estado"] = _ESTADO_CORTE_LABELS.get(nc.estado.value, nc.estado.value) if nc else None
             row_data.append(row)
 
         grid = ui.aggrid({
@@ -434,6 +557,16 @@ def planilla_notas_page() -> None:
         }).classes("w-full h-[600px]")
 
         async def on_cell_edit(e) -> None:
+            # Guard: re-verificar periodo en runtime (puede haberse cerrado
+            # mientras la página estaba abierta)
+            if not _periodo_abierto():
+                ui.notify(
+                    "El periodo está cerrado — no se pueden registrar cambios.",
+                    type="warning",
+                )
+                panel_vista.refresh()
+                return
+
             col_id  = e.args.get("colId", "")
             val_raw = e.args.get("newValue")
             data    = e.args.get("data", {})
@@ -683,6 +816,18 @@ def planilla_notas_page() -> None:
                         icon="stars",
                         on_click=_toggle_puntos,
                     )
+
+            # Guardar definitivas — disponible para todos los roles, solo en planilla
+            if modo == "planilla":
+                ui.element("div").classes("w-px h-6 bg-grey-3 mx-1")
+                periodo_ok = _periodo_abierto()
+                btn = btn_secondary(
+                    "Guardar definitivas",
+                    icon="save",
+                    on_click=_guardar_definitivas,
+                )
+                if not periodo_ok:
+                    btn.props("disabled")
 
     @ui.refreshable
     def panel_vista() -> None:

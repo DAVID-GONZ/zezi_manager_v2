@@ -150,3 +150,17 @@ class ICierreRepository(ABC):
         Requiere que promocion.id no sea None.
         """
         ...
+
+    @abstractmethod
+    def listar_cierres_periodo_por_asignaciones(
+        self,
+        asignacion_ids: list[int],
+        periodo_id: int,
+        nota_maxima: float | None = None,
+    ) -> list[CierrePeriodo]:
+        """
+        Lista cierres de período para varias asignaciones.
+        Si nota_maxima es not None, filtra nota_definitiva <= nota_maxima (bajo desempeño).
+        Ordenados por asignacion_id, luego nota_definitiva ASC.
+        """
+        ...

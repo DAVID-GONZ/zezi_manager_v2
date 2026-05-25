@@ -81,6 +81,20 @@ class FakeCierreRepo(ICierreRepository):
     def listar_promociones(self, anio_id: int, grupo_id=None) -> list[PromocionAnual]:
         return list(self._promociones.values())
 
+    def listar_cierres_periodo_por_asignaciones(
+        self,
+        asignacion_ids: list[int],
+        periodo_id: int,
+        nota_maxima: float | None = None,
+    ) -> list["CierrePeriodo"]:
+        result = [
+            c for c in self._cierres_per.values()
+            if c.asignacion_id in asignacion_ids and c.periodo_id == periodo_id
+        ]
+        if nota_maxima is not None:
+            result = [c for c in result if c.nota_definitiva <= nota_maxima]
+        return result
+
 
 class FakeEvalRepo(IEvaluacionRepository):
     def __init__(self, notas: list[Nota] = None):

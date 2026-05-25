@@ -579,6 +579,143 @@ SCHEMA: list[str] = [
     """,
 
     # -------------------------------------------------------------------------
+    # 7b. PLAN DE MEJORAMIENTO (corte mid-periodo)
+    # -------------------------------------------------------------------------
+
+    """
+    CREATE TABLE IF NOT EXISTS cortes_plan (
+        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+        asignacion_id           INTEGER NOT NULL,
+        periodo_id              INTEGER NOT NULL,
+        fecha_ejecucion         DATE    NOT NULL DEFAULT CURRENT_DATE,
+        peso_registrado         REAL    NOT NULL CHECK(peso_registrado > 0 AND peso_registrado <= 1),
+        nota_umbral             REAL    NOT NULL CHECK(nota_umbral >= 0),
+        nota_minima_aprobacion  REAL    NOT NULL DEFAULT 60.0,
+        usuario_id              INTEGER,
+
+        UNIQUE(asignacion_id, periodo_id),
+        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS notas_corte_plan (
+        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+        corte_id                INTEGER NOT NULL,
+        estudiante_id           INTEGER NOT NULL,
+        asignacion_id           INTEGER NOT NULL,
+        periodo_id              INTEGER NOT NULL,
+        nota_al_corte           REAL    NOT NULL CHECK(nota_al_corte >= 0),
+        nota_definitiva_plan    REAL    CHECK(nota_definitiva_plan >= 0),
+        estado                  TEXT    NOT NULL DEFAULT 'sin_plan'
+                                CHECK(estado IN ('sin_plan', 'en_plan', 'aprobado', 'reprobado')),
+        usuario_cierre_id       INTEGER,
+
+        UNIQUE(corte_id, estudiante_id) ON CONFLICT REPLACE,
+        FOREIGN KEY(corte_id)          REFERENCES cortes_plan(id)  ON DELETE CASCADE,
+        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)  ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)     ON DELETE CASCADE,
+        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS actividades_plan (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        corte_id        INTEGER NOT NULL,
+        asignacion_id   INTEGER NOT NULL,
+        periodo_id      INTEGER NOT NULL,
+        nombre          TEXT    NOT NULL,
+        descripcion     TEXT,
+        peso            REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
+        fecha           DATE,
+        usuario_id      INTEGER,
+
+        FOREIGN KEY(corte_id)      REFERENCES cortes_plan(id)   ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)       ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)       ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS notas_actividad_plan (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        actividad_plan_id   INTEGER NOT NULL,
+        estudiante_id       INTEGER NOT NULL,
+        asignacion_id       INTEGER NOT NULL,
+        periodo_id          INTEGER NOT NULL,
+        valor               REAL    CHECK(valor >= 0 AND valor <= 100),
+        usuario_id          INTEGER,
+
+        UNIQUE(actividad_plan_id, estudiante_id) ON CONFLICT REPLACE,
+        FOREIGN KEY(actividad_plan_id) REFERENCES actividades_plan(id) ON DELETE CASCADE,
+        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)      ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id)     ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)         ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)        REFERENCES usuarios(id)         ON DELETE SET NULL
+    )
+    """,
+
+    # -------------------------------------------------------------------------
+    # 7c. NIVELACIÓN
+    # -------------------------------------------------------------------------
+
+    """
+    CREATE TABLE IF NOT EXISTS actividades_nivelacion (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        asignacion_id   INTEGER NOT NULL,
+        periodo_id      INTEGER NOT NULL,
+        nombre          TEXT    NOT NULL,
+        descripcion     TEXT,
+        peso            REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
+        fecha           DATE,
+        usuario_id      INTEGER,
+
+        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS notas_nivelacion (
+        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+        actividad_nivelacion_id  INTEGER NOT NULL,
+        estudiante_id            INTEGER NOT NULL,
+        asignacion_id            INTEGER NOT NULL,
+        periodo_id               INTEGER NOT NULL,
+        valor                    REAL    CHECK(valor >= 0 AND valor <= 100),
+        usuario_id               INTEGER,
+
+        UNIQUE(actividad_nivelacion_id, estudiante_id) ON CONFLICT REPLACE,
+        FOREIGN KEY(actividad_nivelacion_id) REFERENCES actividades_nivelacion(id) ON DELETE CASCADE,
+        FOREIGN KEY(estudiante_id)           REFERENCES estudiantes(id)             ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id)           REFERENCES asignaciones(id)            ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)              REFERENCES periodos(id)                ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)              REFERENCES usuarios(id)                ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS cierres_nivelacion (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        asignacion_id     INTEGER NOT NULL,
+        periodo_id        INTEGER NOT NULL,
+        fecha_cierre      DATE    NOT NULL DEFAULT CURRENT_DATE,
+        usuario_cierre_id INTEGER,
+
+        UNIQUE(asignacion_id, periodo_id),
+        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id) ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)     ON DELETE CASCADE,
+        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
+    )
+    """,
+
+    # -------------------------------------------------------------------------
     # 8. ASISTENCIA Y CONVIVENCIA
     # -------------------------------------------------------------------------
 
@@ -925,6 +1062,27 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_auditlog_usuario    ON audit_log(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_tabla      ON audit_log(tabla)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_timestamp  ON audit_log(timestamp)",
+
+    # actividades_nivelacion
+    "CREATE INDEX IF NOT EXISTS idx_act_nivel_asig    ON actividades_nivelacion(asignacion_id)",
+    "CREATE INDEX IF NOT EXISTS idx_act_nivel_periodo  ON actividades_nivelacion(periodo_id)",
+
+    # notas_nivelacion
+    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_act     ON notas_nivelacion(actividad_nivelacion_id)",
+    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_est     ON notas_nivelacion(estudiante_id)",
+    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_asig    ON notas_nivelacion(asignacion_id)",
+
+    # cierres_nivelacion
+    "CREATE INDEX IF NOT EXISTS idx_cierre_nivel_asig  ON cierres_nivelacion(asignacion_id)",
+
+    # cortes_plan / plan de mejoramiento
+    "CREATE INDEX IF NOT EXISTS idx_cortes_plan_asig    ON cortes_plan(asignacion_id)",
+    "CREATE INDEX IF NOT EXISTS idx_cortes_plan_per     ON cortes_plan(periodo_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notas_corte_corte   ON notas_corte_plan(corte_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notas_corte_est     ON notas_corte_plan(estudiante_id)",
+    "CREATE INDEX IF NOT EXISTS idx_act_plan_corte      ON actividades_plan(corte_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_act  ON notas_actividad_plan(actividad_plan_id)",
+    "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_est  ON notas_actividad_plan(estudiante_id)",
 ]
 
 

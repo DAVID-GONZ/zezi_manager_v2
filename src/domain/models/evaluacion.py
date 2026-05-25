@@ -467,6 +467,62 @@ class CalculadorNotas:
         return round(definitiva, 2)
 
     @staticmethod
+    def calcular_definitiva_con_corte(
+        notas:                    "list[Nota] | dict[int, float]",
+        actividades:              list[Actividad],
+        categorias:               list[Categoria],
+        nota_definitiva_plan:     float,
+        categoria_ids_en_corte:   "set[int]",
+    ) -> float:
+        """
+        Calcula la nota definitiva cuando hay un Plan de Mejoramiento activo.
+
+        Algoritmo aditivo (compatible hacia atrás):
+          nota_definitiva = nota_definitiva_plan
+                          + Σ(cat.peso × promedio_cat)
+                            para cat NOT IN categoria_ids_en_corte
+
+        Args:
+            notas:                  Notas del estudiante (puede ser lista de Nota
+                                    o dict {actividad_id: valor}).
+            actividades:            Todas las actividades de la asignación+periodo.
+            categorias:             Todas las categorías de la asignación+periodo.
+            nota_definitiva_plan:   Contribución congelada del corte (ya es
+                                    escala 0-100 proporcional al peso del corte).
+            categoria_ids_en_corte: IDs de las categorías ya incluidas en el corte.
+                                    Estas se excluyen del cálculo posterior.
+
+        Returns:
+            Nota definitiva total en escala 0-100, redondeada a 2 decimales.
+        """
+        if not categorias:
+            return round(nota_definitiva_plan, 2)
+
+        cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
+        nota_map: dict[int, float]    = CalculadorNotas._to_nota_map(notas)
+
+        acts_por_cat: dict[int, list[int]] = {}
+        for act in actividades:
+            if act.id and act.categoria_id in cat_map:
+                acts_por_cat.setdefault(act.categoria_id, []).append(act.id)
+
+        # Solo categorías que NO estuvieron en el corte
+        cats_post_corte = [
+            c for c in categorias
+            if c.id and c.id not in categoria_ids_en_corte
+        ]
+
+        aporte_post = 0.0
+        for cat in cats_post_corte:
+            act_ids = acts_por_cat.get(cat.id, [])
+            if not act_ids:
+                continue
+            promedio_cat = sum(nota_map.get(aid, 0.0) for aid in act_ids) / len(act_ids)
+            aporte_post += promedio_cat * cat.peso
+
+        return round(nota_definitiva_plan + aporte_post, 2)
+
+    @staticmethod
     def calcular_promedio_ajustado(
         notas:       "list[Nota] | dict[int, float]",
         actividades: list[Actividad],
