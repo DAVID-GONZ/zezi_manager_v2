@@ -257,6 +257,13 @@ class Container:
         )
 
     @classmethod
+    def siee_repo(cls):
+        from src.infrastructure.db.repositories.sqlite_siee_repo import (
+            SqliteSIEERepository,
+        )
+        return cls._get_or_create("siee_repo", SqliteSIEERepository)
+
+    @classmethod
     def evaluacion_service(cls):
         from src.services.evaluacion_service import EvaluacionService
         return cls._get_or_create(
@@ -266,6 +273,7 @@ class Container:
                 asignacion_repo=cls.asignacion_repo(),
                 periodo_repo=cls.periodo_repo(),
                 auditoria=cls.auditoria_repo(),
+                siee_repo=cls.siee_repo(),
             ),
         )
 

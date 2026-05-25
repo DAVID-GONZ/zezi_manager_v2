@@ -341,17 +341,60 @@ SCHEMA: list[str] = [
     # 5. EVALUACIÓN
     # -------------------------------------------------------------------------
 
+    # Configuración del SIEE por año lectivo.
+    # Define el modo de distribución de categorías de evaluación:
+    #   libre              → cada docente distribuye libremente (legacy)
+    #   institucional_fijo → todas las categorías son fijadas por el admin
+    #   mixto_subcategorias→ admin fija macro-categorías; docente puede sub-categorizar
+    #   mixto_autonomia    → admin fija un porcentaje; docente gestiona el resto
+    """
+    CREATE TABLE IF NOT EXISTS configuracion_siee (
+        id                              INTEGER PRIMARY KEY AUTOINCREMENT,
+        anio_id                         INTEGER NOT NULL UNIQUE,
+        modo                            TEXT    NOT NULL DEFAULT 'libre'
+                                        CHECK(modo IN (
+                                            'libre',
+                                            'institucional_fijo',
+                                            'mixto_subcategorias',
+                                            'mixto_autonomia'
+                                        )),
+        porcentaje_autonomia_docente    REAL    CHECK(
+                                            porcentaje_autonomia_docente IS NULL
+                                            OR (porcentaje_autonomia_docente > 0
+                                                AND porcentaje_autonomia_docente <= 1)
+                                        ),
+
+        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
+    )
+    """,
+
     """
     CREATE TABLE IF NOT EXISTS categorias (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre          TEXT    NOT NULL,
-        peso            REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
-        asignacion_id   INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
+        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre                  TEXT    NOT NULL,
+        peso                    REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
+
+        -- Categorías de docente: asignacion_id + periodo_id NOT NULL
+        -- Categorías institucionales: asignacion_id + periodo_id NULL, anio_id NOT NULL
+        asignacion_id           INTEGER,
+        periodo_id              INTEGER,
+        anio_id                 INTEGER,
+
+        -- Flags SIEE
+        es_institucional        INTEGER NOT NULL DEFAULT 0 CHECK(es_institucional IN (0,1)),
+        permite_subcategorias   INTEGER NOT NULL DEFAULT 0 CHECK(permite_subcategorias IN (0,1)),
+        categoria_padre_id      INTEGER,   -- solo para subcategorías (Caso 1)
 
         UNIQUE(nombre, asignacion_id, periodo_id),
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE
+        CHECK(
+            (asignacion_id IS NOT NULL AND periodo_id IS NOT NULL AND anio_id IS NULL)
+            OR
+            (asignacion_id IS NULL AND periodo_id IS NULL AND anio_id IS NOT NULL)
+        ),
+        FOREIGN KEY(asignacion_id)    REFERENCES asignaciones(id)       ON DELETE CASCADE,
+        FOREIGN KEY(periodo_id)       REFERENCES periodos(id)            ON DELETE CASCADE,
+        FOREIGN KEY(anio_id)          REFERENCES configuracion_anio(id)  ON DELETE CASCADE,
+        FOREIGN KEY(categoria_padre_id) REFERENCES categorias(id)        ON DELETE SET NULL
     )
     """,
 

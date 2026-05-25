@@ -16,7 +16,7 @@ from src.domain.models.estudiante import (
     FiltroEstudiantesDTO,
     EstudianteResumenDTO,
 )
-from src.domain.models.piar import PIAR, NuevoPIARDTO
+from src.domain.models.piar import PIAR, NuevoPIARDTO, ActualizarPIARDTO
 from src.domain.models.dtos import MatriculaMasivaResultadoDTO
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 
@@ -176,9 +176,64 @@ class EstudianteService:
         """Retorna la vista resumida de estudiantes para selects."""
         return self._repo.listar_resumenes(filtro)
 
+    def listar_resumenes_plano(
+        self,
+        filtro: FiltroEstudiantesDTO,
+    ) -> list[dict]:
+        """
+        Igual que listar_resumenes pero serializado a dicts planos.
+
+        Todos los enums se convierten a strings (mode='json') para que
+        la capa de interfaz trabaje con primitivos puros sin conocer
+        tipos del dominio.
+
+        Campos por fila:
+          id, nombre_completo, documento_display, grupo_id,
+          estado_matricula (str), genero (str|None), posee_piar (bool)
+        """
+        resumenes = self._repo.listar_resumenes(filtro)
+        resultado = []
+        for r in resumenes:
+            datos = r.model_dump(mode="json")
+            resultado.append({
+                "id":               datos["id"],
+                "nombre_completo":  datos["nombre_completo"],
+                "documento_display": datos["documento_display"],
+                "grupo_id":         datos.get("grupo_id"),
+                "estado_matricula": datos["estado_matricula"],   # str plano
+                "genero":           datos.get("genero"),
+                "posee_piar":       datos["posee_piar"],
+            })
+        return resultado
+
     def get_by_id(self, estudiante_id: int) -> Estudiante:
         """Retorna un estudiante por id. Lanza si no existe."""
         return self._get_estudiante_o_lanzar(estudiante_id)
+
+    def get_para_edicion(self, estudiante_id: int) -> dict:
+        """
+        Retorna los campos editables de un estudiante como dict plano.
+
+        Convierte todos los enums a sus valores string (mode="json") para
+        que la capa de interfaz no necesite conocer ni importar tipos del
+        dominio. El dict resultante contiene:
+          id, nombre, apellido, genero, grupo_id, posee_piar,
+          estado_matricula, nombre_completo, documento_display
+        """
+        est = self._get_estudiante_o_lanzar(estudiante_id)
+        datos = est.model_dump(mode="json")
+        # Exponemos solo los campos que la UI necesita para el formulario
+        return {
+            "id":               datos["id"],
+            "nombre":           datos["nombre"],
+            "apellido":         datos["apellido"],
+            "genero":           datos.get("genero"),          # str | None
+            "grupo_id":         datos.get("grupo_id"),        # int | None
+            "posee_piar":       datos["posee_piar"],
+            "estado_matricula": datos["estado_matricula"],    # str plano
+            "nombre_completo":  est.nombre_completo,
+            "documento_display": est.documento_display,
+        }
 
     # ------------------------------------------------------------------
     # Casos de uso — PIAR
@@ -213,9 +268,92 @@ class EstudianteService:
         )
         return piar
 
+    def actualizar_piar(
+        self,
+        estudiante_id: int,
+        anio_id: int,
+        dto: ActualizarPIARDTO,
+        usuario_id: int | None = None,
+    ) -> PIAR:
+        """
+        Actualiza un PIAR existente.
+
+        Lanza ValueError si no existe PIAR para ese estudiante y año.
+        """
+        piar_actual = self._repo.get_piar(estudiante_id, anio_id)
+        if piar_actual is None:
+            raise ValueError(
+                f"No existe PIAR para el estudiante {estudiante_id} "
+                f"en el año {anio_id}. Regístralo primero."
+            )
+        datos_ant = piar_actual.model_dump(mode="json")
+        piar_nuevo = dto.aplicar_a(piar_actual)
+        piar_nuevo = self._repo.actualizar_piar(piar_nuevo)
+        self._auditar(
+            AccionCambio.UPDATE, "piars", piar_nuevo.id,
+            datos_ant, piar_nuevo.model_dump(mode="json"), usuario_id,
+        )
+        return piar_nuevo
+
     def get_piar(self, estudiante_id: int, anio_id: int) -> PIAR | None:
         """Retorna el PIAR del estudiante para el año indicado."""
         return self._repo.get_piar(estudiante_id, anio_id)
 
+    # ------------------------------------------------------------------
+    # Carga masiva CSV
+    # ------------------------------------------------------------------
 
-__all__ = ["EstudianteService"]
+    def matricular_masivo_csv(
+        self,
+        filas: list[dict],
+        mapa_grupos: dict[str, int],
+        usuario_id: int | None = None,
+    ) -> MatriculaMasivaResultadoDTO:
+        """
+        Matricula una lista de estudiantes proveniente de un CSV.
+
+        Args:
+            filas:        Lista de dicts con claves del CSV (una por fila).
+            mapa_grupos:  Mapeo codigo_grupo → grupo_id para resolver grupos.
+            usuario_id:   ID del usuario que realiza la carga (auditoría).
+
+        Returns:
+            DTO con totales y lista de errores por fila.
+        """
+        resultado = MatriculaMasivaResultadoDTO(
+            total_procesadas=len(filas),
+            exitosas=0,
+            fallidas=0,
+            errores=[],
+        )
+        for i, fila in enumerate(filas, start=2):
+            num_doc = fila.get("numero_documento", "").strip()
+            try:
+                codigo_grupo = fila.get("grupo_codigo", "").strip()
+                grupo_id     = mapa_grupos.get(codigo_grupo) if codigo_grupo else None
+                dto = NuevoEstudianteDTO(
+                    tipo_documento=fila.get("tipo_documento", "TI").strip() or "TI",
+                    numero_documento=num_doc,
+                    nombre=fila.get("nombre", "").strip(),
+                    apellido=fila.get("apellido", "").strip(),
+                    genero=fila.get("genero", "").strip() or None,
+                    grupo_id=grupo_id,
+                )
+                self.matricular(dto, usuario_id=usuario_id)
+                resultado.exitosas += 1
+            except Exception as exc:
+                resultado.agregar_error(fila=i, dato=num_doc or "?", motivo=str(exc))
+
+        return resultado
+
+
+__all__ = [
+    "EstudianteService",
+    # DTOs re-exportados explícitamente para que la capa de interfaz
+    # los importe desde el servicio y no desde el dominio directamente.
+    "NuevoEstudianteDTO",
+    "ActualizarEstudianteDTO",
+    "FiltroEstudiantesDTO",
+    "NuevoPIARDTO",
+    "ActualizarPIARDTO",
+]

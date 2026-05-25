@@ -48,10 +48,10 @@ class FakeEvalRepo(IEvaluacionRepository):
         return [c for c in self._cats.values()
                 if c.asignacion_id == asig_id and c.periodo_id == per_id]
 
-    def suma_pesos_otras(self, asig_id: int, per_id: int, excluir_id: int | None = None) -> float:
+    def suma_pesos_otras(self, asig_id: int, per_id: int, excluir_cat_id: int | None = None) -> float:
         return sum(
             c.peso for c in self._cats.values()
-            if c.asignacion_id == asig_id and c.periodo_id == per_id and c.id != excluir_id
+            if c.asignacion_id == asig_id and c.periodo_id == per_id and c.id != excluir_cat_id
         )
 
     # Actividades
@@ -163,7 +163,7 @@ class TestAgregarCategoria:
     def test_lanza_si_peso_supera_100(self):
         svc, _ = _make_svc()
         svc.agregar_categoria(_cat_dto(0.70), _ctx())
-        with pytest.raises(ValueError, match="100%"):
+        with pytest.raises(ValueError, match="disponible|100%"):
             svc.agregar_categoria(_cat_dto(0.50), _ctx())
 
     def test_dos_categorias_distintas(self):
@@ -226,3 +226,131 @@ class TestPublicarCerrarActividad:
         assert publicada.estado == EstadoActividad.PUBLICADA
         cerrada = svc.cerrar_actividad(act.id)
         assert cerrada.estado == EstadoActividad.CERRADA
+
+    def test_reabrir_actividad_cerrada(self):
+        svc, _ = _make_svc()
+        cat = svc.agregar_categoria(_cat_dto(), _ctx())
+        act = svc.agregar_actividad(_act_dto(cat.id))
+        svc.publicar_actividad(act.id)
+        svc.cerrar_actividad(act.id)
+        reabierta = svc.reabrir_actividad(act.id)
+        assert reabierta.estado == EstadoActividad.PUBLICADA
+
+    def test_lanza_al_reabrir_no_cerrada(self):
+        svc, _ = _make_svc()
+        cat = svc.agregar_categoria(_cat_dto(), _ctx())
+        act = svc.agregar_actividad(_act_dto(cat.id))
+        svc.publicar_actividad(act.id)
+        with pytest.raises(ValueError, match="cerrada"):
+            svc.reabrir_actividad(act.id)
+
+
+class TestActualizarCategoria:
+    def test_actualiza_nombre_y_peso(self):
+        svc, _ = _make_svc()
+        cat = svc.agregar_categoria(_cat_dto(0.30), _ctx())
+        dto = ActualizarCategoriaDTO(nombre="Trabajos", peso=0.25)
+        actualizada = svc.actualizar_categoria(cat.id, dto)
+        assert actualizada.nombre == "Trabajos"
+        assert actualizada.peso == pytest.approx(0.25)
+
+    def test_lanza_si_nuevo_peso_supera_100(self):
+        svc, _ = _make_svc()
+        c1 = svc.agregar_categoria(_cat_dto(0.60), _ctx())
+        dto2 = NuevaCategoriaDTO(asignacion_id=3, periodo_id=5, nombre="B", peso=0.30)
+        c2 = svc.agregar_categoria(dto2, _ctx())
+        # Intentar subir c2 a 0.50 haría 0.60 + 0.50 = 1.10
+        with pytest.raises(ValueError, match="disponible|100%"):
+            svc.actualizar_categoria(c2.id, ActualizarCategoriaDTO(peso=0.50))
+
+    def test_peso_dto_rechaza_escala_incorrecta(self):
+        with pytest.raises(ValueError):
+            ActualizarCategoriaDTO(peso=50.0)  # 50.0 > 1.0 → debe fallar
+
+
+class TestRegistrarNotasMasivas:
+    def test_to_notas_genera_entidades(self):
+        dto = RegistrarNotasMasivasDTO(
+            actividad_id=1,
+            notas=[
+                RegistrarNotaDTO(estudiante_id=1, actividad_id=1, valor=80.0),
+                RegistrarNotaDTO(estudiante_id=2, actividad_id=1, valor=90.0),
+            ],
+        )
+        notas = dto.to_notas(usuario_registro_id=99)
+        assert len(notas) == 2
+        assert all(n.actividad_id == 1 for n in notas)
+        assert all(n.usuario_registro_id == 99 for n in notas)
+
+    def test_registrar_masivo_en_actividad_publicada(self):
+        svc, repo = _make_svc()
+        cat = svc.agregar_categoria(_cat_dto(), _ctx())
+        act = svc.agregar_actividad(_act_dto(cat.id))
+        svc.publicar_actividad(act.id)
+        dto = RegistrarNotasMasivasDTO(
+            actividad_id=act.id,
+            notas=[
+                RegistrarNotaDTO(estudiante_id=1, actividad_id=act.id, valor=75.0),
+                RegistrarNotaDTO(estudiante_id=2, actividad_id=act.id, valor=85.0),
+            ],
+        )
+        n = svc.registrar_notas_masivas(dto, _ctx())
+        assert n == 2
+
+    def test_masivo_lanza_si_actividad_no_publicada(self):
+        svc, _ = _make_svc()
+        cat = svc.agregar_categoria(_cat_dto(), _ctx())
+        act = svc.agregar_actividad(_act_dto(cat.id))
+        dto = RegistrarNotasMasivasDTO(
+            actividad_id=act.id,
+            notas=[RegistrarNotaDTO(estudiante_id=1, actividad_id=act.id, valor=70.0)],
+        )
+        with pytest.raises(ValueError, match="no acepta notas"):
+            svc.registrar_notas_masivas(dto, _ctx())
+
+
+class TestCalculadorNotas:
+    """Verifica que el cálculo de definitiva sea correcto."""
+
+    def _make_cat(self, cat_id: int, peso: float) -> Categoria:
+        return Categoria(
+            id=cat_id, nombre=f"Cat{cat_id}", peso=peso,
+            asignacion_id=3, periodo_id=5,
+        )
+
+    def _make_act(self, act_id: int, cat_id: int) -> "Actividad":
+        return Actividad(
+            id=act_id, nombre=f"Act{act_id}", categoria_id=cat_id,
+            asignacion_id=3, periodo_id=5, valor_maximo=100.0,
+            estado=EstadoActividad.PUBLICADA,
+        )
+
+    def test_definitiva_con_dict(self):
+        from src.domain.models.evaluacion import CalculadorNotas
+        cats = [self._make_cat(1, 0.60), self._make_cat(2, 0.40)]
+        acts = [self._make_act(1, 1), self._make_act(2, 2)]
+        # Cat1: act1=80 → promedio 80, Cat2: act2=100 → promedio 100
+        # Definitiva = 80*0.60 + 100*0.40 = 48 + 40 = 88
+        nota_map = {1: 80.0, 2: 100.0}
+        assert CalculadorNotas.calcular_definitiva(nota_map, acts, cats) == pytest.approx(88.0)
+
+    def test_definitiva_con_lista_nota(self):
+        from src.domain.models.evaluacion import CalculadorNotas
+        cats = [self._make_cat(1, 1.0)]
+        acts = [self._make_act(1, 1), self._make_act(2, 1)]
+        # Ambas actividades: act1=60, act2=80 → promedio 70
+        notas = [
+            Nota(estudiante_id=1, actividad_id=1, valor=60.0),
+            Nota(estudiante_id=1, actividad_id=2, valor=80.0),
+        ]
+        assert CalculadorNotas.calcular_definitiva(notas, acts, cats) == pytest.approx(70.0)
+
+    def test_sin_notas_cuenta_como_cero(self):
+        from src.domain.models.evaluacion import CalculadorNotas
+        cats = [self._make_cat(1, 1.0)]
+        acts = [self._make_act(1, 1)]
+        assert CalculadorNotas.calcular_definitiva({}, acts, cats) == pytest.approx(0.0)
+
+    def test_sin_categorias_retorna_cero(self):
+        from src.domain.models.evaluacion import CalculadorNotas
+        assert CalculadorNotas.calcular_definitiva({}, [], []) == pytest.approx(0.0)

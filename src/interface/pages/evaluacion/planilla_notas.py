@@ -2,12 +2,19 @@
 src/interface/pages/evaluacion/planilla_notas.py
 =================================================
 Planilla de notas y gestión de actividades.
-Ruta: /evaluacion/planilla
+Ruta:   /evaluacion/planilla
 Acceso: todos los autenticados
 
-Modos de vista:
-  - PLANILLA: tabla ag-Grid de estudiantes x actividades con edición inline de notas.
-  - ACTIVIDADES: lista de actividades con CRUD y gestión de estado.
+El periodo y la asignación activos se leen exclusivamente del context_bar
+(barra de contexto del topbar). Esta página no expone selectores propios
+para esos campos; cualquier cambio de contexto recarga la página.
+
+Vistas:
+  PLANILLA    — ag-Grid de estudiantes × actividades con edición inline de notas.
+  ACTIVIDADES — lista de actividades con CRUD completo y gestión de estado.
+
+La vista activa se controla con dos botones explícitos (no un select).
+La configuración de categorías se delega a /evaluacion/configuracion.
 """
 from __future__ import annotations
 
@@ -20,17 +27,19 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import status_badge, form_dialog
-from src.services.evaluacion_service import NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad
+from src.interface.design.components.buttons import (
+    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+)
+from src.interface.design.components import status_badge, form_dialog, confirm_dialog
+from src.services.evaluacion_service import (
+    NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad,
+    PuntosExtra, TipoPuntosExtra,
+)
 
 logger = logging.getLogger("EVALUACION.PLANILLA")
 
-_MODOS = {"planilla": "Planilla de notas", "actividades": "Actividades"}
-
 
 def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> "float | None":
-    """Calcula el promedio de las notas de las actividades de una categoría."""
     vals = [notas_dict.get(a.id) for a in acts_de_cat if notas_dict.get(a.id) is not None]
     if not vals:
         return None
@@ -46,17 +55,17 @@ def planilla_notas_page() -> None:
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    # ── Estado mutable ────────────────────────────────────────────────────────
+    # ── Estado — solo lo que no viene del context_bar ─────────────────────────
     _s: dict = {
-        "asignacion_id":    ctx.asignacion_id,   # leer del context
-        "periodo_id":       ctx.periodo_id,       # leer del context
+        "asignacion_id":    ctx.asignacion_id,
+        "periodo_id":       ctx.periodo_id,
         "grupo_id":         ctx.grupo_id,
-        "asignaciones":     [],                   # list[AsignacionInfo] para el selector
-        "periodos":         [],
         "categorias":       [],
         "actividades":      [],
-        "planilla":         [],                   # list[ResultadoEstudianteDTO]
-        "modo":             "planilla",
+        "planilla":         [],
+        "puntos_extra":     {},   # {estudiante_id: PuntosExtra}
+        "mostrar_puntos":   False,
+        "modo":             "planilla",   # "planilla" | "actividades"
         # formulario nueva actividad
         "act_nombre":       "",
         "act_categoria_id": None,
@@ -65,36 +74,13 @@ def planilla_notas_page() -> None:
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
-    def _cargar_estado() -> None:
-        try:
-            config = Container.configuracion_service().get_activa()
-            anio_id = config.id if config else None
-            if anio_id:
-                _s["periodos"] = Container.periodo_service().listar_por_anio(anio_id)
-            else:
-                _s["periodos"] = []
-        except Exception as exc:
-            logger.error("Error cargando periodos: %s", exc)
-            _s["periodos"] = []
-
-    def _cargar_asignaciones() -> None:
-        grupo_id = _s["grupo_id"]
-        if not grupo_id:
-            _s["asignaciones"] = []
-            return
-        try:
-            _s["asignaciones"] = Container.asignacion_service().listar_por_grupo(grupo_id)
-        except Exception as exc:
-            logger.error("Error cargando asignaciones: %s", exc)
-            _s["asignaciones"] = []
-
-    def _cargar_datos_asignacion() -> None:
+    def _cargar_datos() -> None:
         asig_id = _s["asignacion_id"]
-        per_id = _s["periodo_id"]
+        per_id  = _s["periodo_id"]
         if not asig_id or not per_id:
             _s["actividades"] = []
-            _s["categorias"] = []
-            _s["planilla"] = []
+            _s["categorias"]  = []
+            _s["planilla"]    = []
             return
 
         try:
@@ -121,17 +107,67 @@ def planilla_notas_page() -> None:
             logger.error("Error cargando planilla: %s", exc)
             _s["planilla"] = []
 
-    # Cargar datos iniciales desde el contexto del topbar
-    _cargar_estado()
-    _cargar_asignaciones()
-    _cargar_datos_asignacion()
+        try:
+            registros = Container.evaluacion_service().listar_puntos_extra(asig_id, per_id)
+            _s["puntos_extra"] = {r.estudiante_id: r for r in registros}
+        except Exception as exc:
+            logger.error("Error cargando puntos extra: %s", exc)
+            _s["puntos_extra"] = {}
 
-    # ── Acciones ──────────────────────────────────────────────────────────────
+    _cargar_datos()
+
+    # ── Helper de periodo ─────────────────────────────────────────────────────
+    def _periodo_abierto() -> bool:
+        per_id = _s["periodo_id"]
+        if not per_id:
+            return False
+        try:
+            p = Container.periodo_service().get_by_id(per_id)
+            if p is None:
+                return True
+            return bool(p.esta_abierto)
+        except Exception:
+            return True
+
+    # ── Cambio de vista ───────────────────────────────────────────────────────
+    def _cambiar_vista(modo: str) -> None:
+        _s["modo"] = modo
+        barra_vista.refresh()
+        panel_vista.refresh()
+
+    def _recargar() -> None:
+        _cargar_datos()
+        barra_vista.refresh()
+        panel_vista.refresh()
+
+    def _toggle_puntos() -> None:
+        _s["mostrar_puntos"] = not _s["mostrar_puntos"]
+        barra_vista.refresh()
+        panel_vista.refresh()
+
+    def _guardar_puntos_extra(est_id: int, positivos: int, negativos: int) -> None:
+        asig_id = _s["asignacion_id"]
+        per_id  = _s["periodo_id"]
+        pe_actual = _s["puntos_extra"].get(est_id)
+        pe = PuntosExtra(
+            id            = pe_actual.id if pe_actual else None,
+            estudiante_id = est_id,
+            asignacion_id = asig_id,
+            periodo_id    = per_id,
+            tipo          = TipoPuntosExtra.PARTICIPACION,
+            positivos     = max(0, positivos),
+            negativos     = max(0, negativos),
+            observacion   = pe_actual.observacion if pe_actual else None,
+        )
+        saved = Container.evaluacion_service().guardar_puntos_extra(pe, ctx.usuario_id)
+        _s["puntos_extra"][est_id] = saved
+
+    # ── Acciones — actividades ────────────────────────────────────────────────
     def _crear_actividad() -> None:
         asig_id = _s["asignacion_id"]
-        per_id = _s["periodo_id"]
+        per_id  = _s["periodo_id"]
         if not asig_id or not per_id:
-            ui.notify("Seleccione periodo y asignación en el contexto", type="warning")
+            ui.notify("Define el contexto desde la barra superior", type="warning")
             return
         nombre = str(_s["act_nombre"]).strip()
         if not nombre:
@@ -139,22 +175,23 @@ def planilla_notas_page() -> None:
             return
         cat_id = _s["act_categoria_id"]
         if not cat_id:
-            ui.notify("Seleccione una categoría", type="warning")
+            ui.notify("Selecciona una categoría", type="warning")
             return
         try:
             dto = NuevaActividadDTO(
-                nombre=nombre,
-                categoria_id=int(cat_id),
-                descripcion=str(_s["act_descripcion"]).strip() or None,
-                valor_maximo=float(_s["act_valor_max"] or 100.0),
+                nombre       = nombre,
+                categoria_id = int(cat_id),
+                descripcion  = str(_s["act_descripcion"]).strip() or None,
+                valor_maximo = float(_s["act_valor_max"] or 100.0),
             )
             Container.evaluacion_service().agregar_actividad(dto)
             ui.notify(f"Actividad '{nombre}' creada", type="positive")
-            _s["act_nombre"] = ""
-            _s["act_descripcion"] = ""
-            _s["act_valor_max"] = 100.0
-            _cargar_datos_asignacion()
-            contenido_actividades.refresh()
+            _s["act_nombre"]       = ""
+            _s["act_descripcion"]  = ""
+            _s["act_valor_max"]    = 100.0
+            _s["act_categoria_id"] = None
+            _cargar_datos()
+            panel_vista.refresh()
         except ValueError as exc:
             ui.notify(str(exc), type="warning")
         except Exception as exc:
@@ -165,97 +202,100 @@ def planilla_notas_page() -> None:
         try:
             Container.evaluacion_service().publicar_actividad(act_id)
             ui.notify(f"'{nombre}' publicada", type="positive")
-            _cargar_datos_asignacion()
-            contenido_actividades.refresh()
+            _cargar_datos()
+            panel_vista.refresh()
         except ValueError as exc:
             ui.notify(str(exc), type="warning")
         except Exception as exc:
-            logger.error("Error al publicar actividad %s: %s", act_id, exc)
+            logger.error("Error al publicar %s: %s", act_id, exc)
             ui.notify("Error al publicar", type="negative")
 
     def _cerrar_actividad(act_id: int, nombre: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Cerrar actividad '{nombre}'? Ya no aceptará más notas."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_ghost(
-                    "Cerrar actividad",
-                    on_click=lambda: _confirmar_cerrar(dlg, act_id, nombre),
-                    icon="lock",
-                )
-        dlg.open()
+        confirm_dialog(
+            titulo          = "Cerrar actividad",
+            mensaje         = (
+                f"¿Cerrar '{nombre}'? Podrás reabrirla después si es necesario."
+            ),
+            on_confirm      = lambda: _ejecutar_cerrar(act_id, nombre),
+            texto_confirmar = "Cerrar actividad",
+            texto_cancelar  = "Cancelar",
+        )
 
-    def _confirmar_cerrar(dlg, act_id: int, nombre: str) -> None:
+    def _ejecutar_cerrar(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().cerrar_actividad(act_id)
             ui.notify(f"'{nombre}' cerrada", type="positive")
-            dlg.close()
-            _cargar_datos_asignacion()
-            contenido_actividades.refresh()
+            _cargar_datos()
+            panel_vista.refresh()
         except ValueError as exc:
             ui.notify(str(exc), type="warning")
         except Exception as exc:
-            logger.error("Error al cerrar actividad %s: %s", act_id, exc)
+            logger.error("Error al cerrar %s: %s", act_id, exc)
             ui.notify("Error al cerrar", type="negative")
-            dlg.close()
+
+    def _reabrir_actividad(act_id: int, nombre: str) -> None:
+        confirm_dialog(
+            titulo          = "Reabrir actividad",
+            mensaje         = (
+                f"¿Reabrir '{nombre}'? Volverá a aceptar registro de notas."
+            ),
+            on_confirm      = lambda: _ejecutar_reabrir(act_id, nombre),
+            texto_confirmar = "Reabrir",
+            texto_cancelar  = "Cancelar",
+        )
+
+    def _ejecutar_reabrir(act_id: int, nombre: str) -> None:
+        try:
+            Container.evaluacion_service().reabrir_actividad(act_id)
+            ui.notify(f"'{nombre}' reabierta", type="positive")
+            _cargar_datos()
+            panel_vista.refresh()
+        except ValueError as exc:
+            ui.notify(str(exc), type="warning")
+        except Exception as exc:
+            logger.error("Error al reabrir %s: %s", act_id, exc)
+            ui.notify("Error al reabrir", type="negative")
 
     def _eliminar_actividad(act_id: int, nombre: str) -> None:
-        with ui.dialog() as dlg, ui.card():
-            ui.label(
-                f"¿Eliminar actividad '{nombre}'? Esta acción es irreversible."
-            ).classes("text-base font-medium")
-            with ui.row().classes("gap-2 mt-4"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    "Eliminar",
-                    on_click=lambda: _confirmar_eliminar_act(dlg, act_id, nombre),
-                )
-        dlg.open()
+        confirm_dialog(
+            titulo          = "Eliminar actividad",
+            mensaje         = (
+                f"¿Eliminar '{nombre}'? Se borrarán también todas las notas asociadas. "
+                "Esta acción es irreversible."
+            ),
+            on_confirm      = lambda: _ejecutar_eliminar(act_id, nombre),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+            texto_cancelar  = "Cancelar",
+        )
 
-    def _confirmar_eliminar_act(dlg, act_id: int, nombre: str) -> None:
+    def _ejecutar_eliminar(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().eliminar_actividad(act_id)
             ui.notify(f"'{nombre}' eliminada", type="positive")
-            dlg.close()
-            _cargar_datos_asignacion()
-            contenido_actividades.refresh()
+            _cargar_datos()
+            panel_vista.refresh()
         except ValueError as exc:
             ui.notify(str(exc), type="warning")
         except Exception as exc:
-            logger.error("Error al eliminar actividad %s: %s", act_id, exc)
+            logger.error("Error al eliminar %s: %s", act_id, exc)
             ui.notify("Error al eliminar", type="negative")
-            dlg.close()
 
-    # ── Determinar si periodo está abierto ────────────────────────────────────
-    def _periodo_abierto() -> bool:
-        per_id = _s["periodo_id"]
-        if not per_id:
-            return False
-        for p in _s["periodos"]:
-            if p.id == per_id:
-                estado = getattr(p, "estado", None)
-                if estado is None:
-                    return True
-                estado_val = estado.value if hasattr(estado, "value") else str(estado)
-                return estado_val not in ("cerrado", "closed")
-        return True  # si el periodo no está en la lista, asumir abierto
-
-    # ── Secciones refreshables ────────────────────────────────────────────────
-    @ui.refreshable
-    def vista_planilla() -> None:
-        planilla = _s["planilla"]
-        actividades = _s["actividades"]
-        categorias = _s["categorias"]
+    # ── Vista: planilla de notas (ag-Grid) ────────────────────────────────────
+    def _render_planilla() -> None:
+        planilla        = _s["planilla"]
+        actividades     = _s["actividades"]
+        categorias      = _s["categorias"]
+        puntos_map      = _s["puntos_extra"]   # {est_id: PuntosExtra}
+        mostrar_puntos  = _s["mostrar_puntos"]
         periodo_abierto = _periodo_abierto()
 
         if not _s["asignacion_id"] or not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
                 ui.icon("tune").classes("text-grey-5 text-3xl mb-2")
-                ui.label("Selecciona un periodo y asignación arriba para ver la planilla.").classes(
-                    "tablero-empty-hint"
-                )
+                ui.label(
+                    "Configura el periodo y la asignación desde la barra de contexto superior."
+                ).classes("tablero-empty-hint")
             return
 
         if not planilla:
@@ -265,20 +305,19 @@ def planilla_notas_page() -> None:
                 )
             return
 
-        # Actividades publicadas o cerradas para columnas
         acts_visibles = [
             a for a in actividades
             if a.estado in (EstadoActividad.PUBLICADA, EstadoActividad.CERRADA)
         ]
 
-        # Banner periodo cerrado
         if not periodo_abierto:
-            with ui.element("div").classes("panel-card bg-amber-50 border-amber-400 mb-3"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.icon("lock").classes("text-amber-600")
-                    ui.label("Período CERRADO — Modo solo lectura").classes("font-bold text-amber-700")
+            with ui.element("div").classes(
+                "flex items-center gap-2 bg-amber-50 border border-amber-300 "
+                "rounded p-3 mb-3 text-amber-700"
+            ):
+                ui.icon("lock").classes("text-lg")
+                ui.label("Período CERRADO — Modo solo lectura").classes("font-semibold text-sm")
 
-        # Color rules para ag-Grid
         color_rules = {
             "grade-bajo":     "x != null && x < 60",
             "grade-basico":   "x != null && x >= 60 && x < 80",
@@ -286,57 +325,87 @@ def planilla_notas_page() -> None:
             "grade-superior": "x != null && x >= 90",
         }
 
-        # Construir columnDefs
-        col_defs = [
-            {
-                "headerName": "Estudiante",
-                "field": "nombre_completo",
-                "pinned": "left",
-                "width": 220,
-                "filter": True,
-                "sortable": True,
-            },
-        ]
+        col_defs = [{
+            "headerName": "Estudiante",
+            "field":      "nombre_completo",
+            "pinned":     "left",
+            "width":      220,
+            "filter":     True,
+            "sortable":   True,
+        }]
 
         for cat in categorias:
             acts_de_cat = [a for a in acts_visibles if a.categoria_id == cat.id]
             children = []
             for act in acts_de_cat:
-                es_publicada = act.estado == EstadoActividad.PUBLICADA
                 children.append({
-                    "headerName": act.nombre[:20],
-                    "field": f"act_{act.id}",
-                    "editable": periodo_abierto and es_publicada,
-                    "width": 80,
-                    "type": "numericColumn",
-                    "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
+                    "headerName":    act.nombre[:20],
+                    "field":         f"act_{act.id}",
+                    "editable":      periodo_abierto and act.estado == EstadoActividad.PUBLICADA,
+                    "width":         80,
+                    "type":          "numericColumn",
+                    "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
                     "cellClassRules": color_rules,
                 })
-            # Promedio de categoría
             children.append({
-                "headerName": "PROM",
-                "field": f"cat_avg_{cat.id}",
-                "editable": False,
-                "width": 70,
-                "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
+                "headerName":    "PROM",
+                "field":         f"cat_avg_{cat.id}",
+                "editable":      False,
+                "width":         70,
+                "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
                 "cellClassRules": color_rules,
             })
             col_defs.append({
                 "headerName": f"{cat.nombre} ({cat.peso_porcentaje:.0f}%)",
-                "children": children,
+                "children":   children,
             })
 
         col_defs.append({
-            "headerName": "Definitiva",
-            "field": "definitiva",
-            "pinned": "right",
-            "width": 80,
-            "editable": False,
-            "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
+            "headerName":    "Definitiva",
+            "field":         "definitiva",
+            "pinned":        "right",
+            "width":         85,
+            "editable":      False,
+            "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
             "cellClassRules": color_rules,
         })
 
-        # Construir rowData
+        if mostrar_puntos:
+            col_defs.append({
+                "headerName": "Puntos extra",
+                "children": [
+                    {
+                        "headerName":    "+",
+                        "field":         "pts_pos",
+                        "editable":      periodo_abierto,
+                        "width":         60,
+                        "type":          "numericColumn",
+                        "valueFormatter":"value != null ? value : 0",
+                        "cellStyle":     {"color": "#0284C7"},
+                    },
+                    {
+                        "headerName":    "−",
+                        "field":         "pts_neg",
+                        "editable":      periodo_abierto,
+                        "width":         60,
+                        "type":          "numericColumn",
+                        "valueFormatter":"value != null ? value : 0",
+                        "cellStyle":     {"color": "#DC2626"},
+                    },
+                    {
+                        "headerName":    "Bal.",
+                        "field":         "pts_bal",
+                        "editable":      False,
+                        "width":         65,
+                        "type":          "numericColumn",
+                        "cellClassRules": {
+                            "pts-positivo": "x != null && x > 0",
+                            "pts-negativo": "x != null && x < 0",
+                        },
+                    },
+                ],
+            })
+
         row_data = []
         for resultado in planilla:
             row: dict = {
@@ -349,249 +418,311 @@ def planilla_notas_page() -> None:
                 for act in acts_de_cat:
                     row[f"act_{act.id}"] = resultado.notas.get(act.id)
                 row[f"cat_avg_{cat.id}"] = _promedio_cat(resultado.notas, acts_de_cat)
+            if mostrar_puntos:
+                pe = puntos_map.get(resultado.estudiante_id)
+                row["pts_pos"] = pe.positivos if pe else 0
+                row["pts_neg"] = pe.negativos if pe else 0
+                row["pts_bal"] = pe.balance   if pe else 0
             row_data.append(row)
 
         grid = ui.aggrid({
-            "columnDefs": col_defs,
-            "rowData": row_data,
-            "defaultColDef": {"sortable": True, "resizable": True},
-            "singleClickEdit": True,
+            "columnDefs":                col_defs,
+            "rowData":                   row_data,
+            "defaultColDef":             {"sortable": True, "resizable": True},
+            "singleClickEdit":           True,
             "stopEditingWhenCellsLoseFocus": True,
         }).classes("w-full h-[600px]")
 
         async def on_cell_edit(e) -> None:
-            col_id = e.args.get("colId", "")
+            col_id  = e.args.get("colId", "")
             val_raw = e.args.get("newValue")
-            data = e.args.get("data", {})
-            est_id = data.get("estudiante_id")
+            data    = e.args.get("data", {})
+            est_id  = data.get("estudiante_id")
 
+            # ── Puntos extra ──────────────────────────────────────────────────
+            if col_id in ("pts_pos", "pts_neg"):
+                try:
+                    new_val = max(0, int(float(val_raw or 0)))
+                except (ValueError, TypeError):
+                    ui.notify("Valor inválido — debe ser un número entero", type="warning")
+                    panel_vista.refresh()
+                    return
+                pe_actual = _s["puntos_extra"].get(est_id)
+                positivos = new_val if col_id == "pts_pos" else (pe_actual.positivos if pe_actual else 0)
+                negativos = new_val if col_id == "pts_neg" else (pe_actual.negativos if pe_actual else 0)
+                try:
+                    _guardar_puntos_extra(est_id, positivos, negativos)
+                    ui.notify(
+                        f"Pts. extra guardados (+{positivos} / −{negativos})",
+                        type="positive",
+                        position="bottom-right",
+                        timeout=1200,
+                    )
+                except Exception as exc:
+                    logger.error("Error guardando puntos extra est=%s: %s", est_id, exc)
+                    ui.notify("Error al guardar puntos extra", type="negative")
+                    panel_vista.refresh()
+                return
+
+            # ── Notas de actividades ──────────────────────────────────────────
             if not col_id.startswith("act_"):
                 return
 
             act_id = int(col_id.replace("act_", ""))
 
-            # Celda vaciada
             if val_raw is None or str(val_raw).strip() == "":
-                ui.notify("Para eliminar una nota usa el botón de edición individual.", type="info")
-                vista_planilla.refresh()
+                ui.notify("Para eliminar una nota usa edición individual.", type="info")
+                panel_vista.refresh()
                 return
 
             try:
                 new_val = float(val_raw)
             except (ValueError, TypeError):
                 ui.notify("Valor inválido — debe ser un número", type="warning")
-                vista_planilla.refresh()
+                panel_vista.refresh()
                 return
 
-            if new_val < 0 or new_val > 100:
+            if not (0 <= new_val <= 100):
                 ui.notify("La nota debe estar entre 0 y 100", type="warning")
-                vista_planilla.refresh()
+                panel_vista.refresh()
                 return
 
             try:
                 dto = RegistrarNotaDTO(
-                    estudiante_id=est_id,
-                    actividad_id=act_id,
-                    valor=new_val,
-                    usuario_registro_id=ctx.usuario_id,
+                    estudiante_id       = est_id,
+                    actividad_id        = act_id,
+                    valor               = new_val,
+                    usuario_registro_id = ctx.usuario_id,
                 )
                 Container.evaluacion_service().registrar_nota(
                     dto,
-                    ctx=ctx.to_contexto_academico(),
-                    usuario_id=ctx.usuario_id,
+                    ctx        = ctx.to_contexto_academico(),
+                    usuario_id = ctx.usuario_id,
                 )
-                ui.notify(f"Nota {new_val:.1f} guardada", type="positive", position="bottom-right", timeout=1000)
+                ui.notify(
+                    f"Nota {new_val:.1f} guardada",
+                    type="positive",
+                    position="bottom-right",
+                    timeout=1000,
+                )
             except ValueError as exc:
                 ui.notify(str(exc), type="warning")
-                vista_planilla.refresh()
+                panel_vista.refresh()
             except Exception as exc:
                 logger.error("Error guardando nota: %s", exc)
                 ui.notify("Error al guardar la nota", type="negative")
-                vista_planilla.refresh()
+                panel_vista.refresh()
 
         if periodo_abierto:
             grid.on("cellValueChanged", on_cell_edit)
 
-    @ui.refreshable
-    def contenido_actividades() -> None:
+    # ── Vista: gestión de actividades ─────────────────────────────────────────
+    def _render_actividades() -> None:
         actividades = _s["actividades"]
-        categorias = _s["categorias"]
-        cat_opts = {c.id: c.nombre for c in categorias}
+        categorias  = _s["categorias"]
+        cat_opts    = {c.id: c.nombre for c in categorias}
+
+        if not _s["asignacion_id"] or not _s["periodo_id"]:
+            with ui.element("div").classes("tablero-empty"):
+                ui.icon("tune").classes("text-grey-5 text-3xl mb-2")
+                ui.label(
+                    "Configura el periodo y la asignación desde la barra de contexto superior."
+                ).classes("tablero-empty-hint")
+            return
+
+        # Enlace a configuración de categorías
+        with ui.row().classes("items-center gap-1 mb-4 text-sm text-grey-7"):
+            ui.icon("info_outline").classes("text-base")
+            ui.label("Las categorías se configuran en")
+            ui.link(
+                "Configuración de evaluación",
+                target="/evaluacion/configuracion",
+            ).classes("text-primary font-medium")
 
         # Formulario nueva actividad
-        with ui.element("div").classes("panel-card mb-4"):
-            ui.label("Nueva actividad").classes("text-base font-semibold mb-3")
+        with ui.element("div").classes("bg-grey-1 rounded p-4 mb-4"):
+            ui.label("Nueva actividad").classes("text-sm font-semibold mb-3")
             with ui.row().classes("gap-3 items-end flex-wrap"):
                 ui.input(
                     "Nombre *",
                     placeholder="Ej: Taller 1",
                 ).classes("w-44").bind_value(_s, "act_nombre")
                 ui.select(
-                    cat_opts or {"": "Sin categorías"},
+                    cat_opts or {"": "Sin categorías — configúralas primero"},
                     value=None,
                     label="Categoría *",
                     on_change=lambda e: _s.__setitem__("act_categoria_id", e.value),
-                ).classes("w-48")
+                ).classes("w-52")
                 ui.number(
                     "Valor máximo",
                     value=100.0,
                     min=0.1,
                     step=0.5,
-                ).classes("w-32").bind_value(_s, "act_valor_max")
-                ui.input("Descripción").classes("w-52").bind_value(_s, "act_descripcion")
+                ).classes("w-28").bind_value(_s, "act_valor_max")
+                ui.input(
+                    "Descripción",
+                    placeholder="Opcional",
+                ).classes("w-48").bind_value(_s, "act_descripcion")
                 btn_primary("Agregar", icon="add", on_click=_crear_actividad)
 
         # Lista de actividades
         if not actividades:
-            ui.label("No hay actividades para esta asignación y periodo.").classes(
-                "text-empty mt-4"
-            )
+            with ui.element("div").classes("tablero-empty mt-2"):
+                ui.label("Sin actividades para este periodo y asignación.").classes(
+                    "tablero-empty-hint"
+                )
             return
 
         with ui.element("div").classes("w-full"):
             with ui.element("div").classes(
-                "flex gap-3 p-2 font-semibold text-sm border-b"
+                "flex gap-3 px-3 py-2 font-semibold text-xs text-grey-7 border-b"
             ):
                 ui.label("Nombre").classes("flex-1")
                 ui.label("Categoría").classes("w-36")
-                ui.label("Valor máx.").classes("w-24 text-right")
+                ui.label("Val. máx.").classes("w-20 text-right")
                 ui.label("Estado").classes("w-24 text-center")
-                ui.label("Acciones").classes("w-32 text-right")
+                ui.label("").classes("w-28")
 
             for act in actividades:
                 cat_nombre = cat_opts.get(act.categoria_id, "—")
                 estado_val = act.estado.value if hasattr(act.estado, "value") else str(act.estado)
+                badge_tipo = {
+                    "borrador":  "neutral",
+                    "publicada": "success",
+                    "cerrada":   "warning",
+                }.get(estado_val, "neutral")
 
-                with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
+                with ui.element("div").classes(
+                    "flex items-center gap-3 px-3 py-2 border-b hover:bg-grey-1"
+                ):
                     ui.label(act.nombre).classes("flex-1 text-sm")
                     ui.label(cat_nombre).classes("w-36 text-sm text-grey-7")
                     ui.label(f"{act.valor_maximo:.1f}").classes(
-                        "w-24 text-right font-mono text-sm"
+                        "w-20 text-right font-mono text-sm"
                     )
+                    with ui.element("div").classes("w-24 flex justify-center"):
+                        status_badge(estado_val.capitalize(), badge_tipo)
 
-                    badge_clase = {
-                        "borrador":  "badge-neutral",
-                        "publicada": "badge-success",
-                        "cerrada":   "badge-warning",
-                    }.get(estado_val, "badge-neutral")
-                    status_badge(estado_val.capitalize(), badge_clase.replace("badge-", ""))
-
-                    with ui.row().classes("w-32 justify-end gap-1"):
+                    with ui.row().classes("w-28 justify-end gap-1"):
                         if act.estado == EstadoActividad.BORRADOR:
                             btn_icon(
                                 "publish",
                                 on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(aid, an),
                                 tooltip="Publicar",
                             )
-                        elif act.estado == EstadoActividad.PUBLICADA:
-                            btn_icon(
-                                "lock",
-                                on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(aid, an),
-                                tooltip="Cerrar",
-                            )
-
-                        if act.estado != EstadoActividad.CERRADA:
                             btn_icon(
                                 "delete",
                                 on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
                                 tooltip="Eliminar",
                                 variante="danger",
                             )
+                        elif act.estado == EstadoActividad.PUBLICADA:
+                            btn_icon(
+                                "lock",
+                                on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(aid, an),
+                                tooltip="Cerrar actividad",
+                            )
+                            btn_icon(
+                                "delete",
+                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
+                                tooltip="Eliminar",
+                                variante="danger",
+                            )
+                        elif act.estado == EstadoActividad.CERRADA:
+                            btn_icon(
+                                "lock_open",
+                                on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(aid, an),
+                                tooltip="Reabrir actividad",
+                            )
+
+    # ── Refreshables ──────────────────────────────────────────────────────────
+    @ui.refreshable
+    def barra_vista() -> None:
+        """Botones de vista y toggle de puntos extra."""
+        modo           = _s["modo"]
+        mostrar_puntos = _s["mostrar_puntos"]
+        with ui.row().classes("gap-2 items-center"):
+            # Vista
+            if modo == "planilla":
+                btn_primary(
+                    "Planilla de notas",
+                    icon="table_chart",
+                    on_click=lambda: _cambiar_vista("planilla"),
+                )
+                btn_secondary(
+                    "Actividades",
+                    icon="assignment",
+                    on_click=lambda: _cambiar_vista("actividades"),
+                )
+            else:
+                btn_secondary(
+                    "Planilla de notas",
+                    icon="table_chart",
+                    on_click=lambda: _cambiar_vista("planilla"),
+                )
+                btn_primary(
+                    "Actividades",
+                    icon="assignment",
+                    on_click=lambda: _cambiar_vista("actividades"),
+                )
+
+            # Separador visual
+            ui.element("div").classes("w-px h-6 bg-grey-3 mx-1")
+
+            # Toggle puntos extra (solo visible en vista planilla)
+            if modo == "planilla":
+                if mostrar_puntos:
+                    btn_primary(
+                        "Pts. extra",
+                        icon="stars",
+                        on_click=_toggle_puntos,
+                    )
+                else:
+                    btn_ghost(
+                        "Pts. extra",
+                        icon="stars",
+                        on_click=_toggle_puntos,
+                    )
 
     @ui.refreshable
-    def filtros_refreshable() -> None:
-        with ui.row().classes("gap-3 items-end flex-wrap mb-4"):
-            # Selector de periodo
-            per_opts = {p.id: getattr(p, "nombre", str(p.id)) for p in _s["periodos"]}
-            ui.select(
-                label="Periodo",
-                options=per_opts or {None: "Sin periodos"},
-                value=_s["periodo_id"],
-                on_change=lambda e: on_periodo_change(e.value),
-            ).classes("w-44")
-
-            # Selector de asignación
-            asig_opts = {
-                a.asignacion_id: a.asignatura_nombre
-                for a in _s["asignaciones"]
-            }
-            ui.select(
-                label="Asignación",
-                options=asig_opts or {None: "Sin asignaciones"},
-                value=_s["asignacion_id"],
-                on_change=lambda e: on_asignacion_change(e.value),
-            ).classes("w-56")
-
-    def on_periodo_change(per_id) -> None:
-        _s["periodo_id"] = per_id
-        _cargar_datos_asignacion()
-        filtros_refreshable.refresh()
-        vista_planilla.refresh()
-        contenido_actividades.refresh()
-
-    def on_asignacion_change(asig_id) -> None:
-        _s["asignacion_id"] = asig_id
-        _cargar_datos_asignacion()
-        filtros_refreshable.refresh()
-        vista_planilla.refresh()
-        contenido_actividades.refresh()
+    def panel_vista() -> None:
+        """Panel principal — renderiza la vista activa."""
+        if _s["modo"] == "planilla":
+            _render_planilla()
+        else:
+            _render_actividades()
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
+            # Cabecera: título + barra de vista + recarga
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4 flex-wrap"):
+                with ui.row().classes("items-center gap-3 flex-wrap"):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Planilla de Notas").classes("text-xl font-bold")
-
-                # Selectores de periodo y asignación (pre-poblados desde ctx)
-                filtros_refreshable()
-
-                # Selector de Vista + botón recargar
-                with ui.row().classes("gap-4 items-center flex-wrap"):
-                    ui.select(
-                        _MODOS,
-                        value="planilla",
-                        label="Vista",
-                        on_change=lambda e: (
-                            _s.__setitem__("modo", e.value),
-                            (vista_planilla.refresh() if e.value == "planilla" else contenido_actividades.refresh()),
-                        ),
-                    ).classes("w-44")
+                    ui.label("Planilla de Notas").classes("text-xl font-bold flex-1")
+                    barra_vista()
                     btn_icon(
                         "refresh",
-                        on_click=lambda: (
-                            _cargar_datos_asignacion(),
-                            vista_planilla.refresh(),
-                            contenido_actividades.refresh(),
-                        ),
-                        tooltip="Recargar",
+                        on_click=_recargar,
+                        tooltip="Recargar datos",
                     )
 
+            # Contenido de la vista activa
             with ui.element("div").classes("panel-card mt-4"):
-                if _s["modo"] == "planilla":
-                    ui.label("Notas por estudiante y actividad").classes(
-                        "text-base font-semibold mb-3"
-                    )
-                    vista_planilla()
-                else:
-                    ui.label("Gestión de actividades").classes(
-                        "text-base font-semibold mb-3"
-                    )
-                    contenido_actividades()
+                panel_vista()
 
     def on_context_change() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Evaluación · Planilla de Notas",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/evaluacion/planilla",
-        contenido=contenido,
-        ctx=ctx,
-        on_context_change=on_context_change,
+        titulo_pagina     = "Evaluación · Planilla de Notas",
+        usuario_nombre    = ctx.usuario_nombre,
+        usuario_rol       = ctx.usuario_rol,
+        ruta_activa       = "/evaluacion/planilla",
+        contenido         = contenido,
+        ctx               = ctx,
+        on_context_change = on_context_change,
     )
 
 

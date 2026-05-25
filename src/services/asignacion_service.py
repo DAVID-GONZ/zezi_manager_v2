@@ -193,4 +193,4 @@ class AsignacionService:
         return self._repo.listar_info(filtro)
 
 
-__all__ = ["AsignacionService"]
+__all__ = ["AsignacionService", "FiltroAsignacionesDTO"]

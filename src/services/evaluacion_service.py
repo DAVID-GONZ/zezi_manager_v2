@@ -10,16 +10,22 @@ from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.siee_repo import ISIEERepository
 from src.domain.models.evaluacion import (
     Actividad,
     CalculadorNotas,
     Categoria,
+    ConfiguracionSIEE,
     EstadoActividad,
+    ModoSIEE,
     Nota,
     NuevaCategoriaDTO,
+    NuevaCategoriaInstitucionalDTO,
+    NuevaConfiguracionSIEEDTO,
     ActualizarCategoriaDTO,
     NuevaActividadDTO,
     PuntosExtra,
+    TipoPuntosExtra,
     RegistrarNotaDTO,
     RegistrarNotasMasivasDTO,
     ResultadoEstudianteDTO,
@@ -40,11 +46,13 @@ class EvaluacionService:
         asignacion_repo: IAsignacionRepository | None = None,
         periodo_repo: IPeriodoRepository | None = None,
         auditoria: IAuditoriaRepository | None = None,
+        siee_repo: ISIEERepository | None = None,
     ) -> None:
-        self._repo           = repo
+        self._repo            = repo
         self._asignacion_repo = asignacion_repo
-        self._periodo_repo   = periodo_repo
-        self._auditoria      = auditoria
+        self._periodo_repo    = periodo_repo
+        self._auditoria       = auditoria
+        self._siee_repo       = siee_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -101,6 +109,43 @@ class EvaluacionService:
     # Categorías
     # ------------------------------------------------------------------
 
+    def _get_siee_o_libre(self, anio_id: int) -> ConfiguracionSIEE:
+        """
+        Retorna la configuración SIEE del año.
+        Si no hay repositorio o no hay configuración, retorna modo LIBRE.
+        """
+        if self._siee_repo is None:
+            return ConfiguracionSIEE(anio_id=anio_id, modo=ModoSIEE.LIBRE)
+        cfg = self._siee_repo.get_configuracion(anio_id)
+        return cfg if cfg is not None else ConfiguracionSIEE(anio_id=anio_id, modo=ModoSIEE.LIBRE)
+
+    def peso_autonomia_disponible(
+        self,
+        asignacion_id: int,
+        periodo_id: int,
+        anio_id: int,
+    ) -> float:
+        """
+        Retorna el peso (0-1) disponible para que el docente añada categorías.
+
+        - LIBRE / MIXTO_SUBCATEGORIAS → disponible = 1.0 - suma_categorias_docente
+        - INSTITUCIONAL_FIJO          → 0.0 (docente no puede añadir nada)
+        - MIXTO_AUTONOMIA             → porcentaje_autonomia_docente - suma_categorias_docente
+        """
+        cfg = self._get_siee_o_libre(anio_id)
+
+        if cfg.modo == ModoSIEE.INSTITUCIONAL_FIJO:
+            return 0.0
+
+        suma_docente = self._repo.suma_pesos_otras(asignacion_id, periodo_id)
+
+        if cfg.modo == ModoSIEE.MIXTO_AUTONOMIA:
+            autonomia = cfg.porcentaje_autonomia_docente or 0.0
+            return round(max(0.0, autonomia - suma_docente), 4)
+
+        # LIBRE o MIXTO_SUBCATEGORIAS
+        return round(max(0.0, 1.0 - suma_docente), 4)
+
     def agregar_categoria(
         self,
         dto: NuevaCategoriaDTO,
@@ -108,19 +153,47 @@ class EvaluacionService:
         usuario_id: int | None = None,
     ) -> Categoria:
         """
-        Agrega una categoría de evaluación.
+        Agrega una categoría de evaluación de docente.
 
-        Verifica que el periodo no esté cerrado y que la suma de pesos
-        no supere 1.0 (100%).
+        Guards aplicados según el modo SIEE activo:
+          LIBRE              → solo verifica que los pesos no superen 1.0.
+          INSTITUCIONAL_FIJO → lanza PermissionError; docente no puede crear categorías.
+          MIXTO_SUBCATEGORIAS→ si viene con categoria_padre_id, verifica que la padre
+                               sea institucional y permita sub-categorías.
+          MIXTO_AUTONOMIA    → verifica que no supere el porcentaje de autonomía.
         """
         self._verificar_periodo_abierto(dto.periodo_id)
 
-        suma = self._repo.suma_pesos_otras(dto.asignacion_id, dto.periodo_id)
-        if suma + dto.peso > 1.001:
+        anio_id = ctx.anio_id if hasattr(ctx, "anio_id") else 0
+        cfg = self._get_siee_o_libre(anio_id)
+
+        # Guard INSTITUCIONAL_FIJO
+        if cfg.modo == ModoSIEE.INSTITUCIONAL_FIJO:
+            raise PermissionError(
+                "La configuración SIEE institucional está fijada. "
+                "Los docentes no pueden crear categorías propias."
+            )
+
+        # Guard MIXTO_SUBCATEGORIAS: si viene padre, verificar que sea válido
+        if cfg.modo == ModoSIEE.MIXTO_SUBCATEGORIAS and dto.categoria_padre_id is not None:
+            if self._siee_repo is not None:
+                padre = self._siee_repo.get_categoria_institucional(dto.categoria_padre_id)
+                if padre is None:
+                    raise ValueError(
+                        f"La categoría padre con id {dto.categoria_padre_id} "
+                        "no es una categoría institucional."
+                    )
+                if not padre.permite_subcategorias:
+                    raise ValueError(
+                        f"La categoría '{padre.nombre}' no permite sub-categorías."
+                    )
+
+        # Guard de peso disponible
+        disponible = self.peso_autonomia_disponible(dto.asignacion_id, dto.periodo_id, anio_id)
+        if dto.peso > disponible + 0.001:
             raise ValueError(
-                f"La suma de pesos de las categorías superaría el 100% "
-                f"(actual: {suma*100:.1f}%, nueva: {dto.peso*100:.1f}%). "
-                f"Disponible: {(1.0 - suma)*100:.1f}%."
+                f"El peso solicitado ({dto.peso*100:.1f}%) supera el disponible "
+                f"({disponible*100:.1f}%)."
             )
 
         categoria = dto.to_categoria()
@@ -144,7 +217,7 @@ class EvaluacionService:
         if dto.peso is not None and dto.peso != categoria.peso:
             suma_sin_esta = self._repo.suma_pesos_otras(
                 categoria.asignacion_id, categoria.periodo_id,
-                excluir_id=cat_id,
+                excluir_cat_id=cat_id,
             )
             if suma_sin_esta + dto.peso > 1.001:
                 raise ValueError(
@@ -238,6 +311,23 @@ class EvaluacionService:
             usuario_id,
         )
         return actividad_cerrada
+
+    def reabrir_actividad(
+        self,
+        act_id: int,
+        usuario_id: int | None = None,
+    ) -> Actividad:
+        """Reabre una actividad cerrada para volver a aceptar notas."""
+        actividad = self._get_actividad_o_lanzar(act_id)
+        actividad_reabierta = actividad.reabrir()  # lanza si no está cerrada
+        self._repo.actualizar_estado_actividad(act_id, EstadoActividad.PUBLICADA)
+        self._auditar(
+            AccionCambio.UPDATE, "actividades", act_id,
+            actividad.model_dump(mode="json"),
+            actividad_reabierta.model_dump(mode="json"),
+            usuario_id,
+        )
+        return actividad_reabierta
 
     def eliminar_actividad(
         self,
@@ -347,6 +437,14 @@ class EvaluacionService:
 
         return resultados
 
+    def listar_puntos_extra(
+        self,
+        asignacion_id: int,
+        periodo_id: int,
+    ) -> list[PuntosExtra]:
+        """Retorna todos los registros de puntos extra de la asignación en el periodo."""
+        return self._repo.listar_puntos_extra(asignacion_id, periodo_id)
+
     def guardar_puntos_extra(
         self,
         puntos: PuntosExtra,
@@ -355,5 +453,156 @@ class EvaluacionService:
         """Guarda o actualiza los puntos extra de un estudiante."""
         return self._repo.guardar_puntos_extra(puntos)
 
+    # ------------------------------------------------------------------
+    # SIEE — configuración y categorías institucionales
+    # ------------------------------------------------------------------
 
-__all__ = ["EvaluacionService"]
+    def get_configuracion_siee(self, anio_id: int) -> ConfiguracionSIEE:
+        """
+        Retorna la configuración SIEE del año.
+        Si no existe, retorna un objeto con modo LIBRE (no persiste).
+        """
+        return self._get_siee_o_libre(anio_id)
+
+    def guardar_configuracion_siee(
+        self,
+        dto: NuevaConfiguracionSIEEDTO,
+        usuario_id: int | None = None,
+    ) -> ConfiguracionSIEE:
+        """
+        Crea o actualiza la configuración SIEE del año.
+
+        Lanza ValueError si:
+          - modo == MIXTO_AUTONOMIA y porcentaje_autonomia_docente es None.
+          - porcentaje_autonomia_docente > 1 - suma_pesos_institucionales
+            (el porcentaje autónomo supera lo que queda libre).
+        """
+        if self._siee_repo is None:
+            raise RuntimeError("SIEERepository no disponible.")
+
+        if dto.modo == ModoSIEE.MIXTO_AUTONOMIA and dto.porcentaje_autonomia_docente is None:
+            raise ValueError(
+                "Para el modo 'mixto_autonomia' debes indicar "
+                "el porcentaje de autonomía del docente."
+            )
+
+        cfg = dto.to_configuracion_siee()
+        cfg = self._siee_repo.guardar_configuracion(cfg)
+        self._auditar(
+            AccionCambio.UPDATE, "configuracion_siee", cfg.id,
+            None, cfg.model_dump(mode="json"), usuario_id,
+        )
+        return cfg
+
+    def listar_categorias_institucionales(self, anio_id: int) -> list[Categoria]:
+        """Retorna las categorías institucionales del año."""
+        if self._siee_repo is None:
+            return []
+        return self._siee_repo.listar_categorias_institucionales(anio_id)
+
+    def agregar_categoria_institucional(
+        self,
+        dto: NuevaCategoriaInstitucionalDTO,
+        usuario_id: int | None = None,
+    ) -> Categoria:
+        """
+        Crea una categoría institucional.
+        Solo admin/director/coordinador deben llamar a este método.
+
+        Verifica que la suma de pesos institucionales no supere 1.0.
+        """
+        if self._siee_repo is None:
+            raise RuntimeError("SIEERepository no disponible.")
+
+        suma = self._siee_repo.suma_pesos_institucionales(dto.anio_id)
+        if suma + dto.peso > 1.001:
+            raise ValueError(
+                f"La suma de pesos institucionales superaría el 100% "
+                f"(actual: {suma*100:.1f}%, nueva: {dto.peso*100:.1f}%). "
+                f"Disponible: {(1.0 - suma)*100:.1f}%."
+            )
+
+        categoria = dto.to_categoria()
+        categoria = self._siee_repo.guardar_categoria_institucional(categoria)
+        self._auditar(
+            AccionCambio.CREATE, "categorias", categoria.id,
+            None, categoria.model_dump(mode="json"), usuario_id,
+        )
+        return categoria
+
+    def actualizar_categoria_institucional(
+        self,
+        cat_id: int,
+        dto: ActualizarCategoriaDTO,
+        anio_id: int,
+        usuario_id: int | None = None,
+    ) -> Categoria:
+        """
+        Actualiza una categoría institucional existente.
+        Verifica que el nuevo peso no haga superar el 100% del total institucional.
+        """
+        if self._siee_repo is None:
+            raise RuntimeError("SIEERepository no disponible.")
+
+        cat = self._siee_repo.get_categoria_institucional(cat_id)
+        if cat is None:
+            raise ValueError(f"Categoría institucional con id {cat_id} no existe.")
+
+        if dto.peso is not None and dto.peso != cat.peso:
+            # suma de los otros (excluimos la actual)
+            suma_todas = self._siee_repo.suma_pesos_institucionales(anio_id)
+            suma_sin_esta = round(suma_todas - cat.peso, 4)
+            if suma_sin_esta + dto.peso > 1.001:
+                raise ValueError(
+                    f"El nuevo peso ({dto.peso*100:.1f}%) superaría el 100% "
+                    f"del total institucional. "
+                    f"Disponible: {(1.0 - suma_sin_esta)*100:.1f}%."
+                )
+
+        datos_ant = cat.model_dump(mode="json")
+        cat_actualizada = dto.aplicar_a(cat)
+        self._siee_repo.actualizar_categoria_institucional(cat_actualizada)
+        self._auditar(
+            AccionCambio.UPDATE, "categorias", cat_id,
+            datos_ant, cat_actualizada.model_dump(mode="json"), usuario_id,
+        )
+        return cat_actualizada
+
+    def eliminar_categoria_institucional(
+        self,
+        cat_id: int,
+        usuario_id: int | None = None,
+    ) -> None:
+        """
+        Elimina una categoría institucional.
+        """
+        if self._siee_repo is None:
+            raise RuntimeError("SIEERepository no disponible.")
+
+        cat = self._siee_repo.get_categoria_institucional(cat_id)
+        if cat is None:
+            raise ValueError(f"Categoría institucional con id {cat_id} no existe.")
+
+        datos_ant = cat.model_dump(mode="json")
+        self._siee_repo.eliminar_categoria_institucional(cat_id)
+        self._auditar(
+            AccionCambio.DELETE, "categorias", cat_id,
+            datos_ant, None, usuario_id,
+        )
+
+
+__all__ = [
+    "EvaluacionService",
+    # DTOs / enums re-exportados para la capa de interfaz
+    "ContextoAcademicoDTO",
+    "EstadoActividad",
+    "NuevaCategoriaDTO",
+    "ActualizarCategoriaDTO",
+    "NuevaActividadDTO",
+    "RegistrarNotaDTO",
+    "NuevaConfiguracionSIEEDTO",
+    "NuevaCategoriaInstitucionalDTO",
+    "ModoSIEE",
+    "PuntosExtra",
+    "TipoPuntosExtra",
+]

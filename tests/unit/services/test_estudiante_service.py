@@ -7,7 +7,7 @@ from src.domain.models.estudiante import (
     Estudiante, EstadoMatricula, FiltroEstudiantesDTO,
     EstudianteResumenDTO, NuevoEstudianteDTO,
 )
-from src.domain.models.piar import PIAR, NuevoPIARDTO
+from src.domain.models.piar import PIAR, NuevoPIARDTO, ActualizarPIARDTO
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.services.estudiante_service import EstudianteService
 
@@ -173,3 +173,95 @@ class TestRegistrarPIAR:
         svc.registrar_piar(dto_piar)
         with pytest.raises(ValueError, match="Ya existe un PIAR"):
             svc.registrar_piar(dto_piar)
+
+
+class TestActualizarPIAR:
+    def test_actualiza_piar_existente(self):
+        svc, repo = _make_svc()
+        est = svc.matricular(_dto())
+        svc.registrar_piar(NuevoPIARDTO(
+            estudiante_id=est.id, anio_id=1,
+            descripcion_necesidad="Descripción original",
+        ))
+        dto_act = ActualizarPIARDTO(descripcion_necesidad="Descripción actualizada")
+        piar = svc.actualizar_piar(est.id, 1, dto_act)
+        assert piar.descripcion_necesidad == "Descripción actualizada"
+
+    def test_actualiza_solo_campos_provistos(self):
+        svc, _ = _make_svc()
+        est = svc.matricular(_dto())
+        svc.registrar_piar(NuevoPIARDTO(
+            estudiante_id=est.id, anio_id=1,
+            descripcion_necesidad="Original",
+            ajustes_evaluativos="Ajustes previos",
+        ))
+        dto_act = ActualizarPIARDTO(ajustes_pedagogicos="Nuevos ajustes pedagógicos")
+        piar = svc.actualizar_piar(est.id, 1, dto_act)
+        # El campo no tocado se conserva
+        assert piar.ajustes_evaluativos == "Ajustes previos"
+        assert piar.ajustes_pedagogicos == "Nuevos ajustes pedagógicos"
+
+    def test_lanza_si_piar_no_existe(self):
+        svc, _ = _make_svc()
+        dto_act = ActualizarPIARDTO(descripcion_necesidad="No importa")
+        with pytest.raises(ValueError, match="No existe PIAR"):
+            svc.actualizar_piar(999, 1, dto_act)
+
+
+class TestMatricularMasivoCsv:
+    def _filas(self, n: int = 3) -> list[dict]:
+        return [
+            {
+                "tipo_documento": "TI",
+                "numero_documento": f"DOC{i:03d}",
+                "nombre": f"Nombre{i}",
+                "apellido": f"Apellido{i}",
+                "genero": "M",
+                "grupo_codigo": "A1",
+            }
+            for i in range(1, n + 1)
+        ]
+
+    def test_carga_exitosa(self):
+        svc, _ = _make_svc()
+        mapa = {"A1": 10}
+        resultado = svc.matricular_masivo_csv(self._filas(3), mapa)
+        assert resultado.total_procesadas == 3
+        assert resultado.exitosas == 3
+        assert resultado.fallidas == 0
+
+    def test_documenta_errores_en_duplicados(self):
+        svc, _ = _make_svc()
+        filas = self._filas(2)
+        # Fila duplicada
+        filas.append({
+            "tipo_documento": "TI",
+            "numero_documento": "DOC001",   # ya insertado
+            "nombre": "Dup",
+            "apellido": "Ado",
+            "genero": "",
+            "grupo_codigo": "",
+        })
+        resultado = svc.matricular_masivo_csv(filas, {})
+        assert resultado.total_procesadas == 3
+        assert resultado.exitosas == 2
+        assert resultado.fallidas == 1
+        assert resultado.errores[0]["dato"] == "DOC001"
+
+    def test_grupo_desconocido_no_interrumpe(self):
+        svc, _ = _make_svc()
+        filas = self._filas(1)
+        # mapa vacío → grupo_id=None, pero se matricula igual
+        resultado = svc.matricular_masivo_csv(filas, {})
+        assert resultado.exitosas == 1
+
+    def test_fue_exitosa_true_si_sin_errores(self):
+        svc, _ = _make_svc()
+        resultado = svc.matricular_masivo_csv(self._filas(2), {})
+        assert resultado.fue_exitosa is True
+
+    def test_fue_exitosa_false_si_hay_errores(self):
+        svc, _ = _make_svc()
+        filas = [{"tipo_documento": "TI", "numero_documento": "", "nombre": "", "apellido": "", "genero": "", "grupo_codigo": ""}]
+        resultado = svc.matricular_masivo_csv(filas, {})
+        assert resultado.fue_exitosa is False

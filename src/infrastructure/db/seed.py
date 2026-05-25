@@ -208,6 +208,15 @@ _CATEGORIAS_EVALUACION = [
     ("Participación", 0.25),
 ]
 
+# Categorías institucionales para el modo MIXTO_SUBCATEGORIAS del dev seed.
+# Formato: (nombre, peso, permite_subcategorias)
+# Ser + Saber + Hacer = 1.0
+_CATEGORIAS_INSTITUCIONALES_DEV = [
+    ("Ser",   0.10, False),  # actitudinal — fijo, sin sub-categorías
+    ("Saber", 0.40, False),  # cognitivo — fijo
+    ("Hacer", 0.50, True),   # procedimental — docente puede sub-categorizar
+]
+
 _HORARIOS_BASE = [
     ("Lunes",     "07:00", "07:55"),
     ("Lunes",     "07:55", "08:50"),
@@ -864,6 +873,80 @@ def _seed_observaciones(
 
 
 # ---------------------------------------------------------------------------
+# Seeder SIEE
+# ---------------------------------------------------------------------------
+
+def _seed_configuracion_siee(
+    conn: sqlite3.Connection,
+    anio_id: int,
+    modo: str = "mixto_subcategorias",
+    porcentaje_autonomia_docente: float | None = None,
+    categorias_institucionales: list[tuple] | None = None,
+) -> int:
+    """
+    Crea o recupera la configuración SIEE del año y sus categorías institucionales.
+
+    Args:
+        conn:                         Conexión SQLite activa.
+        anio_id:                      ID del año lectivo.
+        modo:                         Modo SIEE ('libre', 'institucional_fijo',
+                                      'mixto_subcategorias', 'mixto_autonomia').
+        porcentaje_autonomia_docente: Solo para 'mixto_autonomia'.
+        categorias_institucionales:   Lista de (nombre, peso, permite_subcategorias).
+                                      Si None, usa _CATEGORIAS_INSTITUCIONALES_DEV.
+
+    Returns:
+        ID del registro configuracion_siee.
+    """
+    # Upsert configuración SIEE
+    existing = conn.execute(
+        "SELECT id FROM configuracion_siee WHERE anio_id = ?", (anio_id,)
+    ).fetchone()
+
+    if existing:
+        siee_id = existing[0]
+        conn.execute(
+            """
+            UPDATE configuracion_siee
+               SET modo = ?, porcentaje_autonomia_docente = ?
+             WHERE id = ?
+            """,
+            (modo, porcentaje_autonomia_docente, siee_id),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO configuracion_siee
+                (anio_id, modo, porcentaje_autonomia_docente)
+            VALUES (?, ?, ?)
+            """,
+            (anio_id, modo, porcentaje_autonomia_docente),
+        )
+        siee_id = conn.execute(
+            "SELECT id FROM configuracion_siee WHERE anio_id = ?", (anio_id,)
+        ).fetchone()[0]
+
+    # Categorías institucionales
+    cats = categorias_institucionales or _CATEGORIAS_INSTITUCIONALES_DEV
+    for nombre, peso, permite_sub in cats:
+        existing_cat = conn.execute(
+            "SELECT id FROM categorias WHERE nombre = ? AND anio_id = ? AND es_institucional = 1",
+            (nombre, anio_id),
+        ).fetchone()
+        if not existing_cat:
+            conn.execute(
+                """
+                INSERT INTO categorias
+                    (nombre, peso, anio_id, es_institucional, permite_subcategorias)
+                VALUES (?, ?, ?, 1, ?)
+                """,
+                (nombre, peso, anio_id, int(permite_sub)),
+            )
+
+    return siee_id
+
+
+# ---------------------------------------------------------------------------
 # API pública
 # ---------------------------------------------------------------------------
 
@@ -901,6 +984,32 @@ def seed_base(
     }
     result.log_resumen()
     return result
+
+
+def seed_siee(
+    conn: sqlite3.Connection,
+    anio_id: int,
+    modo: str = "mixto_subcategorias",
+    porcentaje_autonomia_docente: float | None = None,
+    categorias_institucionales: list[tuple] | None = None,
+) -> None:
+    """
+    Configura el SIEE para un año lectivo ya existente.
+
+    Separado de seed_base para que sea explícito: la instalación base arranca
+    en modo 'libre' (sin restricciones) y el admin activa el SIEE cuando lo
+    decide. En desarrollo se llama desde seed_dev con modo mixto_subcategorias.
+
+    Args:
+        conn:                         Conexión SQLite activa.
+        anio_id:                      ID del año lectivo.
+        modo:                         Modo SIEE.
+        porcentaje_autonomia_docente: Solo para 'mixto_autonomia'.
+        categorias_institucionales:   Lista de (nombre, peso, permite_subcategorias).
+    """
+    _seed_configuracion_siee(
+        conn, anio_id, modo, porcentaje_autonomia_docente, categorias_institucionales
+    )
 
 
 def seed_dev(
@@ -982,6 +1091,9 @@ def seed_dev(
         result.periodo_ids,
         prof_id,
     )
+
+    # Configuración SIEE: modo mixto_subcategorias con las categorías Ser/Saber/Hacer
+    _seed_configuracion_siee(conn, result.anio_id, modo="mixto_subcategorias")
 
     result.counts.update({
         "usuarios_total":     len(result.usuario_ids),
@@ -1097,6 +1209,7 @@ __all__ = [
     "seed_base",
     "seed_dev",
     "seed_test",
+    "seed_siee",
     "SeedResult",
     "_fast_hasher",
     "_default_hasher",

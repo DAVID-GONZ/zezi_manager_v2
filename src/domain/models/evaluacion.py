@@ -9,7 +9,7 @@ Contiene:
   DTOs     — NuevaCategoriaDTO, ActualizarCategoriaDTO,
               NuevaActividadDTO, ActualizarActividadDTO,
               RegistrarNotaDTO, RegistrarNotasMasivasDTO,
-              ResultadoEstudianteDTO, FiltroNotasDTO
+              ResultadoEstudianteDTO
 
 El corazón de este módulo es CalculadorNotas:
   calcular_definitiva()
@@ -53,9 +53,75 @@ class TipoPuntosExtra(str, Enum):
     ACADEMICO      = "academico"
 
 
+class ModoSIEE(str, Enum):
+    """
+    Define cómo se distribuyen las categorías de evaluación en la institución.
+
+    LIBRE              — sin restricciones; cada docente configura todo (modo legacy).
+    INSTITUCIONAL_FIJO — el admin fija todas las categorías con pesos inamovibles;
+                         el docente solo crea actividades dentro de ellas.
+    MIXTO_SUBCATEGORIAS— el admin define categorías macro (ej. Ser 10%, Saber 40%, Hacer 50%);
+                         el docente puede crear sub-categorías dentro de las marcadas
+                         con `permite_subcategorias=True`.
+    MIXTO_AUTONOMIA    — el admin fija un porcentaje institucional y reserva un
+                         `porcentaje_autonomia_docente`; el docente distribuye
+                         libremente ese porcentaje restante con sus propias categorías.
+    """
+    LIBRE               = "libre"
+    INSTITUCIONAL_FIJO  = "institucional_fijo"
+    MIXTO_SUBCATEGORIAS = "mixto_subcategorias"
+    MIXTO_AUTONOMIA     = "mixto_autonomia"
+
+
 # =============================================================================
 # Entidades
 # =============================================================================
+
+class ConfiguracionSIEE(BaseModel):
+    """
+    Configuración del Sistema Institucional de Evaluación (SIEE) para un año lectivo.
+
+    Decide el modo de distribución de categorías de evaluación:
+      - LIBRE              → docentes configuran todo (comportamiento por defecto).
+      - INSTITUCIONAL_FIJO → admin fija todas las categorías; docentes solo añaden actividades.
+      - MIXTO_SUBCATEGORIAS→ admin fija macro-categorías; docentes sub-categorizan
+                             las que tienen `permite_subcategorias=True`.
+      - MIXTO_AUTONOMIA    → admin fija parte del peso; docentes gestionan `porcentaje_autonomia_docente`.
+
+    `porcentaje_autonomia_docente` es obligatorio si modo == MIXTO_AUTONOMIA.
+    """
+    id:                           int | None  = None
+    anio_id:                      int
+    modo:                         ModoSIEE    = ModoSIEE.LIBRE
+    porcentaje_autonomia_docente: float | None = None  # solo para MIXTO_AUTONOMIA
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("porcentaje_autonomia_docente")
+    @classmethod
+    def validar_porcentaje(cls, v: float | None) -> float | None:
+        if v is not None and not (0 < v <= 1.0):
+            raise ValueError(
+                f"porcentaje_autonomia_docente debe estar entre 0 (exclusivo) y 1.0 "
+                f"(recibido: {v}). Use 0.30 para representar 30%."
+            )
+        return v
+
+    @property
+    def peso_institucional(self) -> float | None:
+        """
+        Peso total reservado para categorías institucionales en MIXTO_AUTONOMIA.
+        Retorna None si el modo no aplica.
+        """
+        if self.modo != ModoSIEE.MIXTO_AUTONOMIA or self.porcentaje_autonomia_docente is None:
+            return None
+        return round(1.0 - self.porcentaje_autonomia_docente, 4)
+
 
 class Categoria(BaseModel):
     """
@@ -70,12 +136,26 @@ class Categoria(BaseModel):
     debe ser <= 1.0. Esta invariante la verifica el trigger de BD y el
     método CalculadorNotas.pesos_validos(). El modelo valida solo el
     rango individual (> 0 y <= 1).
+
+    Categorías institucionales (es_institucional=True):
+      - Las crea el admin en la configuración SIEE del año.
+      - `anio_id` está presente; `asignacion_id` y `periodo_id` son None.
+      - El servicio las "proyecta" a cada asignación+periodo al primer acceso.
+
+    Sub-categorías (categoria_padre_id IS NOT NULL):
+      - Solo en modo MIXTO_SUBCATEGORIAS.
+      - Son categorías de docente que viven dentro de una institucional
+        con `permite_subcategorias=True`.
     """
-    id:            int | None  = None
-    nombre:        str
-    peso:          float        # 0 < peso <= 1.0
-    asignacion_id: int
-    periodo_id:    int
+    id:                    int | None  = None
+    nombre:                str
+    peso:                  float        # 0 < peso <= 1.0
+    asignacion_id:         int | None  = None
+    periodo_id:            int | None  = None
+    anio_id:               int | None  = None   # solo para institucionales
+    es_institucional:      bool        = False
+    permite_subcategorias: bool        = False
+    categoria_padre_id:    int | None  = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -99,10 +179,10 @@ class Categoria(BaseModel):
             )
         return round(v, 4)
 
-    @field_validator("asignacion_id", "periodo_id")
+    @field_validator("asignacion_id", "periodo_id", "anio_id", "categoria_padre_id")
     @classmethod
-    def validar_id(cls, v: int) -> int:
-        if v <= 0:
+    def validar_id_opcional(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
 
@@ -110,6 +190,11 @@ class Categoria(BaseModel):
     def peso_porcentaje(self) -> float:
         """Peso en porcentaje: 0.40 → 40.0"""
         return round(self.peso * 100, 2)
+
+    @property
+    def es_docente(self) -> bool:
+        """True si la categoría pertenece a un docente (no es institucional)."""
+        return not self.es_institucional
 
 
 class Actividad(BaseModel):
@@ -185,7 +270,8 @@ class Actividad(BaseModel):
 
     @property
     def acepta_notas(self) -> bool:
-        return self.estado == EstadoActividad.PUBLICADA
+        """Alias de esta_publicada. Solo las actividades PUBLICADAS aceptan notas."""
+        return self.esta_publicada
 
     # ------------------------------------------------------------------
     # Transiciones de estado
@@ -208,6 +294,15 @@ class Actividad(BaseModel):
                 f"Estado actual: '{self.estado.value}'."
             )
         return self.model_copy(update={"estado": EstadoActividad.CERRADA})
+
+    def reabrir(self) -> "Actividad":
+        """Cerrada → Publicada (permite volver a registrar notas)."""
+        if self.estado != EstadoActividad.CERRADA:
+            raise ValueError(
+                f"Solo se puede reabrir una actividad cerrada. "
+                f"Estado actual: '{self.estado.value}'."
+            )
+        return self.model_copy(update={"estado": EstadoActividad.PUBLICADA})
 
 
 class Nota(BaseModel):
@@ -315,8 +410,15 @@ class CalculadorNotas:
     """
 
     @staticmethod
+    def _to_nota_map(notas: "list[Nota] | dict[int, float]") -> dict[int, float]:
+        """Normaliza notas a dict {actividad_id: valor}, aceptando ambos formatos."""
+        if isinstance(notas, dict):
+            return notas
+        return {n.actividad_id: n.valor for n in notas}
+
+    @staticmethod
     def calcular_definitiva(
-        notas:       list[Nota],
+        notas:       "list[Nota] | dict[int, float]",
         actividades: list[Actividad],
         categorias:  list[Categoria],
     ) -> float:
@@ -343,7 +445,7 @@ class CalculadorNotas:
         # Índices para búsqueda O(1)
         cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
         act_map: dict[int, Actividad] = {a.id: a for a in actividades if a.id}
-        nota_map: dict[int, float]    = {n.actividad_id: n.valor for n in notas}
+        nota_map: dict[int, float]    = CalculadorNotas._to_nota_map(notas)
 
         # Actividades por categoría
         acts_por_cat: dict[int, list[int]] = {}
@@ -366,7 +468,7 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_promedio_ajustado(
-        notas:       list[Nota],
+        notas:       "list[Nota] | dict[int, float]",
         actividades: list[Actividad],
         categorias:  list[Categoria],
         hasta_fecha: date | None = None,
@@ -394,7 +496,7 @@ class CalculadorNotas:
             return 0.0
 
         corte = hasta_fecha or date.today()
-        nota_map: dict[int, float] = {n.actividad_id: n.valor for n in notas}
+        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
 
         # Filtrar actividades con fecha <= corte que tienen nota
         acts_evaluadas: dict[int, list[float]] = {}
@@ -491,12 +593,89 @@ def nivel_desempeno(nota: float) -> str:
 # DTOs
 # =============================================================================
 
+class NuevaConfiguracionSIEEDTO(BaseModel):
+    """Datos para crear o reemplazar la configuración SIEE de un año."""
+    anio_id:                      int
+    modo:                         ModoSIEE    = ModoSIEE.LIBRE
+    porcentaje_autonomia_docente: float | None = None
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("porcentaje_autonomia_docente")
+    @classmethod
+    def validar_porcentaje(cls, v: float | None) -> float | None:
+        if v is not None and not (0 < v <= 1.0):
+            raise ValueError(
+                f"porcentaje_autonomia_docente debe estar entre 0 y 1.0 "
+                f"(recibido: {v})."
+            )
+        return v
+
+    def to_configuracion_siee(self) -> ConfiguracionSIEE:
+        return ConfiguracionSIEE(**self.model_dump())
+
+
+class NuevaCategoriaInstitucionalDTO(BaseModel):
+    """
+    Datos para crear una categoría institucional en la configuración SIEE.
+
+    Las categorías institucionales se definen a nivel de año (no de asignación+periodo).
+    El servicio las proyecta automáticamente a cada asignación+periodo cuando
+    el docente accede por primera vez a su planilla.
+    """
+    nombre:                str
+    peso:                  float
+    anio_id:               int
+    permite_subcategorias: bool = False
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre no puede estar vacío.")
+        if len(v) > 100:
+            raise ValueError(f"El nombre no puede exceder 100 caracteres (tiene {len(v)}).")
+        return v
+
+    @field_validator("peso")
+    @classmethod
+    def validar_peso(cls, v: float) -> float:
+        if not (0 < v <= 1.0):
+            raise ValueError(
+                f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v})."
+            )
+        return round(v, 4)
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    def to_categoria(self) -> Categoria:
+        return Categoria(
+            nombre=self.nombre,
+            peso=self.peso,
+            anio_id=self.anio_id,
+            es_institucional=True,
+            permite_subcategorias=self.permite_subcategorias,
+        )
+
+
 class NuevaCategoriaDTO(BaseModel):
-    """Datos para crear una categoría de evaluación."""
-    nombre:        str
-    peso:          float
-    asignacion_id: int
-    periodo_id:    int
+    """Datos para crear una categoría de evaluación de docente."""
+    nombre:             str
+    peso:               float
+    asignacion_id:      int
+    periodo_id:         int
+    categoria_padre_id: int | None = None  # solo en modo MIXTO_SUBCATEGORIAS
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -527,8 +706,8 @@ class ActualizarCategoriaDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float | None) -> float | None:
-        if v is not None and not (0 < v <= 100.0):
-            raise ValueError(f"El peso debe estar entre 0 y 100.0 (recibido: {v}).")
+        if v is not None and not (0 < v <= 1.0):
+            raise ValueError(f"El peso debe estar entre 0 y 1.0 (recibido: {v}).")
         return v
 
     def aplicar_a(self, categoria: Categoria) -> Categoria:
@@ -619,6 +798,11 @@ class RegistrarNotasMasivasDTO(BaseModel):
     def total_notas(self) -> int:
         return len(self.notas)
 
+    def to_notas(self, usuario_registro_id: int | None = None) -> "list[Nota]":
+        """Convierte la lista de RegistrarNotaDTO a entidades Nota listas para persistir."""
+        uid = usuario_registro_id or self.usuario_registro_id
+        return [dto.to_nota(usuario_registro_id=uid) for dto in self.notas]
+
 
 class ResultadoEstudianteDTO(BaseModel):
     """
@@ -634,14 +818,6 @@ class ResultadoEstudianteDTO(BaseModel):
     posee_piar:         bool              = False
 
 
-class FiltroNotasDTO(BaseModel):
-    """Parámetros para consultar notas."""
-    asignacion_id:  int
-    periodo_id:     int
-    estudiante_id:  int | None = None
-    actividad_id:   int | None = None
-
-
 # =============================================================================
 # Exports
 # =============================================================================
@@ -650,7 +826,9 @@ __all__ = [
     # Enums
     "EstadoActividad",
     "TipoPuntosExtra",
+    "ModoSIEE",
     # Entidades
+    "ConfiguracionSIEE",
     "Categoria",
     "Actividad",
     "Nota",
@@ -658,6 +836,8 @@ __all__ = [
     # Lógica pura
     "CalculadorNotas",
     # DTOs
+    "NuevaConfiguracionSIEEDTO",
+    "NuevaCategoriaInstitucionalDTO",
     "NuevaCategoriaDTO",
     "ActualizarCategoriaDTO",
     "NuevaActividadDTO",
@@ -665,5 +845,4 @@ __all__ = [
     "RegistrarNotaDTO",
     "RegistrarNotasMasivasDTO",
     "ResultadoEstudianteDTO",
-    "FiltroNotasDTO",
 ]

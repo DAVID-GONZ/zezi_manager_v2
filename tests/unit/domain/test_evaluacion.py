@@ -21,7 +21,6 @@ from src.domain.models.evaluacion import (
     CalculadorNotas,
     Categoria,
     EstadoActividad,
-    FiltroNotasDTO,
     Nota,
     NuevaActividadDTO,
     NuevaCategoriaDTO,

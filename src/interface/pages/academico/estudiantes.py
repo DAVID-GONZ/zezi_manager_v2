@@ -6,7 +6,7 @@ Ruta: /estudiantes
 
 Secciones:
   1. Panel de filtros (grupo, estado, PIAR, búsqueda)
-  2. Botones de acción (Matricular, Carga CSV) en cabecera del panel
+  2. Botones de acción (Matricular, Carga CSV, Plantilla CSV) en cabecera del panel
   3. Tabla de estudiantes (@ui.refreshable)
   4. Dialog de matrícula individual
   5. Dialog de carga masiva CSV
@@ -18,6 +18,12 @@ Reglas de capas:
   - NINGÚN color, tamaño ni propiedad visual en Python — solo clases CSS.
   - No importa EstadoMatricula, Estudiante ni PIAR directamente.
     Pydantic v2 coerce strings automáticamente en los DTOs.
+
+Nota técnica — botones de tabla:
+  NiceGUI crea un componente Vue anónimo por cada slot template. Usar
+  $emit() dentro de ese componente emite DESDE ÉL, no desde la tabla,
+  por lo que tabla.on() nunca lo recibe. La solución es emitir explícitamente
+  desde el componente NiceGUI correcto usando getElement(tabla.id).$emit().
 """
 from __future__ import annotations
 
@@ -41,7 +47,7 @@ from src.services.estudiante_service import (
     ActualizarEstudianteDTO,
     FiltroEstudiantesDTO,
     NuevoPIARDTO,
-    MatriculaMasivaResultadoDTO,
+    ActualizarPIARDTO,
 )
 
 logger = logging.getLogger("ESTUDIANTES")
@@ -109,7 +115,7 @@ def estudiantes_page() -> None:
                 busqueda=_s["filtro_busqueda"] or None,
                 por_pagina=200,
             )
-            _s["estudiantes"] = Container.estudiante_service().listar_resumenes(filtro)
+            _s["estudiantes"] = Container.estudiante_service().listar_resumenes_plano(filtro)
         except Exception as exc:
             logger.error("Error cargando estudiantes: %s", exc)
             _s["estudiantes"] = []
@@ -140,6 +146,26 @@ def estudiantes_page() -> None:
             opts[g.id] = f"{g.codigo} — {g.grado}"
         return opts
 
+    # ── Generador de plantilla CSV descargable ───────────────────────────────
+
+    def _descargar_plantilla_csv() -> None:
+        """Genera y descarga un CSV de ejemplo con el formato correcto."""
+        cabeceras = [
+            "tipo_documento", "numero_documento", "nombre",
+            "apellido", "genero", "grupo_codigo",
+        ]
+        ejemplos = [
+            ["TI", "1020304050", "Maria Fernanda", "Lopez Torres", "F", "A1"],
+            ["TI", "1020304051", "Carlos Andres",  "Ramirez Ruiz",  "M", "A2"],
+            ["CC", "98765432",   "Ana Lucia",      "Gomez Prada",  "F", ""],
+        ]
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(cabeceras)
+        writer.writerows(ejemplos)
+        csv_bytes = buf.getvalue().encode("utf-8-sig")   # BOM para Excel
+        ui.download(csv_bytes, "plantilla_estudiantes.csv")
+
     # ── Procesador CSV ────────────────────────────────────────────────────────
 
     def _procesar_csv(content: bytes) -> None:
@@ -148,35 +174,14 @@ def estudiantes_page() -> None:
         except UnicodeDecodeError:
             texto = content.decode("latin-1")
 
-        reader = csv.DictReader(io.StringIO(texto))
-        filas  = list(reader)
+        filas = list(csv.DictReader(io.StringIO(texto)))
+        mapa_grupos: dict[str, int] = {g.codigo: g.id for g in _s["grupos"]}
 
-        resultado = MatriculaMasivaResultadoDTO(
-            total_procesadas=len(filas),
-            exitosas=0,
-            fallidas=0,
-            errores=[],
+        resultado = Container.estudiante_service().matricular_masivo_csv(
+            filas=filas,
+            mapa_grupos=mapa_grupos,
+            usuario_id=ctx.usuario_id,
         )
-        _mapa_grupos: dict[str, int] = {g.codigo: g.id for g in _s["grupos"]}
-        svc = Container.estudiante_service()
-
-        for i, fila in enumerate(filas, start=2):
-            num_doc = fila.get("numero_documento", "").strip()
-            try:
-                codigo_grupo = fila.get("grupo_codigo", "").strip()
-                grupo_id     = _mapa_grupos.get(codigo_grupo) if codigo_grupo else None
-                dto = NuevoEstudianteDTO(
-                    tipo_documento=fila.get("tipo_documento", "TI").strip() or "TI",
-                    numero_documento=num_doc,
-                    nombre=fila.get("nombre", "").strip(),
-                    apellido=fila.get("apellido", "").strip(),
-                    genero=fila.get("genero", "").strip() or None,
-                    grupo_id=grupo_id,
-                )
-                svc.matricular(dto, usuario_id=ctx.usuario_id)
-                resultado.exitosas += 1
-            except Exception as exc:
-                resultado.agregar_error(fila=i, dato=num_doc or "?", motivo=str(exc))
 
         _s["resultado_masivo"] = resultado
         _cargar_estudiantes()
@@ -202,7 +207,16 @@ def estudiantes_page() -> None:
 
         @ui.refreshable
         def tabla_refreshable() -> None:
-            """Tabla de estudiantes con acciones inline."""
+            """
+            Lista de estudiantes renderizada en Python puro.
+
+            Se abandonó ui.table + slots + $emit porque NiceGUI crea un
+            componente Vue anónimo por cada slot template y ningún mecanismo
+            de $emit desde ese contexto llega al handler Python registrado
+            con tabla.on(). En su lugar se renderiza una tabla HTML con
+            ui.element + bucle Python, lo que permite usar ui.button con
+            on_click directo — sin ningún puente JavaScript.
+            """
             estudiantes = _s["estudiantes"]
 
             if not estudiantes:
@@ -215,60 +229,103 @@ def estudiantes_page() -> None:
                     ).classes("tablero-panel-subtitle")
                 return
 
-            filas = []
-            for est in estudiantes:
-                estado_val = (
-                    est.estado_matricula.value
-                    if hasattr(est.estado_matricula, "value")
-                    else str(est.estado_matricula)
-                )
-                filas.append({
-                    "id":              est.id,
-                    "nombre_completo": est.nombre_completo,
-                    "documento_display": est.documento_display,
-                    "grupo_codigo":    _grupo_codigo(est.grupo_id),
-                    "estado_str":      _estado_label(estado_val),
-                    "estado_raw":      estado_val,
-                    "piar_badge":      "Sí" if est.posee_piar else "No",
-                    "posee_piar":      est.posee_piar,
-                })
+            # ── Cabecera de la tabla ──────────────────────────────────────────
+            with ui.element("div").classes("est-table w-full overflow-auto"):
+                with ui.element("table").classes("w-full est-table__table"):
 
-            columnas = [
-                {"name": "nombre",   "label": "Estudiante", "field": "nombre_completo",   "align": "left",   "sortable": True},
-                {"name": "doc",      "label": "Documento",  "field": "documento_display",  "align": "left"},
-                {"name": "grupo",    "label": "Grupo",      "field": "grupo_codigo",        "align": "center"},
-                {"name": "estado",   "label": "Estado",     "field": "estado_str",          "align": "center", "sortable": True},
-                {"name": "piar",     "label": "PIAR",       "field": "piar_badge",          "align": "center"},
-                {"name": "acciones", "label": "Acciones",   "field": "id",                  "align": "center"},
-            ]
+                    # thead
+                    with ui.element("thead"):
+                        with ui.element("tr").classes("est-table__head-row"):
+                            for label, extra in [
+                                ("Estudiante",  "est-table__th--left est-table__th--wide"),
+                                ("Documento",   "est-table__th--left"),
+                                ("Grupo",       "est-table__th--center"),
+                                ("Estado",      "est-table__th--center"),
+                                ("PIAR",        "est-table__th--center"),
+                                ("Acciones",    "est-table__th--center"),
+                            ]:
+                                with ui.element("th").classes(f"est-table__th {extra}"):
+                                    ui.label(label)
 
-            tabla = ui.table(columns=columnas, rows=filas, row_key="id").classes("w-full")
+                    # tbody — una fila por estudiante
+                    # estudiantes es list[dict] (primitivos puros, sin enums)
+                    with ui.element("tbody"):
+                        for est in estudiantes:
+                            estado_raw = est["estado_matricula"]   # str plano del servicio
+                            fila = {
+                                "id":               est["id"],
+                                "nombre_completo":  est["nombre_completo"],
+                                "documento_display": est["documento_display"],
+                                "grupo_codigo":     _grupo_codigo(est["grupo_id"]),
+                                "estado_str":       _estado_label(estado_raw),
+                                "estado_raw":       estado_raw,
+                                "posee_piar":       est["posee_piar"],
+                            }
 
-            tabla.add_slot("body-cell-acciones", """
-                <q-td :props="props" class="q-gutter-xs">
-                    <q-btn flat dense size="sm" icon="edit" color="primary"
-                           @click="$emit('editar', props.row)" />
-                    <q-btn v-if="props.row.estado_raw !== 'retirado'"
-                           flat dense size="sm" icon="person_remove" color="negative"
-                           @click="$emit('retirar', props.row)" />
-                    <q-btn flat dense size="sm" icon="description" color="secondary"
-                           @click="$emit('piar', props.row)" />
-                </q-td>
-            """)
+                            # Captura de la fila en la closure — crítico en bucles
+                            def _fila_editar(_, f=fila):
+                                _abrir_dialog_edicion(f)
 
-            tabla.add_slot("body-cell-piar", """
-                <q-td :props="props" class="text-center">
-                    <q-badge
-                        :color="props.row.posee_piar ? 'teal' : 'grey-4'"
-                        :label="props.row.piar_badge"
-                        :text-color="props.row.posee_piar ? 'white' : 'grey-7'"
-                    />
-                </q-td>
-            """)
+                            def _fila_retirar(_, f=fila):
+                                _confirmar_retiro(f)
 
-            tabla.on("editar",  lambda e: _abrir_dialog_edicion(_row_from_args(e.args)))
-            tabla.on("retirar", lambda e: _confirmar_retiro(_row_from_args(e.args)))
-            tabla.on("piar",    lambda e: _abrir_dialog_piar(_row_from_args(e.args)))
+                            def _fila_piar(_, f=fila):
+                                _abrir_dialog_piar(f)
+
+                            with ui.element("tr").classes("est-table__row"):
+
+                                # Nombre
+                                with ui.element("td").classes("est-table__td est-table__td--left"):
+                                    ui.label(fila["nombre_completo"]).classes("est-table__nombre")
+
+                                # Documento
+                                with ui.element("td").classes("est-table__td est-table__td--left"):
+                                    ui.label(fila["documento_display"]).classes("est-table__doc")
+
+                                # Grupo
+                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                    ui.label(fila["grupo_codigo"]).classes("est-table__grupo")
+
+                                # Estado
+                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                    _color = {
+                                        "activo":   "positive",
+                                        "inactivo": "grey",
+                                        "retirado": "negative",
+                                        "graduado": "info",
+                                    }.get(fila["estado_raw"], "grey")
+                                    ui.badge(fila["estado_str"]).props(f"color={_color} rounded")
+
+                                # PIAR
+                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                    _piar_color = "teal" if fila["posee_piar"] else "grey-4"
+                                    _piar_txt   = "white" if fila["posee_piar"] else "grey-7"
+                                    _piar_label = "Sí" if fila["posee_piar"] else "No"
+                                    ui.badge(_piar_label).props(
+                                        f"color={_piar_color} text-color={_piar_txt} rounded"
+                                    )
+
+                                # Acciones — botones Python reales, sin slots ni $emit
+                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                    with ui.row().classes("gap-1 justify-center"):
+                                        es_retirado = fila["estado_raw"] == "retirado"
+
+                                        if not es_retirado:
+                                            (
+                                                ui.button(icon="edit", on_click=_fila_editar)
+                                                .props("flat dense size=sm color=primary")
+                                                .tooltip("Editar estudiante")
+                                            )
+                                            (
+                                                ui.button(icon="person_remove", on_click=_fila_retirar)
+                                                .props("flat dense size=sm color=negative")
+                                                .tooltip("Retirar matrícula")
+                                            )
+                                            (
+                                            ui.button(icon="description", on_click=_fila_piar)
+                                            .props("flat dense size=sm color=secondary")
+                                            .tooltip("Ver / registrar PIAR")
+                                            )
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -345,18 +402,46 @@ def estudiantes_page() -> None:
             )
 
         def _abrir_dialog_csv() -> None:
-            with ui.dialog() as dlg, ui.card().classes("w-full"):
-                ui.label("Carga masiva por CSV").classes("text-h6")
-                ui.label(
-                    "Formato: tipo_documento, numero_documento, nombre, apellido, genero, grupo_codigo"
-                ).classes("text-caption text-grey q-mb-md")
+            with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
+                with ui.row().classes("items-center justify-between w-full q-mb-sm"):
+                    ui.label("Carga masiva por CSV").classes("text-h6")
+                    btn_icon("close", on_click=dlg.close, variante="ghost")
+
+                with ui.element("div").classes("q-mb-md"):
+                    ui.label("Columnas requeridas en el archivo:").classes(
+                        "text-caption text-weight-medium q-mb-xs"
+                    )
+                    for col, desc in [
+                        ("tipo_documento",   "TI · CC · CE · NUIP"),
+                        ("numero_documento", "Identificador único del estudiante"),
+                        ("nombre",           "Nombres del estudiante"),
+                        ("apellido",         "Apellidos del estudiante"),
+                        ("genero",           "M · F · OTRO  (opcional)"),
+                        ("grupo_codigo",     "Código del grupo, ej: A1  (opcional)"),
+                    ]:
+                        with ui.row().classes("q-mb-xs gap-2"):
+                            ui.label(col).classes(
+                                "text-caption text-weight-bold text-primary"
+                            ).style("min-width:160px; font-family:monospace")
+                            ui.label(desc).classes("text-caption text-grey-7")
+
+                    ui.label(
+                        "Descarga la plantilla con el botón 'Plantilla' para evitar errores de formato."
+                    ).classes("text-caption text-orange q-mt-sm")
+
                 ui.upload(
                     label="Seleccionar archivo CSV",
                     on_upload=lambda e: (_procesar_csv(e.content.read()), dlg.close()),
                     auto_upload=True,
                 ).props("accept=.csv").classes("w-full")
-                with ui.row().classes("q-mt-md justify-end"):
-                    btn_ghost("Cerrar", on_click=dlg.close)
+
+                with ui.row().classes("q-mt-md justify-end gap-2"):
+                    btn_ghost("Cancelar", on_click=dlg.close)
+                    btn_secondary(
+                        "Descargar plantilla",
+                        icon="download",
+                        on_click=_descargar_plantilla_csv,
+                    )
             dlg.open()
 
         def _abrir_dialog_edicion(fila: dict) -> None:
@@ -364,17 +449,13 @@ def estudiantes_page() -> None:
             if not est_id:
                 return
             try:
-                est = Container.estudiante_service().get_by_id(est_id)
+                # get_para_edicion devuelve dict plano (strings, no enums)
+                # — la interfaz no necesita conocer ningún tipo del dominio.
+                est = Container.estudiante_service().get_para_edicion(est_id)
             except Exception as exc:
                 logger.error("Error cargando estudiante %s: %s", est_id, exc)
                 ui.notify("No se pudo cargar el estudiante.", type="negative")
                 return
-
-            estado_raw  = est.estado_matricula.value if hasattr(est.estado_matricula, "value") else str(est.estado_matricula)
-            genero_actual = (
-                est.genero.value if est.genero and hasattr(est.genero, "value")
-                else (str(est.genero) if est.genero else None)
-            )
 
             def _guardar_edicion(datos: dict) -> "bool | None":
                 try:
@@ -399,16 +480,16 @@ def estudiantes_page() -> None:
                     return False
 
             form_dialog(
-                titulo=f"Editar — {est.nombre_completo}",
+                titulo=f"Editar — {est['nombre_completo']}",
                 campos=[
-                    {"key": "nombre",     "label": "Nombre",    "tipo": "text",     "valor": est.nombre,   "requerido": True},
-                    {"key": "apellido",   "label": "Apellido",  "tipo": "text",     "valor": est.apellido, "requerido": True},
-                    {"key": "estado",     "label": "Estado",    "tipo": "select",   "valor": estado_raw,
+                    {"key": "nombre",     "label": "Nombre",    "tipo": "text",     "valor": est["nombre"],   "requerido": True},
+                    {"key": "apellido",   "label": "Apellido",  "tipo": "text",     "valor": est["apellido"], "requerido": True},
+                    {"key": "estado",     "label": "Estado",    "tipo": "select",   "valor": est["estado_matricula"],
                      "opciones": {"activo": "Activo", "inactivo": "Inactivo", "retirado": "Retirado", "graduado": "Graduado"}},
-                    {"key": "grupo_id",   "label": "Grupo",     "tipo": "select",   "valor": est.grupo_id, "opciones": _grupos_select()},
-                    {"key": "genero",     "label": "Género",    "tipo": "select",   "valor": genero_actual,
+                    {"key": "grupo_id",   "label": "Grupo",     "tipo": "select",   "valor": est["grupo_id"], "opciones": _grupos_select()},
+                    {"key": "genero",     "label": "Género",    "tipo": "select",   "valor": est["genero"],
                      "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
-                    {"key": "posee_piar", "label": "Posee PIAR","tipo": "checkbox", "valor": est.posee_piar},
+                    {"key": "posee_piar", "label": "Posee PIAR","tipo": "checkbox", "valor": est["posee_piar"]},
                 ],
                 on_submit=_guardar_edicion,
                 max_width="max-w-lg",
@@ -435,10 +516,16 @@ def estudiantes_page() -> None:
 
             confirm_dialog(
                 titulo="Retirar estudiante",
-                mensaje=f"¿Retirar a {nombre} de la matrícula? El estado cambiará a Retirado.",
+                mensaje=(
+                    f"Estás a punto de retirar a {nombre} de la matrícula.\n\n"
+                    "Esta acción cambiará el estado a Retirado e impedirá "
+                    "registrar asistencia o notas para este estudiante. "
+                    "No se puede deshacer desde esta pantalla."
+                ),
                 on_confirm=_ejecutar,
                 variante="danger",
-                texto_confirmar="Retirar",
+                texto_confirmar="Sí, retirar",
+                texto_cancelar="Cancelar",
             )
 
         def _abrir_dialog_piar(fila: dict) -> None:
@@ -497,22 +584,24 @@ def estudiantes_page() -> None:
                     ui.label(f"Fecha elaboración: {fecha_elab}").classes("text-caption text-grey q-mt-xs")
 
                     def _actualizar_piar() -> None:
+                        if not descripcion_ta.value.strip():
+                            ui.notify("La descripción de necesidades es obligatoria.", type="warning")
+                            return
                         try:
-                            dto = NuevoPIARDTO(
-                                estudiante_id=est_id,
-                                anio_id=anio_id,
+                            dto = ActualizarPIARDTO(
                                 descripcion_necesidad=descripcion_ta.value,
                                 ajustes_evaluativos=ajustes_eval_ta.value or None,
                                 ajustes_pedagogicos=ajustes_ped_ta.value or None,
                                 profesionales_apoyo=profesionales_inp.value or None,
                             )
-                            Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
+                            Container.estudiante_service().actualizar_piar(
+                                est_id, anio_id, dto, usuario_id=ctx.usuario_id,
+                            )
                             ui.notify("PIAR actualizado.", type="positive")
                             dlg.close()
                             _cargar_estudiantes()
                             tabla_refreshable.refresh()
                         except ValueError as exc:
-                            # Si ya existe, intentar actualizar (servicio puede lanzar ValueError)
                             ui.notify(str(exc), type="warning")
                         except Exception as exc:
                             logger.error("Error actualizando PIAR est=%s: %s", est_id, exc)
@@ -644,6 +733,12 @@ def estudiantes_page() -> None:
                             "Carga CSV",
                             icon="upload_file",
                             on_click=_abrir_dialog_csv,
+                            size="sm",
+                        )
+                        btn_ghost(
+                            "Plantilla",
+                            icon="download",
+                            on_click=_descargar_plantilla_csv,
                             size="sm",
                         )
 
