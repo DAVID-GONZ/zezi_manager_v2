@@ -447,9 +447,10 @@ def horarios_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Horarios",
-        page_subtitulo = "Grilla semanal de bloques de clase por grupo",
-        page_icono     = Icons.SCHEDULE,
+        page_titulo       = "Horarios",
+        page_subtitulo    = "Grilla semanal de bloques de clase por grupo",
+        page_icono        = Icons.SCHEDULE,
+        on_context_change = on_context_change,
     )
 
 

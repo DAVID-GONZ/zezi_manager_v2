@@ -95,6 +95,15 @@ class FakeCierreRepo(ICierreRepository):
             result = [c for c in result if c.nota_definitiva <= nota_maxima]
         return result
 
+    def borrar_cierres_periodo(self, asignacion_id: int, periodo_id: int) -> int:
+        keys_to_delete = [
+            k for k, c in self._cierres_per.items()
+            if c.asignacion_id == asignacion_id and c.periodo_id == periodo_id
+        ]
+        for k in keys_to_delete:
+            del self._cierres_per[k]
+        return len(keys_to_delete)
+
 
 class FakeEvalRepo(IEvaluacionRepository):
     def __init__(self, notas: list[Nota] = None):

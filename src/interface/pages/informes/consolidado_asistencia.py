@@ -81,6 +81,12 @@ def consolidado_asistencia_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     _s = _estado_inicial()
     _s["grupo_id"] = ctx.grupo_id
     _cargar_listas(ctx, _s)
@@ -189,6 +195,13 @@ def consolidado_asistencia_page() -> None:
             logger.error("Error generando informe de asistencia: %s", exc, exc_info=True)
             ui.notify("Error al generar el informe.", type="negative")
 
+    def on_context_change() -> None:
+        nuevo_ctx = SessionContext.desde_storage()
+        if nuevo_ctx:
+            _s["grupo_id"] = nuevo_ctx.grupo_id
+            _cargar_listas(nuevo_ctx, _s)
+        filtros_refreshable.refresh()
+
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -200,6 +213,7 @@ def consolidado_asistencia_page() -> None:
         ruta_activa="/informes/consolidado-asistencia",
         contenido=contenido,
         ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

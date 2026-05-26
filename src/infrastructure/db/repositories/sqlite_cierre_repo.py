@@ -131,6 +131,16 @@ class SqliteCierreRepository(ICierreRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_cierre_periodo(r) for r in rows]
 
+    def borrar_cierres_periodo(self, asignacion_id: int, periodo_id: int) -> int:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "DELETE FROM cierres_periodo WHERE asignacion_id = ? AND periodo_id = ?",
+                (asignacion_id, periodo_id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount
+
     # ------------------------------------------------------------------
     # Cierre Año
     # ------------------------------------------------------------------

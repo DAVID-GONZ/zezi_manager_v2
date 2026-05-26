@@ -164,3 +164,12 @@ class ICierreRepository(ABC):
         Ordenados por asignacion_id, luego nota_definitiva ASC.
         """
         ...
+
+    @abstractmethod
+    def borrar_cierres_periodo(self, asignacion_id: int, periodo_id: int) -> int:
+        """
+        Elimina todos los CierrePeriodo de una asignación en un periodo.
+        Retorna la cantidad de registros eliminados.
+        Usado para "reabrir" una asignación y permitir correcciones de notas.
+        """
+        ...

@@ -254,6 +254,12 @@ def notas_convivencia_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     _s = _estado_inicial()
     _cargar_estado(ctx, _s)
 

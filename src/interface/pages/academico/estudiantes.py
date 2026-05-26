@@ -81,6 +81,12 @@ def estudiantes_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     # ── Estado mutable de la página ───────────────────────────────────────────
     _s: dict = {
         "estudiantes":     [],

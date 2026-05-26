@@ -49,6 +49,10 @@ class ConfiguracionAnio(BaseModel):
     nota_minima_aprobacion: float       = 60.0
     activo:                 bool        = True
 
+    # Escala de notas
+    nota_minima_escala:     float       = 0.0    # límite inferior de la escala
+    nota_maxima_escala:     float       = 100.0  # límite superior de la escala
+
     # Datos institucionales (para boletines e informes)
     nombre_institucion:     str         = "Institución Educativa"
     dane_code:              str | None  = None
@@ -80,6 +84,13 @@ class ConfiguracionAnio(BaseModel):
             raise ValueError(
                 f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
             )
+        return round(v, 2)
+
+    @field_validator("nota_minima_escala", "nota_maxima_escala")
+    @classmethod
+    def validar_escala(cls, v: float) -> float:
+        if not (0 <= v <= 100):
+            raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("nombre_institucion", mode="before")
@@ -120,6 +131,15 @@ class ConfiguracionAnio(BaseModel):
             raise ValueError(
                 f"La fecha de inicio ({self.fecha_inicio_clases}) no puede ser "
                 f"posterior a la fecha de fin ({self.fecha_fin_clases})."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validar_escala_coherente(self) -> Self:
+        if self.nota_minima_escala >= self.nota_maxima_escala:
+            raise ValueError(
+                f"nota_minima_escala ({self.nota_minima_escala}) debe ser menor que "
+                f"nota_maxima_escala ({self.nota_maxima_escala})."
             )
         return self
 
@@ -185,6 +205,8 @@ class NuevaConfiguracionAnioDTO(BaseModel):
     fecha_inicio_clases:    date | None = None
     fecha_fin_clases:       date | None = None
     nota_minima_aprobacion: float       = 60.0
+    nota_minima_escala:     float       = 0.0
+    nota_maxima_escala:     float       = 100.0
     nombre_institucion:     str         = "Institución Educativa"
 
     @field_validator("anio")
@@ -199,6 +221,13 @@ class NuevaConfiguracionAnioDTO(BaseModel):
     def validar_nota(cls, v: float) -> float:
         if not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
+        return round(v, 2)
+
+    @field_validator("nota_minima_escala", "nota_maxima_escala")
+    @classmethod
+    def validar_escala(cls, v: float) -> float:
+        if not (0 <= v <= 100):
+            raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @model_validator(mode="after")
@@ -221,6 +250,8 @@ class ActualizarConfiguracionAnioDTO(BaseModel):
     fecha_inicio_clases:    date | None  = None
     fecha_fin_clases:       date | None  = None
     nota_minima_aprobacion: float | None = None
+    nota_minima_escala:     float | None = None
+    nota_maxima_escala:     float | None = None
 
     @field_validator("nota_minima_aprobacion")
     @classmethod

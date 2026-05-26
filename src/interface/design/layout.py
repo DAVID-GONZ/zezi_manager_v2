@@ -74,54 +74,54 @@ NAV_ITEMS: list[dict] = [
         "label": "Asistencia",
         "icon":  Icons.ATTENDANCE,
         "ruta":  "/asistencia",
-        "rol":   ["profesor", "coordinador"],
+        "rol":   ["admin", "director", "coordinador", "profesor"],
     },
     {
         "label": "Calificaciones",
         "icon":  Icons.GRADES,
-        "rol":   ["profesor", "coordinador", "director"],
+        "rol":   ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Planilla de Notas",   "icon": "table_chart",       "ruta": "/evaluacion/planilla",        "rol": ["profesor", "coordinador"]},
-            {"label": "Config. Evaluación",  "icon": "tune",              "ruta": "/evaluacion/configuracion",   "rol": ["profesor", "coordinador"]},
-            {"label": "Habilitaciones",      "icon": "assignment_return", "ruta": "/evaluacion/habilitaciones",  "rol": ["profesor", "coordinador"]},
-            {"label": "Planes de Mejora",    "icon": "trending_up",       "ruta": "/evaluacion/planes",          "rol": ["profesor", "coordinador"]},
-            {"label": "Cierre de Periodo",   "icon": "lock",              "ruta": "/evaluacion/cierre-periodo",  "rol": ["coordinador", "director"]},
-            {"label": "Cierre de Año",       "icon": "lock_clock",        "ruta": "/evaluacion/cierre-anio",     "rol": ["director"]},
+            {"label": "Planilla de Notas",   "icon": "table_chart",       "ruta": "/evaluacion/planilla",        "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Config. Evaluación",  "icon": "tune",              "ruta": "/evaluacion/configuracion",   "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Habilitaciones",      "icon": "assignment_return", "ruta": "/evaluacion/habilitaciones",  "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Planes de Mejora",    "icon": "trending_up",       "ruta": "/evaluacion/planes",          "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Cierre de Periodo",   "icon": "lock",              "ruta": "/evaluacion/cierre-periodo",  "rol": ["admin", "director", "coordinador"]},
+            {"label": "Cierre de Año",       "icon": "lock_clock",        "ruta": "/evaluacion/cierre-anio",     "rol": ["admin", "director", "coordinador"]},
         ],
     },
     {
         "label":   "Convivencia",
         "icon":    Icons.BEHAVIOR,
-        "rol":     ["coordinador", "director"],
+        "rol":     ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Observaciones",  "icon": "comment",    "ruta": "/convivencia/observaciones",  "rol": ["coordinador", "director"]},
-            {"label": "Comportamiento", "icon": "rule",       "ruta": "/convivencia/comportamiento", "rol": ["coordinador", "director"]},
-            {"label": "Notas",          "icon": "fact_check", "ruta": "/convivencia/notas",          "rol": ["coordinador", "director"]},
+            {"label": "Observaciones",  "icon": "comment",    "ruta": "/convivencia/observaciones",  "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Comportamiento", "icon": "rule",       "ruta": "/convivencia/comportamiento", "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Notas",          "icon": "fact_check", "ruta": "/convivencia/notas",          "rol": ["admin", "director", "coordinador", "profesor"]},
         ],
     },
     {
         "label":   "Informes",
         "icon":    Icons.REPORTS,
-        "rol":     ["director", "coordinador", "profesor"],
+        "rol":     ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Boletín Periodo",     "icon": "description", "ruta": "/informes/boletin-periodo",        "rol": ["director", "coordinador", "profesor"]},
-            {"label": "Boletín Anual",       "icon": "description", "ruta": "/informes/boletin-anual",          "rol": ["director", "coordinador", "profesor"]},
-            {"label": "Consol. Notas",       "icon": "bar_chart",   "ruta": "/informes/consolidado-notas",      "rol": ["director", "coordinador"]},
-            {"label": "Consol. Asistencia",  "icon": "event_note",  "ruta": "/informes/consolidado-asistencia", "rol": ["director", "coordinador"]},
-            {"label": "Estadísticos",        "icon": "analytics",   "ruta": "/informes/estadisticos",           "rol": ["director", "coordinador", "profesor"]},
+            {"label": "Boletín Periodo",     "icon": "description", "ruta": "/informes/boletin-periodo",        "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Boletín Anual",       "icon": "description", "ruta": "/informes/boletin-anual",          "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Consol. Notas",       "icon": "bar_chart",   "ruta": "/informes/consolidado-notas",      "rol": ["admin", "director", "coordinador"]},
+            {"label": "Consol. Asistencia",  "icon": "event_note",  "ruta": "/informes/consolidado-asistencia", "rol": ["admin", "director", "coordinador"]},
+            {"label": "Estadísticos",        "icon": "analytics",   "ruta": "/informes/estadisticos",           "rol": ["admin", "director", "coordinador", "profesor"]},
         ],
     },
     {
         "label": "Horarios",
         "icon":  Icons.SCHEDULE,
         "ruta":  "/horarios",
-        "rol":   ["admin", "director", "coordinador"],
+        "rol":   ["admin", "director", "coordinador", "profesor"],
     },
     {
         "label": "Tablero",
         "icon":  "analytics",
         "ruta":  "/academico/tablero",
-        "rol":   ["profesor", "director", "coordinador"],
+        "rol":   ["admin", "director", "coordinador", "profesor"],
     },
     {
         "divider": True,
@@ -135,9 +135,9 @@ NAV_ITEMS: list[dict] = [
             {"label": "Grupos",              "icon": Icons.GROUPS,     "ruta": "/admin/grupos",                    "rol": ["admin", "director"]},
             {"label": "Asignaturas",         "icon": "book",           "ruta": "/admin/asignaturas",               "rol": ["admin", "director"]},
             {"label": "Asignaciones",        "icon": "assignment_ind", "ruta": "/admin/asignaciones",              "rol": ["admin", "director"]},
-            {"label": "Config. SIE",         "icon": "settings",       "ruta": "/admin/configuracion",             "rol": ["admin", "director"]},
+            {"label": "Config. SIE",         "icon": "settings",       "ruta": "/admin/configuracion",             "rol": ["admin", "director", "coordinador"]},
             {"label": "Info. Institucional", "icon": "business",       "ruta": "/admin/configuracion-institucion", "rol": ["admin", "director"]},
-            {"label": "Usuarios",            "icon": Icons.TEACHERS,   "ruta": "/admin/usuarios",                  "rol": ["admin"]},
+            {"label": "Usuarios",            "icon": Icons.TEACHERS,   "ruta": "/admin/usuarios",                  "rol": ["admin", "director"]},
         ],
     },
 ]
@@ -227,6 +227,7 @@ def _topbar(
     page_acciones: "list[dict] | None" = None,
     logo_url: str | None = None,
     toggle_callback=None,
+    on_context_change=None,
 ) -> None:
     """Renderiza el topbar de la aplicación."""
     usuario_rol = ctx.usuario_rol if ctx else ""
@@ -260,11 +261,11 @@ def _topbar(
             ui.element("div").classes("flex-1")
 
         # ── Context chip (centro/derecha) ────────────────────────────────────
-        if ctx is not None and usuario_rol != "admin":
+        if ctx is not None:
             from src.interface.design.components.context_selector import context_chip
             context_chip(
                 ctx=ctx,
-                on_change=None,
+                on_change=on_context_change,
                 mostrar_asignatura=(usuario_rol == "profesor"),
             )
 
@@ -308,7 +309,7 @@ def _topbar_legacy(
         ui.label(titulo_pagina).classes("topbar-title")
 
         # Context chip (roles académicos, no admin)
-        if ctx is not None and usuario_rol != "admin":
+        if ctx is not None:
             from src.interface.design.components.context_selector import context_chip
             context_chip(
                 ctx=ctx,
@@ -547,6 +548,7 @@ def app_layout(
                 page_icono=page_icono,
                 page_acciones=page_acciones,
                 toggle_callback=_toggle_sidebar,
+                on_context_change=on_context_change,
             )
         else:
             _topbar_legacy(

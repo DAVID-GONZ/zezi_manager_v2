@@ -49,6 +49,11 @@ def usuarios_page() -> None:
         return
 
     es_admin = ctx.usuario_rol == "admin"
+    puede_crear = ctx.usuario_rol in ("admin", "director")
+    # Roles que puede crear según el rol del usuario actual
+    _roles_crear_admin = {"admin": "Administrador", "director": "Director", "coordinador": "Coordinador", "profesor": "Profesor"}
+    _roles_crear_director = {"coordinador": "Coordinador", "profesor": "Profesor"}
+    roles_disponibles_crear = _roles_crear_admin if es_admin else _roles_crear_director
 
     logger.info("Usuarios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
@@ -76,8 +81,8 @@ def usuarios_page() -> None:
 
     # ── Acciones ──────────────────────────────────────────────────────────────
     def _abrir_crear_usuario() -> None:
-        if not es_admin:
-            ui.notify("Solo el administrador puede crear usuarios", type="warning")
+        if not puede_crear:
+            ui.notify("No tienes permisos para crear usuarios", type="warning")
             return
 
         def _crear(datos: dict) -> "bool | None":
@@ -90,6 +95,11 @@ def usuarios_page() -> None:
 
                 if not nombre or not usuario:
                     ui.notify("Nombre completo y usuario son obligatorios", type="warning")
+                    return False
+
+                # Director no puede crear admin ni director
+                if not es_admin and rol_str in ("admin", "director"):
+                    ui.notify("No puedes crear usuarios con ese rol", type="warning")
                     return False
 
                 dto = NuevoUsuarioDTO(
@@ -121,7 +131,7 @@ def usuarios_page() -> None:
                 {"key": "password",        "label": "Contraseña inicial",  "tipo": "password",
                  "placeholder": "dejar vacío = usa username"},
                 {"key": "rol",             "label": "Rol",                 "tipo": "select",
-                 "opciones": _ROLES_OPCIONES, "valor": "profesor"},
+                 "opciones": roles_disponibles_crear, "valor": "profesor"},
                 {"key": "email",           "label": "Email (opcional)",    "tipo": "email",
                  "placeholder": "usuario@institucion.edu.co"},
             ],
@@ -272,7 +282,7 @@ def usuarios_page() -> None:
 
     _acciones = [
         {"label": "Nuevo usuario", "on_click": _abrir_crear_usuario, "icono": "person_add", "variante": "primary"},
-    ] if es_admin else None
+    ] if puede_crear else None
 
     app_layout(
         ctx,

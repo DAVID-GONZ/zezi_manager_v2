@@ -11,6 +11,7 @@ from src.domain.models.configuracion import (
     NivelDesempeno,
     CriterioPromocion,
     NuevaConfiguracionAnioDTO,
+    ActualizarConfiguracionAnioDTO,
     ActualizarInfoInstitucionalDTO,
     InformacionInstitucionalDTO,
     NuevoNivelDesempenoDTO,
@@ -159,6 +160,16 @@ class ConfiguracionService:
         """Guarda o actualiza los criterios de promoción del año."""
         self.get_by_id(criterios.anio_id)
         return self._repo.guardar_criterios(criterios)
+
+    def actualizar_configuracion_academica(
+        self,
+        anio_id: int,
+        dto: ActualizarConfiguracionAnioDTO,
+    ) -> ConfiguracionAnio:
+        """Actualiza campos académicos: nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala, fechas."""
+        config = self.get_by_id(anio_id)
+        config_actualizada = dto.aplicar_a(config)
+        return self._repo.actualizar(config_actualizada)
 
 
 __all__ = ["ConfiguracionService"]

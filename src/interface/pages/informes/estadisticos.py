@@ -802,6 +802,12 @@ def estadisticos_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     _s = _estado_inicial()
 
     # Cargar datos iniciales
@@ -979,6 +985,19 @@ def estadisticos_page() -> None:
 
     # ── Contenido ────────────────────────────────────────────────────────────
 
+    def on_context_change() -> None:
+        nuevo_ctx = SessionContext.desde_storage()
+        if nuevo_ctx:
+            _cargar_grupos(nuevo_ctx, _s)
+            _cargar_periodos(nuevo_ctx, _s)
+            if nuevo_ctx.usuario_rol == "profesor" and nuevo_ctx.grupo_id:
+                _s["grupo_id"] = nuevo_ctx.grupo_id
+            if _s["grupo_id"]:
+                _cargar_asignaciones(nuevo_ctx, _s)
+        filtros_refreshable.refresh()
+        preview_refreshable.refresh()
+        export_refreshable.refresh()
+
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -992,6 +1011,7 @@ def estadisticos_page() -> None:
         ruta_activa="/informes/estadisticos",
         contenido=contenido,
         ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

@@ -708,48 +708,387 @@ def _render_tabla_estudiantes(datos: dict) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# VISTA GLOBAL (directivos) — funciones auxiliares
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _cargar_datos_globales(_s: dict) -> None:
+    """Carga métricas de todos los grupos para el periodo activo."""
+    periodo_id = _s.get("periodo_id")
+    anio_id    = _s.get("anio_id")
+    if not periodo_id:
+        _s.update({"global_data": [], "kpi_grupos": 0, "kpi_promedio": 0.0,
+                   "kpi_asistencia": 0.0, "kpi_riesgo": 0})
+        return
+    try:
+        svc    = Container.estadisticos_service()
+        grupos = Container.infraestructura_service().listar_grupos()
+        filas  = []
+        for g in grupos:
+            if not g.id:
+                continue
+            try:
+                m = svc.metricas_dashboard(g.id, periodo_id, anio_id)
+                if m.total_estudiantes == 0:
+                    continue
+                filas.append({
+                    "grupo_id":   g.id,
+                    "codigo":     g.codigo or str(g.id),
+                    "total":      m.total_estudiantes,
+                    "promedio":   m.promedio_general,
+                    "asistencia": m.porcentaje_asistencia,
+                    "en_riesgo":  m.estudiantes_en_riesgo,
+                })
+            except Exception:
+                pass
+        filas.sort(key=lambda x: x["codigo"])
+        _s["global_data"]    = filas
+        _s["kpi_grupos"]     = len(filas)
+        _s["kpi_promedio"]   = round(sum(f["promedio"] for f in filas) / len(filas), 1) if filas else 0.0
+        _s["kpi_asistencia"] = round(sum(f["asistencia"] for f in filas) / len(filas), 1) if filas else 0.0
+        _s["kpi_riesgo"]     = sum(f["en_riesgo"] for f in filas)
+    except Exception as exc:
+        logger.error("Error cargando datos globales: %s", exc)
+        _s.update({"global_data": [], "kpi_grupos": 0, "kpi_promedio": 0.0,
+                   "kpi_asistencia": 0.0, "kpi_riesgo": 0})
+
+
+def _cargar_drill_asignaciones(_s: dict) -> None:
+    """Carga asignaciones del grupo seleccionado para el drill-down."""
+    grupo_id   = _s.get("drill_grupo_id")
+    periodo_id = _s.get("periodo_id")
+    if not grupo_id or not periodo_id:
+        _s["drill_asignaciones"] = []
+        return
+    try:
+        _s["drill_asignaciones"] = Container.asignacion_repo().listar_por_grupo(
+            grupo_id, periodo_id
+        )
+    except Exception as exc:
+        logger.error("Error cargando asignaciones drill: %s", exc)
+        _s["drill_asignaciones"] = []
+
+
+def _render_global_kpis(_s: dict, nota_minima: float) -> None:
+    """4 stat cards institucionales: grupos, promedio, asistencia, riesgo."""
+    with ui.element("div").classes("tablero-kpi-row"):
+        stat_card(
+            titulo    = "Grupos con datos",
+            valor     = str(_s["kpi_grupos"]),
+            icono     = "groups",
+            subtitulo = "en el periodo activo",
+            variante  = "info",
+        )
+        var_p = _kpi_variante(_s["kpi_promedio"], nota_minima, nota_minima + 10)
+        stat_card(
+            titulo    = "Promedio institucional",
+            valor     = f"{_s['kpi_promedio']:.1f}",
+            icono     = Icons.GRADES,
+            subtitulo = "media de grupos",
+            variante  = var_p,
+        )
+        var_a = _kpi_variante(_s["kpi_asistencia"], 70.0, 80.0)
+        stat_card(
+            titulo    = "Asistencia global",
+            valor     = f"{_s['kpi_asistencia']:.1f}%",
+            icono     = Icons.ATTENDANCE,
+            subtitulo = "media de grupos",
+            variante  = var_a,
+        )
+        var_r = "error" if _s["kpi_riesgo"] > 0 else "success"
+        stat_card(
+            titulo    = "En riesgo total",
+            valor     = str(_s["kpi_riesgo"]),
+            icono     = Icons.WARNING,
+            subtitulo = "al menos 1 asignatura",
+            variante  = var_r,
+        )
+
+
+def _render_global_comparativo(_s: dict, nota_minima: float) -> None:
+    """Bar chart + ag-Grid comparando todos los grupos del periodo."""
+    filas = _s.get("global_data", [])
+    if not filas:
+        with ui.element("div").classes("tablero-empty"):
+            ui.label("Sin datos de notas en el periodo seleccionado.").classes("tablero-empty-hint")
+        return
+
+    # ── Bar chart de promedios ────────────────────────────────────────────
+    with ui.element("div").classes("panel-card"):
+        with ui.element("div").classes("panel-header"):
+            ThemeManager.icono("bar_chart", size=20)
+            with ui.element("div"):
+                ui.label("Promedio por grupo").classes("panel-title")
+                ui.label("Nota definitiva media de todos los estudiantes").classes("tablero-panel-subtitle")
+
+        labels   = [f["codigo"] for f in filas]
+        promedios = [f["promedio"] for f in filas]
+        colores  = [_ec_color_nota(p, nota_minima) for p in promedios]
+
+        ui.echart({
+            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+            "grid": {"left": "6%", "right": "4%", "top": "8%", "bottom": "10%"},
+            "xAxis": {
+                "type": "category",
+                "data": labels,
+                "axisLabel": {"fontSize": 11, "color": _EC_MUTED},
+            },
+            "yAxis": {"type": "value", "min": 0, "max": 100},
+            "series": [{
+                "type": "bar",
+                "data": [
+                    {"value": p, "itemStyle": {"color": c}}
+                    for p, c in zip(promedios, colores)
+                ],
+                "barMaxWidth": 44,
+                "label": {
+                    "show": True,
+                    "position": "top",
+                    "fontSize": 11,
+                    "formatter": "{c}",
+                },
+            }],
+        }).classes("w-full h-52")
+
+    # ── ag-Grid de grupos ─────────────────────────────────────────────────
+    with ui.element("div").classes("panel-card"):
+        with ui.element("div").classes("panel-header"):
+            ThemeManager.icono(Icons.STUDENTS, size=20)
+            ui.label("Resumen por grupo").classes("panel-title")
+
+        prom_cell = (
+            f"params => {{"
+            f" const v = params.value, m = {nota_minima};"
+            f" if (v >= 85) return 'tablero-promedio-superior';"
+            f" if (v >= 70) return 'tablero-promedio-alto';"
+            f" if (v >= m)  return 'tablero-promedio-basico';"
+            f" return 'tablero-promedio-riesgo';"
+            f"}}"
+        )
+
+        ui.aggrid({
+            "columnDefs": [
+                {"headerName": "Grupo",       "field": "codigo",     "pinned": "left", "width": 110},
+                {"headerName": "Estudiantes", "field": "total",      "type": "numericColumn", "width": 130},
+                {
+                    "headerName": "Promedio",
+                    "field": "promedio",
+                    "type": "numericColumn",
+                    ":valueFormatter": "x => x.value.toFixed(1)",
+                    ":cellClass": prom_cell,
+                    "width": 120,
+                },
+                {
+                    "headerName": "Asistencia",
+                    "field": "asistencia",
+                    "type": "numericColumn",
+                    ":valueFormatter": "x => x.value.toFixed(1) + '%'",
+                    "width": 120,
+                },
+                {
+                    "headerName": "En riesgo",
+                    "field": "en_riesgo",
+                    "type": "numericColumn",
+                    ":cellRenderer": (
+                        "params => params.value > 0"
+                        " ? '<span class=\"tablero-badge-riesgo\">⚠ ' + params.value + '</span>'"
+                        " : '<span class=\"tablero-badge-normal\">✓ 0</span>'"
+                    ),
+                    "width": 130,
+                },
+            ],
+            "rowData": [
+                {
+                    "codigo":     f["codigo"],
+                    "total":      f["total"],
+                    "promedio":   f["promedio"],
+                    "asistencia": f["asistencia"],
+                    "en_riesgo":  f["en_riesgo"],
+                }
+                for f in filas
+            ],
+            "defaultColDef": {"sortable": True, "filter": True, "resizable": True},
+            "domLayout": "autoHeight",
+            "rowClassRules": {"tablero-row-riesgo": "data.en_riesgo > 0"},
+        }).classes("w-full")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PÁGINA PRINCIPAL
 # ─────────────────────────────────────────────────────────────────────────────
 
 @ui.page("/academico/tablero")
 def tablero_estadisticos_page() -> None:
-    """Tablero estadístico de la asignación — ruta /academico/tablero."""
+    """
+    Tablero estadístico dual — ruta /academico/tablero.
+
+    Directivos (admin / director / coordinador):
+      - Sección 1: Vista institucional — métricas de todos los grupos del periodo.
+      - Sección 2: Análisis por asignación — drill-down con selectores inline.
+
+    Profesor:
+      - Solo la sección de análisis por asignación, usando el contexto del chip
+        (periodo + grupo + asignatura completamente seleccionados).
+    """
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
         return
 
-    # ── Sin contexto académico completo ───────────────────────────────────
-    if not ctx.contexto_completo:
-        def _contenido_vacio() -> None:
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
+    es_directivo = ctx.usuario_rol in ("admin", "director", "coordinador")
+
+    # ── Estado mutable ─────────────────────────────────────────────────────
+    _s: dict = {
+        # Contexto académico activo
+        "periodo_id":    ctx.periodo_id,
+        "anio_id":       ctx.anio_id,
+        "grupo_id":      ctx.grupo_id,
+        "asignacion_id": ctx.asignacion_id,
+        # Vista institucional
+        "global_data":    [],
+        "kpi_grupos":     0,
+        "kpi_promedio":   0.0,
+        "kpi_asistencia": 0.0,
+        "kpi_riesgo":     0,
+        # Drill-down (selectores inline)
+        "drill_grupo_id":     ctx.grupo_id,
+        "drill_asig_id":      ctx.asignacion_id,
+        "drill_asignaciones": [],
+    }
+
+    # Carga inicial
+    if es_directivo and _s["periodo_id"]:
+        _cargar_datos_globales(_s)
+    if es_directivo and _s["drill_grupo_id"] and _s["periodo_id"]:
+        _cargar_drill_asignaciones(_s)
+
+    # Nota mínima desde config (fallback 60)
+    try:
+        _cfg = Container.configuracion_service().get_activa()
+        _nota_minima: float = _cfg.nota_minima_aprobacion if _cfg else 60.0
+    except Exception:
+        _nota_minima = 60.0
+
+    # ── Refreshables ───────────────────────────────────────────────────────
+
+    @ui.refreshable
+    def global_refreshable() -> None:
+        """Vista institucional: KPIs + comparativo de grupos."""
+        if not _s["periodo_id"]:
+            with ui.element("div").classes("tablero-empty"):
+                with ui.element("div").classes("tablero-empty-icon"):
+                    ThemeManager.icono("public", size=48)
+                ui.label("Selecciona un periodo").classes("panel-title")
+                ui.label(
+                    "Usa el selector en la barra superior para elegir el periodo activo."
+                ).classes("tablero-panel-subtitle")
+            return
+
+        if not _s["global_data"]:
+            with ui.element("div").classes("tablero-empty"):
+                with ui.element("div").classes("tablero-empty-icon"):
+                    ThemeManager.icono("bar_chart_off", size=48)
+                ui.label("Sin datos institucionales").classes("panel-title")
+                ui.label(
+                    "Aún no hay notas registradas en ningún grupo para este periodo."
+                ).classes("tablero-panel-subtitle")
+            return
+
+        _render_global_kpis(_s, _nota_minima)
+        _render_global_comparativo(_s, _nota_minima)
+
+    @ui.refreshable
+    def drill_refreshable() -> None:
+        """Drill-down: selectores inline + tablero detallado por asignación."""
+        # ── Selectores ────────────────────────────────────────────────────
+        if not _s["periodo_id"]:
+            with ui.element("div").classes("tablero-empty"):
+                ui.label("Selecciona un periodo para acceder al análisis detallado.").classes("tablero-empty-hint")
+            return
+
+        try:
+            grupos_lista = Container.infraestructura_service().listar_grupos()
+        except Exception:
+            grupos_lista = []
+
+        grupos_opts = {g.id: g.codigo for g in grupos_lista if g.id}
+        asig_opts   = {
+            a.asignacion_id: a.asignatura_nombre
+            for a in _s.get("drill_asignaciones", [])
+            if a.asignacion_id
+        }
+
+        with ui.row().classes("gap-3 items-center flex-wrap q-mb-md"):
+            ThemeManager.icono("filter_list", size=18, clases="text-secondary")
+            ui.select(
+                label   = "Grupo",
+                options = grupos_opts,
+                value   = _s.get("drill_grupo_id"),
+                on_change = lambda e: _on_drill_grupo(e.value),
+            ).classes("w-40").props("dense outlined")
+
+            ui.select(
+                label   = "Asignatura",
+                options = asig_opts,
+                value   = _s.get("drill_asig_id"),
+                on_change = lambda e: _on_drill_asig(e.value),
+            ).classes("w-64").props(
+                f"dense outlined {'disable' if not asig_opts else ''}"
+            )
+
+        # ── Tablero detallado ─────────────────────────────────────────────
+        if not _s.get("drill_grupo_id") or not _s.get("drill_asig_id"):
+            with ui.element("div").classes("tablero-empty"):
+                with ui.element("div").classes("tablero-empty-icon"):
+                    ThemeManager.icono("analytics", size=40)
+                ui.label(
+                    "Selecciona grupo y asignatura para ver el análisis detallado."
+                ).classes("tablero-empty-hint")
+            return
+
+        datos = Container.estadisticos_service().datos_tablero(
+            asignacion_id = _s["drill_asig_id"],
+            periodo_id    = _s["periodo_id"],
+            grupo_id      = _s["drill_grupo_id"],
+            anio_id       = _s.get("anio_id"),
+        )
+
+        if datos.get("vacio") or datos.get("error"):
+            with ui.element("div").classes("tablero-empty"):
+                with ui.element("div").classes("tablero-empty-icon"):
+                    ThemeManager.icono("bar_chart_off", size=40)
+                ui.label(
+                    datos.get("error") or "Sin datos disponibles para esta asignación."
+                ).classes("tablero-empty-hint")
+            return
+
+        with ui.element("div").classes("page-stack"):
+            _render_kpis(datos)
+            _render_gauge_y_distribucion(datos)
+            _render_categorias(datos)
+            _render_actividades(datos)
+            _render_heatmap(datos)
+            _render_tendencia_asistencia(datos)
+            _render_tabla_estudiantes(datos)
+
+    @ui.refreshable
+    def profesor_refreshable() -> None:
+        """Tablero por asignación para el rol profesor (contexto completo via chip)."""
+        ctx_actual = SessionContext.desde_storage()
+        if not ctx_actual or not ctx_actual.contexto_completo:
             with ui.element("div").classes("tablero-empty panel-card"):
                 with ui.element("div").classes("tablero-empty-icon"):
                     ThemeManager.icono("analytics", size=48)
                 ui.label("Selecciona un contexto académico").classes("panel-title")
                 ui.label(
                     "Usa el selector en la barra superior para elegir periodo, "
-                    "grupo y asignatura antes de ver el tablero."
+                    "grupo y asignatura."
                 ).classes("tablero-panel-subtitle")
-
-        app_layout(
-            "Tablero Estadístico",
-            ctx.usuario_nombre,
-            ctx.usuario_rol,
-            "/academico/tablero",
-            _contenido_vacio,
-            ctx=ctx,
-        )
-        return
-
-    # ── Contenido principal ───────────────────────────────────────────────
-    @ui.refreshable
-    def _tablero_refreshable() -> None:
-        ctx_actual = SessionContext.desde_storage()
-        if not ctx_actual or not ctx_actual.contexto_completo:
-            with ui.element("div").classes("tablero-empty"):
-                ui.label(
-                    "Contexto incompleto — selecciona periodo, grupo y asignatura."
-                ).classes("tablero-empty-hint")
             return
 
         datos = Container.estadisticos_service().datos_tablero(
@@ -760,7 +1099,7 @@ def tablero_estadisticos_page() -> None:
         )
 
         if datos.get("vacio") or datos.get("error"):
-            with ui.element("div").classes("tablero-empty"):
+            with ui.element("div").classes("tablero-empty panel-card"):
                 with ui.element("div").classes("tablero-empty-icon"):
                     ThemeManager.icono("bar_chart_off", size=40)
                 ui.label(
@@ -777,17 +1116,73 @@ def tablero_estadisticos_page() -> None:
             _render_tendencia_asistencia(datos)
             _render_tabla_estudiantes(datos)
 
-    def _contenido() -> None:
-        _tablero_refreshable()
+    # ── Handlers ────────────────────────────────────────────────────────────
+
+    def _on_drill_grupo(grupo_id: int | None) -> None:
+        _s["drill_grupo_id"] = grupo_id
+        _s["drill_asig_id"]  = None
+        _cargar_drill_asignaciones(_s)
+        drill_refreshable.refresh()
+
+    def _on_drill_asig(asig_id: int | None) -> None:
+        _s["drill_asig_id"] = asig_id
+        drill_refreshable.refresh()
+
+    def on_context_change() -> None:
+        nuevo_ctx = SessionContext.desde_storage()
+        if nuevo_ctx:
+            _s["periodo_id"]    = nuevo_ctx.periodo_id
+            _s["anio_id"]       = nuevo_ctx.anio_id
+            _s["grupo_id"]      = nuevo_ctx.grupo_id
+            _s["asignacion_id"] = nuevo_ctx.asignacion_id
+            if es_directivo:
+                if _s["periodo_id"]:
+                    _cargar_datos_globales(_s)
+                if _s["drill_grupo_id"] and _s["periodo_id"]:
+                    _cargar_drill_asignaciones(_s)
+        if es_directivo:
+            global_refreshable.refresh()
+            drill_refreshable.refresh()
+        else:
+            profesor_refreshable.refresh()
+
+    # ── Contenido ────────────────────────────────────────────────────────────
+
+    def contenido() -> None:
+        with ui.element("div").classes("page-stack"):
+            if es_directivo:
+                # Sección 1: Vista institucional
+                with ui.element("div").classes("panel-card"):
+                    with ui.element("div").classes("panel-header"):
+                        ThemeManager.icono("public", size=20)
+                        with ui.element("div"):
+                            ui.label("Vista institucional").classes("panel-title")
+                            ui.label(
+                                "Métricas globales del periodo — todos los grupos"
+                            ).classes("tablero-panel-subtitle")
+                    global_refreshable()
+
+                # Sección 2: Análisis por asignación
+                with ui.element("div").classes("panel-card"):
+                    with ui.element("div").classes("panel-header"):
+                        ThemeManager.icono("analytics", size=20)
+                        with ui.element("div"):
+                            ui.label("Análisis por asignación").classes("panel-title")
+                            ui.label(
+                                "Detalle estadístico de un grupo y materia específicos"
+                            ).classes("tablero-panel-subtitle")
+                    drill_refreshable()
+            else:
+                profesor_refreshable()
 
     app_layout(
         titulo_pagina     = "Tablero Estadístico",
         usuario_nombre    = ctx.usuario_nombre,
         usuario_rol       = ctx.usuario_rol,
         ruta_activa       = "/academico/tablero",
-        contenido         = _contenido,
+        contenido         = contenido,
         ctx               = ctx,
-        on_context_change = lambda: _tablero_refreshable.refresh(),
+        on_context_change = on_context_change,
     )
 
 

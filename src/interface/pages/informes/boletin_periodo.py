@@ -206,6 +206,12 @@ def boletin_periodo_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     _s = _estado_inicial()
     _s["grupo_id"]   = ctx.grupo_id
     _s["periodo_id"] = ctx.periodo_id
@@ -288,6 +294,18 @@ def boletin_periodo_page() -> None:
         _s["periodo_id"] = int(periodo_id) if periodo_id is not None else None
         lista_refreshable.refresh()
 
+    def on_context_change() -> None:
+        nuevo_ctx = SessionContext.desde_storage()
+        if nuevo_ctx:
+            _s["grupo_id"]   = nuevo_ctx.grupo_id
+            _s["periodo_id"] = nuevo_ctx.periodo_id
+            _cargar_grupos(nuevo_ctx, _s)
+            _cargar_periodos(nuevo_ctx, _s)
+            if _s["grupo_id"]:
+                _cargar_estudiantes(_s)
+        filtros_refreshable.refresh()
+        lista_refreshable.refresh()
+
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -300,6 +318,7 @@ def boletin_periodo_page() -> None:
         ruta_activa="/informes/boletin-periodo",
         contenido=contenido,
         ctx=ctx,
+        on_context_change=on_context_change,
     )
 
 

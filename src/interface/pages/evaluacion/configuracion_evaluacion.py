@@ -1,24 +1,23 @@
 """
 src/interface/pages/evaluacion/configuracion_evaluacion.py
 ===========================================================
-Configuración del SIEE (Sistema Institucional de Evaluación) y categorías
-de evaluación por asignación y periodo.
+Categorías de evaluación propias del docente.
 
 Ruta:   /evaluacion/configuracion
-Acceso: todos los autenticados
+Acceso: profesor (exclusivamente)
+
+Roles admin/director/coordinador son redirigidos a /admin/configuracion.
 
 Secciones:
-  A — SIEE institucional
-      - Admin / director / coordinador: configuran el modo SIEE y gestionan
-        las categorías institucionales (crear, editar, eliminar).
-      - Docentes: ven las categorías institucionales en modo solo lectura.
-
   B — Mis categorías (solo si modo != INSTITUCIONAL_FIJO)
       - Docentes gestionan sus propias categorías dentro del peso disponible.
       - En modo MIXTO_SUBCATEGORIAS pueden anclar una categoría como
         sub-categoría de una institucional que lo permita.
       - En modo MIXTO_AUTONOMIA se muestra la barra de peso autónomo.
 
+  C — Corte plan de mejoramiento.
+
+La configuración institucional del SIEE se gestiona en /admin/configuracion.
 La gestión de actividades (crear, publicar, cerrar, eliminar) se delega
 completamente a /evaluacion/planilla.
 """
@@ -54,33 +53,6 @@ from src.services.plan_mejoramiento_service import (
 
 logger = logging.getLogger("EVALUACION.CONFIGURACION")
 
-_ROL_ADMIN = {"admin", "director", "coordinador"}
-
-_MODO_LABELS: dict[str, str] = {
-    "libre":               "Libre",
-    "institucional_fijo":  "Institucional fijo",
-    "mixto_subcategorias": "Mixto — sub-categorías",
-    "mixto_autonomia":     "Mixto — autonomía docente",
-}
-
-_MODO_DESC: dict[str, str] = {
-    "libre": (
-        "Cada docente distribuye el 100% del peso libremente."
-    ),
-    "institucional_fijo": (
-        "Todas las categorías son institucionales e inamovibles. "
-        "Los docentes solo añaden actividades dentro de ellas."
-    ),
-    "mixto_subcategorias": (
-        "El admin fija macro-categorías. Los docentes pueden crear "
-        "sub-categorías dentro de las que lo permitan."
-    ),
-    "mixto_autonomia": (
-        "El admin fija un porcentaje institucional. Los docentes "
-        "distribuyen libremente el porcentaje restante."
-    ),
-}
-
 
 @ui.page("/evaluacion/configuracion")
 def configuracion_evaluacion_page() -> None:
@@ -89,9 +61,12 @@ def configuracion_evaluacion_page() -> None:
         ui.navigate.to("/login")
         return
 
-    logger.info("Config evaluación: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
+    if ctx.usuario_rol not in ("profesor",):
+        # Roles institucionales: redirigir a su módulo
+        ui.navigate.to("/admin/configuracion")
+        return
 
-    es_admin = ctx.usuario_rol in _ROL_ADMIN
+    logger.info("Config evaluación: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
@@ -212,176 +187,6 @@ def configuracion_evaluacion_page() -> None:
             )
         except Exception:
             return 1.0
-
-    # ── Acciones — SIEE (admin) ───────────────────────────────────────────────
-    def _guardar_modo_siee(datos: dict) -> None:
-        anio_id = _s["anio_id"]
-        if not anio_id:
-            ui.notify("No hay año activo", type="warning")
-            return
-        modo_val = datos.get("modo", "libre")
-        pct_raw  = datos.get("porcentaje_autonomia")
-        pct      = float(pct_raw) / 100.0 if pct_raw else None
-
-        try:
-            dto = NuevaConfiguracionSIEEDTO(
-                anio_id                      = anio_id,
-                modo                         = ModoSIEE(modo_val),
-                porcentaje_autonomia_docente = pct,
-            )
-            Container.evaluacion_service().guardar_configuracion_siee(dto, ctx.usuario_id)
-            ui.notify("Configuración SIEE guardada", type="positive")
-            _cargar_siee()
-            seccion_institucional.refresh()
-            seccion_docente.refresh()
-        except (ValueError, RuntimeError) as exc:
-            ui.notify(str(exc), type="warning")
-        except Exception as exc:
-            logger.error("Error guardando SIEE: %s", exc)
-            ui.notify("Error al guardar la configuración", type="negative")
-
-    def _abrir_dialog_modo_siee() -> None:
-        cfg     = _s["siee_cfg"]
-        modo_v  = cfg.modo.value if cfg else "libre"
-        pct_v   = round((cfg.porcentaje_autonomia_docente or 0) * 100, 1) if cfg else 0.0
-
-        form_dialog(
-            titulo    = "Configurar modo SIEE",
-            campos    = [
-                {
-                    "key":     "modo",
-                    "label":   "Modo de distribución",
-                    "tipo":    "select",
-                    "valor":   modo_v,
-                    "opciones": {k: v for k, v in _MODO_LABELS.items()},
-                    "requerido": True,
-                },
-                {
-                    "key":         "porcentaje_autonomia",
-                    "label":       "% autonomía docente (solo modo mixto-autonomía)",
-                    "tipo":        "number",
-                    "valor":       pct_v,
-                    "min":         1,
-                    "max":         99,
-                    "step":        1,
-                    "placeholder": "Ej: 30 (para 30%)",
-                },
-            ],
-            on_submit = _guardar_modo_siee,
-            max_width = "max-w-lg",
-        )
-
-    def _crear_cat_institucional() -> None:
-        anio_id = _s["anio_id"]
-        if not anio_id:
-            ui.notify("Sin año activo", type="warning")
-            return
-
-        def _guardar(datos: dict) -> None:
-            nombre  = str(datos.get("nombre", "")).strip()
-            peso_v  = datos.get("peso")
-            permite = bool(datos.get("permite_subcategorias", False))
-            if not nombre:
-                ui.notify("El nombre es obligatorio", type="warning")
-                return
-            try:
-                peso = float(peso_v) / 100.0  # la UI muestra porcentaje
-                dto  = NuevaCategoriaInstitucionalDTO(
-                    nombre                = nombre,
-                    peso                  = peso,
-                    anio_id               = anio_id,
-                    permite_subcategorias = permite,
-                )
-                Container.evaluacion_service().agregar_categoria_institucional(
-                    dto, usuario_id=ctx.usuario_id
-                )
-                ui.notify(f"Categoría '{nombre}' creada", type="positive")
-                _cargar_siee()
-                seccion_institucional.refresh()
-                seccion_docente.refresh()
-            except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
-            except Exception as exc:
-                logger.error("Error creando cat. institucional: %s", exc)
-                ui.notify("Error al crear la categoría", type="negative")
-
-        form_dialog(
-            titulo    = "Nueva categoría institucional",
-            campos    = [
-                {"key": "nombre",  "label": "Nombre *", "tipo": "text",
-                 "requerido": True, "placeholder": "Ej: Saber"},
-                {"key": "peso",    "label": "Porcentaje (1–100) *", "tipo": "number",
-                 "min": 1, "max": 100, "step": 1, "valor": 10},
-                {"key": "permite_subcategorias", "label": "Permite sub-categorías docente",
-                 "tipo": "checkbox", "valor": False},
-            ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
-        )
-
-    def _editar_cat_institucional(cat) -> None:
-        anio_id = _s["anio_id"]
-
-        def _guardar(datos: dict) -> None:
-            nuevo_nombre = str(datos.get("nombre", "")).strip() or None
-            peso_v       = datos.get("peso")
-            if not nuevo_nombre:
-                ui.notify("El nombre es obligatorio", type="warning")
-                return
-            try:
-                nuevo_peso = float(peso_v) / 100.0 if peso_v is not None else None
-                dto        = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
-                Container.evaluacion_service().actualizar_categoria_institucional(
-                    cat.id, dto, anio_id, usuario_id=ctx.usuario_id
-                )
-                ui.notify("Categoría actualizada", type="positive")
-                _cargar_siee()
-                seccion_institucional.refresh()
-                seccion_docente.refresh()
-            except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
-            except Exception as exc:
-                logger.error("Error actualizando cat. institucional: %s", exc)
-                ui.notify("Error al actualizar", type="negative")
-
-        form_dialog(
-            titulo    = "Editar categoría institucional",
-            campos    = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text",
-                 "valor": cat.nombre, "requerido": True},
-                {"key": "peso",   "label": "Porcentaje (1–100) *", "tipo": "number",
-                 "valor": round(cat.peso * 100, 1), "min": 1, "max": 100, "step": 1},
-            ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
-        )
-
-    def _eliminar_cat_institucional(cat) -> None:
-        def _ejecutar() -> None:
-            try:
-                Container.evaluacion_service().eliminar_categoria_institucional(
-                    cat.id, usuario_id=ctx.usuario_id
-                )
-                ui.notify(f"'{cat.nombre}' eliminada", type="positive")
-                _cargar_siee()
-                seccion_institucional.refresh()
-                seccion_docente.refresh()
-            except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
-            except Exception as exc:
-                logger.error("Error eliminando cat. institucional: %s", exc)
-                ui.notify("Error al eliminar", type="negative")
-
-        confirm_dialog(
-            titulo          = "Eliminar categoría institucional",
-            mensaje         = (
-                f"¿Eliminar '{cat.nombre}'? Esta categoría es institucional. "
-                "Si hay sub-categorías asociadas quedarán sin padre."
-            ),
-            on_confirm      = _ejecutar,
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
-        )
 
     # ── Acciones — categorías docente ─────────────────────────────────────────
     def _crear_cat_docente() -> None:
@@ -543,94 +348,6 @@ def configuracion_evaluacion_page() -> None:
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
-
-    @ui.refreshable
-    def seccion_institucional() -> None:
-        """Sección A — SIEE institucional (solo lectura para docentes)."""
-        cfg        = _s["siee_cfg"]
-        cats_inst  = _s["cats_inst"]
-        modo_val   = cfg.modo.value if cfg else "libre"
-        modo_label = _MODO_LABELS.get(modo_val, modo_val)
-        modo_desc  = _MODO_DESC.get(modo_val, "")
-        suma_inst  = round(sum(c.peso for c in cats_inst) * 100, 1)
-
-        with ui.element("div").classes("panel-card"):
-            # Cabecera
-            with ui.row().classes("items-center gap-3 mb-4"):
-                ui.icon("school").classes("text-primary text-xl")
-                ui.label("Configuración SIEE").classes("text-lg font-bold flex-1")
-                # Badge modo
-                color_badge = {
-                    "libre":               "grey",
-                    "institucional_fijo":  "negative",
-                    "mixto_subcategorias": "primary",
-                    "mixto_autonomia":     "warning",
-                }.get(modo_val, "grey")
-                ui.badge(modo_label).props(f"color={color_badge}")
-                if es_admin:
-                    btn_secondary(
-                        "Cambiar modo",
-                        icon="tune",
-                        on_click=_abrir_dialog_modo_siee,
-                    )
-
-            # Descripción del modo activo
-            with ui.element("div").classes("bg-blue-50 rounded p-3 mb-4 text-sm text-blue-800"):
-                ui.label(modo_desc)
-
-            # Datos extra para MIXTO_AUTONOMIA
-            if modo_val == "mixto_autonomia" and cfg and cfg.porcentaje_autonomia_docente:
-                pct_inst  = round((1.0 - cfg.porcentaje_autonomia_docente) * 100, 1)
-                pct_doc   = round(cfg.porcentaje_autonomia_docente * 100, 1)
-                with ui.row().classes("gap-4 mb-3 text-sm"):
-                    ui.label(f"Institucional: {pct_inst}%").classes("font-medium")
-                    ui.label(f"Autonomía docente: {pct_doc}%").classes(
-                        "font-medium text-primary"
-                    )
-
-            # Sub-cabecera categorías institucionales
-            with ui.row().classes("items-center gap-2 mb-3"):
-                ui.label("Categorías institucionales").classes("font-semibold text-sm")
-                ui.badge(f"{suma_inst:.0f}%").classes(
-                    "badge-success" if suma_inst <= 100 else "badge-error"
-                )
-                if es_admin:
-                    btn_icon(
-                        "add_circle",
-                        on_click=_crear_cat_institucional,
-                        tooltip="Agregar categoría institucional",
-                    )
-
-            if not cats_inst:
-                ui.label("No hay categorías institucionales definidas.").classes(
-                    "text-empty text-sm"
-                )
-            else:
-                with ui.element("div").classes("w-full divide-y divide-grey-3"):
-                    for cat in cats_inst:
-                        with ui.row().classes("items-center gap-3 py-2"):
-                            ui.icon("lock").classes("text-grey-5 text-base")
-                            ui.label(cat.nombre).classes("flex-1 text-sm font-medium")
-                            ui.label(f"{cat.peso_porcentaje:.1f}%").classes(
-                                "text-sm font-mono w-14 text-right"
-                            )
-                            if cat.permite_subcategorias:
-                                ui.badge("sub-cats").props("color=teal outline").classes(
-                                    "text-xs"
-                                )
-                            if es_admin:
-                                with ui.row().classes("gap-1"):
-                                    btn_icon(
-                                        "edit",
-                                        on_click=lambda c=cat: _editar_cat_institucional(c),
-                                        tooltip="Editar",
-                                    )
-                                    btn_icon(
-                                        "delete",
-                                        on_click=lambda c=cat: _eliminar_cat_institucional(c),
-                                        tooltip="Eliminar",
-                                        variante="danger",
-                                    )
 
     @ui.refreshable
     def seccion_docente() -> None:
@@ -880,7 +597,7 @@ def configuracion_evaluacion_page() -> None:
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Configuración de Evaluación").classes("text-xl font-bold flex-1")
+                    ui.label("Mis categorías de evaluación").classes("text-xl font-bold flex-1")
                     btn_ghost(
                         "Ir a Planilla de notas",
                         icon="table_chart",
@@ -889,15 +606,11 @@ def configuracion_evaluacion_page() -> None:
 
             with ui.element("div").classes("mt-4"):
                 ui.label(
-                    "Aquí configuras las categorías de evaluación. "
-                    "Para gestionar actividades y registrar notas, ve a "
-                    "Planilla de notas."
+                    "Configura tus categorías propias para cada asignación y periodo. "
+                    "La configuración institucional del SIEE la gestiona administración."
                 ).classes("text-sm text-grey-7 mb-4")
 
-            # Sección A — institucional
-            seccion_institucional()
-
-            # Sección B — docente (si aplica según modo)
+            # Sección B — categorías docente
             seccion_docente()
 
             # Sección C — Corte plan de mejoramiento

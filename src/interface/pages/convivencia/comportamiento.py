@@ -200,7 +200,18 @@ def comportamiento_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
+    es_profesor = ctx.usuario_rol == "profesor"
+
     _s = _estado_inicial()
+    # Para profesores: forzar al grupo del contexto (sus grupos asignados)
+    if es_profesor and ctx.grupo_id:
+        _s["filtro_grupo_id"] = ctx.grupo_id
     _cargar_estado(ctx, _s)
 
     # ── Handlers ───────────────────────────────────────────────────────────

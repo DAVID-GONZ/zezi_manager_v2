@@ -69,16 +69,19 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 """
                 INSERT INTO configuracion_anio (
                     anio, fecha_inicio_clases, fecha_fin_clases,
-                    nota_minima_aprobacion, nombre_institucion,
+                    nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala,
+                    nombre_institucion,
                     dane_code, rector, direccion, municipio,
                     telefono_institucion, logo_path, resolucion_aprobacion, activo
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     config.anio,
                     config.fecha_inicio_clases.isoformat() if config.fecha_inicio_clases else None,
                     config.fecha_fin_clases.isoformat() if config.fecha_fin_clases else None,
                     config.nota_minima_aprobacion,
+                    config.nota_minima_escala,
+                    config.nota_maxima_escala,
                     config.nombre_institucion,
                     config.dane_code,
                     config.rector,
@@ -100,7 +103,8 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 """
                 UPDATE configuracion_anio SET
                     anio = ?, fecha_inicio_clases = ?, fecha_fin_clases = ?,
-                    nota_minima_aprobacion = ?, nombre_institucion = ?,
+                    nota_minima_aprobacion = ?, nota_minima_escala = ?, nota_maxima_escala = ?,
+                    nombre_institucion = ?,
                     dane_code = ?, rector = ?, direccion = ?, municipio = ?,
                     telefono_institucion = ?, logo_path = ?,
                     resolucion_aprobacion = ?, activo = ?
@@ -111,6 +115,8 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                     config.fecha_inicio_clases.isoformat() if config.fecha_inicio_clases else None,
                     config.fecha_fin_clases.isoformat() if config.fecha_fin_clases else None,
                     config.nota_minima_aprobacion,
+                    config.nota_minima_escala,
+                    config.nota_maxima_escala,
                     config.nombre_institucion,
                     config.dane_code,
                     config.rector,

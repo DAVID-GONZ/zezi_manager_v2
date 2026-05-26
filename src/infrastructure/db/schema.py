@@ -1255,7 +1255,10 @@ def init_db(db_path: Path | None = None) -> bool:
             # Formato: (tabla, columna, DDL de la columna)
             # ------------------------------------------------------------------
             migraciones = [
-                # Nada aún en v2.0 — se agregan cuando sea necesario
+                ("configuracion_anio", "nota_minima_escala",
+                 "nota_minima_escala REAL NOT NULL DEFAULT 0.0"),
+                ("configuracion_anio", "nota_maxima_escala",
+                 "nota_maxima_escala REAL NOT NULL DEFAULT 100.0"),
             ]
 
             for tabla, columna, ddl in migraciones:

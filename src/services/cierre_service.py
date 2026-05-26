@@ -359,5 +359,90 @@ class CierreService:
         """Retorna el cierre de periodo de un estudiante en una asignación."""
         return self._cierre_repo.get_cierre_periodo(est_id, asignacion_id, periodo_id)
 
+    # ------------------------------------------------------------------
+    # Gestión granular de cierres por asignación
+    # ------------------------------------------------------------------
+
+    def estado_cierres_por_asignaciones(
+        self,
+        asignacion_ids: list[int],
+        periodo_id: int,
+    ) -> dict[int, list[CierrePeriodo]]:
+        """
+        Retorna los cierres existentes agrupados por asignacion_id.
+        Las asignaciones sin cierres tienen lista vacía.
+        """
+        cierres = self._cierre_repo.listar_cierres_periodo_por_asignaciones(
+            asignacion_ids, periodo_id
+        )
+        result: dict[int, list[CierrePeriodo]] = {aid: [] for aid in asignacion_ids}
+        for c in cierres:
+            result[c.asignacion_id].append(c)
+        return result
+
+    def reabrir_asignacion(
+        self,
+        asignacion_id: int,
+        periodo_id: int,
+        usuario_id: int | None = None,
+        motivo: str | None = None,
+    ) -> int:
+        """
+        Elimina los registros de CierrePeriodo de una asignación en un periodo,
+        dejándola 'abierta' para que el docente pueda corregir notas.
+        Registra la operación en auditoría.
+        Retorna la cantidad de registros eliminados.
+        """
+        cantidad = self._cierre_repo.borrar_cierres_periodo(asignacion_id, periodo_id)
+        self._auditar(
+            AccionCambio.DELETE,
+            "cierres_periodo",
+            None,
+            {
+                "asignacion_id": asignacion_id,
+                "periodo_id":    periodo_id,
+                "cantidad":      cantidad,
+                "motivo":        motivo or "",
+            },
+            None,
+            usuario_id,
+        )
+        return cantidad
+
+    def cerrar_grupo(
+        self,
+        asignacion_ids: list[int],
+        grupo_id: int,
+        periodo_id: int,
+        ctx: ContextoAcademicoDTO,
+        usuario_id: int | None = None,
+    ) -> dict[int, list[CierrePeriodo] | str]:
+        """
+        Cierra (o recalcula) todas las asignaciones indicadas de un grupo.
+        Retorna dict: asignacion_id → list[CierrePeriodo] | str(error).
+        Verifica el periodo una sola vez; aplica cerrar_periodo para cada asignación.
+        """
+        periodo = self._periodo_repo.get_by_id(periodo_id)
+        if periodo is None:
+            raise ValueError(f"Periodo {periodo_id} no existe.")
+        if not periodo.esta_abierto:
+            raise ValueError(f"El periodo '{periodo.nombre}' ya está cerrado.")
+
+        resultados: dict[int, list[CierrePeriodo] | str] = {}
+        for asig_id in asignacion_ids:
+            ctx_asig = ContextoAcademicoDTO(
+                usuario_id    = ctx.usuario_id,
+                anio_id       = ctx.anio_id,
+                periodo_id    = periodo_id,
+                grupo_id      = grupo_id,
+                asignacion_id = asig_id,
+            )
+            try:
+                cierres = self.cerrar_periodo(asig_id, periodo_id, ctx_asig, usuario_id)
+                resultados[asig_id] = cierres
+            except Exception as exc:
+                resultados[asig_id] = str(exc)
+        return resultados
+
 
 __all__ = ["CierreService"]

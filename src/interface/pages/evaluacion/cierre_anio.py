@@ -24,7 +24,7 @@ from src.services.cierre_service import ContextoAcademicoDTO
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
 
-_ROLES_PERMITIDOS = ("admin", "director")
+_ROLES_PERMITIDOS = ("admin", "director", "coordinador")
 
 
 @ui.page("/evaluacion/cierre-anio")

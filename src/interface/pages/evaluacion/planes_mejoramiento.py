@@ -51,6 +51,12 @@ def planes_mejoramiento_page() -> None:
         ui.navigate.to("/login")
         return
 
+    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    if ctx.usuario_rol not in _ROLES_VALIDOS:
+        ui.notify("Acceso no autorizado", type="negative")
+        ui.navigate.to("/inicio")
+        return
+
     logger.info("Planes mejoramiento: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     es_admin = ctx.usuario_rol in _ROL_ADMIN
