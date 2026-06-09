@@ -1,0 +1,182 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/tables.css — Tablas HTML y ag-Grid overrides
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tablas ──────────────────────────────────────────────── */
+.andes-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.andes-table th {
+  background: var(--color-surface-alt);
+  font-size: var(--font-size-table);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: 10px var(--space-md);
+  border-bottom: 2px solid var(--color-divider);
+  text-align: left;
+  height: var(--table-header-height);
+  white-space: nowrap;
+}
+
+.andes-table td {
+  font-size: var(--font-size-table);
+  padding: 10px var(--space-md);
+  border-bottom: 1px solid var(--color-divider);
+  height: var(--table-row-height);
+  vertical-align: middle;
+}
+
+.andes-table tr:last-child td {
+  border-bottom: none;
+}
+
+.andes-table tr:hover td {
+  background: var(--color-bg);
+}
+
+/* ── Fila de lista de items (ej: estudiantes en boletines) */
+.andes-table-row {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+.andes-table-row:last-child { border-bottom: none; }
+
+/* ── Clases para data_table ──────────────────────────────────────────────── */
+.data-table-search     { max-width: 280px; }
+.data-table-root       { width: 100%; }
+.data-table-clickable  { cursor: pointer; }
+
+/* Planilla de notas — colores de desempeño en ag-Grid (alineados con tokens --desempeno-*) */
+.grade-bajo     { background-color: var(--desempeno-bajo-bg)     !important; color: var(--desempeno-bajo)     !important; }
+.grade-basico   { background-color: var(--desempeno-basico-bg)   !important; color: var(--color-text-primary) !important; }
+.grade-alto     { background-color: var(--desempeno-alto-bg)     !important; color: var(--desempeno-alto)     !important; }
+.grade-superior { background-color: var(--desempeno-superior-bg) !important; color: var(--color-text-primary) !important; }
+
+/* Planilla de notas — balance de puntos extra */
+.pts-positivo { background-color: var(--desempeno-superior-bg) !important; color: #166534 !important; font-weight: 600; }
+.pts-negativo { background-color: var(--desempeno-bajo-bg)     !important; color: var(--desempeno-bajo) !important; font-weight: 600; }
+
+/* ── Estadísticos: aggrid scrollable ─────────────────────────── */
+.aggrid-scroll-wrapper {
+    width: 100%;
+    height: 420px;
+    overflow: hidden;
+}
+
+/* ── Estadísticos: fila de tarjetas de resumen ───────────────── */
+.stats-summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stats-summary-row .stat-card-wrapper {
+    flex: 1 1 160px;
+    min-width: 140px;
+}
+
+/* ── Grillas de formulario e informes ────────────────────── */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+}
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-lg);
+  width: 100%;
+}
+/* Alturas estándar para contenedores ECharts */
+.echart-md  { height: 280px; width: 100%; }
+.echart-lg  { height: 340px; width: 100%; }
+
+/* ============================================================
+   est-table — Tabla de estudiantes renderizada en Python puro
+   ============================================================ */
+
+.est-table {
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+}
+
+.est-table__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+/* Cabecera */
+.est-table__head-row {
+    background: var(--color-surface-alt, #f5f5f5);
+    border-bottom: 2px solid var(--color-border, #e0e0e0);
+}
+
+.est-table__th {
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary, #666);
+    white-space: nowrap;
+}
+
+.est-table__th--left   { text-align: left; }
+.est-table__th--center { text-align: center; }
+.est-table__th--wide   { min-width: 200px; }
+
+/* Filas de datos */
+.est-table__row {
+    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    transition: background 0.15s;
+}
+
+.est-table__row:last-child {
+    border-bottom: none;
+}
+
+.est-table__row:hover {
+    background: var(--color-surface-hover, #fafafa);
+}
+
+.est-table__td {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+.est-table__td--left   { text-align: left; }
+.est-table__td--center { text-align: center; }
+
+/* Contenido de celdas */
+.est-table__nombre {
+    font-weight: 500;
+    color: var(--color-text-primary, #1a1a1a);
+}
+
+.est-table__doc,
+.est-table__grupo {
+    color: var(--color-text-secondary, #555);
+    font-family: monospace;
+    font-size: 0.84rem;
+}
+
+/* ag-Grid cell helpers (migración de cellStyle inline) */
+.ag-theme-balham .ag-cell-xs    { font-size: 11px; }
+.ag-theme-balham .ag-cell-info  { color: var(--color-info); }
+.ag-theme-balham .ag-cell-error { color: var(--color-error); }

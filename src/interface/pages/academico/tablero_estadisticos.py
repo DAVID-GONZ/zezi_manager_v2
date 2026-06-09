@@ -760,7 +760,7 @@ def _cargar_drill_asignaciones(_s: dict) -> None:
         _s["drill_asignaciones"] = []
         return
     try:
-        _s["drill_asignaciones"] = Container.asignacion_repo().listar_por_grupo(
+        _s["drill_asignaciones"] = Container.asignacion_service().listar_por_grupo(
             grupo_id, periodo_id
         )
     except Exception as exc:
@@ -1176,12 +1176,8 @@ def tablero_estadisticos_page() -> None:
                 profesor_refreshable()
 
     app_layout(
-        titulo_pagina     = "Tablero Estadístico",
-        usuario_nombre    = ctx.usuario_nombre,
-        usuario_rol       = ctx.usuario_rol,
-        ruta_activa       = "/academico/tablero",
-        contenido         = contenido,
-        ctx               = ctx,
+        ctx, contenido,
+        page_titulo       = "Tablero Estadístico",
         on_context_change = on_context_change,
     )
 

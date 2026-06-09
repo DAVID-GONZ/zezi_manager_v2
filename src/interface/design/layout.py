@@ -1,23 +1,23 @@
 """
-layout.py — Layout principal con sidebar colapsable + topbar (Andes Minimal v2).
+layout.py — Layout principal con rail icon-only 60px + flyout flotante (paso_12d).
 
-Sidebar colapsable:
-  - Estado en _s = {"collapsed": False} (dict mutable, accesible en closures)
-  - _toggle() alterna clase "collapsed" en sidebar y "sidebar-collapsed" en main
-  - CSS en styles.css define la transición y el ancho en ambos estados
-  - En estado collapsed: icono visible, label oculto (opacity:0; width:0)
+Rail navigation:
+  - Rail de 60px fijo (siempre visible, no colapsable).
+  - Flyout flotante para grupos con sub-ítems (click para abrir).
+  - Tooltip nativo CSS via data-tooltip al hover.
+  - Cierre de flyout con click fuera o ESC (JS global inyectado una vez).
 
 Regla CSS:
   Ningún componente inyecta style="" con valores estáticos.
-  Todo el CSS vive en styles.css. Solo se usan .classes("nombre-clase").
+  Todo el CSS vive en styles/. Solo se usan .classes("nombre-clase").
 
 Ajustes NiceGUI 3.x:
-  - Sidebar es position:fixed → main area requiere margin-left (clase .andes-main)
+  - Rail es position:fixed → main area requiere margin-left: var(--rail-width)
   - Iconos via ThemeManager.icono() en vez de ui.element().text()
-  - Ítems de navegación: ui.element("a") con props href
+  - Navegación: ui.navigate.to() en handlers de click
   - Botón logout: btn_icon(Icons.LOGOUT, ...)
 
-Uso nuevo (preferido):
+Uso:
     @ui.page("/mi-ruta")
     def mi_pagina():
         ctx = SessionContext.desde_storage()
@@ -31,16 +31,6 @@ Uso nuevo (preferido):
             page_subtitulo="Descripción de la página",
             page_icono="home",
         )
-
-Uso legacy (compatible):
-    app_layout(
-        titulo_pagina="Mi Página",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/mi-ruta",
-        contenido=contenido,
-        ctx=ctx,
-    )
 """
 from __future__ import annotations
 
@@ -56,72 +46,104 @@ if TYPE_CHECKING:
     from src.interface.context.session_context import SessionContext
 
 
-# ── Definición de la navegación principal ──────────────────────────────────────
+# ── Definición de la navegación principal — "Aula primero" (paso_12e) ──────────
 NAV_ITEMS: list[dict] = [
     {
-        "label": "Dashboard",
-        "icon":  Icons.DASHBOARD,
+        "label": "Inicio",
+        "icon":  "home",
         "ruta":  "/inicio",
         "rol":   ["*"],
     },
     {
-        "label": "Estudiantes",
-        "icon":  Icons.STUDENTS,
-        "ruta":  "/estudiantes",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
-    },
-    {
-        "label": "Asistencia",
-        "icon":  Icons.ATTENDANCE,
-        "ruta":  "/asistencia",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
-    },
-    {
-        "label": "Calificaciones",
-        "icon":  Icons.GRADES,
+        "label": "Aula",
+        "icon":  "co_present",
         "rol":   ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Planilla de Notas",   "icon": "table_chart",       "ruta": "/evaluacion/planilla",        "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Config. Evaluación",  "icon": "tune",              "ruta": "/evaluacion/configuracion",   "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Habilitaciones",      "icon": "assignment_return", "ruta": "/evaluacion/habilitaciones",  "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Planes de Mejora",    "icon": "trending_up",       "ruta": "/evaluacion/planes",          "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Cierre de Periodo",   "icon": "lock",              "ruta": "/evaluacion/cierre-periodo",  "rol": ["admin", "director", "coordinador"]},
-            {"label": "Cierre de Año",       "icon": "lock_clock",        "ruta": "/evaluacion/cierre-anio",     "rol": ["admin", "director", "coordinador"]},
+            {"label": "Planilla de Notas", "icon": "table_chart",
+             "ruta": "/evaluacion/planilla",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Asistencia",        "icon": "fact_check",
+             "ruta": "/asistencia",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Observaciones",     "icon": "comment",
+             "ruta": "/convivencia/observaciones",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Comportamiento",    "icon": "rule",
+             "ruta": "/convivencia/comportamiento",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Seguimiento",       "icon": "assignment",
+             "ruta": "/convivencia/notas",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
         ],
     },
     {
-        "label":   "Convivencia",
-        "icon":    Icons.BEHAVIOR,
-        "rol":     ["admin", "director", "coordinador", "profesor"],
+        "label": "Académico",
+        "icon":  "school",
+        "rol":   ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Observaciones",  "icon": "comment",    "ruta": "/convivencia/observaciones",  "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Comportamiento", "icon": "rule",       "ruta": "/convivencia/comportamiento", "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Notas",          "icon": "fact_check", "ruta": "/convivencia/notas",          "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Estudiantes",   "icon": "person",
+             "ruta": "/estudiantes",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Grupos",        "icon": "group",
+             "ruta": "/admin/grupos",
+             "rol":  ["admin", "director"]},
+            {"label": "Asignaturas",   "icon": "book",
+             "ruta": "/admin/asignaturas",
+             "rol":  ["admin", "director"]},
+            {"label": "Asignaciones",  "icon": "assignment_ind",
+             "ruta": "/admin/asignaciones",
+             "rol":  ["admin", "director"]},
+            {"label": "Horarios",      "icon": "calendar_today",
+             "ruta": "/horarios",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
         ],
     },
     {
-        "label":   "Informes",
-        "icon":    Icons.REPORTS,
-        "rol":     ["admin", "director", "coordinador", "profesor"],
+        "label": "Evaluación",
+        "icon":  "grading",
+        "rol":   ["admin", "director", "coordinador", "profesor"],
         "children": [
-            {"label": "Boletín Periodo",     "icon": "description", "ruta": "/informes/boletin-periodo",        "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Boletín Anual",       "icon": "description", "ruta": "/informes/boletin-anual",          "rol": ["admin", "director", "coordinador", "profesor"]},
-            {"label": "Consol. Notas",       "icon": "bar_chart",   "ruta": "/informes/consolidado-notas",      "rol": ["admin", "director", "coordinador"]},
-            {"label": "Consol. Asistencia",  "icon": "event_note",  "ruta": "/informes/consolidado-asistencia", "rol": ["admin", "director", "coordinador"]},
-            {"label": "Estadísticos",        "icon": "analytics",   "ruta": "/informes/estadisticos",           "rol": ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Configuración SIE",      "icon": "tune",
+             "ruta": "/evaluacion/configuracion",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Habilitaciones",         "icon": "assignment_return",
+             "ruta": "/evaluacion/habilitaciones",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Planes de Mejoramiento", "icon": "trending_up",
+             "ruta": "/evaluacion/planes",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Cierre de Periodo",      "icon": "lock",
+             "ruta": "/evaluacion/cierre-periodo",
+             "rol":  ["admin", "director", "coordinador"]},
+            {"label": "Cierre de Año",          "icon": "lock_clock",
+             "ruta": "/evaluacion/cierre-anio",
+             "rol":  ["admin", "director", "coordinador"]},
         ],
     },
     {
-        "label": "Horarios",
-        "icon":  Icons.SCHEDULE,
-        "ruta":  "/horarios",
+        "label": "Informes",
+        "icon":  "summarize",
         "rol":   ["admin", "director", "coordinador", "profesor"],
-    },
-    {
-        "label": "Tablero",
-        "icon":  "analytics",
-        "ruta":  "/academico/tablero",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
+        "children": [
+            {"label": "Tablero",                   "icon": "dashboard",
+             "ruta": "/academico/tablero",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Boletín de Periodo",        "icon": "description",
+             "ruta": "/informes/boletin-periodo",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Boletín Anual",             "icon": "description",
+             "ruta": "/informes/boletin-anual",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Consolidado de Notas",      "icon": "bar_chart",
+             "ruta": "/informes/consolidado-notas",
+             "rol":  ["admin", "director", "coordinador"]},
+            {"label": "Consolidado de Asistencia", "icon": "event_note",
+             "ruta": "/informes/consolidado-asistencia",
+             "rol":  ["admin", "director", "coordinador"]},
+            {"label": "Estadísticos",              "icon": "analytics",
+             "ruta": "/informes/estadisticos",
+             "rol":  ["admin", "director", "coordinador", "profesor"]},
+        ],
     },
     {
         "divider": True,
@@ -129,15 +151,15 @@ NAV_ITEMS: list[dict] = [
     },
     {
         "label": "Administración",
-        "icon":  Icons.CONFIG,
+        "icon":  "settings",
         "rol":   ["admin", "director"],
         "children": [
-            {"label": "Grupos",              "icon": Icons.GROUPS,     "ruta": "/admin/grupos",                    "rol": ["admin", "director"]},
-            {"label": "Asignaturas",         "icon": "book",           "ruta": "/admin/asignaturas",               "rol": ["admin", "director"]},
-            {"label": "Asignaciones",        "icon": "assignment_ind", "ruta": "/admin/asignaciones",              "rol": ["admin", "director"]},
-            {"label": "Config. SIE",         "icon": "settings",       "ruta": "/admin/configuracion",             "rol": ["admin", "director", "coordinador"]},
-            {"label": "Info. Institucional", "icon": "business",       "ruta": "/admin/configuracion-institucion", "rol": ["admin", "director"]},
-            {"label": "Usuarios",            "icon": Icons.TEACHERS,   "ruta": "/admin/usuarios",                  "rol": ["admin", "director"]},
+            {"label": "Usuarios",                  "icon": "badge",
+             "ruta": "/admin/usuarios",
+             "rol":  ["admin", "director"]},
+            {"label": "Información Institucional", "icon": "business",
+             "ruta": "/admin/configuracion-institucion",
+             "rol":  ["admin", "director"]},
         ],
     },
 ]
@@ -226,23 +248,15 @@ def _topbar(
     page_icono: str = "",
     page_acciones: "list[dict] | None" = None,
     logo_url: str | None = None,
-    toggle_callback=None,
     on_context_change=None,
 ) -> None:
-    """Renderiza el topbar de la aplicación."""
+    """Renderiza el topbar de la aplicación (sin toggle — rail siempre visible)."""
     usuario_rol = ctx.usuario_rol if ctx else ""
 
     with ui.row().classes("andes-topbar items-center gap-0"):
-        
-        # ── Brand / toggle area ──────────────────────────────────────────────
-        with ui.element("div").classes("topbar-brand"):
-            if toggle_callback:
-                toggle_btn_inner = ui.element("div").classes("topbar-toggle-btn") 
-                with toggle_btn_inner:
-                    ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
-                toggle_btn_inner.on("click", lambda _: toggle_callback())
-            else:
-                ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
+
+        # ── Brand (decorativo — sin toggle desde paso_12d) ──────────────────
+        ui.element("div").classes("topbar-brand")
 
         # ── Page info ────────────────────────────────────────────────────────
         if page_titulo:
@@ -287,180 +301,119 @@ def _topbar(
         _user_block_topbar(ctx)
 
 
-def _topbar_legacy(
-    titulo_pagina: str,
-    usuario_nombre: str,
-    usuario_rol: str,
-    ctx=None,
-    on_context_change=None,
-    toggle_callback=None,
-) -> None:
-    """Topbar legacy para llamadas antiguas a app_layout."""
+def _calcular_activo(item: dict, ruta_activa: str) -> bool:
+    """Devuelve True si el item (o alguno de sus hijos) coincide con la ruta activa."""
+    if "ruta" in item:
+        return item["ruta"] == ruta_activa
+    if "children" in item:
+        return any(c.get("ruta") == ruta_activa for c in item["children"])
+    return False
 
-    with ui.element("header").classes("andes-topbar"):
 
-        # Toggle sidebar
-        if toggle_callback:
-            toggle_btn_inner = ui.element("div").classes("topbar-brand")
-            with toggle_btn_inner:
-                ThemeManager.icono(Icons.MENU, size=20, color="rgba(255,255,255,0.85)")
-            toggle_btn_inner.on("click", lambda _: toggle_callback())
-
-        ui.label(titulo_pagina).classes("topbar-title")
-
-        # Context chip (roles académicos, no admin)
-        if ctx is not None:
-            from src.interface.design.components.context_selector import context_chip
-            context_chip(
-                ctx=ctx,
-                on_change=on_context_change,
-                mostrar_asignatura=(usuario_rol == "profesor"),
-            )
-
-        # Bloque de usuario + logout
-        with ui.element("div").classes("topbar-user-block"):
-            ThemeManager.icono(
-                Icons.PROFILE,
-                size=22,
-                color="rgba(255,255,255,0.9)",
-            )
-            with ui.element("div").classes("topbar-user-info"):
-                ui.label(usuario_nombre).classes("topbar-user-name")
-                ui.label(usuario_rol.capitalize()).classes("topbar-user-role")
-
-            btn_icon(
-                Icons.LOGOUT,
-                on_click=lambda: ui.navigate.to("/logout"),
-                tooltip="Cerrar sesión",
-            ).classes("topbar-logout-btn")
-
-def _sidebar(
+def _rail(
     usuario_rol: str,
     ruta_activa: str,
     *,
     logo_url: str | None = None,
-) -> tuple:
-    # Estado mutable del sidebar
-    _s: dict = {"collapsed": True}
+) -> ui.element:
+    """
+    Renderiza el rail icon-only de 60px con flyouts contextuales.
 
-    sidebar_el = ui.element("nav").classes("andes-sidebar collapsed")
+    - Cada icono es un rail-item de 44×44px centrado en el rail.
+    - Items sin hijos navegan directamente al hacer click.
+    - Items con hijos abren un flyout flotante a la derecha.
+    - El flyout se cierra con click fuera o ESC (JS global en app_layout).
+    """
 
-    with sidebar_el:
-        # Cabecera: logo (sin el botón toggle)
-        with ui.element("div").classes("sidebar-header"):
-            with ui.element("div").classes("sidebar-logo-wrap"):
-                if logo_url:
-                    ui.html(
-                        f'<img src="{logo_url}" alt="Logo" class="sidebar-logo-img" />'
-                    )
-                else:
-                    ui.label("LumEd").classes("sidebar-logo-text")
-                    ui.label("Education Manager").classes("sidebar-sub-text")
-        # Ítems de navegación
-        with ui.element("div").classes("sidebar-nav-scroll"):
-            # Pre-calcular qué grupos están abiertos (el que contiene ruta_activa)
-            _nav_open: dict = {
-                item["label"]: any(
-                    c.get("ruta") == ruta_activa for c in item.get("children", [])
+    # ── Estado del flyout (mutable en closures) ──────────────────────────
+    _flyout_state: dict = {"open_item_id": None}
+    # Holder de un elemento — permite mutar la referencia dentro de closures
+    _fh: list = []  # _fh[0] = flyout_container (se asigna al final)
+
+    def _cerrar_flyout() -> None:
+        if _fh:
+            _fh[0].classes(add="hidden")
+        _flyout_state["open_item_id"] = None
+
+    def _abrir_flyout(item: dict, event) -> None:
+        container = _fh[0]
+        container.clear()
+        with container:
+            ui.label(item["label"]).classes("flyout-header")
+            for child in item["children"]:
+                if not _usuario_puede_ver(child, usuario_rol):
+                    continue
+                is_active = ruta_activa == child.get("ruta")
+                clase = "flyout-item" + (" is-active" if is_active else "")
+                it = ui.element("div").classes(clase)
+                with it:
+                    ThemeManager.icono(child["icon"], size=18, clases="flyout-icon")
+                    ui.label(child["label"]).classes("flyout-label")
+                ruta_child = child["ruta"]
+                it.on(
+                    "click",
+                    lambda e, r=ruta_child: (ui.navigate.to(r), _cerrar_flyout()),
                 )
-                for item in NAV_ITEMS
-                if "children" in item
-            }
+        # Posicionar el flyout cerca del icono clicado
+        try:
+            page_y = int(event.args.get("pageY", 80)) if isinstance(event.args, dict) else 80
+        except Exception:
+            page_y = 80
+        container.style(f"top: {max(page_y - 20, 70)}px")
+        container.classes(remove="hidden")
+        _flyout_state["open_item_id"] = id(item)
 
-            for item in NAV_ITEMS:
-                # Divisor de sección
-                if "divider" in item:
-                    if _usuario_puede_ver(item, usuario_rol):
-                        ui.element("div").classes("sidebar-nav-divider")
-                    continue
+    def _toggle_flyout(item: dict, event) -> None:
+        if _flyout_state["open_item_id"] == id(item):
+            _cerrar_flyout()
+            return
+        _abrir_flyout(item, event)
 
-                # Filtrar por rol
-                if not _usuario_puede_ver(item, usuario_rol):
-                    continue
+    # ── Render del rail ──────────────────────────────────────────────────
+    rail_el = ui.element("nav").classes("andes-rail").props("role=navigation")
 
-                if "children" in item:
-                    # ── Grupo colapsable ─────────────────────────────────────
-                    visible_children = [
-                        c for c in item["children"]
-                        if _usuario_puede_ver(c, usuario_rol)
-                    ]
-                    if not visible_children:
-                        continue
+    with rail_el:
+        # Logo / monograma institucional
+        with ui.element("div").classes("rail-brand"):
+            if logo_url:
+                ui.html(f'<img src="{logo_url}" alt="Logo" class="rail-logo-img">')
+            else:
+                ui.html('<span class="rail-monogram">ZM</span>')
 
-                    is_open    = _nav_open.get(item["label"], False)
-                    is_pending = item.get("pending", False)
-                    parent_clase = "sidebar-nav-parent" + (
-                        " open"    if is_open    else ""
-                    ) + (
-                        " pending" if is_pending else ""
-                    )
+        # Ítems de navegación
+        for item in NAV_ITEMS:
+            if "divider" in item:
+                if _usuario_puede_ver(item, usuario_rol):
+                    ui.element("div").classes("rail-divider")
+                continue
 
-                    parent_el = ui.element("div").classes(parent_clase)
-                    with parent_el:
-                        ThemeManager.icono(item["icon"], size=20, clases="nav-icon")
-                        ui.label(item["label"]).classes("nav-label")
-                        ThemeManager.icono(
-                            "expand_more", size=14, clases="nav-expand-icon"
-                        )
+            if not _usuario_puede_ver(item, usuario_rol):
+                continue
 
-                    children_el = ui.element("div").classes(
-                        "sidebar-nav-children" + ("" if is_open else " hidden")
-                    )
-                    with children_el:
-                        for child in visible_children:
-                            is_active_child = ruta_activa == child.get("ruta", "")
-                            is_child_pending = child.get("pending", False)
-                            child_clase = "sidebar-nav-sub-item" + (
-                                " active"  if is_active_child  else ""
-                            ) + (
-                                " pending" if is_child_pending  else ""
-                            )
-                            if is_child_pending:
-                                with ui.element("div").classes(child_clase):
-                                    ThemeManager.icono(
-                                        child.get("icon", "circle"), size=16, clases="nav-icon"
-                                    )
-                                    ui.label(child["label"]).classes("nav-label")
-                            else:
-                                with ui.element("a").classes(child_clase).props(
-                                    f'href="{child["ruta"]}"'
-                                ):
-                                    ThemeManager.icono(
-                                        child.get("icon", "circle"), size=16, clases="nav-icon"
-                                    )
-                                    ui.label(child["label"]).classes("nav-label")
+            tiene_hijos = "children" in item
+            es_activo = _calcular_activo(item, ruta_activa)
 
-                    if not is_pending:
-                        def _toggle_nav(
-                            label=item["label"],
-                            p_el=parent_el,
-                            c_el=children_el,
-                        ):
-                            _nav_open[label] = not _nav_open.get(label, False)
-                            if _nav_open[label]:
-                                p_el.classes(add="open")
-                                c_el.classes(remove="hidden")
-                            else:
-                                p_el.classes(remove="open")
-                                c_el.classes(add="hidden")
+            clase = "rail-item"
+            if es_activo:
+                clase += " is-active"
+            if tiene_hijos:
+                clase += " has-children"
 
-                        parent_el.on("click", _toggle_nav)
+            item_el = ui.element("div").classes(clase)
+            with item_el:
+                ThemeManager.icono(item["icon"], size=22, clases="rail-icon")
+            item_el.props(f'data-tooltip="{item["label"]}"')
 
-                else:
-                    # ── Ítem simple ──────────────────────────────────────────
-                    is_active = ruta_activa == item["ruta"]
-                    clase = "andes-sidebar-item" + (" active" if is_active else "")
-                    with ui.element("a").classes(clase).props(
-                        f'href="{item["ruta"]}"'
-                    ):
-                        ThemeManager.icono(item["icon"], size=20, clases="nav-icon")
-                        ui.label(item["label"]).classes("nav-label")
+            if tiene_hijos:
+                item_el.on("click", lambda e, it=item: _toggle_flyout(it, e))
+            else:
+                item_el.on("click", lambda e, r=item["ruta"]: ui.navigate.to(r))
 
-        # Pie del sidebar — versión (oculto en collapsed)
-        with ui.element("div").classes("sidebar-footer"):
-            ui.label("v2.0").classes("sidebar-version")
+    # Flyout container — fuera del rail, usa position:fixed
+    flyout_el = ui.element("div").classes("rail-flyout-container hidden")
+    _fh.append(flyout_el)
 
-    return sidebar_el, _s
+    return rail_el
 
 
 # ── Layout principal ────────────────────────────────────────────────────────────
@@ -472,57 +425,55 @@ def app_layout(
     page_subtitulo: str = "",
     page_icono: str = "",
     page_acciones: "list[dict] | None" = None,
-    # ── Deprecated legacy kwargs (backward compat) ──────────────────────
-    titulo_pagina: str = "",
-    usuario_nombre: str = "",
-    usuario_rol: str = "",
-    ruta_activa: str = "",
-    contenido: "Callable[[], None] | None" = None,
-    ctx=None,
     on_context_change=None,
 ) -> None:
     """
-    Layout principal de la aplicación Andes Minimal v2.
+    Layout principal de la aplicación — Rail icon-only 60px (paso_12d).
 
-    Uso nuevo (preferido):
+    Uso:
         app_layout(ctx, contenido_fn, page_titulo="...", page_icono="...", ...)
 
-    Uso legacy (compatible con código existente):
-        app_layout(titulo_pagina="...", usuario_nombre=..., usuario_rol=...,
-                   ruta_activa=..., contenido=fn, ctx=ctx)
-
-    Args (nuevo):
-        ctx_or_none:     SessionContext del usuario autenticado.
-        contenido_arg:   Callable que renderiza el cuerpo de la página.
-        page_titulo:     Título mostrado en el topbar.
-        page_subtitulo:  Subtítulo descriptivo opcional.
-        page_icono:      Material Symbol para el topbar.
-        page_acciones:   Lista de dicts de acciones para botones en el topbar.
+    Args:
+        ctx_or_none:       SessionContext del usuario autenticado.
+        contenido_arg:     Callable que renderiza el cuerpo de la página.
+        page_titulo:       Título mostrado en el topbar.
+        page_subtitulo:    Subtítulo descriptivo opcional.
+        page_icono:        Material Symbol para el topbar.
+        page_acciones:     Lista de dicts de acciones para botones en el topbar.
+        on_context_change: Callback al cambiar contexto desde el chip.
     """
-    from src.interface.context.session_context import SessionContext
-
-    # ── Detectar modo de llamada ─────────────────────────────────────────────
-    _new_mode = isinstance(ctx_or_none, SessionContext)
-
-    if _new_mode:
-        # Nueva llamada: app_layout(ctx, contenido, page_titulo=...)
-        _ctx: "SessionContext | None" = ctx_or_none
-        _contenido = contenido_arg
-        _usuario_rol = _ctx.usuario_rol if _ctx else ""
-        _usuario_nombre = _ctx.usuario_nombre if _ctx else ""
-        _ruta_activa = _get_ruta_activa()
-    else:
-        # Llamada legacy: app_layout(titulo_pagina=..., usuario_nombre=..., ...)
-        _ctx = ctx
-        _contenido = contenido or contenido_arg
-        _usuario_rol = usuario_rol
-        _usuario_nombre = usuario_nombre
-        _ruta_activa = ruta_activa
+    _ctx = ctx_or_none
+    _contenido = contenido_arg
+    _usuario_rol = _ctx.usuario_rol if _ctx else ""
+    _ruta_activa = _get_ruta_activa()
 
     logo_url = _get_logo_institucional()
 
-    # ── Sidebar ──────────────────────────────────────────────────────────────
-    sidebar_el, _s = _sidebar( 
+    # JS global: cerrar flyout con click-fuera o ESC (inyectado una vez por carga)
+    ui.add_body_html("""
+<script>
+(function() {
+  if (window.__andesTooltipListeners) return;
+  window.__andesTooltipListeners = true;
+  document.addEventListener('click', function(e) {
+    var flyout = document.querySelector('.rail-flyout-container');
+    var rail   = document.querySelector('.andes-rail');
+    if (!flyout || !rail) return;
+    if (flyout.contains(e.target) || rail.contains(e.target)) return;
+    flyout.classList.add('hidden');
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var flyout = document.querySelector('.rail-flyout-container');
+      if (flyout) flyout.classList.add('hidden');
+    }
+  });
+})();
+</script>
+""")
+
+    # ── Rail ────────────────────────────────────────────────────────────────
+    _rail(
         _usuario_rol,
         _ruta_activa,
         logo_url=logo_url,
@@ -532,33 +483,15 @@ def app_layout(
     main_el = ui.element("div").classes("andes-main")
 
     with main_el:
-        def _toggle_sidebar() -> None:
-            _s["collapsed"] = not _s["collapsed"]
-                
-            if _s["collapsed"]:
-                sidebar_el.classes("collapsed")
-            else:
-                sidebar_el.classes(remove="collapsed") 
-                           
-        if _new_mode:
-            _topbar(
-                _ctx,
-                page_titulo=page_titulo,
-                page_subtitulo=page_subtitulo,
-                page_icono=page_icono,
-                page_acciones=page_acciones,
-                toggle_callback=_toggle_sidebar,
-                on_context_change=on_context_change,
-            )
-        else:
-            _topbar_legacy(
-                titulo_pagina=titulo_pagina,
-                usuario_nombre=_usuario_nombre,
-                usuario_rol=_usuario_rol,
-                ctx=_ctx,
-                on_context_change=on_context_change,
-                toggle_callback=_toggle_sidebar,
-            )
+        _topbar(
+            _ctx,
+            page_titulo=page_titulo,
+            page_subtitulo=page_subtitulo,
+            page_icono=page_icono,
+            page_acciones=page_acciones,
+            logo_url=logo_url,
+            on_context_change=on_context_change,
+        )
 
         # Contenido de la página
         with ui.element("main").classes("andes-content"):

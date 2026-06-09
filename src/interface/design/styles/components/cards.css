@@ -1,0 +1,722 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/cards.css — Cards, stat-cards, page-header, login,
+                          skeleton, performance-indicator y estados vacíos
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page header ─────────────────────────────────────────── */
+.andes-page-header {
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.andes-page-header-title {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.andes-page-header-subtitle {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.andes-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.andes-card-sm {
+  padding: var(--space-md);
+}
+
+/* ── STAT CARDS — diseño métrica profesional ──────────────── */
+.stat-card-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-card-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Acento lateral izquierdo — color por variante */
+.stat-card-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.stat-card-wrapper.primary::before {
+  background: var(--color-primary-darker);
+}
+
+.stat-card-wrapper.success::before {
+  background: var(--color-success);
+}
+
+.stat-card-wrapper.warning::before {
+  background: var(--color-warning);
+}
+
+.stat-card-wrapper.error::before,
+.stat-card-wrapper.danger::before {
+  background: var(--color-error);
+}
+
+.stat-card-wrapper.info::before {
+  background: var(--color-info);
+}
+
+.stat-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-secondary);
+}
+
+.stat-card-value {
+  font-size: 34px;
+  letter-spacing: -1px;
+  font-weight: 650;
+  color: var(--color-text-primary);
+}
+
+.stat-card-subtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.stat-card-icon-wrap {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-card-wrapper.primary .stat-card-icon-wrap {
+  background: var(--color-primary-lighter);
+}
+
+.stat-card-wrapper.success .stat-card-icon-wrap {
+  background: var(--color-success-light);
+}
+
+.stat-card-wrapper.warning .stat-card-icon-wrap {
+  background: var(--color-warning-light);
+}
+
+.stat-card-wrapper.error .stat-card-icon-wrap,
+.stat-card-wrapper.danger .stat-card-icon-wrap {
+  background: var(--color-error-light);
+}
+
+.stat-card-wrapper.info .stat-card-icon-wrap {
+  background: var(--color-info-light);
+}
+
+/* ── Login ───────────────────────────────────────────────── */
+/* ── Login (SaaS Moderno) ────────────────────────────────── */
+.andes-login-bg {
+  min-height: 100vh;
+  /* Fondo claro con destellos cálidos de la paleta Borgoña */
+  background:
+    radial-gradient(circle at 0% 0%, var(--color-primary-lighter) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, var(--color-primary-lighter) 0%, transparent 40%),
+    var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.andes-login-card {
+  background: var(--color-surface);
+  border-radius: 24px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  /* Sombra profunda y difuminada para elevar la tarjeta */
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.andes-login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+/* Cápsula de icono premium */
+.andes-login-icon-wrap {
+  width: 72px;
+  height: 72px;
+  background: var(--color-primary-lighter);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 8px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.andes-login-logo-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+  margin: 0 0 6px 0;
+}
+
+.andes-login-logo-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.andes-login-footer {
+  color: var(--color-text-disabled);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 32px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Loading / Skeleton ──────────────────────────────────── */
+.andes-skeleton {
+  background: linear-gradient(90deg, var(--color-divider) 25%, var(--color-surface-alt) 50%, var(--color-divider) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Clases para performance_indicator ───────────────────────────────────── */
+.perf-root         { width: 100%; }
+.perf-header       { width: 100%; margin-bottom: 4px; }
+.perf-label        { color: var(--color-text-secondary); font-size: var(--font-size-small); font-weight: 500; }
+.perf-value        { color: var(--color-text-primary); font-size: var(--font-size-small); font-weight: 600; }
+.perf-nivel        { font-size: var(--font-size-small); font-weight: 500; }
+.perf-bar-track    { width: 100%; background: var(--color-bg); border-radius: 999px;
+                     overflow: hidden; border: 1px solid var(--color-divider); }
+.perf-bar-fill     { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+
+/* ── Clases para page_header ─────────────────────────────────────────────── */
+.page-header-row   { width: 100%; margin-bottom: var(--space-lg);
+                     padding-bottom: var(--space-md); border-bottom: 1px solid var(--color-divider); }
+.page-header-title { font-family: var(--font-family); font-size: 22px; font-weight: 700; color: var(--ink-700); line-height: 1.2; letter-spacing: -0.02em; }
+.page-header-sub   { font-family: var(--font-family); color: var(--graphite-500); font-size: var(--font-size-body); font-weight: 400; margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════════════
+   INICIO — Dashboard
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Stat grid — CLAVE para ancho completo ───────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* ── Greeting hero (Variante Clara con Acento Borgoña) ───────────── */
+.greeting-hero {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  border-left: 6px solid var(--color-primary);
+  padding: 32px 40px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  color: var(--color-text-primary);
+}
+/* Tipografía y jerarquía (z-index previene superposición de decoraciones) */
+.greeting-name,
+.greeting-desc,
+.greeting-meta {
+  position: relative;
+  z-index: 2;
+}
+
+.greeting-name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+  color: var(--color-text-primary);
+}
+
+.greeting-desc {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  margin-bottom: 24px;
+}
+
+/* Cápsula de Metadata del usuario */
+.greeting-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-primary-lighter);
+  padding: 6px 14px;
+  border-radius: 99px;
+  width: fit-content;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.greeting-user {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.greeting-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+}
+.greeting-role {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Selector universal para corregir el color del icono inyectado */
+.greeting-meta [class*="material-symbols"] {
+  color: var(--color-primary-dark) !important;
+}
+
+/* ── Elementos decorativos (Fondo) ───────────────────────── */
+.greeting-hero::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.greeting-hero::after {
+  content: '';
+  position: absolute;
+  right: 15%;
+  bottom: -80px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Period status card ──────────────────────────────────── */
+.period-status-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  min-width: 260px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-card);
+}
+
+.period-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--color-divider);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.period-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  transition: width 0.8s ease;
+}
+
+.period-bar-fill.warning {
+  background: var(--color-warning);
+}
+
+.period-bar-fill.danger {
+  background: var(--color-error);
+}
+
+/* ── Quick action cards ──────────────────────────────────── */
+.quick-action-card {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.quick-action-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lighter);
+  transform: translateY(-1px) scale(1.01);
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease;
+  box-shadow: var(--shadow-md);
+}
+
+.quick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Panel estándar ──────────────────────────────────────── */
+.panel-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+  width: 100%;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* ── Activity feed ───────────────────────────────────────── */
+.activity-feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.activity-feed-item:last-child {
+  border-bottom: none;
+}
+
+.activity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+/* ── Hitos ───────────────────────────────────────────────── */
+.hito-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.hito-item:last-child {
+  border-bottom: none;
+}
+
+.hito-dias-badge {
+  min-width: 48px;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hito-dias-ok {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.hito-dias-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.hito-dias-danger {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+/* ── Alertas ─────────────────────────────────────────────── */
+.alerta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+}
+
+.alerta-critica {
+  background: var(--color-error-light);
+}
+
+.alerta-advertencia {
+  background: var(--color-warning-light);
+}
+
+.alerta-info {
+  background: var(--color-info-light);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANEL HEADER — encabezado estándar de panel/card
+   ═══════════════════════════════════════════════════════ */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PERIOD STATUS CARD — hijos de la tarjeta de periodo
+   ═══════════════════════════════════════════════════════ */
+
+.eyebrow-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.period-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.period-dates-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.period-days {
+  font-size: 12px;
+}
+
+.period-days-ok {
+  color: var(--color-text-secondary);
+}
+
+.period-days-warn {
+  color: var(--color-warning);
+}
+
+.period-days-danger {
+  color: var(--color-error);
+}
+
+.text-xs-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* ═══════════════════════════════════════════════════════
+   ACCIONES RÁPIDAS — texto interno de quick-action-card
+   ═══════════════════════════════════════════════════════ */
+
+.action-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.action-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.action-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ACTIVITY FEED — texto interno de activity-feed-item
+   ═══════════════════════════════════════════════════════ */
+
+.feed-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.feed-meta {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.feed-time {
+  font-size: 11px;
+  color: var(--color-text-disabled);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HITOS — texto interno de hito-item
+   ═══════════════════════════════════════════════════════ */
+
+.hito-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.hito-desc {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hito-date {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* ═══════════════════════════════════════════════════════
+   ESTADOS VACÍOS / ERROR — reutilizables en toda la app
+   ═══════════════════════════════════════════════════════ */
+
+.empty-state {
+  font-size: 12px;
+  color: var(--color-text-disabled);
+  text-align: center;
+  padding: 16px 0;
+  display: block;
+}
+
+.empty-state-lg {
+  font-size: 13px;
+  color: var(--color-text-disabled);
+  text-align: center;
+  padding: 24px 0;
+  display: block;
+}
+
+.text-empty {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.text-hint {
+  font-size: 12px;
+  color: var(--color-text-disabled);
+}
+
+.success-empty-text {
+  font-size: 13px;
+  color: var(--color-success);
+  font-weight: 500;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.unavailable-text {
+  font-size: 12px;
+  color: var(--color-text-disabled);
+}

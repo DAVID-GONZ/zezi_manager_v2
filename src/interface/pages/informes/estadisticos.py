@@ -31,8 +31,7 @@ from src.interface.design.tokens import Icons, DesempenoColors, AsistenciaColors
 from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.interface.design.components.stat_card import stat_card
-from src.domain.models.dtos import FormatoInforme
-from src.services.informe_service import sanitizar_datos_exportacion
+from src.services.informe_service import sanitizar_datos_exportacion, FormatoInforme
 
 logger = logging.getLogger("ESTADISTICOS")
 
@@ -1005,12 +1004,8 @@ def estadisticos_page() -> None:
             export_refreshable()
 
     app_layout(
-        titulo_pagina="Estadísticos",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/informes/estadisticos",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Estadísticos",
         on_context_change=on_context_change,
     )
 

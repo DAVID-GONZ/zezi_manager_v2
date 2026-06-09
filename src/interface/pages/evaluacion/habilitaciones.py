@@ -26,8 +26,8 @@ from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
     NuevaActividadNivelacionDTO,
     CalificarNotaNivelacionDTO,
+    CalculadorNivelacion,
 )
-from src.domain.models.nivelacion import CalculadorNivelacion
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
 
@@ -280,7 +280,7 @@ def habilitaciones_page() -> None:
         with ui.row().classes("items-center gap-3 mb-3 flex-wrap"):
             if cerrado:
                 with ui.row().classes("items-center gap-1"):
-                    ui.icon("lock", size="sm", color="var(--color-error)")
+                    ThemeManager.icono("lock", size=20, color="var(--color-error)")
                     ui.label("Nivelación cerrada").classes("text-sm text-error font-semibold")
             else:
                 btn_ghost(
@@ -313,14 +313,14 @@ def habilitaciones_page() -> None:
             with ui.element("div").classes(
                 "flex gap-1 p-2 font-semibold text-xs border-b bg-gray-50 rounded-t"
             ):
-                ui.label("Estudiante").classes("w-32 shrink-0")
-                ui.label("Nota período").classes("w-24 text-right shrink-0")
+                ui.label("Estudiante").classes("w-32 no-shrink")
+                ui.label("Nota período").classes("w-24 text-right no-shrink")
                 for act in actividades:
-                    with ui.element("div").classes("w-28 text-center shrink-0"):
-                        ui.label(act.nombre).classes("truncate max-w-full")
+                    with ui.element("div").classes("w-28 text-center no-shrink"):
+                        ui.label(act.nombre).classes("text-truncate max-w-full")
                         ui.label(f"{act.peso:.0%}").classes("text-gray-400 text-xs")
                 if actividades:
-                    ui.label("Promedio pond.").classes("w-28 text-right shrink-0 font-semibold")
+                    ui.label("Promedio pond.").classes("w-28 text-right no-shrink font-semibold")
 
             # Filas
             for cierre in cierres:
@@ -331,11 +331,11 @@ def habilitaciones_page() -> None:
                     "flex gap-1 items-center p-2 border-b hover:bg-gray-50"
                 ):
                     # Nombre/ID del estudiante
-                    ui.label(str(est_id)).classes("w-32 shrink-0 font-mono text-sm")
+                    ui.label(str(est_id)).classes("w-32 no-shrink font-mono text-sm")
 
                     # Nota del período (en rojo, era bajo desempeño)
                     nota_str = f"{nota_previa:.1f}" if nota_previa is not None else "—"
-                    ui.label(nota_str).classes("w-24 text-right font-mono text-sm text-error shrink-0")
+                    ui.label(nota_str).classes("w-24 text-right font-mono text-sm text-error no-shrink")
 
                     # Celdas por actividad
                     notas_est = []
@@ -345,7 +345,7 @@ def habilitaciones_page() -> None:
                         valor = nota_obj.valor if nota_obj else None
                         notas_est.append(nota_obj)
 
-                        with ui.element("div").classes("w-28 text-center shrink-0"):
+                        with ui.element("div").classes("w-28 text-center no-shrink"):
                             valor_str = f"{valor:.1f}" if valor is not None else "—"
                             color_cls = (
                                 "text-success" if valor is not None and valor >= 60
@@ -377,7 +377,7 @@ def habilitaciones_page() -> None:
                             else "text-error font-semibold" if prom is not None
                             else "text-gray-400"
                         )
-                        ui.label(prom_str).classes(f"w-28 text-right font-mono text-sm {prom_cls} shrink-0")
+                        ui.label(prom_str).classes(f"w-28 text-right font-mono text-sm {prom_cls} no-shrink")
 
     # ── Contenido principal ───────────────────────────────────────────────────
 
@@ -450,7 +450,7 @@ def habilitaciones_page() -> None:
                             "flex items-start gap-3 p-4 mt-2 rounded-lg border border-dashed "
                             "border-amber-300 bg-amber-50"
                         ):
-                            ui.icon("construction", size="lg", color="#d97706")
+                            ThemeManager.icono("construction", size=32, color="var(--color-warning)")
                             with ui.element("div"):
                                 ui.label("Funcionalidad en desarrollo").classes(
                                     "text-sm font-semibold text-amber-800"
@@ -497,7 +497,7 @@ def habilitaciones_page() -> None:
                                 "flex items-start gap-3 p-3 mb-2 rounded border border-gray-100 "
                                 "hover:bg-gray-50"
                             ):
-                                ui.icon(icono, size="sm", color="var(--color-secondary)")
+                                ThemeManager.icono(icono, size=20, color="var(--color-secondary)")
                                 with ui.element("div"):
                                     ui.label(titulo).classes("text-sm font-medium")
                                     ui.label(descripcion).classes(
@@ -508,12 +508,8 @@ def habilitaciones_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Evaluación · Nivelación",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/evaluacion/habilitaciones",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Evaluación · Nivelación",
         on_context_change=on_context_change,
     )
 

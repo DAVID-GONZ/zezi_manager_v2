@@ -414,12 +414,8 @@ def observaciones_page() -> None:
                                     )
 
         app_layout(
-            titulo_pagina="Observaciones",
-            usuario_nombre=ctx_actual.usuario_nombre,
-            usuario_rol=ctx_actual.usuario_rol,
-            ruta_activa="/convivencia/observaciones",
-            contenido=contenido_pagina,
-            ctx=ctx_actual,
+            ctx_actual, contenido_pagina,
+            page_titulo="Observaciones",
             on_context_change=on_context_change,
         )
 

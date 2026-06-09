@@ -471,12 +471,8 @@ def inicio_page() -> None:
                     _seccion_hitos(config)
 
     app_layout(
-        titulo_pagina="Dashboard",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/inicio",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Dashboard",
         on_context_change=on_context_change,
     )
 

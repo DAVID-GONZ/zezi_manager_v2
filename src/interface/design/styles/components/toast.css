@@ -1,0 +1,21 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/toast.css — Overrides de notificación Quasar (paso_12b)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base toast — override sobre q-notification ─────────── */
+.andes-toast {
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-family) !important;
+  font-size: var(--font-size-body) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-left: 4px solid currentColor;
+  padding: 12px 16px !important;
+  min-width: 280px;
+  max-width: 420px;
+}
+
+/* ── Variantes de color ──────────────────────────────────── */
+.andes-toast--info    { color: var(--color-info)    !important; }
+.andes-toast--success { color: var(--color-success) !important; }
+.andes-toast--warning { color: var(--color-warning) !important; }
+.andes-toast--error   { color: var(--color-error)   !important; }

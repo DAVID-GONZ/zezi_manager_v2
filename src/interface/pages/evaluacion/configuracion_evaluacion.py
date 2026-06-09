@@ -360,8 +360,8 @@ def configuracion_evaluacion_page() -> None:
         # En modo INSTITUCIONAL_FIJO: solo mostramos info
         if modo == "institucional_fijo":
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center gap-2 text-amber-700 bg-amber-50 rounded p-3"):
-                    ui.icon("info").classes("text-lg")
+                with ui.row().classes("items-center gap-2 text-amber-700 bg-warning-soft rounded p-3"):
+                    ThemeManager.icono("info", size=20)
                     ui.label(
                         "El SIEE está en modo Institucional fijo. "
                         "Las categorías son gestionadas exclusivamente por administración."
@@ -370,7 +370,7 @@ def configuracion_evaluacion_page() -> None:
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("edit_note").classes("text-primary text-xl")
+                ThemeManager.icono("edit_note", size=24, color="var(--color-primary)")
                 ui.label("Mis categorías").classes("text-lg font-bold flex-1")
 
             # Selector de contexto
@@ -507,7 +507,7 @@ def configuracion_evaluacion_page() -> None:
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("assignment_late").classes("text-orange-500 text-xl")
+                ThemeManager.icono("assignment_late", size=24, color="var(--color-warning)")
                 ui.label("Corte — Plan de Mejoramiento").classes("text-lg font-bold flex-1")
 
             if not asig_id or not per_id:
@@ -519,9 +519,9 @@ def configuracion_evaluacion_page() -> None:
             if corte is None:
                 # Sin corte: mostrar botón para ejecutar (solo admin/coord/docente)
                 with ui.element("div").classes(
-                    "flex items-center gap-3 p-3 bg-blue-50 rounded border border-blue-200"
+                    "flex items-center gap-3 p-3 bg-info-soft rounded border border-blue-200"
                 ):
-                    ui.icon("info").classes("text-blue-500")
+                    ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
                         "No se ha ejecutado el corte para este periodo. "
                         "Al ejecutar, se generará una nota de corte para cada estudiante."
@@ -543,7 +543,7 @@ def configuracion_evaluacion_page() -> None:
                 "p-3 bg-green-50 rounded border border-green-200 mb-3"
             ):
                 with ui.row().classes("items-center gap-2 mb-2"):
-                    ui.icon("check_circle").classes("text-green-600")
+                    ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
                     ui.label(
                         f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
                     ).classes("font-semibold text-sm text-green-700")
@@ -620,12 +620,8 @@ def configuracion_evaluacion_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina    = "Evaluación · Configuración",
-        usuario_nombre   = ctx.usuario_nombre,
-        usuario_rol      = ctx.usuario_rol,
-        ruta_activa      = "/evaluacion/configuracion",
-        contenido        = contenido,
-        ctx              = ctx,
+        ctx, contenido,
+        page_titulo       = "Evaluación · Configuración",
         on_context_change = on_context_change,
     )
 

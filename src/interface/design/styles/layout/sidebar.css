@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════════
+   layout/sidebar.css — Rail icon-only 60px + flyout flotante
+   (paso_12d: reemplaza sidebar acordeón — Aula Serena)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Rail principal ─────────────────────────────────────── */
+.andes-rail {
+  position: fixed;
+  top: var(--topbar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--rail-width);
+  background: var(--nav-sidebar-bg);
+  border-right: 1px solid var(--nav-sidebar-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-md) 0;
+  gap: 6px;
+  z-index: 900;
+}
+
+/* ── Marca / monograma ──────────────────────────────────── */
+.rail-brand {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+
+.rail-logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.rail-monogram {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink-700);
+  letter-spacing: -0.02em;
+}
+
+/* ── Items ──────────────────────────────────────────────── */
+.rail-item {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease;
+  color: var(--graphite-700);
+}
+
+.rail-item:hover {
+  background: var(--nav-sidebar-hover);
+  color: var(--ink-700);
+}
+
+.rail-item.is-active {
+  background: var(--ink-100);
+  color: var(--ink-700);
+}
+
+.rail-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-600);
+}
+
+.rail-icon {
+  font-size: 22px;
+}
+
+/* ── Tooltip nativo ─────────────────────────────────────── */
+.rail-item[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--graphite-900);
+  color: #FFFFFF;
+  font-size: var(--font-size-small);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 950;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Divisor ────────────────────────────────────────────── */
+.rail-divider {
+  width: 24px;
+  height: 1px;
+  background: var(--paper-200);
+  margin: 8px 0;
+}
+
+/* ── Flyout ─────────────────────────────────────────────── */
+.rail-flyout-container {
+  position: fixed;
+  left: calc(var(--rail-width) + 8px);
+  width: 240px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  z-index: 940;
+  transform-origin: left center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.rail-flyout-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+}
+
+.flyout-header {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--font-size-h4);
+  color: var(--ink-700);
+  padding: 8px 12px 12px 12px;
+  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: 6px;
+}
+
+.flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--graphite-700);
+  position: relative;
+}
+
+.flyout-item:hover {
+  background: var(--ink-050);
+}
+
+.flyout-item.is-active {
+  background: var(--ink-100);
+  color: var(--ink-700);
+  font-weight: 600;
+}
+
+.flyout-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-600);
+}
+
+.flyout-icon {
+  flex-shrink: 0;
+}
+
+.flyout-label {
+  font-size: var(--font-size-body);
+}
+
+/* ── Accesibilidad: sin movimiento ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .rail-flyout-container,
+  .rail-item { transition: none; }
+}

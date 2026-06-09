@@ -284,10 +284,10 @@ def planes_mejoramiento_page() -> None:
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("assignment_late").classes("text-orange-500 text-xl")
+                ThemeManager.icono("assignment_late", size=24)
                 ui.label("Estado del Corte").classes("text-lg font-bold flex-1")
                 if corte is None:
-                    ui.badge("Sin corte", color="grey").classes("text-xs")
+                    ui.html('<span class="badge badge-neutral text-xs">Sin corte</span>')
                 else:
                     ui.badge(
                         f"Corte: {corte.fecha_ejecucion.strftime('%d/%m/%Y')}",
@@ -334,7 +334,7 @@ def planes_mejoramiento_page() -> None:
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("people").classes("text-primary text-xl")
+                ThemeManager.icono("people", size=24)
                 ui.label("Estudiantes — Resultado del Corte").classes("text-lg font-bold")
 
             # Encabezado
@@ -395,7 +395,7 @@ def planes_mejoramiento_page() -> None:
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("assignment").classes("text-primary text-xl")
+                ThemeManager.icono("assignment", size=24)
                 ui.label("Actividades del Plan").classes("text-lg font-bold flex-1")
                 # Suma de pesos
                 suma = round(sum(a.peso for a in acts) * 100, 1)
@@ -447,7 +447,7 @@ def planes_mejoramiento_page() -> None:
                                 ))
 
             # ── Añadir actividad ───────────────────────────────────────────────
-            with ui.element("div").classes("mt-4 pt-4 border-t"):
+            with ui.element("div").classes("mt-4 pt-4 border-top-soft"):
                 ui.label("Añadir actividad al plan").classes("text-sm font-semibold mb-3")
                 with ui.row().classes("gap-3 items-end flex-wrap"):
                     ui.input(
@@ -536,12 +536,8 @@ def planes_mejoramiento_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina    = "Evaluación · Planes de Mejoramiento",
-        usuario_nombre   = ctx.usuario_nombre,
-        usuario_rol      = ctx.usuario_rol,
-        ruta_activa      = "/evaluacion/planes",
-        contenido        = contenido,
-        ctx              = ctx,
+        ctx, contenido,
+        page_titulo       = "Evaluación · Planes de Mejoramiento",
         on_context_change = on_context_change,
     )
 

@@ -28,8 +28,8 @@ from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
 )
 from src.interface.design.components import confirm_dialog, form_dialog, badge_estado_general
-from src.services.configuracion_service import NuevaConfiguracionAnioDTO, ActualizarConfiguracionAnioDTO
-from src.domain.models.configuracion import (
+from src.services.configuracion_service import (
+    NuevaConfiguracionAnioDTO, ActualizarConfiguracionAnioDTO,
     NivelDesempeno, CriterioPromocion, NuevoNivelDesempenoDTO,
 )
 from src.services.evaluacion_service import (
@@ -594,7 +594,7 @@ def configuracion_sie_page() -> None:
         config = _s["config_activa"]
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("straighten").classes("text-primary text-xl")
+                ThemeManager.icono("straighten", size=24, color="var(--color-primary)")
                 ui.label("Escala de notas").classes("text-lg font-bold flex-1")
                 if config:
                     btn_secondary("Editar", icon="edit", on_click=_editar_escala)
@@ -626,7 +626,7 @@ def configuracion_sie_page() -> None:
 
             if not aprobacion_en_rango:
                 with ui.row().classes("items-center gap-2 mt-3 p-2 bg-red-50 rounded text-red-700 text-sm"):
-                    ui.icon("warning").classes("text-red-500")
+                    ThemeManager.icono("warning", size=24, color="var(--color-error)")
                     ui.label("La nota de aprobación está fuera del rango de la escala.")
 
     @ui.refreshable
@@ -636,7 +636,7 @@ def configuracion_sie_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("grade").classes("text-primary text-xl")
+                ThemeManager.icono("grade", size=24, color="var(--color-primary)")
                 ui.label("Niveles de desempeño").classes("text-lg font-bold flex-1")
                 if anio_id:
                     btn_icon("refresh", on_click=lambda: (_cargar_todo(), panel_niveles.refresh()), tooltip="Recargar")
@@ -648,8 +648,8 @@ def configuracion_sie_page() -> None:
                 return
 
             if not niveles:
-                with ui.element("div").classes("flex items-center gap-3 p-3 bg-blue-50 rounded"):
-                    ui.icon("info").classes("text-blue-500")
+                with ui.element("div").classes("flex items-center gap-3 p-3 bg-info-soft rounded"):
+                    ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
                         "No hay niveles definidos. Usa 'Defaults' para cargar los estándar "
                         "(Bajo, Básico, Alto, Superior)."
@@ -681,7 +681,7 @@ def configuracion_sie_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("items-center gap-2 mb-4"):
-                ui.icon("how_to_reg").classes("text-primary text-xl")
+                ThemeManager.icono("how_to_reg", size=24, color="var(--color-primary)")
                 ui.label("Criterios de promoción").classes("text-lg font-bold flex-1")
                 if anio_id:
                     label_btn = "Editar" if criterios else "Configurar"
@@ -692,8 +692,8 @@ def configuracion_sie_page() -> None:
                 return
 
             if not criterios:
-                with ui.element("div").classes("flex items-center gap-3 p-3 bg-amber-50 rounded border border-amber-200"):
-                    ui.icon("warning").classes("text-amber-500")
+                with ui.element("div").classes("flex items-center gap-3 p-3 bg-warning-soft rounded border-warning-soft"):
+                    ThemeManager.icono("warning", size=24, color="var(--color-warning)")
                     ui.label(
                         "No hay criterios de promoción configurados. Haz clic en 'Configurar'."
                     ).classes("text-sm text-amber-700 flex-1")
@@ -715,7 +715,7 @@ def configuracion_sie_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("items-center gap-3 mb-4"):
-                ui.icon("tune").classes("text-primary text-xl")
+                ThemeManager.icono("tune", size=24, color="var(--color-primary)")
                 ui.label("Modo SIEE").classes("text-lg font-bold flex-1")
                 color_badge = {
                     "libre":               "grey",
@@ -727,7 +727,7 @@ def configuracion_sie_page() -> None:
                 if anio_id:
                     btn_secondary("Cambiar modo", icon="tune", on_click=_abrir_dialog_modo_siee)
 
-            with ui.element("div").classes("bg-blue-50 rounded p-3 mb-3 text-sm text-blue-800"):
+            with ui.element("div").classes("bg-info-soft rounded p-3 mb-3 text-sm text-blue-800"):
                 ui.label(modo_desc)
 
             if modo_val == "mixto_autonomia" and cfg and cfg.porcentaje_autonomia_docente:
@@ -745,7 +745,7 @@ def configuracion_sie_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("items-center gap-3 mb-4"):
-                ui.icon("category").classes("text-primary text-xl")
+                ThemeManager.icono("category", size=24, color="var(--color-primary)")
                 ui.label("Categorías institucionales").classes("text-lg font-bold flex-1")
                 ui.badge(f"{suma_inst:.0f}%").classes(
                     "badge-success" if suma_inst <= 100 else "badge-error"
@@ -761,10 +761,10 @@ def configuracion_sie_page() -> None:
                 ui.label("No hay categorías institucionales definidas.").classes("text-empty text-sm")
                 return
 
-            with ui.element("div").classes("w-full divide-y divide-grey-3"):
+            with ui.element("div").classes("w-full divider-y"):
                 for cat in cats_inst:
                     with ui.row().classes("items-center gap-3 py-2"):
-                        ui.icon("lock").classes("text-grey-5 text-base")
+                        ThemeManager.icono("lock", size=20)
                         ui.label(cat.nombre).classes("flex-1 text-sm font-medium")
                         ui.label(f"{cat.peso_porcentaje:.1f}%").classes("text-sm font-mono w-14 text-right")
                         if cat.permite_subcategorias:
@@ -792,7 +792,7 @@ def configuracion_sie_page() -> None:
             panel_anio()
 
             if _s["config_activa"]:
-                with ui.element("div").classes("grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4"):
+                with ui.element("div").classes("grid-2-lg mt-4"):
                     panel_escala()
                     panel_criterios()
 

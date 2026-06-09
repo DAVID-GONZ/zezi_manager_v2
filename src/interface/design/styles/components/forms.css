@@ -1,0 +1,80 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/forms.css — Inputs, formularios y campos
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Inputs ──────────────────────────────────────────────── */
+.andes-input { width: 100%; }
+
+.andes-input .q-field__control {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.andes-input.q-field--focused .q-field__control {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-lighter);
+}
+
+.andes-input.q-field--focused .q-field__control:after {
+  border-color: var(--color-primary) !important;
+  border-width: 2px;
+}
+
+.andes-input.q-field--focused .q-field__label {
+  color: var(--color-primary) !important;
+}
+.andes-input .q-field__native {
+  caret-color: var(--color-primary);
+}
+
+.andes-input input::placeholder,
+.andes-input textarea::placeholder,
+.andes-input .q-field__native::placeholder {
+  color: var(--color-text-disabled);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.andes-input.q-field--labeled:not(.q-field--float) .q-field__native::placeholder,
+.andes-input.q-field--labeled:not(.q-field--float) input::placeholder,
+.andes-input.q-field--labeled:not(.q-field--float) textarea::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+
+/* ── Formularios ─────────────────────────────────────────── */
+.andes-form-section {
+  margin-bottom: var(--space-lg);
+}
+
+.andes-form-section-title {
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* ── Clases para base_form ───────────────────────────────────────────────── */
+.base-form-card   { width: 100%; padding: var(--space-lg); background: var(--color-surface); }
+.base-form-title  { color: var(--color-text-primary); margin-bottom: var(--space-md); }
+.base-form-sep    { margin: var(--space-md) 0; background: var(--color-divider); }
+.base-form-footer { width: 100%; }
+.base-form-grid   { display: grid; gap: var(--space-md); width: 100%; }
+
+/* base_form — campo readonly */
+.readonly-field-value {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  display: block;
+  width: 100%;
+}

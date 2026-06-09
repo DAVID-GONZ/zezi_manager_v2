@@ -229,12 +229,8 @@ def cierre_anio_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina="Evaluación · Cierre de Año",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/evaluacion/cierre-anio",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Evaluación · Cierre de Año",
         on_context_change=on_context_change,
     )
 

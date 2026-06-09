@@ -231,12 +231,8 @@ def consolidado_notas_page() -> None:
             filtros_refreshable()
 
     app_layout(
-        titulo_pagina="Consolidado de Notas",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/informes/consolidado-notas",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Consolidado de Notas",
     )
 
 

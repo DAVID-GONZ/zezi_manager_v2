@@ -392,7 +392,7 @@ def planilla_notas_page() -> None:
 
         if not _s["asignacion_id"] or not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
-                ui.icon("tune").classes("text-grey-5 text-3xl mb-2")
+                ThemeManager.icono("tune", size=32).classes("mb-2")
                 ui.label(
                     "Configura el periodo y la asignación desde la barra de contexto superior."
                 ).classes("tablero-empty-hint")
@@ -415,7 +415,7 @@ def planilla_notas_page() -> None:
                 "flex items-center gap-2 bg-amber-50 border border-amber-300 "
                 "rounded p-3 mb-3 text-amber-700"
             ):
-                ui.icon("lock").classes("text-lg")
+                ThemeManager.icono("lock", size=20)
                 ui.label("Período CERRADO — Modo solo lectura").classes("font-semibold text-sm")
 
         color_rules = {
@@ -480,7 +480,7 @@ def planilla_notas_page() -> None:
                         "field":      "corte_estado",
                         "editable":   False,
                         "width":      85,
-                        "cellStyle":  {"fontSize": "11px"},
+                        "cellClass":  "ag-cell-xs",
                     },
                 ],
             })
@@ -506,7 +506,7 @@ def planilla_notas_page() -> None:
                         "width":         60,
                         "type":          "numericColumn",
                         "valueFormatter":"value != null ? value : 0",
-                        "cellStyle":     {"color": "#0284C7"},
+                        "cellClass":     "ag-cell-info",
                     },
                     {
                         "headerName":    "−",
@@ -515,7 +515,7 @@ def planilla_notas_page() -> None:
                         "width":         60,
                         "type":          "numericColumn",
                         "valueFormatter":"value != null ? value : 0",
-                        "cellStyle":     {"color": "#DC2626"},
+                        "cellClass":     "ag-cell-error",
                     },
                     {
                         "headerName":    "Bal.",
@@ -560,7 +560,7 @@ def planilla_notas_page() -> None:
             "defaultColDef":             {"sortable": True, "resizable": True},
             "singleClickEdit":           True,
             "stopEditingWhenCellsLoseFocus": True,
-        }).classes("w-full h-[600px]")
+        }).classes("w-full h-grid-default")
 
         async def on_cell_edit(e) -> None:
             # Guard: re-verificar periodo en runtime (puede haberse cerrado
@@ -663,7 +663,7 @@ def planilla_notas_page() -> None:
 
         if not _s["asignacion_id"] or not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
-                ui.icon("tune").classes("text-grey-5 text-3xl mb-2")
+                ThemeManager.icono("tune", size=32).classes("mb-2")
                 ui.label(
                     "Configura el periodo y la asignación desde la barra de contexto superior."
                 ).classes("tablero-empty-hint")
@@ -671,7 +671,7 @@ def planilla_notas_page() -> None:
 
         # Enlace a configuración de categorías
         with ui.row().classes("items-center gap-1 mb-4 text-sm text-grey-7"):
-            ui.icon("info_outline").classes("text-base")
+            ThemeManager.icono("info_outline", size=16)
             ui.label("Las categorías se configuran en")
             ui.link(
                 "Configuración de evaluación",
@@ -867,12 +867,8 @@ def planilla_notas_page() -> None:
         ui.navigate.reload()
 
     app_layout(
-        titulo_pagina     = "Evaluación · Planilla de Notas",
-        usuario_nombre    = ctx.usuario_nombre,
-        usuario_rol       = ctx.usuario_rol,
-        ruta_activa       = "/evaluacion/planilla",
-        contenido         = contenido,
-        ctx               = ctx,
+        ctx, contenido,
+        page_titulo       = "Evaluación · Planilla de Notas",
         on_context_change = on_context_change,
     )
 

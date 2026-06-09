@@ -312,12 +312,8 @@ def boletin_periodo_page() -> None:
             lista_refreshable()
 
     app_layout(
-        titulo_pagina="Boletines por Periodo",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/informes/boletin-periodo",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Boletines por Periodo",
         on_context_change=on_context_change,
     )
 

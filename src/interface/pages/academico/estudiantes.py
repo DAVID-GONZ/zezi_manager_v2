@@ -304,12 +304,9 @@ def estudiantes_page() -> None:
 
                                 # PIAR
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
-                                    _piar_color = "teal" if fila["posee_piar"] else "grey-4"
-                                    _piar_txt   = "white" if fila["posee_piar"] else "grey-7"
+                                    _piar_clase = "badge-info" if fila["posee_piar"] else "badge-neutral"
                                     _piar_label = "Sí" if fila["posee_piar"] else "No"
-                                    ui.badge(_piar_label).props(
-                                        f"color={_piar_color} text-color={_piar_txt} rounded"
-                                    )
+                                    ui.html(f'<span class="badge {_piar_clase}">{_piar_label}</span>')
 
                                 # Acciones — botones Python reales, sin slots ni $emit
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
@@ -317,21 +314,12 @@ def estudiantes_page() -> None:
                                         es_retirado = fila["estado_raw"] == "retirado"
 
                                         if not es_retirado:
-                                            (
-                                                ui.button(icon="edit", on_click=_fila_editar)
-                                                .props("flat dense size=sm color=primary")
-                                                .tooltip("Editar estudiante")
-                                            )
-                                            (
-                                                ui.button(icon="person_remove", on_click=_fila_retirar)
-                                                .props("flat dense size=sm color=negative")
-                                                .tooltip("Retirar matrícula")
-                                            )
-                                            (
-                                            ui.button(icon="description", on_click=_fila_piar)
-                                            .props("flat dense size=sm color=secondary")
-                                            .tooltip("Ver / registrar PIAR")
-                                            )
+                                            with ui.button(on_click=_fila_editar).props("flat round dense size=sm color=primary").classes("btn-icon").tooltip("Editar estudiante"):
+                                                ThemeManager.icono("edit", size=18)
+                                            with ui.button(on_click=_fila_retirar).props("flat round dense size=sm color=negative").classes("btn-icon").tooltip("Retirar matrícula"):
+                                                ThemeManager.icono("person_remove", size=18)
+                                            with ui.button(on_click=_fila_piar).props("flat round dense size=sm color=secondary").classes("btn-icon").tooltip("Ver / registrar PIAR"):
+                                                ThemeManager.icono("description", size=18)
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -691,7 +679,7 @@ def estudiantes_page() -> None:
                         options=_grupos_opts,
                         value=None,
                         on_change=lambda e: _s.update({"filtro_grupo_id": e.value}),
-                    ).classes("col-3")
+                    ).classes("flex-3")
 
                     ui.select(
                         label="Estado",
@@ -699,7 +687,7 @@ def estudiantes_page() -> None:
                                  "retirado": "Retirado", "graduado": "Graduado"},
                         value=None,
                         on_change=lambda e: _s.update({"filtro_estado": e.value}),
-                    ).classes("col-3")
+                    ).classes("flex-3")
 
                     ui.checkbox(
                         "Solo con PIAR",
@@ -709,7 +697,7 @@ def estudiantes_page() -> None:
                     ui.input(
                         label="Buscar (nombre / documento)",
                         on_change=lambda e: _s.update({"filtro_busqueda": e.value}),
-                    ).classes("col-4")
+                    ).classes("flex-4")
 
                     btn_primary(
                         "Buscar",

@@ -14,70 +14,71 @@ from __future__ import annotations
 
 
 class Colors:
-    """Paleta base del design system. Valores importados de styles.css :root."""
+    """Paleta base del design system. Valores importados de tokens.css :root.
+    Paleta Aula Serena: tinta académica + ocre + neutros cálidos."""
 
-    # Primario — Escala Borgoña/Carmesí
-    PRIMARY          = "#B3325D"
-    PRIMARY_DARK     = "#8A2748"
-    PRIMARY_DARKER   = "#611B32"
-    PRIMARY_LIGHT    = "#DB3D72"
-    PRIMARY_LIGHTER  = "#FCE8ED"
-    PRIMARY_HOVER    = "#8A2748"
-    PRIMARY_DISABLED = "#DDA8B8"
+    # Primario — Índigo académico (ink-700)
+    PRIMARY          = "#2E3192"
+    PRIMARY_DARK     = "#1A1B6E"
+    PRIMARY_DARKER   = "#1A1B6E"
+    PRIMARY_LIGHT    = "#4B50C0"
+    PRIMARY_LIGHTER  = "#E8E9F8"
+    PRIMARY_HOVER    = "#1A1B6E"
+    PRIMARY_DISABLED = "#9297D9"
     PRIMARY_CONTRAST = "#FFFFFF"
 
-    # Secundario — Neutro puro (Escala Zinc)
-    SECONDARY        = "#71717A"
-    SECONDARY_DARK   = "#52525B"
-    SECONDARY_LIGHT  = "#F4F4F5"
+    # Secundario — Grafito neutro
+    SECONDARY        = "#6B6B6B"
+    SECONDARY_DARK   = "#3D3D3D"
+    SECONDARY_LIGHT  = "#F2F2EC"
 
-    # Semánticos
-    ERROR            = "#DC2626"
-    ERROR_LIGHT      = "#FEF2F2"
-    ERROR_DARK       = "#B91C1C"
-    WARNING          = "#FFCB47"
-    WARNING_LIGHT    = "#FFFBEB"
-    SUCCESS          = "#47FF97"
-    SUCCESS_LIGHT    = "#ECFDF5"
-    INFO             = "#4778FF"
-    INFO_LIGHT       = "#F0F9FF"
+    # Semánticos desaturados
+    ERROR            = "#C13030"
+    ERROR_LIGHT      = "#FBEAEA"
+    ERROR_DARK       = "#9D2525"
+    WARNING          = "#C8841C"
+    WARNING_LIGHT    = "#FBF3E2"
+    SUCCESS          = "#2E7D5B"
+    SUCCESS_LIGHT    = "#EAF4EE"
+    INFO             = "#4B50C0"
+    INFO_LIGHT       = "#E8E9F8"
 
-    # Neutros
-    BG               = "#FAFAFA"
+    # Neutros cálidos (paper/graphite)
+    BG               = "#FAFAF7"
     SURFACE          = "#FFFFFF"
-    SURFACE_ALT      = "#FDF8F9"
-    DIVIDER          = "rgba(0, 0, 0, 0.12)"
-    BORDER           = "#E4E4E7"
-    TEXT_PRIMARY     = "#18181B"
-    TEXT_SECONDARY   = "#52525B"
-    TEXT_DISABLED    = "#A1A1AA"
+    SURFACE_ALT      = "#F2F2EC"
+    DIVIDER          = "rgba(0, 0, 0, 0.08)"
+    BORDER           = "#E5E5DE"
+    TEXT_PRIMARY     = "#1A1A1A"
+    TEXT_SECONDARY   = "#6B6B6B"
+    TEXT_DISABLED    = "#9D9D9D"
     TEXT_INVERSE     = "#FFFFFF"
-    DISABLED_BG      = "#E4E4E7"
-    DISABLED_TEXT    = "#71717A"
+    DISABLED_BG      = "#E5E5DE"
+    DISABLED_TEXT    = "#6B6B6B"
 
-    # Navegación
-    SIDEBAR_BG        = "#18181B"   # base del gradient linear-gradient(180deg, #18181B 0%, #09090B 100%)
-    SIDEBAR_TEXT      = "#A1A1AA"
-    SIDEBAR_HOVER     = "#27272A"
-    SIDEBAR_ACTIVE    = "#B3325D"
-    SIDEBAR_ACTIVE_BG = "#B3325D"
-    TOPBAR_BG         = "rgba(97, 27, 50, 0.97)"
-    TOPBAR_BORDER     = "rgba(255, 255, 255, 0.12)"
+    # Navegación — Sidebar claro, topbar índigo
+    SIDEBAR_BG        = "#FAFAF7"   # paper-050
+    SIDEBAR_TEXT      = "#3D3D3D"   # graphite-700
+    SIDEBAR_HOVER     = "#E8E9F8"   # ink-100
+    SIDEBAR_ACTIVE    = "#2E3192"   # ink-700
+    SIDEBAR_ACTIVE_BG = "#2E3192"   # ink-700
+    TOPBAR_BG         = "#2E3192"   # ink-700 sólido
+    TOPBAR_BORDER     = "rgba(255, 255, 255, 0.10)"
 
 
 class AsistenciaColors:
-    """Colores para los estados de asistencia."""
+    """Colores para los estados de asistencia. Paleta Aula Serena."""
 
-    PRESENTE     = "#47FF59"
-    PRESENTE_BG  = "#ECFDF5"
-    FJ           = "#FFCB47"
-    FJ_BG        = "#FFFBEB"
-    FI           = "#DC2626"
-    FI_BG        = "#FEF2F2"
-    RETRASO      = "#7C3AED"
-    RETRASO_BG   = "#F5F3FF"
-    EXCUSA       = "#4778FF"
-    EXCUSA_BG    = "#F0F9FF"
+    PRESENTE     = "#2E7D5B"
+    PRESENTE_BG  = "#EAF4EE"
+    FJ           = "#C8841C"
+    FJ_BG        = "#FBF3E2"
+    FI           = "#C13030"
+    FI_BG        = "#FBEAEA"
+    RETRASO      = "#6D4E9C"
+    RETRASO_BG   = "#F0EAFA"
+    EXCUSA       = "#4B50C0"
+    EXCUSA_BG    = "#E8E9F8"
 
     @classmethod
     def para_estado(cls, estado: str) -> tuple[str, str]:
@@ -113,16 +114,16 @@ class AsistenciaColors:
 
 
 class DesempenoColors:
-    """Colores para los niveles de desempeño académico."""
+    """Colores para los niveles de desempeño académico. Paleta Aula Serena."""
 
-    BAJO         = "#DC2626"
-    BAJO_BG      = "#FEF2F2"
-    BASICO       = "#FFCB47"
-    BASICO_BG    = "#FFFBEB"
-    ALTO         = "#0284C7"
-    ALTO_BG      = "#F0F9FF"
-    SUPERIOR     = "#47FF59"
-    SUPERIOR_BG  = "#ECFDF5"
+    BAJO         = "#B4322E"
+    BAJO_BG      = "#FAE7E6"
+    BASICO       = "#B8763A"
+    BASICO_BG    = "#F7ECDD"
+    ALTO         = "#4B50C0"
+    ALTO_BG      = "#E8E9F8"
+    SUPERIOR     = "#2E7D5B"
+    SUPERIOR_BG  = "#EAF4EE"
 
     @classmethod
     def para_nivel(cls, nivel: str) -> tuple[str, str]:
@@ -240,6 +241,84 @@ class Layout:
     TOPBAR_HEIGHT     = 60    # px  (--topbar-height)
     CONTENT_PADDING   = 24    # px  (--content-padding)
 
+
+
+# >>> AUTOGEN START
+# Este bloque es generado automáticamente por scripts/sync_tokens.py
+# NO editar manualmente — editar tokens.css y re-ejecutar el script
+
+# Autogen — Colors
+    PRIMARY              = "var(--ink-700)"
+    PRIMARY_DARK         = "var(--ink-900)"
+    PRIMARY_DARKER       = "var(--ink-900)"
+    PRIMARY_LIGHT        = "var(--ink-500)"
+    PRIMARY_LIGHTER      = "var(--ink-100)"
+    PRIMARY_HOVER        = "var(--ink-900)"
+    PRIMARY_DISABLED     = "var(--ink-300)"
+    PRIMARY_CONTRAST     = "#FFFFFF"
+    SECONDARY            = "var(--graphite-500)"
+    SECONDARY_DARK       = "var(--graphite-700)"
+    SECONDARY_LIGHT      = "var(--paper-100)"
+    ERROR                = "#C13030"
+    ERROR_LIGHT          = "#FBEAEA"
+    ERROR_DARK           = "#9D2525"
+    WARNING              = "#C8841C"
+    WARNING_LIGHT        = "#FBF3E2"
+    SUCCESS              = "#2E7D5B"
+    SUCCESS_LIGHT        = "#EAF4EE"
+    INFO                 = "var(--ink-500)"
+    INFO_LIGHT           = "var(--ink-100)"
+    BG                   = "var(--paper-050)"
+    SURFACE              = "var(--paper-000)"
+    SURFACE_ALT          = "var(--paper-100)"
+    BORDER               = "var(--paper-200)"
+    TEXT_PRIMARY         = "var(--graphite-900)"
+    TEXT_SECONDARY       = "var(--graphite-500)"
+    TEXT_DISABLED        = "var(--graphite-300)"
+    TEXT_INVERSE         = "#FFFFFF"
+    DISABLED_BG          = "var(--paper-200)"
+    DISABLED_TEXT        = "var(--graphite-500)"
+    SIDEBAR_TEXT         = "var(--graphite-700)"
+    SIDEBAR_HOVER        = "var(--ink-100)"
+    SIDEBAR_ACTIVE_BG    = "var(--ink-700)"
+
+# Autogen — AsistenciaColors
+    PRESENTE             = "#2E7D5B"
+    PRESENTE_BG          = "#EAF4EE"
+    FJ                   = "#C8841C"
+    FJ_BG                = "#FBF3E2"
+    FI                   = "#C13030"
+    FI_BG                = "#FBEAEA"
+    RETRASO              = "#6D4E9C"
+    RETRASO_BG           = "#F0EAFA"
+    EXCUSA               = "#4B50C0"
+    EXCUSA_BG            = "#E8E9F8"
+
+# Autogen — DesempenoColors
+    BAJO                 = "#B4322E"
+    BAJO_BG              = "#FAE7E6"
+    BASICO               = "#B8763A"
+    BASICO_BG            = "#F7ECDD"
+    ALTO                 = "#4B50C0"
+    ALTO_BG              = "#E8E9F8"
+    SUPERIOR             = "#2E7D5B"
+    SUPERIOR_BG          = "#EAF4EE"
+
+# Autogen — Spacing
+    XS                   = "4px"
+    SM                   = "8px"
+    MD                   = "16px"
+    LG                   = "28px"
+    XL                   = "40px"
+    XXL                  = "56px"
+
+# Autogen — Layout
+    SIDEBAR_WIDTH        = 220
+    SIDEBAR_COLLAPSED    = 58
+    TOPBAR_HEIGHT        = 60
+    CONTENT_PADDING      = 24
+
+# <<< AUTOGEN END
 
 __all__ = [
     "Colors",

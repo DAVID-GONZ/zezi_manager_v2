@@ -1,0 +1,100 @@
+/* ═══════════════════════════════════════════════════════════════
+   reset.css — Reset base, scrollbar, focus, utilidades globales
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Reset base ──────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.nicegui-content {
+  padding: 0 !important;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-disabled);
+}
+
+/* ── Focus ───────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Separadores y espaciado ─────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-divider);
+  margin: var(--space-md) 0;
+}
+
+.gap-xs {
+  gap: var(--space-xs);
+}
+
+.gap-sm {
+  gap: var(--space-sm);
+}
+
+.gap-md {
+  gap: var(--space-md);
+}
+
+.gap-lg {
+  gap: var(--space-lg);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Utilidades — añadidas en paso_11z (cobertura Tailwind/Quasar)
+   ════════════════════════════════════════════════════════════════ */
+.flex-2 { flex: 2; min-width: 0; }
+.flex-3 { flex: 3; min-width: 0; }
+.flex-4 { flex: 4; min-width: 0; }
+
+.bg-info-soft       { background: var(--color-info-light); }
+.bg-warning-soft    { background: var(--color-warning-light); }
+.border-warning-soft { border: 1px solid var(--color-warning); }
+
+.divider-y { }
+.divider-y > * + * { border-top: 1px solid var(--color-divider); }
+
+.grid-1 { display: grid; grid-template-columns: 1fr; gap: var(--space-md); }
+.grid-2-lg { display: grid; grid-template-columns: 1fr; gap: var(--space-md); }
+@media (min-width: 1024px) {
+  .grid-2-lg { grid-template-columns: 1fr 1fr; }
+}
+
+.no-shrink     { flex-shrink: 0; }
+.text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.border-top-soft { border-top: 1px solid var(--color-divider); }
+
+.h-grid-default { height: 600px; }
+.h-full         { height: 100%; }
+.w-px           { width: 1px; }
+.max-w-full     { max-width: 100%; }

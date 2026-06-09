@@ -207,12 +207,8 @@ def consolidado_asistencia_page() -> None:
             filtros_refreshable()
 
     app_layout(
-        titulo_pagina="Consolidado de Asistencia",
-        usuario_nombre=ctx.usuario_nombre,
-        usuario_rol=ctx.usuario_rol,
-        ruta_activa="/informes/consolidado-asistencia",
-        contenido=contenido,
-        ctx=ctx,
+        ctx, contenido,
+        page_titulo="Consolidado de Asistencia",
         on_context_change=on_context_change,
     )
 

@@ -1,0 +1,96 @@
+/* ═══════════════════════════════════════════════════════════════
+   typography.css — Clases de texto, colores semánticos y escala tipográfica
+   Fuentes: Inter (UI) + Source Serif 4 (títulos display)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base tipográfica ────────────────────────────────────── */
+body {
+  font-family: var(--font-family);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* .display-title se reserva para elementos decorativos (login, pantallas vacías) */
+.display-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--font-size-h1);
+  letter-spacing: -0.01em;
+}
+
+h1 { font-family: var(--font-family); font-weight: 700; font-size: var(--font-size-h1); }
+h2 { font-family: var(--font-family); font-weight: 600; }
+h3 { font-family: var(--font-family); font-weight: 600; }
+h4 { font-family: var(--font-family); font-weight: 600; }
+
+/* Título en el topbar — Inter SemiBold, limpio sobre fondo índigo */
+.topbar-page-title {
+  font-family: var(--font-family);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* Monoespaciado para código y valores numéricos exactos */
+code, pre, .text-mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Colores de texto ────────────────────────────────────── */
+.text-primary {
+  color: var(--color-text-primary) !important;
+}
+
+.text-secondary {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-disabled {
+  color: var(--color-text-disabled) !important;
+}
+
+.text-success {
+  color: var(--color-success) !important;
+}
+
+.text-warning {
+  color: var(--color-warning) !important;
+}
+
+.text-error {
+  color: var(--color-error) !important;
+}
+
+.text-info {
+  color: var(--color-info) !important;
+}
+
+/* ── Escala tipográfica ───────────────────────────────────── */
+.font-h1 {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+}
+
+.font-h2 {
+  font-size: var(--font-size-h2);
+  font-weight: 700;
+}
+
+.font-h3 {
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+}
+
+.font-h4 {
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+}
+
+.font-sm {
+  font-size: var(--font-size-small);
+}
+
+.font-label {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}

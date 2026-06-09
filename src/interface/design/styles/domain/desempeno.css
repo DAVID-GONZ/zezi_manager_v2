@@ -1,0 +1,383 @@
+/* ═══════════════════════════════════════════════════════════════
+   domain/desempeno.css — Tablero estadístico y métricas de desempeño
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════
+   TABLERO ESTADÍSTICO — /academico/tablero
+   ═══════════════════════════════════════════════════════════════════
+   Clases exclusivas del módulo de estadísticas.
+   Todas las medidas son relativas a las variables del design system.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. KPI grid — 4 tarjetas métricas ──────────────────────────── */
+
+.tablero-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+/* Altura mínima uniforme en todas las cards del grid */
+.tablero-kpi-row .stat-card-wrapper {
+  min-height: 108px;
+  padding: 18px 18px 16px 22px;
+}
+
+/* Tinte de fondo sutil por variante — refuerza el acento lateral */
+.tablero-kpi-row .stat-card-wrapper.success {
+  background: linear-gradient(135deg, var(--color-success-light, #f0fdf4) 0%, var(--color-surface) 60%);
+}
+
+.tablero-kpi-row .stat-card-wrapper.warning {
+  background: linear-gradient(135deg, var(--color-warning-light, #fffbeb) 0%, var(--color-surface) 60%);
+}
+
+.tablero-kpi-row .stat-card-wrapper.error {
+  background: linear-gradient(135deg, var(--color-error-light, #fef2f2) 0%, var(--color-surface) 60%);
+}
+
+.tablero-kpi-row .stat-card-wrapper.info {
+  background: linear-gradient(135deg, var(--color-info-light, #f0f9ff) 0%, var(--color-surface) 60%);
+}
+
+/* Acento lateral más pronunciado en las KPI del tablero */
+.tablero-kpi-row .stat-card-wrapper::before {
+  width: 5px;
+}
+
+/* Icono en la esquina — más grande y con sombra suave */
+.tablero-kpi-row .stat-card-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Valor numérico — ligeramente menor para caber bien en 4 columnas */
+.tablero-kpi-row .stat-card-value {
+  font-size: 30px;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+/* Etiqueta de métrica */
+.tablero-kpi-row .stat-card-label {
+  margin-top: 2px;
+}
+
+@media (max-width: 1100px) {
+  .tablero-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .tablero-kpi-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 2. Fila de dos paneles ──────────────────────────────────────── */
+
+.tablero-row-split {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.tablero-col-40 {
+  flex: 2;
+  min-width: 0;
+}
+
+.tablero-col-60 {
+  flex: 3;
+  min-width: 0;
+}
+
+@media (max-width: 820px) {
+  .tablero-row-split {
+    flex-direction: column;
+  }
+
+  .tablero-col-40,
+  .tablero-col-60 {
+    flex: none;
+    width: 100%;
+  }
+}
+
+/* ── 3. Encabezado de panel con subtítulo ────────────────────────── */
+
+.tablero-panel-subtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  line-height: 1.5;
+  max-width: 560px;
+}
+
+/* ── 4. Tabla de actividades compacta ───────────────────────────── */
+
+.tablero-act-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.tablero-act-table thead {
+  background: var(--color-surface-alt);
+  position: sticky;
+  top: 0;
+}
+
+.tablero-act-table th {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tablero-act-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-divider);
+  vertical-align: middle;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+/* Primera columna más espacio */
+.tablero-act-table td:first-child,
+.tablero-act-table th:first-child {
+  padding-left: 12px;
+}
+
+/* Rayas zebra suaves */
+.tablero-act-table tbody tr:nth-child(even) td {
+  background: var(--color-surface-alt);
+}
+
+.tablero-act-table tr:last-child td {
+  border-bottom: none;
+}
+
+.tablero-act-table tbody tr:hover td {
+  background: var(--color-primary-lighter);
+  transition: background 0.15s ease;
+}
+
+.tablero-act-table td.tablero-act-riesgo {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+/* ── 5. Wrapper del heatmap ──────────────────────────────────────── */
+
+.tablero-heatmap-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  padding: 8px 4px 4px;
+  border: 1px solid var(--color-divider);
+}
+
+/* Scrollbar estilizada para el heatmap */
+.tablero-heatmap-wrap::-webkit-scrollbar {
+  height: 5px;
+}
+
+.tablero-heatmap-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tablero-heatmap-wrap::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.tablero-heatmap-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-disabled);
+}
+
+/* ── 6. Estado vacío ─────────────────────────────────────────────── */
+
+.tablero-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 32px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border);
+  gap: 8px;
+}
+
+.tablero-empty-icon {
+  color: var(--color-text-disabled);
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+/* ── 7. Badge de nivel de desempeño ──────────────────────────────── */
+
+.tablero-nivel-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.tablero-nivel-badge.bajo {
+  color: var(--desempeno-bajo);
+  background: var(--desempeno-bajo-bg);
+}
+
+.tablero-nivel-badge.basico {
+  color: var(--desempeno-basico);
+  background: var(--desempeno-basico-bg);
+}
+
+.tablero-nivel-badge.alto {
+  color: var(--desempeno-alto);
+  background: var(--desempeno-alto-bg);
+}
+
+.tablero-nivel-badge.superior {
+  color: var(--desempeno-superior);
+  background: var(--desempeno-superior-bg);
+}
+
+/* ── 8. Separador visual entre secciones del page-stack ─────────── */
+
+.tablero-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-disabled);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-divider);
+  width: 100%;
+}
+
+/* ── 9. Indicador de tendencia bajo el KPI (positivo/negativo) ───── */
+
+.tablero-kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.tablero-kpi-trend.up {
+  color: var(--color-success);
+}
+
+.tablero-kpi-trend.down {
+  color: var(--color-error);
+}
+
+.tablero-kpi-trend.flat {
+  color: var(--color-text-secondary);
+}
+
+/* ── 10. Filas del ag-Grid del tablero ───────────────────────────── */
+
+/* ag-Grid aplica estas clases al row wrapper cuando rowClassRules coincide */
+.ag-theme-alpine .tablero-row-riesgo .ag-cell,
+.ag-theme-quartz .tablero-row-riesgo .ag-cell {
+  background: var(--color-error-light);
+}
+
+.ag-theme-alpine .tablero-row-riesgo:hover .ag-cell,
+.ag-theme-quartz .tablero-row-riesgo:hover .ag-cell {
+  background: var(--desempeno-bajo-bg);
+}
+
+/* ── 11. Celdas de promedio del ag-Grid — color por nivel ────────── */
+
+td.tablero-promedio-riesgo,
+.ag-cell.tablero-promedio-riesgo {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+td.tablero-promedio-basico,
+.ag-cell.tablero-promedio-basico {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+td.tablero-promedio-alto,
+.ag-cell.tablero-promedio-alto {
+  color: var(--color-info);
+  font-weight: 600;
+}
+
+td.tablero-promedio-superior,
+.ag-cell.tablero-promedio-superior {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* ── 12. Badges de estado en la columna Estado del ag-Grid ──────── */
+
+.tablero-badge-riesgo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.tablero-badge-normal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+/* ── 13. Texto secundario dentro del estado vacío ────────────────── */
+
+.tablero-empty-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 400px;
+  text-align: center;
+}
+
+/* ── 14. Fila de actividad en riesgo — tabla HTML compacta ──────── */
+
+.tablero-act-table tbody tr.tablero-act-row-riesgo td {
+  background: var(--color-error-light);
+}
+
+.tablero-act-table tbody tr.tablero-act-row-riesgo:hover td {
+  background: var(--desempeno-bajo-bg);
+}

@@ -281,13 +281,12 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
-            from src.infrastructure.exporters.boletin_pdf import (  # noqa: PLC0415
-                generar_boletin_acumulado_pdf,
-            )
+            import importlib  # noqa: PLC0415
+            _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_acumulado(
                 estudiante_id, grupo_id, periodo_id
             )
-            return generar_boletin_acumulado_pdf(datos)
+            return _boletin_mod.generar_boletin_acumulado_pdf(datos)
 
         # Excel: tabla plana acumulada con columna por cada periodo anterior + actual
         exporter = self._get_exporter_o_lanzar()
@@ -339,13 +338,12 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
-            from src.infrastructure.exporters.boletin_pdf import (  # noqa: PLC0415
-                generar_boletin_anual_pdf,
-            )
+            import importlib  # noqa: PLC0415
+            _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_anual(
                 estudiante_id, grupo_id, anio_id
             )
-            return generar_boletin_anual_pdf(datos)
+            return _boletin_mod.generar_boletin_anual_pdf(datos)
 
         # Excel: tabla plana con columna por periodo
         exporter = self._get_exporter_o_lanzar()

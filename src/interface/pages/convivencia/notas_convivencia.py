@@ -414,12 +414,8 @@ def notas_convivencia_page() -> None:
                         grid_ref["grid"] = grid
 
         app_layout(
-            titulo_pagina="Notas de convivencia",
-            usuario_nombre=ctx_actual.usuario_nombre,
-            usuario_rol=ctx_actual.usuario_rol,
-            ruta_activa="/convivencia/notas",
-            contenido=contenido_pagina,
-            ctx=ctx_actual,
+            ctx_actual, contenido_pagina,
+            page_titulo="Notas de convivencia",
             on_context_change=on_context_change,
         )
 

@@ -28,7 +28,7 @@ class ThemeManager:
     Punto único de configuración visual de la aplicación.
 
     Responsabilidades:
-      - Inyectar styles.css en el <head> de NiceGUI.
+      - Inyectar los módulos CSS del design system en el <head> de NiceGUI.
       - Exponer ThemeManager.icono() para renderizar Material Symbols
         con los parámetros correctos del design system.
 
@@ -41,7 +41,27 @@ class ThemeManager:
         NiceGUI 3.x no expone .text() como método chainable en Element.
     """
 
-    CSS_PATH = Path(__file__).parent / "styles.css"
+    CSS_BASE_DIR = Path(__file__).parent / "styles"
+    CSS_LOAD_ORDER = [
+        "tokens.css",
+        "reset.css",
+        "typography.css",
+        "layout/sidebar.css",
+        "layout/topbar.css",
+        "layout/content.css",
+        "components/buttons.css",
+        "components/tables.css",
+        "components/dialogs.css",
+        "components/badges.css",
+        "components/forms.css",
+        "components/cards.css",
+        "components/chips.css",
+        "components/empty_state.css",
+        "components/skeleton_loader.css",
+        "components/toast.css",
+        "domain/asistencia.css",
+        "domain/desempeno.css",
+    ]
 
     @classmethod
     def aplicar(cls) -> None:
@@ -51,12 +71,20 @@ class ThemeManager:
         """
         from nicegui import ui, app
 
-        if not cls.CSS_PATH.exists():
-            logger.error("styles.css no encontrado en %s", cls.CSS_PATH)
+        fragments: list[str] = []
+        for rel in cls.CSS_LOAD_ORDER:
+            path = cls.CSS_BASE_DIR / rel
+            if not path.exists():
+                logger.error("CSS faltante: %s", rel)
+                continue
+            fragments.append(f"/* === {rel} === */")
+            fragments.append(path.read_text(encoding="utf-8"))
+
+        if not fragments:
+            logger.error("No se encontró ningún archivo CSS en %s", cls.CSS_BASE_DIR)
             return
 
-        # CSS principal del design system
-        css = cls.CSS_PATH.read_text(encoding="utf-8")
+        css = "\n".join(fragments)
         ui.add_head_html(f"<style>{css}</style>", shared=True)
 
         # Meta viewport para responsive

@@ -375,7 +375,7 @@ def horarios_page() -> None:
                             options=vista_opts,
                             value=_s["vista"],
                             on_change=lambda e: _s.update({"vista": e.value}),
-                        ).classes("col-2")
+                        ).classes("flex-2")
 
                     # Selector de grupo o docente según vista
                     @ui.refreshable
@@ -388,7 +388,7 @@ def horarios_page() -> None:
                                     options=grupos_opts,
                                     value=_s["grupo_id"],
                                     on_change=lambda e: _s.update({"grupo_id": e.value}),
-                                ).classes("col-3")
+                                ).classes("flex-3")
                             else:
                                 ui.label("Sin grupos").classes("text-caption text-grey")
                         else:
@@ -397,7 +397,7 @@ def horarios_page() -> None:
                                 # Profesor: fijo a su usuario_id, sin selector
                                 nombre_docente = ctx.usuario_nombre or f"Docente #{ctx.usuario_id}"
                                 ui.label(f"Docente: {nombre_docente}").classes(
-                                    "text-body2 col-3"
+                                    "text-body2 flex-3"
                                 )
                             else:
                                 if _s["docentes"]:
@@ -413,7 +413,7 @@ def horarios_page() -> None:
                                         on_change=lambda e: _s.update(
                                             {"usuario_id": e.value}
                                         ),
-                                    ).classes("col-3")
+                                    ).classes("flex-3")
                                 else:
                                     ui.label("Sin docentes").classes("text-caption text-grey")
 

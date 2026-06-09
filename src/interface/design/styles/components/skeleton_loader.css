@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/skeleton_loader.css — Shimmer loading (paso_12b)
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position:  800px 0; }
+}
+
+/* ── Barra base ──────────────────────────────────────────── */
+.skeleton-bar {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-secondary-light) 0%,
+    var(--color-border)           50%,
+    var(--color-secondary-light) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bar { animation: none; }
+}
+
+/* ── Variantes de tamaño ─────────────────────────────────── */
+.skeleton-bar--header { height: 20px; }
+.skeleton-bar--lg     { height: 24px; width: 70%; }
+.skeleton-bar--sm     { height: 14px; width: 50%; }
+.skeleton-bar--xs     { height: 12px; width: 30%; }
+.skeleton-bar--label  { height: 10px; width: 30%; }
+.skeleton-bar--input  {
+  height: 38px;
+  width: 100%;
+  border-radius: var(--radius-md);
+}
+
+/* ── Tabla ───────────────────────────────────────────────── */
+.skeleton-table {
+  gap: 6px;
+  padding: var(--space-md);
+}
+
+.skeleton-row {
+  display: flex;
+  gap: 12px;
+}
+
+.skeleton-row > .skeleton-bar {
+  flex: 1;
+}
+
+/* ── Tarjetas ────────────────────────────────────────────── */
+.skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+
+.skeleton-card {
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  gap: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Formulario ──────────────────────────────────────────── */
+.skeleton-form {
+  gap: var(--space-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton-form-field {
+  gap: 6px;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,92 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/dialogs.css — Diálogos, modales y confirmaciones
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Diálogos / Modales ──────────────────────────────────── */
+.andes-dialog {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-modal) !important;
+  max-width: 480px;
+  width: 100%;
+}
+
+.andes-dialog-header {
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  font-size: var(--font-size-h3);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.andes-dialog-body {
+  padding: 0 var(--space-lg) var(--space-lg);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.andes-dialog-footer {
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-divider);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+/* ── Clases para form_dialog ─────────────────────────────────────────────── */
+.form-dialog-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden; /* Esencial para que el header respete los bordes redondeados */
+  display: flex;
+  flex-direction: column;
+}
+.form-dialog-header {
+  padding: 18px 24px;
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+.form-dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.3px;
+  margin: 0;
+  line-height: 1.2;
+}
+.form-dialog-body {
+  padding: 24px;
+  background: var(--color-surface);
+}
+
+/* ── Clases para confirm_dialog ─────────────────────────────────────────── */
+.confirm-dialog-card  { min-width: 380px; max-width: 480px; }
+.confirm-dialog-head  { margin-bottom: var(--space-md); }
+.confirm-dialog-body  { color: var(--color-text-secondary); font-size: var(--font-size-body);
+                        line-height: 1.6; margin-bottom: var(--space-lg); }
+.confirm-dialog-foot  { margin-top: var(--space-md); }
+
+/* ── Clases para confirmation_card ──────────────────────────────────────── */
+.confirm-card-inner   { flex: 1; }
+.confirm-card-body    { color: var(--color-text-primary); font-size: var(--font-size-body); line-height: 1.5; }
+.confirm-card-actions { margin-top: var(--space-sm); }
+
+/* confirmation_card.py — variantes estáticas */
+.confirmation-card-danger {
+  background: var(--color-error-light);
+  border-left: 4px solid var(--color-error);
+}
+.confirmation-card-warning {
+  background: var(--color-warning-light);
+  border-left: 4px solid var(--color-warning);
+}
+.confirmation-card-info {
+  background: var(--color-info-light);
+  border-left: 4px solid var(--color-info);
+}
+
+/* confirmation_card title color por variante */
+.confirmation-card-danger  .confirm-card-title { color: var(--color-error);   }
+.confirmation-card-warning .confirm-card-title { color: var(--color-warning); }
+.confirmation-card-info    .confirm-card-title { color: var(--color-info);    }

@@ -511,12 +511,8 @@ def registro_asistencia_page() -> None:
             grilla_refreshable()    # Banner cerrado + grilla
 
     app_layout(
-        titulo_pagina     = "Asistencia",
-        usuario_nombre    = ctx.usuario_nombre,
-        usuario_rol       = ctx.usuario_rol,
-        ruta_activa       = "/asistencia",
-        contenido         = contenido,
-        ctx               = ctx,
+        ctx, contenido,
+        page_titulo       = "Asistencia",
         on_context_change = on_context_change,
     )
 

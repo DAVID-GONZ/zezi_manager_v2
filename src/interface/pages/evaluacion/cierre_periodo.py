@@ -394,7 +394,7 @@ def cierre_periodo_page() -> None:
                                     ui.label(usr_str).classes("text-sm")
 
                     # Columna derecha: acciones
-                    with ui.element("div").classes("flex gap-2 items-center flex-shrink-0"):
+                    with ui.element("div").classes("flex gap-2 items-center no-shrink"):
                         if cerrado:
                             btn_secondary(
                                 "Recalcular",
@@ -476,12 +476,8 @@ def cierre_periodo_page() -> None:
         lista_refreshable.refresh()
 
     app_layout(
-        titulo_pagina     = "Evaluación · Cierre de Periodo",
-        usuario_nombre    = ctx.usuario_nombre,
-        usuario_rol       = ctx.usuario_rol,
-        ruta_activa       = "/evaluacion/cierre-periodo",
-        contenido         = contenido,
-        ctx               = ctx,
+        ctx, contenido,
+        page_titulo       = "Evaluación · Cierre de Periodo",
         on_context_change = on_context_change,
     )
 

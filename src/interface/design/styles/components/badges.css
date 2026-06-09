@@ -1,0 +1,263 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/badges.css — Badges, alertas inline y etiquetas
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Badges ──────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.badge-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.badge-error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.badge-info {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.badge-neutral {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+}
+
+.badge-primary {
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
+}
+
+.badge-purple {
+  background: var(--attend-retraso-bg);
+  color: var(--attend-retraso);
+}
+
+.badge-P {
+  background: var(--attend-presente-bg);
+  color: var(--attend-presente);
+}
+
+.badge-FJ {
+  background: var(--attend-fj-bg);
+  color: var(--attend-fj);
+}
+
+.badge-FI {
+  background: var(--attend-fi-bg);
+  color: var(--attend-fi);
+}
+
+.badge-R {
+  background: var(--attend-retraso-bg);
+  color: var(--attend-retraso);
+}
+
+.badge-E {
+  background: var(--attend-excusa-bg);
+  color: var(--attend-excusa);
+}
+
+.badge-bajo {
+  background: var(--desempeno-bajo-bg);
+  color: var(--desempeno-bajo);
+}
+
+.badge-basico {
+  background: var(--desempeno-basico-bg);
+  color: var(--desempeno-basico);
+}
+
+.badge-alto {
+  background: var(--desempeno-alto-bg);
+  color: var(--desempeno-alto);
+}
+
+.badge-superior {
+  background: var(--desempeno-superior-bg);
+  color: var(--desempeno-superior);
+}
+
+/* ── Notificaciones / Alertas inline ─────────────────────── */
+.andes-alert {
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-size: var(--font-size-body);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.andes-alert-error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  border-left: 4px solid var(--color-error);
+}
+
+.andes-alert-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border-left: 4px solid var(--color-warning);
+}
+
+.andes-alert-success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border-left: 4px solid var(--color-success);
+}
+
+.andes-alert-info {
+  background: var(--color-info-light);
+  color: var(--color-info);
+  border-left: 4px solid var(--color-info);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONVIVENCIA — badges tipo registro de comportamiento
+   ═══════════════════════════════════════════════════════ */
+
+.badge-fortaleza {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.badge-dificultad {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.badge-compromiso {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.badge-citacion {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.badge-descargo {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  background: var(--color-secondary-light);
+  color: var(--color-secondary-dark);
+}
+
+/* ═══════════════════════════════════════════════════════
+   ALERTAS — summaries y texto de items
+   ═══════════════════════════════════════════════════════ */
+
+.alert-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.alert-summary-error {
+  background: var(--color-error-light);
+}
+
+.alert-summary-warning {
+  background: var(--color-warning-light);
+}
+
+.alert-count-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.alert-summary-error .alert-count-text {
+  color: var(--color-error);
+}
+
+.alert-summary-warning .alert-count-text {
+  color: var(--color-warning);
+}
+
+.alerta-item-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.alerta-critica .alerta-item-text {
+  color: var(--color-error);
+}
+
+.alerta-advertencia .alerta-item-text {
+  color: var(--color-warning);
+}
+
+.alerta-info .alerta-item-text {
+  color: var(--color-info);
+}
+
+.more-items-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: right;
+  margin-top: 8px;
+  display: block;
+}

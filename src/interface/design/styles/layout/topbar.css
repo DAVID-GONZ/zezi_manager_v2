@@ -1,0 +1,227 @@
+/* ═══════════════════════════════════════════════════════════════
+   layout/topbar.css — Barra superior y sus elementos
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Topbar — Aula Serena: azul tinta sólido ─────────────── */
+.andes-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background: var(--nav-topbar-bg);
+  border-bottom: 1px solid var(--nav-topbar-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  z-index: 1000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  gap: 12px;
+}
+
+/* ── Brand ───────────────────────────────────────────────── */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.topbar-brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.topbar-brand-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* ── Page info ───────────────────────────────────────────── */
+.topbar-page-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.topbar-page-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.topbar-page-title {
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: 15px;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.015em;
+}
+
+.topbar-page-sub {
+  font-family: var(--font-family);
+  font-size: var(--font-size-small);
+  color: rgba(255, 255, 255, 0.60);
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── User block ──────────────────────────────────────────── */
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topbar-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.topbar-user-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.50);
+  white-space: nowrap;
+}
+
+.topbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.90);
+}
+
+/* ── Action buttons ──────────────────────────────────────── */
+.topbar-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  gap: 4px;
+  transition: background 0.15s;
+}
+
+.topbar-action-primary {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.topbar-action-primary:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.topbar-action-secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.topbar-action-secondary:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Se mantiene igual ya que --color-error sigue siendo #DC2626 */
+.topbar-action-danger {
+  background: rgba(220, 38, 38, 0.25);
+  border-color: rgba(220, 38, 38, 0.4);
+  color: rgba(255, 180, 180, 0.95);
+}
+
+.topbar-action-danger:hover {
+  background: rgba(220, 38, 38, 0.4);
+}
+
+/* Actions row */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Botones icon-only del topbar (toggle, logout) */
+.andes-topbar .q-btn[flat] {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.andes-topbar .q-btn[flat]:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Context chip — override para fondo oscuro */
+.andes-topbar .context-chip,
+.andes-topbar [class*="context-chip"] {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.andes-topbar .context-chip:hover,
+.andes-topbar [class*="context-chip"]:hover {
+  background: rgba(255, 255, 255, 0.20) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOPBAR — clases heredadas / compatibilidad
+   (Las clases principales están en la sección .andes-topbar)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Título legacy — mantenido por compatibilidad */
+.topbar-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Logout button override */
+.topbar-logout-btn {
+  color: rgba(255, 255, 255, 0.75) !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+}
+.topbar-logout-btn:hover {
+  color:--var(--color-primary-contrast) !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+}
