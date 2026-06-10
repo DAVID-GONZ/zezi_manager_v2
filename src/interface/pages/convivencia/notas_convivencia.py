@@ -32,6 +32,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.interface.design.theme import ThemeManager
+from src.interface.design.components import toast_error, toast_info, toast_success, toast_warning
 
 logger = logging.getLogger("NOTAS_CONVIVENCIA")
 
@@ -169,20 +170,20 @@ def _guardar_nota(
 ) -> None:
     """Guarda la nota de un estudiante individual."""
     if _s["periodo_cerrado"]:
-        ui.notify("El periodo está cerrado. No se pueden modificar notas.", type="negative")
+        toast_error("El periodo está cerrado. No se pueden modificar notas.")
         return
     if not _s["grupo_id"] or not _s["periodo_id"]:
-        ui.notify("Selecciona un grupo y periodo.", type="warning")
+        toast_warning("Selecciona un grupo y periodo.")
         return
 
     try:
         valor_float = float(valor) if valor not in (None, "", "--") else None
     except (TypeError, ValueError):
-        ui.notify("El valor de la nota debe ser un número.", type="warning")
+        toast_warning("El valor de la nota debe ser un número.")
         return
 
     if valor_float is None:
-        ui.notify("Ingresa un valor de nota.", type="warning")
+        toast_warning("Ingresa un valor de nota.")
         return
 
     try:
@@ -196,23 +197,23 @@ def _guardar_nota(
         Container.convivencia_service().registrar_nota_comportamiento(dto, ctx.usuario_id)
         # Limpiar el cambio pendiente
         _s["cambios_pendientes"].pop(estudiante_id, None)
-        ui.notify("Nota guardada.", type="positive", timeout=2000)
+        toast_success("Nota guardada.")
         _cargar_notas(_s)
     except ValueError as exc:
-        ui.notify(f"Error de validación: {exc}", type="warning")
+        toast_warning(f"Error de validación: {exc}")
     except Exception as exc:
         logger.error("Error guardando nota: %s", exc, exc_info=True)
-        ui.notify(f"Error: {exc}", type="negative")
+        toast_error(f"Error: {exc}")
 
 
 def _guardar_todo(_s: dict, ctx: SessionContext) -> None:
     """Guarda todos los cambios pendientes."""
     if _s["periodo_cerrado"]:
-        ui.notify("El periodo está cerrado.", type="negative")
+        toast_error("El periodo está cerrado.")
         return
 
     if not _s["cambios_pendientes"]:
-        ui.notify("Sin cambios pendientes.", type="info")
+        toast_info("Sin cambios pendientes.")
         return
 
     exitos = 0
@@ -236,13 +237,9 @@ def _guardar_todo(_s: dict, ctx: SessionContext) -> None:
     _cargar_notas(_s)
 
     if errores == 0:
-        ui.notify(f"Se guardaron {exitos} nota(s) correctamente.", type="positive", timeout=3000)
+        toast_success(f"Se guardaron {exitos} nota(s) correctamente.")
     else:
-        ui.notify(
-            f"Guardadas: {exitos}. Errores: {errores}. Revisa el log para detalles.",
-            type="warning",
-            timeout=5000,
-        )
+        toast_warning(f"Guardadas: {exitos}. Errores: {errores}. Revisa el log para detalles.")
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -256,7 +253,7 @@ def notas_convivencia_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -339,18 +336,18 @@ def notas_convivencia_page() -> None:
         def on_guardar_seleccionado() -> None:
             grid = grid_ref.get("grid")
             if grid is None:
-                ui.notify("Selecciona una fila primero.", type="warning")
+                toast_warning("Selecciona una fila primero.")
                 return
 
             async def _do_guardar():
                 rows = await grid.get_selected_rows()
                 if not rows:
-                    ui.notify("Selecciona una fila primero.", type="warning")
+                    toast_warning("Selecciona una fila primero.")
                     return
                 fila = rows[0]
                 est_id = fila.get("estudiante_id")
                 if est_id is None:
-                    ui.notify("No se pudo identificar el estudiante.", type="warning")
+                    toast_warning("No se pudo identificar el estudiante.")
                     return
                 cambio = _s["cambios_pendientes"].get(est_id, {})
                 valor = cambio.get("valor", fila.get("nota"))

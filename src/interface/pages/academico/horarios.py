@@ -34,7 +34,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import form_dialog
+from src.interface.design.components import confirm_dialog, empty_state, form_dialog, toast_error, toast_success, toast_warning
 from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -181,12 +181,14 @@ def horarios_page() -> None:
         bloques = _s["bloques"]
 
         if not bloques:
-            with ui.element("div").classes("panel-card"):
-                with ui.element("div").classes("tablero-empty"):
-                    ThemeManager.icono(Icons.SCHEDULE, size=40)
-                    ui.label("No hay bloques registrados para este periodo.").classes(
-                        "tablero-panel-subtitle"
-                    )
+            empty_state(
+                icono=Icons.SCHEDULE,
+                titulo="Sin horario registrado",
+                descripcion="Este grupo no tiene bloques asignados para el periodo seleccionado.",
+                cta_label="Agregar bloque" if puede_escribir else None,
+                cta_on_click=_abrir_dialog_crear if puede_escribir else None,
+                cta_icono="add",
+            )
             return
 
         grilla, dias = _build_grilla(bloques)
@@ -256,25 +258,24 @@ def horarios_page() -> None:
     # ── Helpers de diálogos ───────────────────────────────────────────────────
 
     def _confirmar_eliminar(horario_id: int) -> None:
-        """Dialog de confirmación antes de eliminar un bloque."""
-        with ui.dialog() as dlg, ui.card():
-            ui.label("¿Eliminar este bloque del horario?").classes("text-subtitle1 q-mb-md")
-            with ui.row().classes("justify-end gap-sm"):
-                btn_ghost("Cancelar", on_click=dlg.close)
+        def _ok() -> None:
+            try:
+                Container.infraestructura_service().eliminar_horario(horario_id)
+                toast_success("Bloque eliminado")
+                _cargar_bloques()
+                grilla_refreshable.refresh()
+            except Exception as exc:
+                logger.error("Error eliminando bloque %s: %s", horario_id, exc)
+                toast_error(str(exc))
 
-                def _ok() -> None:
-                    try:
-                        Container.infraestructura_service().eliminar_horario(horario_id)
-                        ui.notify("Bloque eliminado", type="positive")
-                        dlg.close()
-                        _cargar_bloques()
-                        grilla_refreshable.refresh()
-                    except Exception as exc:
-                        logger.error("Error eliminando bloque %s: %s", horario_id, exc)
-                        ui.notify(str(exc), type="negative")
-
-                btn_danger("Eliminar", on_click=_ok)
-        dlg.open()
+        confirm_dialog(
+            titulo="Eliminar bloque",
+            mensaje="¿Eliminar este bloque del horario?",
+            on_confirm=_ok,
+            variante="danger",
+            texto_confirmar="Eliminar",
+            texto_cancelar="Cancelar",
+        )
 
     def _abrir_dialog_crear() -> None:
         """Dialog para crear un nuevo bloque horario."""
@@ -289,9 +290,7 @@ def horarios_page() -> None:
                 logger.error("Error cargando asignaciones: %s", exc)
 
         if not _s["asignaciones"]:
-            ui.notify(
-                "No hay asignaciones activas en este periodo.", type="warning"
-            )
+            toast_warning("No hay asignaciones activas en este periodo.")
             return
 
         # Opciones de asignación para el selector
@@ -303,7 +302,7 @@ def horarios_page() -> None:
         def _guardar(datos: dict) -> "bool | None":
             asig_id = datos.get("asignacion_id")
             if not asig_id:
-                ui.notify("Selecciona una asignación.", type="warning")
+                toast_warning("Selecciona una asignación.")
                 return False
             try:
                 asig = next(
@@ -322,18 +321,18 @@ def horarios_page() -> None:
                     sala=str(datos.get("sala", "") or "Aula"),
                 )
                 Container.infraestructura_service().guardar_horario(dto.to_horario())
-                ui.notify("Bloque guardado", type="positive")
+                toast_success("Bloque guardado")
                 _cargar_bloques()
                 grilla_refreshable.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except StopIteration:
-                ui.notify("Asignación no encontrada.", type="warning")
+                toast_warning("Asignación no encontrada.")
                 return False
             except Exception as exc:
                 logger.error("Error guardando bloque: %s", exc)
-                ui.notify("Error al guardar el bloque", type="negative")
+                toast_error("Error al guardar el bloque")
                 return False
 
         form_dialog(

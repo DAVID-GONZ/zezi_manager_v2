@@ -21,7 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, form_dialog
+from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -35,7 +35,7 @@ def asignaturas_page() -> None:
         return
 
     if ctx.usuario_rol not in ("admin", "director"):
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -90,11 +90,11 @@ def asignaturas_page() -> None:
             nombre = _s["area_nombre"].strip()
             codigo = _s["area_codigo"].strip() or None
             if not nombre:
-                ui.notify("El nombre del área no puede estar vacío", type="warning")
+                toast_warning("El nombre del área no puede estar vacío")
                 return
             area = AreaConocimiento(id=None, nombre=nombre, codigo=codigo)
             Container.infraestructura_service().guardar_area(area)
-            ui.notify(f"Área '{nombre}' creada", type="positive")
+            toast_success(f"Área '{nombre}' creada")
             _s["area_nombre"] = ""
             _s["area_codigo"] = ""
             _cargar_areas()
@@ -103,25 +103,25 @@ def asignaturas_page() -> None:
             filtro_area.refresh()
             tabla_asignaturas.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al crear área: %s", exc)
-            ui.notify("Error al crear el área", type="negative")
+            toast_error("Error al crear el área")
 
     def _confirmar_eliminar_area(area_id: int, nombre: str) -> None:
         try:
             Container.infraestructura_service().eliminar_area(area_id)
-            ui.notify(f"Área '{nombre}' eliminada", type="positive")
+            toast_success(f"Área '{nombre}' eliminada")
             _cargar_areas()
             _cargar_asignaturas()
             tabla_areas.refresh()
             filtro_area.refresh()
             tabla_asignaturas.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al eliminar área %s: %s", area_id, exc)
-            ui.notify("Error al eliminar el área", type="negative")
+            toast_error("Error al eliminar el área")
 
     def _eliminar_area(area_id: int, nombre: str) -> None:
         confirm_dialog(
@@ -137,7 +137,7 @@ def asignaturas_page() -> None:
             try:
                 nombre = str(datos.get("nombre", "")).strip()
                 if not nombre:
-                    ui.notify("El nombre es obligatorio", type="warning")
+                    toast_warning("El nombre es obligatorio")
                     return False
                 area_act = AreaConocimiento(
                     id=area.id,
@@ -145,18 +145,18 @@ def asignaturas_page() -> None:
                     codigo=str(datos.get("codigo", "")).strip() or None,
                 )
                 Container.infraestructura_service().actualizar_area(area_act)
-                ui.notify(f"Área '{area_act.nombre}' actualizada", type="positive")
+                toast_success(f"Área '{area_act.nombre}' actualizada")
                 _cargar_areas()
                 _cargar_asignaturas()
                 tabla_areas.refresh()
                 filtro_area.refresh()
                 tabla_asignaturas.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al actualizar área: %s", exc)
-                ui.notify("Error al actualizar el área", type="negative")
+                toast_error("Error al actualizar el área")
                 return False
 
         form_dialog(
@@ -179,7 +179,7 @@ def asignaturas_page() -> None:
             area_id    = _s["asig_area_id"]
             intensidad = int(_s["asig_intensidad"])
             if not nombre:
-                ui.notify("El nombre de la asignatura no puede estar vacío", type="warning")
+                toast_warning("El nombre de la asignatura no puede estar vacío")
                 return
             asig = Asignatura(
                 id=None,
@@ -189,7 +189,7 @@ def asignaturas_page() -> None:
                 horas_semanales=intensidad,
             )
             Container.infraestructura_service().guardar_asignatura(asig)
-            ui.notify(f"Asignatura '{nombre}' creada", type="positive")
+            toast_success(f"Asignatura '{nombre}' creada")
             _s["asig_nombre"]     = ""
             _s["asig_codigo"]     = ""
             _s["asig_area_id"]    = None
@@ -197,22 +197,22 @@ def asignaturas_page() -> None:
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al crear asignatura: %s", exc)
-            ui.notify("Error al crear la asignatura", type="negative")
+            toast_error("Error al crear la asignatura")
 
     def _confirmar_eliminar_asig(asig_id: int, nombre: str) -> None:
         try:
             Container.infraestructura_service().eliminar_asignatura(asig_id)
-            ui.notify(f"Asignatura '{nombre}' eliminada", type="positive")
+            toast_success(f"Asignatura '{nombre}' eliminada")
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al eliminar asignatura %s: %s", asig_id, exc)
-            ui.notify("Error al eliminar la asignatura", type="negative")
+            toast_error("Error al eliminar la asignatura")
 
     def _eliminar_asignatura(asig_id: int, nombre: str) -> None:
         confirm_dialog(
@@ -230,7 +230,7 @@ def asignaturas_page() -> None:
             try:
                 nombre = str(datos.get("nombre", "")).strip()
                 if not nombre:
-                    ui.notify("El nombre es obligatorio", type="warning")
+                    toast_warning("El nombre es obligatorio")
                     return False
                 asig_act = Asignatura(
                     id=asig.id,
@@ -240,15 +240,15 @@ def asignaturas_page() -> None:
                     horas_semanales=int(datos["horas_semanales"]) if datos.get("horas_semanales") is not None else asig.horas_semanales,
                 )
                 Container.infraestructura_service().actualizar_asignatura(asig_act)
-                ui.notify(f"Asignatura '{asig_act.nombre}' actualizada", type="positive")
+                toast_success(f"Asignatura '{asig_act.nombre}' actualizada")
                 _cargar_asignaturas()
                 tabla_asignaturas.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al actualizar asignatura: %s", exc)
-                ui.notify("Error al actualizar la asignatura", type="negative")
+                toast_error("Error al actualizar la asignatura")
                 return False
 
         form_dialog(

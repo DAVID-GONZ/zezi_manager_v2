@@ -32,6 +32,7 @@ from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.interface.design.components.stat_card import stat_card
 from src.services.informe_service import sanitizar_datos_exportacion, FormatoInforme
+from src.interface.design.components import skeleton_table, toast_error, toast_warning
 
 logger = logging.getLogger("ESTADISTICOS")
 
@@ -341,7 +342,7 @@ def _cargar_datos(ctx: SessionContext, _s: dict) -> None:
         _s["datos_listos"] = True
     except Exception as exc:
         logger.error("Error cargando datos para %s: %s", tipo, exc)
-        ui.notify(f"Error al obtener datos: {exc}", type="negative")
+        toast_error(f"Error al obtener datos: {exc}")
         _s["datos"] = None
         _s["datos_listos"] = False
 
@@ -697,7 +698,7 @@ def _exportar_excel(ctx: SessionContext, _s: dict) -> None:
         ui.download(content, nombre)
     except Exception as exc:
         logger.error("Error exportando Excel (%s): %s", tipo, exc)
-        ui.notify(f"Error al exportar: {exc}", type="negative")
+        toast_error(f"Error al exportar: {exc}")
 
 
 def _exportar_pdf(ctx: SessionContext, _s: dict) -> None:
@@ -783,13 +784,13 @@ def _exportar_pdf(ctx: SessionContext, _s: dict) -> None:
             html  = svc_inf._datos_a_html(filas, titulo="Tendencia de Asistencia")
             content = exporter.exportar_pdf(_inyectar_meta(html))
         else:
-            ui.notify("Tipo de informe no reconocido.", type="warning")
+            toast_warning("Tipo de informe no reconocido.")
             return
 
         ui.download(content, nombre)
     except Exception as exc:
         logger.error("Error exportando PDF (%s): %s", tipo, exc)
-        ui.notify(f"Error al exportar PDF: {exc}", type="negative")
+        toast_error(f"Error al exportar PDF: {exc}")
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -803,11 +804,12 @@ def estadisticos_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
     _s = _estado_inicial()
+    _s["cargando_preview"] = False
 
     # Cargar datos iniciales
     # _cargar_grupos ya gestiona el rol internamente:
@@ -903,6 +905,9 @@ def estadisticos_page() -> None:
         with ui.element("div").classes("panel-card"):
             with ui.element("div").classes("panel-header"):
                 ui.label("Vista Previa").classes("panel-title")
+            if _s.get("cargando_preview"):
+                skeleton_table(rows=8, cols=5)
+                return
             if _s["datos_listos"] and _s["datos"] is not None:
                 _render_stats_summary(_s)
             _render_preview(_s)
@@ -974,11 +979,16 @@ def estadisticos_page() -> None:
         preview_refreshable.refresh()
         export_refreshable.refresh()
 
-    def on_previsualizar() -> None:
+    async def on_previsualizar() -> None:
+        import asyncio
         if not _filtros_completos(_s):
-            ui.notify("Completa todos los filtros requeridos.", type="warning")
+            toast_warning("Completa todos los filtros requeridos.")
             return
+        _s["cargando_preview"] = True
+        preview_refreshable.refresh()
+        await asyncio.sleep(0)
         _cargar_datos(ctx, _s)
+        _s["cargando_preview"] = False
         preview_refreshable.refresh()
         export_refreshable.refresh()
 

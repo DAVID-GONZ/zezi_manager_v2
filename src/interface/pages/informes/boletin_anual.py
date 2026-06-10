@@ -24,6 +24,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_icon
 from src.services.informe_service import merge_pdfs, merge_excels
+from src.interface.design.components import skeleton_cards, toast_error, toast_warning
 
 logger = logging.getLogger("BOLETIN_ANUAL")
 
@@ -37,6 +38,7 @@ def _estado_inicial() -> dict:
         "grupos":                     [],
         "estudiantes":                [],
         "todas_asignaciones_docente": [],
+        "generando":                  False,
     }
 
 
@@ -103,12 +105,12 @@ def _descargar_pdf_individual(estudiante_id: int, nombre: str, _s: dict) -> None
         contenido = _boletin_pdf(estudiante_id, _s)
         ui.download(src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.pdf")
     except ValueError as exc:
-        ui.notify(f"Sin datos o exportador no disponible: {exc}", type="negative")
+        toast_error(f"Sin datos o exportador no disponible: {exc}")
     except NotImplementedError:
-        ui.notify("PDF no disponible. Instala weasyprint o reportlab.", type="warning")
+        toast_warning("PDF no disponible. Instala weasyprint o reportlab.")
     except Exception as exc:
         logger.error("Error PDF %s: %s", nombre, exc, exc_info=True)
-        ui.notify(f"Error al generar boletín de {nombre}.", type="negative")
+        toast_error(f"Error al generar boletín de {nombre}.")
 
 
 def _descargar_excel_individual(estudiante_id: int, nombre: str, _s: dict) -> None:
@@ -117,12 +119,12 @@ def _descargar_excel_individual(estudiante_id: int, nombre: str, _s: dict) -> No
         ui.download(src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.xlsx")
     except Exception as exc:
         logger.error("Error Excel %s: %s", nombre, exc, exc_info=True)
-        ui.notify(f"Error al exportar Excel de {nombre}.", type="negative")
+        toast_error(f"Error al exportar Excel de {nombre}.")
 
 
 def _generar_todos_pdf(_s: dict) -> None:
     if not _s["anio_id"]:
-        ui.notify("Ingresa un año lectivo.", type="warning")
+        toast_warning("Ingresa un año lectivo.")
         return
     pdfs: list[bytes] = []
     errores: list[str] = []
@@ -134,7 +136,7 @@ def _generar_todos_pdf(_s: dict) -> None:
             logger.error("Error PDF %s: %s", nombre, exc)
             errores.append(nombre)
     if not pdfs:
-        ui.notify("No se pudo generar ningún boletín.", type="negative")
+        toast_error("No se pudo generar ningún boletín.")
         return
     try:
         merged   = merge_pdfs(pdfs)
@@ -142,15 +144,15 @@ def _generar_todos_pdf(_s: dict) -> None:
         filename = f"boletines_anual_{grupo}_{_s['anio_id']}.pdf".replace(" ", "_")
         ui.download(src=merged, filename=filename)
         if errores:
-            ui.notify(f"Fusionado con errores en: {', '.join(errores)}", type="warning")
+            toast_warning(f"Fusionado con errores en: {', '.join(errores)}")
     except Exception as exc:
         logger.error("Error fusionando PDFs: %s", exc, exc_info=True)
-        ui.notify(f"Error al fusionar PDFs: {exc}", type="negative")
+        toast_error(f"Error al fusionar PDFs: {exc}")
 
 
 def _generar_todos_excel(_s: dict) -> None:
     if not _s["anio_id"]:
-        ui.notify("Ingresa un año lectivo.", type="warning")
+        toast_warning("Ingresa un año lectivo.")
         return
     hojas: list[tuple[str, bytes]] = []
     errores: list[str] = []
@@ -164,7 +166,7 @@ def _generar_todos_excel(_s: dict) -> None:
             logger.error("Error Excel %s: %s", nombre, exc)
             errores.append(nombre)
     if not hojas:
-        ui.notify("No se pudo generar ningún boletín.", type="negative")
+        toast_error("No se pudo generar ningún boletín.")
         return
     try:
         merged   = merge_excels(hojas)
@@ -172,10 +174,10 @@ def _generar_todos_excel(_s: dict) -> None:
         filename = f"boletines_anual_{grupo}_{_s['anio_id']}.xlsx".replace(" ", "_")
         ui.download(src=merged, filename=filename)
         if errores:
-            ui.notify(f"Generado con errores en: {', '.join(errores)}", type="warning")
+            toast_warning(f"Generado con errores en: {', '.join(errores)}")
     except Exception as exc:
         logger.error("Error fusionando Excels: %s", exc, exc_info=True)
-        ui.notify(f"Error al fusionar Excel: {exc}", type="negative")
+        toast_error(f"Error al fusionar Excel: {exc}")
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -189,7 +191,7 @@ def boletin_anual_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -224,6 +226,11 @@ def boletin_anual_page() -> None:
 
     @ui.refreshable
     def lista_refreshable() -> None:
+        if _s.get("generando"):
+            with ui.element("div").classes("andes-card q-pa-md"):
+                skeleton_cards(count=4)
+            return
+
         if not _s["grupo_id"] or not _s["anio_id"]:
             with ui.element("div").classes("andes-card text-center q-pa-xl"):
                 ui.label("Selecciona un grupo y año para ver los estudiantes.").classes("text-caption")
@@ -238,15 +245,33 @@ def boletin_anual_page() -> None:
             with ui.row().classes("items-center justify-between q-mb-md"):
                 ui.label(f"Estudiantes ({len(_s['estudiantes'])})").classes("text-subtitle1 text-weight-medium")
                 with ui.row().classes("gap-2"):
+                    async def _generar_pdf_masivo():
+                        import asyncio
+                        _s["generando"] = True
+                        lista_refreshable.refresh()
+                        await asyncio.sleep(0)
+                        _generar_todos_pdf(_s)
+                        _s["generando"] = False
+                        lista_refreshable.refresh()
+
+                    async def _generar_excel_masivo():
+                        import asyncio
+                        _s["generando"] = True
+                        lista_refreshable.refresh()
+                        await asyncio.sleep(0)
+                        _generar_todos_excel(_s)
+                        _s["generando"] = False
+                        lista_refreshable.refresh()
+
                     btn_primary(
                         "Todos PDF",
                         icon="picture_as_pdf",
-                        on_click=lambda: _generar_todos_pdf(_s),
+                        on_click=_generar_pdf_masivo,
                     )
                     btn_secondary(
                         "Todos Excel",
                         icon="table_view",
-                        on_click=lambda: _generar_todos_excel(_s),
+                        on_click=_generar_excel_masivo,
                     )
 
             for est in _s["estudiantes"]:

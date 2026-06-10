@@ -34,7 +34,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons, Colors, DesempenoColors
-from src.interface.design.components import stat_card
+from src.interface.design.components import skeleton_cards, stat_card, toast_error
 
 logger = logging.getLogger("TABLERO_ESTADISTICOS")
 
@@ -936,7 +936,7 @@ def tablero_estadisticos_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -959,13 +959,20 @@ def tablero_estadisticos_page() -> None:
         "drill_grupo_id":     ctx.grupo_id,
         "drill_asig_id":      ctx.asignacion_id,
         "drill_asignaciones": [],
+        # skeleton flags
+        "cargando_global":    True,
     }
 
-    # Carga inicial
-    if es_directivo and _s["periodo_id"]:
-        _cargar_datos_globales(_s)
-    if es_directivo and _s["drill_grupo_id"] and _s["periodo_id"]:
-        _cargar_drill_asignaciones(_s)
+    async def _carga_inicial():
+        if es_directivo and _s["periodo_id"]:
+            _cargar_datos_globales(_s)
+        if es_directivo and _s["drill_grupo_id"] and _s["periodo_id"]:
+            _cargar_drill_asignaciones(_s)
+        _s["cargando_global"] = False
+        global_refreshable.refresh()
+        drill_refreshable.refresh()
+
+    ui.timer(0.05, _carga_inicial, once=True)
 
     # Nota mínima desde config (fallback 60)
     try:
@@ -979,6 +986,9 @@ def tablero_estadisticos_page() -> None:
     @ui.refreshable
     def global_refreshable() -> None:
         """Vista institucional: KPIs + comparativo de grupos."""
+        if _s.get("cargando_global"):
+            skeleton_cards(count=4)
+            return
         if not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
                 with ui.element("div").classes("tablero-empty-icon"):

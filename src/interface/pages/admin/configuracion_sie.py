@@ -27,7 +27,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
 )
-from src.interface.design.components import confirm_dialog, form_dialog, badge_estado_general
+from src.interface.design.components import badge_estado_general, confirm_dialog, form_dialog, status_badge, toast_error, toast_success, toast_warning
 from src.services.configuracion_service import (
     NuevaConfiguracionAnioDTO, ActualizarConfiguracionAnioDTO,
     NivelDesempeno, CriterioPromocion, NuevoNivelDesempenoDTO,
@@ -66,7 +66,7 @@ def configuracion_sie_page() -> None:
         return
 
     if ctx.usuario_rol not in _ROL_ADMIN:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -128,7 +128,7 @@ def configuracion_sie_page() -> None:
             anio = int(_s["nuevo_anio"])
             dto  = NuevaConfiguracionAnioDTO(anio=anio)
             Container.configuracion_service().crear_anio(dto)
-            ui.notify(f"Año lectivo {anio} creado", type="positive")
+            toast_success(f"Año lectivo {anio} creado")
             _cargar_todo()
             panel_anio.refresh()
             panel_escala.refresh()
@@ -137,10 +137,10 @@ def configuracion_sie_page() -> None:
             panel_modo_siee.refresh()
             panel_cats_inst.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error creando año: %s", exc)
-            ui.notify("Error al crear el año lectivo", type="negative")
+            toast_error("Error al crear el año lectivo")
 
     # ── Acciones — escala ─────────────────────────────────────────────────────
     def _editar_escala() -> None:
@@ -158,15 +158,15 @@ def configuracion_sie_page() -> None:
                 Container.configuracion_service().actualizar_configuracion_academica(
                     config.id, dto
                 )
-                ui.notify("Escala de notas actualizada", type="positive")
+                toast_success("Escala de notas actualizada")
                 _cargar_todo()
                 panel_escala.refresh()
                 panel_anio.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error escala: %s", exc)
-                ui.notify("Error al guardar la escala", type="negative")
+                toast_error("Error al guardar la escala")
 
         form_dialog(
             titulo = "Escala de notas",
@@ -212,12 +212,12 @@ def configuracion_sie_page() -> None:
                     NuevoNivelDesempenoDTO(anio_id=anio_id, nombre="Superior", rango_min=85.0, rango_max=100.0, orden=3),
                 ]
                 Container.configuracion_service().configurar_niveles(anio_id, defaults)
-                ui.notify("Niveles restablecidos", type="positive")
+                toast_success("Niveles restablecidos")
                 _cargar_todo()
                 panel_niveles.refresh()
             except Exception as exc:
                 logger.error("Error restableciendo niveles: %s", exc)
-                ui.notify("Error al restablecer niveles", type="negative")
+                toast_error("Error al restablecer niveles")
 
         confirm_dialog(
             titulo          = "Restablecer niveles por defecto",
@@ -250,14 +250,14 @@ def configuracion_sie_page() -> None:
                     for n in existentes
                 ] + [nuevo]
                 Container.configuracion_service().configurar_niveles(anio_id, nuevos_dtos)
-                ui.notify(f"Nivel '{nuevo.nombre}' agregado", type="positive")
+                toast_success(f"Nivel '{nuevo.nombre}' agregado")
                 _cargar_todo()
                 panel_niveles.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error agregando nivel: %s", exc)
-                ui.notify("Error al agregar nivel", type="negative")
+                toast_error("Error al agregar nivel")
 
         form_dialog(
             titulo = "Nuevo nivel de desempeño",
@@ -296,14 +296,14 @@ def configuracion_sie_page() -> None:
                             descripcion=n.descripcion, orden=n.orden,
                         ))
                 Container.configuracion_service().configurar_niveles(anio_id, actualizados)
-                ui.notify("Nivel actualizado", type="positive")
+                toast_success("Nivel actualizado")
                 _cargar_todo()
                 panel_niveles.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error editando nivel: %s", exc)
-                ui.notify("Error al actualizar nivel", type="negative")
+                toast_error("Error al actualizar nivel")
 
         form_dialog(
             titulo = "Editar nivel de desempeño",
@@ -333,14 +333,14 @@ def configuracion_sie_page() -> None:
                     for i, n in enumerate([x for x in _s["niveles"] if x.id != nivel.id])
                 ]
                 Container.configuracion_service().configurar_niveles(anio_id, restantes)
-                ui.notify(f"Nivel '{nivel.nombre}' eliminado", type="positive")
+                toast_success(f"Nivel '{nivel.nombre}' eliminado")
                 _cargar_todo()
                 panel_niveles.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error eliminando nivel: %s", exc)
-                ui.notify("Error al eliminar nivel", type="negative")
+                toast_error("Error al eliminar nivel")
 
         confirm_dialog(
             titulo          = "Eliminar nivel",
@@ -367,14 +367,14 @@ def configuracion_sie_page() -> None:
                     nota_minima_anual         = float(datos["nota_minima_anual"]),
                 )
                 Container.configuracion_service().guardar_criterios(nuevo)
-                ui.notify("Criterios de promoción guardados", type="positive")
+                toast_success("Criterios de promoción guardados")
                 _cargar_todo()
                 panel_criterios.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error criterios: %s", exc)
-                ui.notify("Error al guardar criterios", type="negative")
+                toast_error("Error al guardar criterios")
 
         form_dialog(
             titulo = "Criterios de promoción",
@@ -428,15 +428,15 @@ def configuracion_sie_page() -> None:
                     porcentaje_autonomia_docente = pct,
                 )
                 Container.evaluacion_service().guardar_configuracion_siee(dto, ctx.usuario_id)
-                ui.notify("Configuración SIEE guardada", type="positive")
+                toast_success("Configuración SIEE guardada")
                 _cargar_todo()
                 panel_modo_siee.refresh()
                 panel_cats_inst.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error SIEE: %s", exc)
-                ui.notify("Error al guardar la configuración SIEE", type="negative")
+                toast_error("Error al guardar la configuración SIEE")
 
         form_dialog(
             titulo = "Configurar modo SIEE",
@@ -470,7 +470,7 @@ def configuracion_sie_page() -> None:
             peso_v  = datos.get("peso")
             permite = bool(datos.get("permite_subcategorias", False))
             if not nombre:
-                ui.notify("El nombre es obligatorio", type="warning")
+                toast_warning("El nombre es obligatorio")
                 return
             try:
                 peso = float(peso_v) / 100.0
@@ -481,14 +481,14 @@ def configuracion_sie_page() -> None:
                 Container.evaluacion_service().agregar_categoria_institucional(
                     dto, usuario_id=ctx.usuario_id
                 )
-                ui.notify(f"Categoría '{nombre}' creada", type="positive")
+                toast_success(f"Categoría '{nombre}' creada")
                 _cargar_todo()
                 panel_cats_inst.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error creando cat. institucional: %s", exc)
-                ui.notify("Error al crear la categoría", type="negative")
+                toast_error("Error al crear la categoría")
 
         form_dialog(
             titulo = "Nueva categoría institucional",
@@ -508,7 +508,7 @@ def configuracion_sie_page() -> None:
             nuevo_nombre = str(datos.get("nombre", "")).strip() or None
             peso_v       = datos.get("peso")
             if not nuevo_nombre:
-                ui.notify("El nombre es obligatorio", type="warning")
+                toast_warning("El nombre es obligatorio")
                 return
             try:
                 nuevo_peso = float(peso_v) / 100.0 if peso_v is not None else None
@@ -516,14 +516,14 @@ def configuracion_sie_page() -> None:
                 Container.evaluacion_service().actualizar_categoria_institucional(
                     cat.id, dto, anio_id, usuario_id=ctx.usuario_id
                 )
-                ui.notify("Categoría actualizada", type="positive")
+                toast_success("Categoría actualizada")
                 _cargar_todo()
                 panel_cats_inst.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error actualizando cat. institucional: %s", exc)
-                ui.notify("Error al actualizar", type="negative")
+                toast_error("Error al actualizar")
 
         form_dialog(
             titulo = "Editar categoría institucional",
@@ -541,14 +541,14 @@ def configuracion_sie_page() -> None:
                 Container.evaluacion_service().eliminar_categoria_institucional(
                     cat.id, usuario_id=ctx.usuario_id
                 )
-                ui.notify(f"'{cat.nombre}' eliminada", type="positive")
+                toast_success(f"'{cat.nombre}' eliminada")
                 _cargar_todo()
                 panel_cats_inst.refresh()
             except (ValueError, RuntimeError) as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error eliminando cat. institucional: %s", exc)
-                ui.notify("Error al eliminar", type="negative")
+                toast_error("Error al eliminar")
 
         confirm_dialog(
             titulo          = "Eliminar categoría institucional",
@@ -717,13 +717,13 @@ def configuracion_sie_page() -> None:
             with ui.row().classes("items-center gap-3 mb-4"):
                 ThemeManager.icono("tune", size=24, color="var(--color-primary)")
                 ui.label("Modo SIEE").classes("text-lg font-bold flex-1")
-                color_badge = {
-                    "libre":               "grey",
-                    "institucional_fijo":  "negative",
-                    "mixto_subcategorias": "primary",
+                _variante_modo = {
+                    "libre":               "neutral",
+                    "institucional_fijo":  "error",
+                    "mixto_subcategorias": "info",
                     "mixto_autonomia":     "warning",
-                }.get(modo_val, "grey")
-                ui.badge(modo_label).props(f"color={color_badge}")
+                }.get(modo_val, "neutral")
+                status_badge(modo_label, variante=_variante_modo)
                 if anio_id:
                     btn_secondary("Cambiar modo", icon="tune", on_click=_abrir_dialog_modo_siee)
 
@@ -768,7 +768,7 @@ def configuracion_sie_page() -> None:
                         ui.label(cat.nombre).classes("flex-1 text-sm font-medium")
                         ui.label(f"{cat.peso_porcentaje:.1f}%").classes("text-sm font-mono w-14 text-right")
                         if cat.permite_subcategorias:
-                            ui.badge("sub-cats").props("color=teal outline").classes("text-xs")
+                            status_badge("sub-cats", variante="info")
                         with ui.row().classes("gap-1"):
                             btn_icon("edit",   on_click=lambda c=cat: _editar_cat_institucional(c), tooltip="Editar")
                             btn_icon("delete", on_click=lambda c=cat: _eliminar_cat_institucional(c), tooltip="Eliminar", variante="danger")

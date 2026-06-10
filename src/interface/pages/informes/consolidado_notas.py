@@ -30,6 +30,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.services.informe_service import InformeNotasDTO
+from src.interface.design.components import toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("CONSOLIDADO_NOTAS")
 
@@ -94,7 +95,7 @@ def consolidado_notas_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -193,16 +194,16 @@ def consolidado_notas_page() -> None:
 
     def on_generar() -> None:
         if not _s["grupo_id"]:
-            ui.notify("Selecciona un grupo.", type="warning")
+            toast_warning("Selecciona un grupo.")
             return
         if not _s["asignacion_id"]:
-            ui.notify("Selecciona una asignación.", type="warning")
+            toast_warning("Selecciona una asignación.")
             return
         if not _s["periodo_id"]:
-            ui.notify("Selecciona un periodo.", type="warning")
+            toast_warning("Selecciona un periodo.")
             return
         if not _s["fecha_desde"] or not _s["fecha_hasta"]:
-            ui.notify("Completa las fechas.", type="warning")
+            toast_warning("Completa las fechas.")
             return
 
         try:
@@ -219,12 +220,12 @@ def consolidado_notas_page() -> None:
             extension = "xlsx" if _s["formato"] == "excel" else "pdf"
             filename = f"consolidado_notas_grupo{_s['grupo_id']}.{extension}"
             ui.download(content=contenido_bytes, filename=filename)
-            ui.notify("Informe generado correctamente.", type="positive")
+            toast_success("Informe generado correctamente.")
         except ValueError as exc:
-            ui.notify(f"Exportador no disponible: {exc}", type="negative")
+            toast_error(f"Exportador no disponible: {exc}")
         except Exception as exc:
             logger.error("Error generando informe de notas: %s", exc, exc_info=True)
-            ui.notify("Error al generar el informe. Intenta de nuevo.", type="negative")
+            toast_error("Error al generar el informe. Intenta de nuevo.")
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):

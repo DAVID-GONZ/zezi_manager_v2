@@ -35,7 +35,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
 )
-from src.interface.design.components import confirm_dialog, form_dialog
+from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 from src.services.evaluacion_service import (
     NuevaCategoriaDTO,
     ActualizarCategoriaDTO,
@@ -194,17 +194,17 @@ def configuracion_evaluacion_page() -> None:
         per_id  = _s["periodo_id"]
         cdt     = _ctx_dto()
         if not asig_id or not per_id or not cdt:
-            ui.notify("Seleccione periodo y asignación primero", type="warning")
+            toast_warning("Seleccione periodo y asignación primero")
             return
 
         nombre = str(_s["form_nombre"]).strip()
         if not nombre:
-            ui.notify("El nombre no puede estar vacío", type="warning")
+            toast_warning("El nombre no puede estar vacío")
             return
         try:
             peso = float(_s["form_peso"])
         except (TypeError, ValueError):
-            ui.notify("El peso debe ser un número", type="warning")
+            toast_warning("El peso debe ser un número")
             return
 
         padre_id = _s["form_padre_id"] if _modo_actual() == "mixto_subcategorias" else None
@@ -220,41 +220,41 @@ def configuracion_evaluacion_page() -> None:
             Container.evaluacion_service().agregar_categoria(
                 dto, cdt, usuario_id=ctx.usuario_id
             )
-            ui.notify(f"Categoría '{nombre}' creada", type="positive")
+            toast_success(f"Categoría '{nombre}' creada")
             _s["form_nombre"]   = ""
             _s["form_peso"]     = 0.10
             _s["form_padre_id"] = None
             _cargar_cats_docente()
             seccion_docente.refresh()
         except PermissionError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al crear categoría: %s", exc)
-            ui.notify("Error al crear la categoría", type="negative")
+            toast_error("Error al crear la categoría")
 
     def _editar_cat_docente(cat) -> None:
         def _guardar(datos: dict) -> "bool | None":
             try:
                 nuevo_nombre = str(datos.get("nombre", "")).strip() or None
                 if not nuevo_nombre:
-                    ui.notify("El nombre es obligatorio", type="warning")
+                    toast_warning("El nombre es obligatorio")
                     return False
                 nuevo_peso = float(datos["peso"]) if datos.get("peso") is not None else None
                 dto_act = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
                 Container.evaluacion_service().actualizar_categoria(
                     cat.id, dto_act, usuario_id=ctx.usuario_id
                 )
-                ui.notify("Categoría actualizada", type="positive")
+                toast_success("Categoría actualizada")
                 _cargar_cats_docente()
                 seccion_docente.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al actualizar categoría: %s", exc)
-                ui.notify("Error al actualizar", type="negative")
+                toast_error("Error al actualizar")
                 return False
 
         form_dialog(
@@ -275,14 +275,14 @@ def configuracion_evaluacion_page() -> None:
                 Container.evaluacion_service().eliminar_categoria(
                     cat.id, usuario_id=ctx.usuario_id
                 )
-                ui.notify(f"'{cat.nombre}' eliminada", type="positive")
+                toast_success(f"'{cat.nombre}' eliminada")
                 _cargar_cats_docente()
                 seccion_docente.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error al eliminar categoría: %s", exc)
-                ui.notify("Error al eliminar", type="negative")
+                toast_error("Error al eliminar")
 
         confirm_dialog(
             titulo          = "Eliminar categoría",
@@ -302,14 +302,14 @@ def configuracion_evaluacion_page() -> None:
         asig_id = _s["asignacion_id"]
         per_id  = _s["periodo_id"]
         if not asig_id or not per_id:
-            ui.notify("Selecciona periodo y asignación primero", type="warning")
+            toast_warning("Selecciona periodo y asignación primero")
             return
         # Obtener grupo_id de la asignacion seleccionada
         asig_info = next(
             (a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None
         )
         if not asig_info:
-            ui.notify("Asignación no encontrada", type="warning")
+            toast_warning("Asignación no encontrada")
             return
         grupo_id = asig_info.grupo_id
 
@@ -323,17 +323,14 @@ def configuracion_evaluacion_page() -> None:
                 )
                 corte, notas = Container.plan_mejoramiento_service().ejecutar_corte(dto, grupo_id)
                 en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
-                ui.notify(
-                    f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento.",
-                    type="positive",
-                )
+                toast_success(f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento.")
                 _cargar_corte()
                 seccion_corte.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error ejecutando corte: %s", exc)
-                ui.notify("Error al ejecutar el corte", type="negative")
+                toast_error("Error al ejecutar el corte")
 
         confirm_dialog(
             titulo          = "Ejecutar corte de Plan de Mejoramiento",

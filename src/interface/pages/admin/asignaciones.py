@@ -22,7 +22,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, badge_estado_general, form_dialog
+from src.interface.design.components import badge_estado_general, confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
@@ -36,7 +36,7 @@ def asignaciones_page() -> None:
         return
 
     if ctx.usuario_rol not in ("admin", "director"):
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -114,23 +114,23 @@ def asignaciones_page() -> None:
         periodos_opts  = {p.id: p.nombre for p in _s["periodos"]}
 
         if not docentes_opts:
-            ui.notify("No hay docentes disponibles", type="warning")
+            toast_warning("No hay docentes disponibles")
             return
         if not grupos_opts:
-            ui.notify("No hay grupos disponibles", type="warning")
+            toast_warning("No hay grupos disponibles")
             return
         if not asigs_opts:
-            ui.notify("No hay asignaturas disponibles", type="warning")
+            toast_warning("No hay asignaturas disponibles")
             return
         if not periodos_opts:
-            ui.notify("No hay periodos disponibles para el año activo", type="warning")
+            toast_warning("No hay periodos disponibles para el año activo")
             return
 
         def _crear(datos: dict) -> "bool | None":
             try:
                 if not all([datos.get("usuario_id"), datos.get("grupo_id"),
                             datos.get("asignatura_id"), datos.get("periodo_id")]):
-                    ui.notify("Todos los campos son obligatorios", type="warning")
+                    toast_warning("Todos los campos son obligatorios")
                     return False
                 dto = NuevaAsignacionDTO(
                     usuario_id=datos["usuario_id"],
@@ -139,15 +139,15 @@ def asignaciones_page() -> None:
                     periodo_id=datos["periodo_id"],
                 )
                 Container.asignacion_service().crear_asignacion(dto)
-                ui.notify("Asignación creada", type="positive")
+                toast_success("Asignación creada")
                 _cargar_asignaciones()
                 tabla.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al crear asignación: %s", exc)
-                ui.notify("Error al crear la asignación", type="negative")
+                toast_error("Error al crear la asignación")
                 return False
 
         form_dialog(
@@ -170,14 +170,14 @@ def asignaciones_page() -> None:
     def _confirmar_desactivar(asig_id: int, label: str) -> None:
         try:
             Container.asignacion_service().desactivar(asig_id)
-            ui.notify(f"Asignación '{label}' desactivada", type="positive")
+            toast_success(f"Asignación '{label}' desactivada")
             _cargar_asignaciones()
             tabla.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al desactivar asignación %s: %s", asig_id, exc)
-            ui.notify("Error al desactivar la asignación", type="negative")
+            toast_error("Error al desactivar la asignación")
 
     def _desactivar_asignacion(asig_id: int, label: str) -> None:
         confirm_dialog(

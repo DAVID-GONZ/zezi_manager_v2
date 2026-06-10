@@ -35,6 +35,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger, btn_icon
 from src.interface.design.components.confirm_dialog import confirm_dialog
 from src.interface.design.components.form_dialog import form_dialog
+from src.interface.design.components import toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("COMPORTAMIENTO")
 
@@ -202,7 +203,7 @@ def comportamiento_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -261,19 +262,19 @@ def comportamiento_page() -> None:
         fecha_str = datos.get("fecha", str(date.today()))
 
         if not descripcion:
-            ui.notify("La descripción es requerida.", type="warning")
+            toast_warning("La descripción es requerida.")
             return False
         if not est_id:
-            ui.notify("Selecciona un estudiante.", type="warning")
+            toast_warning("Selecciona un estudiante.")
             return False
         if not tipo_str:
-            ui.notify("Selecciona el tipo de registro.", type="warning")
+            toast_warning("Selecciona el tipo de registro.")
             return False
         if not _s["filtro_grupo_id"]:
-            ui.notify("Selecciona un grupo.", type="warning")
+            toast_warning("Selecciona un grupo.")
             return False
         if not _s["filtro_periodo_id"]:
-            ui.notify("Selecciona un periodo.", type="warning")
+            toast_warning("Selecciona un periodo.")
             return False
 
         try:
@@ -289,16 +290,16 @@ def comportamiento_page() -> None:
             Container.convivencia_service().registrar_comportamiento(
                 dto, ctx_actual.usuario_id, _s["anio_id"]
             )
-            ui.notify("Registro guardado.", type="positive", timeout=3000)
+            toast_success("Registro guardado.")
             _aplicar_filtros(_s)
             _contenido.refresh()
             return None
         except ValueError as exc:
-            ui.notify(f"Error de validación: {exc}", type="warning")
+            toast_warning(f"Error de validación: {exc}")
             return False
         except Exception as exc:
             logger.error("Error creando registro: %s", exc, exc_info=True)
-            ui.notify(f"Error: {exc}", type="negative")
+            toast_error(f"Error: {exc}")
             return False
 
     def _abrir_crear_registro() -> None:
@@ -354,28 +355,28 @@ def comportamiento_page() -> None:
     def _notificar_acudiente(registro_id: int) -> None:
         try:
             Container.convivencia_service().notificar_acudiente(registro_id)
-            ui.notify("Acudiente marcado como notificado.", type="positive", timeout=2000)
+            toast_success("Acudiente marcado como notificado.")
             _aplicar_filtros(_s)
             _contenido.refresh()
         except Exception as exc:
             logger.error("Error notificando acudiente: %s", exc, exc_info=True)
-            ui.notify(f"Error: {exc}", type="negative")
+            toast_error(f"Error: {exc}")
 
     def _agregar_seguimiento(registro_id: int) -> None:
         def _submit_seguimiento(datos: dict) -> bool | None:
             texto = str(datos.get("seguimiento", "")).strip()
             if not texto:
-                ui.notify("El seguimiento no puede estar vacío.", type="warning")
+                toast_warning("El seguimiento no puede estar vacío.")
                 return False
             try:
                 Container.convivencia_service().agregar_seguimiento(registro_id, texto)
-                ui.notify("Seguimiento agregado.", type="positive", timeout=2000)
+                toast_success("Seguimiento agregado.")
                 _aplicar_filtros(_s)
                 _contenido.refresh()
                 return None
             except Exception as exc:
                 logger.error("Error agregando seguimiento: %s", exc, exc_info=True)
-                ui.notify(f"Error: {exc}", type="negative")
+                toast_error(f"Error: {exc}")
                 return False
 
         form_dialog(
@@ -397,12 +398,12 @@ def comportamiento_page() -> None:
         def _ejecutar() -> None:
             try:
                 Container.convivencia_service().eliminar_registro(registro_id)
-                ui.notify("Registro eliminado.", type="positive", timeout=2000)
+                toast_success("Registro eliminado.")
                 _aplicar_filtros(_s)
                 _contenido.refresh()
             except Exception as exc:
                 logger.error("Error eliminando registro %s: %s", registro_id, exc, exc_info=True)
-                ui.notify(f"Error: {exc}", type="negative")
+                toast_error(f"Error: {exc}")
 
         confirm_dialog(
             titulo="Eliminar registro",

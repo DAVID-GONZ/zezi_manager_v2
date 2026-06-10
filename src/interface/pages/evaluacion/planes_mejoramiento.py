@@ -23,7 +23,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon, btn_danger
-from src.interface.design.components import status_badge, form_dialog, confirm_dialog
+from src.interface.design.components import confirm_dialog, empty_state, form_dialog, status_badge, toast_error, toast_success, toast_warning
 from src.services.plan_mejoramiento_service import (
     EstadoNotaCorte,
     NuevaActividadPlanDTO,
@@ -53,7 +53,7 @@ def planes_mejoramiento_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -179,16 +179,16 @@ def planes_mejoramiento_page() -> None:
     def _agregar_actividad() -> None:
         corte = _s["corte"]
         if not corte:
-            ui.notify("No hay corte activo", type="warning")
+            toast_warning("No hay corte activo")
             return
         nombre = _s["form_act_nombre"].strip()
         if not nombre:
-            ui.notify("El nombre es requerido", type="warning")
+            toast_warning("El nombre es requerido")
             return
         try:
             peso = float(_s["form_act_peso"])
         except (ValueError, TypeError):
-            ui.notify("Peso inválido", type="warning")
+            toast_warning("Peso inválido")
             return
         try:
             dto = NuevaActividadPlanDTO(
@@ -200,23 +200,23 @@ def planes_mejoramiento_page() -> None:
                 peso=peso,
             )
             Container.plan_mejoramiento_service().agregar_actividad(dto, ctx.usuario_id)
-            ui.notify("Actividad añadida", type="positive")
+            toast_success("Actividad añadida")
             _s["form_act_nombre"] = ""
             _s["form_act_peso"] = 0.20
             _s["form_act_desc"] = ""
             _cargar_corte()
             panel_actividades.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error añadiendo actividad: %s", exc)
-            ui.notify("Error al añadir actividad", type="negative")
+            toast_error("Error al añadir actividad")
 
     def _calificar_nota(actividad_plan_id: int, estudiante_id: int, valor_raw: str) -> None:
         try:
             valor = float(valor_raw)
         except (ValueError, TypeError):
-            ui.notify("Valor inválido", type="warning")
+            toast_warning("Valor inválido")
             return
         try:
             dto = CalificarNotaPlanDTO(valor=valor, usuario_id=ctx.usuario_id)
@@ -228,12 +228,12 @@ def planes_mejoramiento_page() -> None:
             nota = mapa.get(estudiante_id)
             if nota:
                 mapa[estudiante_id] = nota.model_copy(update={"valor": valor})
-            ui.notify("Nota guardada", type="positive", position="bottom-right", timeout=1000)
+            toast_success("Nota guardada")
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error calificando nota: %s", exc)
-            ui.notify("Error al guardar nota", type="negative")
+            toast_error("Error al guardar nota")
 
     def _cerrar_plan(nc, aprobado: bool) -> None:
         nombre = _s["nombres_est"].get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
@@ -250,15 +250,15 @@ def planes_mejoramiento_page() -> None:
                 )
                 Container.plan_mejoramiento_service().cerrar_plan_estudiante(dto)
                 estado_txt = "aprobado" if aprobado else "reprobado"
-                ui.notify(f"{nombre} — plan {estado_txt}", type="positive")
+                toast_success(f"{nombre} — plan {estado_txt}")
                 _cargar_corte()
                 panel_estudiantes.refresh()
                 panel_actividades.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error cerrando plan: %s", exc)
-                ui.notify("Error al cerrar el plan", type="negative")
+                toast_error("Error al cerrar el plan")
 
         confirm_dialog(
             titulo          = f"{accion} plan de {nombre}",
@@ -330,6 +330,11 @@ def planes_mejoramiento_page() -> None:
         corte  = _s["corte"]
         notas  = _s["notas_corte"]
         if not corte or not notas:
+            empty_state(
+                icono="assignment",
+                titulo="Sin planes activos",
+                descripcion="No hay estudiantes con plan de mejoramiento en esta asignación y periodo.",
+            )
             return
 
         with ui.element("div").classes("panel-card mt-4"):

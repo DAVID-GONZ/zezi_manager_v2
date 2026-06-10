@@ -21,6 +21,7 @@ from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.configuracion_service import ActualizarInfoInstitucionalDTO
+from src.interface.design.components import toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
 
@@ -33,7 +34,7 @@ def configuracion_institucion_page() -> None:
         return
 
     if ctx.usuario_rol not in ("admin", "director"):
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -83,7 +84,7 @@ def configuracion_institucion_page() -> None:
     # ── Acciones ──────────────────────────────────────────────────────────────
     def _guardar_info() -> None:
         if not _s["anio_id"]:
-            ui.notify("No hay un año lectivo activo configurado", type="warning")
+            toast_warning("No hay un año lectivo activo configurado")
             return
         try:
             dto = ActualizarInfoInstitucionalDTO(
@@ -97,12 +98,12 @@ def configuracion_institucion_page() -> None:
                 resolucion_aprobacion = _s["resolucion_aprobacion"].strip() or None,
             )
             Container.configuracion_service().actualizar_info_institucional(_s["anio_id"], dto)
-            ui.notify("Información institucional actualizada", type="positive")
+            toast_success("Información institucional actualizada")
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al guardar info institucional: %s", exc)
-            ui.notify("Error al guardar la información", type="negative")
+            toast_error("Error al guardar la información")
 
     def _recargar() -> None:
         _cargar_estado()

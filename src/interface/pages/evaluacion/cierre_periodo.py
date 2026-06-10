@@ -32,6 +32,7 @@ from src.interface.design.components.buttons import (
 )
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
+from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("EVALUACION.CIERRE_PERIODO")
 
@@ -90,7 +91,7 @@ def cierre_periodo_page() -> None:
         return
 
     if ctx.usuario_rol not in _ROLES_PERMITIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -142,7 +143,7 @@ def cierre_periodo_page() -> None:
         periodo_id = _s["periodo_id"]
         anio_id    = _s["anio_id"] or 0
         if not grupo_id or not periodo_id:
-            ui.notify("Selecciona periodo y grupo primero.", type="warning")
+            toast_warning("Selecciona periodo y grupo primero.")
             return
         try:
             ctx_dto = ContextoAcademicoDTO(
@@ -155,95 +156,70 @@ def cierre_periodo_page() -> None:
             cierres = Container.cierre_service().cerrar_periodo(
                 asig_id, periodo_id, ctx_dto, usuario_id=ctx.usuario_id
             )
-            ui.notify(f"Definitivas calculadas: {len(cierres)} estudiantes.", type="positive")
+            toast_success(f"Definitivas calculadas: {len(cierres)} estudiantes.")
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error cerrando asignación %s: %s", asig_id, exc)
-            ui.notify("Error al cerrar. Revisa el log.", type="negative")
+            toast_error("Error al cerrar. Revisa el log.")
         _estado_cierres(_s)
         lista_refreshable.refresh()
 
     def _abrir_dialog_cierre(asig_id: int, nombre: str, ya_cerrado: bool) -> None:
-        asigs_count = sum(
-            1 for a in _s["asignaciones"]
-            if _s["estado_cierres"].get(a.asignacion_id)
-        )
         accion = "Recalcular definitivas" if ya_cerrado else "Cerrar periodo"
-
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            with ui.row().classes("items-center gap-2 mb-3"):
-                ThemeManager.icono(Icons.WARNING, size=22, color="var(--color-warning)")
-                ui.label(f"{accion}").classes("text-lg font-bold")
-            ui.label(f"Asignatura: {nombre}").classes("text-sm font-semibold mb-1")
-            if ya_cerrado:
-                ui.label(
-                    "Esta asignación ya tiene definitivas calculadas. "
-                    "Recalcular reemplazará los valores anteriores con las notas actuales."
-                ).classes("text-sm text-grey-7 mb-3")
-            else:
-                ui.label(
-                    "Se calcularán las notas definitivas para todos los estudiantes "
-                    "del grupo usando las categorías y actividades registradas."
-                ).classes("text-sm text-grey-7 mb-3")
-            ui.label("Esta operación queda auditada.").classes("text-xs text-grey-6 mb-4")
-
-            with ui.row().classes("gap-2 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    accion,
-                    icon="lock",
-                    on_click=lambda: (_ejecutar_cierre_asig(asig_id), dlg.close()),
-                )
-        dlg.open()
+        detalle = (
+            "Esta asignación ya tiene definitivas calculadas. "
+            "Recalcular reemplazará los valores anteriores con las notas actuales."
+            if ya_cerrado else
+            "Se calcularán las notas definitivas para todos los estudiantes "
+            "del grupo usando las categorías y actividades registradas."
+        )
+        confirm_dialog(
+            titulo=accion,
+            mensaje=f"Asignatura: {nombre}. {detalle} Esta operación queda auditada.",
+            on_confirm=lambda: _ejecutar_cierre_asig(asig_id),
+            variante="danger",
+            texto_confirmar=accion,
+            texto_cancelar="Cancelar",
+        )
 
     def _abrir_dialog_reabrir(asig_id: int, nombre: str) -> None:
-        motivo_ref = {"v": ""}
+        def _submit(datos: dict) -> "bool | None":
+            motivo = datos.get("motivo", "").strip()
+            if not motivo:
+                toast_warning("El motivo es obligatorio.")
+                return False
+            try:
+                n = Container.cierre_service().reabrir_asignacion(
+                    asig_id, _s["periodo_id"], ctx.usuario_id, motivo
+                )
+                toast_success(f"Asignación reabierta. {n} registro(s) eliminado(s).")
+            except Exception as exc:
+                logger.error("Error reabriendo asignación %s: %s", asig_id, exc)
+                toast_error("Error al reabrir.")
+                return False
+            _estado_cierres(_s)
+            lista_refreshable.refresh()
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            with ui.row().classes("items-center gap-2 mb-3"):
-                ThemeManager.icono("lock_open", size=22, color="var(--color-info)")
-                ui.label("Reabrir asignación").classes("text-lg font-bold")
-            ui.label(f"Asignatura: {nombre}").classes("text-sm font-semibold mb-1")
-            ui.label(
-                "Esto eliminará los registros de cierre y permitirá al docente "
-                "modificar las notas nuevamente. Deberás volver a cerrar la asignación "
-                "para generar las definitivas oficiales."
-            ).classes("text-sm text-grey-7 mb-3")
-            ui.input(
-                label="Motivo de la reapertura *",
-                placeholder="Ej: corrección de nota de actividad 3",
-                on_change=lambda e: motivo_ref.__setitem__("v", e.value),
-            ).classes("w-full mb-4")
-
-            def _confirmar_reabrir() -> None:
-                if not motivo_ref["v"].strip():
-                    ui.notify("El motivo es obligatorio.", type="warning")
-                    return
-                try:
-                    n = Container.cierre_service().reabrir_asignacion(
-                        asig_id, _s["periodo_id"], ctx.usuario_id, motivo_ref["v"].strip()
-                    )
-                    ui.notify(
-                        f"Asignación reabierta. {n} registro(s) eliminado(s).",
-                        type="positive",
-                    )
-                    dlg.close()
-                except Exception as exc:
-                    logger.error("Error reabriendo asignación %s: %s", asig_id, exc)
-                    ui.notify("Error al reabrir.", type="negative")
-                _estado_cierres(_s)
-                lista_refreshable.refresh()
-
-            with ui.row().classes("gap-2 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_secondary("Reabrir", icon="lock_open", on_click=_confirmar_reabrir)
-        dlg.open()
+        form_dialog(
+            titulo="Reabrir asignación",
+            campos=[
+                {
+                    "key": "motivo",
+                    "label": f"Motivo de la reapertura — {nombre}",
+                    "tipo": "text",
+                    "placeholder": "Ej: corrección de nota de actividad 3",
+                    "requerido": True,
+                }
+            ],
+            on_submit=_submit,
+            texto_submit="Reabrir asignación",
+        )
 
     def _abrir_dialog_bloque() -> None:
         asigs = _s["asignaciones"]
         if not asigs:
-            ui.notify("No hay asignaciones para cerrar.", type="warning")
+            toast_warning("No hay asignaciones para cerrar.")
             return
 
         ya_cerradas = sum(
@@ -251,65 +227,47 @@ def cierre_periodo_page() -> None:
         )
         abiertas    = len(asigs) - ya_cerradas
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            with ui.row().classes("items-center gap-2 mb-3"):
-                ThemeManager.icono("lock_clock", size=22, color="var(--color-warning)")
-                ui.label("Cerrar en bloque").classes("text-lg font-bold")
+        def _ejecutar_bloque() -> None:
+            ids    = [a.asignacion_id for a in asigs]
+            gid    = _s["grupo_id"]
+            pid    = _s["periodo_id"]
+            anio   = _s["anio_id"] or 0
+            ctx_dto = ContextoAcademicoDTO(
+                usuario_id = ctx.usuario_id,
+                anio_id    = anio,
+                periodo_id = pid,
+                grupo_id   = gid,
+            )
+            try:
+                res = Container.cierre_service().cerrar_grupo(
+                    ids, gid, pid, ctx_dto, usuario_id=ctx.usuario_id
+                )
+                ok  = sum(1 for v in res.values() if isinstance(v, list))
+                err = len(res) - ok
+                msg = f"Cierre en bloque: {ok} asignaciones cerradas."
+                if err:
+                    msg += f" {err} con error (ver log)."
+                toast_success(msg)
+            except ValueError as exc:
+                toast_warning(str(exc))
+            except Exception as exc:
+                logger.error("Error cierre en bloque: %s", exc)
+                toast_error("Error en el cierre en bloque.")
+            _estado_cierres(_s)
+            lista_refreshable.refresh()
 
-            with ui.element("div").classes("flex gap-6 mb-4"):
-                with ui.element("div").classes("flex-col items-center"):
-                    ui.label(str(len(asigs))).classes("text-2xl font-bold")
-                    ui.label("Asignaturas totales").classes("text-xs text-grey-6")
-                with ui.element("div").classes("flex-col items-center"):
-                    ui.label(str(abiertas)).classes("text-2xl font-bold text-green-700")
-                    ui.label("Se calcularán").classes("text-xs text-grey-6")
-                with ui.element("div").classes("flex-col items-center"):
-                    ui.label(str(ya_cerradas)).classes("text-2xl font-bold text-orange-600")
-                    ui.label("Se recalcularán").classes("text-xs text-grey-6")
-
-            ui.label(
+        confirm_dialog(
+            titulo="Cerrar en bloque",
+            mensaje=(
+                f"{len(asigs)} asignaturas: {abiertas} a calcular, {ya_cerradas} a recalcular. "
                 "Las asignaciones ya cerradas serán recalculadas con las notas actuales. "
                 "La operación queda auditada por asignatura."
-            ).classes("text-sm text-grey-7 mb-4")
-
-            def _ejecutar_bloque() -> None:
-                ids    = [a.asignacion_id for a in asigs]
-                gid    = _s["grupo_id"]
-                pid    = _s["periodo_id"]
-                anio   = _s["anio_id"] or 0
-                ctx_dto = ContextoAcademicoDTO(
-                    usuario_id = ctx.usuario_id,
-                    anio_id    = anio,
-                    periodo_id = pid,
-                    grupo_id   = gid,
-                )
-                try:
-                    res = Container.cierre_service().cerrar_grupo(
-                        ids, gid, pid, ctx_dto, usuario_id=ctx.usuario_id
-                    )
-                    ok  = sum(1 for v in res.values() if isinstance(v, list))
-                    err = len(res) - ok
-                    msg = f"Cierre en bloque: {ok} asignaciones cerradas."
-                    if err:
-                        msg += f" {err} con error (ver log)."
-                    ui.notify(msg, type="positive" if not err else "warning")
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error cierre en bloque: %s", exc)
-                    ui.notify("Error en el cierre en bloque.", type="negative")
-                _estado_cierres(_s)
-                lista_refreshable.refresh()
-                dlg.close()
-
-            with ui.row().classes("gap-2 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger(
-                    f"Cerrar {len(asigs)} asignaturas",
-                    icon="lock",
-                    on_click=_ejecutar_bloque,
-                )
-        dlg.open()
+            ),
+            on_confirm=_ejecutar_bloque,
+            variante="danger",
+            texto_confirmar=f"Cerrar {len(asigs)} asignaturas",
+            texto_cancelar="Cancelar",
+        )
 
     # ── Refreshables ──────────────────────────────────────────────────────
 

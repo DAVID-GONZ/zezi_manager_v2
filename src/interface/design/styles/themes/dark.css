@@ -1,0 +1,40 @@
+html[data-theme="dark"] .ag-theme-balham,
+html[data-theme="dark"] .ag-theme-balham .ag-root-wrapper,
+html[data-theme="dark"] .ag-theme-balham .ag-body-viewport {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-header,
+html[data-theme="dark"] .ag-theme-balham .ag-header-cell {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-row-selected,
+html[data-theme="dark"] .ag-theme-balham .ag-row-focus {
+  background: rgba(46, 49, 146, 0.14);
+}
+
+html[data-theme="dark"] .rail-flyout-container {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-theme="dark"] .flyout-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .rail-item.is-active::before {
+  background: var(--ink-700);
+}
+
+html[data-theme="dark"] .topbar-logout-btn:hover {
+  color: var(--color-primary) !important;
+}

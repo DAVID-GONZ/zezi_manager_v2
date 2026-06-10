@@ -41,7 +41,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
 )
-from src.interface.design.components import stat_card, confirm_dialog, form_dialog
+from src.interface.design.components import confirm_dialog, empty_state, form_dialog, stat_card, status_badge, toast_error, toast_success, toast_warning
 from src.services.estudiante_service import (
     NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
@@ -83,7 +83,7 @@ def estudiantes_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -195,13 +195,9 @@ def estudiantes_page() -> None:
         resultado_refreshable.refresh()
 
         if resultado.fue_exitosa:
-            ui.notify(f"Carga completada: {resultado.exitosas} estudiantes matriculados.", type="positive")
+            toast_success(f"Carga completada: {resultado.exitosas} estudiantes matriculados.")
         else:
-            ui.notify(
-                f"{resultado.exitosas} exitosas, {resultado.fallidas} fallidas. "
-                "Revisa la sección de resultados.",
-                type="warning",
-            )
+            toast_warning(f"{resultado.exitosas} exitosas, {resultado.fallidas} fallidas. " "Revisa la sección de resultados.")
 
     # =========================================================================
     # CONSTRUCCIÓN DE LA UI
@@ -226,13 +222,13 @@ def estudiantes_page() -> None:
             estudiantes = _s["estudiantes"]
 
             if not estudiantes:
-                with ui.element("div").classes("tablero-empty panel-card"):
-                    with ui.element("div").classes("tablero-empty-icon"):
-                        ThemeManager.icono(Icons.STUDENTS, size=40)
-                    ui.label("Sin estudiantes").classes("panel-title")
-                    ui.label(
-                        "No hay estudiantes con los filtros seleccionados."
-                    ).classes("tablero-panel-subtitle")
+                empty_state(
+                    icono=Icons.STUDENTS,
+                    titulo="Sin estudiantes",
+                    descripcion="No hay estudiantes con los filtros seleccionados.",
+                    cta_label="Limpiar filtros",
+                    cta_on_click=lambda: ui.navigate.reload(),
+                )
                 return
 
             # ── Cabecera de la tabla ──────────────────────────────────────────
@@ -294,13 +290,13 @@ def estudiantes_page() -> None:
 
                                 # Estado
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
-                                    _color = {
-                                        "activo":   "positive",
-                                        "inactivo": "grey",
-                                        "retirado": "negative",
+                                    _variante = {
+                                        "activo":   "success",
+                                        "inactivo": "neutral",
+                                        "retirado": "error",
                                         "graduado": "info",
-                                    }.get(fila["estado_raw"], "grey")
-                                    ui.badge(fila["estado_str"]).props(f"color={_color} rounded")
+                                    }.get(fila["estado_raw"], "neutral")
+                                    status_badge(fila["estado_str"], variante=_variante)
 
                                 # PIAR
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
@@ -314,12 +310,9 @@ def estudiantes_page() -> None:
                                         es_retirado = fila["estado_raw"] == "retirado"
 
                                         if not es_retirado:
-                                            with ui.button(on_click=_fila_editar).props("flat round dense size=sm color=primary").classes("btn-icon").tooltip("Editar estudiante"):
-                                                ThemeManager.icono("edit", size=18)
-                                            with ui.button(on_click=_fila_retirar).props("flat round dense size=sm color=negative").classes("btn-icon").tooltip("Retirar matrícula"):
-                                                ThemeManager.icono("person_remove", size=18)
-                                            with ui.button(on_click=_fila_piar).props("flat round dense size=sm color=secondary").classes("btn-icon").tooltip("Ver / registrar PIAR"):
-                                                ThemeManager.icono("description", size=18)
+                                            btn_icon("edit", on_click=_fila_editar, tooltip="Editar estudiante", variante="primary")
+                                            btn_icon("person_remove", on_click=_fila_retirar, tooltip="Retirar matrícula", variante="danger")
+                                            btn_icon("description", on_click=_fila_piar, tooltip="Ver / registrar PIAR", variante="secondary")
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -365,15 +358,15 @@ def estudiantes_page() -> None:
                         posee_piar=bool(datos.get("posee_piar", False)),
                     )
                     Container.estudiante_service().matricular(dto, usuario_id=ctx.usuario_id)
-                    ui.notify("Estudiante matriculado exitosamente.", type="positive")
+                    toast_success("Estudiante matriculado exitosamente.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
                 except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
+                    toast_warning(str(exc))
                     return False
                 except Exception as exc:
                     logger.error("Error matriculando: %s", exc)
-                    ui.notify("Error inesperado al matricular.", type="negative")
+                    toast_error("Error inesperado al matricular.")
                     return False
 
             form_dialog(
@@ -448,7 +441,7 @@ def estudiantes_page() -> None:
                 est = Container.estudiante_service().get_para_edicion(est_id)
             except Exception as exc:
                 logger.error("Error cargando estudiante %s: %s", est_id, exc)
-                ui.notify("No se pudo cargar el estudiante.", type="negative")
+                toast_error("No se pudo cargar el estudiante.")
                 return
 
             def _guardar_edicion(datos: dict) -> "bool | None":
@@ -462,15 +455,15 @@ def estudiantes_page() -> None:
                         estado_matricula=datos.get("estado"),
                     )
                     Container.estudiante_service().actualizar(est_id, dto, usuario_id=ctx.usuario_id)
-                    ui.notify("Estudiante actualizado.", type="positive")
+                    toast_success("Estudiante actualizado.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
                 except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
+                    toast_warning(str(exc))
                     return False
                 except Exception as exc:
                     logger.error("Error actualizando %s: %s", est_id, exc)
-                    ui.notify("Error inesperado al actualizar.", type="negative")
+                    toast_error("Error inesperado al actualizar.")
                     return False
 
             form_dialog(
@@ -499,14 +492,14 @@ def estudiantes_page() -> None:
             def _ejecutar() -> None:
                 try:
                     Container.estudiante_service().retirar(est_id, motivo=None, usuario_id=ctx.usuario_id)
-                    ui.notify(f"{nombre} retirado.", type="positive")
+                    toast_success(f"{nombre} retirado.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
                 except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
+                    toast_warning(str(exc))
                 except Exception as exc:
                     logger.error("Error retirando %s: %s", est_id, exc)
-                    ui.notify("Error inesperado al retirar.", type="negative")
+                    toast_error("Error inesperado al retirar.")
 
             confirm_dialog(
                 titulo="Retirar estudiante",
@@ -530,7 +523,7 @@ def estudiantes_page() -> None:
 
             anio_id = _s["config"].id if _s["config"] else None
             if not anio_id:
-                ui.notify("No hay año escolar activo configurado.", type="warning")
+                toast_warning("No hay año escolar activo configurado.")
                 return
 
             piar = None
@@ -539,125 +532,83 @@ def estudiantes_page() -> None:
             except Exception as exc:
                 logger.error("Error cargando PIAR est=%s anio=%s: %s", est_id, anio_id, exc)
 
-            with ui.dialog() as dlg, ui.card().classes("w-full max-w-lg"):
-                with ui.row().classes("items-center justify-between w-full q-mb-md"):
-                    ui.label(f"PIAR — {nombre}").classes("text-h6")
-                    btn_icon("close", on_click=dlg.close, variante="ghost")
+            is_edit = piar is not None
 
-                if piar is not None:
-                    # ── Modo edición de PIAR existente ────────────────────────
-                    ui.label("PIAR registrado — puedes actualizar los campos:").classes(
-                        "text-caption text-grey q-mb-sm"
-                    )
+            def _submit_piar(datos: dict) -> "bool | None":
+                descripcion = datos.get("descripcion_necesidad", "").strip()
+                if not descripcion:
+                    toast_warning("La descripción de necesidades es obligatoria.")
+                    return False
+                try:
+                    if is_edit:
+                        dto = ActualizarPIARDTO(
+                            descripcion_necesidad=descripcion,
+                            ajustes_evaluativos=datos.get("ajustes_evaluativos") or None,
+                            ajustes_pedagogicos=datos.get("ajustes_pedagogicos") or None,
+                            profesionales_apoyo=datos.get("profesionales_apoyo") or None,
+                        )
+                        Container.estudiante_service().actualizar_piar(
+                            est_id, anio_id, dto, usuario_id=ctx.usuario_id,
+                        )
+                        toast_success("PIAR actualizado.")
+                    else:
+                        dto = NuevoPIARDTO(
+                            estudiante_id=est_id,
+                            anio_id=anio_id,
+                            descripcion_necesidad=descripcion,
+                            ajustes_evaluativos=datos.get("ajustes_evaluativos") or None,
+                            ajustes_pedagogicos=datos.get("ajustes_pedagogicos") or None,
+                            profesionales_apoyo=datos.get("profesionales_apoyo") or None,
+                        )
+                        Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
+                        toast_success("PIAR registrado exitosamente.")
+                    _cargar_estudiantes()
+                    tabla_refreshable.refresh()
+                except ValueError as exc:
+                    toast_warning(str(exc))
+                    return False
+                except Exception as exc:
+                    logger.error("Error %s PIAR est=%s: %s", "actualizando" if is_edit else "registrando", est_id, exc)
+                    toast_error(f"Error inesperado al {'actualizar' if is_edit else 'registrar'} el PIAR.")
+                    return False
 
-                    descripcion_ta = ui.textarea(
-                        label="Descripción de necesidades",
-                        value=piar.descripcion_necesidad or "",
-                    ).classes("w-full q-mb-sm")
-
-                    ajustes_eval_ta = ui.textarea(
-                        label="Ajustes evaluativos",
-                        value=piar.ajustes_evaluativos or "",
-                    ).classes("w-full q-mb-sm")
-
-                    ajustes_ped_ta = ui.textarea(
-                        label="Ajustes pedagógicos",
-                        value=piar.ajustes_pedagogicos or "",
-                    ).classes("w-full q-mb-sm")
-
-                    profesionales_inp = ui.input(
-                        label="Profesionales de apoyo",
-                        value=piar.profesionales_apoyo or "",
-                    ).classes("w-full")
-
-                    fecha_elab = (
-                        piar.fecha_elaboracion.strftime("%d/%m/%Y")
-                        if getattr(piar, "fecha_elaboracion", None)
-                        else "—"
-                    )
-                    ui.label(f"Fecha elaboración: {fecha_elab}").classes("text-caption text-grey q-mt-xs")
-
-                    def _actualizar_piar() -> None:
-                        if not descripcion_ta.value.strip():
-                            ui.notify("La descripción de necesidades es obligatoria.", type="warning")
-                            return
-                        try:
-                            dto = ActualizarPIARDTO(
-                                descripcion_necesidad=descripcion_ta.value,
-                                ajustes_evaluativos=ajustes_eval_ta.value or None,
-                                ajustes_pedagogicos=ajustes_ped_ta.value or None,
-                                profesionales_apoyo=profesionales_inp.value or None,
-                            )
-                            Container.estudiante_service().actualizar_piar(
-                                est_id, anio_id, dto, usuario_id=ctx.usuario_id,
-                            )
-                            ui.notify("PIAR actualizado.", type="positive")
-                            dlg.close()
-                            _cargar_estudiantes()
-                            tabla_refreshable.refresh()
-                        except ValueError as exc:
-                            ui.notify(str(exc), type="warning")
-                        except Exception as exc:
-                            logger.error("Error actualizando PIAR est=%s: %s", est_id, exc)
-                            ui.notify("Error inesperado al actualizar el PIAR.", type="negative")
-
-                    with ui.row().classes("q-mt-md justify-end gap-2"):
-                        btn_ghost("Cancelar", on_click=dlg.close)
-                        btn_primary("Actualizar PIAR", on_click=_actualizar_piar)
-
-                else:
-                    # ── Modo registro de PIAR nuevo ───────────────────────────
-                    ui.label("Registrar PIAR nuevo").classes("text-subtitle2 q-mb-sm")
-
-                    descripcion_ta = ui.textarea(
-                        label="Descripción de necesidades *",
-                        placeholder="Describe las necesidades educativas del estudiante...",
-                    ).classes("w-full")
-
-                    ajustes_eval_ta = ui.textarea(
-                        label="Ajustes evaluativos",
-                        placeholder="Ajustes en la forma de evaluar...",
-                    ).classes("w-full")
-
-                    ajustes_ped_ta = ui.textarea(
-                        label="Ajustes pedagógicos",
-                        placeholder="Estrategias pedagógicas diferenciadas...",
-                    ).classes("w-full")
-
-                    profesionales_inp = ui.input(
-                        label="Profesionales de apoyo",
-                        placeholder="Fonoaudióloga, psicóloga, etc.",
-                    ).classes("w-full")
-
-                    def _guardar_piar() -> None:
-                        if not descripcion_ta.value.strip():
-                            ui.notify("La descripción de necesidades es obligatoria.", type="warning")
-                            return
-                        try:
-                            dto = NuevoPIARDTO(
-                                estudiante_id=est_id,
-                                anio_id=anio_id,
-                                descripcion_necesidad=descripcion_ta.value,
-                                ajustes_evaluativos=ajustes_eval_ta.value or None,
-                                ajustes_pedagogicos=ajustes_ped_ta.value or None,
-                                profesionales_apoyo=profesionales_inp.value or None,
-                            )
-                            Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
-                            ui.notify("PIAR registrado exitosamente.", type="positive")
-                            dlg.close()
-                            _cargar_estudiantes()
-                            tabla_refreshable.refresh()
-                        except ValueError as exc:
-                            ui.notify(str(exc), type="warning")
-                        except Exception as exc:
-                            logger.error("Error registrando PIAR est=%s: %s", est_id, exc)
-                            ui.notify("Error inesperado al registrar el PIAR.", type="negative")
-
-                    with ui.row().classes("q-mt-md justify-end gap-2"):
-                        btn_ghost("Cancelar", on_click=dlg.close)
-                        btn_primary("Registrar PIAR", on_click=_guardar_piar)
-
-            dlg.open()
+            form_dialog(
+                titulo=f"{'Actualizar' if is_edit else 'Registrar'} PIAR — {nombre}",
+                campos=[
+                    {
+                        "key": "descripcion_necesidad",
+                        "label": "Descripción de necesidades",
+                        "tipo": "textarea",
+                        "requerido": True,
+                        "valor": piar.descripcion_necesidad if piar else "",
+                        "placeholder": "Describe las necesidades educativas del estudiante...",
+                    },
+                    {
+                        "key": "ajustes_evaluativos",
+                        "label": "Ajustes evaluativos",
+                        "tipo": "textarea",
+                        "valor": (piar.ajustes_evaluativos or "") if piar else "",
+                        "placeholder": "Ajustes en la forma de evaluar...",
+                    },
+                    {
+                        "key": "ajustes_pedagogicos",
+                        "label": "Ajustes pedagógicos",
+                        "tipo": "textarea",
+                        "valor": (piar.ajustes_pedagogicos or "") if piar else "",
+                        "placeholder": "Estrategias pedagógicas diferenciadas...",
+                    },
+                    {
+                        "key": "profesionales_apoyo",
+                        "label": "Profesionales de apoyo",
+                        "tipo": "text",
+                        "valor": (piar.profesionales_apoyo or "") if piar else "",
+                        "placeholder": "Fonoaudióloga, psicóloga, etc.",
+                    },
+                ],
+                on_submit=_submit_piar,
+                texto_submit="Actualizar PIAR" if is_edit else "Registrar PIAR",
+                max_width="max-w-lg",
+            )
 
         # ── Renderizado de la página ──────────────────────────────────────────
 

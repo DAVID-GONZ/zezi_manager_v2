@@ -44,6 +44,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
+from src.interface.design.components import toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
@@ -342,18 +343,15 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
     los DTOs de dominio — esta función no importa ningún modelo de dominio.
     """
     if not ctx.grupo_id or not ctx.asignacion_id or not ctx.periodo_id:
-        ui.notify(
-            "Contexto incompleto — configura periodo, grupo y asignatura.",
-            type="warning",
-        )
+        toast_warning("Contexto incompleto — configura periodo, grupo y asignatura.")
         return
 
     if not _s["estudiantes"]:
-        ui.notify("No hay estudiantes para guardar.", type="warning")
+        toast_warning("No hay estudiantes para guardar.")
         return
 
     if _s["periodo_cerrado"]:
-        ui.notify("El periodo está cerrado. No se pueden registrar cambios.", type="negative")
+        toast_error("El periodo está cerrado. No se pueden registrar cambios.")
         return
 
     try:
@@ -377,21 +375,17 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
         )
 
         _s["pendiente"] = False
-        ui.notify(
-            f"Asistencia guardada — {conteo} estudiante(s).",
-            type="positive",
-            timeout=3000,
-        )
+        toast_success(f"Asistencia guardada — {conteo} estudiante(s).")
         logger.info(
             "Asistencia guardada: grupo=%s asignacion=%s fecha=%s n=%d usuario=%s",
             ctx.grupo_id, ctx.asignacion_id, _s["fecha"], conteo, ctx.usuario_id,
         )
 
     except ValueError as exc:
-        ui.notify(f"Error de validación: {exc}", type="negative")
+        toast_error(f"Error de validación: {exc}")
         logger.warning("Validación guardar asistencia: %s", exc)
     except Exception as exc:
-        ui.notify("Error al guardar. Intenta de nuevo.", type="negative")
+        toast_error("Error al guardar. Intenta de nuevo.")
         logger.error("Error guardando asistencia: %s", exc, exc_info=True)
 
 
@@ -425,7 +419,7 @@ def registro_asistencia_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -465,10 +459,7 @@ def registro_asistencia_page() -> None:
         if nueva == _s["fecha"]:
             return
         if nueva > date.today():
-            ui.notify(
-                "No se puede registrar asistencia para fechas futuras.",
-                type="warning",
-            )
+            toast_warning("No se puede registrar asistencia para fechas futuras.")
             return
         _s["fecha"] = nueva
         _cargar_estado(SessionContext.desde_storage() or ctx, _s)

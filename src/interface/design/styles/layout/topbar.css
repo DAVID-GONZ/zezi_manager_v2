@@ -1,21 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════
    layout/topbar.css — Barra superior y sus elementos
+   paso_13a: topbar claro (surface bg), z-index tokens, rem, spacing
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Topbar — Aula Serena: azul tinta sólido ─────────────── */
+/* ── Topbar — superficie clara con borde inferior ────────── */
 .andes-topbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: var(--topbar-height);
-  background: var(--nav-topbar-bg);
-  border-bottom: 1px solid var(--nav-topbar-border);
+  background: var(--nav-topbar-bg);           /* var(--color-surface) = blanco */
+  border-bottom: 1px solid var(--nav-topbar-border); /* var(--color-border) */
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  z-index: 1000;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0 var(--space-md);                 /* T3: 0 16px → var(--space-md) */
+  z-index: var(--z-index-topbar);             /* T2: 1000 → var(--z-index-topbar) */
+  box-shadow: var(--shadow-sm);
   gap: 12px;
 }
 
@@ -36,14 +37,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--ink-050);                 /* T1: antes rgba(white,0.15) */
   flex-shrink: 0;
 }
 
 .topbar-brand-name {
   font-weight: 700;
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.95);
+  font-size: var(--font-size-h4);             /* T4: 15px → 0.9375rem */
+  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -60,16 +61,16 @@
 }
 
 .topbar-page-divider {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 14px;
+  color: var(--color-border);                 /* T1: antes rgba(white,0.3) */
+  font-size: var(--font-size-body);           /* T4: 14px → 0.875rem */
   flex-shrink: 0;
 }
 
 .topbar-page-title {
   font-family: var(--font-family);
   font-weight: 600;
-  font-size: 15px;
-  color: #FFFFFF;
+  font-size: var(--font-size-h4);             /* T4: 15px → 0.9375rem */
+  color: var(--ink-700);                      /* T1: antes #FFFFFF — acento índigo */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -79,7 +80,7 @@
 .topbar-page-sub {
   font-family: var(--font-family);
   font-size: var(--font-size-small);
-  color: rgba(255, 255, 255, 0.60);
+  color: var(--color-text-secondary);         /* T1: antes rgba(white,0.60) */
   font-weight: 400;
   line-height: 1.3;
   white-space: nowrap;
@@ -96,15 +97,15 @@
 }
 
 .topbar-user-name {
-  font-size: 13px;
+  font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-primary);           /* T1: antes rgba(white,0.85) */
   white-space: nowrap;
 }
 
 .topbar-user-role {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.50);
+  font-size: var(--font-size-label);          /* T4: 11px → 0.6875rem */
+  color: var(--color-text-secondary);         /* T1: antes rgba(white,0.50) */
   white-space: nowrap;
 }
 
@@ -112,14 +113,14 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--ink-100);                 /* T1: antes rgba(white,0.15) */
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.90);
+  color: var(--ink-700);                      /* T1: antes rgba(white,0.90) */
 }
 
 /* ── Action buttons ──────────────────────────────────────── */
@@ -130,7 +131,7 @@
   height: 34px;
   padding: 0 12px;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
   font-weight: 500;
   border: 1px solid transparent;
   cursor: pointer;
@@ -139,32 +140,33 @@
 }
 
 .topbar-action-primary {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.95);
+  background: var(--color-primary);           /* T1: índigo sólido sobre fondo claro */
+  color: var(--color-primary-contrast);       /* #FFFFFF */
 }
 
 .topbar-action-primary:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-primary-dark);
 }
 
 .topbar-action-secondary {
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-primary);           /* T1: antes rgba(white,0.75) */
+  border-color: var(--color-border);
 }
 
 .topbar-action-secondary:hover {
-  background: rgba(255, 255, 255, 0.10);
+  background: var(--color-surface-alt);       /* T1: antes rgba(white,0.10) */
 }
 
-/* Se mantiene igual ya que --color-error sigue siendo #DC2626 */
+/* Se mantiene — --color-error sigue siendo #C13030 */
 .topbar-action-danger {
-  background: rgba(220, 38, 38, 0.25);
-  border-color: rgba(220, 38, 38, 0.4);
-  color: rgba(255, 180, 180, 0.95);
+  background: var(--color-error-light);
+  border-color: rgba(193, 48, 48, 0.30);
+  color: var(--color-error-dark);
 }
 
 .topbar-action-danger:hover {
-  background: rgba(220, 38, 38, 0.4);
+  background: rgba(193, 48, 48, 0.15);
 }
 
 /* Actions row */
@@ -175,53 +177,53 @@
   flex-shrink: 0;
 }
 
-/* Botones icon-only del topbar (toggle, logout) */
+/* Botones icon-only del topbar */
 .andes-topbar .q-btn[flat] {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);         /* T1: antes rgba(white,0.75) */
 }
 
 .andes-topbar .q-btn[flat]:hover {
-  background: rgba(255, 255, 255, 0.10);
-  color: rgba(255, 255, 255, 0.95);
+  background: var(--color-surface-alt);       /* T1: antes rgba(white,0.10) */
+  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
 }
 
-/* Context chip — override para fondo oscuro */
+/* Context chip — override para topbar claro */
 .andes-topbar .context-chip,
 .andes-topbar [class*="context-chip"] {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border: 1px solid rgba(255, 255, 255, 0.20) !important;
-  color: rgba(255, 255, 255, 0.90) !important;
+  background: var(--ink-050) !important;      /* T1: índigo muy claro */
+  border: 1px solid var(--ink-100) !important;
+  color: var(--ink-700) !important;
 }
 
 .andes-topbar .context-chip:hover,
 .andes-topbar [class*="context-chip"]:hover {
-  background: rgba(255, 255, 255, 0.20) !important;
+  background: var(--ink-100) !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
    TOPBAR — clases heredadas / compatibilidad
-   (Las clases principales están en la sección .andes-topbar)
    ══════════════════════════════════════════════════════════════ */
 
-/* Título legacy — mantenido por compatibilidad */
+/* Título legacy */
 .topbar-title {
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--font-size-h4);             /* T4: 15px → 0.9375rem */
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Logout button override */
+/* Logout button */
 .topbar-logout-btn {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: var(--color-text-secondary) !important; /* T1: antes rgba(white,0.75) */
   min-width: 34px !important;
   min-height: 34px !important;
 }
+
 .topbar-logout-btn:hover {
-  color:--var(--color-primary-contrast) !important;
+  color: var(--color-primary) !important;
   min-width: 34px !important;
   min-height: 34px !important;
 }

@@ -33,6 +33,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger
 from src.interface.design.components.confirm_dialog import confirm_dialog
 from src.interface.design.components.form_dialog import form_dialog
+from src.interface.design.components import empty_state, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("OBSERVACIONES")
 
@@ -178,7 +179,7 @@ def observaciones_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -214,13 +215,13 @@ def observaciones_page() -> None:
         es_publica = bool(datos.get("es_publica", True))
 
         if not texto:
-            ui.notify("El texto de la observación es requerido.", type="warning")
+            toast_warning("El texto de la observación es requerido.")
             return False
         if not est_id or not periodo_id:
-            ui.notify("Selecciona un estudiante y periodo.", type="warning")
+            toast_warning("Selecciona un estudiante y periodo.")
             return False
         if not ctx_actual.asignacion_id:
-            ui.notify("Contexto incompleto: falta asignación académica.", type="warning")
+            toast_warning("Contexto incompleto: falta asignación académica.")
             return False
 
         try:
@@ -232,16 +233,16 @@ def observaciones_page() -> None:
                 "es_publica":    es_publica,
             })
             Container.convivencia_service().registrar_observacion(dto, ctx_actual.usuario_id)
-            ui.notify("Observación guardada.", type="positive", timeout=3000)
+            toast_success("Observación guardada.")
             _cargar_observaciones(_s, ctx_actual)
             _contenido.refresh()
             return None
         except ValueError as exc:
-            ui.notify(f"Error de validación: {exc}", type="warning")
+            toast_warning(f"Error de validación: {exc}")
             return False
         except Exception as exc:
             logger.error("Error creando observación: %s", exc, exc_info=True)
-            ui.notify(f"Error: {exc}", type="negative")
+            toast_error(f"Error: {exc}")
             return False
 
     def _abrir_crear_observacion() -> None:
@@ -305,24 +306,24 @@ def observaciones_page() -> None:
                 "es_publica":    not es_publica_actual,
             })
             Container.convivencia_service().registrar_observacion(dto, ctx_actual.usuario_id)
-            ui.notify("Visibilidad actualizada.", type="positive", timeout=2000)
+            toast_success("Visibilidad actualizada.")
             _cargar_observaciones(_s, ctx_actual)
             _contenido.refresh()
         except Exception as exc:
             logger.error("Error cambiando visibilidad: %s", exc, exc_info=True)
-            ui.notify(f"Error: {exc}", type="negative")
+            toast_error(f"Error: {exc}")
 
     def _eliminar_observacion(obs_id: int) -> None:
         def _ejecutar() -> None:
             ctx_actual = SessionContext.desde_storage() or ctx
             try:
                 Container.convivencia_service().eliminar_observacion(obs_id)
-                ui.notify("Observación eliminada.", type="positive", timeout=2000)
+                toast_success("Observación eliminada.")
                 _cargar_observaciones(_s, ctx_actual)
                 _contenido.refresh()
             except Exception as exc:
                 logger.error("Error eliminando observación %s: %s", obs_id, exc, exc_info=True)
-                ui.notify(f"Error: {exc}", type="negative")
+                toast_error(f"Error: {exc}")
 
         confirm_dialog(
             titulo="Eliminar observación",
@@ -375,9 +376,14 @@ def observaciones_page() -> None:
                 # Tabla de observaciones
                 with ui.element("div").classes("panel-card"):
                     if not filas:
-                        ui.label(
-                            "Sin observaciones para los filtros seleccionados."
-                        ).classes("text-empty py-4")
+                        empty_state(
+                            icono="sticky_note_2",
+                            titulo="Sin observaciones",
+                            descripcion="No hay observaciones para los filtros seleccionados.",
+                            cta_label="Nueva observación",
+                            cta_on_click=_abrir_crear_observacion,
+                            cta_icono="add",
+                        )
                     else:
                         col_defs = [
                             {"headerName": "Estudiante",  "field": "estudiante",  "flex": 1, "sortable": True},

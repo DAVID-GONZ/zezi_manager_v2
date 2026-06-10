@@ -21,7 +21,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
-from src.interface.design.components import form_dialog
+from src.interface.design.components import confirm_dialog, empty_state, form_dialog, toast_error, toast_success, toast_warning
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
     NuevaActividadNivelacionDTO,
@@ -41,7 +41,7 @@ def habilitaciones_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -130,10 +130,10 @@ def habilitaciones_page() -> None:
         asig_id = _s["nivel_asig_id"]
         per_id  = _s["nivel_periodo_id"]
         if asig_id is None or per_id is None:
-            ui.notify("Seleccione asignación y periodo primero.", type="warning")
+            toast_warning("Seleccione asignación y periodo primero.")
             return
         if _s["nivel_cierre"] is not None:
-            ui.notify("La nivelación ya está cerrada.", type="warning")
+            toast_warning("La nivelación ya está cerrada.")
             return
 
         def _guardar(datos: dict) -> "bool | None":
@@ -150,15 +150,15 @@ def habilitaciones_page() -> None:
                 Container.nivelacion_service().agregar_actividad(
                     dto, est_ids, usuario_id=ctx.usuario_id
                 )
-                ui.notify("Actividad creada", type="positive")
+                toast_success("Actividad creada")
                 _cargar_nivelacion()
                 planilla_nivelacion.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error creando actividad nivelación: %s", exc)
-                ui.notify("Error al crear actividad", type="negative")
+                toast_error("Error al crear actividad")
                 return False
 
         form_dialog(
@@ -178,7 +178,7 @@ def habilitaciones_page() -> None:
     def _calificar_nota(actividad_id: int, estudiante_id: int, valor_actual) -> None:
         """Abre dialog para calificar una celda."""
         if _s["nivel_cierre"] is not None:
-            ui.notify("La nivelación está cerrada.", type="warning")
+            toast_warning("La nivelación está cerrada.")
             return
 
         def _guardar(datos: dict) -> "bool | None":
@@ -190,15 +190,15 @@ def habilitaciones_page() -> None:
                 Container.nivelacion_service().calificar_nota(
                     actividad_id, estudiante_id, dto
                 )
-                ui.notify("Nota guardada", type="positive")
+                toast_success("Nota guardada")
                 _cargar_nivelacion()
                 planilla_nivelacion.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error calificando nota: %s", exc)
-                ui.notify("Error al guardar nota", type="negative")
+                toast_error("Error al guardar nota")
                 return False
 
         form_dialog(
@@ -219,33 +219,31 @@ def habilitaciones_page() -> None:
         if asig_id is None or per_id is None:
             return
 
-        async def _confirmar():
+        def _confirmar():
             try:
                 Container.nivelacion_service().cerrar_nivelacion(
                     asig_id, per_id, usuario_id=ctx.usuario_id
                 )
-                ui.notify("Nivelación cerrada correctamente", type="positive")
+                toast_success("Nivelación cerrada correctamente")
                 _cargar_nivelacion()
                 planilla_nivelacion.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error cerrando nivelación: %s", exc)
-                ui.notify("Error al cerrar nivelación", type="negative")
+                toast_error("Error al cerrar nivelación")
 
-        with ui.dialog() as dlg, ui.card().classes("max-w-sm"):
-            ui.label("¿Confirma cerrar la nivelación?").classes("text-base font-semibold")
-            ui.label(
+        confirm_dialog(
+            titulo="Cerrar nivelación",
+            mensaje=(
                 "Una vez cerrada no se podrán editar las notas. "
                 "El resultado quedará disponible para el boletín siguiente."
-            ).classes("text-sm text-gray-600 mt-1")
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                ui.button("Cancelar", on_click=dlg.close).props("flat")
-                ui.button(
-                    "Cerrar nivelación",
-                    on_click=lambda: (_confirmar(), dlg.close()),
-                ).props("color=negative")
-        dlg.open()
+            ),
+            on_confirm=_confirmar,
+            variante="warning",
+            texto_confirmar="Cerrar nivelación",
+            texto_cancelar="Cancelar",
+        )
 
     # ── Sección refreshable: planilla nivelación ──────────────────────────────
 
@@ -302,8 +300,10 @@ def habilitaciones_page() -> None:
                     )
 
         if not cierres:
-            ui.label("No hay estudiantes con bajo desempeño en esta asignación y periodo.").classes(
-                "text-empty"
+            empty_state(
+                icono="school",
+                titulo="Sin estudiantes en nivelación",
+                descripcion="No hay estudiantes con bajo desempeño en esta asignación y periodo.",
             )
             return
 

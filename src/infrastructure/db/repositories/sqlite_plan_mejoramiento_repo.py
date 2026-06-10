@@ -18,8 +18,8 @@ from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
 
 
 def _db_path() -> Path:
-    from src.infrastructure.db.connection import get_db_path
-    return get_db_path()
+    from src.infrastructure.db.connection import DB_PATH
+    return DB_PATH
 
 
 @contextmanager

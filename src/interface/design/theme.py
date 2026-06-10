@@ -50,6 +50,7 @@ class ThemeManager:
         "layout/topbar.css",
         "layout/content.css",
         "components/buttons.css",
+        "components/theme-toggle.css",
         "components/tables.css",
         "components/dialogs.css",
         "components/badges.css",
@@ -59,6 +60,7 @@ class ThemeManager:
         "components/empty_state.css",
         "components/skeleton_loader.css",
         "components/toast.css",
+        "themes/dark.css",
         "domain/asistencia.css",
         "domain/desempeno.css",
     ]

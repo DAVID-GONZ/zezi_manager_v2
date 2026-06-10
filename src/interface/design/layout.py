@@ -224,12 +224,31 @@ def _btn_topbar_accion(accion: dict) -> None:
         ).props("flat")
 
 
+def _theme_toggle_btn() -> None:
+    """Botón cíclico de tema: auto → light → dark → auto."""
+    btn = ui.element("button").classes("theme-toggle-btn").props(
+        'data-mode="auto" title="Cambiar tema: auto / claro / oscuro" tabindex="0"'
+    )
+    with btn:
+        ThemeManager.icono("brightness_auto", size=20, clases="theme-icon icon-auto")
+        ThemeManager.icono("light_mode", size=20, clases="theme-icon icon-light")
+        ThemeManager.icono("dark_mode", size=20, clases="theme-icon icon-dark")
+    btn.on(
+        "click",
+        lambda _: ui.run_javascript(
+            "var m=document.documentElement.getAttribute('data-theme')||'auto';"
+            "var next=m==='auto'?'light':(m==='light'?'dark':'auto');"
+            "window.__andesSetTheme(next);"
+        ),
+    )
+
+
 def _user_block_topbar(ctx: "SessionContext | None") -> None:
     """Bloque de usuario en el topbar."""
     if not ctx:
         return
     with ui.row().classes("topbar-user-block items-center gap-2"):
-        ThemeManager.icono(Icons.PROFILE, size=20, color="rgba(255,255,255,0.9)")
+        ThemeManager.icono(Icons.PROFILE, size=20)  # T1: color css-controlled (no inline)
         with ui.column().classes("gap-0 topbar-user-info"):
             ui.label(ctx.usuario_nombre or "Usuario").classes("topbar-user-name")
             ui.label(ctx.usuario_rol or "").classes("topbar-user-role")
@@ -250,7 +269,7 @@ def _topbar(
     logo_url: str | None = None,
     on_context_change=None,
 ) -> None:
-    """Renderiza el topbar de la aplicación (sin toggle — rail siempre visible)."""
+    """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
     usuario_rol = ctx.usuario_rol if ctx else ""
 
     with ui.row().classes("andes-topbar items-center gap-0"):
@@ -265,8 +284,7 @@ def _topbar(
                     ThemeManager.icono(
                         page_icono,
                         size=20,
-                        color="rgba(255,255,255,0.85)",
-                    )
+                    )  # T1: color css-controlled (no inline)
                 with ui.column().classes("gap-0"):
                     ui.label(page_titulo).classes("topbar-page-title")
                     if page_subtitulo:
@@ -296,6 +314,10 @@ def _topbar(
                     f'<img src="{logo_url}" alt="Logo institución" '
                     f'class="topbar-logo-img" />'
                 )
+
+        # ── Theme toggle ─────────────────────────────────────────────────────
+        if ctx is not None:
+            _theme_toggle_btn()
 
         # ── User block ───────────────────────────────────────────────────────
         _user_block_topbar(ctx)
@@ -402,7 +424,7 @@ def _rail(
             item_el = ui.element("div").classes(clase)
             with item_el:
                 ThemeManager.icono(item["icon"], size=22, clases="rail-icon")
-            item_el.props(f'data-tooltip="{item["label"]}"')
+            item_el.props(f'data-tooltip="{item["label"]}" tabindex="0"')  # T5: keyboard a11y
 
             if tiene_hijos:
                 item_el.on("click", lambda e, it=item: _toggle_flyout(it, e))
@@ -468,6 +490,41 @@ def app_layout(
       if (flyout) flyout.classList.add('hidden');
     }
   });
+})();
+</script>
+""")
+
+    ui.add_body_html("""
+<script>
+(function() {
+  if (window.__andesThemeInit) return;
+  window.__andesThemeInit = true;
+
+  var saved = localStorage.getItem('andes-theme') || 'auto';
+  if (saved !== 'auto') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+
+  window.__andesSetTheme = function(mode) {
+    localStorage.setItem('andes-theme', mode);
+    if (mode === 'auto') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', mode);
+    }
+    var btn = document.querySelector('.theme-toggle-btn');
+    if (btn) btn.setAttribute('data-mode', mode);
+  };
+
+  var setButtonMode = function() {
+    var btn = document.querySelector('.theme-toggle-btn');
+    if (btn) {
+      btn.setAttribute('data-mode', saved);
+    } else {
+      window.setTimeout(setButtonMode, 50);
+    }
+  };
+  setButtonMode();
 })();
 </script>
 """)

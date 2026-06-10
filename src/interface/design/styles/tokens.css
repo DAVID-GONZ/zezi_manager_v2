@@ -81,10 +81,10 @@
   --nav-sidebar-active-text:  #FFFFFF;
   --nav-sidebar-border:       var(--paper-200);       /* #E5E5DE */
 
-  /* ── Navegación — Topbar azul sólido ────────────────────── */
-  --nav-topbar-bg:     var(--ink-700);                /* #2E3192 */
-  --nav-topbar-text:   #FFFFFF;
-  --nav-topbar-border: rgba(255, 255, 255, 0.10);
+  /* ── Navegación — Topbar claro (paso_13a) ───────────────── */
+  --nav-topbar-bg:     var(--color-surface);          /* #FFFFFF */
+  --nav-topbar-text:   var(--color-text-primary);     /* #1A1A1A */
+  --nav-topbar-border: var(--color-border);           /* #E5E5DE */
 
   /* ── Dominio — Asistencia ────────────────────────────────── */
   --attend-presente:    #2E7D5B;
@@ -112,14 +112,15 @@
   --font-display: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
   --font-family:  'Inter', system-ui, -apple-system, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-  --font-size-h1:      24px;
-  --font-size-h2:      20px;
-  --font-size-h3:      17px;
-  --font-size-h4:      15px;
-  --font-size-body:    14px;
-  --font-size-small:   12px;
-  --font-size-label:   11px;
-  --font-size-table:   13px;
+  /* T4: escala tipográfica en rem (1rem = 16px base del navegador) */
+  --font-size-h1:      1.5rem;      /* 24px */
+  --font-size-h2:      1.25rem;     /* 20px */
+  --font-size-h3:      1.0625rem;   /* 17px */
+  --font-size-h4:      0.9375rem;   /* 15px */
+  --font-size-body:    0.875rem;    /* 14px */
+  --font-size-small:   0.75rem;     /* 12px */
+  --font-size-label:   0.6875rem;   /* 11px */
+  --font-size-table:   0.8125rem;   /* 13px */
 
   /* ── Espaciado ───────────────────────────────────────────── */
   --space-xs: 4px;
@@ -158,6 +159,13 @@
   --table-row-height: 44px;
   --table-header-height: 40px;
 
+  /* ── Z-index (T2) ────────────────────────────────────────── */
+  --z-index-rail:    900;
+  --z-index-flyout:  940;
+  --z-index-topbar:  1000;
+  --z-index-modal:   1100;
+  --z-index-toast:   1200;
+
   /* ── Transiciones ────────────────────────────────────────── */
   --transition-fast: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-base: cubic-bezier(0.22, 1, 0.36, 1);
@@ -167,8 +175,8 @@
 /* ── Accesibilidad: alto contraste ───────────────────────── */
 @media (prefers-contrast: more) {
   :root {
-    --color-primary:        #0F1E3D;
-    --color-primary-dark:   #0F1E3D;
+    --color-primary:        var(--ink-900);   /* #1A1B6E — fix: era #0F1E3D de paleta anterior */
+    --color-primary-dark:   var(--ink-900);
     --color-text-primary:   #000000;
     --color-text-secondary: #1A1A1A;
     --color-border:         #1A1A1A;
@@ -182,5 +190,97 @@
     --transition-fast: linear;
     --transition-base: linear;
     --transition-slow: linear;
+  }
+}
+
+/* ── T6: Modo oscuro estructural (paso_13a) ──────────────── */
+/* Solo sobrescribe la API pública semántica (--color-*, --nav-*, --shadow-*).
+   Los primitivos ink/paper/graphite y los colores de dominio permanecen
+   inalterados — la paleta académica se preserva en ambos modos. */
+:root[data-theme="dark"] {
+  /* Fondos */
+  --color-bg:           #0F1019;
+  --color-surface:      #1A1C2E;
+  --color-surface-alt:  #252840;
+  --color-surface-high: #303355;
+
+  /* Texto */
+  --color-text-primary:   #F0F1FA;
+  --color-text-secondary: #B8BCE8;
+  --color-text-disabled:  #6E72A0;
+  --color-text-inverse:   #0F1019;
+
+  /* Bordes */
+  --color-border:        #3A3D5C;
+  --color-divider:       rgba(184, 188, 232, 0.12);
+  --color-disabled-bg:   #252840;
+  --color-disabled-text: #6E72A0;
+
+  /* Sombras con tinte índigo */
+  --shadow-sm:    0 1px 2px rgba(46, 49, 146, 0.30);
+  --shadow-md:    0 4px 8px rgba(15, 16, 25, 0.50), 0 2px 4px rgba(46, 49, 146, 0.20);
+  --shadow-lg:    0 10px 20px rgba(15, 16, 25, 0.60), 0 4px 8px rgba(46, 49, 146, 0.25);
+  --shadow-card:  0 2px 6px rgba(15, 16, 25, 0.40);
+  --shadow-modal: 0 24px 48px rgba(15, 16, 25, 0.80);
+
+  /* Navegación — sidebar oscuro */
+  --nav-sidebar-bg:        #161827;
+  --nav-sidebar-border:    #3A3D5C;
+  --nav-sidebar-text:      #B8BCE8;
+  --nav-sidebar-hover:     #252840;
+  --nav-sidebar-active-bg: #2E3192;
+  --nav-sidebar-active-text: #F0F1FA;
+
+  /* Primario — más claro en dark para mejores ratios */
+  --color-primary:       #8B90F0;
+  --color-primary-dark:  #2E3192;
+  --color-primary-light: #2E3192;
+  --color-primary-hover: #A5A9F5;
+  --color-primary-contrast: #0F1019;
+
+  /* Topbar — hereda automáticamente vía var(--color-surface) y var(--color-border) */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Fondos */
+    --color-bg:           #0F1019;
+    --color-surface:      #1A1C2E;
+    --color-surface-alt:  #252840;
+    --color-surface-high: #303355;
+
+    /* Texto */
+    --color-text-primary:   #F0F1FA;
+    --color-text-secondary: #B8BCE8;
+    --color-text-disabled:  #6E72A0;
+    --color-text-inverse:   #0F1019;
+
+    /* Bordes */
+    --color-border:        #3A3D5C;
+    --color-divider:       rgba(184, 188, 232, 0.12);
+    --color-disabled-bg:   #252840;
+    --color-disabled-text: #6E72A0;
+
+    /* Sombras con tinte índigo */
+    --shadow-sm:    0 1px 2px rgba(46, 49, 146, 0.30);
+    --shadow-md:    0 4px 8px rgba(15, 16, 25, 0.50), 0 2px 4px rgba(46, 49, 146, 0.20);
+    --shadow-lg:    0 10px 20px rgba(15, 16, 25, 0.60), 0 4px 8px rgba(46, 49, 146, 0.25);
+    --shadow-card:  0 2px 6px rgba(15, 16, 25, 0.40);
+    --shadow-modal: 0 24px 48px rgba(15, 16, 25, 0.80);
+
+    /* Navegación — sidebar oscuro */
+    --nav-sidebar-bg:        #161827;
+    --nav-sidebar-border:    #3A3D5C;
+    --nav-sidebar-text:      #B8BCE8;
+    --nav-sidebar-hover:     #252840;
+    --nav-sidebar-active-bg: #2E3192;
+    --nav-sidebar-active-text: #F0F1FA;
+
+    /* Primario — más claro en dark para mejores ratios */
+    --color-primary:       #8B90F0;
+    --color-primary-dark:  #2E3192;
+    --color-primary-light: #2E3192;
+    --color-primary-hover: #A5A9F5;
+    --color-primary-contrast: #0F1019;
   }
 }

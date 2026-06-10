@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    layout/sidebar.css — Rail icon-only 60px + flyout flotante
-   (paso_12d: reemplaza sidebar acordeón — Aula Serena)
+   paso_12d: reemplaza sidebar acordeón — Aula Serena
+   paso_13a: z-index tokens, rem, keyboard a11y
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Rail principal ─────────────────────────────────────── */
@@ -17,7 +18,7 @@
   align-items: center;
   padding: var(--space-md) 0;
   gap: 6px;
-  z-index: 900;
+  z-index: var(--z-index-rail);               /* T2: 900 → var(--z-index-rail) */
 }
 
 /* ── Marca / monograma ──────────────────────────────────── */
@@ -40,7 +41,7 @@
 .rail-monogram {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 1.125rem;                        /* T4: 18px → rem */
   color: var(--ink-700);
   letter-spacing: -0.02em;
 }
@@ -81,11 +82,18 @@
 }
 
 .rail-icon {
-  font-size: 22px;
+  font-size: 1.375rem;                        /* T4: 22px → rem */
 }
 
-/* ── Tooltip nativo ─────────────────────────────────────── */
-.rail-item[data-tooltip]:hover::after {
+/* ── T5: Keyboard a11y — focus-visible en rail items ────── */
+.rail-item:focus-visible {
+  outline: 2px solid var(--ink-500);
+  outline-offset: 2px;
+}
+
+/* ── Tooltip nativo — hover y focus-visible ─────────────── */
+.rail-item[data-tooltip]:hover::after,
+.rail-item[data-tooltip]:focus-visible::after {
   content: attr(data-tooltip);
   position: absolute;
   left: calc(100% + 12px);
@@ -120,7 +128,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 8px;
-  z-index: 940;
+  z-index: var(--z-index-flyout);             /* T2: 940 → var(--z-index-flyout) */
   transform-origin: left center;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }

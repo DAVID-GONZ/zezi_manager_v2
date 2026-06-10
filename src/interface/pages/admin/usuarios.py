@@ -23,7 +23,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, badge_estado_general, status_badge, form_dialog
+from src.interface.design.components import badge_estado_general, confirm_dialog, form_dialog, status_badge, toast_error, toast_success, toast_warning
 from src.services.usuario_service import NuevoUsuarioDTO, FiltroUsuariosDTO, Rol
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -44,7 +44,7 @@ def usuarios_page() -> None:
         return
 
     if ctx.usuario_rol not in ("admin", "director"):
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -82,7 +82,7 @@ def usuarios_page() -> None:
     # ── Acciones ──────────────────────────────────────────────────────────────
     def _abrir_crear_usuario() -> None:
         if not puede_crear:
-            ui.notify("No tienes permisos para crear usuarios", type="warning")
+            toast_warning("No tienes permisos para crear usuarios")
             return
 
         def _crear(datos: dict) -> "bool | None":
@@ -94,12 +94,12 @@ def usuarios_page() -> None:
                 email    = str(datos.get("email", "")).strip() or None
 
                 if not nombre or not usuario:
-                    ui.notify("Nombre completo y usuario son obligatorios", type="warning")
+                    toast_warning("Nombre completo y usuario son obligatorios")
                     return False
 
                 # Director no puede crear admin ni director
                 if not es_admin and rol_str in ("admin", "director"):
-                    ui.notify("No puedes crear usuarios con ese rol", type="warning")
+                    toast_warning("No puedes crear usuarios con ese rol")
                     return False
 
                 dto = NuevoUsuarioDTO(
@@ -110,15 +110,15 @@ def usuarios_page() -> None:
                     password=password,
                 )
                 Container.usuario_service().crear_usuario(dto)
-                ui.notify(f"Usuario '{usuario}' creado", type="positive")
+                toast_success(f"Usuario '{usuario}' creado")
                 _cargar_estado()
                 tabla.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al crear usuario: %s", exc)
-                ui.notify("Error al crear el usuario", type="negative")
+                toast_error("Error al crear el usuario")
                 return False
 
         form_dialog(
@@ -144,18 +144,18 @@ def usuarios_page() -> None:
     def _confirmar_desactivar(usuario_id: int, nombre: str) -> None:
         try:
             Container.usuario_service().desactivar(usuario_id)
-            ui.notify(f"Usuario '{nombre}' desactivado", type="positive")
+            toast_success(f"Usuario '{nombre}' desactivado")
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al desactivar usuario %s: %s", usuario_id, exc)
-            ui.notify("Error al desactivar el usuario", type="negative")
+            toast_error("Error al desactivar el usuario")
 
     def _desactivar_usuario(usuario_id: int, nombre: str) -> None:
         if not es_admin:
-            ui.notify("Solo el administrador puede desactivar usuarios", type="warning")
+            toast_warning("Solo el administrador puede desactivar usuarios")
             return
         confirm_dialog(
             titulo          = "Desactivar usuario",
@@ -167,22 +167,22 @@ def usuarios_page() -> None:
 
     def _cambiar_rol(usuario_id: int, nombre: str, rol_actual: str) -> None:
         if not es_admin:
-            ui.notify("Solo el administrador puede cambiar roles", type="warning")
+            toast_warning("Solo el administrador puede cambiar roles")
             return
 
         def _aplicar(datos: dict) -> "bool | None":
             try:
                 nuevo_rol = datos.get("rol", rol_actual)
                 Container.usuario_service().cambiar_rol(usuario_id, nuevo_rol)
-                ui.notify(f"Rol actualizado a '{_ROLES_OPCIONES.get(nuevo_rol, nuevo_rol)}'", type="positive")
+                toast_success(f"Rol actualizado a '{_ROLES_OPCIONES.get(nuevo_rol, nuevo_rol)}'")
                 _cargar_estado()
                 tabla.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al cambiar rol %s: %s", usuario_id, exc)
-                ui.notify("Error al cambiar el rol", type="negative")
+                toast_error("Error al cambiar el rol")
                 return False
 
         form_dialog(

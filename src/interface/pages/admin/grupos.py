@@ -19,7 +19,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, form_dialog
+from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 from src.services.infraestructura_service import Grupo, Jornada
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -41,7 +41,7 @@ def grupos_page() -> None:
         return
 
     if ctx.usuario_rol not in ("admin", "director"):
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -82,7 +82,7 @@ def grupos_page() -> None:
             jornada   = Jornada(_s["form_jornada"])
             capacidad = int(_s["form_capacidad"])
             if not codigo:
-                ui.notify("El código no puede estar vacío", type="warning")
+                toast_warning("El código no puede estar vacío")
                 return
             grupo = Grupo(
                 id=None,
@@ -92,7 +92,7 @@ def grupos_page() -> None:
                 capacidad_maxima=capacidad,
             )
             Container.infraestructura_service().guardar_grupo(grupo)
-            ui.notify(f"Grupo {codigo} creado", type="positive")
+            toast_success(f"Grupo {codigo} creado")
             _s["form_codigo"] = ""
             _s["form_grado"]  = 1
             _s["form_jornada"] = "UNICA"
@@ -100,22 +100,22 @@ def grupos_page() -> None:
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al crear grupo: %s", exc)
-            ui.notify("Error al crear el grupo", type="negative")
+            toast_error("Error al crear el grupo")
 
     def _confirmar_eliminar_grupo(grupo_id: int, codigo: str) -> None:
         try:
             Container.infraestructura_service().eliminar_grupo(grupo_id)
-            ui.notify(f"Grupo {codigo} eliminado", type="positive")
+            toast_success(f"Grupo {codigo} eliminado")
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al eliminar grupo %s: %s", grupo_id, exc)
-            ui.notify("Error al eliminar el grupo", type="negative")
+            toast_error("Error al eliminar el grupo")
 
     def _eliminar_grupo(grupo_id: int, codigo: str) -> None:
         confirm_dialog(
@@ -133,7 +133,7 @@ def grupos_page() -> None:
             try:
                 codigo = str(datos.get("codigo", "")).strip().upper()
                 if not codigo:
-                    ui.notify("El código no puede estar vacío", type="warning")
+                    toast_warning("El código no puede estar vacío")
                     return False
                 grupo_act = Grupo(
                     id=grupo.id,
@@ -143,15 +143,15 @@ def grupos_page() -> None:
                     capacidad_maxima=int(datos["capacidad"]) if datos.get("capacidad") is not None else grupo.capacidad_maxima,
                 )
                 Container.infraestructura_service().actualizar_grupo(grupo_act)
-                ui.notify(f"Grupo {codigo} actualizado", type="positive")
+                toast_success(f"Grupo {codigo} actualizado")
                 _cargar_estado()
                 tabla.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return False
             except Exception as exc:
                 logger.error("Error al actualizar grupo: %s", exc)
-                ui.notify("Error al actualizar el grupo", type="negative")
+                toast_error("Error al actualizar el grupo")
                 return False
 
         form_dialog(

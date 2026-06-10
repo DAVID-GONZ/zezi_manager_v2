@@ -30,7 +30,7 @@ from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
 )
-from src.interface.design.components import status_badge, form_dialog, confirm_dialog
+from src.interface.design.components import confirm_dialog, empty_state, form_dialog, skeleton_table, status_badge, toast_error, toast_info, toast_success, toast_warning
 from src.services.evaluacion_service import (
     NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad,
     PuntosExtra, TipoPuntosExtra,
@@ -58,7 +58,7 @@ def planilla_notas_page() -> None:
 
     _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -84,6 +84,7 @@ def planilla_notas_page() -> None:
         "act_categoria_id": None,
         "act_valor_max":    100.0,
         "act_descripcion":  "",
+        "cargando":         True,   # skeleton mientras carga la planilla inicial
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -146,7 +147,13 @@ def planilla_notas_page() -> None:
             _s["corte"] = None
             _s["notas_corte"] = {}
 
-    _cargar_datos()
+    async def _carga_inicial():
+        _cargar_datos()
+        _s["cargando"] = False
+        barra_vista.refresh()
+        panel_vista.refresh()
+
+    ui.timer(0.05, _carga_inicial, once=True)
 
     # ── Helper de periodo ─────────────────────────────────────────────────────
     def _periodo_abierto() -> bool:
@@ -187,20 +194,20 @@ def planilla_notas_page() -> None:
         La reapertura de un cierre ya guardado es exclusiva de admin/director/coordinador.
         """
         if not _periodo_abierto():
-            ui.notify("El periodo está cerrado — no se pueden guardar definitivas.", type="warning")
+            toast_warning("El periodo está cerrado — no se pueden guardar definitivas.")
             return
 
         asig_id = _s["asignacion_id"]
         per_id  = _s["periodo_id"]
         if not asig_id or not per_id:
-            ui.notify("Contexto incompleto (periodo o asignación no definidos).", type="warning")
+            toast_warning("Contexto incompleto (periodo o asignación no definidos).")
             return
 
         def _ejecutar() -> None:
             try:
                 ctx_academico = ctx.to_contexto_academico()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 return
             try:
                 cierres = Container.cierre_service().cerrar_periodo(
@@ -209,18 +216,14 @@ def planilla_notas_page() -> None:
                     ctx           = ctx_academico,
                     usuario_id    = ctx.usuario_id,
                 )
-                ui.notify(
-                    f"Definitivas guardadas para {len(cierres)} estudiante(s). "
-                    "El cierre quedó registrado para auditoría.",
-                    type="positive",
-                )
+                toast_success(f"Definitivas guardadas para {len(cierres)} estudiante(s). " "El cierre quedó registrado para auditoría.")
                 _cargar_datos()
                 panel_vista.refresh()
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
             except Exception as exc:
                 logger.error("Error guardando definitivas: %s", exc)
-                ui.notify("Error al guardar definitivas.", type="negative")
+                toast_error("Error al guardar definitivas.")
 
         confirm_dialog(
             titulo          = "Guardar definitivas del periodo",
@@ -260,15 +263,15 @@ def planilla_notas_page() -> None:
         asig_id = _s["asignacion_id"]
         per_id  = _s["periodo_id"]
         if not asig_id or not per_id:
-            ui.notify("Define el contexto desde la barra superior", type="warning")
+            toast_warning("Define el contexto desde la barra superior")
             return
         nombre = str(_s["act_nombre"]).strip()
         if not nombre:
-            ui.notify("El nombre no puede estar vacío", type="warning")
+            toast_warning("El nombre no puede estar vacío")
             return
         cat_id = _s["act_categoria_id"]
         if not cat_id:
-            ui.notify("Selecciona una categoría", type="warning")
+            toast_warning("Selecciona una categoría")
             return
         try:
             dto = NuevaActividadDTO(
@@ -278,7 +281,7 @@ def planilla_notas_page() -> None:
                 valor_maximo = float(_s["act_valor_max"] or 100.0),
             )
             Container.evaluacion_service().agregar_actividad(dto)
-            ui.notify(f"Actividad '{nombre}' creada", type="positive")
+            toast_success(f"Actividad '{nombre}' creada")
             _s["act_nombre"]       = ""
             _s["act_descripcion"]  = ""
             _s["act_valor_max"]    = 100.0
@@ -286,22 +289,22 @@ def planilla_notas_page() -> None:
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al crear actividad: %s", exc)
-            ui.notify("Error al crear la actividad", type="negative")
+            toast_error("Error al crear la actividad")
 
     def _publicar_actividad(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().publicar_actividad(act_id)
-            ui.notify(f"'{nombre}' publicada", type="positive")
+            toast_success(f"'{nombre}' publicada")
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al publicar %s: %s", act_id, exc)
-            ui.notify("Error al publicar", type="negative")
+            toast_error("Error al publicar")
 
     def _cerrar_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
@@ -317,14 +320,14 @@ def planilla_notas_page() -> None:
     def _ejecutar_cerrar(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().cerrar_actividad(act_id)
-            ui.notify(f"'{nombre}' cerrada", type="positive")
+            toast_success(f"'{nombre}' cerrada")
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al cerrar %s: %s", act_id, exc)
-            ui.notify("Error al cerrar", type="negative")
+            toast_error("Error al cerrar")
 
     def _reabrir_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
@@ -340,14 +343,14 @@ def planilla_notas_page() -> None:
     def _ejecutar_reabrir(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().reabrir_actividad(act_id)
-            ui.notify(f"'{nombre}' reabierta", type="positive")
+            toast_success(f"'{nombre}' reabierta")
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al reabrir %s: %s", act_id, exc)
-            ui.notify("Error al reabrir", type="negative")
+            toast_error("Error al reabrir")
 
     def _eliminar_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
@@ -365,14 +368,14 @@ def planilla_notas_page() -> None:
     def _ejecutar_eliminar(act_id: int, nombre: str) -> None:
         try:
             Container.evaluacion_service().eliminar_actividad(act_id)
-            ui.notify(f"'{nombre}' eliminada", type="positive")
+            toast_success(f"'{nombre}' eliminada")
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
-            ui.notify(str(exc), type="warning")
+            toast_warning(str(exc))
         except Exception as exc:
             logger.error("Error al eliminar %s: %s", act_id, exc)
-            ui.notify("Error al eliminar", type="negative")
+            toast_error("Error al eliminar")
 
     # ── Vista: planilla de notas (ag-Grid) ────────────────────────────────────
     def _render_planilla() -> None:
@@ -399,10 +402,11 @@ def planilla_notas_page() -> None:
             return
 
         if not planilla:
-            with ui.element("div").classes("tablero-empty"):
-                ui.label("Sin datos de planilla para el contexto activo.").classes(
-                    "tablero-empty-hint"
-                )
+            empty_state(
+                icono=Icons.GRADES,
+                titulo="Sin datos de planilla",
+                descripcion="No hay estudiantes registrados para el contexto activo. Verifica el grupo y la asignación.",
+            )
             return
 
         acts_visibles = [
@@ -566,10 +570,7 @@ def planilla_notas_page() -> None:
             # Guard: re-verificar periodo en runtime (puede haberse cerrado
             # mientras la página estaba abierta)
             if not _periodo_abierto():
-                ui.notify(
-                    "El periodo está cerrado — no se pueden registrar cambios.",
-                    type="warning",
-                )
+                toast_warning("El periodo está cerrado — no se pueden registrar cambios.")
                 panel_vista.refresh()
                 return
 
@@ -583,7 +584,7 @@ def planilla_notas_page() -> None:
                 try:
                     new_val = max(0, int(float(val_raw or 0)))
                 except (ValueError, TypeError):
-                    ui.notify("Valor inválido — debe ser un número entero", type="warning")
+                    toast_warning("Valor inválido — debe ser un número entero")
                     panel_vista.refresh()
                     return
                 pe_actual = _s["puntos_extra"].get(est_id)
@@ -591,15 +592,10 @@ def planilla_notas_page() -> None:
                 negativos = new_val if col_id == "pts_neg" else (pe_actual.negativos if pe_actual else 0)
                 try:
                     _guardar_puntos_extra(est_id, positivos, negativos)
-                    ui.notify(
-                        f"Pts. extra guardados (+{positivos} / −{negativos})",
-                        type="positive",
-                        position="bottom-right",
-                        timeout=1200,
-                    )
+                    toast_success(f"Pts. extra guardados (+{positivos} / −{negativos})")
                 except Exception as exc:
                     logger.error("Error guardando puntos extra est=%s: %s", est_id, exc)
-                    ui.notify("Error al guardar puntos extra", type="negative")
+                    toast_error("Error al guardar puntos extra")
                     panel_vista.refresh()
                 return
 
@@ -610,19 +606,19 @@ def planilla_notas_page() -> None:
             act_id = int(col_id.replace("act_", ""))
 
             if val_raw is None or str(val_raw).strip() == "":
-                ui.notify("Para eliminar una nota usa edición individual.", type="info")
+                toast_info("Para eliminar una nota usa edición individual.")
                 panel_vista.refresh()
                 return
 
             try:
                 new_val = float(val_raw)
             except (ValueError, TypeError):
-                ui.notify("Valor inválido — debe ser un número", type="warning")
+                toast_warning("Valor inválido — debe ser un número")
                 panel_vista.refresh()
                 return
 
             if not (0 <= new_val <= 100):
-                ui.notify("La nota debe estar entre 0 y 100", type="warning")
+                toast_warning("La nota debe estar entre 0 y 100")
                 panel_vista.refresh()
                 return
 
@@ -638,18 +634,13 @@ def planilla_notas_page() -> None:
                     ctx        = ctx.to_contexto_academico(),
                     usuario_id = ctx.usuario_id,
                 )
-                ui.notify(
-                    f"Nota {new_val:.1f} guardada",
-                    type="positive",
-                    position="bottom-right",
-                    timeout=1000,
-                )
+                toast_success(f"Nota {new_val:.1f} guardada")
             except ValueError as exc:
-                ui.notify(str(exc), type="warning")
+                toast_warning(str(exc))
                 panel_vista.refresh()
             except Exception as exc:
                 logger.error("Error guardando nota: %s", exc)
-                ui.notify("Error al guardar la nota", type="negative")
+                toast_error("Error al guardar la nota")
                 panel_vista.refresh()
 
         if periodo_abierto:
@@ -838,6 +829,9 @@ def planilla_notas_page() -> None:
     @ui.refreshable
     def panel_vista() -> None:
         """Panel principal — renderiza la vista activa."""
+        if _s.get("cargando"):
+            skeleton_table(rows=15, cols=8)
+            return
         if _s["modo"] == "planilla":
             _render_planilla()
         else:

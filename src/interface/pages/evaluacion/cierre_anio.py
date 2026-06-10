@@ -19,8 +19,9 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components.buttons import btn_danger, btn_icon
 from src.services.cierre_service import ContextoAcademicoDTO
+from src.interface.design.components import confirm_dialog, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
 
@@ -35,7 +36,7 @@ def cierre_anio_page() -> None:
         return
 
     if ctx.usuario_rol not in _ROLES_PERMITIDOS:
-        ui.notify("Acceso no autorizado", type="negative")
+        toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
@@ -70,64 +71,48 @@ def cierre_anio_page() -> None:
         grupo_id = _s["grupo_id"]
         anio = _s["anio"]
         if not grupo_id:
-            ui.notify("Seleccione un grupo", type="warning")
+            toast_warning("Seleccione un grupo")
             return
         if not anio:
-            ui.notify("No hay año lectivo activo", type="warning")
+            toast_warning("No hay año lectivo activo")
             return
 
         grupo_nombre = next(
             (g.codigo for g in _s["grupos"] if g.id == grupo_id), str(grupo_id)
         )
 
-        with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-            with ui.element("div").classes("flex items-center gap-2 mb-3"):
-                ThemeManager.icono(Icons.WARNING, size=24, color="var(--color-negative)"),
-                ui.label("Confirmar cierre de año").classes("text-lg font-bold")
+        def _ejecutar_cierre() -> None:
+            try:
+                ctx_dto = ContextoAcademicoDTO(
+                    usuario_id=ctx.usuario_id,
+                    anio_id=anio.id,
+                    periodo_id=1,   # requerido por DTO pero no relevante en cierre año
+                    grupo_id=grupo_id,
+                )
+                resultado = Container.cierre_service().cerrar_anio(
+                    grupo_id, anio.id, ctx_dto, usuario_id=ctx.usuario_id
+                )
+                _s["resultado"] = resultado
+                toast_success(f"Año cerrado. {len(resultado)} cierres generados.")
+                tabla_resultado.refresh()
+            except ValueError as exc:
+                toast_warning(str(exc))
+            except Exception as exc:
+                logger.error("Error al cerrar año: %s", exc)
+                toast_error("Error al cerrar el año")
 
-            ui.label(
-                "Esta operación generará las notas definitivas anuales para todos "
-                "los estudiantes del grupo seleccionado."
-            ).classes("text-sm mb-2")
-            with ui.element("div").classes(
-                "p-3 rounded border border-orange-300 bg-orange-50 mb-3"
-            ):
-                ui.label(
-                    "Requiere todos los periodos cerrados. Esta acción no se puede deshacer."
-                ).classes("text-sm font-semibold text-orange-700")
-
-            ui.label(f"Grupo: {grupo_nombre}").classes("text-sm")
-            ui.label(f"Año lectivo: {anio.anio}").classes("text-sm")
-
-            def _ejecutar_cierre() -> None:
-                try:
-                    ctx_dto = ContextoAcademicoDTO(
-                        usuario_id=ctx.usuario_id,
-                        anio_id=anio.id,
-                        periodo_id=1,   # requerido por DTO pero no relevante en cierre año
-                        grupo_id=grupo_id,
-                    )
-                    resultado = Container.cierre_service().cerrar_anio(
-                        grupo_id, anio.id, ctx_dto, usuario_id=ctx.usuario_id
-                    )
-                    _s["resultado"] = resultado
-                    ui.notify(
-                        f"Año cerrado. {len(resultado)} cierres generados.",
-                        type="positive",
-                    )
-                    dlg.close()
-                    tabla_resultado.refresh()
-                except ValueError as exc:
-                    ui.notify(str(exc), type="warning")
-                except Exception as exc:
-                    logger.error("Error al cerrar año: %s", exc)
-                    ui.notify("Error al cerrar el año", type="negative")
-
-            with ui.row().classes("gap-2 mt-4 justify-end"):
-                btn_ghost("Cancelar", on_click=dlg.close)
-                btn_danger("Cerrar año", icon="lock", on_click=_ejecutar_cierre)
-
-        dlg.open()
+        confirm_dialog(
+            titulo="Confirmar cierre de año",
+            mensaje=(
+                f"Se generarán notas definitivas anuales para todos los estudiantes del grupo. "
+                f"Grupo: {grupo_nombre} — Año: {anio.anio}. "
+                "Requiere todos los periodos cerrados. Esta acción no se puede deshacer."
+            ),
+            on_confirm=_ejecutar_cierre,
+            variante="danger",
+            texto_confirmar="Cerrar año",
+            texto_cancelar="Cancelar",
+        )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
     @ui.refreshable
