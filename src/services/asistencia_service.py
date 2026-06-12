@@ -251,4 +251,23 @@ class AsistenciaService:
         return self.registrar_masivo(dto, usuario_id=usuario_id, anio_id=anio_id)
 
 
+    def contar_clases_mes(self, usuario_id: int, anio: int, mes: int) -> int:
+        """
+        Retorna el total de clases dictadas por el docente en el mes indicado.
+        Raises ValueError si mes está fuera del rango 1–12.
+        """
+        if not 1 <= mes <= 12:
+            raise ValueError("Mes fuera de rango (1–12).")
+        return self._repo.contar_clases_dictadas_docente(usuario_id, anio, mes)
+
+    def clases_mes_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+        """
+        Retorna el desglose {asignacion_id: n_clases} para el docente en el mes.
+        Raises ValueError si mes está fuera del rango 1–12.
+        """
+        if not 1 <= mes <= 12:
+            raise ValueError("Mes fuera de rango (1–12).")
+        return self._repo.clases_dictadas_por_asignacion(usuario_id, anio, mes)
+
+
 __all__ = ["AsistenciaService"]

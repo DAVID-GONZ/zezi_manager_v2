@@ -18,7 +18,11 @@
   align-items: center;
   padding: var(--space-md) 0;
   gap: 6px;
-  z-index: var(--z-index-rail);               /* T2: 900 → var(--z-index-rail) */
+  z-index: var(--z-index-rail);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--paper-200) transparent;
 }
 
 /* ── Marca / monograma ──────────────────────────────────── */
@@ -41,8 +45,8 @@
 .rail-monogram {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.125rem;                        /* T4: 18px → rem */
-  color: var(--ink-700);
+  font-size: 1.125rem;
+  color: var(--nav-sidebar-text);
   letter-spacing: -0.02em;
 }
 
@@ -56,13 +60,14 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   position: relative;
-  transition: background 0.15s ease;
-  color: var(--graphite-700);
+  transition: background 0.15s ease, color 0.15s ease;
+  color: var(--nav-sidebar-text);
 }
 
-.rail-item:hover {
+.rail-item:hover,
+.rail-item.is-open {
   background: var(--nav-sidebar-hover);
-  color: var(--ink-700);
+  color: var(--color-text-primary);
 }
 
 .rail-item.is-active {
@@ -91,9 +96,9 @@
   outline-offset: 2px;
 }
 
-/* ── Tooltip nativo — hover y focus-visible ─────────────── */
-.rail-item[data-tooltip]:hover::after,
-.rail-item[data-tooltip]:focus-visible::after {
+/* ── Tooltip nativo — solo en ítems hoja (sin flyout) ───── */
+.rail-item[data-tooltip]:not([data-flyout]):hover::after,
+.rail-item[data-tooltip]:not([data-flyout]):focus-visible::after {
   content: attr(data-tooltip);
   position: absolute;
   left: calc(100% + 12px);
@@ -143,7 +148,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--font-size-h4);
-  color: var(--ink-700);
+  color: var(--color-text-primary);
   padding: 8px 12px 12px 12px;
   border-bottom: 1px solid var(--color-divider);
   margin-bottom: 6px;
@@ -156,7 +161,7 @@
   padding: 8px 12px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--graphite-700);
+  color: var(--color-text-primary);
   position: relative;
 }
 

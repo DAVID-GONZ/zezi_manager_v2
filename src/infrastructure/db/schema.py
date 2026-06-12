@@ -112,10 +112,52 @@ SCHEMA: list[str] = [
     # -------------------------------------------------------------------------
 
     """
+    CREATE TABLE IF NOT EXISTS escenarios_horario (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        anio_id     INTEGER NOT NULL,
+        nombre      TEXT    NOT NULL,
+        descripcion TEXT,
+        activo      INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(anio_id, nombre),
+        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS plantillas_franja (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre       TEXT    NOT NULL UNIQUE,
+        jornada      TEXT    NOT NULL DEFAULT 'UNICA'
+                     CHECK(jornada IN ('AM', 'PM', 'UNICA')),
+        dias_activos TEXT    NOT NULL DEFAULT 'Lunes,Martes,Miércoles,Jueves,Viernes',
+        activa       INTEGER NOT NULL DEFAULT 0,
+        created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS franjas (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        plantilla_id INTEGER NOT NULL,
+        orden        INTEGER NOT NULL CHECK(orden >= 1),
+        hora_inicio  TIME    NOT NULL,
+        hora_fin     TIME    NOT NULL,
+        tipo         TEXT    NOT NULL DEFAULT 'lectiva'
+                     CHECK(tipo IN ('lectiva', 'descanso', 'almuerzo')),
+        etiqueta     TEXT,
+        UNIQUE(plantilla_id, orden),
+        CHECK(hora_inicio < hora_fin),
+        FOREIGN KEY(plantilla_id) REFERENCES plantillas_franja(id) ON DELETE CASCADE
+    )
+    """,
+
+    """
     CREATE TABLE IF NOT EXISTS areas_conocimiento (
         id      INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre  TEXT    NOT NULL UNIQUE,
-        codigo  TEXT    UNIQUE
+        codigo  TEXT    UNIQUE,
+        color   TEXT
     )
     """,
 
@@ -149,18 +191,19 @@ SCHEMA: list[str] = [
 
     """
     CREATE TABLE IF NOT EXISTS usuarios (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario          TEXT    NOT NULL UNIQUE,
-        password_hash    TEXT    NOT NULL,
-        nombre_completo  TEXT    NOT NULL,
-        email            TEXT,
-        telefono         TEXT,
-        rol              TEXT    NOT NULL
-                         CHECK(rol IN ('admin', 'director', 'coordinador',
-                                       'profesor', 'estudiante', 'apoderado')),
-        activo           BOOLEAN NOT NULL DEFAULT 1,
-        fecha_creacion   DATE    NOT NULL DEFAULT CURRENT_DATE,
-        ultima_sesion    DATETIME
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario             TEXT    NOT NULL UNIQUE,
+        password_hash       TEXT    NOT NULL,
+        nombre_completo     TEXT    NOT NULL,
+        email               TEXT,
+        telefono            TEXT,
+        rol                 TEXT    NOT NULL
+                            CHECK(rol IN ('admin', 'director', 'coordinador',
+                                          'profesor', 'estudiante', 'apoderado')),
+        activo              BOOLEAN NOT NULL DEFAULT 1,
+        fecha_creacion      DATE    NOT NULL DEFAULT CURRENT_DATE,
+        ultima_sesion       DATETIME,
+        carga_horaria_max   INTEGER
     )
     """,
 
@@ -319,7 +362,8 @@ SCHEMA: list[str] = [
         asignatura_id   INTEGER NOT NULL,
         usuario_id      INTEGER NOT NULL,
         asignacion_id   INTEGER,
-        periodo_id      INTEGER NOT NULL,
+        periodo_id      INTEGER,
+        escenario_id    INTEGER NOT NULL,
         dia_semana      TEXT    NOT NULL
                         CHECK(dia_semana IN ('Lunes', 'Martes', 'Miércoles',
                                              'Jueves', 'Viernes', 'Sábado')),
@@ -327,13 +371,14 @@ SCHEMA: list[str] = [
         hora_fin        TIME    NOT NULL,
         sala            TEXT    NOT NULL DEFAULT 'Aula',
 
-        UNIQUE(grupo_id, dia_semana, hora_inicio, periodo_id),
+        UNIQUE(escenario_id, grupo_id, dia_semana, hora_inicio),
         CHECK(hora_inicio < hora_fin),
-        FOREIGN KEY(grupo_id)      REFERENCES grupos(id)       ON DELETE CASCADE,
-        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id)  ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE SET NULL,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE
+        FOREIGN KEY(grupo_id)      REFERENCES grupos(id)              ON DELETE CASCADE,
+        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id)         ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)            ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)        ON DELETE SET NULL,
+        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)            ON DELETE CASCADE,
+        FOREIGN KEY(escenario_id)  REFERENCES escenarios_horario(id)  ON DELETE CASCADE
     )
     """,
 
@@ -945,6 +990,46 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
+
+    # -------------------------------------------------------------------------
+    # 12. GENERADOR DE HORARIOS
+    # -------------------------------------------------------------------------
+
+    """
+    CREATE TABLE IF NOT EXISTS disponibilidad_docente (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id   INTEGER NOT NULL,
+        dia_semana   TEXT    NOT NULL
+                     CHECK(dia_semana IN ('Lunes','Martes','Miércoles',
+                                          'Jueves','Viernes','Sábado')),
+        franja_orden INTEGER NOT NULL CHECK(franja_orden >= 1),
+        disponible   INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(usuario_id, dia_semana, franja_orden),
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS config_generacion (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre               TEXT    NOT NULL UNIQUE,
+        periodo_id           INTEGER NOT NULL,
+        anio_id              INTEGER NOT NULL,
+        plantilla_id         INTEGER NOT NULL,
+        estado               TEXT    NOT NULL DEFAULT 'borrador'
+                             CHECK(estado IN ('borrador','generado','aplicado')),
+        grupos_json          TEXT    NOT NULL DEFAULT '[]',
+        pesos_json           TEXT    NOT NULL DEFAULT
+                             '{"huecos":1.0,"distribucion":1.0,"compactacion":0.5}',
+        escenario_destino_id INTEGER,
+        created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY(periodo_id)           REFERENCES periodos(id)            ON DELETE CASCADE,
+        FOREIGN KEY(anio_id)              REFERENCES configuracion_anio(id)  ON DELETE CASCADE,
+        FOREIGN KEY(plantilla_id)         REFERENCES plantillas_franja(id)   ON DELETE CASCADE,
+        FOREIGN KEY(escenario_destino_id) REFERENCES escenarios_horario(id)  ON DELETE SET NULL
+    )
+    """,
 ]
 
 
@@ -985,10 +1070,19 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_logros_asignacion   ON logros(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_logros_periodo      ON logros(periodo_id)",
 
+    # escenarios_horario
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_escenario_activo_unico ON escenarios_horario(anio_id) WHERE activo = 1",
+    "CREATE INDEX IF NOT EXISTS idx_escenarios_anio     ON escenarios_horario(anio_id)",
+
+    # plantillas_franja / franjas
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(jornada) WHERE activa = 1",
+    "CREATE INDEX IF NOT EXISTS idx_franjas_plantilla ON franjas(plantilla_id)",
+
     # horarios
     "CREATE INDEX IF NOT EXISTS idx_horarios_grupo      ON horarios(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_horarios_usuario    ON horarios(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_horarios_periodo    ON horarios(periodo_id)",
+    "CREATE INDEX IF NOT EXISTS idx_horarios_escenario  ON horarios(escenario_id)",
 
     # categorias y actividades
     "CREATE INDEX IF NOT EXISTS idx_cats_asignacion     ON categorias(asignacion_id)",
@@ -1083,6 +1177,12 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_act_plan_corte      ON actividades_plan(corte_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_act  ON notas_actividad_plan(actividad_plan_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_est  ON notas_actividad_plan(estudiante_id)",
+
+    # disponibilidad_docente
+    "CREATE INDEX IF NOT EXISTS idx_disponibilidad_docente ON disponibilidad_docente(usuario_id, dia_semana)",
+
+    # config_generacion
+    "CREATE INDEX IF NOT EXISTS idx_config_generacion_periodo ON config_generacion(periodo_id, estado)",
 ]
 
 
@@ -1259,6 +1359,9 @@ def init_db(db_path: Path | None = None) -> bool:
                  "nota_minima_escala REAL NOT NULL DEFAULT 0.0"),
                 ("configuracion_anio", "nota_maxima_escala",
                  "nota_maxima_escala REAL NOT NULL DEFAULT 100.0"),
+                ("usuarios", "carga_horaria_max",
+                 "carga_horaria_max INTEGER"),
+                ("areas_conocimiento", "color", "color TEXT"),
             ]
 
             for tabla, columna, ddl in migraciones:

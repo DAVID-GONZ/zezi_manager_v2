@@ -1,0 +1,197 @@
+/* ═══════════════════════════════════════════════════════════════
+   domain/horario_parrilla.css — Vista parrilla visual de horarios (paso_15e)
+   ───────────────────────────────────────────────────────────────
+   Grid días × franjas, color-coding por área de conocimiento y
+   estados de celda (hueco / conflicto / fijado).
+   Los pasteles de área viven AQUÍ (no en la página) para no violar
+   check_design (hex prohibido fuera de _EC_*/tokens en páginas).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Contenedor de la parrilla ──────────────────────────────── */
+.parrilla-grid {
+  display: grid;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+/* ── Encabezados (esquina + días) ───────────────────────────── */
+.parrilla-encabezado {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+/* ── Columna de franjas (eje vertical) ──────────────────────── */
+.parrilla-franja-label {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.parrilla-franja-nolectiva {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+/* ── Celda base ─────────────────────────────────────────────── */
+.parrilla-celda {
+  position: relative;
+  min-width: 120px;
+  min-height: 56px;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+
+.parrilla-celda-titulo {
+  font-weight: 600;
+  display: block;
+  line-height: 1.2;
+}
+
+.parrilla-celda-sub {
+  display: block;
+  font-size: 11px;
+  opacity: 0.85;
+  line-height: 1.2;
+}
+
+/* ── Hueco (sin bloque) ─────────────────────────────────────── */
+.parrilla-hueco {
+  background: var(--color-surface-alt);
+}
+
+/* ── Conflicto (≥2 bloques en una posición) ─────────────────── */
+.parrilla-conflicto {
+  border: 2px solid var(--color-error);
+}
+
+/* ── Fijado (reservado para "pin"; aún sin datos) ───────────── */
+.parrilla-fijado {
+  border: 2px solid var(--color-primary);
+}
+
+/* ── Leyenda de perspectiva / toolbar ───────────────────────── */
+.parrilla-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+/* ── Leyenda de colores editable (paso_15f) ─────────────────── */
+.parrilla-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.parrilla-leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.parrilla-leyenda-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.parrilla-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.parrilla-leyenda-label {
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Paleta de fallback por área — "Aula Serena"
+   10 pasteles desaturados con texto oscuro legible.
+   Se aplica cuando el área no define color propio.
+   ═══════════════════════════════════════════════════════════════ */
+.parrilla-area-0 { background: #E9EEF6; color: #1F2A37; }
+.parrilla-area-1 { background: #E7F2EC; color: #1E2F26; }
+.parrilla-area-2 { background: #F6ECE7; color: #3A271E; }
+.parrilla-area-3 { background: #F1E9F4; color: #2E2136; }
+.parrilla-area-4 { background: #FBF3E2; color: #3A2E14; }
+.parrilla-area-5 { background: #E6F1F3; color: #1C2E31; }
+.parrilla-area-6 { background: #F3E8EA; color: #371E24; }
+.parrilla-area-7 { background: #ECF0E4; color: #28301B; }
+.parrilla-area-8 { background: #E8EAF6; color: #20243A; }
+.parrilla-area-9 { background: #F5EFE6; color: #342B1C; }
+
+/* ── Overrides modo oscuro ──────────────────────────────────── */
+html[data-theme="dark"] .parrilla-grid {
+  background: var(--color-surface);
+}
+
+html[data-theme="dark"] .parrilla-encabezado,
+html[data-theme="dark"] .parrilla-franja-label {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .parrilla-hueco {
+  background: var(--color-surface-alt);
+}
+
+/* Leyenda: más contraste en dark */
+html[data-theme="dark"] .parrilla-leyenda-item {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .parrilla-leyenda-item:hover {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+html[data-theme="dark"] .parrilla-leyenda-label {
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .parrilla-swatch {
+  border-color: var(--color-border-strong, var(--color-border));
+}
+
+/* Pasteles oscurecidos con texto claro para conservar contraste */
+html[data-theme="dark"] .parrilla-area-0 { background: #2A3344; color: #DCE4F0; }
+html[data-theme="dark"] .parrilla-area-1 { background: #26382F; color: #D6E8DD; }
+html[data-theme="dark"] .parrilla-area-2 { background: #3C2E26; color: #EEDDD0; }
+html[data-theme="dark"] .parrilla-area-3 { background: #322642; color: #E3D6EC; }
+html[data-theme="dark"] .parrilla-area-4 { background: #3C3320; color: #EFE3C6; }
+html[data-theme="dark"] .parrilla-area-5 { background: #233740; color: #CFE6EC; }
+html[data-theme="dark"] .parrilla-area-6 { background: #3A2730; color: #EFD6DE; }
+html[data-theme="dark"] .parrilla-area-7 { background: #2D3622; color: #DDE7C8; }
+html[data-theme="dark"] .parrilla-area-8 { background: #272B40; color: #D6DAF0; }
+html[data-theme="dark"] .parrilla-area-9 { background: #3A3221; color: #EEE2CB; }

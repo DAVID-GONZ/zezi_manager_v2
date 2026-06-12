@@ -67,15 +67,16 @@ class Usuario(BaseModel):
       estudiante   → consulta (v3.0)
       apoderado    → portal de acudientes (v3.0)
     """
-    id:              int | None     = None
-    usuario:         str            # username — inmutable tras creación
-    nombre_completo: str
-    email:           str | None     = None
-    telefono:        str | None     = None
-    rol:             Rol            = Rol.PROFESOR
-    activo:          bool           = True
-    fecha_creacion:  date           = Field(default_factory=date.today)
-    ultima_sesion:   datetime | None = None
+    id:                 int | None     = None
+    usuario:            str            # username — inmutable tras creación
+    nombre_completo:    str
+    email:              str | None     = None
+    telefono:           str | None     = None
+    rol:                Rol            = Rol.PROFESOR
+    activo:             bool           = True
+    fecha_creacion:     date           = Field(default_factory=date.today)
+    ultima_sesion:      datetime | None = None
+    carga_horaria_max:  int | None     = None
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -140,6 +141,15 @@ class Usuario(BaseModel):
             return None
         v = str(v).strip()
         return v if v else None
+
+    @field_validator("carga_horaria_max")
+    @classmethod
+    def validar_carga_horaria_max(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError(
+                f"carga_horaria_max no puede ser negativo (recibido: {v})."
+            )
+        return v
 
     # ------------------------------------------------------------------
     # Propiedades

@@ -411,6 +411,32 @@ class Container:
         )
 
     @classmethod
+    def horario_service(cls):
+        from src.services.horario_service import HorarioService
+        return cls._get_or_create(
+            "horario_service",
+            lambda: HorarioService(
+                infra_repo=cls.infraestructura_repo(),
+                asignacion_repo=cls.asignacion_repo(),
+                usuario_repo=cls.usuario_service(),
+            ),
+        )
+
+    @classmethod
+    def generador_horario_service(cls):
+        from src.services.generador_horario_service import GeneradorHorarioService
+        return cls._get_or_create(
+            "generador_horario_service",
+            lambda: GeneradorHorarioService(
+                infra_repo=cls.infraestructura_repo(),
+                asignacion_repo=cls.asignacion_repo(),
+                usuario_repo=cls.usuario_service(),
+                horario_service=cls.horario_service(),
+                infraestructura_service=cls.infraestructura_service(),
+            ),
+        )
+
+    @classmethod
     def inicializar_contexto(cls, ctx):
         """Resuelve el contexto académico inicial tras el login."""
         from src.infrastructure.context.context_initializer import ContextInitializer

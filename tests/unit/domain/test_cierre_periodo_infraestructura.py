@@ -331,6 +331,7 @@ class TestHorario:
             grupo_id=1,
             asignatura_id=2,
             usuario_id=3,
+            escenario_id=1,
             periodo_id=1,
             dia_semana=DiaSemana.LUNES,
             hora_inicio=time(7, 0),
@@ -343,7 +344,7 @@ class TestHorario:
 
     def test_hora_desde_string(self):
         h = Horario(
-            grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+            grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
             dia_semana=DiaSemana.MARTES,
             hora_inicio="08:00", hora_fin="08:55",
         )
@@ -353,7 +354,7 @@ class TestHorario:
     def test_hora_inicio_igual_fin_falla(self):
         with pytest.raises(ValidationError, match="anterior"):
             Horario(
-                grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+                grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
                 dia_semana=DiaSemana.LUNES,
                 hora_inicio=time(8, 0), hora_fin=time(8, 0),
             )
@@ -361,7 +362,7 @@ class TestHorario:
     def test_hora_inicio_posterior_a_fin_falla(self):
         with pytest.raises(ValidationError, match="anterior"):
             Horario(
-                grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+                grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
                 dia_semana=DiaSemana.LUNES,
                 hora_inicio=time(9, 0), hora_fin=time(8, 0),
             )
@@ -369,7 +370,7 @@ class TestHorario:
     def test_hora_string_invalida_falla(self):
         with pytest.raises(ValidationError):
             Horario(
-                grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+                grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
                 dia_semana=DiaSemana.LUNES,
                 hora_inicio="25:00", hora_fin="26:00",
             )
@@ -377,14 +378,14 @@ class TestHorario:
     def test_id_cero_falla(self):
         with pytest.raises(ValidationError, match="positivo"):
             Horario(
-                grupo_id=0, asignatura_id=2, usuario_id=3, periodo_id=1,
+                grupo_id=0, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
                 dia_semana=DiaSemana.LUNES,
                 hora_inicio=time(7, 0), hora_fin=time(8, 0),
             )
 
     def test_sala_vacia_default_aula(self):
         h = Horario(
-            grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+            grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
             dia_semana=DiaSemana.VIERNES,
             hora_inicio=time(10, 0), hora_fin=time(11, 0),
             sala="   ",
@@ -393,7 +394,7 @@ class TestHorario:
 
     def test_dto_to_horario(self):
         dto = NuevoHorarioDTO(
-            grupo_id=1, asignatura_id=2, usuario_id=3, periodo_id=1,
+            grupo_id=1, asignatura_id=2, usuario_id=3, escenario_id=1, periodo_id=1,
             dia_semana=DiaSemana.MIERCOLES,
             hora_inicio="07:00", hora_fin="07:55",
         )

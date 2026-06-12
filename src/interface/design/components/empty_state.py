@@ -61,4 +61,4 @@ def empty_state(
             ui.label(descripcion).classes("empty-state__description")
         if cta_label and cta_on_click:
             btn_fn = btn_ghost if variante == "error" else btn_primary
-            btn_fn(cta_label, on_click=cta_on_click, icono=cta_icono)
+            btn_fn(cta_label, on_click=cta_on_click, icon=cta_icono)

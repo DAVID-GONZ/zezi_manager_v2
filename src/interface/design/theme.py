@@ -63,6 +63,7 @@ class ThemeManager:
         "themes/dark.css",
         "domain/asistencia.css",
         "domain/desempeno.css",
+        "domain/horario_parrilla.css",
     ]
 
     @classmethod

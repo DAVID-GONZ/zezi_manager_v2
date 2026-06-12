@@ -69,6 +69,12 @@ class FakeAsistenciaRepo(IAsistenciaRepository):
     def fechas_con_registro(self, asig_id: int, per_id: int) -> list[date]:
         return []
 
+    def contar_clases_dictadas_docente(self, usuario_id: int, anio: int, mes: int) -> int:
+        return 0
+
+    def clases_dictadas_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+        return {}
+
 
 # ===========================================================================
 # Helpers

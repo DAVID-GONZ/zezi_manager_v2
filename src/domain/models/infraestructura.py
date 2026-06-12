@@ -17,6 +17,7 @@ Regla general: los campos de texto obligatorios se normalizan
 
 from __future__ import annotations
 
+import json
 from datetime import time
 from enum import Enum
 from typing import Self
@@ -55,6 +56,7 @@ class AreaConocimiento(BaseModel):
     id:     int | None  = None
     nombre: str
     codigo: str | None  = None
+    color:  str | None  = None      # hex "#RGB" o "#RRGGBB"; None = sin color
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -75,6 +77,19 @@ class AreaConocimiento(BaseModel):
             return None
         v = str(v).strip().upper()
         return v if v else None
+
+    @field_validator("color", mode="before")
+    @classmethod
+    def normalizar_color(cls, v: str | None) -> str | None:
+        """Acepta solo hex válido (#RGB o #RRGGBB). Cualquier otro valor → None (soft)."""
+        if v is None:
+            return None
+        v = str(v).strip()
+        if not v:
+            return None
+        if v[0] == "#" and len(v) in (4, 7):
+            return v
+        return None
 
 
 class Asignatura(BaseModel):
@@ -193,29 +208,91 @@ class Grupo(BaseModel):
         return max(0, self.capacidad_maxima - matriculados)
 
 
+class EscenarioHorario(BaseModel):
+    """
+    Escenario de horario para un año lectivo.
+    Solo puede haber un escenario activo por año (enforced por índice parcial).
+    """
+    id:          int | None  = None
+    anio_id:     int
+    nombre:      str
+    descripcion: str | None  = None
+    activo:      bool        = False
+    created_at:  str | None  = None
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre del escenario no puede estar vacío.")
+        return v
+
+
+class NuevoEscenarioDTO(BaseModel):
+    """DTO para crear un nuevo escenario de horario."""
+    anio_id:     int
+    nombre:      str
+    descripcion: str | None = None
+
+    @field_validator("anio_id")
+    @classmethod
+    def validar_anio_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre del escenario no puede estar vacío.")
+        return v
+
+    def to_escenario(self) -> EscenarioHorario:
+        return EscenarioHorario(**self.model_dump())
+
+
 class Horario(BaseModel):
     """
-    Franja horaria de una asignatura para un grupo en un periodo.
+    Franja horaria de una asignatura para un grupo en un escenario.
 
     hora_inicio y hora_fin aceptan objetos time o strings "HH:MM".
     Invariante: hora_inicio < hora_fin.
+    periodo_id es nullable (resolución vía escenario activo).
     """
     id:            int | None  = None
     grupo_id:      int
     asignatura_id: int
     usuario_id:    int
     asignacion_id: int | None  = None
-    periodo_id:    int
+    periodo_id:    int | None  = None
+    escenario_id:  int
     dia_semana:    DiaSemana
     hora_inicio:   time
     hora_fin:      time
     sala:          str         = "Aula"
 
-    @field_validator("grupo_id", "asignatura_id", "usuario_id", "periodo_id")
+    @field_validator("grupo_id", "asignatura_id", "usuario_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
+        return v
+
+    @field_validator("escenario_id")
+    @classmethod
+    def validar_escenario_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"escenario_id debe ser un entero positivo (recibido: {v}).")
         return v
 
     @field_validator("hora_inicio", "hora_fin", mode="before")
@@ -311,6 +388,283 @@ class Logro(BaseModel):
 
 
 # =============================================================================
+# Rejilla de franjas horarias (paso_15a)
+# =============================================================================
+
+# Días válidos para la rejilla. Derivado del enum DiaSemana (misma fuente de
+# verdad) pero expuesto como list[str] porque dias_activos se persiste como CSV.
+DIAS_VALIDOS: list[str] = [d.value for d in DiaSemana]
+
+TIPOS_FRANJA: set[str] = {"lectiva", "descanso", "almuerzo"}
+JORNADAS_VALIDAS: set[str] = {"AM", "PM", "UNICA"}
+
+
+class Franja(BaseModel):
+    """
+    Una franja horaria dentro de una plantilla (rejilla fija).
+
+    Las horas se modelan como strings "HH:MM" y se comparan
+    lexicográficamente, coherente con el resto del modelo de horarios.
+    """
+    id:           int | None = None
+    plantilla_id: int
+    orden:        int        = Field(ge=1)
+    hora_inicio:  str
+    hora_fin:     str
+    tipo:         str        = "lectiva"
+    etiqueta:     str | None = None
+
+    @field_validator("plantilla_id")
+    @classmethod
+    def validar_plantilla_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError(f"plantilla_id debe ser positivo (recibido: {v}).")
+        return v
+
+    @field_validator("hora_inicio", "hora_fin", mode="before")
+    @classmethod
+    def normalizar_hora(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("La hora no puede estar vacía.")
+        return v
+
+    @field_validator("tipo", mode="before")
+    @classmethod
+    def validar_tipo(cls, v: str) -> str:
+        v = str(v).strip().lower()
+        if v not in TIPOS_FRANJA:
+            raise ValueError(
+                f"tipo inválido: '{v}'. Use uno de {sorted(TIPOS_FRANJA)}."
+            )
+        return v
+
+    @field_validator("etiqueta", mode="before")
+    @classmethod
+    def limpiar_etiqueta(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v if v else None
+
+    @model_validator(mode="after")
+    def validar_orden_horas(self) -> Self:
+        if self.hora_inicio >= self.hora_fin:
+            raise ValueError(
+                f"hora_inicio ({self.hora_inicio}) debe ser anterior "
+                f"a hora_fin ({self.hora_fin})."
+            )
+        return self
+
+    @property
+    def es_lectiva(self) -> bool:
+        return self.tipo == "lectiva"
+
+
+class PlantillaFranja(BaseModel):
+    """
+    Plantilla (rejilla) de franjas para una jornada. A lo sumo una activa
+    por jornada (índice único parcial en BD).
+    """
+    id:           int | None = None
+    nombre:       str
+    jornada:      str        = "UNICA"
+    dias_activos: list[str]
+    activa:       bool       = False
+    created_at:   str | None = None
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre de la plantilla no puede estar vacío.")
+        return v
+
+    @field_validator("jornada", mode="before")
+    @classmethod
+    def validar_jornada(cls, v: str) -> str:
+        v = str(v).strip().upper()
+        if v not in JORNADAS_VALIDAS:
+            raise ValueError(
+                f"jornada inválida: '{v}'. Use uno de {sorted(JORNADAS_VALIDAS)}."
+            )
+        return v
+
+    @field_validator("dias_activos", mode="before")
+    @classmethod
+    def validar_dias(cls, v: list[str]) -> list[str]:
+        if isinstance(v, str):
+            v = [d.strip() for d in v.split(",") if d.strip()]
+        if not isinstance(v, (list, tuple)):
+            raise ValueError("dias_activos debe ser una lista de días.")
+        dias = [str(d).strip() for d in v if str(d).strip()]
+        if not dias:
+            raise ValueError("dias_activos no puede estar vacío.")
+        invalidos = [d for d in dias if d not in DIAS_VALIDOS]
+        if invalidos:
+            raise ValueError(
+                f"Días inválidos en dias_activos: {invalidos}. "
+                f"Válidos: {DIAS_VALIDOS}."
+            )
+        return dias
+
+
+class NuevaPlantillaFranjaDTO(BaseModel):
+    nombre:       str
+    jornada:      str        = "UNICA"
+    dias_activos: list[str]
+
+    def to_plantilla(self) -> PlantillaFranja:
+        return PlantillaFranja(**self.model_dump())
+
+
+class NuevaFranjaDTO(BaseModel):
+    plantilla_id: int
+    orden:        int
+    hora_inicio:  str
+    hora_fin:     str
+    tipo:         str        = "lectiva"
+    etiqueta:     str | None = None
+
+    def to_franja(self) -> Franja:
+        return Franja(**self.model_dump())
+
+
+# =============================================================================
+# Generador de horarios (paso_15b)
+# =============================================================================
+
+class PesosGeneracion(BaseModel):
+    huecos:       float = Field(default=1.0, ge=0.0, le=2.0)
+    distribucion: float = Field(default=1.0, ge=0.0, le=2.0)
+    compactacion: float = Field(default=0.5, ge=0.0, le=2.0)
+
+
+PESOS_DEFAULT = PesosGeneracion()
+
+
+ESTADOS_CONFIG: set[str] = {"borrador", "generado", "aplicado"}
+
+TRANSICIONES_CONFIG: dict[str, set[str]] = {
+    "borrador":  {"generado"},
+    "generado":  {"aplicado", "borrador"},
+    "aplicado":  set(),      # terminal
+}
+
+
+class DisponibilidadDocente(BaseModel):
+    id:           int | None = None
+    usuario_id:   int        = Field(gt=0)
+    dia_semana:   str
+    franja_orden: int        = Field(ge=1)
+    disponible:   bool       = True
+
+    @field_validator("dia_semana", mode="before")
+    @classmethod
+    def validar_dia(cls, v: str) -> str:
+        v = str(v).strip()
+        if v not in DIAS_VALIDOS:
+            raise ValueError(
+                f"dia_semana inválido: '{v}'. Válidos: {DIAS_VALIDOS}."
+            )
+        return v
+
+
+class ConfigGeneracion(BaseModel):
+    id:                   int | None = None
+    nombre:               str
+    periodo_id:           int        = Field(gt=0)
+    anio_id:              int        = Field(gt=0)
+    plantilla_id:         int        = Field(gt=0)
+    estado:               str        = "borrador"
+    grupos:               list[int]  = Field(default_factory=list)
+    pesos:                PesosGeneracion = Field(default_factory=PesosGeneracion)
+    escenario_destino_id: int | None = None
+    created_at:           str | None = None
+    updated_at:           str | None = None
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre no puede estar vacío.")
+        return v
+
+    @field_validator("estado", mode="before")
+    @classmethod
+    def validar_estado(cls, v: str) -> str:
+        if v not in ESTADOS_CONFIG:
+            raise ValueError(f"estado inválido: {v!r}")
+        return v
+
+    def puede_transicionar_a(self, nuevo: str) -> bool:
+        return nuevo in TRANSICIONES_CONFIG.get(self.estado, set())
+
+
+class NuevaDisponibilidadDTO(BaseModel):
+    usuario_id:   int
+    dia_semana:   str
+    franja_orden: int
+    disponible:   bool = True
+
+    def to_modelo(self) -> DisponibilidadDocente:
+        return DisponibilidadDocente(**self.model_dump())
+
+
+class NuevaConfigGeneracionDTO(BaseModel):
+    nombre:       str
+    periodo_id:   int
+    anio_id:      int
+    plantilla_id: int
+    grupos:       list[int]        = Field(default_factory=list)
+    pesos:        PesosGeneracion  = Field(default_factory=PesosGeneracion)
+
+    def to_config(self) -> ConfigGeneracion:
+        return ConfigGeneracion(**self.model_dump())
+
+
+# =============================================================================
+# Generador de horarios (paso_15c)
+# =============================================================================
+
+class BloqueGeneradoDTO(BaseModel):
+    """Un bloque colocado por el generador en una franja lectiva concreta."""
+    asignacion_id: int
+    grupo_id:      int
+    usuario_id:    int
+    dia_semana:    str
+    franja_orden:  int
+    hora_inicio:   str
+    hora_fin:      str
+    sala:          str = "Aula"
+
+
+class MetricasCalidadDTO(BaseModel):
+    """Métricas de calidad blanda de una solución del generador (paso_15d)."""
+    huecos_grupo:         int   = 0    # ventanas vacías intra-día de los grupos
+    huecos_docente:       int   = 0    # ventanas vacías intra-día de los docentes
+    solapes_distribucion: int   = 0    # exceso de bloques de una misma asignación el mismo día
+    dias_docente:         int   = 0    # suma de días distintos trabajados por todos los docentes
+    costo_inicial:        float = 0.0
+    costo_final:          float = 0.0
+    pasos_mejora:         int   = 0
+
+
+class ResultadoGeneracionDTO(BaseModel):
+    """Resultado de una corrida del generador de horarios v1."""
+    escenario_id:     int | None              = None
+    total_requeridos: int                     = 0   # suma de horas_semanales de las asignaciones
+    colocados:        int                     = 0
+    no_colocados:     int                     = 0
+    bloques:          list[BloqueGeneradoDTO] = []
+    incidencias:      list[str]               = []  # motivos de lo no colocado
+    valido:           bool                    = False  # analizar_lote.todo_ok del lote final
+    metricas:         "MetricasCalidadDTO | None" = None
+
+
+# =============================================================================
 # DTOs
 # =============================================================================
 
@@ -371,7 +725,8 @@ class NuevoHorarioDTO(BaseModel):
     grupo_id:      int
     asignatura_id: int
     usuario_id:    int
-    periodo_id:    int
+    escenario_id:  int
+    periodo_id:    int | None = None
     dia_semana:    DiaSemana
     hora_inicio:   time
     hora_fin:      time
@@ -438,21 +793,29 @@ class HorarioInfo(BaseModel):
     usuario_id:        int
     docente_nombre:    str          # usuarios.nombre_completo
     asignacion_id:     int | None
-    periodo_id:        int
-    periodo_nombre:    str          # periodos.nombre
+    periodo_id:        int | None
+    periodo_nombre:    str          # periodos.nombre (puede ser '' si no hay periodo)
+    escenario_id:      int
     dia_semana:        DiaSemana
     hora_inicio:       time
     hora_fin:          time
     sala:              str          = "Aula"
 
     @field_validator("grupo_codigo", "asignatura_nombre",
-                     "docente_nombre", "periodo_nombre", mode="before")
+                     "docente_nombre", mode="before")
     @classmethod
     def no_vacio(cls, v: str) -> str:
         v = str(v).strip()
         if not v:
             raise ValueError("El campo no puede estar vacío.")
         return v
+
+    @field_validator("periodo_nombre", mode="before")
+    @classmethod
+    def limpiar_periodo_nombre(cls, v: str | None) -> str:
+        if v is None:
+            return ""
+        return str(v).strip()
 
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
@@ -516,6 +879,56 @@ class HorarioEstadisticasDTO(BaseModel):
     docentes_con_horario: int = 0   # docentes con al menos un bloque
 
 
+class CupoDTO(BaseModel):
+    usadas:  int
+    maximas: int | None = None
+
+    @property
+    def disponibles(self) -> int | None:
+        if self.maximas is None:
+            return None
+        return max(0, self.maximas - self.usadas)
+
+    @property
+    def excedido(self) -> bool:
+        if self.maximas is None:
+            return False
+        return self.usadas > self.maximas
+
+
+# =============================================================================
+# DTOs de carga masiva
+# =============================================================================
+
+class FilaReporteDTO(BaseModel):
+    indice: int
+    ok: bool
+    motivo: str | None = None
+    resumen: str = ""
+
+
+class ReporteLoteDTO(BaseModel):
+    filas: list[FilaReporteDTO] = []
+
+    @property
+    def validas(self) -> int:
+        return sum(1 for f in self.filas if f.ok)
+
+    @property
+    def invalidas(self) -> int:
+        return sum(1 for f in self.filas if not f.ok)
+
+    @property
+    def todo_ok(self) -> bool:
+        return bool(self.filas) and all(f.ok for f in self.filas)
+
+
+class ResultadoLoteDTO(BaseModel):
+    creados: int = 0
+    omitidos: int = 0
+    reporte: ReporteLoteDTO
+
+
 # =============================================================================
 # Exports
 # =============================================================================
@@ -526,13 +939,38 @@ __all__ = [
     "AreaConocimiento",
     "Asignatura",
     "Grupo",
+    "EscenarioHorario",
+    "NuevoEscenarioDTO",
+    "DIAS_VALIDOS",
+    "PlantillaFranja",
+    "Franja",
+    "NuevaPlantillaFranjaDTO",
+    "NuevaFranjaDTO",
     "Horario",
     "HorarioInfo",
     "HorarioEstadisticasDTO",
+    "CupoDTO",
     "Logro",
     "NuevaAreaDTO",
     "NuevaAsignaturaDTO",
     "NuevoGrupoDTO",
     "NuevoHorarioDTO",
     "NuevoLogroDTO",
+    "FilaReporteDTO",
+    "ReporteLoteDTO",
+    "ResultadoLoteDTO",
+    # paso_15b
+    "PesosGeneracion",
+    "PESOS_DEFAULT",
+    "DisponibilidadDocente",
+    "ConfigGeneracion",
+    "ESTADOS_CONFIG",
+    "TRANSICIONES_CONFIG",
+    "NuevaDisponibilidadDTO",
+    "NuevaConfigGeneracionDTO",
+    # paso_15c
+    "BloqueGeneradoDTO",
+    "ResultadoGeneracionDTO",
+    # paso_15d
+    "MetricasCalidadDTO",
 ]

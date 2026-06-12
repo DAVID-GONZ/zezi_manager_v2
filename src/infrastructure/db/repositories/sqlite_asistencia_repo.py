@@ -350,4 +350,39 @@ class SqliteAsistenciaRepository(IAsistenciaRepository):
             return [r["estudiante_id"] for r in rows]
 
 
+    def contar_clases_dictadas_docente(self, usuario_id: int, anio: int, mes: int) -> int:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT cd.asignacion_id, cd.fecha
+                    FROM control_diario cd
+                    JOIN asignaciones a ON a.id = cd.asignacion_id
+                    WHERE a.usuario_id = ?
+                      AND strftime('%Y', cd.fecha) = ?
+                      AND strftime('%m', cd.fecha) = ?
+                    GROUP BY cd.asignacion_id, cd.fecha
+                )
+                """,
+                (usuario_id, f"{anio:04d}", f"{mes:02d}"),
+            ).fetchone()
+            return int(row[0])
+
+    def clases_dictadas_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT cd.asignacion_id, COUNT(DISTINCT cd.fecha) AS n
+                FROM control_diario cd
+                JOIN asignaciones a ON a.id = cd.asignacion_id
+                WHERE a.usuario_id = ?
+                  AND strftime('%Y', cd.fecha) = ?
+                  AND strftime('%m', cd.fecha) = ?
+                GROUP BY cd.asignacion_id
+                """,
+                (usuario_id, f"{anio:04d}", f"{mes:02d}"),
+            ).fetchall()
+            return {row[0]: row[1] for row in rows}
+
+
 __all__ = ["SqliteAsistenciaRepository"]

@@ -35,13 +35,9 @@ Uso en login.py:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    # Solo en tiempo de análisis estático.
-    # En runtime usamos el tipo como string-annotation gracias a
-    # `from __future__ import annotations`. No se importa nicegui en runtime.
-    from src.interface.context.session_context import SessionContext
+# `SessionContext` se usa solo en anotaciones de tipo de cadena porque
+# el módulo de infraestructura no debe importar la capa de interfaz.
 
 logger = logging.getLogger("CONTEXT_INIT")
 

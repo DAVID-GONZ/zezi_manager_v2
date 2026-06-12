@@ -209,6 +209,7 @@ def registrar_rutas_ui() -> None:
 
     # ── Académico: Horarios ───────────────────────────────────────────────────
     from src.interface.pages.academico.horarios import horarios_page
+    from src.interface.pages.academico.horario_generar import horario_generar_page
 
     @ui.page("/horarios")
     def pagina_horarios():
@@ -216,6 +217,13 @@ def registrar_rutas_ui() -> None:
             ui.navigate.to("/login")
             return
         horarios_page()
+
+    @ui.page("/academico/generar-horario")
+    def pagina_generar_horario():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        horario_generar_page()
 
     # ── Evaluación: Configuración de categorías ───────────────────────────────
     from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page

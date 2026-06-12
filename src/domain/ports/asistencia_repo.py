@@ -204,3 +204,24 @@ class IAsistenciaRepository(ABC):
         está por debajo de umbral_pct. Usado por AlertaService.
         """
         ...
+
+    # =========================================================================
+    # Lectura — conteo de clases dictadas por docente
+    # =========================================================================
+
+    @abstractmethod
+    def contar_clases_dictadas_docente(self, usuario_id: int, anio: int, mes: int) -> int:
+        """
+        Cuenta el total de clases dictadas por un docente en un mes/año.
+        Cada (asignacion_id, fecha) se cuenta como una clase, independientemente
+        del número de estudiantes registrados ese día.
+        """
+        ...
+
+    @abstractmethod
+    def clases_dictadas_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+        """
+        Retorna el desglose de clases dictadas por asignación para un docente
+        en un mes/año. Formato: {asignacion_id: numero_de_clases}.
+        """
+        ...

@@ -206,6 +206,7 @@ class Icons:
     FILTER       = "filter_list"
     SAVE         = "save"
     CANCEL       = "close"
+    AUTO_MODE    = "auto_mode"
 
     # Estado / feedback
     CHECK        = "check_circle"

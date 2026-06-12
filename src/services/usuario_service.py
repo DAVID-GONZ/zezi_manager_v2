@@ -220,5 +220,10 @@ class UsuarioService:
         """Retorna un usuario por id. Lanza si no existe."""
         return self._get_usuario_o_lanzar(usuario_id)
 
+    def carga_horaria_max(self, usuario_id: int) -> int | None:
+        """Retorna la carga horaria máxima del usuario, o None si no está definida."""
+        usuario = self._get_usuario_o_lanzar(usuario_id)
+        return usuario.carga_horaria_max
+
 
 __all__ = ["UsuarioService"]

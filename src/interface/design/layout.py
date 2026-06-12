@@ -96,6 +96,9 @@ NAV_ITEMS: list[dict] = [
             {"label": "Horarios",      "icon": "calendar_today",
              "ruta": "/horarios",
              "rol":  ["admin", "director", "coordinador", "profesor"]},
+            {"label": "Generar horario", "icon": "auto_awesome_motion",
+             "ruta": "/academico/generar-horario",
+             "rol":  ["admin", "director", "coordinador"]},
         ],
     },
     {
@@ -225,22 +228,18 @@ def _btn_topbar_accion(accion: dict) -> None:
 
 
 def _theme_toggle_btn() -> None:
-    """Botón cíclico de tema: auto → light → dark → auto."""
-    btn = ui.element("button").classes("theme-toggle-btn").props(
-        'data-mode="auto" title="Cambiar tema: auto / claro / oscuro" tabindex="0"'
-    )
+    """Botón cíclico de tema: auto → light → dark → auto.
+    El click handler se agrega vía addEventListener en el JS global (Vue.v-html
+    sanitiza onclick, por eso no se usa inline handler).
+    """
+    btn = ui.element("button").classes("theme-toggle-btn")
+    btn.props('tabindex="0" title="Cambiar tema: auto / claro / oscuro"')
     with btn:
-        ThemeManager.icono("brightness_auto", size=20, clases="theme-icon icon-auto")
-        ThemeManager.icono("light_mode", size=20, clases="theme-icon icon-light")
-        ThemeManager.icono("dark_mode", size=20, clases="theme-icon icon-dark")
-    btn.on(
-        "click",
-        lambda _: ui.run_javascript(
-            "var m=document.documentElement.getAttribute('data-theme')||'auto';"
-            "var next=m==='auto'?'light':(m==='light'?'dark':'auto');"
-            "window.__andesSetTheme(next);"
-        ),
-    )
+        ui.html(
+            '<span class="material-symbols-rounded theme-icon icon-auto">brightness_auto</span>'
+            '<span class="material-symbols-rounded theme-icon icon-light">light_mode</span>'
+            '<span class="material-symbols-rounded theme-icon icon-dark">dark_mode</span>'
+        )
 
 
 def _user_block_topbar(ctx: "SessionContext | None") -> None:
@@ -339,81 +338,37 @@ def _rail(
     logo_url: str | None = None,
 ) -> ui.element:
     """
-    Renderiza el rail icon-only de 60px con flyouts contextuales.
+    Renderiza el rail icon-only de 60px con flyouts pre-renderizados.
 
-    - Cada icono es un rail-item de 44×44px centrado en el rail.
-    - Items sin hijos navegan directamente al hacer click.
-    - Items con hijos abren un flyout flotante a la derecha.
-    - El flyout se cierra con click fuera o ESC (JS global en app_layout).
+    - Hover sobre un ítem con hijos → abre el flyout (transient).
+    - Click → fija el flyout (persiste aunque el mouse se mueva).
+    - JS puro para show/hide: sin roundtrip al servidor en hover.
+    - Click fuera o ESC → cierra todos los flyouts.
     """
+    flyout_groups: list[tuple[int, dict, str]] = []
 
-    # ── Estado del flyout (mutable en closures) ──────────────────────────
-    _flyout_state: dict = {"open_item_id": None}
-    # Holder de un elemento — permite mutar la referencia dentro de closures
-    _fh: list = []  # _fh[0] = flyout_container (se asigna al final)
-
-    def _cerrar_flyout() -> None:
-        if _fh:
-            _fh[0].classes(add="hidden")
-        _flyout_state["open_item_id"] = None
-
-    def _abrir_flyout(item: dict, event) -> None:
-        container = _fh[0]
-        container.clear()
-        with container:
-            ui.label(item["label"]).classes("flyout-header")
-            for child in item["children"]:
-                if not _usuario_puede_ver(child, usuario_rol):
-                    continue
-                is_active = ruta_activa == child.get("ruta")
-                clase = "flyout-item" + (" is-active" if is_active else "")
-                it = ui.element("div").classes(clase)
-                with it:
-                    ThemeManager.icono(child["icon"], size=18, clases="flyout-icon")
-                    ui.label(child["label"]).classes("flyout-label")
-                ruta_child = child["ruta"]
-                it.on(
-                    "click",
-                    lambda e, r=ruta_child: (ui.navigate.to(r), _cerrar_flyout()),
-                )
-        # Posicionar el flyout cerca del icono clicado
-        try:
-            page_y = int(event.args.get("pageY", 80)) if isinstance(event.args, dict) else 80
-        except Exception:
-            page_y = 80
-        container.style(f"top: {max(page_y - 20, 70)}px")
-        container.classes(remove="hidden")
-        _flyout_state["open_item_id"] = id(item)
-
-    def _toggle_flyout(item: dict, event) -> None:
-        if _flyout_state["open_item_id"] == id(item):
-            _cerrar_flyout()
-            return
-        _abrir_flyout(item, event)
-
-    # ── Render del rail ──────────────────────────────────────────────────
+    # ── Rail ────────────────────────────────────────────────────────────
     rail_el = ui.element("nav").classes("andes-rail").props("role=navigation")
 
     with rail_el:
-        # Logo / monograma institucional
+        # Logo / monograma
         with ui.element("div").classes("rail-brand"):
             if logo_url:
                 ui.html(f'<img src="{logo_url}" alt="Logo" class="rail-logo-img">')
             else:
                 ui.html('<span class="rail-monogram">ZM</span>')
 
-        # Ítems de navegación
-        for item in NAV_ITEMS:
+        for idx, item in enumerate(NAV_ITEMS):
             if "divider" in item:
                 if _usuario_puede_ver(item, usuario_rol):
                     ui.element("div").classes("rail-divider")
                 continue
-
             if not _usuario_puede_ver(item, usuario_rol):
                 continue
 
             tiene_hijos = "children" in item
-            es_activo = _calcular_activo(item, ruta_activa)
+            es_activo   = _calcular_activo(item, ruta_activa)
+            flyout_id   = f"flyout-g{idx}"
 
             clase = "rail-item"
             if es_activo:
@@ -424,16 +379,35 @@ def _rail(
             item_el = ui.element("div").classes(clase)
             with item_el:
                 ThemeManager.icono(item["icon"], size=22, clases="rail-icon")
-            item_el.props(f'data-tooltip="{item["label"]}" tabindex="0"')  # T5: keyboard a11y
 
             if tiene_hijos:
-                item_el.on("click", lambda e, it=item: _toggle_flyout(it, e))
+                # JS maneja hover y click — no Python handler para grupos
+                item_el.props(
+                    f'data-flyout="{flyout_id}" data-label="{item["label"]}" tabindex="0"'
+                )
+                flyout_groups.append((idx, item, flyout_id))
             else:
+                # Hoja: Python navega, tooltip CSS en hover
+                item_el.props(f'data-tooltip="{item["label"]}" tabindex="0"')
                 item_el.on("click", lambda e, r=item["ruta"]: ui.navigate.to(r))
 
-    # Flyout container — fuera del rail, usa position:fixed
-    flyout_el = ui.element("div").classes("rail-flyout-container hidden")
-    _fh.append(flyout_el)
+    # ── Flyouts pre-renderizados (position:fixed, fuera del rail) ────────
+    for _idx, item, flyout_id in flyout_groups:
+        flyout_el = ui.element("div").classes("rail-flyout-container hidden")
+        flyout_el.props(f'id="{flyout_id}"')
+        with flyout_el:
+            ui.label(item["label"]).classes("flyout-header")
+            for child in item["children"]:
+                if not _usuario_puede_ver(child, usuario_rol):
+                    continue
+                is_active   = ruta_activa == child.get("ruta")
+                clase_child = "flyout-item" + (" is-active" if is_active else "")
+                it = ui.element("div").classes(clase_child)
+                with it:
+                    ThemeManager.icono(child["icon"], size=18, clases="flyout-icon")
+                    ui.label(child["label"]).classes("flyout-label")
+                ruta_child = child["ruta"]
+                it.on("click", lambda e, r=ruta_child: ui.navigate.to(r))
 
     return rail_el
 
@@ -471,60 +445,138 @@ def app_layout(
 
     logo_url = _get_logo_institucional()
 
-    # JS global: cerrar flyout con click-fuera o ESC (inyectado una vez por carga)
+    # JS global: flyout navigation (hover/pin) + theme init
     ui.add_body_html("""
 <script>
 (function() {
-  if (window.__andesTooltipListeners) return;
-  window.__andesTooltipListeners = true;
-  document.addEventListener('click', function(e) {
-    var flyout = document.querySelector('.rail-flyout-container');
-    var rail   = document.querySelector('.andes-rail');
-    if (!flyout || !rail) return;
-    if (flyout.contains(e.target) || rail.contains(e.target)) return;
-    flyout.classList.add('hidden');
-  });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      var flyout = document.querySelector('.rail-flyout-container');
-      if (flyout) flyout.classList.add('hidden');
+  /* ── Flyout navigation: hover transient, click pin ── */
+  if (!window.__andesNavListeners) {
+    window.__andesNavListeners = true;
+    var pinned = null;
+    var hoverTimer = null;
+
+    function showFlyout(fid, railItem) {
+      var flyout = document.getElementById(fid);
+      if (!flyout) return;
+      var rect = railItem.getBoundingClientRect();
+      flyout.style.top = Math.max(rect.top - 8, 70) + 'px';
+      document.querySelectorAll('.rail-flyout-container').forEach(function(f) {
+        if (f.id !== fid) f.classList.add('hidden');
+      });
+      flyout.classList.remove('hidden');
+      document.querySelectorAll('.rail-item[data-flyout]').forEach(function(ri) {
+        ri.classList.toggle('is-open', ri.getAttribute('data-flyout') === fid);
+      });
     }
-  });
-})();
-</script>
-""")
 
-    ui.add_body_html("""
-<script>
-(function() {
-  if (window.__andesThemeInit) return;
-  window.__andesThemeInit = true;
+    function hideFlyout(fid) {
+      if (pinned === fid) return;
+      var flyout = document.getElementById(fid);
+      if (flyout) flyout.classList.add('hidden');
+      document.querySelectorAll('.rail-item[data-flyout="' + fid + '"]').forEach(function(ri) {
+        ri.classList.remove('is-open');
+      });
+    }
 
-  var saved = localStorage.getItem('andes-theme') || 'auto';
-  if (saved !== 'auto') {
-    document.documentElement.setAttribute('data-theme', saved);
+    function hideAll() {
+      pinned = null;
+      document.querySelectorAll('.rail-flyout-container').forEach(function(f) {
+        f.classList.add('hidden');
+      });
+      document.querySelectorAll('.rail-item[data-flyout]').forEach(function(ri) {
+        ri.classList.remove('is-open');
+      });
+    }
+
+    function setupRailItems() {
+      document.querySelectorAll('.rail-item[data-flyout]').forEach(function(item) {
+        if (item._andesSetup) return;
+        item._andesSetup = true;
+        var fid = item.getAttribute('data-flyout');
+        item.addEventListener('mouseenter', function() {
+          clearTimeout(hoverTimer);
+          showFlyout(fid, item);
+        });
+        item.addEventListener('mouseleave', function() {
+          if (pinned === fid) return;
+          hoverTimer = setTimeout(function() { hideFlyout(fid); }, 200);
+        });
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (pinned === fid) { pinned = null; hideFlyout(fid); }
+          else { showFlyout(fid, item); pinned = fid; }
+        });
+      });
+      document.querySelectorAll('.rail-flyout-container').forEach(function(flyout) {
+        if (flyout._andesSetup) return;
+        flyout._andesSetup = true;
+        flyout.addEventListener('mouseenter', function() { clearTimeout(hoverTimer); });
+        flyout.addEventListener('mouseleave', function() {
+          if (pinned === flyout.id) return;
+          hoverTimer = setTimeout(function() { hideFlyout(flyout.id); }, 200);
+        });
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      var rail = document.querySelector('.andes-rail');
+      var inFlyout = false;
+      document.querySelectorAll('.rail-flyout-container').forEach(function(f) {
+        if (f.contains(e.target)) inFlyout = true;
+      });
+      if (!rail || inFlyout || rail.contains(e.target)) return;
+      hideAll();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') hideAll();
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupRailItems);
+    } else {
+      setupRailItems();
+      setTimeout(setupRailItems, 150);
+    }
   }
 
-  window.__andesSetTheme = function(mode) {
-    localStorage.setItem('andes-theme', mode);
-    if (mode === 'auto') {
-      document.documentElement.removeAttribute('data-theme');
-    } else {
-      document.documentElement.setAttribute('data-theme', mode);
+  /* ── Theme init ── */
+  if (!window.__andesThemeInit) {
+    window.__andesThemeInit = true;
+    var saved = localStorage.getItem('andes-theme') || 'auto';
+    if (saved !== 'auto') {
+      document.documentElement.setAttribute('data-theme', saved);
     }
-    var btn = document.querySelector('.theme-toggle-btn');
-    if (btn) btn.setAttribute('data-mode', mode);
-  };
-
-  var setButtonMode = function() {
-    var btn = document.querySelector('.theme-toggle-btn');
-    if (btn) {
+    window.__andesSetTheme = function(mode) {
+      localStorage.setItem('andes-theme', mode);
+      if (mode === 'auto') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', mode);
+      }
+      var btn = document.querySelector('.theme-toggle-btn');
+      if (btn) btn.setAttribute('data-mode', mode);
+    };
+    /* Attach click handler and sync initial data-mode */
+    var setupThemeBtn = function() {
+      var btn = document.querySelector('.theme-toggle-btn');
+      if (!btn) { setTimeout(setupThemeBtn, 50); return; }
+      if (!btn._themeSetup) {
+        btn._themeSetup = true;
+        btn.addEventListener('click', function() {
+          var m = this.getAttribute('data-mode') || 'auto';
+          var n = m === 'auto' ? 'light' : (m === 'light' ? 'dark' : 'auto');
+          window.__andesSetTheme(n);
+        });
+      }
       btn.setAttribute('data-mode', saved);
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupThemeBtn);
     } else {
-      window.setTimeout(setButtonMode, 50);
+      setupThemeBtn();
+      setTimeout(setupThemeBtn, 150);
     }
-  };
-  setButtonMode();
+  }
 })();
 </script>
 """)

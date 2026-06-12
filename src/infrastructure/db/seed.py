@@ -407,8 +407,12 @@ def _seed_usuarios(
     conn: sqlite3.Connection,
     usuarios: list[tuple],
     hasher: PasswordHasher,
+    carga_horaria_max: int | None = None,
 ) -> dict[str, int]:
-    """Retorna {usuario: id}."""
+    """
+    Retorna {usuario: id}.
+    Si carga_horaria_max se provee, lo actualiza para todos los profesores.
+    """
     usuario_map: dict[str, int] = {}
     for usuario, password, nombre, email, rol in usuarios:
         uid = _get_or_insert(
@@ -421,7 +425,91 @@ def _seed_usuarios(
             (usuario, hasher(password), nombre, email, rol),
         )
         usuario_map[usuario] = uid
+    # Actualizar carga_horaria_max para los profesores si se pide
+    if carga_horaria_max is not None:
+        for usuario, _password, _nombre, _email, rol in usuarios:
+            if rol == "profesor":
+                conn.execute(
+                    "UPDATE usuarios SET carga_horaria_max = ? WHERE usuario = ?",
+                    (carga_horaria_max, usuario),
+                )
     return usuario_map
+
+
+def _seed_escenarios(
+    conn: sqlite3.Connection,
+    anio_id: int,
+) -> dict[str, int]:
+    """
+    Crea 'Horario base' (activo=1) y 'Plan alterno' (activo=0) para el año.
+    Retorna {nombre: id}.
+    """
+    escenarios = [
+        ("Horario base", None, 1),
+        ("Plan alterno", None, 0),
+    ]
+    esc_map: dict[str, int] = {}
+    for nombre, descripcion, activo in escenarios:
+        eid = _get_or_insert(
+            conn,
+            "SELECT id FROM escenarios_horario WHERE anio_id=? AND nombre=?",
+            (anio_id, nombre),
+            """
+            INSERT INTO escenarios_horario (anio_id, nombre, descripcion, activo)
+            VALUES (?, ?, ?, ?)
+            """,
+            (anio_id, nombre, descripcion, activo),
+        )
+        esc_map[nombre] = eid
+    return esc_map
+
+
+def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
+    """
+    Crea la plantilla de rejilla por defecto 'Jornada única' (UNICA, activa,
+    Lunes–Viernes) con 7 franjas (6 lectivas + 1 recreo). Retorna plantilla_id.
+    Idempotente: si la plantilla ya existe, reutiliza su id y no duplica franjas.
+    """
+    pid = _get_or_insert(
+        conn,
+        "SELECT id FROM plantillas_franja WHERE nombre=?", ("Jornada única",),
+        """
+        INSERT INTO plantillas_franja (nombre, jornada, dias_activos, activa)
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            "Jornada única",
+            "UNICA",
+            "Lunes,Martes,Miércoles,Jueves,Viernes",
+            1,
+        ),
+    )
+
+    # Si ya tiene franjas, no volver a sembrarlas (idempotencia).
+    ya = conn.execute(
+        "SELECT COUNT(*) FROM franjas WHERE plantilla_id=?", (pid,)
+    ).fetchone()[0]
+    if ya:
+        return pid
+
+    franjas = [
+        (pid, 1, "07:00", "07:55", "lectiva",  None),
+        (pid, 2, "07:55", "08:50", "lectiva",  None),
+        (pid, 3, "08:50", "09:45", "lectiva",  None),
+        (pid, 4, "09:45", "10:15", "descanso", "Recreo"),
+        (pid, 5, "10:15", "11:10", "lectiva",  None),
+        (pid, 6, "11:10", "12:05", "lectiva",  None),
+        (pid, 7, "12:05", "13:00", "lectiva",  None),
+    ]
+    conn.executemany(
+        """
+        INSERT INTO franjas
+            (plantilla_id, orden, hora_inicio, hora_fin, tipo, etiqueta)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        franjas,
+    )
+    return pid
 
 
 def _seed_grupos(
@@ -518,6 +606,7 @@ def _seed_horarios(
     conn: sqlite3.Connection,
     grupo_map: dict[str, int],
     periodo_ids: list[int],
+    escenario_id: int,
 ) -> int:
     """Asigna horarios para el primer periodo de cada grupo. Retorna conteo."""
     periodo_id = periodo_ids[0]
@@ -539,19 +628,19 @@ def _seed_horarios(
                 break
             asig_id, usuario_id, asignatura_id = asigs[idx]
             existing = conn.execute(
-                "SELECT id FROM horarios WHERE grupo_id=? AND dia_semana=? AND hora_inicio=? AND periodo_id=?",
-                (grupo_id, dia, hora_i, periodo_id),
+                "SELECT id FROM horarios WHERE escenario_id=? AND grupo_id=? AND dia_semana=? AND hora_inicio=?",
+                (escenario_id, grupo_id, dia, hora_i),
             ).fetchone()
             if not existing:
                 conn.execute(
                     """
                     INSERT INTO horarios
                         (grupo_id, asignatura_id, usuario_id, asignacion_id,
-                         periodo_id, dia_semana, hora_inicio, hora_fin, sala)
-                    VALUES (?,?,?,?,?,?,?,?,'Aula')
+                         periodo_id, escenario_id, dia_semana, hora_inicio, hora_fin, sala)
+                    VALUES (?,?,?,?,?,?,?,?,?,'Aula')
                     """,
                     (grupo_id, asignatura_id, usuario_id, asig_id,
-                     periodo_id, dia, hora_i, hora_f),
+                     periodo_id, escenario_id, dia, hora_i, hora_f),
                 )
                 count += 1
     return count
@@ -947,6 +1036,48 @@ def _seed_configuracion_siee(
 
 
 # ---------------------------------------------------------------------------
+# Seeder config_generacion (paso_15b)
+# ---------------------------------------------------------------------------
+
+def _seed_config_generacion(
+    conn: sqlite3.Connection,
+    periodo_id: int,
+    anio_id: int,
+    plantilla_id: int,
+) -> int:
+    """
+    Crea una config_generacion de nombre 'Config inicial' en estado 'borrador'.
+    Idempotente: si ya existe por nombre, no la duplica.
+    Retorna el id creado o existente.
+    """
+    import json as _json
+    existing = conn.execute(
+        "SELECT id FROM config_generacion WHERE nombre = ?", ("Config inicial",)
+    ).fetchone()
+    if existing:
+        return int(existing[0])
+    conn.execute(
+        """
+        INSERT INTO config_generacion
+            (nombre, periodo_id, anio_id, plantilla_id, estado,
+             grupos_json, pesos_json, escenario_destino_id)
+        VALUES (?, ?, ?, ?, 'borrador', '[]', ?, NULL)
+        """,
+        (
+            "Config inicial",
+            periodo_id,
+            anio_id,
+            plantilla_id,
+            _json.dumps({"huecos": 1.0, "distribucion": 1.0, "compactacion": 0.5}),
+        ),
+    )
+    row = conn.execute(
+        "SELECT id FROM config_generacion WHERE nombre = ?", ("Config inicial",)
+    ).fetchone()
+    return int(row[0])
+
+
+# ---------------------------------------------------------------------------
 # API pública
 # ---------------------------------------------------------------------------
 
@@ -1037,7 +1168,7 @@ def seed_dev(
     result = seed_base(conn, anio, hasher)
 
     todos_usuarios = _USUARIOS_BASE + _USUARIOS_DEV
-    result.usuario_ids = _seed_usuarios(conn, todos_usuarios, hasher)
+    result.usuario_ids = _seed_usuarios(conn, todos_usuarios, hasher, carga_horaria_max=22)
 
     result.asignatura_ids = _seed_asignaturas(conn, result.area_ids)
 
@@ -1057,7 +1188,17 @@ def seed_dev(
         _ASIGNACIONES_DEV,
     )
 
-    horarios_count = _seed_horarios(conn, grupo_map, result.periodo_ids)
+    esc_map = _seed_escenarios(conn, result.anio_id)
+    escenario_activo_id = esc_map["Horario base"]
+    horarios_count = _seed_horarios(conn, grupo_map, result.periodo_ids, escenario_activo_id)
+
+    dev_plantilla_id = _seed_plantilla_franjas(conn)
+    _seed_config_generacion(
+        conn,
+        periodo_id=result.periodo_ids[0],
+        anio_id=result.anio_id,
+        plantilla_id=dev_plantilla_id,
+    )
 
     result.estudiante_ids = _seed_estudiantes(
         conn, grupo_map, total_estudiantes, rng
@@ -1166,6 +1307,10 @@ def seed_test(
         [("prof_test", ["MAT_T"])],
     )
 
+    esc_map_test = _seed_escenarios(conn, result.anio_id)
+    escenario_activo_id_test = esc_map_test["Horario base"]
+    _seed_horarios(conn, grupo_map, result.periodo_ids, escenario_activo_id_test)
+
     # 3 estudiantes con datos fijos y predecibles
     est_ids = []
     for i, (nombre, apellido) in enumerate([
@@ -1193,6 +1338,14 @@ def seed_test(
     prof_id = result.usuario_ids["prof_test"]
     n_notas = _seed_notas(conn, actividad_ids, est_ids, prof_id, rng)
 
+    plantilla_id = _seed_plantilla_franjas(conn)
+    _seed_config_generacion(
+        conn,
+        periodo_id=result.periodo_ids[0],
+        anio_id=result.anio_id,
+        plantilla_id=plantilla_id,
+    )
+
     result.counts = {
         "usuarios":    len(result.usuario_ids),
         "grupos":      1,
@@ -1213,4 +1366,5 @@ __all__ = [
     "SeedResult",
     "_fast_hasher",
     "_default_hasher",
+    "_seed_config_generacion",
 ]

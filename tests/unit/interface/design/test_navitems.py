@@ -27,6 +27,7 @@ RUTAS_REQUERIDAS = {
     "/informes/consolidado-asistencia",
     "/informes/estadisticos",
     "/horarios",
+    "/academico/generar-horario",
     "/academico/tablero",
     "/admin/grupos",
     "/admin/asignaturas",

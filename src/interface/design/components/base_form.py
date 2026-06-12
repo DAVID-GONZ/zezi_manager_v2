@@ -105,6 +105,16 @@ def base_form(
                             .classes("andes-input w-full")
                         )
                         
+                    elif tipo == "color":
+                        widget = (
+                            ui.color_input(
+                                label=label_text,
+                                value=campo.get("valor", ""),
+                            )
+                            .classes("andes-input w-full")
+                            .props("outlined")
+                        )
+
                     elif tipo == "readonly":
                         # Se añade la etiqueta descriptiva para no perder contexto
                         ui.label(label_text).classes("text-xs text-grey-6 q-mb-none")

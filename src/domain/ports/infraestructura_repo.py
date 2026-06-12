@@ -29,15 +29,152 @@ from abc import ABC, abstractmethod
 from ..models.infraestructura import (
     AreaConocimiento,
     Asignatura,
+    ConfigGeneracion,
+    DisponibilidadDocente,
+    EscenarioHorario,
+    Franja,
     Grupo,
     Horario,
     HorarioEstadisticasDTO,
     HorarioInfo,
     Logro,
+    PlantillaFranja,
 )
 
 
 class IInfraestructuraRepository(ABC):
+
+    # =========================================================================
+    # Escenarios de horario
+    # =========================================================================
+
+    @abstractmethod
+    def get_escenario(self, escenario_id: int) -> EscenarioHorario | None:
+        """Retorna el escenario con ese id, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def listar_escenarios(self, anio_id: int) -> list[EscenarioHorario]:
+        """Retorna todos los escenarios del año, ordenados por nombre."""
+        ...
+
+    @abstractmethod
+    def get_escenario_activo(self, anio_id: int) -> EscenarioHorario | None:
+        """Retorna el escenario activo del año, o None si no hay ninguno."""
+        ...
+
+    @abstractmethod
+    def crear_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
+        """Inserta un escenario nuevo. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def actualizar_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
+        """Actualiza nombre, descripcion y/o activo de un escenario existente."""
+        ...
+
+    @abstractmethod
+    def activar_escenario(self, escenario_id: int) -> None:
+        """
+        Desactiva todos los escenarios del año y activa el indicado.
+        Operación atómica en una transacción.
+        """
+        ...
+
+    @abstractmethod
+    def eliminar_escenario(self, escenario_id: int) -> bool:
+        """Elimina un escenario. Retorna True si la fila fue afectada."""
+        ...
+
+    @abstractmethod
+    def duplicar_escenario(self, escenario_id: int, nuevo_nombre: str) -> EscenarioHorario:
+        """
+        Crea un nuevo escenario inactivo con el mismo nombre dado
+        y copia todos los bloques horarios del escenario origen.
+        """
+        ...
+
+    @abstractmethod
+    def listar_horario_grupo_escenario(
+        self, grupo_id: int, escenario_id: int
+    ) -> list[HorarioInfo]:
+        """Retorna los bloques horarios de un grupo en un escenario específico."""
+        ...
+
+    @abstractmethod
+    def listar_horario_escenario(self, escenario_id: int) -> list[HorarioInfo]:
+        """Retorna todos los bloques horarios de un escenario."""
+        ...
+
+    # =========================================================================
+    # Plantillas de franja y franjas (rejilla horaria)
+    # =========================================================================
+
+    @abstractmethod
+    def crear_plantilla_franja(self, p: PlantillaFranja) -> PlantillaFranja:
+        """Inserta una plantilla de franja nueva. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def get_plantilla_franja(self, plantilla_id: int) -> PlantillaFranja | None:
+        """Retorna la plantilla con ese id, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def listar_plantillas_franja(self) -> list[PlantillaFranja]:
+        """Retorna todas las plantillas de franja, ordenadas por nombre."""
+        ...
+
+    @abstractmethod
+    def get_plantilla_activa(self, jornada: str) -> PlantillaFranja | None:
+        """Retorna la plantilla activa de la jornada indicada, o None."""
+        ...
+
+    @abstractmethod
+    def actualizar_plantilla_franja(self, p: PlantillaFranja) -> PlantillaFranja:
+        """Actualiza nombre, jornada, dias_activos y/o activa de una plantilla."""
+        ...
+
+    @abstractmethod
+    def activar_plantilla_franja(self, plantilla_id: int) -> None:
+        """
+        Desactiva las demás plantillas de la misma jornada y activa la indicada.
+        Operación atómica en una transacción.
+        """
+        ...
+
+    @abstractmethod
+    def eliminar_plantilla_franja(self, plantilla_id: int) -> bool:
+        """Elimina una plantilla (cascada sobre sus franjas). True si afectó filas."""
+        ...
+
+    @abstractmethod
+    def crear_franja(self, f: Franja) -> Franja:
+        """Inserta una franja nueva. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def listar_franjas(self, plantilla_id: int) -> list[Franja]:
+        """Retorna las franjas de una plantilla, ordenadas por orden."""
+        ...
+
+    @abstractmethod
+    def actualizar_franja(self, f: Franja) -> Franja:
+        """Actualiza los campos de una franja existente."""
+        ...
+
+    @abstractmethod
+    def eliminar_franja(self, franja_id: int) -> bool:
+        """Elimina una franja. Retorna True si la fila fue afectada."""
+        ...
+
+    @abstractmethod
+    def reemplazar_franjas(self, plantilla_id: int, franjas: list[Franja]) -> int:
+        """
+        Reemplaza atómicamente todo el set de franjas de una plantilla
+        (DELETE + INSERT en una transacción). Retorna el número insertadas.
+        """
+        ...
 
     # =========================================================================
     # Áreas de conocimiento
@@ -71,6 +208,14 @@ class IInfraestructuraRepository(ABC):
         """
         Elimina un área. Retorna True si la fila fue afectada.
         La BD rechaza la operación si hay asignaturas vinculadas (FK).
+        """
+        ...
+
+    @abstractmethod
+    def actualizar_color_area(self, area_id: int, color: str | None) -> bool:
+        """
+        Actualiza solo el color (hex) de un área. None borra el color.
+        Retorna True si la fila fue afectada.
         """
         ...
 
@@ -239,6 +384,41 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
+    def existe_cruce(
+        self,
+        escenario_id: int,
+        dia_semana: str,
+        hora_inicio: str,
+        hora_fin: str,
+        *,
+        usuario_id: int | None = None,
+        grupo_id: int | None = None,
+        sala: str | None = None,
+        excluir_horario_id: int | None = None,
+    ) -> bool:
+        """
+        True si existe algún bloque en el escenario indicado que se solapa
+        con el rango hora_inicio–hora_fin en ese dia_semana.
+        Permite filtrar por docente, grupo o sala (o cualquier combinación).
+        """
+        ...
+
+    @abstractmethod
+    def contar_bloques_asignacion(self, escenario_id: int, asignacion_id: int) -> int:
+        """Retorna el número de bloques horarios de una asignación en un escenario."""
+        ...
+
+    @abstractmethod
+    def contar_bloques_docente(self, escenario_id: int, usuario_id: int) -> int:
+        """Retorna el número de bloques horarios de un docente en un escenario."""
+        ...
+
+    @abstractmethod
+    def crear_bloques_masivo(self, horarios: list) -> int:
+        """Inserta múltiples bloques horarios en una sola operación. Retorna el número creados."""
+        ...
+
+    @abstractmethod
     def eliminar_horarios_por_asignacion(self, asignacion_id: int) -> int:
         """
         Elimina todos los bloques horarios de una asignación.
@@ -282,6 +462,91 @@ class IInfraestructuraRepository(ABC):
     @abstractmethod
     def eliminar_logro(self, logro_id: int) -> bool:
         """Elimina un logro. Retorna True si la fila fue afectada."""
+        ...
+
+    # =========================================================================
+    # Disponibilidad docente (paso_15b)
+    # =========================================================================
+
+    @abstractmethod
+    def upsert_disponibilidad(self, d: DisponibilidadDocente) -> DisponibilidadDocente:
+        """Inserta o reemplaza la disponibilidad de un docente en una franja."""
+        ...
+
+    @abstractmethod
+    def listar_disponibilidad_docente(self, usuario_id: int) -> list[DisponibilidadDocente]:
+        """Retorna todas las restricciones de disponibilidad de un docente."""
+        ...
+
+    @abstractmethod
+    def es_disponible(self, usuario_id: int, dia: str, franja_orden: int) -> bool:
+        """
+        Retorna True si el docente está disponible en esa franja.
+        Si no existe fila → True (por defecto disponible).
+        """
+        ...
+
+    @abstractmethod
+    def limpiar_disponibilidad_docente(self, usuario_id: int) -> int:
+        """Borra todas las restricciones de un docente. Retorna filas borradas."""
+        ...
+
+    @abstractmethod
+    def cargar_disponibilidad_lote(self, usuario_id: int, slots: list[dict]) -> int:
+        """
+        Carga en bloque la no-disponibilidad de un docente.
+        Cada dict tiene 'dia_semana' y 'franja_orden'. Marca disponible=0.
+        Retorna cantidad de filas insertadas/reemplazadas.
+        """
+        ...
+
+    # =========================================================================
+    # Config generación (paso_15b)
+    # =========================================================================
+
+    @abstractmethod
+    def crear_config_generacion(self, c: ConfigGeneracion) -> ConfigGeneracion:
+        """Inserta una config de generación nueva. Retorna con id asignado."""
+        ...
+
+    @abstractmethod
+    def get_config_generacion(self, config_id: int) -> ConfigGeneracion | None:
+        """Retorna la config con ese id, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def listar_configs_generacion(
+        self, periodo_id: int | None = None
+    ) -> list[ConfigGeneracion]:
+        """Retorna configs, opcionalmente filtradas por periodo."""
+        ...
+
+    @abstractmethod
+    def actualizar_config_generacion(self, c: ConfigGeneracion) -> ConfigGeneracion:
+        """Actualiza los campos de una config existente."""
+        ...
+
+    @abstractmethod
+    def eliminar_config_generacion(self, config_id: int) -> bool:
+        """Elimina una config. Retorna True si la fila fue afectada."""
+        ...
+
+    @abstractmethod
+    def cambiar_estado_config(
+        self, config_id: int, nuevo_estado: str
+    ) -> ConfigGeneracion:
+        """
+        Cambia el estado de una config validando la transición.
+        Lanza ValueError si la transición no está permitida.
+        """
+        ...
+
+    @abstractmethod
+    def duplicar_config_generacion(self, config_id: int) -> ConfigGeneracion:
+        """
+        Crea una copia de la config con nombre '<nombre> (copia)',
+        estado 'borrador' y escenario_destino_id NULL.
+        """
         ...
 
 

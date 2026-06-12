@@ -5,6 +5,7 @@ from .page_header import page_header
 from .stat_card import stat_card
 from .data_table import data_table
 from .context_selector import context_chip, abrir_selector
+from .context_bar import context_bar
 from .performance_indicator import performance_indicator
 from .base_form import base_form
 from .form_dialog import form_dialog
