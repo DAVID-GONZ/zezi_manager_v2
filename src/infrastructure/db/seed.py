@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Callable
 
+from src.domain.scheduling import colorear_aristas_bipartito
+
 logger = logging.getLogger("DB.SEED")
 
 # ---------------------------------------------------------------------------
@@ -114,50 +116,57 @@ _APELLIDOS = [
     "Moreno", "Jiménez", "Ruiz", "Hernández", "Torres",
 ]
 
+# (nombre, codigo, color_hex)
 _AREAS = [
-    ("Ciencias Naturales y Educación Ambiental", "CNAT"),
-    ("Ciencias Sociales",                        "CSOC"),
-    ("Educación Artística y Cultural",            "ARTE"),
-    ("Educación Ética y en Valores Humanos",      "ETIC"),
-    ("Educación Física, Recreación y Deportes",   "EFIS"),
-    ("Educación Religiosa",                       "RELI"),
-    ("Humanidades, Lengua Castellana e Idiomas",  "HUMA"),
-    ("Matemáticas",                               "MATE"),
-    ("Tecnología e Informática",                  "TINF"),
-    ("Filosofía",                                 "FILO"),
+    ("Ciencias Naturales y Educación Ambiental", "CNAT", "#2E7D32"),
+    ("Ciencias Sociales",                        "CSOC", "#C62828"),
+    ("Educación Artística y Cultural",            "ARTE", "#AD1457"),
+    ("Educación Ética y en Valores Humanos",      "ETIC", "#6A1B9A"),
+    ("Educación Física, Recreación y Deportes",   "EFIS", "#1565C0"),
+    ("Educación Religiosa",                       "RELI", "#4527A0"),
+    ("Humanidades, Lengua Castellana e Idiomas",  "HUMA", "#EF6C00"),
+    ("Matemáticas",                               "MATE", "#00838F"),
+    ("Tecnología e Informática",                  "TINF", "#37474F"),
+    ("Filosofía",                                 "FILO", "#5D4037"),
 ]
 
 # (nombre, codigo, area_nombre, horas_semanales)
 _ASIGNATURAS = [
-    ("Ciencias Naturales",   "CNT", "Ciencias Naturales y Educación Ambiental", 3),
+    ("Ciencias Naturales",   "CNT", "Ciencias Naturales y Educación Ambiental", 4),
     ("Biología",             "BIO", "Ciencias Naturales y Educación Ambiental", 3),
     ("Química",              "QUI", "Ciencias Naturales y Educación Ambiental", 3),
     ("Física",               "FIS", "Ciencias Naturales y Educación Ambiental", 3),
-    ("Ciencias Sociales",    "CSO", "Ciencias Sociales",                        3),
+    ("Ciencias Sociales",    "CSO", "Ciencias Sociales",                        4),
     ("Historia",             "HIS", "Ciencias Sociales",                        2),
     ("Geografía",            "GEO", "Ciencias Sociales",                        2),
     ("Artística",            "ART", "Educación Artística y Cultural",            2),
     ("Ética",                "ETI", "Educación Ética y en Valores Humanos",      1),
     ("Educación Física",     "EDF", "Educación Física, Recreación y Deportes",  2),
     ("Religión",             "REL", "Educación Religiosa",                       1),
-    ("Lengua Castellana",    "LEN", "Humanidades, Lengua Castellana e Idiomas", 4),
+    ("Lengua Castellana",    "LEN", "Humanidades, Lengua Castellana e Idiomas", 5),
     ("Inglés",               "ING", "Humanidades, Lengua Castellana e Idiomas", 3),
     ("Francés",              "FRA", "Humanidades, Lengua Castellana e Idiomas", 2),
-    ("Matemáticas",          "MAT", "Matemáticas",                              4),
+    ("Matemáticas",          "MAT", "Matemáticas",                              5),
     ("Estadística",          "EST", "Matemáticas",                              2),
     ("Tecnología",           "TEC", "Tecnología e Informática",                 2),
     ("Informática",          "INF", "Tecnología e Informática",                 2),
-    ("Filosofía",            "FIL", "Filosofía",                                2),
+    ("Filosofía",            "FIL", "Filosofía",                                1),
 ]
 
 # (codigo, nombre, grado, jornada, capacidad)
 _GRUPOS_DEV = [
-    ("601", "Sexto A",   6,  "AM", 35),
-    ("701", "Séptimo A", 7,  "AM", 35),
-    ("801", "Octavo A",  8,  "AM", 35),
-    ("901", "Noveno A",  9,  "AM", 40),
-    ("1001","Décimo A",  10, "AM", 40),
-    ("1101","Once A",    11, "AM", 40),
+    ("601",  "Sexto A",    6,  "UNICA", 40),
+    ("602",  "Sexto B",    6,  "UNICA", 40),
+    ("701",  "Séptimo A",  7,  "UNICA", 40),
+    ("702",  "Séptimo B",  7,  "UNICA", 40),
+    ("801",  "Octavo A",   8,  "UNICA", 40),
+    ("802",  "Octavo B",   8,  "UNICA", 40),
+    ("901",  "Noveno A",   9,  "UNICA", 40),
+    ("902",  "Noveno B",   9,  "UNICA", 40),
+    ("1001", "Décimo A",   10, "UNICA", 40),
+    ("1002", "Décimo B",   10, "UNICA", 40),
+    ("1101", "Once A",     11, "UNICA", 40),
+    ("1102", "Once B",     11, "UNICA", 40),
 ]
 
 # (usuario, password, nombre_completo, email, rol)
@@ -166,14 +175,25 @@ _USUARIOS_BASE = [
 ]
 
 _USUARIOS_DEV = [
-    ("director",    "Director2025*", "María Elena Directora",        "director@zeci.edu.co",    "director"),
-    ("coordinador", "Coord2025*",    "Jorge Iván Coordinador",       "coordinador@zeci.edu.co", "coordinador"),
-    ("lopez",       "Lopez2025*",    "Carlos López García",          "c.lopez@zeci.edu.co",     "profesor"),
-    ("garcia",      "Garcia2025*",   "Ana García Pérez",             "a.garcia@zeci.edu.co",    "profesor"),
-    ("martin",      "Martin2025*",   "Juan Martín Ruiz",             "j.martin@zeci.edu.co",    "profesor"),
-    ("rodriguez",   "Rodriguez2025*","Sofía Rodríguez Torres",       "s.rodriguez@zeci.edu.co", "profesor"),
-    ("gomez",       "Gomez2025*",    "Pedro Gómez Vargas",           "p.gomez@zeci.edu.co",     "profesor"),
-    ("torres",      "Torres2025*",   "Andrea Torres López",          "a.torres@zeci.edu.co",    "profesor"),
+    ("director",    "Director2025*", "María Elena Directora",   "director@zeci.edu.co",    "director"),
+    ("coordinador", "Coord2025*",    "Jorge Iván Coordinador",  "coordinador@zeci.edu.co", "coordinador"),
+    ("rgomez",      "Pass2025*",     "Ricardo Gómez Ríos",      "rgomez@zeci.edu.co",      "profesor"),
+    ("cmoreno",     "Pass2025*",     "Claudia Moreno Díaz",     "cmoreno@zeci.edu.co",     "profesor"),
+    ("jvargas",     "Pass2025*",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
+    ("amartinez",   "Pass2025*",     "Ana Martínez Soto",       "amartinez@zeci.edu.co",   "profesor"),
+    ("pjimenez",    "Pass2025*",     "Paula Jiménez Lara",      "pjimenez@zeci.edu.co",    "profesor"),
+    ("dortiz",      "Pass2025*",     "Diego Ortiz Cano",        "dortiz@zeci.edu.co",      "profesor"),
+    ("lcastro",     "Pass2025*",     "Laura Castro Mejía",      "lcastro@zeci.edu.co",     "profesor"),
+    ("fherrera",    "Pass2025*",     "Felipe Herrera Gil",      "fherrera@zeci.edu.co",    "profesor"),
+    ("mrojas",      "Pass2025*",     "Marcela Rojas Niño",      "mrojas@zeci.edu.co",      "profesor"),
+    ("gsalazar",    "Pass2025*",     "Gloria Salazar Ruiz",     "gsalazar@zeci.edu.co",    "profesor"),
+    ("hmedina",     "Pass2025*",     "Héctor Medina Pardo",     "hmedina@zeci.edu.co",     "profesor"),
+    ("swhite",      "Pass2025*",     "Sarah White Jones",       "swhite@zeci.edu.co",      "profesor"),
+    ("ablack",      "Pass2025*",     "Andrés Black Mora",       "ablack@zeci.edu.co",      "profesor"),
+    ("nrivera",     "Pass2025*",     "Natalia Rivera Lozano",   "nrivera@zeci.edu.co",     "profesor"),
+    ("ocastano",    "Pass2025*",     "Oscar Castaño Vélez",     "ocastano@zeci.edu.co",    "profesor"),
+    ("vmolina",     "Pass2025*",     "Valentina Molina Cruz",   "vmolina@zeci.edu.co",     "profesor"),
+    ("tbeltran",    "Pass2025*",     "Tomás Beltrán Acosta",    "tbeltran@zeci.edu.co",    "profesor"),
 ]
 
 # (profesor_usuario, [codigos_asignatura])
@@ -184,6 +204,30 @@ _ASIGNACIONES_DEV = [
     ("rodriguez",  ["ING", "FRA"]),
     ("gomez",      ["EDF", "ETI"]),
     ("torres",     ["TEC", "INF", "ART"]),
+]
+
+# Plan docente determinista para seed_dev.
+# (usuario, carga_horaria_max, [(codigo_asignatura, [codigos_grupo])])
+# Verificado: 16 docentes a 22h + 1 a 8h = 360h; cada grupo suma 30h;
+# cada (grupo, asignatura) aparece UNA sola vez.
+_PLAN_DOCENTE_DEV = [
+    ("rgomez",   22, [("MAT", ["601", "602", "701", "702"]), ("EDF", ["601"])]),
+    ("cmoreno",  22, [("MAT", ["801", "802", "901", "902"]), ("EDF", ["602"])]),
+    ("jvargas",  22, [("MAT", ["1001", "1002", "1101", "1102"]), ("EDF", ["701"])]),
+    ("amartinez",22, [("LEN", ["601", "602", "701", "702"]), ("EDF", ["702"])]),
+    ("pjimenez", 22, [("LEN", ["801", "802", "901", "902"]), ("EDF", ["801"])]),
+    ("dortiz",   22, [("LEN", ["1001", "1002", "1101", "1102"]), ("EDF", ["802"])]),
+    ("lcastro",  22, [("CNT", ["601", "602", "701", "702", "801"]), ("ETI", ["601", "602"])]),
+    ("fherrera", 22, [("CNT", ["802", "901", "902", "1001", "1002"]), ("ETI", ["701", "702"])]),
+    ("mrojas",    8, [("CNT", ["1101", "1102"])]),
+    ("gsalazar", 22, [("CSO", ["601", "602", "701", "702", "801"]), ("REL", ["601", "602"])]),
+    ("hmedina",  22, [("CSO", ["802", "901", "902", "1001", "1002"]), ("REL", ["701", "702"])]),
+    ("swhite",   22, [("ING", ["601", "602", "701", "702", "801", "802", "901"]), ("ETI", ["801"])]),
+    ("ablack",   22, [("ING", ["902", "1001", "1002", "1101", "1102"]), ("ART", ["601", "602", "701"]), ("ETI", ["802"])]),
+    ("nrivera",  22, [("ART", ["702", "801", "802", "901", "902"]), ("TEC", ["601", "602", "701", "702", "801"]), ("ETI", ["901", "902"])]),
+    ("ocastano", 22, [("ART", ["1001", "1002", "1101", "1102"]), ("TEC", ["802", "901", "902", "1001"]), ("EDF", ["901", "902"]), ("ETI", ["1001", "1002"])]),
+    ("vmolina",  22, [("TEC", ["1002", "1101", "1102"]), ("EDF", ["1001", "1002"]), ("CSO", ["1101"]), ("REL", ["801", "802", "901", "902"]), ("FIL", ["601", "602", "701", "702"])]),
+    ("tbeltran", 22, [("EDF", ["1101", "1102"]), ("CSO", ["1102"]), ("REL", ["1001", "1002", "1101", "1102"]), ("FIL", ["801", "802", "901", "902", "1001", "1002", "1101", "1102"]), ("ETI", ["1101", "1102"])]),
 ]
 
 # Niveles de desempeño según modelo típico del Decreto 1290
@@ -228,6 +272,15 @@ _HORARIOS_BASE = [
     ("Jueves",    "07:55", "08:50"),
     ("Viernes",   "07:00", "07:55"),
     ("Viernes",   "07:55", "08:50"),
+]
+
+# Días y franjas lectivas para el constructor determinista del horario base
+# completo de seed_dev. Las franjas coinciden con la plantilla "Jornada única"
+# (órdenes lectivos 1,2,3,5,6,7 — el 4 es recreo).
+_DIAS_LECTIVOS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+_FRANJAS_LECTIVAS_DEV = [
+    (1, "07:00", "07:55"), (2, "07:55", "08:50"), (3, "08:50", "09:45"),
+    (5, "10:15", "11:10"), (6, "11:10", "12:05"), (7, "12:05", "13:00"),
 ]
 
 
@@ -372,12 +425,12 @@ def _seed_alertas_config(conn: sqlite3.Connection, anio_id: int) -> None:
 def _seed_areas(conn: sqlite3.Connection) -> dict[str, int]:
     """Retorna {nombre_area: id}."""
     area_map: dict[str, int] = {}
-    for nombre, codigo in _AREAS:
+    for nombre, codigo, color in _AREAS:
         aid = _get_or_insert(
             conn,
             "SELECT id FROM areas_conocimiento WHERE nombre=?", (nombre,),
-            "INSERT INTO areas_conocimiento (nombre, codigo) VALUES (?, ?)",
-            (nombre, codigo),
+            "INSERT INTO areas_conocimiento (nombre, codigo, color) VALUES (?, ?, ?)",
+            (nombre, codigo, color),
         )
         area_map[nombre] = aid
     return area_map
@@ -643,6 +696,163 @@ def _seed_horarios(
                      periodo_id, escenario_id, dia, hora_i, hora_f),
                 )
                 count += 1
+    return count
+
+
+def _seed_asignaciones_especificas(
+    conn: sqlite3.Connection,
+    usuario_map: dict[str, int],
+    asig_map: dict[str, int],
+    grupo_map: dict[str, int],
+    periodo_ids: list[int],
+    plan: list[tuple],
+) -> list[int]:
+    """
+    Crea asignaciones a partir de un plan docente explícito.
+
+    Plan: lista de (usuario, carga_horaria_max, [(codigo_asignatura, [codigos_grupo])]).
+    Para cada periodo, inserta UNA asignación por cada (usuario, asignatura, grupo).
+    Idempotente vía _get_or_insert sobre (usuario_id, asignatura_id, grupo_id, periodo_id).
+    Retorna la lista de ids creados/existentes.
+    """
+    ids: list[int] = []
+    for usuario, _carga, materias in plan:
+        prof_id = usuario_map.get(usuario)
+        if not prof_id:
+            continue
+        for codigo, grupos in materias:
+            asignatura_id = asig_map.get(codigo)
+            if not asignatura_id:
+                continue
+            for codigo_grupo in grupos:
+                grupo_id = grupo_map.get(codigo_grupo)
+                if not grupo_id:
+                    continue
+                for periodo_id in periodo_ids:
+                    aid = _get_or_insert(
+                        conn,
+                        """
+                        SELECT id FROM asignaciones
+                        WHERE usuario_id=? AND asignatura_id=? AND grupo_id=? AND periodo_id=?
+                        """,
+                        (prof_id, asignatura_id, grupo_id, periodo_id),
+                        """
+                        INSERT INTO asignaciones
+                            (grupo_id, asignatura_id, usuario_id, periodo_id, activo)
+                        VALUES (?, ?, ?, ?, 1)
+                        """,
+                        (grupo_id, asignatura_id, prof_id, periodo_id),
+                    )
+                    ids.append(aid)
+    return ids
+
+
+def _seed_horarios_completo(
+    conn: sqlite3.Connection,
+    periodo_id: int,
+    escenario_id: int,
+) -> int:
+    """
+    Construye un horario base COMPLETO y sin choques que llena las 30 franjas
+    (5 días × 6 franjas lectivas) de cada grupo en el escenario dado.
+
+    Determinista: usa backtracking (DFS) con heurística MRV sobre las lecciones
+    derivadas de las asignaciones del periodo. La instancia es factible por
+    construcción (cada grupo suma 30h, ningún docente excede 30h).
+
+    Idempotente: si ya hay filas para el escenario, retorna 0 sin hacer nada.
+    Retorna el número de filas insertadas.
+    """
+    # 1. Idempotencia
+    ya = conn.execute(
+        "SELECT COUNT(*) FROM horarios WHERE escenario_id=?", (escenario_id,)
+    ).fetchone()[0]
+    if ya:
+        return 0
+
+    # 2. Cargar asignaciones del periodo con sus horas semanales
+    asignaciones = conn.execute(
+        """
+        SELECT a.id, a.grupo_id, a.usuario_id, a.asignatura_id, s.horas_semanales
+        FROM asignaciones a
+        JOIN asignaturas s ON s.id = a.asignatura_id
+        WHERE a.periodo_id = ?
+        """,
+        (periodo_id,),
+    ).fetchall()
+
+    # 3. Expandir cada asignación en `horas_semanales` lecciones
+    #    Cada lección: (asignacion_id, grupo_id, usuario_id, asignatura_id)
+    lecciones: list[tuple[int, int, int, int]] = []
+    for asig_id, grupo_id, usuario_id, asignatura_id, horas in asignaciones:
+        for _ in range(int(horas or 0)):
+            lecciones.append((asig_id, grupo_id, usuario_id, asignatura_id))
+
+    if not lecciones:
+        return 0
+
+    # 4. Slots disponibles (30 = 5 días × 6 franjas lectivas)
+    slots = [
+        (dia, orden, hi, hf)
+        for dia in _DIAS_LECTIVOS
+        for (orden, hi, hf) in _FRANJAS_LECTIVAS_DEV
+    ]
+
+    n = len(lecciones)
+    n_slots = len(slots)
+
+    # 5. Asignación de slot (color) por lección mediante coloreo propio de
+    #    aristas del grafo bipartito grupo<->docente.
+    #
+    #    Cada lección es una arista entre su grupo y su docente. Por construcción
+    #    todo grupo demanda exactamente 30 lecciones y todo docente <= 30, de modo
+    #    que el grado máximo del grafo es 30 = n_slots. El teorema de König
+    #    garantiza un coloreo propio de aristas con exactamente Δ colores.
+    #
+    #    Algoritmo (determinista y polinómico): se regulariza el grafo a uno
+    #    n_slots-regular añadiendo nodos y aristas "ficticias", y se descompone
+    #    en n_slots emparejamientos PERFECTOS (uno por slot) vía caminos
+    #    aumentantes de Kuhn. Las aristas reales de cada emparejamiento reciben
+    #    el color (slot) correspondiente. Es exacto: siempre coloca las n
+    #    lecciones sin choques de grupo ni de docente.
+    asignacion_slot: list[tuple | None] = [None] * n
+    color_de = colorear_aristas_bipartito(
+        [(grupo_id, usuario_id) for (_aid, grupo_id, usuario_id, _sid) in lecciones],
+        n_slots,
+    )
+    for i, color in enumerate(color_de):
+        if color is not None:
+            asignacion_slot[i] = slots[color]
+
+    colocadas = sum(1 for s in asignacion_slot if s is not None)
+    if colocadas != n:
+        raise RuntimeError(
+            f"_seed_horarios_completo: no se pudo construir el horario completo "
+            f"(colocadas={colocadas}, total={n})"
+        )
+
+    # 7. Insertar las lecciones colocadas
+    count = 0
+    for (asig_id, grupo_id, usuario_id, asignatura_id), slot in zip(
+        lecciones, asignacion_slot
+    ):
+        dia, _orden, hi, hf = slot
+        conn.execute(
+            """
+            INSERT INTO horarios
+                (grupo_id, asignatura_id, usuario_id, asignacion_id,
+                 periodo_id, escenario_id, dia_semana, hora_inicio, hora_fin, sala)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Aula')
+            """,
+            (grupo_id, asignatura_id, usuario_id, asig_id,
+             periodo_id, escenario_id, dia, hi, hf),
+        )
+        count += 1
+
+    # 8. Verificación final
+    assert count == len(lecciones), (
+        f"insertadas={count} != lecciones={len(lecciones)}"
+    )
     return count
 
 
@@ -1147,7 +1357,7 @@ def seed_dev(
     conn: sqlite3.Connection,
     anio: int | None = None,
     hasher: PasswordHasher = _default_hasher,
-    total_estudiantes: int = 60,
+    total_estudiantes: int = 336,
     seed_random: int | None = None,
 ) -> SeedResult:
     """
@@ -1170,6 +1380,9 @@ def seed_dev(
     todos_usuarios = _USUARIOS_BASE + _USUARIOS_DEV
     result.usuario_ids = _seed_usuarios(conn, todos_usuarios, hasher, carga_horaria_max=22)
 
+    # Ajuste de carga horaria específico del plan: mrojas trabaja media jornada.
+    conn.execute("UPDATE usuarios SET carga_horaria_max=8 WHERE usuario='mrojas'")
+
     result.asignatura_ids = _seed_asignaturas(conn, result.area_ids)
 
     grupo_map = _seed_grupos(conn, _GRUPOS_DEV)
@@ -1179,18 +1392,20 @@ def seed_dev(
         conn, result.anio_id, anio or __import__("datetime").datetime.now().year
     )
 
-    result.asignacion_ids = _seed_asignaciones(
+    result.asignacion_ids = _seed_asignaciones_especificas(
         conn,
         result.usuario_ids,
         result.asignatura_ids,
         grupo_map,
         result.periodo_ids,
-        _ASIGNACIONES_DEV,
+        _PLAN_DOCENTE_DEV,
     )
 
     esc_map = _seed_escenarios(conn, result.anio_id)
     escenario_activo_id = esc_map["Horario base"]
-    horarios_count = _seed_horarios(conn, grupo_map, result.periodo_ids, escenario_activo_id)
+    horarios_count = _seed_horarios_completo(
+        conn, result.periodo_ids[0], escenario_activo_id
+    )
 
     dev_plantilla_id = _seed_plantilla_franjas(conn)
     _seed_config_generacion(
@@ -1210,7 +1425,7 @@ def seed_dev(
         conn, result.asignacion_ids, result.periodo_ids
     )
 
-    prof_id = result.usuario_ids.get("lopez", 1)
+    prof_id = result.usuario_ids.get("rgomez", 1)
     n_notas = _seed_notas(
         conn, actividad_ids, result.estudiante_ids, prof_id, rng
     )

@@ -9,6 +9,7 @@ import pytest
 from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
     SqliteInfraestructuraRepository,
 )
+from src.services.infraestructura_service import InfraestructuraService
 from src.domain.models.infraestructura import (
     DisponibilidadDocente,
     ConfigGeneracion,
@@ -22,6 +23,10 @@ from src.domain.models.infraestructura import (
 
 def make_repo(db_conn):
     return SqliteInfraestructuraRepository(conn=db_conn)
+
+
+def make_service(db_conn):
+    return InfraestructuraService(repo=make_repo(db_conn))
 
 
 # =============================================================================
@@ -245,3 +250,30 @@ class TestConfigGeneracion:
         assert leida.pesos.huecos == 0.5
         assert leida.pesos.distribucion == 1.5
         assert leida.pesos.compactacion == 0.25
+
+    def test_actualizar_pesos_como_dict_no_lanza_y_persiste(
+        self, db_conn, seed_result
+    ):
+        # Regresión: la página "Generar horario" pasa pesos como dict crudo.
+        # actualizar_config_generacion debe envolverlo en PesosGeneracion antes
+        # del model_copy para que el repo pueda serializarlo (c.pesos.model_dump()).
+        service = make_service(db_conn)
+        plantilla_id = db_conn.execute(
+            "SELECT id FROM plantillas_franja LIMIT 1"
+        ).fetchone()[0]
+        creada = service.crear_config_generacion(
+            nombre="Config pesos dict",
+            periodo_id=seed_result.periodo_ids[0],
+            anio_id=seed_result.anio_id,
+            plantilla_id=plantilla_id,
+        )
+        # No debe lanzar AttributeError al pasar pesos como dict.
+        service.actualizar_config_generacion(
+            creada.id,
+            pesos={"huecos": 1.5, "distribucion": 0.5, "compactacion": 0.2},
+        )
+        leida = service.get_config_generacion(creada.id)
+        assert isinstance(leida.pesos, PesosGeneracion)
+        assert leida.pesos.huecos == 1.5
+        assert leida.pesos.distribucion == 0.5
+        assert leida.pesos.compactacion == 0.2

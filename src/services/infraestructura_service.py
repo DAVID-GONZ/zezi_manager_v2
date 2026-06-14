@@ -128,6 +128,9 @@ class InfraestructuraService:
             franjas.append(dto.to_franja())
         return self._repo.reemplazar_franjas(plantilla_id, franjas)
 
+    def listar_franjas(self, plantilla_id: int) -> list[Franja]:
+        return self._repo.listar_franjas(plantilla_id)
+
     def activar_plantilla(self, plantilla_id: int) -> None:
         return self._repo.activar_plantilla_franja(plantilla_id)
 
@@ -282,6 +285,9 @@ class InfraestructuraService:
         config = self._repo.get_config_generacion(config_id)
         if config is None:
             raise ValueError(f"Config {config_id} no existe.")
+        if "pesos" in campos and isinstance(campos["pesos"], dict):
+            from src.domain.models.infraestructura import PesosGeneracion
+            campos = {**campos, "pesos": PesosGeneracion(**campos["pesos"])}
         updated = config.model_copy(update=campos)
         return self._repo.actualizar_config_generacion(updated)
 

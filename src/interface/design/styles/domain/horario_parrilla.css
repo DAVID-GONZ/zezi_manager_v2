@@ -4,7 +4,7 @@
    Grid días × franjas, color-coding por área de conocimiento y
    estados de celda (hueco / conflicto / fijado).
    Los pasteles de área viven AQUÍ (no en la página) para no violar
-   check_design (hex prohibido fuera de _EC_*/tokens en páginas).
+   check_design (hex prohibido fuera de _EC_ y tokens en paginas).
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Contenedor de la parrilla ──────────────────────────────── */
@@ -17,6 +17,12 @@
   background: var(--color-surface);
 }
 
+/* ── Contenedor con scroll (para encabezados sticky) ────────── */
+.parrilla-scroll {
+  max-height: 70vh;
+  overflow: auto;
+}
+
 /* ── Encabezados (esquina + días) ───────────────────────────── */
 .parrilla-encabezado {
   padding: var(--space-sm) var(--space-md);
@@ -27,6 +33,18 @@
   font-weight: 600;
   color: var(--color-text-primary);
   text-align: center;
+  /* Fila de días fija al hacer scroll vertical */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Esquina superior izquierda: sticky en ambos ejes */
+.parrilla-esquina {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
 }
 
 /* ── Columna de franjas (eje vertical) ──────────────────────── */
@@ -39,11 +57,29 @@
   font-weight: 500;
   color: var(--color-text-secondary);
   white-space: nowrap;
+  /* Columna de horas fija al hacer scroll horizontal */
+  position: sticky;
+  left: 0;
+  z-index: 1;
 }
 
 .parrilla-franja-nolectiva {
   opacity: 0.55;
   font-style: italic;
+}
+
+/* Celda de una franja NO lectiva (recreo/descanso): texto tenue centrado */
+.parrilla-nolectiva-celda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parrilla-nolectiva-texto {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
 }
 
 /* ── Celda base ─────────────────────────────────────────────── */
@@ -54,8 +90,22 @@
   padding: var(--space-xs) var(--space-sm);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
+  /* El color de área se aplica como ACENTO en el borde izquierdo,
+     no como fondo saturado, para que el texto sea siempre legible. */
+  border-left: 4px solid transparent;
+  background: var(--color-surface);
   font-size: 12px;
   color: var(--color-text-primary);
+}
+
+/* Celda clicable (edición integrada) */
+.parrilla-celda-click {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.parrilla-celda-click:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
 }
 
 .parrilla-celda-titulo {
@@ -136,19 +186,50 @@
 
 /* ═══════════════════════════════════════════════════════════════
    Paleta de fallback por área — "Aula Serena"
-   10 pasteles desaturados con texto oscuro legible.
+   10 acentos desaturados. Se usan de dos formas:
+     • como ACENTO en el borde izquierdo de la celda (diseño nuevo);
+     • como fondo del swatch de la leyenda.
    Se aplica cuando el área no define color propio.
    ═══════════════════════════════════════════════════════════════ */
-.parrilla-area-0 { background: #E9EEF6; color: #1F2A37; }
-.parrilla-area-1 { background: #E7F2EC; color: #1E2F26; }
-.parrilla-area-2 { background: #F6ECE7; color: #3A271E; }
-.parrilla-area-3 { background: #F1E9F4; color: #2E2136; }
-.parrilla-area-4 { background: #FBF3E2; color: #3A2E14; }
-.parrilla-area-5 { background: #E6F1F3; color: #1C2E31; }
-.parrilla-area-6 { background: #F3E8EA; color: #371E24; }
-.parrilla-area-7 { background: #ECF0E4; color: #28301B; }
-.parrilla-area-8 { background: #E8EAF6; color: #20243A; }
-.parrilla-area-9 { background: #F5EFE6; color: #342B1C; }
+.parrilla-area-0 { --parrilla-acento: #5B7CC2; }
+.parrilla-area-1 { --parrilla-acento: #4F9E76; }
+.parrilla-area-2 { --parrilla-acento: #C2784A; }
+.parrilla-area-3 { --parrilla-acento: #9B6FBE; }
+.parrilla-area-4 { --parrilla-acento: #C7A23E; }
+.parrilla-area-5 { --parrilla-acento: #4AA6B0; }
+.parrilla-area-6 { --parrilla-acento: #BC5C75; }
+.parrilla-area-7 { --parrilla-acento: #7E9B4A; }
+.parrilla-area-8 { --parrilla-acento: #6470C2; }
+.parrilla-area-9 { --parrilla-acento: #B08A4A; }
+
+/* Swatch de la leyenda: el acento como fondo sólido */
+.parrilla-swatch.parrilla-area-0,
+.parrilla-swatch.parrilla-area-1,
+.parrilla-swatch.parrilla-area-2,
+.parrilla-swatch.parrilla-area-3,
+.parrilla-swatch.parrilla-area-4,
+.parrilla-swatch.parrilla-area-5,
+.parrilla-swatch.parrilla-area-6,
+.parrilla-swatch.parrilla-area-7,
+.parrilla-swatch.parrilla-area-8,
+.parrilla-swatch.parrilla-area-9 {
+  background: var(--parrilla-acento);
+}
+
+/* Celda: el acento como borde izquierdo, texto legible sobre surface */
+.parrilla-celda.parrilla-area-0,
+.parrilla-celda.parrilla-area-1,
+.parrilla-celda.parrilla-area-2,
+.parrilla-celda.parrilla-area-3,
+.parrilla-celda.parrilla-area-4,
+.parrilla-celda.parrilla-area-5,
+.parrilla-celda.parrilla-area-6,
+.parrilla-celda.parrilla-area-7,
+.parrilla-celda.parrilla-area-8,
+.parrilla-celda.parrilla-area-9 {
+  border-left-color: var(--parrilla-acento);
+  color: var(--color-text-primary);
+}
 
 /* ── Overrides modo oscuro ──────────────────────────────────── */
 html[data-theme="dark"] .parrilla-grid {
@@ -184,14 +265,183 @@ html[data-theme="dark"] .parrilla-swatch {
   border-color: var(--color-border-strong, var(--color-border));
 }
 
-/* Pasteles oscurecidos con texto claro para conservar contraste */
-html[data-theme="dark"] .parrilla-area-0 { background: #2A3344; color: #DCE4F0; }
-html[data-theme="dark"] .parrilla-area-1 { background: #26382F; color: #D6E8DD; }
-html[data-theme="dark"] .parrilla-area-2 { background: #3C2E26; color: #EEDDD0; }
-html[data-theme="dark"] .parrilla-area-3 { background: #322642; color: #E3D6EC; }
-html[data-theme="dark"] .parrilla-area-4 { background: #3C3320; color: #EFE3C6; }
-html[data-theme="dark"] .parrilla-area-5 { background: #233740; color: #CFE6EC; }
-html[data-theme="dark"] .parrilla-area-6 { background: #3A2730; color: #EFD6DE; }
-html[data-theme="dark"] .parrilla-area-7 { background: #2D3622; color: #DDE7C8; }
-html[data-theme="dark"] .parrilla-area-8 { background: #272B40; color: #D6DAF0; }
-html[data-theme="dark"] .parrilla-area-9 { background: #3A3221; color: #EEE2CB; }
+/* En dark, el acento (borde izquierdo) se ilumina ligeramente */
+html[data-theme="dark"] .parrilla-area-0 { --parrilla-acento: #7E9BD8; }
+html[data-theme="dark"] .parrilla-area-1 { --parrilla-acento: #6FBF93; }
+html[data-theme="dark"] .parrilla-area-2 { --parrilla-acento: #D89366; }
+html[data-theme="dark"] .parrilla-area-3 { --parrilla-acento: #B58FD6; }
+html[data-theme="dark"] .parrilla-area-4 { --parrilla-acento: #DEBB5C; }
+html[data-theme="dark"] .parrilla-area-5 { --parrilla-acento: #66C0CB; }
+html[data-theme="dark"] .parrilla-area-6 { --parrilla-acento: #D67D93; }
+html[data-theme="dark"] .parrilla-area-7 { --parrilla-acento: #9BBA66; }
+html[data-theme="dark"] .parrilla-area-8 { --parrilla-acento: #8590DA; }
+html[data-theme="dark"] .parrilla-area-9 { --parrilla-acento: #CCA866; }
+
+/* Celdas en dark: fondo de superficie, texto claro */
+html[data-theme="dark"] .parrilla-celda {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+html[data-theme="dark"] .parrilla-celda-click:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Barra de chips de entidad (selector de eje en "Por entidad")
+   ═══════════════════════════════════════════════════════════════ */
+.parrilla-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding-bottom: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.parrilla-chip {
+  flex: 0 0 auto;
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.parrilla-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+.parrilla-chip-activo {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Segmentado del sistema (modo / perspectiva) — reemplaza ui.toggle
+   ═══════════════════════════════════════════════════════════════ */
+.parrilla-segmento {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface-alt);
+}
+.parrilla-seg-btn {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.parrilla-seg-btn:hover { color: var(--color-text-primary); }
+.parrilla-seg-btn + .parrilla-seg-btn { border-left: 1px solid var(--color-border); }
+.parrilla-seg-btn-activo {
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
+}
+html[data-theme="dark"] .parrilla-segmento { background: var(--color-surface-alt); }
+
+/* El texto dentro de un chip/segmento no debe capturar el clic */
+.parrilla-chip > *,
+.parrilla-seg-btn > * { pointer-events: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Tira de métricas compacta (reemplaza stat_cards en la parrilla)
+   ═══════════════════════════════════════════════════════════════ */
+.parrilla-metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin: var(--space-sm) 0;
+}
+.parrilla-metrica {
+  display: flex;
+  flex-direction: column;
+  min-width: 96px;
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+.parrilla-metrica-valor {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+}
+.parrilla-metrica-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+html[data-theme="dark"] .parrilla-metrica { background: var(--color-surface-alt); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Etiquetas de contexto (semántica de chips / filtros)
+   ═══════════════════════════════════════════════════════════════ */
+.parrilla-chips-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+.parrilla-filtro-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  align-self: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Tablero maestro — grupos en columnas, franjas en filas
+   ═══════════════════════════════════════════════════════════════ */
+.tablero-maestro {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.tablero-grupo-cabecera {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.tablero-grupo-cabecera.parrilla-esquina {
+  left: 0;
+  z-index: 3;
+}
+
+html[data-theme="dark"] .tablero-maestro {
+  background: var(--color-surface);
+}
+
+html[data-theme="dark"] .tablero-grupo-cabecera {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}

@@ -225,6 +225,15 @@ def registrar_rutas_ui() -> None:
             return
         horario_generar_page()
 
+    from src.interface.pages.admin.plantillas_franja import plantillas_franja_page
+
+    @ui.page("/admin/plantillas-franja")
+    def pagina_plantillas_franja():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        plantillas_franja_page()
+
     # ── Evaluación: Configuración de categorías ───────────────────────────────
     from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page
 

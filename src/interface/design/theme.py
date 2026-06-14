@@ -64,6 +64,7 @@ class ThemeManager:
         "domain/asistencia.css",
         "domain/desempeno.css",
         "domain/horario_parrilla.css",
+        "domain/horario_generar.css",
     ]
 
     @classmethod

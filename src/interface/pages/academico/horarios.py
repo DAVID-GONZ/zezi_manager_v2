@@ -40,7 +40,7 @@ from src.interface.design.components import (
     confirm_dialog, empty_state, form_dialog, toast_error, toast_success, toast_warning,
     stat_card,
 )
-from src.interface.pages.academico.parrilla_widget import render_parrilla
+from src.interface.pages.academico.parrilla_widget import render_parrilla, render_tablero_maestro
 from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
@@ -171,6 +171,9 @@ def horarios_page() -> None:
         # Filtros de la parrilla (paso_15f); None = "todos" (sin filtrar)
         _s["parrilla_filtro_areas"] = None       # set[int] | None
         _s["parrilla_filtro_dias"]  = None       # set[str] | None
+        # Vista unificada de horario (rediseño): modo + día del tablero maestro
+        _s["parrilla_modo"]         = "Por entidad"  # "Por entidad" | "Tablero maestro"
+        _s["parrilla_dia_maestro"]  = None       # str | None
 
     # ── Estado docente ────────────────────────────────────────────────────────
     _hoy = date.today()
@@ -322,99 +325,6 @@ def horarios_page() -> None:
                     btn_danger("Eliminar", icon="delete",
                                on_click=lambda: _eliminar_escenario_confirm(sel))
 
-    @ui.refreshable
-    def grilla_refreshable() -> None:
-        """Renderiza la grilla semanal de horarios."""
-        bloques = _s["bloques"]
-        esc = _s["escenario_sel"]
-
-        if not esc:
-            empty_state(
-                icono=Icons.SCHEDULE,
-                titulo="Sin escenario seleccionado",
-                descripcion="Crea o selecciona un escenario para ver y editar bloques.",
-            )
-            return
-
-        if not bloques:
-            empty_state(
-                icono=Icons.SCHEDULE,
-                titulo="Escenario sin bloques",
-                descripcion=f"El escenario '{esc.nombre}' no tiene bloques asignados.",
-                cta_label="Agregar bloque" if puede_escribir else None,
-                cta_on_click=_abrir_dialog_crear if puede_escribir else None,
-                cta_icono="add",
-            )
-            return
-
-        grilla, dias = _build_grilla(bloques)
-
-        with ui.element("div").classes("panel-card"):
-            with ui.element("div").classes("overflow-auto"):
-                with ui.element("table").classes("w-full border-collapse"):
-                    with ui.element("thead"):
-                        with ui.element("tr"):
-                            ui.element("th").classes(
-                                "border px-3 py-2 text-left text-sm font-semibold bg-grey-2"
-                            ).text = "Hora"
-                            for dia in dias:
-                                ui.element("th").classes(
-                                    "border px-3 py-2 text-center text-sm font-semibold bg-grey-2"
-                                ).text = dia
-                    with ui.element("tbody"):
-                        for hora_key, celdas in grilla.items():
-                            with ui.element("tr"):
-                                td = ui.element("td").classes(
-                                    "border px-3 py-2 text-sm font-medium text-grey-8 whitespace-nowrap"
-                                )
-                                td.text = hora_key
-                                for dia in dias:
-                                    bloque = celdas.get(dia)
-                                    with ui.element("td").classes(
-                                        "border px-2 py-2 text-sm align-top min-w-[120px]"
-                                    ):
-                                        if bloque is None:
-                                            if puede_escribir:
-                                                btn_icon(
-                                                    "add",
-                                                    on_click=lambda _, d=dia, h=hora_key: _abrir_dialog_crear(dia_prefill=d, hora_prefill=h),
-                                                    tooltip="Agregar bloque",
-                                                    size="sm",
-                                                )
-                                            else:
-                                                ui.label("—").classes("text-grey-4 text-center block")
-                                        else:
-                                            with ui.element("div").classes("relative bg-info-soft rounded p-1"):
-                                                ui.label(bloque.asignatura_nombre).classes(
-                                                    "text-xs font-semibold text-primary block"
-                                                )
-                                                ui.label(bloque.docente_nombre).classes(
-                                                    "text-xs text-grey-7 block"
-                                                )
-                                                if bloque.sala and bloque.sala != "Aula":
-                                                    ui.label(bloque.sala).classes(
-                                                        "text-xs text-grey-5 block"
-                                                    )
-                                                hora_fin_str = bloque.hora_fin.strftime("%H:%M")
-                                                ui.label(f"hasta {hora_fin_str}").classes(
-                                                    "text-xs text-grey-5 block"
-                                                )
-                                                if puede_escribir:
-                                                    with ui.row().classes("gap-1 q-mt-xs"):
-                                                        btn_icon(
-                                                            "edit",
-                                                            on_click=lambda _, bid=bloque.id: _abrir_dialog_editar(bid),
-                                                            tooltip="Editar bloque",
-                                                            size="sm",
-                                                        )
-                                                        btn_icon(
-                                                            "close",
-                                                            on_click=lambda _, bid=bloque.id: _confirmar_eliminar(bid),
-                                                            tooltip="Eliminar bloque",
-                                                            variante="danger",
-                                                            size="sm",
-                                                        )
-
     # ── Refreshables (rama docente) ───────────────────────────────────────────
 
     @ui.refreshable
@@ -435,20 +345,22 @@ def horarios_page() -> None:
                     with ui.element("table").classes("w-full border-collapse"):
                         with ui.element("thead"):
                             with ui.element("tr"):
-                                ui.element("th").classes(
+                                with ui.element("th").classes(
                                     "border px-3 py-2 text-left text-sm font-semibold bg-grey-2"
-                                ).text = "Hora"
+                                ):
+                                    ui.label("Hora")
                                 for dia in dias:
-                                    ui.element("th").classes(
+                                    with ui.element("th").classes(
                                         "border px-3 py-2 text-center text-sm font-semibold bg-grey-2"
-                                    ).text = dia
+                                    ):
+                                        ui.label(str(dia))
                         with ui.element("tbody"):
                             for hora_key, celdas in grilla.items():
                                 with ui.element("tr"):
-                                    td = ui.element("td").classes(
+                                    with ui.element("td").classes(
                                         "border px-3 py-2 text-sm font-medium text-grey-8 whitespace-nowrap"
-                                    )
-                                    td.text = hora_key
+                                    ):
+                                        ui.label(str(hora_key))
                                     for dia in dias:
                                         bloque = celdas.get(dia)
                                         with ui.element("td").classes(
@@ -548,7 +460,7 @@ def horarios_page() -> None:
         _s["escenario_sel"] = esc
         _cargar_bloques_escenario()
         escenarios_refreshable.refresh()
-        grilla_refreshable.refresh()
+        parrilla_unificada_refreshable.refresh()
 
     def _crear_escenario_dialog() -> None:
         def _guardar(datos: dict) -> "bool | None":
@@ -566,7 +478,7 @@ def horarios_page() -> None:
                 _s["escenario_sel"] = nuevo
                 _cargar_bloques_escenario()
                 escenarios_refreshable.refresh()
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
                 toast_success(f"Escenario '{nuevo.nombre}' creado")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -641,7 +553,7 @@ def horarios_page() -> None:
                 _s["escenario_sel"] = nuevo
                 _cargar_bloques_escenario()
                 escenarios_refreshable.refresh()
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
                 toast_success(f"Escenario duplicado como '{nuevo.nombre}'")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -667,7 +579,7 @@ def horarios_page() -> None:
                 _cargar_escenarios()
                 escenarios_refreshable.refresh()
                 _s["bloques"] = []
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
                 toast_success("Escenario eliminado")
             except Exception as exc:
                 logger.error("Error eliminando escenario: %s", exc)
@@ -690,7 +602,7 @@ def horarios_page() -> None:
                 Container.horario_service().eliminar_bloque(horario_id)
                 toast_success("Bloque eliminado")
                 _cargar_bloques_escenario()
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
             except Exception as exc:
                 logger.error("Error eliminando bloque: %s", exc)
                 toast_error(str(exc))
@@ -745,7 +657,7 @@ def horarios_page() -> None:
                 )
                 toast_success("Bloque guardado")
                 _cargar_bloques_escenario()
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
             except ValueError as exc:
                 toast_warning(str(exc))
                 return False
@@ -774,8 +686,18 @@ def horarios_page() -> None:
         )
 
     def _abrir_dialog_editar(horario_id: int) -> None:
-        # Obtener el bloque actual
+        # Obtener el bloque actual. La parrilla unificada muestra TODOS los
+        # grupos, por lo que el bloque a editar puede no estar en _s["bloques"]
+        # (cargado por grupo). Lo buscamos en todo el escenario.
         bloque = next((b for b in _s["bloques"] if b.id == horario_id), None)
+        if not bloque:
+            esc = _s["escenario_sel"]
+            if esc:
+                try:
+                    todos = Container.infraestructura_service().listar_horario_escenario(esc.id)
+                    bloque = next((b for b in todos if b.id == horario_id), None)
+                except Exception as exc:
+                    logger.error("Error obteniendo bloque del escenario: %s", exc)
         if not bloque:
             toast_warning("Bloque no encontrado.")
             return
@@ -791,7 +713,7 @@ def horarios_page() -> None:
                 )
                 toast_success("Bloque actualizado")
                 _cargar_bloques_escenario()
-                grilla_refreshable.refresh()
+                parrilla_unificada_refreshable.refresh()
             except ValueError as exc:
                 toast_warning(str(exc))
                 return False
@@ -822,179 +744,223 @@ def horarios_page() -> None:
             columnas=2,
         )
 
-    def _cambiar_grupo(grupo_id: int) -> None:
-        _s["grupo_id"] = grupo_id
-        _cargar_bloques_escenario()
-        grilla_refreshable.refresh()
+    # ── Sección horario unificada (rediseño): Por entidad / Tablero maestro ───
 
-    # ── Sección parrilla visual (paso_15e) ────────────────────────────────────
+    def _parrilla_cargar_datos() -> dict:
+        esc = _s["escenario_sel"]
+        if not esc:
+            return {"dias": [], "franjas": [], "celdas": []}
+        try:
+            return Container.horario_service().datos_parrilla(esc.id)
+        except Exception as exc:
+            logger.error("Error cargando datos de parrilla: %s", exc)
+            return {"dias": [], "franjas": [], "celdas": []}
 
-    def _seccion_parrilla() -> None:
-        """Vista parrilla días×franjas con color-coding por área y 3 perspectivas."""
-
-        def _cargar_datos() -> dict:
-            esc = _s["escenario_sel"]
-            if not esc:
-                return {"dias": [], "franjas": [], "celdas": []}
-            try:
-                return Container.horario_service().datos_parrilla(esc.id)
-            except Exception as exc:
-                logger.error("Error cargando datos de parrilla: %s", exc)
-                return {"dias": [], "franjas": [], "celdas": []}
-
-        def _opciones_eje(datos: dict, perspectiva: str) -> dict:
-            """Mapa {clave_eje: etiqueta} según la perspectiva activa."""
-            opts: dict = {}
-            for c in datos["celdas"]:
-                if perspectiva == "Grupo":
-                    opts.setdefault(c["grupo_id"], c["grupo_codigo"])
-                elif perspectiva == "Docente":
-                    opts.setdefault(c["usuario_id"], c["docente_nombre"])
-                else:  # Sala
-                    opts.setdefault(c["sala"], c["sala"])
-            return dict(sorted(opts.items(), key=lambda kv: str(kv[1])))
-
-        def _clave_eje(celda: dict, perspectiva: str):
+    def _parrilla_opciones_eje(datos: dict, perspectiva: str) -> dict:
+        """Mapa {clave_eje: etiqueta} según la perspectiva activa."""
+        opts: dict = {}
+        for c in datos["celdas"]:
             if perspectiva == "Grupo":
-                return celda["grupo_id"]
-            if perspectiva == "Docente":
-                return celda["usuario_id"]
-            return celda["sala"]
+                opts.setdefault(c["grupo_id"], c["grupo_codigo"])
+            elif perspectiva == "Docente":
+                opts.setdefault(c["usuario_id"], c["docente_nombre"])
+            else:  # Sala
+                opts.setdefault(c["sala"], c["sala"])
+        return dict(sorted(opts.items(), key=lambda kv: str(kv[1])))
 
-        def _cambiar_perspectiva(valor: str) -> None:
-            _s["parrilla_perspectiva"] = valor
-            _s["parrilla_eje_sel"] = None
-            parrilla_refreshable.refresh()
+    def _parrilla_cargar_metricas() -> dict:
+        esc = _s["escenario_sel"]
+        vacio = {
+            "total_bloques": 0, "n_grupos": 0, "n_docentes": 0,
+            "n_salas": 0, "huecos_grupo": 0, "ocupacion_pct": 0,
+        }
+        if not esc:
+            return vacio
+        try:
+            return Container.horario_service().metricas_parrilla(esc.id)
+        except Exception as exc:
+            logger.error("Error cargando métricas de parrilla: %s", exc)
+            return vacio
 
-        def _cambiar_eje(valor) -> None:
-            _s["parrilla_eje_sel"] = valor
-            parrilla_refreshable.refresh()
+    def _parrilla_cargar_areas() -> list[dict]:
+        esc = _s["escenario_sel"]
+        if not esc:
+            return []
+        try:
+            return Container.horario_service().areas_parrilla(esc.id)
+        except Exception as exc:
+            logger.error("Error cargando áreas de parrilla: %s", exc)
+            return []
 
-        def _cargar_metricas() -> dict:
-            esc = _s["escenario_sel"]
-            vacio = {
-                "total_bloques": 0, "n_grupos": 0, "n_docentes": 0,
-                "n_salas": 0, "huecos_grupo": 0, "ocupacion_pct": 0,
-            }
-            if not esc:
-                return vacio
+    # ── Handlers de estado de la parrilla ─────────────────────────────────────
+
+    def _cambiar_modo(valor: str) -> None:
+        _s["parrilla_modo"] = valor
+        parrilla_unificada_refreshable.refresh()
+
+    def _cambiar_perspectiva(valor: str) -> None:
+        _s["parrilla_perspectiva"] = valor
+        _s["parrilla_eje_sel"] = None
+        parrilla_unificada_refreshable.refresh()
+
+    def _cambiar_eje(valor) -> None:
+        _s["parrilla_eje_sel"] = valor
+        parrilla_unificada_refreshable.refresh()
+
+    def _cambiar_dia_maestro(valor: str) -> None:
+        _s["parrilla_dia_maestro"] = valor
+        parrilla_unificada_refreshable.refresh()
+
+    def _segmento(opciones: list[str], valor_actual: str, on_change) -> None:
+        with ui.element("div").classes("parrilla-segmento"):
+            for _op in opciones:
+                _cls = "parrilla-seg-btn" + (" parrilla-seg-btn-activo" if _op == valor_actual else "")
+                _btn = ui.element("div").classes(_cls)
+                _btn.on("click", lambda _, o=_op: on_change(o))
+                with _btn:
+                    ui.label(str(_op))
+
+    def _cambiar_filtro_areas(valores) -> None:
+        # ui.select multiple devuelve list; None/[] => sin filtro (todas)
+        _s["parrilla_filtro_areas"] = set(valores) if valores else None
+        parrilla_unificada_refreshable.refresh()
+
+    def _cambiar_filtro_dias(valores) -> None:
+        _s["parrilla_filtro_dias"] = set(valores) if valores else None
+        parrilla_unificada_refreshable.refresh()
+
+    def _editar_color_area(area: dict) -> None:
+        def _guardar(datos: dict) -> "bool | None":
+            color = (datos.get("color") or "").strip() or None
             try:
-                return Container.horario_service().metricas_parrilla(esc.id)
+                Container.infraestructura_service().set_color_area(
+                    area["area_id"], color
+                )
+                toast_success(f"Color de '{area['area_nombre']}' actualizado")
+                parrilla_unificada_refreshable.refresh()
+            except ValueError as exc:
+                toast_warning(str(exc))
+                return False
             except Exception as exc:
-                logger.error("Error cargando métricas de parrilla: %s", exc)
-                return vacio
+                logger.error("Error actualizando color de área: %s", exc)
+                toast_error("No se pudo actualizar el color")
+                return False
 
-        def _cargar_areas() -> list[dict]:
-            esc = _s["escenario_sel"]
-            if not esc:
-                return []
-            try:
-                return Container.horario_service().areas_parrilla(esc.id)
-            except Exception as exc:
-                logger.error("Error cargando áreas de parrilla: %s", exc)
-                return []
+        form_dialog(
+            titulo=f"Color de «{area['area_nombre']}»",
+            campos=[
+                {"key": "color", "label": "Color", "tipo": "color",
+                 "valor": area.get("color") or ""},
+            ],
+            on_submit=_guardar,
+            max_width="max-w-xs",
+        )
 
-        def _cambiar_filtro_areas(valores) -> None:
-            # ui.select multiple devuelve list; None/[] => sin filtro (todas)
-            _s["parrilla_filtro_areas"] = set(valores) if valores else None
-            parrilla_refreshable.refresh()
+    # ── Clic en celda → menú editar/eliminar (ocupada) o alta (vacía) ─────────
 
-        def _cambiar_filtro_dias(valores) -> None:
-            _s["parrilla_filtro_dias"] = set(valores) if valores else None
-            parrilla_refreshable.refresh()
-
-        def _editar_color_area(area: dict) -> None:
-            def _guardar(datos: dict) -> None:
-                color = (datos.get("color") or "").strip() or None
-                try:
-                    Container.infraestructura_service().set_color_area(
-                        area["area_id"], color
-                    )
-                    toast_success(f"Color de '{area['area_nombre']}' actualizado")
-                    parrilla_refreshable.refresh()
-                except ValueError as exc:
-                    toast_warning(str(exc))
-                    return False
-                except Exception as exc:
-                    logger.error("Error actualizando color de área: %s", exc)
-                    toast_error("No se pudo actualizar el color")
-                    return False
-
-            form_dialog(
-                titulo=f"Color de «{area['area_nombre']}»",
-                campos=[
-                    {"key": "color", "label": "Color", "tipo": "color",
-                     "valor": area.get("color") or ""},
-                ],
-                on_submit=_guardar,
-                max_width="max-w-xs",
+    def _on_celda_click(ctx_celda: dict) -> None:
+        if not puede_escribir:
+            return
+        if ctx_celda.get("tipo") == "ocupada":
+            celda = ctx_celda.get("celda") or {}
+            bid = celda.get("id")
+            if bid is None:
+                return
+            with ui.menu() as menu:
+                with ui.menu_item(on_click=lambda: (menu.close(), _abrir_dialog_editar(bid))):
+                    with ui.row().classes("items-center gap-2"):
+                        ThemeManager.icono(Icons.EDIT)
+                        ui.label("Editar")
+                with ui.menu_item(on_click=lambda: (menu.close(), _confirmar_eliminar(bid))):
+                    with ui.row().classes("items-center gap-2"):
+                        ThemeManager.icono(Icons.DELETE)
+                        ui.label("Eliminar")
+            menu.open()
+        else:  # vacía
+            grupo_id = ctx_celda.get("grupo_id")
+            if grupo_id is not None:
+                _s["grupo_id"] = grupo_id
+            _abrir_dialog_crear(
+                dia_prefill=ctx_celda.get("dia", ""),
+                hora_prefill=ctx_celda.get("hora_inicio", ""),
             )
 
-        @ui.refreshable
-        def parrilla_refreshable() -> None:
-            esc = _s["escenario_sel"]
-            with ui.element("div").classes("panel-card q-mt-sm"):
-                ui.label("Parrilla visual").classes("text-subtitle1 font-semibold")
-
-                if not esc:
-                    empty_state(
-                        icono=Icons.SCHEDULE,
-                        titulo="Sin escenario seleccionado",
-                        descripcion="Selecciona un escenario para ver la parrilla.",
+    @ui.refreshable
+    def parrilla_unificada_refreshable() -> None:
+        esc = _s["escenario_sel"]
+        with ui.element("div").classes("panel-card q-mt-sm"):
+            # Toolbar superior: modo + acción de alta
+            with ui.row().classes("items-center justify-between flex-wrap gap-2"):
+                ui.label("Parrilla").classes("text-subtitle1 font-semibold")
+                with ui.row().classes("items-center gap-2"):
+                    _segmento(
+                        ["Por entidad", "Tablero maestro"],
+                        _s["parrilla_modo"],
+                        _cambiar_modo,
                     )
-                    return
+                    if puede_escribir:
+                        btn_secondary("Agregar bloque", icon="add",
+                                      on_click=lambda: _abrir_dialog_crear())
 
-                datos = _cargar_datos()
-                perspectiva = _s["parrilla_perspectiva"]
+            if not esc:
+                empty_state(
+                    icono=Icons.SCHEDULE,
+                    titulo="Sin escenario seleccionado",
+                    descripcion="Selecciona un escenario para ver la parrilla.",
+                )
+                return
 
-                # ── Métricas (stat_cards) ──────────────────────────────────
-                m = _cargar_metricas()
-                with ui.row().classes("items-stretch gap-4 flex-wrap q-mb-sm"):
-                    stat_card(titulo="Total bloques", valor=str(m["total_bloques"]),
-                              icono="grid_view")
-                    stat_card(titulo="Grupos", valor=str(m["n_grupos"]),
-                              icono="groups")
-                    stat_card(titulo="Docentes", valor=str(m["n_docentes"]),
-                              icono="school")
-                    stat_card(titulo="Huecos", valor=str(m["huecos_grupo"]),
-                              icono="grid_off")
-                    stat_card(titulo="% Ocupación", valor=f"{m['ocupacion_pct']}%",
-                              icono="pie_chart")
+            datos = _parrilla_cargar_datos()
 
-                # Toolbar: toggle de perspectiva + selector de elemento del eje
+            # ── Métricas (tira compacta) ───────────────────────────────────
+            m = _parrilla_cargar_metricas()
+            with ui.element("div").classes("parrilla-metricas"):
+                for _val, _lbl in [
+                    (str(m["total_bloques"]), "Bloques"),
+                    (str(m["n_grupos"]), "Grupos"),
+                    (str(m["n_docentes"]), "Docentes"),
+                    (str(m["huecos_grupo"]), "Huecos"),
+                    (f"{m['ocupacion_pct']}%", "Ocupación"),
+                ]:
+                    with ui.element("div").classes("parrilla-metrica"):
+                        ui.label(_val).classes("parrilla-metrica-valor")
+                        ui.label(_lbl).classes("parrilla-metrica-label")
+
+            if not datos["celdas"] or not datos["franjas"]:
+                empty_state(
+                    icono=Icons.SCHEDULE,
+                    titulo="Escenario sin bloques",
+                    descripcion="No hay bloques para visualizar en la parrilla.",
+                    cta_label="Agregar bloque" if puede_escribir else None,
+                    cta_on_click=(lambda: _abrir_dialog_crear()) if puede_escribir else None,
+                    cta_icono="add",
+                )
+                return
+
+            areas = _parrilla_cargar_areas()
+            dias_activos = datos["dias"] or ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+            f_areas = _s["parrilla_filtro_areas"]
+
+            if _s["parrilla_modo"] == "Tablero maestro":
+                # ── Selector de día (chips) ────────────────────────────────
+                dia_maestro = _s["parrilla_dia_maestro"]
+                if dia_maestro not in dias_activos:
+                    dia_maestro = dias_activos[0]
+                    _s["parrilla_dia_maestro"] = dia_maestro
+
+                ui.label("Selecciona el día").classes("parrilla-chips-label")
+                with ui.element("div").classes("parrilla-chips"):
+                    for d in dias_activos:
+                        activo = (d == dia_maestro)
+                        chip_cls = "parrilla-chip" + (" parrilla-chip-activo" if activo else "")
+                        _chip = ui.element("div").classes(chip_cls)
+                        _chip.on("click", lambda _, dd=d: _cambiar_dia_maestro(dd))
+                        with _chip:
+                            ui.label(str(d))
+
+                # ── Filtro de área ─────────────────────────────────────────
                 with ui.element("div").classes("parrilla-toolbar"):
-                    ui.toggle(
-                        ["Grupo", "Docente", "Sala"],
-                        value=perspectiva,
-                        on_change=lambda e: _cambiar_perspectiva(e.value),
-                    )
-                    eje_opts = _opciones_eje(datos, perspectiva)
-                    if eje_opts:
-                        eje_sel = _s["parrilla_eje_sel"]
-                        if eje_sel not in eje_opts:
-                            eje_sel = next(iter(eje_opts))
-                            _s["parrilla_eje_sel"] = eje_sel
-                        ui.select(
-                            label=perspectiva,
-                            options=eje_opts,
-                            value=eje_sel,
-                            on_change=lambda e: _cambiar_eje(e.value),
-                        ).classes("w-44")
-
-                if not datos["celdas"] or not datos["franjas"]:
-                    empty_state(
-                        icono=Icons.SCHEDULE,
-                        titulo="Escenario sin bloques",
-                        descripcion="No hay bloques para visualizar en la parrilla.",
-                    )
-                    return
-
-                # ── Barra de filtros: Área y Día ───────────────────────────
-                areas = _cargar_areas()
-                dias_activos = datos["dias"] or ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-                f_areas = _s["parrilla_filtro_areas"]
-                f_dias = _s["parrilla_filtro_dias"]
-                with ui.element("div").classes("parrilla-toolbar"):
+                    ui.label("Filtrar:").classes("parrilla-filtro-label")
                     if areas:
                         area_opts = {a["area_id"]: a["area_nombre"] for a in areas}
                         area_val = (
@@ -1007,7 +973,63 @@ def horarios_page() -> None:
                             value=area_val,
                             multiple=True,
                             on_change=lambda e: _cambiar_filtro_areas(e.value),
-                        ).props("use-chips").classes("w-64")
+                        ).classes("w-64")
+
+                render_tablero_maestro(
+                    datos=datos,
+                    dia=dia_maestro,
+                    areas_filtro=f_areas,
+                    on_celda_click=_on_celda_click,
+                    puede_editar=puede_escribir,
+                )
+
+            else:
+                # ── Modo "Por entidad" ─────────────────────────────────────
+                perspectiva = _s["parrilla_perspectiva"]
+                f_dias = _s["parrilla_filtro_dias"]
+
+                # Segmentado de perspectiva
+                with ui.element("div").classes("parrilla-toolbar"):
+                    _segmento(
+                        ["Grupo", "Docente", "Sala"],
+                        perspectiva,
+                        _cambiar_perspectiva,
+                    )
+
+                # Selector de entidad como CHIPS
+                eje_opts = _parrilla_opciones_eje(datos, perspectiva)
+                if eje_opts:
+                    eje_sel = _s["parrilla_eje_sel"]
+                    if eje_sel not in eje_opts:
+                        eje_sel = next(iter(eje_opts))
+                        _s["parrilla_eje_sel"] = eje_sel
+                    _nombre_eje = {"Grupo": "grupo", "Docente": "docente", "Sala": "sala"}[perspectiva]
+                    ui.label(f"Selecciona un {_nombre_eje} para ver su horario").classes("parrilla-chips-label")
+                    with ui.element("div").classes("parrilla-chips"):
+                        for clave, etiqueta in eje_opts.items():
+                            activo = (clave == eje_sel)
+                            chip_cls = "parrilla-chip" + (" parrilla-chip-activo" if activo else "")
+                            _chip = ui.element("div").classes(chip_cls)
+                            _chip.on("click", lambda _, c=clave: _cambiar_eje(c))
+                            with _chip:
+                                ui.label(str(etiqueta))
+
+                # Filtros Área y Día
+                with ui.element("div").classes("parrilla-toolbar"):
+                    ui.label("Filtrar:").classes("parrilla-filtro-label")
+                    if areas:
+                        area_opts = {a["area_id"]: a["area_nombre"] for a in areas}
+                        area_val = (
+                            [aid for aid in f_areas if aid in area_opts]
+                            if f_areas is not None else list(area_opts)
+                        )
+                        ui.select(
+                            label="Áreas",
+                            options=area_opts,
+                            value=area_val,
+                            multiple=True,
+                            on_change=lambda e: _cambiar_filtro_areas(e.value),
+                        ).classes("w-64")
                     dia_opts = {d: d for d in dias_activos}
                     dia_val = (
                         [d for d in f_dias if d in dia_opts]
@@ -1019,51 +1041,43 @@ def horarios_page() -> None:
                         value=dia_val,
                         multiple=True,
                         on_change=lambda e: _cambiar_filtro_dias(e.value),
-                    ).props("use-chips").classes("w-64")
-
-                eje_sel = _s["parrilla_eje_sel"]
-                # Aplicar filtro de días a las columnas
-                if f_dias is not None:
-                    dias = [d for d in dias_activos if d in f_dias]
-                else:
-                    dias = dias_activos
-                if not dias:
-                    dias = dias_activos
+                    ).classes("w-64")
 
                 render_parrilla(
                     datos=datos,
                     perspectiva=perspectiva,
-                    eje_sel=eje_sel,
+                    eje_sel=_s["parrilla_eje_sel"],
                     dias_filtro=f_dias,
                     areas_filtro=f_areas,
+                    on_celda_click=_on_celda_click,
+                    puede_editar=puede_escribir,
                 )
 
-                # ── Leyenda de colores editable ────────────────────────────
-                if areas:
-                    ui.label("Áreas (clic para cambiar color)").classes(
-                        "text-xs text-grey-6 q-mt-sm"
-                    )
-                    with ui.element("div").classes("parrilla-leyenda"):
-                        for a in areas:
-                            item = ui.element("div").classes(
-                                "parrilla-leyenda-item"
-                            )
-                            with item:
-                                color = a.get("color")
-                                if color:
-                                    sw = ui.element("span").classes("parrilla-swatch")
-                                    sw.style(f"background-color:{color}")  # DYNAMIC
-                                else:
-                                    aid = a["area_id"] or 0
-                                    ui.element("span").classes(
-                                        f"parrilla-swatch parrilla-area-{aid % 10}"
-                                    )
-                                ui.label(a["area_nombre"]).classes(
-                                    "parrilla-leyenda-label"
+            # ── Leyenda de colores editable ────────────────────────────────
+            if areas:
+                ui.label("Áreas (clic para cambiar color)").classes(
+                    "text-xs text-grey-6 q-mt-sm"
+                )
+                with ui.element("div").classes("parrilla-leyenda"):
+                    for a in areas:
+                        item = ui.element("div").classes("parrilla-leyenda-item")
+                        with item:
+                            color = a.get("color")
+                            if color:
+                                sw = ui.element("span").classes("parrilla-swatch")
+                                sw.style(f"background-color:{color}")  # DYNAMIC
+                            else:
+                                aid = a["area_id"] or 0
+                                ui.element("span").classes(
+                                    f"parrilla-swatch parrilla-area-{aid % 10}"
                                 )
-                            item.on("click", lambda _, ar=a: _editar_color_area(ar))
+                            ui.label(a["area_nombre"]).classes(
+                                "parrilla-leyenda-label"
+                            )
+                        item.on("click", lambda _, ar=a: _editar_color_area(ar))
 
-        parrilla_refreshable()
+    def _seccion_horario_unificada() -> None:
+        parrilla_unificada_refreshable()
 
     # ── Sección carga masiva ──────────────────────────────────────────────────
 
@@ -1086,20 +1100,24 @@ def horarios_page() -> None:
                         with ui.element("thead"):
                             with ui.element("tr"):
                                 for col in ("#", "Estado", "Resumen", "Motivo"):
-                                    ui.element("th").classes(
+                                    with ui.element("th").classes(
                                         "border px-2 py-1 text-left bg-grey-2"
-                                    ).text = col
+                                    ):
+                                        ui.label(str(col))
                         with ui.element("tbody"):
                             for f in reporte.filas:
                                 with ui.element("tr"):
-                                    ui.element("td").classes("border px-2 py-1").text = str(f.indice + 1)
+                                    with ui.element("td").classes("border px-2 py-1"):
+                                        ui.label(str(f.indice + 1))
                                     with ui.element("td").classes("border px-2 py-1"):
                                         status_badge(
                                             "OK" if f.ok else "Error",
                                             variante="success" if f.ok else "danger",
                                         )
-                                    ui.element("td").classes("border px-2 py-1").text = f.resumen
-                                    ui.element("td").classes("border px-2 py-1").text = f.motivo or ""
+                                    with ui.element("td").classes("border px-2 py-1"):
+                                        ui.label(str(f.resumen))
+                                    with ui.element("td").classes("border px-2 py-1"):
+                                        ui.label(str(f.motivo or ""))
                 with ui.row().classes("gap-2 q-mt-sm"):
                     if reporte.todo_ok:
                         btn_primary("Aplicar todo", icon="upload",
@@ -1171,7 +1189,7 @@ def horarios_page() -> None:
                     _s_lote["reporte"] = None
                     _s_lote["filas_raw"] = []
                     _cargar_bloques_escenario()
-                    grilla_refreshable.refresh()
+                    parrilla_unificada_refreshable.refresh()
                     reporte_lote_refreshable.refresh()
             except Exception as exc:
                 logger.error("Error aplicando lote: %s", exc)
@@ -1234,25 +1252,10 @@ def horarios_page() -> None:
                 # Panel de escenarios
                 escenarios_refreshable()
 
-                # Panel de grupo + grilla
-                with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("items-center gap-3 flex-wrap"):
-                        if _s["grupos"]:
-                            grupos_opts = {g.id: g.codigo for g in _s["grupos"]}
-                            ui.select(
-                                label="Grupo",
-                                options=grupos_opts,
-                                value=_s["grupo_id"],
-                                on_change=lambda e: _cambiar_grupo(e.value),
-                            ).classes("w-40")
-                        if puede_escribir:
-                            btn_secondary("Agregar bloque", icon="add",
-                                          on_click=_abrir_dialog_crear)
-
-                grilla_refreshable()
-
-                # Parrilla visual (solo lectura, color por área, 3 perspectivas)
-                _seccion_parrilla()
+                # Sección unificada: Por entidad / Tablero maestro con edición
+                # integrada en la celda (clic). El grupo se elige con chips o
+                # columnas, no con un selector aparte.
+                _seccion_horario_unificada()
 
                 if puede_escribir:
                     _seccion_carga_masiva()

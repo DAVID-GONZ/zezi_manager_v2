@@ -259,6 +259,7 @@ def notas_convivencia_page() -> None:
 
     _s = _estado_inicial()
     _cargar_estado(ctx, _s)
+    _guardar_seleccionado_timer = ui.timer(0, lambda: None, active=False, once=True)
 
     # ── Handlers ───────────────────────────────────────────────────────────
 
@@ -355,7 +356,10 @@ def notas_convivencia_page() -> None:
                 _guardar_nota(_s, ctx_actual, est_id, valor, str(observacion))
                 _contenido.refresh()
 
-            ui.timer(0, _do_guardar, once=True)
+            if _guardar_seleccionado_timer.active:
+                _guardar_seleccionado_timer.cancel(with_current_invocation=False)
+            _guardar_seleccionado_timer.callback = _do_guardar
+            _guardar_seleccionado_timer.active = True
 
         def on_guardar_todo() -> None:
             _guardar_todo(_s, ctx_actual)

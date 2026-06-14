@@ -265,6 +265,8 @@ class HorarioService:
             pares_horas.add((hi, hf))
             area_id, area_color, area_nombre = _resolver_area(b.asignatura_id)
             celdas.append({
+                "id":                getattr(b, "id", None),
+                "asignacion_id":     getattr(b, "asignacion_id", None),
                 "grupo_id":          b.grupo_id,
                 "grupo_codigo":      getattr(b, "grupo_codigo", None) or str(b.grupo_id),
                 "asignatura_id":     b.asignatura_id,

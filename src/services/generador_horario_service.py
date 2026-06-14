@@ -236,9 +236,26 @@ class GeneradorHorarioService:
             )
 
         # --- Cargar asignaciones --------------------------------------
-        asignaciones = self._asig.listar_info(
-            FiltroAsignacionesDTO(periodo_id=config.periodo_id, solo_activas=True)
-        )
+        # El generador necesita TODAS las asignaciones del periodo (la rejilla
+        # saturada puede tener cientos de lecciones). `listar_info` pagina, así
+        # que recorremos todas las páginas: la paginación por defecto (100)
+        # dejaría fuera asignaciones y el horario quedaría incompleto.
+        asignaciones = []
+        _pagina = 1
+        _por_pagina = 500
+        while True:
+            _lote = self._asig.listar_info(
+                FiltroAsignacionesDTO(
+                    periodo_id=config.periodo_id,
+                    solo_activas=True,
+                    pagina=_pagina,
+                    por_pagina=_por_pagina,
+                )
+            )
+            asignaciones.extend(_lote)
+            if len(_lote) < _por_pagina:
+                break
+            _pagina += 1
         if config.grupos:
             grupos_filtro = set(config.grupos)
             asignaciones = [a for a in asignaciones if a.grupo_id in grupos_filtro]
@@ -268,10 +285,18 @@ class GeneradorHorarioService:
         total_requeridos = 0
         incidencias: list[str] = []
 
+        # Demandas agregadas para el camino rápido por coloreo.
+        demanda_grupo: dict[int, int] = {}
+        demanda_docente: dict[int, int] = {}
+        docentes_involucrados: set[int] = set()
+
         for a in asignaciones:
             asignatura = self._infra.get_asignatura(a.asignatura_id)
             horas = getattr(asignatura, "horas_semanales", None) or 1
             total_requeridos += horas
+            demanda_grupo[a.grupo_id] = demanda_grupo.get(a.grupo_id, 0) + horas
+            demanda_docente[a.usuario_id] = demanda_docente.get(a.usuario_id, 0) + horas
+            docentes_involucrados.add(a.usuario_id)
             lecciones = [
                 _Leccion(
                     a.asignacion_id, a.grupo_id, a.usuario_id,
@@ -347,9 +372,56 @@ class GeneradorHorarioService:
                 _quitar(lec, dia, franja)
             return False
 
-        todas = _backtrack(0)
+        # --- Camino rápido por coloreo de aristas ----------------------
+        # En instancias factibles sin restricciones que bloqueen slots, el
+        # coloreo de aristas del grafo bipartito grupo<->docente (teorema de
+        # König) coloca TODAS las lecciones de forma exacta y en tiempo
+        # polinómico, evitando el backtracking exponencial en instancias
+        # saturadas (cada grupo demanda toda la rejilla).
+        n_slots = len(slots)
+        construido_por_coloreo = False
 
-        if not todas:
+        def _coloreo_activable() -> bool:
+            if n_slots == 0:
+                return False
+            if demanda_grupo and max(demanda_grupo.values()) > n_slots:
+                return False
+            for uid in docentes_involucrados:
+                tope = _carga_max(uid)
+                if tope is not None and demanda_docente.get(uid, 0) > tope:
+                    return False
+            # El docente debe estar disponible en TODOS los slots.
+            for uid in docentes_involucrados:
+                if not all(
+                    self._infra.es_disponible(uid, dia, franja.orden)
+                    for (dia, franja) in slots
+                ):
+                    return False
+            return True
+
+        if _coloreo_activable():
+            from src.domain.scheduling import colorear_aristas_bipartito
+
+            aristas = [(lec.grupo_id, lec.usuario_id) for lec in lecciones_ordenadas]
+            colores = colorear_aristas_bipartito(aristas, n_slots)
+            if all(c is not None for c in colores):
+                for lec, color in zip(lecciones_ordenadas, colores):
+                    dia, franja = slots[color]
+                    _colocar(lec, dia, franja)
+                construido_por_coloreo = True
+            else:
+                # No debería ocurrir si las condiciones se cumplen; restaura.
+                ocupado_grupo.clear()
+                ocupado_docente.clear()
+                carga_docente.clear()
+                colocados.clear()
+
+        if construido_por_coloreo:
+            todas = True
+        else:
+            todas = _backtrack(0)
+
+        if not construido_por_coloreo and not todas:
             # Solución parcial: greedy con el presupuesto restante. Coloca
             # cada lección no colocada en el primer slot factible; las que no
             # quepan quedan como no colocadas (incidencia).
