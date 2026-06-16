@@ -42,10 +42,21 @@ class HorarioService:
         infra_repo: IInfraestructuraRepository,
         asignacion_repo: IAsignacionRepository,
         usuario_repo,
+        plan_svc=None,
     ):
         self._infra = infra_repo
         self._asig = asignacion_repo
         self._usuario = usuario_repo
+        self._plan = plan_svc
+
+    def _horas_max_materia(self, asig, asignatura) -> int | None:
+        """Tope de bloques de una (grupo, asignatura): horas del plan del grado
+        del grupo, con fallback a las horas globales de la asignatura."""
+        if self._plan is not None and asig is not None:
+            grupo = self._infra.get_grupo(asig.grupo_id)
+            if grupo is not None and grupo.grado is not None:
+                return self._plan.horas_de(grupo.grado, asig.asignatura_id)
+        return getattr(asignatura, "horas_semanales", None)
 
     # ------------------------------------------------------------------ #
     # Escritura                                                            #
@@ -454,7 +465,7 @@ class HorarioService:
 
     def _validar_topes(self, escenario_id: int, asig) -> None:
         asignatura = self._get_asignatura(asig.asignatura_id)
-        horas_max = getattr(asignatura, "horas_semanales", None)
+        horas_max = self._horas_max_materia(asig, asignatura)
         if horas_max is not None:
             usadas = self._infra.contar_bloques_asignacion(escenario_id, asig.id)
             if usadas + 1 > horas_max:
@@ -550,7 +561,7 @@ class HorarioService:
             # Tope materia
             if ok:
                 asignatura = self._get_asignatura(asig.asignatura_id)
-                horas_max = getattr(asignatura, "horas_semanales", None)
+                horas_max = self._horas_max_materia(asig, asignatura)
                 if horas_max is not None:
                     usadas_bd = self._infra.contar_bloques_asignacion(escenario_id, asig.id)
                     usadas_lote = sum(1 for v in virtual if v.get("asignacion_id") == asig.id and v.get("es_lote"))

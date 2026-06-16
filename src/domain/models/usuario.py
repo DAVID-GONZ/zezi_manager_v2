@@ -77,6 +77,7 @@ class Usuario(BaseModel):
     fecha_creacion:     date           = Field(default_factory=date.today)
     ultima_sesion:      datetime | None = None
     carga_horaria_max:  int | None     = None
+    horas_extra:        int            = 0
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -150,6 +151,23 @@ class Usuario(BaseModel):
                 f"carga_horaria_max no puede ser negativo (recibido: {v})."
             )
         return v
+
+    @field_validator("horas_extra")
+    @classmethod
+    def validar_horas_extra(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError(f"horas_extra no puede ser negativo (recibido: {v}).")
+        return v
+
+    @property
+    def carga_maxima_efectiva(self) -> int | None:
+        """Tope efectivo = carga_horaria_max + horas_extra.
+
+        None si no hay tope base configurado (sin límite).
+        """
+        if self.carga_horaria_max is None:
+            return None
+        return self.carga_horaria_max + (self.horas_extra or 0)
 
     # ------------------------------------------------------------------
     # Propiedades

@@ -53,7 +53,6 @@ def asignaturas_page() -> None:
         "asig_nombre":        "",
         "asig_codigo":        "",
         "asig_area_id":       None,
-        "asig_intensidad":    1,
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -174,26 +173,25 @@ def asignaturas_page() -> None:
     # ── CRUD Asignaturas ──────────────────────────────────────────────────────
     def _crear_asignatura() -> None:
         try:
-            nombre     = _s["asig_nombre"].strip()
-            codigo     = _s["asig_codigo"].strip() or None
-            area_id    = _s["asig_area_id"]
-            intensidad = int(_s["asig_intensidad"])
+            nombre  = _s["asig_nombre"].strip()
+            codigo  = _s["asig_codigo"].strip() or None
+            area_id = _s["asig_area_id"]
             if not nombre:
                 toast_warning("El nombre de la asignatura no puede estar vacío")
                 return
+            # Las horas por grado se definen en Plan de estudios; aquí solo se
+            # crea la asignatura (las horas globales quedan como fallback = 1).
             asig = Asignatura(
                 id=None,
                 nombre=nombre,
                 codigo=codigo,
                 area_id=area_id if area_id else None,
-                horas_semanales=intensidad,
             )
             Container.infraestructura_service().guardar_asignatura(asig)
             toast_success(f"Asignatura '{nombre}' creada")
-            _s["asig_nombre"]     = ""
-            _s["asig_codigo"]     = ""
-            _s["asig_area_id"]    = None
-            _s["asig_intensidad"] = 1
+            _s["asig_nombre"]  = ""
+            _s["asig_codigo"]  = ""
+            _s["asig_area_id"] = None
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
         except ValueError as exc:
@@ -232,13 +230,13 @@ def asignaturas_page() -> None:
                 if not nombre:
                     toast_warning("El nombre es obligatorio")
                     return False
-                asig_act = Asignatura(
-                    id=asig.id,
-                    nombre=nombre,
-                    codigo=str(datos.get("codigo", "")).strip() or None,
-                    area_id=datos.get("area_id") if datos.get("area_id") else None,
-                    horas_semanales=int(datos["horas_semanales"]) if datos.get("horas_semanales") is not None else asig.horas_semanales,
-                )
+                # Solo se editan nombre, código y área. Las horas (por grado) se
+                # gestionan en Plan de estudios; el resto se conserva tal cual.
+                asig_act = asig.model_copy(update={
+                    "nombre": nombre,
+                    "codigo": str(datos.get("codigo", "")).strip() or None,
+                    "area_id": datos.get("area_id") if datos.get("area_id") else None,
+                })
                 Container.infraestructura_service().actualizar_asignatura(asig_act)
                 toast_success(f"Asignatura '{asig_act.nombre}' actualizada")
                 _cargar_asignaturas()
@@ -254,18 +252,15 @@ def asignaturas_page() -> None:
         form_dialog(
             titulo    = "Editar asignatura",
             campos    = [
-                {"key": "nombre",          "label": "Nombre *",        "tipo": "text",
-                 "valor": asig.nombre,     "requerido": True},
-                {"key": "codigo",          "label": "Código",          "tipo": "text",
+                {"key": "nombre", "label": "Nombre *", "tipo": "text",
+                 "valor": asig.nombre, "requerido": True},
+                {"key": "codigo", "label": "Código", "tipo": "text",
                  "valor": asig.codigo or ""},
-                {"key": "area_id",         "label": "Área",            "tipo": "select",
-                 "valor": asig.area_id,    "opciones": areas_dict},
-                {"key": "horas_semanales", "label": "Horas semanales", "tipo": "number",
-                 "valor": asig.horas_semanales, "min": 1},
+                {"key": "area_id", "label": "Área", "tipo": "select",
+                 "valor": asig.area_id, "opciones": areas_dict},
             ],
             on_submit    = _guardar,
             max_width    = "max-w-md",
-            columnas     = 2,
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -314,15 +309,13 @@ def asignaturas_page() -> None:
             ):
                 ui.label("Nombre").classes("flex-1")
                 ui.label("Código").classes("w-24")
-                ui.label("Área").classes("w-36")
-                ui.label("Hrs/sem").classes("w-20")
+                ui.label("Área").classes("w-44")
                 ui.label("Acciones").classes("w-24 text-right")
             for a in asigs:
                 with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
                     ui.label(a.nombre).classes("flex-1")
                     ui.label(a.codigo or "—").classes("w-24 font-mono text-sm")
-                    ui.label(_nombre_area(a.area_id)).classes("w-36 text-sm")
-                    ui.label(str(a.horas_semanales)).classes("w-20")
+                    ui.label(_nombre_area(a.area_id)).classes("w-44 text-sm")
                     with ui.row().classes("w-24 gap-1 justify-end"):
                         btn_icon("edit", on_click=lambda asig=a: _editar_asignatura(asig), tooltip="Editar")
                         btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom), tooltip="Eliminar", variante="danger")
@@ -365,6 +358,9 @@ def asignaturas_page() -> None:
                     ), tooltip="Recargar")
 
                 ui.label("Nueva asignatura").classes("text-sm font-semibold mb-1")
+                ui.label(
+                    "Las horas de cada asignatura se definen por grado en «Plan de estudios»."
+                ).classes("text-caption text-secondary mb-1")
                 areas_opts = {a.id: a.nombre for a in _s["areas"]}
                 with ui.row().classes("gap-3 items-end flex-wrap"):
                     ui.input("Nombre *", placeholder="Álgebra").classes("w-48").bind_value(
@@ -377,9 +373,6 @@ def asignaturas_page() -> None:
                         areas_opts,
                         label="Área",
                     ).classes("w-44").bind_value(_s, "asig_area_id")
-                    ui.number("Hrs/sem", value=1, min=1).classes("w-24").bind_value(
-                        _s, "asig_intensidad"
-                    )
                     btn_primary("Crear asignatura", on_click=_crear_asignatura, icon="add")
 
                 ui.separator().classes("my-3")

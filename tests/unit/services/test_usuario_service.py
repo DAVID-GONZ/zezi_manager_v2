@@ -31,6 +31,15 @@ class FakeUsuarioRepo(IUsuarioRepository):
         self._users[u.id] = u
         return u
 
+    def actualizar_carga(self, usuario_id, carga_horaria_max, horas_extra) -> bool:
+        u = self._users.get(usuario_id)
+        if u is None:
+            return False
+        self._users[usuario_id] = u.model_copy(update={
+            "carga_horaria_max": carga_horaria_max, "horas_extra": horas_extra,
+        })
+        return True
+
     def get_by_id(self, uid: int) -> Usuario | None:
         return self._users.get(uid)
 

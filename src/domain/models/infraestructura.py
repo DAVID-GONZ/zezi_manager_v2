@@ -102,6 +102,9 @@ class Asignatura(BaseModel):
     codigo:          str | None = None
     area_id:         int | None = None
     horas_semanales: int        = Field(default=1, ge=1)
+    tipo_sala_requerido: str | None = None   # None = cualquier sala / "Aula"
+    bloque_doble:        bool       = False   # requiere franjas consecutivas
+    horas_consecutivas:  int        = Field(default=1, ge=1)  # bloques dobles N horas seguidas
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -144,6 +147,7 @@ class Grupo(BaseModel):
     grado:            int | None = None
     jornada:          Jornada    = Jornada.UNICA
     capacidad_maxima: int        = Field(default=40, ge=1)
+    sala_id:          int | None = None   # aula propia del grupo (salón base)
 
     @field_validator("codigo", mode="before")
     @classmethod
@@ -206,6 +210,28 @@ class Grupo(BaseModel):
     def cupos_disponibles(self, matriculados: int) -> int:
         """Cupos libres. 0 si ya está lleno."""
         return max(0, self.capacidad_maxima - matriculados)
+
+
+class Grado(BaseModel):
+    """
+    Grado ofrecido por la institución (1–13), con su rango de estudiantes
+    (norma colombiana) y el total de horas semanales objetivo del plan.
+    """
+    id:              int | None = None
+    numero:          int        = Field(ge=1, le=13)
+    nombre:          str | None = None
+    min_estudiantes: int        = Field(default=0, ge=0)
+    max_estudiantes: int        = Field(default=40, ge=1)
+    horas_semanales: int        = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validar_rango_estudiantes(self) -> "Grado":
+        if self.min_estudiantes > self.max_estudiantes:
+            raise ValueError(
+                f"El mínimo de estudiantes ({self.min_estudiantes}) no puede "
+                f"superar el máximo ({self.max_estudiantes})."
+            )
+        return self
 
 
 class EscenarioHorario(BaseModel):
@@ -536,9 +562,13 @@ class NuevaFranjaDTO(BaseModel):
 # =============================================================================
 
 class PesosGeneracion(BaseModel):
-    huecos:       float = Field(default=1.0, ge=0.0, le=2.0)
-    distribucion: float = Field(default=1.0, ge=0.0, le=2.0)
-    compactacion: float = Field(default=0.5, ge=0.0, le=2.0)
+    huecos:          float = Field(default=1.0, ge=0.0, le=2.0)
+    distribucion:    float = Field(default=1.0, ge=0.0, le=2.0)
+    compactacion:    float = Field(default=0.5, ge=0.0, le=2.0)
+    balance_diario:  float = Field(default=0.0, ge=0.0, le=2.0)
+    franja_preferida: float = Field(default=0.0, ge=0.0, le=2.0)
+    dia_libre:       float = Field(default=0.0, ge=0.0, le=2.0)
+    hueco_comun:     float = Field(default=0.0, ge=0.0, le=2.0)
 
 
 PESOS_DEFAULT = PesosGeneracion()
@@ -581,6 +611,7 @@ class ConfigGeneracion(BaseModel):
     grupos:               list[int]  = Field(default_factory=list)
     pesos:                PesosGeneracion = Field(default_factory=PesosGeneracion)
     escenario_destino_id: int | None = None
+    restricciones:        dict       = Field(default_factory=dict)
     created_at:           str | None = None
     updated_at:           str | None = None
 
@@ -638,7 +669,8 @@ class BloqueGeneradoDTO(BaseModel):
     franja_orden:  int
     hora_inicio:   str
     hora_fin:      str
-    sala:          str = "Aula"
+    sala:          str      = "Aula"
+    sala_id:       int | None = None   # None = sala "Aula" legacy
 
 
 class MetricasCalidadDTO(BaseModel):
@@ -662,6 +694,109 @@ class ResultadoGeneracionDTO(BaseModel):
     incidencias:      list[str]               = []  # motivos de lo no colocado
     valido:           bool                    = False  # analizar_lote.todo_ok del lote final
     metricas:         "MetricasCalidadDTO | None" = None
+    causas:           dict[str, int]          = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
+    relajadas:        list[str]               = Field(default_factory=list)   # restricciones relajadas por infactibilidad
+
+
+# =============================================================================
+# Restricciones configurables (paso_17)
+# =============================================================================
+
+class VentanaGrupo(BaseModel):
+    """Restringe a qué franjas puede asignarse un grupo/grado."""
+    id:                 int | None = None
+    grupo_id:           int | None = None    # None = aplica por grado
+    grado:              int | None = None    # None = aplica a grupo_id específico
+    franjas_permitidas: list[int]            # lista de franja_orden permitidos
+
+    @model_validator(mode="after")
+    def validar_exclusividad(self) -> "VentanaGrupo":
+        if self.grupo_id is None and self.grado is None:
+            raise ValueError("VentanaGrupo requiere grupo_id o grado.")
+        if self.grupo_id is not None and self.grado is not None:
+            raise ValueError("VentanaGrupo no puede tener grupo_id y grado simultáneamente.")
+        return self
+
+
+class BloqueAnclado(BaseModel):
+    """Un bloque pre-colocado que el motor debe respetar."""
+    id:            int | None = None
+    escenario_id:  int
+    asignacion_id: int
+    dia_semana:    str
+    franja_orden:  int = Field(ge=1)
+    sala_id:       int | None = None
+
+    @field_validator("dia_semana", mode="before")
+    @classmethod
+    def validar_dia(cls, v: str) -> str:
+        v = str(v).strip()
+        if v not in DIAS_VALIDOS:
+            raise ValueError(f"dia_semana inválido: '{v}'.")
+        return v
+
+
+class FranjaReunion(BaseModel):
+    """Franja reservada para reunión de un conjunto de docentes."""
+    id:           int | None = None
+    nombre:       str
+    docentes:     list[int]      # lista de usuario_id
+    dia_semana:   str
+    franja_orden: int = Field(ge=1)
+    modo:         str = "preferente"  # "estricta" | "preferente"
+
+    @field_validator("dia_semana", mode="before")
+    @classmethod
+    def validar_dia(cls, v: str) -> str:
+        v = str(v).strip()
+        if v not in DIAS_VALIDOS:
+            raise ValueError(f"dia_semana inválido: '{v}'.")
+        return v
+
+    @field_validator("modo", mode="before")
+    @classmethod
+    def validar_modo(cls, v: str) -> str:
+        v = str(v).strip().lower()
+        if v not in {"estricta", "preferente"}:
+            raise ValueError(f"modo inválido: '{v}'. Use 'estricta' o 'preferente'.")
+        return v
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre de la franja de reunión no puede estar vacío.")
+        return v
+
+
+class LimitesDocente(BaseModel):
+    """Límites de carga diaria por docente (amplía carga_horaria_max en usuario)."""
+    id:             int | None = None
+    usuario_id:     int = Field(gt=0)
+    min_horas_dia:  int = Field(default=0, ge=0)
+    max_horas_dia:  int = Field(default=8, ge=1)
+
+    @model_validator(mode="after")
+    def validar_rango(self) -> "LimitesDocente":
+        if self.min_horas_dia > self.max_horas_dia:
+            raise ValueError(
+                f"min_horas_dia ({self.min_horas_dia}) no puede ser mayor "
+                f"que max_horas_dia ({self.max_horas_dia})."
+            )
+        return self
+
+
+# =============================================================================
+# Plan de estudios (paso_19)
+# =============================================================================
+
+class PlanEstudios(BaseModel):
+    """Horas semanales de una asignatura para un grado específico."""
+    id:              int | None = None
+    grado:           int        = Field(ge=1, le=13)
+    asignatura_id:   int        = Field(gt=0)
+    horas_semanales: int        = Field(ge=1, le=40)
 
 
 # =============================================================================
@@ -689,6 +824,9 @@ class NuevaAsignaturaDTO(BaseModel):
     codigo:          str | None = None
     area_id:         int | None = None
     horas_semanales: int        = 1
+    tipo_sala_requerido: str | None = None
+    bloque_doble:        bool       = False
+    horas_consecutivas:  int        = Field(default=1, ge=1)
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -719,6 +857,44 @@ class NuevoGrupoDTO(BaseModel):
 
     def to_grupo(self) -> Grupo:
         return Grupo(**self.model_dump())
+
+
+# =============================================================================
+# Sala (paso_17)
+# =============================================================================
+
+class Sala(BaseModel):
+    """Sala o espacio físico donde se dictan clases."""
+    id:        int | None = None
+    nombre:    str
+    tipo:      str = "aula"   # "aula" | "laboratorio" | "computo" | "ed_fisica" | "otro"
+    capacidad: int = Field(default=30, ge=1)
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def validar_nombre(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El nombre de la sala no puede estar vacío.")
+        return v
+
+    @field_validator("tipo", mode="before")
+    @classmethod
+    def validar_tipo(cls, v: str) -> str:
+        v = str(v).strip().lower()
+        tipos = {"aula", "laboratorio", "computo", "ed_fisica", "otro"}
+        if v not in tipos:
+            raise ValueError(f"tipo inválido: '{v}'. Use uno de {sorted(tipos)}.")
+        return v
+
+
+class NuevaSalaDTO(BaseModel):
+    nombre:    str
+    tipo:      str = "aula"
+    capacidad: int = 30
+
+    def to_sala(self) -> Sala:
+        return Sala(**self.model_dump())
 
 
 class NuevoHorarioDTO(BaseModel):
@@ -897,6 +1073,16 @@ class CupoDTO(BaseModel):
 
 
 # =============================================================================
+# DTO plan de estudios (paso_19)
+# =============================================================================
+
+class NuevoPlanEstudiosDTO(BaseModel):
+    grado:           int = Field(ge=1, le=13)
+    asignatura_id:   int = Field(gt=0)
+    horas_semanales: int = Field(ge=1, le=40)
+
+
+# =============================================================================
 # DTOs de carga masiva
 # =============================================================================
 
@@ -973,4 +1159,15 @@ __all__ = [
     "ResultadoGeneracionDTO",
     # paso_15d
     "MetricasCalidadDTO",
+    # paso_17
+    "Sala",
+    "NuevaSalaDTO",
+    "VentanaGrupo",
+    "BloqueAnclado",
+    "FranjaReunion",
+    "LimitesDocente",
+    # paso_19
+    "PlanEstudios",
+    "NuevoPlanEstudiosDTO",
+    "Grado",
 ]

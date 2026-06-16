@@ -74,15 +74,20 @@ def btn_danger(
 
 
 def btn_ghost(
-    text: str,
+    text: str | None = "",
     on_click: Callable | None = None,
     *,
     icon: str | None = None,
     size: Literal["sm", "md", "lg"] | None = None,
     disabled: bool = False,
 ) -> ui.button:
-    """Acción terciaria / cancelar — plano, sin borde ni fondo."""
-    return _build(text, on_click, "ghost", icon, size, disabled)
+    """Acción terciaria / cancelar — plano, sin borde ni fondo.
+
+    `text` ahora es opcional para permitir llamadas que pasan solo kwargs
+    (ej. `btn_ghost(icon="edit", on_click=...)`). En esos casos se
+    renderiza un botón sin texto visible.
+    """
+    return _build(text or "", on_click, "ghost", icon, size, disabled)
 
 
 def btn_icon(

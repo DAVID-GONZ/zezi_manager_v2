@@ -177,6 +177,16 @@ def registrar_rutas_ui() -> None:
             return
         asignaciones_page()
 
+    # ── Admin: Plan de estudios ──────────────────────────────────────────────
+    from src.interface.pages.admin.plan_estudios import plan_estudios_page
+
+    @ui.page("/admin/plan-estudios")
+    def pagina_admin_plan_estudios():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        plan_estudios_page()
+
     # ── Admin: Configuración SIE ─────────────────────────────────────────────
     from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
 
@@ -207,32 +217,49 @@ def registrar_rutas_ui() -> None:
             return
         estudiantes_page()
 
-    # ── Académico: Horarios ───────────────────────────────────────────────────
-    from src.interface.pages.academico.horarios import horarios_page
-    from src.interface.pages.academico.horario_generar import horario_generar_page
+    # ── Académico: Horarios (hub unificado paso_18) ───────────────────────────
+    from src.interface.pages.academico.horarios_hub import horarios_hub_page
 
     @ui.page("/horarios")
     def pagina_horarios():
         if not app.storage.user.get("autenticado"):
             ui.navigate.to("/login")
             return
-        horarios_page()
+        horarios_hub_page(seccion_inicial="visualizar")
 
     @ui.page("/academico/generar-horario")
     def pagina_generar_horario():
         if not app.storage.user.get("autenticado"):
             ui.navigate.to("/login")
             return
-        horario_generar_page()
+        horarios_hub_page(seccion_inicial="generar")
 
-    from src.interface.pages.admin.plantillas_franja import plantillas_franja_page
-
-    @ui.page("/admin/plantillas-franja")
-    def pagina_plantillas_franja():
+    @ui.page("/academico/horarios")
+    def pagina_horarios_hub():
         if not app.storage.user.get("autenticado"):
             ui.navigate.to("/login")
             return
-        plantillas_franja_page()
+        horarios_hub_page(seccion_inicial="visualizar")
+
+    # ── Admin: Disponibilidad docente ─────────────────────────────────────────
+    from src.interface.pages.admin.disponibilidad_docente import disponibilidad_docente_page
+
+    @ui.page("/admin/disponibilidad-docente")
+    def pagina_admin_disponibilidad_docente():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        disponibilidad_docente_page()
+
+    # ── Admin: Salas ──────────────────────────────────────────────────────────
+    from src.interface.pages.admin.salas import salas_page
+
+    @ui.page("/admin/salas")
+    def pagina_admin_salas():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        salas_page()
 
     # ── Evaluación: Configuración de categorías ───────────────────────────────
     from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page

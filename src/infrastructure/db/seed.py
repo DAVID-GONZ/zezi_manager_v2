@@ -206,29 +206,6 @@ _ASIGNACIONES_DEV = [
     ("torres",     ["TEC", "INF", "ART"]),
 ]
 
-# Plan docente determinista para seed_dev.
-# (usuario, carga_horaria_max, [(codigo_asignatura, [codigos_grupo])])
-# Verificado: 16 docentes a 22h + 1 a 8h = 360h; cada grupo suma 30h;
-# cada (grupo, asignatura) aparece UNA sola vez.
-_PLAN_DOCENTE_DEV = [
-    ("rgomez",   22, [("MAT", ["601", "602", "701", "702"]), ("EDF", ["601"])]),
-    ("cmoreno",  22, [("MAT", ["801", "802", "901", "902"]), ("EDF", ["602"])]),
-    ("jvargas",  22, [("MAT", ["1001", "1002", "1101", "1102"]), ("EDF", ["701"])]),
-    ("amartinez",22, [("LEN", ["601", "602", "701", "702"]), ("EDF", ["702"])]),
-    ("pjimenez", 22, [("LEN", ["801", "802", "901", "902"]), ("EDF", ["801"])]),
-    ("dortiz",   22, [("LEN", ["1001", "1002", "1101", "1102"]), ("EDF", ["802"])]),
-    ("lcastro",  22, [("CNT", ["601", "602", "701", "702", "801"]), ("ETI", ["601", "602"])]),
-    ("fherrera", 22, [("CNT", ["802", "901", "902", "1001", "1002"]), ("ETI", ["701", "702"])]),
-    ("mrojas",    8, [("CNT", ["1101", "1102"])]),
-    ("gsalazar", 22, [("CSO", ["601", "602", "701", "702", "801"]), ("REL", ["601", "602"])]),
-    ("hmedina",  22, [("CSO", ["802", "901", "902", "1001", "1002"]), ("REL", ["701", "702"])]),
-    ("swhite",   22, [("ING", ["601", "602", "701", "702", "801", "802", "901"]), ("ETI", ["801"])]),
-    ("ablack",   22, [("ING", ["902", "1001", "1002", "1101", "1102"]), ("ART", ["601", "602", "701"]), ("ETI", ["802"])]),
-    ("nrivera",  22, [("ART", ["702", "801", "802", "901", "902"]), ("TEC", ["601", "602", "701", "702", "801"]), ("ETI", ["901", "902"])]),
-    ("ocastano", 22, [("ART", ["1001", "1002", "1101", "1102"]), ("TEC", ["802", "901", "902", "1001"]), ("EDF", ["901", "902"]), ("ETI", ["1001", "1002"])]),
-    ("vmolina",  22, [("TEC", ["1002", "1101", "1102"]), ("EDF", ["1001", "1002"]), ("CSO", ["1101"]), ("REL", ["801", "802", "901", "902"]), ("FIL", ["601", "602", "701", "702"])]),
-    ("tbeltran", 22, [("EDF", ["1101", "1102"]), ("CSO", ["1102"]), ("REL", ["1001", "1002", "1101", "1102"]), ("FIL", ["801", "802", "901", "902", "1001", "1002", "1101", "1102"]), ("ETI", ["1101", "1102"])]),
-]
 
 # Niveles de desempeño según modelo típico del Decreto 1290
 _NIVELES_DEFAULT = [
@@ -281,6 +258,7 @@ _DIAS_LECTIVOS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 _FRANJAS_LECTIVAS_DEV = [
     (1, "07:00", "07:55"), (2, "07:55", "08:50"), (3, "08:50", "09:45"),
     (5, "10:15", "11:10"), (6, "11:10", "12:05"), (7, "12:05", "13:00"),
+    (8, "13:00", "13:55"),
 ]
 
 
@@ -520,8 +498,9 @@ def _seed_escenarios(
 def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
     """
     Crea la plantilla de rejilla por defecto 'Jornada única' (UNICA, activa,
-    Lunes–Viernes) con 7 franjas (6 lectivas + 1 recreo). Retorna plantilla_id.
-    Idempotente: si la plantilla ya existe, reutiliza su id y no duplica franjas.
+    Lunes–Viernes) con 8 franjas (7 lectivas + 1 recreo) = 35 cupos/semana.
+    Retorna plantilla_id. Idempotente: si la plantilla ya existe, reutiliza su
+    id y no duplica franjas.
     """
     pid = _get_or_insert(
         conn,
@@ -545,6 +524,8 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
     if ya:
         return pid
 
+    # 7 lectivas + 1 recreo = 35 cupos/semana. Deja holgura sobre las 30 h del
+    # plan de estudios para que el generador pueda resolver sin saturar grupos.
     franjas = [
         (pid, 1, "07:00", "07:55", "lectiva",  None),
         (pid, 2, "07:55", "08:50", "lectiva",  None),
@@ -553,6 +534,7 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
         (pid, 5, "10:15", "11:10", "lectiva",  None),
         (pid, 6, "11:10", "12:05", "lectiva",  None),
         (pid, 7, "12:05", "13:00", "lectiva",  None),
+        (pid, 8, "13:00", "13:55", "lectiva",  None),
     ]
     conn.executemany(
         """
@@ -699,51 +681,63 @@ def _seed_horarios(
     return count
 
 
-def _seed_asignaciones_especificas(
+def _seed_asignaciones_desde_plan(
     conn: sqlite3.Connection,
-    usuario_map: dict[str, int],
-    asig_map: dict[str, int],
-    grupo_map: dict[str, int],
     periodo_ids: list[int],
-    plan: list[tuple],
 ) -> list[int]:
     """
-    Crea asignaciones a partir de un plan docente explícito.
-
-    Plan: lista de (usuario, carga_horaria_max, [(codigo_asignatura, [codigos_grupo])]).
-    Para cada periodo, inserta UNA asignación por cada (usuario, asignatura, grupo).
-    Idempotente vía _get_or_insert sobre (usuario_id, asignatura_id, grupo_id, periodo_id).
-    Retorna la lista de ids creados/existentes.
+    Deriva las asignaciones docente-grupo-asignatura DEL PLAN DE ESTUDIOS:
+    para cada grupo, cada asignatura de su grado recibe un docente, respetando
+    la carga máxima (con las horas del plan). Garantiza que plan ↔ asignaciones
+    ↔ carga ↔ generador queden consistentes. Idempotente por combinación.
+    Retorna los ids creados/existentes.
     """
+    from collections import defaultdict
+
+    profs = conn.execute(
+        "SELECT id, COALESCE(carga_horaria_max, 22) AS cap FROM usuarios "
+        "WHERE rol='profesor' ORDER BY id"
+    ).fetchall()
+    teachers = [r["id"] for r in profs]
+    cap = {r["id"]: r["cap"] for r in profs}
+    if not teachers:
+        return []
+
+    grupos = conn.execute("SELECT id, grado FROM grupos WHERE grado IS NOT NULL").fetchall()
+    plan_por_grado: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    for r in conn.execute("SELECT grado, asignatura_id, horas_semanales FROM plan_estudios"):
+        plan_por_grado[r["grado"]].append((r["asignatura_id"], r["horas_semanales"]))
+
     ids: list[int] = []
-    for usuario, _carga, materias in plan:
-        prof_id = usuario_map.get(usuario)
-        if not prof_id:
-            continue
-        for codigo, grupos in materias:
-            asignatura_id = asig_map.get(codigo)
-            if not asignatura_id:
-                continue
-            for codigo_grupo in grupos:
-                grupo_id = grupo_map.get(codigo_grupo)
-                if not grupo_id:
-                    continue
-                for periodo_id in periodo_ids:
-                    aid = _get_or_insert(
-                        conn,
-                        """
-                        SELECT id FROM asignaciones
-                        WHERE usuario_id=? AND asignatura_id=? AND grupo_id=? AND periodo_id=?
-                        """,
-                        (prof_id, asignatura_id, grupo_id, periodo_id),
-                        """
-                        INSERT INTO asignaciones
-                            (grupo_id, asignatura_id, usuario_id, periodo_id, activo)
-                        VALUES (?, ?, ?, ?, 1)
-                        """,
-                        (grupo_id, asignatura_id, prof_id, periodo_id),
-                    )
-                    ids.append(aid)
+    for periodo_id in periodo_ids:
+        carga: dict[int, int] = {t: 0 for t in teachers}
+        materias_de: dict[int, set] = defaultdict(set)  # teacher -> {asignatura_id}
+        # Slots a cubrir, agrupados por asignatura (para continuidad de docente).
+        por_asig: dict[int, list[tuple[int, int]]] = defaultdict(list)  # aid -> [(grupo_id, horas)]
+        for g in grupos:
+            for (aid, horas) in plan_por_grado.get(g["grado"], []):
+                por_asig[aid].append((g["id"], horas))
+
+        for aid, slots in por_asig.items():
+            for (gid, horas) in slots:
+                # Preferir un docente que ya dicte esa asignatura y tenga cupo.
+                cand = [t for t in teachers
+                        if carga[t] + horas <= cap[t] and aid in materias_de[t]]
+                if not cand:
+                    cand = [t for t in teachers if carga[t] + horas <= cap[t]]
+                if not cand:
+                    continue  # sin cupo (no debería con la holgura del seed)
+                tid = max(cand, key=lambda t: cap[t] - carga[t])
+                carga[tid] += horas
+                materias_de[tid].add(aid)
+                cur = conn.execute(
+                    """INSERT OR IGNORE INTO asignaciones
+                           (grupo_id, asignatura_id, usuario_id, periodo_id, activo)
+                       VALUES (?, ?, ?, ?, 1)""",
+                    (gid, aid, tid, periodo_id),
+                )
+                if cur.lastrowid:
+                    ids.append(cur.lastrowid)
     return ids
 
 
@@ -770,13 +764,17 @@ def _seed_horarios_completo(
     if ya:
         return 0
 
-    # 2. Cargar asignaciones del periodo con sus horas semanales
+    # 2. Cargar asignaciones del periodo con sus horas del plan (fallback global)
     asignaciones = conn.execute(
         """
-        SELECT a.id, a.grupo_id, a.usuario_id, a.asignatura_id, s.horas_semanales
+        SELECT a.id, a.grupo_id, a.usuario_id, a.asignatura_id,
+               COALESCE(pe.horas_semanales, s.horas_semanales) AS horas_semanales
         FROM asignaciones a
-        JOIN asignaturas s ON s.id = a.asignatura_id
-        WHERE a.periodo_id = ?
+        JOIN grupos g       ON g.id = a.grupo_id
+        JOIN asignaturas s  ON s.id = a.asignatura_id
+        LEFT JOIN plan_estudios pe
+               ON pe.grado = g.grado AND pe.asignatura_id = a.asignatura_id
+        WHERE a.periodo_id = ? AND a.activo = 1
         """,
         (periodo_id,),
     ).fetchall()
@@ -1288,6 +1286,60 @@ def _seed_config_generacion(
 
 
 # ---------------------------------------------------------------------------
+# Plan de estudios (paso_19)
+# ---------------------------------------------------------------------------
+
+# Plan de estudios realista por banda de grado (suma 30 h/semana, que caben en
+# los 30 cupos lectivos de la plantilla "Jornada única": 6 franjas × 5 días).
+# (codigo_asignatura, horas_semanales)
+_PLAN_BASICA = [  # grados 6–9
+    ("MAT", 5), ("LEN", 5), ("CNT", 4), ("CSO", 4), ("ING", 3),
+    ("EDF", 2), ("ART", 2), ("TEC", 2), ("ETI", 1), ("REL", 1), ("INF", 1),
+]
+_PLAN_MEDIA = [   # grados 10–11
+    ("MAT", 4), ("LEN", 4), ("BIO", 2), ("QUI", 3), ("FIS", 3), ("CSO", 3),
+    ("FIL", 2), ("ING", 3), ("EDF", 2), ("TEC", 1), ("ETI", 1), ("REL", 1),
+    ("EST", 1),
+]
+
+
+def _plan_para_grado(grado: int) -> list[tuple]:
+    return _PLAN_MEDIA if grado >= 10 else _PLAN_BASICA
+
+
+def _seed_plan_estudios(
+    conn: sqlite3.Connection,
+    asignatura_ids: dict[str, int],
+    grados: list[int],
+    asignaturas: list[tuple] | None = None,
+) -> int:
+    """
+    Inserta filas de plan_estudios (grado × asignatura → horas_semanales).
+
+    - En modo test (`asignaturas` dado), usa las horas globales de esas materias.
+    - En desarrollo, usa un plan realista por banda de grado (~30 h/semana),
+      no todas las asignaturas en todos los grados.
+    Idempotente vía INSERT OR IGNORE. Retorna el número de filas insertadas.
+    """
+    count = 0
+    for grado in grados:
+        if asignaturas is not None:
+            filas = [(codigo, horas) for _n, codigo, _a, horas in asignaturas]
+        else:
+            filas = _plan_para_grado(grado)
+        for codigo, horas in filas:
+            asig_id = asignatura_ids.get(codigo)
+            if asig_id is None:
+                continue
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO plan_estudios (grado, asignatura_id, horas_semanales) VALUES (?, ?, ?)",
+                (grado, asig_id, horas),
+            )
+            count += cur.rowcount
+    return count
+
+
+# ---------------------------------------------------------------------------
 # API pública
 # ---------------------------------------------------------------------------
 
@@ -1380,10 +1432,25 @@ def seed_dev(
     todos_usuarios = _USUARIOS_BASE + _USUARIOS_DEV
     result.usuario_ids = _seed_usuarios(conn, todos_usuarios, hasher, carga_horaria_max=22)
 
-    # Ajuste de carga horaria específico del plan: mrojas trabaja media jornada.
-    conn.execute("UPDATE usuarios SET carga_horaria_max=8 WHERE usuario='mrojas'")
+    # Ejemplo de docente de media jornada (deja holgura total de capacidad sobre
+    # la demanda del plan, para que la derivación de asignaciones cubra todo).
+    conn.execute("UPDATE usuarios SET carga_horaria_max=16 WHERE usuario='mrojas'")
 
     result.asignatura_ids = _seed_asignaturas(conn, result.area_ids)
+    _seed_plan_estudios(conn, result.asignatura_ids, list(range(6, 12)))
+
+    # Grados ofrecidos (6–11): rango de estudiantes (norma) + 30 h objetivo.
+    _GRADOS_DEV = [
+        (6, "Sexto"), (7, "Séptimo"), (8, "Octavo"),
+        (9, "Noveno"), (10, "Décimo"), (11, "Once"),
+    ]
+    for numero, nombre in _GRADOS_DEV:
+        conn.execute(
+            """INSERT OR IGNORE INTO grados
+                   (numero, nombre, min_estudiantes, max_estudiantes, horas_semanales)
+               VALUES (?, ?, 20, 40, 30)""",
+            (numero, nombre),
+        )
 
     grupo_map = _seed_grupos(conn, _GRUPOS_DEV)
     result.grupo_ids = list(grupo_map.values())
@@ -1392,14 +1459,9 @@ def seed_dev(
         conn, result.anio_id, anio or __import__("datetime").datetime.now().year
     )
 
-    result.asignacion_ids = _seed_asignaciones_especificas(
-        conn,
-        result.usuario_ids,
-        result.asignatura_ids,
-        grupo_map,
-        result.periodo_ids,
-        _PLAN_DOCENTE_DEV,
-    )
+    # Asignaciones derivadas del plan de estudios (consistentes con el plan,
+    # la carga docente y el generador). Reemplaza el plan docente manual.
+    result.asignacion_ids = _seed_asignaciones_desde_plan(conn, result.periodo_ids)
 
     esc_map = _seed_escenarios(conn, result.anio_id)
     escenario_activo_id = esc_map["Horario base"]
@@ -1450,6 +1512,38 @@ def seed_dev(
 
     # Configuración SIEE: modo mixto_subcategorias con las categorías Ser/Saber/Hacer
     _seed_configuracion_siee(conn, result.anio_id, modo="mixto_subcategorias")
+
+    # Salas especiales compartidas (paso_17)
+    _SALAS_ESPECIALES = [
+        ("Laboratorio de Ciencias", "laboratorio", 30),
+        ("Sala de Cómputo", "computo", 25),
+        ("Cancha Polideportiva", "ed_fisica", 100),
+    ]
+    for nombre_sala, tipo_sala, cap_sala in _SALAS_ESPECIALES:
+        conn.execute(
+            "INSERT OR IGNORE INTO salas (nombre, tipo, capacidad) VALUES (?, ?, ?)",
+            (nombre_sala, tipo_sala, cap_sala),
+        )
+
+    # Aula propia (salón base) por grupo: una por grupo, nombrada por su código.
+    # Así el visualizador muestra un aula real para cada clase normal.
+    for codigo, gid in grupo_map.items():
+        conn.execute(
+            "INSERT OR IGNORE INTO salas (nombre, tipo, capacidad) VALUES (?, 'aula', 40)",
+            (f"Aula {codigo}",),
+        )
+        srow = conn.execute(
+            "SELECT id FROM salas WHERE nombre = ?", (f"Aula {codigo}",)
+        ).fetchone()
+        if srow:
+            conn.execute(
+                "UPDATE grupos SET sala_id = ? WHERE id = ?", (srow[0], gid)
+            )
+
+    # Nota: NO se siembran límites diarios por docente por defecto. Imponer un
+    # tope/mínimo diario a todos desactiva el coloreo óptimo (König) y obliga al
+    # motor a empaquetar por backtracking, dejando lecciones sin colocar. Los
+    # límites son opt-in: se configuran por docente cuando se necesitan.
 
     result.counts.update({
         "usuarios_total":     len(result.usuario_ids),
@@ -1507,6 +1601,10 @@ def seed_test(
         result.area_ids,
         [("Matemáticas Test", "MAT_T", "Matemáticas", 4)],
     )
+    _seed_plan_estudios(
+        conn, result.asignatura_ids, [6],
+        [("Matemáticas Test", "MAT_T", "Matemáticas", 4)],
+    )
 
     grupo_map = _seed_grupos(conn, [("T01", "Test A", 6, "AM", 30)])
     result.grupo_ids = list(grupo_map.values())
@@ -1559,6 +1657,11 @@ def seed_test(
         periodo_id=result.periodo_ids[0],
         anio_id=result.anio_id,
         plantilla_id=plantilla_id,
+    )
+
+    # Sala mínima para tests paso_17
+    conn.execute(
+        "INSERT OR IGNORE INTO salas (id, nombre, tipo, capacidad) VALUES (1, 'Aula Test', 'aula', 40)"
     )
 
     result.counts = {

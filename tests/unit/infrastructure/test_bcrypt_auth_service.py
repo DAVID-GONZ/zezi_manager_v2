@@ -41,6 +41,7 @@ class FakeRepoAuth(IUsuarioRepository):
     def listar_asignaciones_docente(self, uid, periodo_id=None): return []
     def guardar(self, u): return u
     def actualizar(self, u): return u
+    def actualizar_carga(self, uid, carga_horaria_max, horas_extra): return True
     def cambiar_rol(self, uid, rol): return True
     def desactivar(self, uid): return True
     def reactivar(self, uid): return True

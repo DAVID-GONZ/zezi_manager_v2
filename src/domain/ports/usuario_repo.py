@@ -173,6 +173,13 @@ class IUsuarioRepository(ABC):
         ...
 
     @abstractmethod
+    def actualizar_carga(
+        self, usuario_id: int, carga_horaria_max: int | None, horas_extra: int
+    ) -> bool:
+        """Actualiza el tope semanal de carga y las horas extra de un docente."""
+        ...
+
+    @abstractmethod
     def cambiar_rol(self, usuario_id: int, nuevo_rol: Rol) -> bool:
         """
         Cambia el rol de un usuario.

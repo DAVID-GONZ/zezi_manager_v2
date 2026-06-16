@@ -225,5 +225,34 @@ class UsuarioService:
         usuario = self._get_usuario_o_lanzar(usuario_id)
         return usuario.carga_horaria_max
 
+    def configurar_carga(
+        self,
+        usuario_id: int,
+        carga_horaria_max: int | None,
+        horas_extra: int = 0,
+        actualizado_por_id: int | None = None,
+    ) -> Usuario:
+        """Configura el tope semanal y las horas extra de un docente.
+
+        `carga_horaria_max=None` significa sin límite. `horas_extra` amplía el
+        tope efectivo. Valida rangos vía el modelo Usuario.
+        """
+        usuario = self._get_usuario_o_lanzar(usuario_id)
+        if carga_horaria_max is not None and carga_horaria_max < 0:
+            raise ValueError("La carga máxima no puede ser negativa.")
+        if horas_extra < 0:
+            raise ValueError("Las horas extra no pueden ser negativas.")
+        datos_ant = usuario.model_dump(mode="json")
+        self._repo.actualizar_carga(usuario_id, carga_horaria_max, horas_extra)
+        actualizado = usuario.model_copy(update={
+            "carga_horaria_max": carga_horaria_max,
+            "horas_extra": horas_extra,
+        })
+        self._auditar(
+            AccionCambio.UPDATE, "usuarios", usuario_id,
+            datos_ant, actualizado.model_dump(mode="json"), actualizado_por_id,
+        )
+        return actualizado
+
 
 __all__ = ["UsuarioService"]

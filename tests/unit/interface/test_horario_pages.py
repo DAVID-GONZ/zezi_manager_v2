@@ -1,12 +1,12 @@
 """
-Minimal import tests para las páginas de generación y la parrilla.
+Minimal import tests para el hub de horarios y la parrilla.
 """
 from __future__ import annotations
 
 
-def test_horario_generar_page_importa():
-    from src.interface.pages.academico.horario_generar import horario_generar_page
-    assert callable(horario_generar_page)
+def test_horarios_hub_page_importa():
+    from src.interface.pages.academico.horarios_hub import horarios_hub_page
+    assert callable(horarios_hub_page)
 
 
 def test_parrilla_widget_importa():

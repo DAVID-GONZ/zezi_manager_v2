@@ -257,9 +257,12 @@ class Container:
         return cls._get_or_create(
             "asignacion_service",
             lambda: AsignacionService(
-                repo=cls.asignacion_repo(),
-                periodo_repo=cls.periodo_repo(),
-                auditoria=cls.auditoria_repo(),
+                repo         = cls.asignacion_repo(),
+                periodo_repo = cls.periodo_repo(),
+                auditoria    = cls.auditoria_repo(),
+                usuario_repo = cls.usuario_repo(),
+                infra_repo   = cls.infraestructura_repo(),
+                plan_svc     = cls.plan_estudios_service(),
             ),
         )
 
@@ -411,6 +414,29 @@ class Container:
         )
 
     @classmethod
+    def plan_estudios_service(cls):
+        from src.services.plan_estudios_service import PlanEstudiosService
+        return cls._get_or_create(
+            "plan_estudios_service",
+            lambda: PlanEstudiosService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def preparacion_horario_service(cls):
+        from src.services.preparacion_horario_service import PreparacionHorarioService
+        return cls._get_or_create(
+            "preparacion_horario_service",
+            lambda: PreparacionHorarioService(
+                infra_repo      = cls.infraestructura_repo(),
+                asignacion_repo = cls.asignacion_repo(),
+                config_repo     = cls.configuracion_repo(),
+                periodo_repo    = cls.periodo_repo(),
+                usuario_repo    = cls.usuario_repo(),
+                plan_svc        = cls.plan_estudios_service(),
+            ),
+        )
+
+    @classmethod
     def horario_service(cls):
         from src.services.horario_service import HorarioService
         return cls._get_or_create(
@@ -419,6 +445,7 @@ class Container:
                 infra_repo=cls.infraestructura_repo(),
                 asignacion_repo=cls.asignacion_repo(),
                 usuario_repo=cls.usuario_service(),
+                plan_svc=cls.plan_estudios_service(),
             ),
         )
 
@@ -433,6 +460,7 @@ class Container:
                 usuario_repo=cls.usuario_service(),
                 horario_service=cls.horario_service(),
                 infraestructura_service=cls.infraestructura_service(),
+                plan_svc=cls.plan_estudios_service(),
             ),
         )
 
@@ -469,7 +497,8 @@ class Container:
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "nivelacion_service", "plan_mejoramiento_service", "convivencia_service", "alerta_service",
             "estadisticos_service", "informe_service", "auditoria_service",
-            "infraestructura_service",
+            "infraestructura_service", "plan_estudios_service",
+            "preparacion_horario_service",
         ]
         for nombre in metodos:
             try:

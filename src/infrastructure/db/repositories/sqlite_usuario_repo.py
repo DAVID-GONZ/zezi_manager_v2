@@ -18,7 +18,7 @@ from src.domain.models.usuario import (
 
 _COLS_USUARIO = (
     "id, usuario, nombre_completo, email, telefono, "
-    "rol, activo, fecha_creacion, ultima_sesion"
+    "rol, activo, fecha_creacion, ultima_sesion, carga_horaria_max, horas_extra"
 )
 
 
@@ -293,6 +293,18 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             if self._conn is None:
                 conn.commit()
             return usuario
+
+    def actualizar_carga(
+        self, usuario_id: int, carga_horaria_max: int | None, horas_extra: int
+    ) -> bool:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "UPDATE usuarios SET carga_horaria_max = ?, horas_extra = ? WHERE id = ?",
+                (carga_horaria_max, horas_extra, usuario_id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount > 0
 
     def cambiar_rol(self, usuario_id: int, nuevo_rol: Rol) -> bool:
         with self._get_conn() as conn:

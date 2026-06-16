@@ -14,19 +14,26 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
+    BloqueAnclado,
     ConfigGeneracion,
     DiaSemana,
     DisponibilidadDocente,
     EscenarioHorario,
     Franja,
+    FranjaReunion,
+    Grado,
     Grupo,
     Horario,
     HorarioEstadisticasDTO,
     HorarioInfo,
     Jornada,
+    LimitesDocente,
     Logro,
     PesosGeneracion,
+    PlanEstudios,
     PlantillaFranja,
+    Sala,
+    VentanaGrupo,
 )
 
 
@@ -395,12 +402,18 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     # Asignaturas
     # =========================================================================
 
+    def _row_to_asignatura(self, row) -> Asignatura:
+        d = dict(row)
+        d["bloque_doble"] = bool(d.get("bloque_doble", 0))
+        return Asignatura(**{k: v for k, v in d.items()
+                             if k in Asignatura.model_fields})
+
     def get_asignatura(self, asignatura_id: int) -> Asignatura | None:
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM asignaturas WHERE id = ?", (asignatura_id,)
             ).fetchone()
-            return Asignatura(**dict(row)) if row else None
+            return self._row_to_asignatura(row) if row else None
 
     def listar_asignaturas(self, area_id: int | None = None) -> list[Asignatura]:
         with self._get_conn() as conn:
@@ -413,20 +426,25 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 rows = conn.execute(
                     "SELECT * FROM asignaturas ORDER BY nombre"
                 ).fetchall()
-            return [Asignatura(**dict(r)) for r in rows]
+            return [self._row_to_asignatura(r) for r in rows]
 
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
         with self._get_conn() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO asignaturas (nombre, codigo, area_id, horas_semanales)
-                VALUES (?,?,?,?)
+                INSERT INTO asignaturas
+                    (nombre, codigo, area_id, horas_semanales,
+                     tipo_sala_requerido, bloque_doble, horas_consecutivas)
+                VALUES (?,?,?,?,?,?,?)
                 """,
                 (
                     asignatura.nombre,
                     asignatura.codigo,
                     asignatura.area_id,
                     asignatura.horas_semanales,
+                    asignatura.tipo_sala_requerido,
+                    int(asignatura.bloque_doble),
+                    asignatura.horas_consecutivas,
                 ),
             )
             if self._conn is None:
@@ -438,7 +456,8 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             conn.execute(
                 """
                 UPDATE asignaturas SET
-                    nombre = ?, codigo = ?, area_id = ?, horas_semanales = ?
+                    nombre = ?, codigo = ?, area_id = ?, horas_semanales = ?,
+                    tipo_sala_requerido = ?, bloque_doble = ?, horas_consecutivas = ?
                 WHERE id = ?
                 """,
                 (
@@ -446,6 +465,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     asignatura.codigo,
                     asignatura.area_id,
                     asignatura.horas_semanales,
+                    asignatura.tipo_sala_requerido,
+                    int(asignatura.bloque_doble),
+                    asignatura.horas_consecutivas,
                     asignatura.id,
                 ),
             )
@@ -505,6 +527,15 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 d["jornada"] = Jornada(d["jornada"]) if d.get("jornada") else Jornada.UNICA
                 resultado.append(Grupo(**d))
             return resultado
+
+    def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "UPDATE grupos SET sala_id = ? WHERE id = ?", (sala_id, grupo_id)
+            )
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount > 0
 
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
         with self._get_conn() as conn:
@@ -1015,6 +1046,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         grupos = json.loads(d.pop("grupos_json", "[]") or "[]")
         pesos_dict = json.loads(d.pop("pesos_json", "{}") or "{}")
         pesos = PesosGeneracion(**pesos_dict) if pesos_dict else PesosGeneracion()
+        restricciones = json.loads(d.pop("restricciones_json", "{}") or "{}")
         return ConfigGeneracion(
             id=d["id"],
             nombre=d["nombre"],
@@ -1024,6 +1056,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             estado=d["estado"],
             grupos=grupos,
             pesos=pesos,
+            restricciones=restricciones,
             escenario_destino_id=d.get("escenario_destino_id"),
             created_at=d.get("created_at"),
             updated_at=d.get("updated_at"),
@@ -1033,16 +1066,18 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         with self._get_conn() as conn:
             grupos_json = json.dumps(c.grupos)
             pesos_json = json.dumps(c.pesos.model_dump())
+            restricciones_json = json.dumps(c.restricciones)
             cursor = conn.execute(
                 """
                 INSERT INTO config_generacion
                     (nombre, periodo_id, anio_id, plantilla_id, estado,
-                     grupos_json, pesos_json, escenario_destino_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     grupos_json, pesos_json, restricciones_json, escenario_destino_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     c.nombre, c.periodo_id, c.anio_id, c.plantilla_id,
-                    c.estado, grupos_json, pesos_json, c.escenario_destino_id,
+                    c.estado, grupos_json, pesos_json, restricciones_json,
+                    c.escenario_destino_id,
                 ),
             )
             if self._conn is None:
@@ -1078,19 +1113,20 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         with self._get_conn() as conn:
             grupos_json = json.dumps(c.grupos)
             pesos_json = json.dumps(c.pesos.model_dump())
+            restricciones_json = json.dumps(c.restricciones)
             conn.execute(
                 """
                 UPDATE config_generacion SET
                     nombre = ?, periodo_id = ?, anio_id = ?, plantilla_id = ?,
                     estado = ?, grupos_json = ?, pesos_json = ?,
-                    escenario_destino_id = ?,
+                    restricciones_json = ?, escenario_destino_id = ?,
                     updated_at = datetime('now')
                 WHERE id = ?
                 """,
                 (
                     c.nombre, c.periodo_id, c.anio_id, c.plantilla_id,
-                    c.estado, grupos_json, pesos_json, c.escenario_destino_id,
-                    c.id,
+                    c.estado, grupos_json, pesos_json, restricciones_json,
+                    c.escenario_destino_id, c.id,
                 ),
             )
             if self._conn is None:
@@ -1149,16 +1185,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             nuevo_nombre = f"{orig.nombre} (copia)"
             grupos_json = json.dumps(orig.grupos)
             pesos_json = json.dumps(orig.pesos.model_dump())
+            restricciones_json = json.dumps(orig.restricciones)
             cursor = conn.execute(
                 """
                 INSERT INTO config_generacion
                     (nombre, periodo_id, anio_id, plantilla_id, estado,
-                     grupos_json, pesos_json, escenario_destino_id)
-                VALUES (?, ?, ?, ?, 'borrador', ?, ?, NULL)
+                     grupos_json, pesos_json, restricciones_json, escenario_destino_id)
+                VALUES (?, ?, ?, ?, 'borrador', ?, ?, ?, NULL)
                 """,
                 (
                     nuevo_nombre, orig.periodo_id, orig.anio_id, orig.plantilla_id,
-                    grupos_json, pesos_json,
+                    grupos_json, pesos_json, restricciones_json,
                 ),
             )
             if self._conn is None:
@@ -1167,6 +1204,311 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 "SELECT * FROM config_generacion WHERE id = ?", (cursor.lastrowid,)
             ).fetchone()
             return self._row_to_config(nuevo_row)
+
+    # =========================================================================
+    # Salas (paso_17)
+    # =========================================================================
+
+    def _row_to_sala(self, row) -> Sala:
+        d = dict(row)
+        return Sala(**{k: v for k, v in d.items() if k in Sala.model_fields})
+
+    def listar_salas(self) -> list[Sala]:
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM salas ORDER BY nombre").fetchall()
+            return [self._row_to_sala(r) for r in rows]
+
+    def get_sala(self, sala_id: int) -> Sala | None:
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM salas WHERE id = ?", (sala_id,)).fetchone()
+            return self._row_to_sala(row) if row else None
+
+    def crear_sala(self, sala: Sala) -> Sala:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO salas (nombre, tipo, capacidad) VALUES (?, ?, ?)",
+                (sala.nombre, sala.tipo, sala.capacidad),
+            )
+            if self._conn is None:
+                conn.commit()
+            return sala.model_copy(update={"id": cur.lastrowid})
+
+    def actualizar_sala(self, sala: Sala) -> Sala:
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE salas SET nombre=?, tipo=?, capacidad=? WHERE id=?",
+                (sala.nombre, sala.tipo, sala.capacidad, sala.id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return sala
+
+    def eliminar_sala(self, sala_id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM salas WHERE id = ?", (sala_id,))
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
+
+    # =========================================================================
+    # VentanaGrupo (paso_17)
+    # =========================================================================
+
+    def _row_to_ventana_grupo(self, row) -> VentanaGrupo:
+        d = dict(row)
+        d["franjas_permitidas"] = json.loads(d.get("franjas_permitidas", "[]"))
+        return VentanaGrupo(**{k: v for k, v in d.items() if k in VentanaGrupo.model_fields})
+
+    def listar_ventanas_grupo(self) -> list[VentanaGrupo]:
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM ventanas_grupo").fetchall()
+            return [self._row_to_ventana_grupo(r) for r in rows]
+
+    def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM ventanas_grupo WHERE grupo_id = ?", (grupo_id,)
+            ).fetchall()
+            return [self._row_to_ventana_grupo(r) for r in rows]
+
+    def get_ventanas_por_grado(self, grado: int) -> list[VentanaGrupo]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM ventanas_grupo WHERE grado = ?", (grado,)
+            ).fetchall()
+            return [self._row_to_ventana_grupo(r) for r in rows]
+
+    def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO ventanas_grupo (grupo_id, grado, franjas_permitidas) VALUES (?, ?, ?)",
+                (v.grupo_id, v.grado, json.dumps(v.franjas_permitidas)),
+            )
+            if self._conn is None:
+                conn.commit()
+            return v.model_copy(update={"id": cur.lastrowid})
+
+    def eliminar_ventana_grupo(self, ventana_id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM ventanas_grupo WHERE id = ?", (ventana_id,))
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
+
+    # =========================================================================
+    # BloqueAnclado (paso_17)
+    # =========================================================================
+
+    def _row_to_bloque_anclado(self, row) -> BloqueAnclado:
+        d = dict(row)
+        return BloqueAnclado(**{k: v for k, v in d.items() if k in BloqueAnclado.model_fields})
+
+    def listar_bloques_anclados(self, escenario_id: int) -> list[BloqueAnclado]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM bloques_anclados WHERE escenario_id = ?", (escenario_id,)
+            ).fetchall()
+            return [self._row_to_bloque_anclado(r) for r in rows]
+
+    def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO bloques_anclados
+                   (escenario_id, asignacion_id, dia_semana, franja_orden, sala_id)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (b.escenario_id, b.asignacion_id, b.dia_semana, b.franja_orden, b.sala_id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return b.model_copy(update={"id": cur.lastrowid})
+
+    def eliminar_bloque_anclado(self, bloque_id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM bloques_anclados WHERE id = ?", (bloque_id,))
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
+
+    # =========================================================================
+    # FranjaReunion (paso_17)
+    # =========================================================================
+
+    def _row_to_franja_reunion(self, row) -> FranjaReunion:
+        d = dict(row)
+        d["docentes"] = json.loads(d.pop("docentes_json", "[]"))
+        return FranjaReunion(**{k: v for k, v in d.items() if k in FranjaReunion.model_fields})
+
+    def listar_franjas_reunion(self) -> list[FranjaReunion]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM franjas_reunion ORDER BY dia_semana, franja_orden"
+            ).fetchall()
+            return [self._row_to_franja_reunion(r) for r in rows]
+
+    def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM franjas_reunion WHERE id = ?", (franja_id,)
+            ).fetchone()
+            return self._row_to_franja_reunion(row) if row else None
+
+    def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO franjas_reunion (nombre, docentes_json, dia_semana, franja_orden, modo)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (f.nombre, json.dumps(f.docentes), f.dia_semana, f.franja_orden, f.modo),
+            )
+            if self._conn is None:
+                conn.commit()
+            return f.model_copy(update={"id": cur.lastrowid})
+
+    def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
+        with self._get_conn() as conn:
+            conn.execute(
+                """UPDATE franjas_reunion
+                   SET nombre=?, docentes_json=?, dia_semana=?, franja_orden=?, modo=?
+                   WHERE id=?""",
+                (f.nombre, json.dumps(f.docentes), f.dia_semana, f.franja_orden, f.modo, f.id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return f
+
+    def eliminar_franja_reunion(self, franja_id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM franjas_reunion WHERE id = ?", (franja_id,))
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
+
+    # =========================================================================
+    # LimitesDocente (paso_17)
+    # =========================================================================
+
+    def _row_to_limites_docente(self, row) -> LimitesDocente:
+        d = dict(row)
+        return LimitesDocente(**{k: v for k, v in d.items() if k in LimitesDocente.model_fields})
+
+    def get_limites_docente(self, usuario_id: int) -> LimitesDocente | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM limites_docente WHERE usuario_id = ?", (usuario_id,)
+            ).fetchone()
+            return self._row_to_limites_docente(row) if row else None
+
+    def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente:
+        with self._get_conn() as conn:
+            conn.execute(
+                """INSERT INTO limites_docente (usuario_id, min_horas_dia, max_horas_dia)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(usuario_id) DO UPDATE SET
+                       min_horas_dia = excluded.min_horas_dia,
+                       max_horas_dia = excluded.max_horas_dia""",
+                (limites.usuario_id, limites.min_horas_dia, limites.max_horas_dia),
+            )
+            if self._conn is None:
+                conn.commit()
+            row = conn.execute(
+                "SELECT * FROM limites_docente WHERE usuario_id = ?", (limites.usuario_id,)
+            ).fetchone()
+            return self._row_to_limites_docente(row)
+
+    def listar_limites_docente(self) -> list[LimitesDocente]:
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM limites_docente").fetchall()
+            return [self._row_to_limites_docente(r) for r in rows]
+
+    # =========================================================================
+    # Grados (paso_19)
+    # =========================================================================
+
+    def _row_to_grado(self, row) -> Grado:
+        d = dict(row)
+        return Grado(**{k: v for k, v in d.items() if k in Grado.model_fields})
+
+    def listar_grados(self) -> list[Grado]:
+        with self._get_conn() as conn:
+            rows = conn.execute("SELECT * FROM grados ORDER BY numero").fetchall()
+            return [self._row_to_grado(r) for r in rows]
+
+    def upsert_grado(self, grado: Grado) -> Grado:
+        with self._get_conn() as conn:
+            conn.execute(
+                """INSERT INTO grados
+                       (numero, nombre, min_estudiantes, max_estudiantes, horas_semanales)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(numero) DO UPDATE SET
+                       nombre = excluded.nombre,
+                       min_estudiantes = excluded.min_estudiantes,
+                       max_estudiantes = excluded.max_estudiantes,
+                       horas_semanales = excluded.horas_semanales""",
+                (grado.numero, grado.nombre, grado.min_estudiantes,
+                 grado.max_estudiantes, grado.horas_semanales),
+            )
+            if self._conn is None:
+                conn.commit()
+            row = conn.execute(
+                "SELECT * FROM grados WHERE numero = ?", (grado.numero,)
+            ).fetchone()
+            return self._row_to_grado(row)
+
+    def eliminar_grado(self, numero: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute("DELETE FROM grados WHERE numero = ?", (numero,))
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
+
+    # =========================================================================
+    # PlanEstudios (paso_19)
+    # =========================================================================
+
+    def _row_to_plan_estudios(self, row) -> PlanEstudios:
+        d = dict(row)
+        return PlanEstudios(**{k: v for k, v in d.items() if k in PlanEstudios.model_fields})
+
+    def listar_plan_estudios(self) -> list[PlanEstudios]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM plan_estudios ORDER BY grado, asignatura_id"
+            ).fetchall()
+            return [self._row_to_plan_estudios(r) for r in rows]
+
+    def get_plan_estudios_por_grado(self, grado: int) -> list[PlanEstudios]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM plan_estudios WHERE grado = ? ORDER BY asignatura_id",
+                (grado,),
+            ).fetchall()
+            return [self._row_to_plan_estudios(r) for r in rows]
+
+    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios:
+        with self._get_conn() as conn:
+            conn.execute(
+                """INSERT INTO plan_estudios (grado, asignatura_id, horas_semanales)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(grado, asignatura_id) DO UPDATE SET
+                       horas_semanales = excluded.horas_semanales""",
+                (grado, asignatura_id, horas),
+            )
+            if self._conn is None:
+                conn.commit()
+            row = conn.execute(
+                "SELECT * FROM plan_estudios WHERE grado = ? AND asignatura_id = ?",
+                (grado, asignatura_id),
+            ).fetchone()
+            return self._row_to_plan_estudios(row)
+
+    def eliminar_plan_estudios(self, grado: int, asignatura_id: int) -> bool:
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM plan_estudios WHERE grado = ? AND asignatura_id = ?",
+                (grado, asignatura_id),
+            )
+            if self._conn is None:
+                conn.commit()
+            return cur.rowcount > 0
 
 
 __all__ = ["SqliteInfraestructuraRepository"]

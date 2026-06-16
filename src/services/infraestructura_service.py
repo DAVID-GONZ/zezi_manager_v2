@@ -11,18 +11,23 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
+    BloqueAnclado,
     ConfigGeneracion,
     DiaSemana,
     DisponibilidadDocente,
     EscenarioHorario,
     Franja,
+    FranjaReunion,
     Grupo,
     Horario,
     HorarioEstadisticasDTO,
     HorarioInfo,
     Jornada,
+    LimitesDocente,
     NuevoHorarioDTO,
     PlantillaFranja,
+    Sala,
+    VentanaGrupo,
 )
 
 
@@ -178,6 +183,10 @@ class InfraestructuraService:
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
         return self._repo.guardar_grupo(grupo)
 
+    def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
+        """Asigna (o quita, con None) el aula propia de un grupo."""
+        return self._repo.asignar_sala_a_grupo(grupo_id, sala_id)
+
     def actualizar_grupo(self, grupo: Grupo) -> Grupo:
         return self._repo.actualizar_grupo(grupo)
 
@@ -301,6 +310,94 @@ class InfraestructuraService:
 
     def duplicar_config_generacion(self, config_id: int) -> ConfigGeneracion:
         return self._repo.duplicar_config_generacion(config_id)
+
+    # ── Salas (paso_17) ───────────────────────────────────────────────────────
+
+    def listar_salas(self) -> list[Sala]:
+        return self._repo.listar_salas()
+
+    def get_sala(self, sala_id: int) -> Sala | None:
+        return self._repo.get_sala(sala_id)
+
+    def crear_sala(self, sala: Sala) -> Sala:
+        return self._repo.crear_sala(sala)
+
+    def actualizar_sala(self, sala: Sala) -> Sala:
+        if sala.id is None:
+            raise ValueError("La sala no tiene id.")
+        return self._repo.actualizar_sala(sala)
+
+    def eliminar_sala(self, sala_id: int) -> bool:
+        return self._repo.eliminar_sala(sala_id)
+
+    # ── VentanaGrupo (paso_17) ────────────────────────────────────────────────
+
+    def listar_ventanas_grupo(self) -> list[VentanaGrupo]:
+        return self._repo.listar_ventanas_grupo()
+
+    def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]:
+        return self._repo.get_ventanas_por_grupo(grupo_id)
+
+    def get_ventanas_por_grado(self, grado: int) -> list[VentanaGrupo]:
+        return self._repo.get_ventanas_por_grado(grado)
+
+    def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo:
+        return self._repo.crear_ventana_grupo(v)
+
+    def eliminar_ventana_grupo(self, ventana_id: int) -> bool:
+        return self._repo.eliminar_ventana_grupo(ventana_id)
+
+    # ── BloqueAnclado (paso_17) ───────────────────────────────────────────────
+
+    def listar_bloques_anclados(self, escenario_id: int) -> list[BloqueAnclado]:
+        return self._repo.listar_bloques_anclados(escenario_id)
+
+    def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado:
+        return self._repo.crear_bloque_anclado(b)
+
+    def eliminar_bloque_anclado(self, bloque_id: int) -> bool:
+        return self._repo.eliminar_bloque_anclado(bloque_id)
+
+    # ── FranjaReunion (paso_17) ───────────────────────────────────────────────
+
+    def listar_franjas_reunion(self) -> list[FranjaReunion]:
+        return self._repo.listar_franjas_reunion()
+
+    def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
+        return self._repo.get_franja_reunion(franja_id)
+
+    def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
+        return self._repo.crear_franja_reunion(f)
+
+    def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
+        if f.id is None:
+            raise ValueError("La franja de reunión no tiene id.")
+        return self._repo.actualizar_franja_reunion(f)
+
+    def eliminar_franja_reunion(self, franja_id: int) -> bool:
+        return self._repo.eliminar_franja_reunion(franja_id)
+
+    # ── LimitesDocente (paso_17) ──────────────────────────────────────────────
+
+    def get_limites_docente(self, usuario_id: int) -> LimitesDocente | None:
+        return self._repo.get_limites_docente(usuario_id)
+
+    def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente:
+        return self._repo.set_limites_docente(limites)
+
+    def set_limites_docente_simple(
+        self, usuario_id: int, min_horas_dia: int = 0, max_horas_dia: int = 8
+    ) -> LimitesDocente:
+        """Crea o actualiza los límites diarios de un docente a partir de primitivos."""
+        limites = LimitesDocente(
+            usuario_id=usuario_id,
+            min_horas_dia=min_horas_dia,
+            max_horas_dia=max_horas_dia,
+        )
+        return self._repo.set_limites_docente(limites)
+
+    def listar_limites_docente(self) -> list[LimitesDocente]:
+        return self._repo.listar_limites_docente()
 
 
 __all__ = ["InfraestructuraService"]

@@ -29,16 +29,23 @@ from abc import ABC, abstractmethod
 from ..models.infraestructura import (
     AreaConocimiento,
     Asignatura,
+    BloqueAnclado,
     ConfigGeneracion,
     DisponibilidadDocente,
     EscenarioHorario,
     Franja,
+    FranjaReunion,
+    Grado,
     Grupo,
     Horario,
     HorarioEstadisticasDTO,
     HorarioInfo,
+    LimitesDocente,
     Logro,
+    PlanEstudios,
     PlantillaFranja,
+    Sala,
+    VentanaGrupo,
 )
 
 
@@ -285,6 +292,11 @@ class IInfraestructuraRepository(ABC):
     @abstractmethod
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
         """Inserta un grupo nuevo. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
+        """Asigna (o quita, con None) el aula propia de un grupo."""
         ...
 
     @abstractmethod
@@ -548,6 +560,118 @@ class IInfraestructuraRepository(ABC):
         estado 'borrador' y escenario_destino_id NULL.
         """
         ...
+
+    # =========================================================================
+    # Salas (paso_17)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_salas(self) -> list[Sala]: ...
+
+    @abstractmethod
+    def get_sala(self, sala_id: int) -> Sala | None: ...
+
+    @abstractmethod
+    def crear_sala(self, sala: Sala) -> Sala: ...
+
+    @abstractmethod
+    def actualizar_sala(self, sala: Sala) -> Sala: ...
+
+    @abstractmethod
+    def eliminar_sala(self, sala_id: int) -> bool: ...
+
+    # =========================================================================
+    # VentanaGrupo (paso_17)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_ventanas_grupo(self) -> list[VentanaGrupo]: ...
+
+    @abstractmethod
+    def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]: ...
+
+    @abstractmethod
+    def get_ventanas_por_grado(self, grado: int) -> list[VentanaGrupo]: ...
+
+    @abstractmethod
+    def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo: ...
+
+    @abstractmethod
+    def eliminar_ventana_grupo(self, ventana_id: int) -> bool: ...
+
+    # =========================================================================
+    # BloqueAnclado (paso_17)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_bloques_anclados(self, escenario_id: int) -> list[BloqueAnclado]: ...
+
+    @abstractmethod
+    def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado: ...
+
+    @abstractmethod
+    def eliminar_bloque_anclado(self, bloque_id: int) -> bool: ...
+
+    # =========================================================================
+    # FranjaReunion (paso_17)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_franjas_reunion(self) -> list[FranjaReunion]: ...
+
+    @abstractmethod
+    def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None: ...
+
+    @abstractmethod
+    def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion: ...
+
+    @abstractmethod
+    def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion: ...
+
+    @abstractmethod
+    def eliminar_franja_reunion(self, franja_id: int) -> bool: ...
+
+    # =========================================================================
+    # LimitesDocente (paso_17)
+    # =========================================================================
+
+    @abstractmethod
+    def get_limites_docente(self, usuario_id: int) -> LimitesDocente | None: ...
+
+    @abstractmethod
+    def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente: ...
+
+    @abstractmethod
+    def listar_limites_docente(self) -> list[LimitesDocente]: ...
+
+    # =========================================================================
+    # Grados (paso_19)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_grados(self) -> list[Grado]: ...
+
+    @abstractmethod
+    def upsert_grado(self, grado: Grado) -> Grado: ...
+
+    @abstractmethod
+    def eliminar_grado(self, numero: int) -> bool: ...
+
+    # =========================================================================
+    # PlanEstudios (paso_19)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_plan_estudios(self) -> list[PlanEstudios]: ...
+
+    @abstractmethod
+    def get_plan_estudios_por_grado(self, grado: int) -> list[PlanEstudios]: ...
+
+    @abstractmethod
+    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios: ...
+
+    @abstractmethod
+    def eliminar_plan_estudios(self, grado: int, asignatura_id: int) -> bool: ...
 
 
 __all__ = ["IInfraestructuraRepository"]

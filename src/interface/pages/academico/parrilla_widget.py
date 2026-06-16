@@ -291,4 +291,4 @@ def render_tablero_maestro(
                     _render_celda_ocupada(bloques, "Grupo", on_celda_click, puede_editar)
 
 
-__all__ = ["render_parrilla", "render_tablero_maestro"]
+__all__ = ["render_parrilla", "render_tablero_maestro", "_opciones_eje"]

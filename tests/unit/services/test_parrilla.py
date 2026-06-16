@@ -67,6 +67,7 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def get_grupo_por_codigo(self, *a): return None
     def listar_grupos(self, grado=None): return []
     def guardar_grupo(self, g): return g
+    def asignar_sala_a_grupo(self, *a): return True
     def actualizar_grupo(self, g): return g
     def eliminar_grupo(self, *a): return False
     def get_horario(self, *a): return None
@@ -110,6 +111,35 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def eliminar_config_generacion(self, *a): return True
     def cambiar_estado_config(self, *a): return None
     def duplicar_config_generacion(self, *a): return None
+    # paso_17 stubs
+    def listar_salas(self): return []
+    def get_sala(self, *a): return None
+    def crear_sala(self, sala): return sala
+    def actualizar_sala(self, sala): return sala
+    def eliminar_sala(self, *a): return False
+    def listar_ventanas_grupo(self): return []
+    def get_ventanas_por_grupo(self, *a): return []
+    def get_ventanas_por_grado(self, *a): return []
+    def crear_ventana_grupo(self, v): return v
+    def eliminar_ventana_grupo(self, *a): return False
+    def listar_bloques_anclados(self, *a): return []
+    def crear_bloque_anclado(self, b): return b
+    def eliminar_bloque_anclado(self, *a): return False
+    def listar_franjas_reunion(self): return []
+    def get_franja_reunion(self, *a): return None
+    def crear_franja_reunion(self, f): return f
+    def actualizar_franja_reunion(self, f): return f
+    def eliminar_franja_reunion(self, *a): return False
+    def get_limites_docente(self, *a): return None
+    def set_limites_docente(self, limites): return limites
+    def listar_limites_docente(self): return []
+    def listar_grados(self): return []
+    def upsert_grado(self, g): return g
+    def eliminar_grado(self, numero): return False
+    def listar_plan_estudios(self): return []
+    def get_plan_estudios_por_grado(self, grado): return []
+    def set_horas_plan(self, grado, asignatura_id, horas): return None
+    def eliminar_plan_estudios(self, grado, asignatura_id): return False
 
 
 class FakeAsignacionRepo(IAsignacionRepository):

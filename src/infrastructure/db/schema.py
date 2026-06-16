@@ -163,11 +163,14 @@ SCHEMA: list[str] = [
 
     """
     CREATE TABLE IF NOT EXISTS asignaturas (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre          TEXT    NOT NULL UNIQUE,
-        codigo          TEXT    UNIQUE,
-        area_id         INTEGER,
-        horas_semanales INTEGER NOT NULL DEFAULT 1 CHECK(horas_semanales > 0),
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre              TEXT    NOT NULL UNIQUE,
+        codigo              TEXT    UNIQUE,
+        area_id             INTEGER,
+        horas_semanales     INTEGER NOT NULL DEFAULT 1 CHECK(horas_semanales > 0),
+        tipo_sala_requerido TEXT    DEFAULT NULL,
+        bloque_doble        INTEGER NOT NULL DEFAULT 0,
+        horas_consecutivas  INTEGER NOT NULL DEFAULT 1 CHECK(horas_consecutivas >= 1),
 
         FOREIGN KEY(area_id) REFERENCES areas_conocimiento(id) ON DELETE SET NULL
     )
@@ -181,7 +184,20 @@ SCHEMA: list[str] = [
         grado            INTEGER CHECK(grado BETWEEN 1 AND 13),
         jornada          TEXT    NOT NULL DEFAULT 'UNICA'
                          CHECK(jornada IN ('AM', 'PM', 'UNICA')),
-        capacidad_maxima INTEGER NOT NULL DEFAULT 40 CHECK(capacidad_maxima > 0)
+        capacidad_maxima INTEGER NOT NULL DEFAULT 40 CHECK(capacidad_maxima > 0),
+        sala_id          INTEGER
+    )
+    """,
+
+    # Grados ofrecidos por la institución (mín/máx estudiantes + horas objetivo).
+    """
+    CREATE TABLE IF NOT EXISTS grados (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero          INTEGER NOT NULL UNIQUE CHECK(numero BETWEEN 1 AND 13),
+        nombre          TEXT,
+        min_estudiantes INTEGER NOT NULL DEFAULT 0  CHECK(min_estudiantes >= 0),
+        max_estudiantes INTEGER NOT NULL DEFAULT 40 CHECK(max_estudiantes >= 1),
+        horas_semanales INTEGER NOT NULL DEFAULT 0  CHECK(horas_semanales >= 0)
     )
     """,
 
@@ -203,7 +219,8 @@ SCHEMA: list[str] = [
         activo              BOOLEAN NOT NULL DEFAULT 1,
         fecha_creacion      DATE    NOT NULL DEFAULT CURRENT_DATE,
         ultima_sesion       DATETIME,
-        carga_horaria_max   INTEGER
+        carga_horaria_max   INTEGER,
+        horas_extra         INTEGER NOT NULL DEFAULT 0 CHECK(horas_extra >= 0)
     )
     """,
 
@@ -1021,6 +1038,7 @@ SCHEMA: list[str] = [
         grupos_json          TEXT    NOT NULL DEFAULT '[]',
         pesos_json           TEXT    NOT NULL DEFAULT
                              '{"huecos":1.0,"distribucion":1.0,"compactacion":0.5}',
+        restricciones_json   TEXT    NOT NULL DEFAULT '{}',
         escenario_destino_id INTEGER,
         created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
         updated_at           TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -1028,6 +1046,87 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id)              REFERENCES configuracion_anio(id)  ON DELETE CASCADE,
         FOREIGN KEY(plantilla_id)         REFERENCES plantillas_franja(id)   ON DELETE CASCADE,
         FOREIGN KEY(escenario_destino_id) REFERENCES escenarios_horario(id)  ON DELETE SET NULL
+    )
+    """,
+
+    # -------------------------------------------------------------------------
+    # salas, ventanas_grupo, bloques_anclados, franjas_reunion, limites_docente
+    # (paso_17)
+    # -------------------------------------------------------------------------
+
+    """
+    CREATE TABLE IF NOT EXISTS salas (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre    TEXT    NOT NULL UNIQUE,
+        tipo      TEXT    NOT NULL DEFAULT 'aula'
+                  CHECK(tipo IN ('aula','laboratorio','computo','ed_fisica','otro')),
+        capacidad INTEGER NOT NULL DEFAULT 30 CHECK(capacidad >= 1)
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS ventanas_grupo (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        grupo_id            INTEGER,
+        grado               INTEGER,
+        franjas_permitidas  TEXT    NOT NULL DEFAULT '[]',
+        CHECK((grupo_id IS NULL) != (grado IS NULL)),
+        FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS bloques_anclados (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        escenario_id  INTEGER NOT NULL,
+        asignacion_id INTEGER NOT NULL,
+        dia_semana    TEXT    NOT NULL
+                      CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
+        franja_orden  INTEGER NOT NULL CHECK(franja_orden >= 1),
+        sala_id       INTEGER,
+        UNIQUE(escenario_id, dia_semana, franja_orden, asignacion_id),
+        FOREIGN KEY(escenario_id)  REFERENCES escenarios_horario(id) ON DELETE CASCADE,
+        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)       ON DELETE CASCADE,
+        FOREIGN KEY(sala_id)       REFERENCES salas(id)              ON DELETE SET NULL
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS franjas_reunion (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre        TEXT    NOT NULL,
+        docentes_json TEXT    NOT NULL DEFAULT '[]',
+        dia_semana    TEXT    NOT NULL
+                      CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
+        franja_orden  INTEGER NOT NULL CHECK(franja_orden >= 1),
+        modo          TEXT    NOT NULL DEFAULT 'preferente'
+                      CHECK(modo IN ('estricta','preferente'))
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS limites_docente (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id    INTEGER NOT NULL UNIQUE,
+        min_horas_dia INTEGER NOT NULL DEFAULT 0 CHECK(min_horas_dia >= 0),
+        max_horas_dia INTEGER NOT NULL DEFAULT 8 CHECK(max_horas_dia >= 1),
+        CHECK(min_horas_dia <= max_horas_dia),
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    )
+    """,
+
+    # -------------------------------------------------------------------------
+    # plan_estudios (paso_19)
+    # -------------------------------------------------------------------------
+
+    """
+    CREATE TABLE IF NOT EXISTS plan_estudios (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        grado           INTEGER NOT NULL CHECK(grado >= 1 AND grado <= 13),
+        asignatura_id   INTEGER NOT NULL,
+        horas_semanales INTEGER NOT NULL CHECK(horas_semanales >= 1 AND horas_semanales <= 40),
+        UNIQUE(grado, asignatura_id),
+        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
     )
     """,
 ]
@@ -1183,6 +1282,17 @@ INDICES: list[str] = [
 
     # config_generacion
     "CREATE INDEX IF NOT EXISTS idx_config_generacion_periodo ON config_generacion(periodo_id, estado)",
+
+    # salas (paso_17)
+    "CREATE INDEX IF NOT EXISTS idx_salas_tipo           ON salas(tipo)",
+    "CREATE INDEX IF NOT EXISTS idx_ventanas_grupo       ON ventanas_grupo(grupo_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ventanas_grado       ON ventanas_grupo(grado)",
+    "CREATE INDEX IF NOT EXISTS idx_bloques_anclados_esc ON bloques_anclados(escenario_id)",
+    "CREATE INDEX IF NOT EXISTS idx_franjas_reunion      ON franjas_reunion(dia_semana, franja_orden)",
+    "CREATE INDEX IF NOT EXISTS idx_limites_docente      ON limites_docente(usuario_id)",
+
+    # plan_estudios (paso_19)
+    "CREATE INDEX IF NOT EXISTS idx_plan_estudios_grado  ON plan_estudios(grado)",
 ]
 
 
@@ -1361,6 +1471,9 @@ def init_db(db_path: Path | None = None) -> bool:
                  "nota_maxima_escala REAL NOT NULL DEFAULT 100.0"),
                 ("usuarios", "carga_horaria_max",
                  "carga_horaria_max INTEGER"),
+                ("usuarios", "horas_extra",
+                 "horas_extra INTEGER NOT NULL DEFAULT 0"),
+                ("grupos", "sala_id", "sala_id INTEGER"),
                 ("areas_conocimiento", "color", "color TEXT"),
             ]
 
