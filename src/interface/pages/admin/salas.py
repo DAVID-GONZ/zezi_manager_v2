@@ -177,15 +177,13 @@ def salas_page() -> None:
             ui.label("No hay salas registradas.").classes("text-empty mt-2")
             return
         with ui.element("div").classes("w-full"):
-            with ui.element("div").classes(
-                "flex gap-4 p-2 font-semibold text-sm border-b"
-            ):
+            with ui.element("div").classes("lista-head"):
                 ui.label("Nombre").classes("flex-1")
                 ui.label("Tipo").classes("w-36")
                 ui.label("Capacidad").classes("w-24")
                 ui.label("Acciones").classes("w-24 text-right")
             for s in salas:
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                with ui.element("div").classes("lista-fila"):
                     ui.label(s.nombre).classes("flex-1 font-medium")
                     ui.label(_TIPOS_SALA.get(s.tipo, s.tipo)).classes("w-36 text-sm")
                     ui.label(str(s.capacidad)).classes("w-24 text-sm")
@@ -223,11 +221,11 @@ def salas_page() -> None:
         sala_opts = {0: "— Sin asignar —"}
         sala_opts.update({s.id: s.nombre for s in _s["salas"]})
         with ui.element("div").classes("w-full"):
-            with ui.element("div").classes("flex gap-4 p-2 font-semibold text-sm border-b"):
+            with ui.element("div").classes("lista-head"):
                 ui.label("Grupo").classes("w-40")
                 ui.label("Aula propia (salón base)").classes("flex-1")
             for g in grupos:
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                with ui.element("div").classes("lista-fila"):
                     with ui.element("div").classes("w-40"):
                         ui.label(g.codigo).classes("font-medium")
                         if g.nombre:

@@ -66,9 +66,7 @@ class PreparacionHorarioService:
         plantilla_id: int,
     ) -> ReportePreparacionDTO:
         """Ejecuta las 7 puertas en orden y devuelve el reporte."""
-        asignaciones = self._asigs.listar(
-            FiltroAsignacionesDTO(periodo_id=periodo_id)
-        )
+        asignaciones = self._listar_asignaciones(periodo_id)
         grupos       = self._infra.listar_grupos()
         asignaturas  = self._infra.listar_asignaturas()
         salas        = self._infra.listar_salas()
@@ -79,15 +77,51 @@ class PreparacionHorarioService:
         )
 
         asig_map = {a.id: a for a in asignaturas}
+        grado_de_grupo = {g.id: g.grado for g in grupos}
         return [
             self._p1_anio_periodo(anio_id, periodo_id),
             self._p2_asignaturas_con_horas(asignaturas),
             self._p3_horas_grupo_vs_slots(grupos, plantilla, franjas),
-            self._p4_capacidad_docente(asignaciones, asig_map),
+            self._p4_capacidad_docente(asignaciones, asig_map, grado_de_grupo),
             self._p5_cobertura_asignaciones(grupos, asignaciones, asig_map),
             self._p6_plantilla_suficiente(plantilla_id, plantilla, franjas),
             self._p7_salas_suficientes(asignaturas, salas),
         ]
+
+    def _listar_asignaciones(self, periodo_id: int) -> list:
+        """Devuelve TODAS las asignaciones del periodo recorriendo las páginas.
+
+        `IAsignacionRepository.listar` está paginado (máx. 500/página); las
+        puertas de preparación necesitan el conjunto completo, de lo contrario
+        las asignaciones más allá de la primera página parecen inexistentes
+        (cobertura del plan y carga docente quedarían mal calculadas).
+        """
+        todas: list = []
+        pagina = 1
+        while True:
+            lote = self._asigs.listar(
+                FiltroAsignacionesDTO(
+                    periodo_id=periodo_id, pagina=pagina, por_pagina=500
+                )
+            )
+            todas.extend(lote)
+            if len(lote) < 500:
+                break
+            pagina += 1
+        return todas
+
+    def _horas_asignacion(self, asignacion, asig_map: dict, grado_de_grupo: dict) -> int:
+        """Horas semanales de una asignación según el plan de estudios del grado
+        (con fallback a las horas globales de la asignatura)."""
+        grado = grado_de_grupo.get(asignacion.grupo_id)
+        asignatura = asig_map.get(asignacion.asignatura_id)
+        global_h = (asignatura.horas_semanales or 0) if asignatura else 0
+        if grado is None:
+            return global_h
+        try:
+            return self._plan.horas_de(grado, asignacion.asignatura_id) or global_h
+        except Exception:
+            return global_h
 
     # Cupos lectivos semanales = franjas lectivas × días activos de la plantilla.
     @staticmethod
@@ -222,13 +256,12 @@ class PreparacionHorarioService:
     # Puerta 4 — docentes con carga_horaria_max no excedida
     # ------------------------------------------------------------------
 
-    def _p4_capacidad_docente(self, asignaciones, asig_map: dict) -> PuertaDTO:
+    def _p4_capacidad_docente(self, asignaciones, asig_map: dict, grado_de_grupo: dict) -> PuertaDTO:
         carga_por_docente: dict[int, int] = {}
         for a in asignaciones:
             if not a.activo:
                 continue
-            asignatura = asig_map.get(a.asignatura_id)
-            horas = (asignatura.horas_semanales or 0) if asignatura else 0
+            horas = self._horas_asignacion(a, asig_map, grado_de_grupo)
             carga_por_docente[a.usuario_id] = carga_por_docente.get(a.usuario_id, 0) + horas
 
         excedidos = []

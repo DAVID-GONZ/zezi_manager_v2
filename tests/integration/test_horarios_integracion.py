@@ -159,6 +159,23 @@ def test_preparacion_permite_generar(env):
     assert env.prep.puede_generar(reporte) is True
 
 
+def test_preparacion_no_reporta_falsos_negativos_por_paginacion(env):
+    """Regresión: el seed crea >100 asignaciones activas por periodo.
+
+    La preparación debe recorrer TODAS las páginas; si solo mirara la primera
+    (100), las asignaciones restantes parecerían inexistentes y la cobertura
+    del plan / la carga docente darían advertencias falsas.
+    """
+    activas = env.asig_repo.listar(FiltroAsignacionesDTO(periodo_id=env.periodo_id, por_pagina=500))
+    assert len(activas) > 100, "El seed debe superar una página para que el test tenga sentido"
+
+    reporte = env.prep.validar(env.anio_id, env.periodo_id, env.plantilla_id)
+    cobertura = next(p for p in reporte if p.id == "cobertura_asignaciones")
+    capacidad = next(p for p in reporte if p.id == "capacidad_docente")
+    assert cobertura.ok, cobertura.detalle
+    assert capacidad.ok, capacidad.detalle
+
+
 # ───────────────────────────────────────────────────────────────────────────
 # Propagación plan → asignaciones
 # ───────────────────────────────────────────────────────────────────────────

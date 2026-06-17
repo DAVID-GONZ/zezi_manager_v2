@@ -24,11 +24,19 @@ from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_icon
 from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, status_badge,
+    confirm_dialog, empty_state, form_dialog, pipeline_nav, status_badge,
     toast_error, toast_success, toast_warning,
 )
 
 logger = logging.getLogger("ADMIN.PLAN_ESTUDIOS")
+
+# Flujo de configuración del generador de horarios.
+_PASOS_HORARIO = [
+    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
+    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
+    ("horarios",     "Horarios",         "/horarios"),
+]
 
 _NOMBRES_GRADO = {
     1: "Primero", 2: "Segundo", 3: "Tercero", 4: "Cuarto", 5: "Quinto",
@@ -313,13 +321,13 @@ def plan_estudios_page() -> None:
 
             if _s["grados"]:
                 with ui.element("div").classes("q-mt-sm"):
-                    with ui.element("div").classes("flex items-center gap-3 p-2 border-b text-xs font-semibold text-secondary"):
+                    with ui.element("div").classes("lista-head"):
                         ui.label("Grado").classes("w-40")
                         ui.label("Estudiantes (mín–máx)").classes("w-40")
                         ui.label("Horas objetivo").classes("w-28")
                         ui.label("").classes("flex-1")
                     for g in _s["grados"]:
-                        with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
+                        with ui.element("div").classes("lista-fila"):
                             ui.label(f"{g.numero} · {g.nombre or _NOMBRES_GRADO.get(g.numero, '')}").classes("w-40 font-medium")
                             ui.label(f"{g.min_estudiantes} – {g.max_estudiantes}").classes("w-40 text-sm")
                             ui.label(f"{g.horas_semanales} h").classes("w-28 text-sm")
@@ -373,12 +381,12 @@ def plan_estudios_page() -> None:
                 )
             else:
                 with ui.element("div").classes("q-mt-sm"):
-                    with ui.element("div").classes("flex items-center gap-3 p-2 border-b text-xs font-semibold text-secondary"):
+                    with ui.element("div").classes("lista-head"):
                         ui.label("Asignatura").classes("flex-1")
                         ui.label("Horas/sem").classes("w-28")
                         ui.label("").classes("w-10")
                     for aid in sorted(_s["plan_map"], key=_asig_nombre):
-                        with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
+                        with ui.element("div").classes("lista-fila"):
                             ui.label(_asig_nombre(aid)).classes("flex-1 text-sm")
                             ui.number(value=_s["plan_map"][aid], min=1, max=40, step=1) \
                                 .classes("w-28").props("dense outlined debounce=400") \
@@ -390,6 +398,11 @@ def plan_estudios_page() -> None:
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+            pipeline_nav(
+                _PASOS_HORARIO, activo="plan",
+                hint="Paso 2 · Por cada grado define las horas semanales de cada "
+                     "asignatura hasta completar el total. Esto alimenta las asignaciones y el horario.",
+            )
             vista()
 
     app_layout(

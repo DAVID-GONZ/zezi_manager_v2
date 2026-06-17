@@ -21,10 +21,21 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
+from src.interface.design.components import (
+    confirm_dialog, form_dialog, pipeline_nav,
+    toast_error, toast_success, toast_warning,
+)
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
+
+# Flujo de configuración del generador de horarios.
+_PASOS_HORARIO = [
+    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
+    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
+    ("horarios",     "Horarios",         "/horarios"),
+]
 
 
 @ui.page("/admin/asignaturas")
@@ -46,6 +57,7 @@ def asignaturas_page() -> None:
         "areas":              [],
         "asignaturas":        [],
         "area_filtro_id":     None,
+        "busqueda":           "",
         # formulario área
         "area_nombre":        "",
         "area_codigo":        "",
@@ -282,6 +294,16 @@ def asignaturas_page() -> None:
             on_change=lambda e: _on_filtro_change(e.value),
         ).classes("w-56")
 
+        def _on_buscar(v) -> None:
+            _s["busqueda"] = (v or "").strip().lower()
+            tabla_asignaturas.refresh()
+
+        ui.input(
+            placeholder="Buscar por nombre o código…",
+            value=_s["busqueda"],
+            on_change=lambda e: _on_buscar(e.value),
+        ).props("dense outlined clearable debounce=250").classes("w-64")
+
     @ui.refreshable
     def tabla_areas() -> None:
         areas = _s["areas"]
@@ -289,7 +311,7 @@ def asignaturas_page() -> None:
             ui.label("No hay áreas registradas.").classes("text-empty mt-2")
             return
         for a in areas:
-            with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+            with ui.element("div").classes("lista-fila"):
                 ui.label(a.nombre).classes("flex-1 font-medium")
                 if a.codigo:
                     ui.badge(a.codigo).classes("badge-neutral")
@@ -300,19 +322,25 @@ def asignaturas_page() -> None:
     @ui.refreshable
     def tabla_asignaturas() -> None:
         asigs = _s["asignaturas"]
+        q = _s["busqueda"]
+        if q:
+            asigs = [
+                a for a in asigs
+                if q in a.nombre.lower() or q in (a.codigo or "").lower()
+            ]
         if not asigs:
-            ui.label("No hay asignaturas en esta área.").classes("text-empty mt-2")
+            msg = "No hay asignaturas que coincidan con la búsqueda." if q \
+                else "No hay asignaturas en esta área."
+            ui.label(msg).classes("text-empty mt-2")
             return
         with ui.element("div").classes("w-full"):
-            with ui.element("div").classes(
-                "flex gap-4 p-2 font-semibold text-sm border-b"
-            ):
+            with ui.element("div").classes("lista-head"):
                 ui.label("Nombre").classes("flex-1")
                 ui.label("Código").classes("w-24")
                 ui.label("Área").classes("w-44")
                 ui.label("Acciones").classes("w-24 text-right")
             for a in asigs:
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                with ui.element("div").classes("lista-fila"):
                     ui.label(a.nombre).classes("flex-1")
                     ui.label(a.codigo or "—").classes("w-24 font-mono text-sm")
                     ui.label(_nombre_area(a.area_id)).classes("w-44 text-sm")
@@ -323,6 +351,12 @@ def asignaturas_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+
+            pipeline_nav(
+                _PASOS_HORARIO, activo="asignaturas",
+                hint="Paso 1 · Define las materias (nombre, código, área). "
+                     "Las horas de cada una se asignan por grado en «Plan de estudios».",
+            )
 
             # ── Sección: Áreas de conocimiento ───────────────────────────────
             with ui.element("div").classes("panel-card"):

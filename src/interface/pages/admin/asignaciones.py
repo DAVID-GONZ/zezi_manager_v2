@@ -29,10 +29,18 @@ from src.interface.design.components.buttons import (
     btn_primary, btn_secondary, btn_icon,
 )
 from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, stat_card, status_badge,
+    confirm_dialog, empty_state, form_dialog, pipeline_nav, stat_card, status_badge,
     toast_error, toast_success, toast_warning,
 )
 from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
+
+# Flujo de configuración del generador de horarios.
+_PASOS_HORARIO = [
+    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
+    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
+    ("horarios",     "Horarios",         "/horarios"),
+]
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
 
@@ -524,7 +532,7 @@ def asignaciones_page() -> None:
             d = next((x for x in _s["docentes"] if x.id == cur_uid), None)
             if d:
                 opts[cur_uid] = d.nombre_completo
-        with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
+        with ui.element("div").classes("lista-fila"):
             with ui.element("div").classes("flex-1"):
                 ui.label(nombre).classes("text-sm font-medium")
                 if fuera_plan:
@@ -601,7 +609,7 @@ def asignaciones_page() -> None:
         if plan:
             with ui.element("div").classes("panel-card q-mt-sm"):
                 ui.label("Plan de estudios del grado").classes("text-subtitle2 font-semibold q-mb-sm")
-                with ui.element("div").classes("flex items-center gap-3 p-2 border-b text-xs font-semibold text-secondary"):
+                with ui.element("div").classes("lista-head"):
                     ui.label("Asignatura").classes("flex-1")
                     ui.label("Horas").classes("w-16")
                     ui.label("Docente").classes("w-60")
@@ -691,13 +699,13 @@ def asignaciones_page() -> None:
                 empty_state(icono="assignment_ind", titulo="Sin asignaciones",
                             descripcion="Este docente no tiene materias asignadas en el periodo.")
                 return
-            with ui.element("div").classes("flex items-center gap-3 p-2 border-b text-xs font-semibold text-secondary"):
+            with ui.element("div").classes("lista-head"):
                 ui.label("Grupo").classes("w-24")
                 ui.label("Asignatura").classes("flex-1")
                 ui.label("Horas").classes("w-16")
                 ui.label("").classes("w-10")
             for a in sorted(asigns, key=lambda x: (grupo_nombre.get(x.grupo_id, ""), x.asignatura_nombre)):
-                with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
+                with ui.element("div").classes("lista-fila"):
                     ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes("w-24 font-mono text-sm")
                     ui.label(a.asignatura_nombre).classes("flex-1 text-sm")
                     ui.label(f"{_horas(a.grupo_id, a.asignatura_id)} h").classes("w-16 text-sm text-secondary")
@@ -815,6 +823,12 @@ def asignaciones_page() -> None:
     # ── Contenido ─────────────────────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
+            if not es_profesor:
+                pipeline_nav(
+                    _PASOS_HORARIO, activo="asignaciones",
+                    hint="Paso 3 · Asigna un docente a cada materia del plan (por grupo) "
+                         "o reparte materias a cada docente según su carga. Luego genera el horario.",
+                )
             matriz()
 
     app_layout(

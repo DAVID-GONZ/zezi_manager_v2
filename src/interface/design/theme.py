@@ -60,6 +60,7 @@ class ThemeManager:
         "components/empty_state.css",
         "components/skeleton_loader.css",
         "components/toast.css",
+        "components/flujo.css",
         "themes/dark.css",
         "domain/asistencia.css",
         "domain/desempeno.css",
