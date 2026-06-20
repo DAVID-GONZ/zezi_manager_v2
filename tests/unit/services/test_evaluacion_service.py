@@ -354,3 +354,32 @@ class TestCalculadorNotas:
     def test_sin_categorias_retorna_cero(self):
         from src.domain.models.evaluacion import CalculadorNotas
         assert CalculadorNotas.calcular_definitiva({}, [], []) == pytest.approx(0.0)
+
+
+# ===========================================================================
+# Group 6c — agregador planilla_completa (una sola llamada)
+# ===========================================================================
+
+class _AggRepo(FakeEvalRepo):
+    """Fake con resultados de grupo y puntos extra para planilla_completa."""
+    def __init__(self, resultados, puntos):
+        super().__init__()
+        self._res = resultados
+        self._pe = puntos
+
+    def listar_resultados_grupo(self, grupo_id, asig_id, per_id):
+        return self._res
+
+    def listar_puntos_extra(self, asig_id, per_id):
+        return self._pe
+
+
+def test_planilla_completa_agrega_todo():
+    res = [ResultadoEstudianteDTO(estudiante_id=1, nombre_completo="Ana", notas={})]
+    pe = [PuntosExtra(estudiante_id=1, asignacion_id=3, periodo_id=5, positivos=2)]
+    svc = EvaluacionService(_AggRepo(res, pe))
+    out = svc.planilla_completa(grupo_id=10, asignacion_id=3, periodo_id=5)
+    assert out.planilla == res
+    assert out.categorias == []
+    assert out.actividades == []
+    assert 1 in out.puntos_extra

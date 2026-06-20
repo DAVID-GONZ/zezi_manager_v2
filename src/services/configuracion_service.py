@@ -5,6 +5,8 @@ Orquesta los casos de uso de configuración del año lectivo.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.models.configuracion import (
     ConfiguracionAnio,
@@ -31,6 +33,7 @@ class ConfiguracionService:
     # ConfiguracionAnio
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def crear_anio(self, dto: NuevaConfiguracionAnioDTO) -> ConfiguracionAnio:
         """
         Crea un año lectivo nuevo.
@@ -48,6 +51,7 @@ class ConfiguracionService:
         self._repo.guardar_numero_periodos(config.id, 4, pesos_iguales=True)
         return config
 
+    @requiere_escritura
     def activar_anio(self, anio_id: int) -> ConfiguracionAnio:
         """
         Activa un año lectivo (solo puede haber uno activo).
@@ -60,6 +64,7 @@ class ConfiguracionService:
         self._repo.activar(anio_id)
         return self._repo.get_by_id(anio_id)
 
+    @requiere_escritura
     def actualizar_info_institucional(
         self,
         anio_id: int,
@@ -101,6 +106,7 @@ class ConfiguracionService:
     # NivelDesempeno
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def configurar_niveles(
         self,
         anio_id: int,
@@ -144,6 +150,72 @@ class ConfiguracionService:
         """Retorna los niveles de desempeño del año."""
         return self._repo.listar_niveles(anio_id)
 
+    # ------------------------------------------------------------------
+    # CRUD granular de niveles (sin reconstruir la lista en la vista)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validar_rangos_disjuntos(niveles: list[NivelDesempeno]) -> None:
+        ordenados = sorted(niveles, key=lambda n: n.rango_min)
+        for i in range(len(ordenados) - 1):
+            actual, sig = ordenados[i], ordenados[i + 1]
+            if actual.rango_max >= sig.rango_min:
+                raise ValueError(
+                    f"Los rangos de '{actual.nombre}' ({actual.rango_min}–{actual.rango_max}) "
+                    f"y '{sig.nombre}' ({sig.rango_min}–{sig.rango_max}) se solapan. "
+                    "Los rangos deben ser disjuntos."
+                )
+
+    def _reindexar_orden(self, anio_id: int) -> None:
+        """Reasigna `orden` por rango_min ascendente tras un alta/baja."""
+        niveles = sorted(self._repo.listar_niveles(anio_id), key=lambda n: n.rango_min)
+        for i, n in enumerate(niveles):
+            if n.orden != i:
+                self._repo.actualizar_nivel(n.model_copy(update={"orden": i}))
+
+    @requiere_escritura
+    def agregar_nivel(
+        self, anio_id: int, dto: NuevoNivelDesempenoDTO
+    ) -> NivelDesempeno:
+        """Agrega un nivel validando que su rango no se solape con los existentes."""
+        self.get_by_id(anio_id)
+        existentes = self._repo.listar_niveles(anio_id)
+        nuevo = dto.to_nivel().model_copy(
+            update={"anio_id": anio_id, "id": None}
+        )
+        self._validar_rangos_disjuntos(existentes + [nuevo])
+        guardado = self._repo.guardar_nivel(nuevo)
+        self._reindexar_orden(anio_id)
+        return guardado
+
+    @requiere_escritura
+    def actualizar_nivel(
+        self, anio_id: int, nivel_id: int, dto: NuevoNivelDesempenoDTO
+    ) -> NivelDesempeno:
+        """Actualiza un nivel concreto validando rangos contra el resto."""
+        self.get_by_id(anio_id)
+        existentes = self._repo.listar_niveles(anio_id)
+        actual = next((n for n in existentes if n.id == nivel_id), None)
+        if actual is None:
+            raise ValueError(f"El nivel {nivel_id} no existe en el año {anio_id}.")
+        modificado = dto.to_nivel().model_copy(
+            update={"anio_id": anio_id, "id": nivel_id}
+        )
+        otros = [n for n in existentes if n.id != nivel_id]
+        self._validar_rangos_disjuntos(otros + [modificado])
+        guardado = self._repo.actualizar_nivel(modificado)
+        self._reindexar_orden(anio_id)
+        return guardado
+
+    @requiere_escritura
+    def eliminar_nivel(self, anio_id: int, nivel_id: int) -> bool:
+        """Elimina un nivel y reindexa el `orden` de los restantes."""
+        self.get_by_id(anio_id)
+        ok = self._repo.eliminar_nivel(nivel_id)
+        if ok:
+            self._reindexar_orden(anio_id)
+        return ok
+
     def clasificar_nota(self, nota: float, anio_id: int) -> NivelDesempeno | None:
         """Clasifica una nota en el nivel de desempeño correspondiente."""
         return self._repo.clasificar_nota(nota, anio_id)
@@ -156,11 +228,13 @@ class ConfiguracionService:
         """Retorna los criterios de promoción del año."""
         return self._repo.get_criterios(anio_id)
 
+    @requiere_escritura
     def guardar_criterios(self, criterios: CriterioPromocion) -> CriterioPromocion:
         """Guarda o actualiza los criterios de promoción del año."""
         self.get_by_id(criterios.anio_id)
         return self._repo.guardar_criterios(criterios)
 
+    @requiere_escritura
     def actualizar_configuracion_academica(
         self,
         anio_id: int,

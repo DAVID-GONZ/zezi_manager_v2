@@ -14,6 +14,7 @@ from .empty_state import empty_state
 from .skeleton_loader import skeleton_table, skeleton_cards, skeleton_form
 from .toast import toast, toast_info, toast_success, toast_warning, toast_error
 from .pipeline import pipeline_nav
+from .date_input import date_input, date_range_input
 
 __all__ = [
     # Badges de estado
@@ -58,4 +59,7 @@ __all__ = [
     "toast_warning",
     "toast_error",
     "pipeline_nav",
+    # Componentes de fecha (paso_21 T7)
+    "date_input",
+    "date_range_input",
 ]

@@ -39,7 +39,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+    btn_primary, btn_secondary, btn_ghost, btn_icon,
 )
 from src.interface.design.components import confirm_dialog, empty_state, form_dialog, stat_card, status_badge, toast_error, toast_success, toast_warning
 from src.services.estudiante_service import (
@@ -81,7 +81,7 @@ def estudiantes_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -300,9 +300,10 @@ def estudiantes_page() -> None:
 
                                 # PIAR
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
-                                    _piar_clase = "badge-info" if fila["posee_piar"] else "badge-neutral"
-                                    _piar_label = "Sí" if fila["posee_piar"] else "No"
-                                    ui.html(f'<span class="badge {_piar_clase}">{_piar_label}</span>')
+                                    status_badge(
+                                        "Sí" if fila["posee_piar"] else "No",
+                                        variante="info" if fila["posee_piar"] else "neutral",
+                                    )
 
                                 # Acciones — botones Python reales, sin slots ni $emit
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
@@ -333,29 +334,31 @@ def estudiantes_page() -> None:
                               variante="danger"  if resultado.fallidas > 0 else "success")
 
                 if resultado.errores:
-                    ui.label("Detalle de errores (máx. 10):").classes("text-weight-medium q-mt-md")
+                    ui.label("Detalle de errores (máx. 10):").classes("text-weight-medium u-mt-md")
                     for err in resultado.errores[:10]:
                         ui.label(
                             f"Fila {err['fila']} — Doc: {err['dato']} — {err['motivo']}"
-                        ).classes("text-caption text-negative q-mb-xs")
+                        ).classes("text-caption text-error u-mb-xs")
 
                 btn_secondary("Limpiar resultado", icon="close",
                               on_click=lambda: (_s.update({"resultado_masivo": None}),
-                                                resultado_refreshable.refresh())).classes("q-mt-sm")
+                                                resultado_refreshable.refresh())).classes("u-mt-sm")
 
         # ── Acciones de página ────────────────────────────────────────────────
 
         def _abrir_dialog_matricula() -> None:
             def _guardar(datos: dict) -> "bool | None":
+                # NuevoEstudianteDTO valida documento/nombre/apellido (strip, no vacío)
+                # y coacciona tipo_documento/genero.
                 try:
                     dto = NuevoEstudianteDTO(
                         tipo_documento=datos.get("tipo_documento") or "TI",
-                        numero_documento=str(datos.get("numero_documento", "")).strip(),
-                        nombre=str(datos.get("nombre", "")).strip(),
-                        apellido=str(datos.get("apellido", "")).strip(),
+                        numero_documento=datos.get("numero_documento", ""),
+                        nombre=datos.get("nombre", ""),
+                        apellido=datos.get("apellido", ""),
                         grupo_id=datos.get("grupo_id"),
                         genero=datos.get("genero"),
-                        posee_piar=bool(datos.get("posee_piar", False)),
+                        posee_piar=datos.get("posee_piar", False),
                     )
                     Container.estudiante_service().matricular(dto, usuario_id=ctx.usuario_id)
                     toast_success("Estudiante matriculado exitosamente.")
@@ -390,13 +393,13 @@ def estudiantes_page() -> None:
 
         def _abrir_dialog_csv() -> None:
             with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-                with ui.row().classes("items-center justify-between w-full q-mb-sm"):
+                with ui.row().classes("items-center justify-between w-full u-mb-sm"):
                     ui.label("Carga masiva por CSV").classes("text-h6")
                     btn_icon("close", on_click=dlg.close, variante="ghost")
 
-                with ui.element("div").classes("q-mb-md"):
+                with ui.element("div").classes("u-mb-md"):
                     ui.label("Columnas requeridas en el archivo:").classes(
-                        "text-caption text-weight-medium q-mb-xs"
+                        "text-caption text-weight-medium u-mb-xs"
                     )
                     for col, desc in [
                         ("tipo_documento",   "TI · CC · CE · NUIP"),
@@ -406,15 +409,15 @@ def estudiantes_page() -> None:
                         ("genero",           "M · F · OTRO  (opcional)"),
                         ("grupo_codigo",     "Código del grupo, ej: A1  (opcional)"),
                     ]:
-                        with ui.row().classes("q-mb-xs gap-2"):
+                        with ui.row().classes("u-mb-xs gap-2"):
                             ui.label(col).classes(
-                                "text-caption text-weight-bold text-primary"
-                            ).style("min-width:160px; font-family:monospace")
-                            ui.label(desc).classes("text-caption text-grey-7")
+                                "text-caption text-weight-bold text-primary csv-col-label"
+                            )
+                            ui.label(desc).classes("text-caption text-muted")
 
                     ui.label(
                         "Descarga la plantilla con el botón 'Plantilla' para evitar errores de formato."
-                    ).classes("text-caption text-orange q-mt-sm")
+                    ).classes("text-caption text-warning u-mt-sm")
 
                 ui.upload(
                     label="Seleccionar archivo CSV",
@@ -422,7 +425,7 @@ def estudiantes_page() -> None:
                     auto_upload=True,
                 ).props("accept=.csv").classes("w-full")
 
-                with ui.row().classes("q-mt-md justify-end gap-2"):
+                with ui.row().classes("u-mt-md justify-end gap-2"):
                     btn_ghost("Cancelar", on_click=dlg.close)
                     btn_secondary(
                         "Descargar plantilla",
@@ -445,13 +448,15 @@ def estudiantes_page() -> None:
                 return
 
             def _guardar_edicion(datos: dict) -> "bool | None":
+                # ActualizarEstudianteDTO valida nombre/apellido y coacciona enums;
+                # `or None` conserva la semántica "solo actualiza lo provisto".
                 try:
                     dto = ActualizarEstudianteDTO(
-                        nombre=str(datos.get("nombre", "")).strip() or None,
-                        apellido=str(datos.get("apellido", "")).strip() or None,
+                        nombre=datos.get("nombre") or None,
+                        apellido=datos.get("apellido") or None,
                         genero=datos.get("genero"),
                         grupo_id=datos.get("grupo_id"),
-                        posee_piar=bool(datos.get("posee_piar", False)),
+                        posee_piar=datos.get("posee_piar", False),
                         estado_matricula=datos.get("estado"),
                     )
                     Container.estudiante_service().actualizar(est_id, dto, usuario_id=ctx.usuario_id)
@@ -535,14 +540,11 @@ def estudiantes_page() -> None:
             is_edit = piar is not None
 
             def _submit_piar(datos: dict) -> "bool | None":
-                descripcion = datos.get("descripcion_necesidad", "").strip()
-                if not descripcion:
-                    toast_warning("La descripción de necesidades es obligatoria.")
-                    return False
+                # La descripción (obligatoria, no vacía) la validan los DTOs de PIAR.
                 try:
                     if is_edit:
                         dto = ActualizarPIARDTO(
-                            descripcion_necesidad=descripcion,
+                            descripcion_necesidad=datos.get("descripcion_necesidad"),
                             ajustes_evaluativos=datos.get("ajustes_evaluativos") or None,
                             ajustes_pedagogicos=datos.get("ajustes_pedagogicos") or None,
                             profesionales_apoyo=datos.get("profesionales_apoyo") or None,
@@ -555,7 +557,7 @@ def estudiantes_page() -> None:
                         dto = NuevoPIARDTO(
                             estudiante_id=est_id,
                             anio_id=anio_id,
-                            descripcion_necesidad=descripcion,
+                            descripcion_necesidad=datos.get("descripcion_necesidad"),
                             ajustes_evaluativos=datos.get("ajustes_evaluativos") or None,
                             ajustes_pedagogicos=datos.get("ajustes_pedagogicos") or None,
                             profesionales_apoyo=datos.get("profesionales_apoyo") or None,
@@ -620,7 +622,7 @@ def estudiantes_page() -> None:
                     ThemeManager.icono("filter_list", size=20)
                     ui.label("Filtros").classes("panel-title")
 
-                with ui.row().classes("w-full q-col-gutter-md items-end"):
+                with ui.row().classes("w-full u-col-gutter-md items-end"):
                     _grupos_opts: dict = {None: "Todos los grupos"}
                     for g in _s["grupos"]:
                         _grupos_opts[g.id] = g.codigo

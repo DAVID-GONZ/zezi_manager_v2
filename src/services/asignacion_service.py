@@ -5,6 +5,10 @@ Orquesta los casos de uso del módulo de Asignaciones académicas.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
+from dataclasses import dataclass
+
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
@@ -17,6 +21,35 @@ from src.domain.models.asignacion import (
     NuevaAsignacionDTO,
 )
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
+
+
+# =============================================================================
+# DTOs de resultado (consumidos por las vistas — se re-exportan desde aquí)
+# =============================================================================
+
+@dataclass(frozen=True)
+class CupoDocenteDTO:
+    """Cupo de un docente para una (asignatura, grupo) con sus horas."""
+    usuario_id: int
+    carga_actual: int
+    cap_efectivo: int | None      # None = sin tope configurado
+    tiene_cupo: bool
+    es_actual: bool               # ya está asignado a esa materia/grupo
+
+
+@dataclass(frozen=True)
+class CompletitudGrupoDTO:
+    """Cobertura del plan de estudios de un grupo en un periodo."""
+    horas_asignadas: int
+    horas_totales: int
+
+    @property
+    def completo(self) -> bool:
+        return bool(self.horas_totales) and self.horas_asignadas >= self.horas_totales
+
+    @property
+    def faltantes(self) -> int:
+        return max(0, self.horas_totales - self.horas_asignadas)
 
 
 class AsignacionService:
@@ -68,6 +101,7 @@ class AsignacionService:
             self.horas_de_asignacion(a.grupo_id, a.asignatura_id) for a in activas
         )
 
+    @requiere_escritura
     def desactivar_por_grado_asignatura(
         self, grado: int, asignatura_id: int, usuario_id: int | None = None
     ) -> int:
@@ -88,6 +122,150 @@ class AsignacionService:
                 self.desactivar(a.id, usuario_id=usuario_id)
                 n += 1
         return n
+
+    # ------------------------------------------------------------------
+    # Swap atómico docente↔materia (encapsula la orquestación de la vista)
+    # ------------------------------------------------------------------
+
+    @requiere_escritura
+    def asignar_docente_a_materia(
+        self,
+        grupo_id: int,
+        asignatura_id: int,
+        periodo_id: int,
+        nuevo_usuario_id: int | None,
+        usuario_id: int | None = None,
+    ) -> Asignacion | None:
+        """Asigna (o quita) el docente de una materia en un grupo+periodo de forma
+        atómica desde la perspectiva del llamador:
+
+          - nuevo_usuario_id is None → desactiva el docente actual (si lo hay).
+          - nuevo_usuario_id == actual → no-op (retorna la asignación activa).
+          - distinto → desactiva el actual, y reactiva el combo inactivo existente
+            (mismo docente+materia+grupo+periodo) o crea uno nuevo.
+
+        Retorna la asignación activa resultante, o None si solo se desactivó.
+        """
+        activas = self._repo.listar(
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, asignatura_id=asignatura_id,
+                periodo_id=periodo_id, solo_activas=True,
+            )
+        )
+        activa = activas[0] if activas else None
+
+        if nuevo_usuario_id is None:
+            if activa is not None:
+                self.desactivar(activa.id, usuario_id=usuario_id)
+            return None
+
+        if activa is not None and activa.usuario_id == nuevo_usuario_id:
+            return activa
+
+        if activa is not None:
+            self.desactivar(activa.id, usuario_id=usuario_id)
+
+        # ¿existe un combo inactivo para reactivar?
+        todas = self._repo.listar(
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, asignatura_id=asignatura_id,
+                periodo_id=periodo_id, solo_activas=False,
+            )
+        )
+        destino = next(
+            (a for a in todas
+             if a.usuario_id == nuevo_usuario_id and not a.activo),
+            None,
+        )
+        if destino is not None:
+            return self.reactivar(destino.id, usuario_id=usuario_id)
+
+        return self.crear_asignacion(
+            NuevaAsignacionDTO(
+                usuario_id=nuevo_usuario_id, grupo_id=grupo_id,
+                asignatura_id=asignatura_id, periodo_id=periodo_id,
+            ),
+            usuario_id=usuario_id,
+        )
+
+    # ------------------------------------------------------------------
+    # Cupo de docentes (cálculo hoy en la vista _fila_materia)
+    # ------------------------------------------------------------------
+
+    def docentes_con_cupo(
+        self,
+        asignatura_id: int,
+        grupo_id: int,
+        horas: int,
+        periodo_id: int,
+        docente_ids: list[int],
+        usuario_actual_id: int | None = None,
+    ) -> dict[int, CupoDocenteDTO]:
+        """Por cada docente en `docente_ids`, calcula (carga_actual, cap_efectivo,
+        tiene_cupo) para asumir `horas` adicionales en esta materia/grupo.
+
+        El docente actualmente asignado (`usuario_actual_id`) no suma las horas
+        nuevas (ya las tiene) y siempre se considera con cupo.
+        """
+        out: dict[int, CupoDocenteDTO] = {}
+        for did in docente_ids:
+            es_actual = (did == usuario_actual_id)
+            carga = self.carga_docente(did, periodo_id)
+            cap = None
+            if self._usuario_repo is not None:
+                u = self._usuario_repo.get_by_id(did)
+                cap = u.carga_maxima_efectiva if u else None
+            if cap is None:
+                tiene_cupo = True
+            else:
+                proyectado = carga + (0 if es_actual else (horas or 0))
+                tiene_cupo = proyectado <= cap
+            out[did] = CupoDocenteDTO(
+                usuario_id=did, carga_actual=carga, cap_efectivo=cap,
+                tiene_cupo=tiene_cupo or es_actual, es_actual=es_actual,
+            )
+        return out
+
+    # ------------------------------------------------------------------
+    # Cobertura del plan de estudios (cálculo hoy en la vista)
+    # ------------------------------------------------------------------
+
+    def completitud_grupo(
+        self, grupo_id: int, grado: int | None, periodo_id: int
+    ) -> CompletitudGrupoDTO:
+        """(horas del plan ya asignadas, total del plan) para un grupo+periodo."""
+        if grado is None or self._plan_svc is None:
+            return CompletitudGrupoDTO(0, 0)
+        plan = {
+            p.asignatura_id: p.horas_semanales
+            for p in self._plan_svc.por_grado(grado)
+        }
+        total = sum(plan.values())
+        asigns = self._repo.listar(
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True
+            )
+        )
+        asignadas = sum(plan.get(a.asignatura_id, 0) for a in asigns)
+        return CompletitudGrupoDTO(asignadas, total)
+
+    def materias_sin_docente(
+        self, grupo_id: int, grado: int | None, periodo_id: int
+    ) -> list[int]:
+        """IDs de asignaturas del plan del grado sin docente activo en el grupo."""
+        if grado is None or self._plan_svc is None:
+            return []
+        asigns = self._repo.listar(
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True
+            )
+        )
+        ya = {a.asignatura_id for a in asigns}
+        return [
+            p.asignatura_id
+            for p in self._plan_svc.por_grado(grado)
+            if p.asignatura_id not in ya
+        ]
 
     # ------------------------------------------------------------------
     # Helpers
@@ -151,6 +329,7 @@ class AsignacionService:
     # Casos de uso
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def crear_asignacion(
         self,
         dto: NuevaAsignacionDTO,
@@ -193,6 +372,7 @@ class AsignacionService:
         )
         return asignacion
 
+    @requiere_escritura
     def desactivar(
         self,
         asignacion_id: int,
@@ -213,6 +393,7 @@ class AsignacionService:
         )
         return asig_desactivada
 
+    @requiere_escritura
     def reactivar(
         self,
         asignacion_id: int,
@@ -231,6 +412,7 @@ class AsignacionService:
         )
         return asig_react
 
+    @requiere_escritura
     def reasignar_docente(
         self,
         asignacion_id: int,
@@ -292,4 +474,9 @@ class AsignacionService:
         return self._repo.listar_info(filtro)
 
 
-__all__ = ["AsignacionService", "FiltroAsignacionesDTO"]
+__all__ = [
+    "AsignacionService",
+    "FiltroAsignacionesDTO",
+    "CupoDocenteDTO",
+    "CompletitudGrupoDTO",
+]

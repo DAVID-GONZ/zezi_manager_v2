@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/impersonation.css — Banner "Ver como" (paso_21)
+   Persistente mientras el admin impersona a otro usuario en solo lectura.
+   ═══════════════════════════════════════════════════════════════ */
+
+.impersonation-banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-index-topbar);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 20px;
+  background: var(--color-warning-light);
+  border-bottom: 2px solid var(--color-warning);
+  color: var(--color-warning-dark, #7A4E12);
+  font-size: 13px;
+}
+
+.impersonation-banner-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.impersonation-banner-text {
+  font-weight: 600;
+  flex: 1;
+}
+
+.impersonation-banner-target {
+  font-weight: 700;
+}
+
+.impersonation-banner-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-warning);
+  color: #fff;
+}
+
+.impersonation-exit-btn {
+  flex-shrink: 0;
+}

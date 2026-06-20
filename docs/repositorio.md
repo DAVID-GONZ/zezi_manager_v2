@@ -25,9 +25,12 @@ Los puertos se encuentran en el directorio `src/domain/ports/` y definen las ope
 | `IEstadisticosRepository` | Estadísticas | Generación de reportes y consultas agregadas (dashboard, promedios, etc.). |
 | `IEstudianteRepository` | Estudiante | Operaciones CRUD y consultas sobre el listado de estudiantes. |
 | `IEvaluacionRepository` | Evaluacion | Manejo de calificaciones, notas parciales y definitivas. |
-| `IHabilitacionRepository` | Habilitacion | Registro de procesos de recuperación académica. |
-| `IInfraestructuraRepository`| Grado, Grupo, Asignatura | Gestión de la estructura académica de la institución. |
+| `IHabilitacionRepository` | Habilitacion, PlanMejoramiento (narrativo) | Registro de procesos de recuperación académica y planes narrativos de seguimiento. |
+| `IInfraestructuraRepository`| Grupos, Asignaturas, Grados, Salas, Horarios, Franjas, Escenarios, Disponibilidad, PlanEstudios | Gestión de toda la infraestructura académica y subsistema de horarios. |
+| `INivelacionRepository` | ActividadNivelacion, NotaNivelacion, CierreNivelacion | Proceso de nivelación post-cierre (Decreto 1290). *(Nuevo — Junio 2026)* |
 | `IPeriodoRepository` | PeriodoAcademico | Administración de los periodos escolares (trimestres, semestres, etc.). |
+| `IPlanMejoramientoRepository` | CortePlan, NotaCortePlan, ActividadPlan, NotaActividadPlan | Plan de mejoramiento cuantitativo con cortes y notas por actividad. *(Nuevo — Junio 2026)* |
+| `ISIEERepository` | ConfiguracionSIEE, Categoria (institucional) | Configuración del Sistema Institucional de Evaluación y categorías institucionales. *(Nuevo — Junio 2026)* |
 | `IUsuarioRepository` | Usuario | Manejo de la información de docentes y administradores. |
 
 *(Nota: Adicionalmente, el archivo `service_ports.py` define interfaces para servicios externos como `IAuthenticationService`, `IExporterService` e `INotificationService`, los cuales también siguen el patrón de puertos pero no son repositorios de base de datos directamente).*
@@ -41,7 +44,7 @@ Cada repositorio implementa su interfaz correspondiente y se encarga de:
 - Mapear las tuplas obtenidas de SQLite a las entidades de dominio (modelos).
 - Manejar las transacciones.
 
-### Lista de Repositorios Implementados
+### Lista de Repositorios Implementados (20 total)
 
 - `SqliteAcudienteRepository`
 - `SqliteAlertaRepository`
@@ -56,7 +59,10 @@ Cada repositorio implementa su interfaz correspondiente y se encarga de:
 - `SqliteEvaluacionRepository`
 - `SqliteHabilitacionRepository`
 - `SqliteInfraestructuraRepository`
+- `SqliteNivelacionRepository` *(Nuevo — Junio 2026)*
 - `SqlitePeriodoRepository`
+- `SqlitePlanMejoramientoRepository` *(Nuevo — Junio 2026)*
+- `SqliteSIEERepository` *(Nuevo — Junio 2026)*
 - `SqliteUsuarioRepository`
 
 ## 4. Inyección de Dependencias

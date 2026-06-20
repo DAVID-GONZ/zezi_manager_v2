@@ -104,6 +104,7 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def es_disponible(self, *a): return True
     def limpiar_disponibilidad_docente(self, *a): return 0
     def cargar_disponibilidad_lote(self, *a): return 0
+    def reemplazar_disponibilidad_docente(self, *a): return 0
     def crear_config_generacion(self, c): return c
     def get_config_generacion(self, *a): return None
     def listar_configs_generacion(self, periodo_id=None): return []

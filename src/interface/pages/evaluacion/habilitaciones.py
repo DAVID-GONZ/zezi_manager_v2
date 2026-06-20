@@ -26,7 +26,6 @@ from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
     NuevaActividadNivelacionDTO,
     CalificarNotaNivelacionDTO,
-    CalculadorNivelacion,
 )
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
@@ -39,7 +38,7 @@ def habilitaciones_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -56,9 +55,8 @@ def habilitaciones_page() -> None:
         "nivel_periodo_id":  None,
         "nivel_asig_id":     None,   # asignación seleccionada en el desplegable
         "nivel_cierres":     [],     # list[CierrePeriodo] bajo desempeño
-        "nivel_actividades": [],     # list[ActividadNivelacion]
-        "nivel_notas":       [],     # list[NotaNivelacion]
         "nivel_cierre":      None,   # CierreNivelacion | None (si ya cerrada)
+        "nivel_planilla":    None,   # PlanillaNivelacionDTO | None
     }
 
     # ── Carga de datos base ───────────────────────────────────────────────────
@@ -107,22 +105,20 @@ def habilitaciones_page() -> None:
         per_id   = _s["nivel_periodo_id"]
         if asig_id is None or per_id is None:
             _s["nivel_cierres"]     = []
-            _s["nivel_actividades"] = []
-            _s["nivel_notas"]       = []
             _s["nivel_cierre"]      = None
+            _s["nivel_planilla"]    = None
             return
         try:
             svc = Container.nivelacion_service()
             _s["nivel_cierres"]     = svc.listar_bajo_desempeno([asig_id], per_id)
-            _s["nivel_actividades"] = svc.listar_actividades(asig_id, per_id)
-            _s["nivel_notas"]       = svc.listar_notas(asig_id, per_id)
             _s["nivel_cierre"]      = svc.get_cierre(asig_id, per_id)
+            # Planilla con el promedio ponderado YA calculado por el servicio.
+            _s["nivel_planilla"]    = svc.planilla_nivelacion(asig_id, per_id)
         except Exception as exc:
             logger.error("Error cargando nivelación: %s", exc)
             _s["nivel_cierres"]     = []
-            _s["nivel_actividades"] = []
-            _s["nivel_notas"]       = []
             _s["nivel_cierre"]      = None
+            _s["nivel_planilla"]    = None
 
     # ── Acciones nivelación ───────────────────────────────────────────────────
 
@@ -138,12 +134,13 @@ def habilitaciones_page() -> None:
 
         def _guardar(datos: dict) -> "bool | None":
             try:
+                # NuevaActividadNivelacionDTO valida nombre (no vacío) y peso (0,1].
                 dto = NuevaActividadNivelacionDTO(
                     asignacion_id=asig_id,
                     periodo_id=per_id,
-                    nombre=str(datos.get("nombre", "")).strip(),
-                    descripcion=str(datos.get("descripcion", "")).strip() or None,
-                    peso=float(datos.get("peso") or 0) / 100,   # UI en % → fracción
+                    nombre=datos.get("nombre", ""),
+                    descripcion=datos.get("descripcion") or None,
+                    peso=(datos.get("peso") or 0) / 100,   # UI en % → fracción
                     fecha=None,
                 )
                 est_ids = [c.estudiante_id for c in _s["nivel_cierres"]]
@@ -249,30 +246,20 @@ def habilitaciones_page() -> None:
 
     @ui.refreshable
     def planilla_nivelacion() -> None:
-        actividades = _s["nivel_actividades"]
-        cierres     = _s["nivel_cierres"]     # list[CierrePeriodo] bajo desempeño
-        notas       = _s["nivel_notas"]
-        cerrado     = _s["nivel_cierre"] is not None
         asig_id     = _s["nivel_asig_id"]
         per_id      = _s["nivel_periodo_id"]
 
-        if asig_id is None or per_id is None:
+        if asig_id is None or per_id is None or _s["nivel_planilla"] is None:
             ui.label("Seleccione una asignación y un periodo para ver la planilla.").classes(
                 "text-empty mt-4"
             )
             return
 
-        # Construir mapa de notas: (actividad_id, estudiante_id) → NotaNivelacion
-        nota_map: dict[tuple[int, int], "NotaNivelacion"] = {
-            (n.actividad_nivelacion_id, n.estudiante_id): n
-            for n in notas
-        }
-
-        # Construir mapa de notas previas: estudiante_id → nota_definitiva del cierre
-        cierre_map = {c.estudiante_id: c.nota_definitiva for c in cierres}
-
-        # Calcular suma de pesos actual
-        suma_pesos = sum(a.peso for a in actividades)
+        planilla    = _s["nivel_planilla"]   # PlanillaNivelacionDTO
+        actividades = planilla.actividades
+        filas       = planilla.filas
+        cerrado     = planilla.cerrado
+        suma_pesos  = planilla.suma_pesos
 
         # ── Barra de acciones ────────────────────────────────────────────────
         with ui.row().classes("items-center gap-3 mb-3 flex-wrap"):
@@ -299,7 +286,7 @@ def habilitaciones_page() -> None:
                         on_click=_cerrar_nivelacion,
                     )
 
-        if not cierres:
+        if not filas:
             empty_state(
                 icono="school",
                 titulo="Sin estudiantes en nivelación",
@@ -311,24 +298,24 @@ def habilitaciones_page() -> None:
         with ui.element("div").classes("w-full overflow-x-auto"):
             # Cabecera
             with ui.element("div").classes(
-                "flex gap-1 p-2 font-semibold text-xs border-b bg-gray-50 rounded-t"
+                "flex gap-1 p-2 font-semibold text-xs border-b bg-subtle rounded-t"
             ):
                 ui.label("Estudiante").classes("w-32 no-shrink")
                 ui.label("Nota período").classes("w-24 text-right no-shrink")
                 for act in actividades:
                     with ui.element("div").classes("w-28 text-center no-shrink"):
                         ui.label(act.nombre).classes("text-truncate max-w-full")
-                        ui.label(f"{act.peso:.0%}").classes("text-gray-400 text-xs")
+                        ui.label(f"{act.peso:.0%}").classes("text-faint text-xs")
                 if actividades:
                     ui.label("Promedio pond.").classes("w-28 text-right no-shrink font-semibold")
 
-            # Filas
-            for cierre in cierres:
-                est_id     = cierre.estudiante_id
-                nota_previa = cierre_map.get(est_id)
+            # Filas (el servicio ya calculó el promedio ponderado de cada fila)
+            for fila in filas:
+                est_id      = fila.estudiante_id
+                nota_previa = fila.nota_previa
 
                 with ui.element("div").classes(
-                    "flex gap-1 items-center p-2 border-b hover:bg-gray-50"
+                    "flex gap-1 items-center p-2 border-b row-hover"
                 ):
                     # Nombre/ID del estudiante
                     ui.label(str(est_id)).classes("w-32 no-shrink font-mono text-sm")
@@ -338,44 +325,36 @@ def habilitaciones_page() -> None:
                     ui.label(nota_str).classes("w-24 text-right font-mono text-sm text-error no-shrink")
 
                     # Celdas por actividad
-                    notas_est = []
                     for act in actividades:
-                        clave = (act.id, est_id)
-                        nota_obj = nota_map.get(clave)
+                        nota_obj = fila.notas.get(act.id)
                         valor = nota_obj.valor if nota_obj else None
-                        notas_est.append(nota_obj)
 
                         with ui.element("div").classes("w-28 text-center no-shrink"):
                             valor_str = f"{valor:.1f}" if valor is not None else "—"
                             color_cls = (
                                 "text-success" if valor is not None and valor >= 60
                                 else "text-error" if valor is not None
-                                else "text-gray-400"
+                                else "text-faint"
                             )
                             if cerrado:
                                 ui.label(valor_str).classes(
                                     f"text-sm font-mono {color_cls}"
                                 )
                             else:
-                                ui.button(
+                                btn_ghost(
                                     valor_str,
                                     on_click=lambda _act_id=act.id, _est_id=est_id, _v=valor:
                                         _calificar_nota(_act_id, _est_id, _v),
-                                ).props("flat dense").classes(
-                                    f"text-sm font-mono {color_cls}"
-                                )
+                                ).classes(f"text-sm font-mono {color_cls}")
 
-                    # Promedio ponderado
+                    # Promedio ponderado (precalculado por el servicio)
                     if actividades:
-                        prom = CalculadorNivelacion.nota_definitiva(
-                            [n for n in notas_est if n is not None],
-                            actividades,
-                        )
+                        prom = fila.promedio
                         prom_str = f"{prom:.1f}" if prom is not None else "…"
                         prom_cls = (
                             "text-success font-semibold" if prom is not None and prom >= 60
                             else "text-error font-semibold" if prom is not None
-                            else "text-gray-400"
+                            else "text-faint"
                         )
                         ui.label(prom_str).classes(f"w-28 text-right font-mono text-sm {prom_cls} no-shrink")
 
@@ -448,18 +427,18 @@ def habilitaciones_page() -> None:
                         # Banner de implementación futura
                         with ui.element("div").classes(
                             "flex items-start gap-3 p-4 mt-2 rounded-lg border border-dashed "
-                            "border-amber-300 bg-amber-50"
+                            "border-warning-soft bg-warning-soft"
                         ):
                             ThemeManager.icono("construction", size=32, color="var(--color-warning)")
                             with ui.element("div"):
                                 ui.label("Funcionalidad en desarrollo").classes(
-                                    "text-sm font-semibold text-amber-800"
+                                    "text-sm font-semibold text-warning"
                                 )
                                 ui.label(
                                     "Esta sección permitirá publicar las actividades de nivelación "
                                     "con sus fechas de entrega para que los estudiantes puedan "
                                     "consultarlas desde el portal estudiantil."
-                                ).classes("text-sm text-amber-700 mt-1")
+                                ).classes("text-sm text-warning mt-1")
 
                     # Vista previa de lo que vendrá
                     with ui.element("div").classes("panel-card mt-4"):
@@ -494,8 +473,8 @@ def habilitaciones_page() -> None:
                         ]
                         for icono, titulo, descripcion in funcionalidades:
                             with ui.element("div").classes(
-                                "flex items-start gap-3 p-3 mb-2 rounded border border-gray-100 "
-                                "hover:bg-gray-50"
+                                "flex items-start gap-3 p-3 mb-2 rounded border border-soft "
+                                "row-hover"
                             ):
                                 ThemeManager.icono(icono, size=20, color="var(--color-secondary)")
                                 with ui.element("div"):

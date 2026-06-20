@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Periodos académicos.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from datetime import datetime
 
 from src.domain.ports.periodo_repo import IPeriodoRepository
@@ -74,6 +76,7 @@ class PeriodoService:
     # Casos de uso — periodos
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def crear_periodo(self, dto: NuevoPeriodoDTO) -> Periodo:
         """
         Crea un periodo académico nuevo.
@@ -114,6 +117,7 @@ class PeriodoService:
         )
         return periodo
 
+    @requiere_escritura
     def cerrar_periodo(
         self,
         periodo_id: int,
@@ -130,6 +134,7 @@ class PeriodoService:
         )
         return periodo_cerrado
 
+    @requiere_escritura
     def activar_periodo(self, periodo_id: int) -> Periodo:
         """Activa un periodo para que sea el periodo de trabajo actual."""
         periodo = self._get_periodo_o_lanzar(periodo_id)
@@ -170,6 +175,7 @@ class PeriodoService:
         """
         return self._repo.listar_hitos_proximos(anio_id=anio_id, dias=dias)
 
+    @requiere_escritura
     def agregar_hito(
         self,
         dto: NuevoHitoPeriodoDTO,

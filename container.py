@@ -104,6 +104,13 @@ class Container:
         return cls._get_or_create("infraestructura_repo", SqliteInfraestructuraRepository)
 
     @classmethod
+    def institucion_repo(cls):
+        from src.infrastructure.db.repositories.sqlite_institucion_repo import (
+            SqliteInstitucionRepository,
+        )
+        return cls._get_or_create("institucion_repo", SqliteInstitucionRepository)
+
+    @classmethod
     def usuario_repo(cls):
         from src.infrastructure.db.repositories.sqlite_usuario_repo import (
             SqliteUsuarioRepository,
@@ -216,6 +223,14 @@ class Container:
         )
 
     @classmethod
+    def institucion_service(cls):
+        from src.services.institucion_service import InstitucionService
+        return cls._get_or_create(
+            "institucion_service",
+            lambda: InstitucionService(repo=cls.institucion_repo()),
+        )
+
+    @classmethod
     def usuario_service(cls):
         from src.services.usuario_service import UsuarioService
         return cls._get_or_create(
@@ -323,6 +338,7 @@ class Container:
                 estudiante_repo=cls.estudiante_repo(),
                 alerta_repo=cls.alerta_repo(),
                 auditoria=cls.auditoria_repo(),
+                asignacion_repo=cls.asignacion_repo(),
             ),
         )
 
@@ -391,6 +407,9 @@ class Container:
                 evaluacion_repo = cls.evaluacion_repo(),
                 asistencia_repo = cls.asistencia_repo(),
                 estudiante_repo = cls.estudiante_repo(),
+                infra_repo      = cls.infraestructura_repo(),
+                asignacion_repo = cls.asignacion_repo(),
+                alerta_repo     = cls.alerta_repo(),
             ),
         )
 
@@ -402,6 +421,7 @@ class Container:
             lambda: InformeService(
                 estadisticos_repo=cls.estadisticos_repo(),
                 exporter=cls.exporter_service(),
+                estudiante_repo=cls.estudiante_repo(),
             ),
         )
 
@@ -418,7 +438,11 @@ class Container:
         from src.services.plan_estudios_service import PlanEstudiosService
         return cls._get_or_create(
             "plan_estudios_service",
-            lambda: PlanEstudiosService(repo=cls.infraestructura_repo()),
+            lambda: PlanEstudiosService(
+                repo=cls.infraestructura_repo(),
+                # Provider lazy: evita la recursión plan↔asignacion en el arranque.
+                asignacion_svc_provider=cls.asignacion_service,
+            ),
         )
 
     @classmethod
@@ -492,7 +516,7 @@ class Container:
         resultados = {}
         metodos = [
             "auth_service", "notification_service", "exporter_service",
-            "configuracion_service", "usuario_service",
+            "configuracion_service", "institucion_service", "usuario_service",
             "estudiante_service", "periodo_service", "asignacion_service",
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "nivelacion_service", "plan_mejoramiento_service", "convivencia_service", "alerta_service",

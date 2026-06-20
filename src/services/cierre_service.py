@@ -7,6 +7,8 @@ para calcular definitivas y generar los registros de cierre.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from datetime import date
 
 from src.domain.ports.cierre_repo import ICierreRepository
@@ -44,6 +46,7 @@ class CierreService:
         estudiante_repo: IEstudianteRepository,
         alerta_repo: IAlertaRepository | None = None,
         auditoria: IAuditoriaRepository | None = None,
+        asignacion_repo=None,
     ) -> None:
         self._cierre_repo    = cierre_repo
         self._eval_repo      = evaluacion_repo
@@ -52,6 +55,7 @@ class CierreService:
         self._estudiante_repo = estudiante_repo
         self._alerta_repo    = alerta_repo
         self._auditoria      = auditoria
+        self._asignacion_repo = asignacion_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -125,6 +129,7 @@ class CierreService:
     # Cierre de periodo
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def cerrar_periodo(
         self,
         asignacion_id: int,
@@ -202,6 +207,7 @@ class CierreService:
     # Cierre de año
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def cerrar_anio(
         self,
         grupo_id: int,
@@ -380,6 +386,47 @@ class CierreService:
             result[c.asignacion_id].append(c)
         return result
 
+    def resumen_cierres_institucional(
+        self,
+        periodo_id: int,
+    ) -> dict:
+        """Resumen institucional de cierres del periodo (SOLO LECTURA).
+
+        Recorre todas las asignaciones activas del periodo y cuenta cuántas
+        están cerradas (tienen al menos un CierrePeriodo) y cuántas siguen
+        pendientes. Devuelve un dict de primitivos para la UI.
+
+        Requiere asignacion_repo inyectado; si falta, devuelve ceros.
+        """
+        vacio = {"cerradas": 0, "pendientes": 0, "total": 0}
+        if not periodo_id or self._asignacion_repo is None:
+            return vacio
+
+        try:
+            from src.domain.models.asignacion import FiltroAsignacionesDTO
+            asignaciones = self._asignacion_repo.listar_info(
+                FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True)
+            )
+        except Exception:
+            return vacio
+
+        asignacion_ids = [
+            a.asignacion_id for a in asignaciones
+            if getattr(a, "asignacion_id", None) is not None
+        ]
+        if not asignacion_ids:
+            return vacio
+
+        estado = self.estado_cierres_por_asignaciones(asignacion_ids, periodo_id)
+        cerradas = sum(1 for cierres in estado.values() if cierres)
+        total = len(asignacion_ids)
+        return {
+            "cerradas":   cerradas,
+            "pendientes": total - cerradas,
+            "total":      total,
+        }
+
+    @requiere_escritura
     def reabrir_asignacion(
         self,
         asignacion_id: int,
@@ -409,6 +456,7 @@ class CierreService:
         )
         return cantidad
 
+    @requiere_escritura
     def cerrar_grupo(
         self,
         asignacion_ids: list[int],

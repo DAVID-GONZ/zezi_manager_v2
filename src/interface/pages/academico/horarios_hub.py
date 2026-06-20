@@ -34,7 +34,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+    btn_primary, btn_secondary, btn_danger, btn_ghost,
 )
 from src.interface.design.components import (
     confirm_dialog, empty_state, form_dialog, status_badge,
@@ -49,7 +49,7 @@ from src.interface.pages.academico.plantilla_editor_widget import (
     render_franjas_editor,
     render_plantilla_preview,
 )
-from src.services.infraestructura_service import NuevoHorarioDTO, DiaSemana
+from src.services.infraestructura_service import DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("HORARIOS_HUB")
@@ -59,8 +59,8 @@ logger = logging.getLogger("HORARIOS_HUB")
 # ---------------------------------------------------------------------------
 # Gestión completa de horarios (ver, editar, generar): admin, director y
 # coordinador. Los docentes solo tienen vista de su propio horario.
-_ROLES_ESCRITURA = frozenset({"admin", "director", "coordinador"})
-_ROLES_SELECTOR_VISTA = frozenset({"admin", "director", "coordinador"})
+_ROLES_ESCRITURA = frozenset({"director", "coordinador"})
+_ROLES_SELECTOR_VISTA = frozenset({"director", "coordinador"})
 
 _DIAS_BASE = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 _DIA_MAP = {
@@ -77,26 +77,6 @@ _ESTADO_BADGE = {
     "generado": ("Generado", "warning"),
     "aplicado": ("Aplicado", "success"),
 }
-
-_PESOS_DEF = [
-    ("huecos",       "Evitar huecos",
-     "Reduce las horas libres entre clases de un grupo o docente. Mayor = horarios más compactos, sin ventanas."),
-    ("distribucion", "Repartir en la semana",
-     "Separa las clases de una misma materia en días distintos. Mayor = menos materias repetidas el mismo día."),
-    ("compactacion", "Compactar al docente",
-     "Concentra las clases del docente en menos jornadas. Mayor = el docente viene menos días o en bloques."),
-]
-
-_PESOS_EXTRA = [
-    ("balance_diario",   "Equilibrar horas por día",
-     "Iguala cuántas horas dicta el docente cada día. Mayor = días más parejos, sin uno cargado y otro vacío."),
-    ("franja_preferida", "Respetar franja preferida",
-     "Ubica las materias en su franja preferida (mañana/tarde). Mayor = más respeto a esa preferencia."),
-    ("dia_libre",        "Dar un día libre",
-     "Intenta dejar al docente un día completo sin clases. Mayor = más prioridad a lograr ese día libre."),
-    ("hueco_comun",      "Proteger franja de reunión",
-     "Evita programar clases en la franja de reunión configurada. Mayor = más respeto a ese espacio común."),
-]
 
 _SECCION_META = {
     "preparar":   ("Preparar",   "checklist"),
@@ -878,21 +858,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 if getattr(c, "plantilla_id", None) == plantilla_id]
 
     def _gen_plantilla_generable(plantilla_id: int | None) -> tuple[bool, str]:
-        if plantilla_id is None:
-            return False, "La configuración no tiene plantilla asignada."
-        plantilla = next((p for p in _s["gen_plantillas"] if p.id == plantilla_id), None)
-        if plantilla is None:
-            return False, "La plantilla de la configuración ya no existe."
-        if not getattr(plantilla, "dias_activos", None):
-            return False, "La plantilla no tiene días activos."
         try:
-            franjas = Container.infraestructura_service().listar_franjas(plantilla_id)
+            return Container.generador_horario_service().plantilla_generable(plantilla_id)
         except Exception as exc:
-            logger.error("Error verificando franjas de plantilla %s: %s", plantilla_id, exc)
-            return False, "No se pudieron verificar las franjas de la plantilla."
-        if not any(f.es_lectiva for f in franjas):
-            return False, "La plantilla no tiene franjas lectivas."
-        return True, ""
+            logger.error("Error verificando generabilidad de plantilla %s: %s", plantilla_id, exc)
+            return False, "No se pudo verificar la plantilla de la configuración."
 
     def _gen_crear_plantilla(on_creada=None) -> None:
         def _guardar(datos: dict) -> "bool | None":
@@ -1123,12 +1093,12 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 value=grupos_ini, multiple=True,
             ).classes("andes-input w-full").props("outlined use-chips")
 
-            ui.label("Pesos del motor").classes("font-h3 q-mt-md")
+            ui.label("Pesos del motor").classes("font-h3 u-mt-md")
             ui.label(
                 "Indican cuánto prioriza el motor cada criterio de calidad al armar el "
                 "horario: 0 = ignorar · mayor = más importante. Son preferencias, no "
                 "reglas obligatorias."
-            ).classes("text-caption text-muted q-mb-sm")
+            ).classes("text-caption text-muted u-mb-sm")
 
             def _peso_item(key: str, label: str, hint: str, valor: float, destino: dict) -> None:
                 with ui.element("div").classes("gen-peso-item"):
@@ -1147,19 +1117,23 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     ui.label(hint).classes("gen-peso-hint")
                     destino[key] = sl
 
+            catalogo_pesos = Container.generador_horario_service().catalogo_pesos()
+            pesos_def = catalogo_pesos["principales"]
+            pesos_extra = catalogo_pesos["avanzados"]
+
             sliders: dict[str, Any] = {}
-            with ui.element("div").classes("gen-pesos-grid q-mt-sm"):
-                for key, label, hint in _PESOS_DEF:
+            with ui.element("div").classes("gen-pesos-grid u-mt-sm"):
+                for key, label, hint in pesos_def:
                     _peso_item(key, label, hint, pesos_val[key], sliders)
 
             ui.separator().classes("my-3")
-            ui.label("Optimización avanzada (opcional)").classes("font-h3 q-mt-md")
+            ui.label("Optimización avanzada (opcional)").classes("font-h3 u-mt-md")
             ui.label(
                 "Ajustes finos de calidad para los docentes. Déjalos en 0 si no los necesitas."
-            ).classes("text-caption text-muted q-mb-sm")
+            ).classes("text-caption text-muted u-mb-sm")
             sliders_extra: dict[str, Any] = {}
-            with ui.element("div").classes("gen-pesos-grid q-mt-sm"):
-                for key, label, hint in _PESOS_EXTRA:
+            with ui.element("div").classes("gen-pesos-grid u-mt-sm"):
+                for key, label, hint in pesos_extra:
                     _peso_item(key, label, hint, pesos_extra_val[key], sliders_extra)
 
             ui.separator().classes("my-3")
@@ -1192,15 +1166,12 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 pesos_ext = {k: round(float(sliders_extra[k].value), 1) for k in sliders_extra}
                 pesos_completo = {**pesos, **pesos_ext}
 
-                restricciones: dict = {}
-                min_h = int(in_min_horas.value or 0)
-                max_h = int(in_max_horas.value or 8)
-                if min_h > 0 or max_h < 8:
-                    restricciones["min_max_diario"] = {
-                        "modo": sel_modo_minmax.value,
-                        "min": min_h,
-                        "max": max_h,
-                    }
+                infra = Container.infraestructura_service()
+                restricciones = infra.construir_restricciones(
+                    in_min_horas.value or 0,
+                    in_max_horas.value if in_max_horas.value is not None else 8,
+                    sel_modo_minmax.value,
+                )
 
                 if not nombre:
                     toast_warning("El nombre de la configuración es obligatorio")
@@ -1209,7 +1180,6 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     toast_warning("Selecciona una plantilla")
                     return
                 try:
-                    infra = Container.infraestructura_service()
                     if es_edicion:
                         infra.actualizar_config_generacion(
                             config.id,
@@ -1221,18 +1191,15 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         )
                         toast_success("Configuración actualizada")
                     else:
-                        nueva = infra.crear_config_generacion(
+                        infra.crear_config_generacion(
                             nombre=nombre,
                             periodo_id=_s["gen_periodo_id"],
                             anio_id=_s["gen_anio_id"],
                             plantilla_id=plantilla_id,
                             grupos=grupos if grupos else None,
                             pesos=pesos_completo,
+                            restricciones=restricciones,
                         )
-                        if restricciones:
-                            infra.actualizar_config_generacion(
-                                nueva.id, restricciones=restricciones
-                            )
                         toast_success("Configuración creada")
                     dlg.close()
                     _gen_cargar_configs()
@@ -1241,7 +1208,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     logger.error("Error guardando configuración de generación: %s", exc)
                     toast_error("No se pudo guardar la configuración")
 
-            with ui.row().classes("base-form-footer w-full gap-2 justify-end q-mt-md"):
+            with ui.row().classes("base-form-footer w-full gap-2 justify-end u-mt-md"):
                 btn_secondary("Cancelar", on_click=dlg.close)
                 btn_primary("Guardar", on_click=_guardar)
 
@@ -1389,7 +1356,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 return
 
             sel = _s.get("gen_plantilla_sel")
-            with ui.element("div").classes("parrilla-chips q-mt-sm"):
+            with ui.element("div").classes("parrilla-chips u-mt-sm"):
                 for p in _s["gen_plantillas"]:
                     is_sel = sel and sel.id == p.id
                     chip_cls = "parrilla-chip" + (" parrilla-chip-activo" if is_sel else "")
@@ -1405,7 +1372,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         if sel is None:
             return
 
-        with ui.element("div").classes("panel-card q-mt-md"):
+        with ui.element("div").classes("panel-card u-mt-md"):
             with ui.element("div").classes("gen-section-head"):
                 ui.label(f"Franjas — {sel.nombre}").classes("text-subtitle1 font-semibold")
                 if puede_escribir:
@@ -1417,7 +1384,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                    on_click=lambda: _gen_eliminar_plantilla(sel))
             dias_txt = ", ".join(sel.dias_activos) if getattr(sel, "dias_activos", None) else "—"
             ui.label(f"Jornada {sel.jornada} · Días: {dias_txt}").classes(
-                "text-xs text-secondary q-mb-sm"
+                "text-xs text-secondary u-mb-sm"
             )
             render_franjas_editor(
                 _s["gen_franjas_sel"],
@@ -1427,7 +1394,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 puede_editar=puede_escribir,
             )
 
-        with ui.element("div").classes("panel-card q-mt-md"):
+        with ui.element("div").classes("panel-card u-mt-md"):
             ui.label("Vista previa de la rejilla").classes("text-subtitle2 font-semibold")
             render_plantilla_preview(sel, _s["gen_franjas_sel"])
 
@@ -1514,7 +1481,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         )
         costo_final = float(getattr(metricas, "costo_final", 0.0) or 0.0) if metricas else 0.0
 
-        with ui.row().classes("items-center gap-2 q-mb-sm"):
+        with ui.row().classes("items-center gap-2 u-mb-sm"):
             ui.label("Resultado de la generación").classes("text-subtitle2 font-semibold")
             if valido:
                 status_badge("Válido", variante="success")
@@ -1538,7 +1505,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         incidencias = list(getattr(resultado, "incidencias", []) or [])
         if incidencias:
-            with ui.element("div").classes("gen-incidencias q-mt-md"):
+            with ui.element("div").classes("gen-incidencias u-mt-md"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
                     ui.label(f"Incidencias ({len(incidencias)})").classes(
@@ -1554,11 +1521,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _gen_render_preview() -> None:
         datos = _s["gen_datos_preview"]
         perspectiva = _s["gen_perspectiva"]
-        with ui.element("div").classes("panel-card q-mt-md"):
+        with ui.element("div").classes("panel-card u-mt-md"):
             ui.label("Vista previa del escenario generado").classes(
                 "text-subtitle2 font-semibold"
             )
-            with ui.element("div").classes("parrilla-toolbar q-mt-sm"):
+            with ui.element("div").classes("parrilla-toolbar u-mt-sm"):
                 _gen_segmento(
                     [("Grupo", "Grupo"), ("Docente", "Docente"), ("Sala", "Sala")],
                     perspectiva,
@@ -1604,7 +1571,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             getattr(config, "plantilla_id", None)
         )
 
-        with ui.element("div").classes("panel-card q-mt-md"):
+        with ui.element("div").classes("panel-card u-mt-md"):
             with ui.element("div").classes("gen-section-head"):
                 with ui.row().classes("items-center gap-3 flex-wrap"):
                     ui.label(getattr(config, "nombre", "")).classes("text-subtitle1 font-semibold")
@@ -1629,7 +1596,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         )
 
             if not generable:
-                with ui.row().classes("items-center gap-2 q-mt-sm"):
+                with ui.row().classes("items-center gap-2 u-mt-sm"):
                     ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
                     ui.label(
                         f"No se puede generar: {motivo_no_generable} "
@@ -1691,7 +1658,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         puede_gen = Container.preparacion_horario_service().puede_generar(reporte) if reporte else False
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center justify-between q-mb-sm"):
+            with ui.row().classes("items-center justify-between u-mb-sm"):
                 ui.label("Preparar la generación").classes("text-subtitle1 font-semibold")
                 btn_ghost(
                     "Actualizar",
@@ -1700,7 +1667,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 )
 
             if error_validacion:
-                ui.label(error_validacion).classes("text-xs text-secondary q-mb-md")
+                ui.label(error_validacion).classes("text-xs text-secondary u-mb-md")
 
             if not reporte:
                 ui.label(
@@ -1723,7 +1690,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             with ui.row().classes("items-center gap-2"):
                                 ui.label(puerta.titulo).classes("font-semibold text-sm")
                                 if puerta.severidad == "advertencia":
-                                    ui.badge("advertencia").props("outline color=warning")
+                                    status_badge("advertencia", variante="warning")
                             ui.label(puerta.detalle).classes("text-xs text-secondary")
                         if not puerta.ok and puerta.fix_ruta:
                             btn_ghost(
@@ -1732,7 +1699,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                 on_click=lambda _, r=puerta.fix_ruta: ui.navigate.to(r),
                             )
 
-                with ui.row().classes("q-mt-md"):
+                with ui.row().classes("u-mt-md"):
                     if puede_gen:
                         btn_primary(
                             "Generar horario",
@@ -1748,7 +1715,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             ).props("disable")
                             ui.label(
                                 "Resuelve las puertas rojas para habilitar la generación."
-                            ).classes("text-xs text-secondary q-mt-xs")
+                            ).classes("text-xs text-secondary u-mt-xs")
 
     # =========================================================================
     # Render helper — docente
@@ -1764,7 +1731,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             # Al elegir "Día" se muestran chips de día (mismo control que la
             # vista de directivos) por si se quiere cambiar el día visualizado.
             if _s["doc_vista_grid"] == "dia":
-                with ui.element("div").classes("parrilla-chips q-mt-sm"):
+                with ui.element("div").classes("parrilla-chips u-mt-sm"):
                     for d in _DIAS_BASE:
                         chip_cls = "parrilla-chip" + (
                             " parrilla-chip-activo" if d == _s["doc_dia_sel"] else ""
@@ -1778,7 +1745,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         # Asignaciones propias (solo lectura)
         with ui.element("div").classes("panel-card"):
-            ui.label("Mis asignaciones").classes("text-subtitle1 font-semibold q-mb-sm")
+            ui.label("Mis asignaciones").classes("text-subtitle1 font-semibold u-mb-sm")
             asigs = _s["doc_asignaciones"]
             if not asigs:
                 empty_state(
@@ -1805,17 +1772,17 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             reporte = _s["lote_reporte"]
             if reporte is None:
                 return
-            with ui.element("div").classes("q-mt-sm"):
+            with ui.element("div").classes("u-mt-sm"):
                 ui.label(
                     f"Análisis: {reporte.validas} válidas, {reporte.invalidas} con error"
-                ).classes("text-sm text-grey-7 q-mb-xs")
+                ).classes("text-sm text-muted u-mb-xs")
                 with ui.element("div").classes("overflow-auto"):
                     with ui.element("table").classes("w-full border-collapse text-xs"):
                         with ui.element("thead"):
                             with ui.element("tr"):
                                 for col in ("#", "Estado", "Resumen", "Motivo"):
                                     with ui.element("th").classes(
-                                        "border px-2 py-1 text-left bg-grey-2"
+                                        "border px-2 py-1 text-left bg-surface-alt"
                                     ):
                                         ui.label(str(col))
                         with ui.element("tbody"):
@@ -1832,7 +1799,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                         ui.label(str(f.resumen))
                                     with ui.element("td").classes("border px-2 py-1"):
                                         ui.label(str(f.motivo or ""))
-                with ui.row().classes("gap-2 q-mt-sm"):
+                with ui.row().classes("gap-2 u-mt-sm"):
                     if reporte.todo_ok:
                         btn_primary("Aplicar todo", icon="upload",
                                     on_click=lambda: _aplicar_lote(False))
@@ -1909,8 +1876,8 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 logger.error("Error aplicando lote: %s", exc)
                 toast_error(_texto_error(exc))
 
-        with ui.element("div").classes("panel-card q-mt-sm"):
-            with ui.row().classes("items-center justify-between q-mb-sm"):
+        with ui.element("div").classes("panel-card u-mt-sm"):
+            with ui.row().classes("items-center justify-between u-mb-sm"):
                 ui.label("Carga masiva de bloques").classes("text-subtitle1 font-semibold")
                 with ui.row().classes("gap-2"):
                     btn_secondary("Descargar plantilla", icon="download",
@@ -1920,7 +1887,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                       on_click=_descargar_horario)
             ui.label(
                 "Columnas requeridas: asignacion_id, dia_semana, hora_inicio, hora_fin, sala"
-            ).classes("text-caption text-grey-6 q-mb-xs")
+            ).classes("text-caption text-muted u-mb-xs")
             ui.upload(label="Subir CSV", on_upload=_on_upload, auto_upload=True).classes("w-full")
             reporte_lote_refreshable()
 
@@ -1942,10 +1909,10 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     btn_secondary("Nuevo escenario", icon="add", on_click=_crear_escenario_dialog)
 
             if not escenarios:
-                ui.label("No hay escenarios creados para este año.").classes("text-caption text-grey-6 q-mt-sm")
+                ui.label("No hay escenarios creados para este año.").classes("text-caption text-muted u-mt-sm")
                 return
 
-            with ui.element("div").classes("parrilla-chips q-mt-sm"):
+            with ui.element("div").classes("parrilla-chips u-mt-sm"):
                 for esc in escenarios:
                     is_sel = sel and sel.id == esc.id
                     chip_cls = "parrilla-chip" + (" parrilla-chip-activo" if is_sel else "")
@@ -1956,7 +1923,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                 status_badge("Activo", variante="success")
 
             if sel and editable:
-                with ui.row().classes("gap-2 q-mt-sm flex-wrap"):
+                with ui.row().classes("gap-2 u-mt-sm flex-wrap"):
                     if not sel.activo:
                         btn_primary("Activar", icon="check_circle",
                                     on_click=lambda: _vis_activar_escenario(sel.id))
@@ -1972,7 +1939,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         esc = _s["escenario_sel"]
         # Edición solo en la sección "Editar"; "Visualizar" es de solo lectura.
         editable = puede_escribir and _s["seccion"] == "editar"
-        with ui.element("div").classes("panel-card q-mt-sm"):
+        with ui.element("div").classes("panel-card u-mt-sm"):
             with ui.row().classes("items-center justify-between flex-wrap gap-2"):
                 ui.label("Parrilla").classes("text-subtitle1 font-semibold")
                 with ui.row().classes("items-center gap-2"):
@@ -2130,7 +2097,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
             if areas:
                 ui.label("Áreas (clic para cambiar color)").classes(
-                    "text-xs text-grey-6 q-mt-sm"
+                    "text-xs text-muted u-mt-sm"
                 )
                 with ui.element("div").classes("parrilla-leyenda"):
                     for a in areas:
@@ -2159,7 +2126,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             )
             return
 
-        with ui.element("div").classes("parrilla-toolbar q-mb-md"):
+        with ui.element("div").classes("parrilla-toolbar u-mb-md"):
             _gen_segmento(
                 [("plantillas", "Plantillas"), ("generacion", "Generación")],
                 _s["gen_tab"],

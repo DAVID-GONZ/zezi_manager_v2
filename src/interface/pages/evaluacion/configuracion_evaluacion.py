@@ -33,20 +33,16 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+    btn_primary, btn_ghost, btn_icon,
 )
 from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 from src.services.evaluacion_service import (
     NuevaCategoriaDTO,
     ActualizarCategoriaDTO,
-    NuevaConfiguracionSIEEDTO,
-    NuevaCategoriaInstitucionalDTO,
-    ModoSIEE,
     ContextoAcademicoDTO,
 )
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.plan_mejoramiento_service import (
-    PlanMejoramientoService,
     EjecutarCorteDTO,
     EstadoNotaCorte,
 )
@@ -197,22 +193,13 @@ def configuracion_evaluacion_page() -> None:
             toast_warning("Seleccione periodo y asignación primero")
             return
 
-        nombre = str(_s["form_nombre"]).strip()
-        if not nombre:
-            toast_warning("El nombre no puede estar vacío")
-            return
-        try:
-            peso = float(_s["form_peso"])
-        except (TypeError, ValueError):
-            toast_warning("El peso debe ser un número")
-            return
-
         padre_id = _s["form_padre_id"] if _modo_actual() == "mixto_subcategorias" else None
 
+        # NuevaCategoriaDTO valida nombre (no vacío) y peso (0 < x <= 1).
         try:
             dto = NuevaCategoriaDTO(
-                nombre             = nombre,
-                peso               = peso,
+                nombre             = _s["form_nombre"],
+                peso               = _s["form_peso"],
                 asignacion_id      = asig_id,
                 periodo_id         = per_id,
                 categoria_padre_id = padre_id,
@@ -220,7 +207,7 @@ def configuracion_evaluacion_page() -> None:
             Container.evaluacion_service().agregar_categoria(
                 dto, cdt, usuario_id=ctx.usuario_id
             )
-            toast_success(f"Categoría '{nombre}' creada")
+            toast_success(f"Categoría '{dto.nombre}' creada")
             _s["form_nombre"]   = ""
             _s["form_peso"]     = 0.10
             _s["form_padre_id"] = None
@@ -357,7 +344,7 @@ def configuracion_evaluacion_page() -> None:
         # En modo INSTITUCIONAL_FIJO: solo mostramos info
         if modo == "institucional_fijo":
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center gap-2 text-amber-700 bg-warning-soft rounded p-3"):
+                with ui.row().classes("items-center gap-2 text-warning bg-warning-soft rounded p-3"):
                     ThemeManager.icono("info", size=20)
                     ui.label(
                         "El SIEE está en modo Institucional fijo. "
@@ -409,16 +396,16 @@ def configuracion_evaluacion_page() -> None:
                 with ui.row().classes("items-center gap-3 mb-1"):
                     ui.label("Peso disponible:").classes("text-sm font-semibold")
                     ui.label(f"{total_pct:.1f}%").classes(
-                        f"font-bold {'text-green-700' if disponible > 0.001 else 'text-grey-5'}"
+                        f"font-bold {'text-success' if disponible > 0.001 else 'text-faint'}"
                     )
-                    ui.label(f"(usado: {usado:.1f}%)").classes("text-sm text-grey-6")
+                    ui.label(f"(usado: {usado:.1f}%)").classes("text-sm text-muted")
 
                 # Barra visual
-                with ui.element("div").classes("w-full rounded h-2 bg-grey-2 overflow-hidden"):
+                with ui.element("div").classes("w-full rounded h-2 bg-surface-alt overflow-hidden"):
                     ancho_usado = min(100, round(usado))
-                    color_bar   = "bg-green-500" if usado <= 100 else "bg-red-500"
+                    color_bar   = "fill-success" if usado <= 100 else "fill-error"
                     ui.element("div").classes(f"{color_bar} h-full").style(
-                        f"width: {ancho_usado}%"
+                        f"width: {ancho_usado}%"  # DYNAMIC: ancho proporcional al % usado
                     )
 
             # Formulario nueva categoría docente
@@ -426,7 +413,7 @@ def configuracion_evaluacion_page() -> None:
                 cats_inst = _s["cats_inst"]
                 padres_permitidos = {c.id: c.nombre for c in cats_inst if c.permite_subcategorias}
 
-            with ui.element("div").classes("bg-grey-1 rounded p-3 mb-4"):
+            with ui.element("div").classes("bg-subtle rounded p-3 mb-4"):
                 ui.label("Nueva categoría").classes("text-sm font-semibold mb-2")
                 with ui.row().classes("gap-3 items-end flex-wrap"):
                     ui.input(
@@ -462,7 +449,7 @@ def configuracion_evaluacion_page() -> None:
 
             with ui.element("div").classes("w-full"):
                 with ui.element("div").classes(
-                    "flex gap-3 px-2 py-1 font-semibold text-xs text-grey-7 border-b"
+                    "flex gap-3 px-2 py-1 font-semibold text-xs text-muted border-b"
                 ):
                     ui.label("Nombre").classes("flex-1")
                     ui.label("Padre").classes("w-28")
@@ -477,7 +464,7 @@ def configuracion_evaluacion_page() -> None:
                     )
                     with ui.element("div").classes("flex items-center gap-3 px-2 py-2 border-b"):
                         ui.label(cat.nombre).classes("flex-1 text-sm")
-                        ui.label(padre_nombre).classes("w-28 text-xs text-grey-6")
+                        ui.label(padre_nombre).classes("w-28 text-xs text-muted")
                         ui.label(f"{cat.peso_porcentaje:.1f}%").classes(
                             "w-20 text-right font-mono text-sm"
                         )
@@ -516,13 +503,13 @@ def configuracion_evaluacion_page() -> None:
             if corte is None:
                 # Sin corte: mostrar botón para ejecutar (solo admin/coord/docente)
                 with ui.element("div").classes(
-                    "flex items-center gap-3 p-3 bg-info-soft rounded border border-blue-200"
+                    "flex items-center gap-3 p-3 bg-info-soft rounded border border-info"
                 ):
                     ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
                         "No se ha ejecutado el corte para este periodo. "
                         "Al ejecutar, se generará una nota de corte para cada estudiante."
-                    ).classes("text-sm text-blue-700 flex-1")
+                    ).classes("text-sm text-info flex-1")
                     btn_primary(
                         "Ejecutar corte",
                         icon="play_arrow",
@@ -537,13 +524,13 @@ def configuracion_evaluacion_page() -> None:
             reprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.REPROBADO)
 
             with ui.element("div").classes(
-                "p-3 bg-green-50 rounded border border-green-200 mb-3"
+                "p-3 bg-success-soft rounded border border-success mb-3"
             ):
                 with ui.row().classes("items-center gap-2 mb-2"):
                     ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
                     ui.label(
                         f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
-                    ).classes("font-semibold text-sm text-green-700")
+                    ).classes("font-semibold text-sm text-success")
                 with ui.row().classes("gap-4 flex-wrap"):
                     ui.label(
                         f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
@@ -555,31 +542,31 @@ def configuracion_evaluacion_page() -> None:
             # Conteos por estado
             with ui.row().classes("gap-3 flex-wrap mt-2"):
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-grey-1"
+                    "flex items-center gap-2 px-3 py-2 rounded bg-subtle"
                 ):
                     ui.label(f"Total: {len(notas)}").classes("text-sm font-semibold")
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-red-50"
+                    "flex items-center gap-2 px-3 py-2 rounded bg-error-soft"
                 ):
-                    ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-red-600")
+                    ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-error")
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-green-50"
+                    "flex items-center gap-2 px-3 py-2 rounded bg-success-soft"
                 ):
-                    ui.label(f"Sin plan: {sin_plan}").classes("text-sm font-semibold text-green-600")
+                    ui.label(f"Sin plan: {sin_plan}").classes("text-sm font-semibold text-success")
                 if aprobado or reprobado:
                     with ui.element("div").classes(
-                        "flex items-center gap-2 px-3 py-2 rounded bg-blue-50"
+                        "flex items-center gap-2 px-3 py-2 rounded bg-info-soft"
                     ):
-                        ui.label(f"Aprobó plan: {aprobado}").classes("text-sm font-semibold text-blue-600")
+                        ui.label(f"Aprobó plan: {aprobado}").classes("text-sm font-semibold text-info")
                     with ui.element("div").classes(
-                        "flex items-center gap-2 px-3 py-2 rounded bg-orange-50"
+                        "flex items-center gap-2 px-3 py-2 rounded bg-warning-soft"
                     ):
-                        ui.label(f"Reprobó plan: {reprobado}").classes("text-sm font-semibold text-orange-600")
+                        ui.label(f"Reprobó plan: {reprobado}").classes("text-sm font-semibold text-warning")
 
             ui.label(
                 "Para gestionar actividades del plan y cerrar por estudiante, "
                 "ve a Planes de Mejoramiento."
-            ).classes("text-xs text-grey-6 mt-3")
+            ).classes("text-xs text-muted mt-3")
             btn_ghost(
                 "Ir a Planes de Mejoramiento",
                 icon="open_in_new",
@@ -605,7 +592,7 @@ def configuracion_evaluacion_page() -> None:
                 ui.label(
                     "Configura tus categorías propias para cada asignación y periodo. "
                     "La configuración institucional del SIEE la gestiona administración."
-                ).classes("text-sm text-grey-7 mb-4")
+                ).classes("text-sm text-muted mb-4")
 
             # Sección B — categorías docente
             seccion_docente()

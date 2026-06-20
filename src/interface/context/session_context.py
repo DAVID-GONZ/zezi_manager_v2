@@ -26,6 +26,7 @@ class SessionContext:
     usuario_id:      int
     usuario_nombre:  str
     usuario_rol:     str
+    institucion_id:  int | None = None   # multi-tenant (paso_24)
     anio_id:         int | None = None
     periodo_id:      int | None = None
     grupo_id:        int | None = None
@@ -37,19 +38,39 @@ class SessionContext:
     grupo_nombre:      str = field(default="")
     asignacion_nombre: str = field(default="")
 
+    # ── Estado de impersonación "Ver como" (paso_21) ──────────────────────────
+    # Cuando un admin asume la vista de otro usuario en SOLO LECTURA, guardamos
+    # su identidad real para poder restaurarla con salir_ver_como().
+    impersonando:      bool        = False
+    admin_real_id:     int | None  = None
+    admin_real_nombre: str         = field(default="")
+    admin_real_rol:    str         = field(default="")
+    admin_real_institucion_id: int | None = None
+    solo_lectura:      bool        = False
+
     @classmethod
     def desde_storage(cls) -> "SessionContext | None":
         """
         Construye el contexto desde app.storage.user de NiceGUI.
         Retorna None si no hay sesión activa.
+
+        Choke point único de activación del modo solo lectura: cada página y
+        cada handler que relee el contexto pasa por aquí, de modo que el flag
+        global de la capa de servicios queda sincronizado en la task actual.
         """
         storage = app.storage.user
         if not storage.get("autenticado"):
+            # Sesión cerrada: el contexto deja de imponer solo lectura.
+            cls._sincronizar_solo_lectura(False)
             return None
+        solo_lectura = bool(storage.get("solo_lectura", False))
+        # Sincroniza el ContextVar de servicios con el estado persistido.
+        cls._sincronizar_solo_lectura(solo_lectura)
         return cls(
             usuario_id        = storage.get("usuario_id"),
             usuario_nombre    = storage.get("usuario_nombre", ""),
             usuario_rol       = storage.get("usuario_rol", ""),
+            institucion_id    = storage.get("institucion_id"),
             anio_id           = storage.get("anio_id"),
             periodo_id        = storage.get("periodo_id"),
             grupo_id          = storage.get("grupo_id"),
@@ -58,7 +79,19 @@ class SessionContext:
             periodo_nombre    = storage.get("periodo_nombre", ""),
             grupo_nombre      = storage.get("grupo_nombre", ""),
             asignacion_nombre = storage.get("asignacion_nombre", ""),
+            impersonando      = bool(storage.get("impersonando", False)),
+            admin_real_id     = storage.get("admin_real_id"),
+            admin_real_nombre = storage.get("admin_real_nombre", ""),
+            admin_real_rol    = storage.get("admin_real_rol", ""),
+            admin_real_institucion_id = storage.get("admin_real_institucion_id"),
+            solo_lectura      = solo_lectura,
         )
+
+    @staticmethod
+    def _sincronizar_solo_lectura(valor: bool) -> None:
+        """Refleja el flag de impersonación en la capa de servicios."""
+        from src.services.solo_lectura import activar_solo_lectura
+        activar_solo_lectura(valor)
 
     def guardar(self) -> None:
         """Persiste el contexto completo en app.storage.user."""
@@ -66,6 +99,7 @@ class SessionContext:
             "usuario_id":        self.usuario_id,
             "usuario_nombre":    self.usuario_nombre,
             "usuario_rol":       self.usuario_rol,
+            "institucion_id":    self.institucion_id,
             "anio_id":           self.anio_id,
             "periodo_id":        self.periodo_id,
             "grupo_id":          self.grupo_id,
@@ -74,7 +108,15 @@ class SessionContext:
             "periodo_nombre":    self.periodo_nombre,
             "grupo_nombre":      self.grupo_nombre,
             "asignacion_nombre": self.asignacion_nombre,
+            "impersonando":      self.impersonando,
+            "admin_real_id":     self.admin_real_id,
+            "admin_real_nombre": self.admin_real_nombre,
+            "admin_real_rol":    self.admin_real_rol,
+            "admin_real_institucion_id": self.admin_real_institucion_id,
+            "solo_lectura":      self.solo_lectura,
         })
+        # Mantener el flag de servicios coherente tras cualquier persistencia.
+        self._sincronizar_solo_lectura(self.solo_lectura)
 
     def to_contexto_academico(self):
         """
@@ -93,6 +135,144 @@ class SessionContext:
             grupo_id      = self.grupo_id,
             asignacion_id = self.asignacion_id,
         )
+
+    # ── Impersonación "Ver como" (paso_21) ───────────────────────────────────
+
+    def iniciar_ver_como(
+        self,
+        target_usuario_id: int,
+        target_rol: str,
+        target_nombre: str,
+        contexto_academico_target: dict | None = None,
+        target_institucion_id: int | None = None,
+    ) -> None:
+        """
+        Activa la impersonación en SOLO LECTURA: el admin asume la identidad
+        del usuario objetivo conservando su identidad real para volver.
+
+        - Guarda la identidad real del admin (solo si no estaba ya impersonando).
+        - Sustituye usuario_id/rol/nombre por los del objetivo.
+        - Toma la institución del usuario objetivo (multi-tenant, paso_24); el
+          `institucion_id` del admin se restaura al salir.
+        - Carga el contexto académico del objetivo si se provee; si no, queda
+          incompleto y las pantallas muestran sus empty states.
+        - Marca impersonando=True, solo_lectura=True, persiste y audita.
+        """
+        if not self.impersonando:
+            self.admin_real_id     = self.usuario_id
+            self.admin_real_nombre = self.usuario_nombre
+            self.admin_real_rol    = self.usuario_rol
+            # Conservar la institución real del admin para restaurarla al salir.
+            self.admin_real_institucion_id = self.institucion_id
+
+        admin_id     = self.admin_real_id
+        admin_nombre = self.admin_real_nombre
+
+        self.usuario_id     = target_usuario_id
+        self.usuario_rol    = target_rol
+        self.usuario_nombre = target_nombre
+        self.institucion_id = target_institucion_id
+
+        ctx_target = contexto_academico_target or {}
+        self.anio_id           = ctx_target.get("anio_id")
+        self.periodo_id        = ctx_target.get("periodo_id")
+        self.grupo_id          = ctx_target.get("grupo_id")
+        self.asignacion_id     = ctx_target.get("asignacion_id")
+        self.anio_nombre       = ctx_target.get("anio_nombre", "")
+        self.periodo_nombre    = ctx_target.get("periodo_nombre", "")
+        self.grupo_nombre      = ctx_target.get("grupo_nombre", "")
+        self.asignacion_nombre = ctx_target.get("asignacion_nombre", "")
+
+        self.impersonando = True
+        self.solo_lectura = True
+        self.guardar()
+
+        self._auditar_ver_como(
+            inicio=True,
+            admin_id=admin_id,
+            admin_nombre=admin_nombre,
+            target_usuario_id=target_usuario_id,
+            target_nombre=target_nombre,
+            target_rol=target_rol,
+        )
+
+    def salir_ver_como(self) -> None:
+        """
+        Restaura la identidad real del admin y limpia el modo solo lectura.
+        Audita el fin de la impersonación.
+        """
+        if not self.impersonando:
+            return
+
+        target_id     = self.usuario_id
+        target_nombre = self.usuario_nombre
+        target_rol    = self.usuario_rol
+        admin_id      = self.admin_real_id
+        admin_nombre  = self.admin_real_nombre
+
+        self.usuario_id     = self.admin_real_id
+        self.usuario_nombre = self.admin_real_nombre
+        self.usuario_rol    = self.admin_real_rol
+        self.institucion_id = self.admin_real_institucion_id
+
+        # Limpiar contexto académico del objetivo y estado de impersonación.
+        self.anio_id = self.periodo_id = self.grupo_id = self.asignacion_id = None
+        self.anio_nombre = self.periodo_nombre = ""
+        self.grupo_nombre = self.asignacion_nombre = ""
+        self.impersonando      = False
+        self.solo_lectura      = False
+        self.admin_real_id     = None
+        self.admin_real_nombre = ""
+        self.admin_real_rol    = ""
+        self.admin_real_institucion_id = None
+        self.guardar()
+
+        self._auditar_ver_como(
+            inicio=False,
+            admin_id=admin_id,
+            admin_nombre=admin_nombre,
+            target_usuario_id=target_id,
+            target_nombre=target_nombre,
+            target_rol=target_rol,
+        )
+
+    @staticmethod
+    def _auditar_ver_como(
+        *,
+        inicio: bool,
+        admin_id: int | None,
+        admin_nombre: str,
+        target_usuario_id: int | None,
+        target_nombre: str,
+        target_rol: str,
+    ) -> None:
+        """Registra el evento de inicio/fin de impersonación (append-only)."""
+        try:
+            from container import Container
+            from src.services.auditoria_service import (
+                EventoSesion,
+                TipoEventoSesion,
+            )
+            tipo = (
+                TipoEventoSesion.VER_COMO_INICIO if inicio
+                else TipoEventoSesion.VER_COMO_FIN
+            )
+            verbo = "inicia" if inicio else "finaliza"
+            detalles = (
+                f"Admin '{admin_nombre}' (id={admin_id}) {verbo} 'Ver como' "
+                f"usuario '{target_nombre}' (id={target_usuario_id}, rol={target_rol})"
+            )
+            Container.auditoria_service().registrar_evento(
+                EventoSesion(
+                    usuario     = admin_nombre or "admin",
+                    usuario_id  = admin_id,
+                    tipo_evento = tipo,
+                    detalles    = detalles,
+                )
+            )
+        except Exception:
+            # La auditoría no debe bloquear la operación de UI.
+            pass
 
     # ── Propiedades de conveniencia ──────────────────────────────────────────
 

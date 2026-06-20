@@ -326,6 +326,52 @@ def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
     )
 
 
+def _seed_institucion(conn: sqlite3.Connection) -> int:
+    """
+    Crea (si falta) la institución por defecto (#1) a partir del nombre
+    institucional de la configuración del año, y hace **backfill** de todos
+    los usuarios sin institución asignada a esa institución.
+
+    Idempotente:
+      - Si ya existe alguna institución, reutiliza la de id mínimo.
+      - El backfill solo toca filas con institucion_id NULL.
+
+    Debe llamarse DESPUÉS de _seed_configuracion (para tener el nombre) y
+    DESPUÉS de sembrar los usuarios (para backfillarlos). Retorna el id de
+    la institución por defecto.
+    """
+    row = conn.execute(
+        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
+    ).fetchone()
+    if row:
+        institucion_id = int(row[0])
+    else:
+        nombre_row = conn.execute(
+            "SELECT nombre_institucion FROM configuracion_anio "
+            "ORDER BY (activo = 1) DESC, id LIMIT 1"
+        ).fetchone()
+        nombre = (
+            nombre_row[0] if nombre_row and nombre_row[0]
+            else "Institución Educativa"
+        )
+        conn.execute(
+            "INSERT INTO instituciones (nombre, activa) VALUES (?, 1)",
+            (nombre,),
+        )
+        institucion_id = int(
+            conn.execute(
+                "SELECT id FROM instituciones ORDER BY id LIMIT 1"
+            ).fetchone()[0]
+        )
+
+    # Backfill: todos los usuarios sin tenant → institución por defecto.
+    conn.execute(
+        "UPDATE usuarios SET institucion_id = ? WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    return institucion_id
+
+
 def _seed_configuracion_periodos(conn: sqlite3.Connection, anio_id: int) -> None:
     existing = conn.execute(
         "SELECT id FROM configuracion_periodos WHERE anio_id = ?", (anio_id,)
@@ -1370,6 +1416,9 @@ def seed_base(
     result.area_ids = _seed_areas(conn)
     result.usuario_ids = _seed_usuarios(conn, _USUARIOS_BASE, hasher)
 
+    # Multi-tenant (paso_24): institución por defecto (#1) + backfill de usuarios.
+    _seed_institucion(conn)
+
     result.counts = {
         "niveles_desempeno": len(result.nivel_ids),
         "areas_conocimiento": len(result.area_ids),
@@ -1431,6 +1480,10 @@ def seed_dev(
 
     todos_usuarios = _USUARIOS_BASE + _USUARIOS_DEV
     result.usuario_ids = _seed_usuarios(conn, todos_usuarios, hasher, carga_horaria_max=22)
+
+    # Multi-tenant (paso_24): asegura institución por defecto y backfill de
+    # los usuarios de desarrollo recién sembrados (idempotente).
+    _seed_institucion(conn)
 
     # Ejemplo de docente de media jornada (deja holgura total de capacidad sobre
     # la demanda del plan, para que la derivación de asignaciones cubra todo).
@@ -1595,6 +1648,9 @@ def seed_test(
         ("director_test","pass", "Director Test", "dir@test.co",     "director"),
     ]
     result.usuario_ids = _seed_usuarios(conn, usuarios_test, hasher)
+
+    # Multi-tenant (paso_24): institución por defecto (#1) + backfill usuarios.
+    _seed_institucion(conn)
 
     result.asignatura_ids = _seed_asignaturas(
         conn,

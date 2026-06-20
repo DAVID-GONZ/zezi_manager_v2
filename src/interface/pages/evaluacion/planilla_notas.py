@@ -28,9 +28,12 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+    btn_primary, btn_secondary, btn_ghost, btn_icon,
 )
-from src.interface.design.components import confirm_dialog, empty_state, form_dialog, skeleton_table, status_badge, toast_error, toast_info, toast_success, toast_warning
+from src.interface.design.components import (
+    confirm_dialog, empty_state, skeleton_table, status_badge,
+    toast_error, toast_info, toast_success, toast_warning,
+)
 from src.services.evaluacion_service import (
     NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad,
     PuntosExtra, TipoPuntosExtra,
@@ -39,7 +42,7 @@ from src.services.plan_mejoramiento_service import EstadoNotaCorte
 
 logger = logging.getLogger("EVALUACION.PLANILLA")
 
-_ROL_ADMIN = {"admin", "director", "coordinador"}
+_ROLES_DIRECTIVOS = ("director", "coordinador")
 
 
 def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> "float | None":
@@ -56,7 +59,7 @@ def planilla_notas_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -64,7 +67,7 @@ def planilla_notas_page() -> None:
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    es_admin = ctx.usuario_rol in _ROL_ADMIN
+    es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVOS
 
     # ── Estado — solo lo que no viene del context_bar ─────────────────────────
     _s: dict = {
@@ -98,34 +101,18 @@ def planilla_notas_page() -> None:
             return
 
         try:
-            _s["actividades"] = Container.evaluacion_service().listar_actividades(
-                asig_id, per_id
-            )
-        except Exception as exc:
-            logger.error("Error cargando actividades: %s", exc)
-            _s["actividades"] = []
-
-        try:
-            _s["categorias"] = Container.evaluacion_service().listar_categorias(
-                asig_id, per_id
-            )
-        except Exception as exc:
-            logger.error("Error cargando categorías: %s", exc)
-            _s["categorias"] = []
-
-        try:
-            _s["planilla"] = Container.evaluacion_service().obtener_planilla(
+            datos = Container.evaluacion_service().planilla_completa(
                 _s["grupo_id"], asig_id, per_id
             )
+            _s["actividades"]  = datos.actividades
+            _s["categorias"]   = datos.categorias
+            _s["planilla"]     = datos.planilla
+            _s["puntos_extra"] = datos.puntos_extra
         except Exception as exc:
-            logger.error("Error cargando planilla: %s", exc)
-            _s["planilla"] = []
-
-        try:
-            registros = Container.evaluacion_service().listar_puntos_extra(asig_id, per_id)
-            _s["puntos_extra"] = {r.estudiante_id: r for r in registros}
-        except Exception as exc:
-            logger.error("Error cargando puntos extra: %s", exc)
+            logger.error("Error cargando planilla completa: %s", exc)
+            _s["actividades"]  = []
+            _s["categorias"]   = []
+            _s["planilla"]     = []
             _s["puntos_extra"] = {}
 
         try:
@@ -265,23 +252,20 @@ def planilla_notas_page() -> None:
         if not asig_id or not per_id:
             toast_warning("Define el contexto desde la barra superior")
             return
-        nombre = str(_s["act_nombre"]).strip()
-        if not nombre:
-            toast_warning("El nombre no puede estar vacío")
-            return
         cat_id = _s["act_categoria_id"]
         if not cat_id:
             toast_warning("Selecciona una categoría")
             return
+        # NuevaActividadDTO valida nombre (no vacío) y coacciona los numéricos.
         try:
             dto = NuevaActividadDTO(
-                nombre       = nombre,
-                categoria_id = int(cat_id),
-                descripcion  = str(_s["act_descripcion"]).strip() or None,
-                valor_maximo = float(_s["act_valor_max"] or 100.0),
+                nombre       = _s["act_nombre"],
+                categoria_id = cat_id,
+                descripcion  = _s["act_descripcion"] or None,
+                valor_maximo = _s["act_valor_max"] or 100.0,
             )
             Container.evaluacion_service().agregar_actividad(dto)
-            toast_success(f"Actividad '{nombre}' creada")
+            toast_success(f"Actividad '{dto.nombre}' creada")
             _s["act_nombre"]       = ""
             _s["act_descripcion"]  = ""
             _s["act_valor_max"]    = 100.0
@@ -416,8 +400,8 @@ def planilla_notas_page() -> None:
 
         if not periodo_abierto:
             with ui.element("div").classes(
-                "flex items-center gap-2 bg-amber-50 border border-amber-300 "
-                "rounded p-3 mb-3 text-amber-700"
+                "flex items-center gap-2 bg-warning-soft border border-warning-soft "
+                "rounded p-3 mb-3 text-warning"
             ):
                 ThemeManager.icono("lock", size=20)
                 ui.label("Período CERRADO — Modo solo lectura").classes("font-semibold text-sm")
@@ -661,7 +645,7 @@ def planilla_notas_page() -> None:
             return
 
         # Enlace a configuración de categorías
-        with ui.row().classes("items-center gap-1 mb-4 text-sm text-grey-7"):
+        with ui.row().classes("items-center gap-1 mb-4 text-sm text-muted"):
             ThemeManager.icono("info_outline", size=16)
             ui.label("Las categorías se configuran en")
             ui.link(
@@ -670,7 +654,7 @@ def planilla_notas_page() -> None:
             ).classes("text-primary font-medium")
 
         # Formulario nueva actividad
-        with ui.element("div").classes("bg-grey-1 rounded p-4 mb-4"):
+        with ui.element("div").classes("bg-subtle rounded p-4 mb-4"):
             ui.label("Nueva actividad").classes("text-sm font-semibold mb-3")
             with ui.row().classes("gap-3 items-end flex-wrap"):
                 ui.input(
@@ -705,7 +689,7 @@ def planilla_notas_page() -> None:
 
         with ui.element("div").classes("w-full"):
             with ui.element("div").classes(
-                "flex gap-3 px-3 py-2 font-semibold text-xs text-grey-7 border-b"
+                "flex gap-3 px-3 py-2 font-semibold text-xs text-muted border-b"
             ):
                 ui.label("Nombre").classes("flex-1")
                 ui.label("Categoría").classes("w-36")
@@ -723,10 +707,10 @@ def planilla_notas_page() -> None:
                 }.get(estado_val, "neutral")
 
                 with ui.element("div").classes(
-                    "flex items-center gap-3 px-3 py-2 border-b hover:bg-grey-1"
+                    "flex items-center gap-3 px-3 py-2 border-b row-hover"
                 ):
                     ui.label(act.nombre).classes("flex-1 text-sm")
-                    ui.label(cat_nombre).classes("w-36 text-sm text-grey-7")
+                    ui.label(cat_nombre).classes("w-36 text-sm text-muted")
                     ui.label(f"{act.valor_maximo:.1f}").classes(
                         "w-20 text-right font-mono text-sm"
                     )
@@ -797,7 +781,7 @@ def planilla_notas_page() -> None:
                 )
 
             # Separador visual
-            ui.element("div").classes("w-px h-6 bg-grey-3 mx-1")
+            ui.element("div").classes("w-px h-6 bg-muted mx-1")
 
             # Toggle puntos extra (solo visible en vista planilla)
             if modo == "planilla":
@@ -816,7 +800,7 @@ def planilla_notas_page() -> None:
 
             # Guardar definitivas — disponible para todos los roles, solo en planilla
             if modo == "planilla":
-                ui.element("div").classes("w-px h-6 bg-grey-3 mx-1")
+                ui.element("div").classes("w-px h-6 bg-muted mx-1")
                 periodo_ok = _periodo_abierto()
                 btn = btn_secondary(
                     "Guardar definitivas",

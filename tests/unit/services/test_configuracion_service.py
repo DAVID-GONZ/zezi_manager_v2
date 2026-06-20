@@ -82,10 +82,17 @@ class FakeConfigRepo(IConfiguracionRepository):
 
     def guardar_nivel(self, nivel: NivelDesempeno) -> NivelDesempeno:
         anio_id = nivel.anio_id
+        nivel = nivel.model_copy(update={"id": self._next_id})
+        self._next_id += 1
         self._niveles.setdefault(anio_id, []).append(nivel)
         return nivel
 
     def actualizar_nivel(self, nivel: NivelDesempeno) -> NivelDesempeno:
+        niveles = self._niveles.get(nivel.anio_id, [])
+        for i, n in enumerate(niveles):
+            if n.id == nivel.id:
+                niveles[i] = nivel
+                break
         return nivel
 
     def eliminar_nivel(self, nivel_id: int) -> bool:
@@ -216,3 +223,63 @@ class TestGetCriterios:
         recuperados = svc.get_criterios(config.id)
         assert recuperados is not None
         assert recuperados.max_asignaturas_perdidas == 2
+
+
+# ===========================================================================
+# Group 3 — CRUD granular de niveles + propiedad de dominio
+# ===========================================================================
+
+def _anio(svc) -> int:
+    return svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2030)).id
+
+
+class TestNivelesGranulares:
+    def test_agregar_nivel_asigna_id_y_orden(self):
+        svc, _ = _make_service()
+        aid = _anio(svc)
+        svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Alto", rango_min=80, rango_max=100))
+        n = svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Bajo", rango_min=0, rango_max=59))
+        assert n.id is not None
+        niveles = sorted(svc.listar_niveles(aid), key=lambda x: x.rango_min)
+        assert [x.orden for x in niveles] == [0, 1]  # reindexado por rango
+
+    def test_agregar_nivel_solapado_falla(self):
+        svc, _ = _make_service()
+        aid = _anio(svc)
+        svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Bajo", rango_min=0, rango_max=60))
+        with pytest.raises(ValueError, match="solapan"):
+            svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+                anio_id=aid, nombre="Medio", rango_min=55, rango_max=80))
+
+    def test_actualizar_nivel(self):
+        svc, _ = _make_service()
+        aid = _anio(svc)
+        n = svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Bajo", rango_min=0, rango_max=59))
+        svc.actualizar_nivel(aid, n.id, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Bajisimo", rango_min=0, rango_max=49))
+        actualizado = next(x for x in svc.listar_niveles(aid) if x.id == n.id)
+        assert actualizado.nombre == "Bajisimo" and actualizado.rango_max == 49
+
+    def test_eliminar_nivel(self):
+        svc, _ = _make_service()
+        aid = _anio(svc)
+        a = svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Bajo", rango_min=0, rango_max=59))
+        svc.agregar_nivel(aid, NuevoNivelDesempenoDTO(
+            anio_id=aid, nombre="Alto", rango_min=60, rango_max=100))
+        assert svc.eliminar_nivel(aid, a.id) is True
+        assert all(x.id != a.id for x in svc.listar_niveles(aid))
+
+
+class TestAprobacionEnRango:
+    def test_propiedad_dominio(self):
+        c = ConfiguracionAnio(anio=2025, nota_minima_escala=0,
+                              nota_maxima_escala=100, nota_minima_aprobacion=60)
+        assert c.aprobacion_en_rango is True
+        c2 = ConfiguracionAnio(anio=2026, nota_minima_escala=10,
+                               nota_maxima_escala=50, nota_minima_aprobacion=60)
+        assert c2.aprobacion_en_rango is False

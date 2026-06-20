@@ -20,9 +20,9 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
+from src.interface.design.components.buttons import btn_primary, btn_icon
 from src.interface.design.components import (
-    confirm_dialog, form_dialog, pipeline_nav,
+    confirm_dialog, empty_state, form_dialog, pipeline_nav,
     toast_error, toast_success, toast_warning,
 )
 from src.services.infraestructura_service import AreaConocimiento, Asignatura
@@ -45,7 +45,7 @@ def asignaturas_page() -> None:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director"):
+    if ctx.usuario_rol not in ("director",):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -97,15 +97,15 @@ def asignaturas_page() -> None:
 
     # ── CRUD Áreas ────────────────────────────────────────────────────────────
     def _crear_area() -> None:
+        # AreaConocimiento valida nombre (no vacío) y normaliza el código.
         try:
-            nombre = _s["area_nombre"].strip()
-            codigo = _s["area_codigo"].strip() or None
-            if not nombre:
-                toast_warning("El nombre del área no puede estar vacío")
-                return
-            area = AreaConocimiento(id=None, nombre=nombre, codigo=codigo)
+            area = AreaConocimiento(
+                id=None,
+                nombre=_s["area_nombre"],
+                codigo=_s["area_codigo"],
+            )
             Container.infraestructura_service().guardar_area(area)
-            toast_success(f"Área '{nombre}' creada")
+            toast_success(f"Área '{area.nombre}' creada")
             _s["area_nombre"] = ""
             _s["area_codigo"] = ""
             _cargar_areas()
@@ -145,15 +145,12 @@ def asignaturas_page() -> None:
 
     def _editar_area(area: AreaConocimiento) -> None:
         def _guardar(datos: dict) -> "bool | None":
+            # AreaConocimiento valida nombre y normaliza el código.
             try:
-                nombre = str(datos.get("nombre", "")).strip()
-                if not nombre:
-                    toast_warning("El nombre es obligatorio")
-                    return False
                 area_act = AreaConocimiento(
                     id=area.id,
-                    nombre=nombre,
-                    codigo=str(datos.get("codigo", "")).strip() or None,
+                    nombre=datos.get("nombre", ""),
+                    codigo=datos.get("codigo"),
                 )
                 Container.infraestructura_service().actualizar_area(area_act)
                 toast_success(f"Área '{area_act.nombre}' actualizada")
@@ -184,23 +181,17 @@ def asignaturas_page() -> None:
 
     # ── CRUD Asignaturas ──────────────────────────────────────────────────────
     def _crear_asignatura() -> None:
+        # Asignatura valida nombre y normaliza el código. Las horas por grado se
+        # definen en Plan de estudios (las globales quedan como fallback = 1).
         try:
-            nombre  = _s["asig_nombre"].strip()
-            codigo  = _s["asig_codigo"].strip() or None
-            area_id = _s["asig_area_id"]
-            if not nombre:
-                toast_warning("El nombre de la asignatura no puede estar vacío")
-                return
-            # Las horas por grado se definen en Plan de estudios; aquí solo se
-            # crea la asignatura (las horas globales quedan como fallback = 1).
             asig = Asignatura(
                 id=None,
-                nombre=nombre,
-                codigo=codigo,
-                area_id=area_id if area_id else None,
+                nombre=_s["asig_nombre"],
+                codigo=_s["asig_codigo"],
+                area_id=_s["asig_area_id"] or None,
             )
             Container.infraestructura_service().guardar_asignatura(asig)
-            toast_success(f"Asignatura '{nombre}' creada")
+            toast_success(f"Asignatura '{asig.nombre}' creada")
             _s["asig_nombre"]  = ""
             _s["asig_codigo"]  = ""
             _s["asig_area_id"] = None
@@ -238,16 +229,13 @@ def asignaturas_page() -> None:
 
         def _guardar(datos: dict) -> "bool | None":
             try:
-                nombre = str(datos.get("nombre", "")).strip()
-                if not nombre:
-                    toast_warning("El nombre es obligatorio")
-                    return False
-                # Solo se editan nombre, código y área. Las horas (por grado) se
-                # gestionan en Plan de estudios; el resto se conserva tal cual.
-                asig_act = asig.model_copy(update={
-                    "nombre": nombre,
-                    "codigo": str(datos.get("codigo", "")).strip() or None,
-                    "area_id": datos.get("area_id") if datos.get("area_id") else None,
+                # Reconstruir vía constructor para re-validar (model_copy no dispara
+                # validadores); conserva horas/tipo_sala/bloque_doble del registro.
+                asig_act = Asignatura(**{
+                    **asig.model_dump(),
+                    "nombre": datos.get("nombre", ""),
+                    "codigo": datos.get("codigo"),
+                    "area_id": datos.get("area_id") or None,
                 })
                 Container.infraestructura_service().actualizar_asignatura(asig_act)
                 toast_success(f"Asignatura '{asig_act.nombre}' actualizada")
@@ -308,7 +296,10 @@ def asignaturas_page() -> None:
     def tabla_areas() -> None:
         areas = _s["areas"]
         if not areas:
-            ui.label("No hay áreas registradas.").classes("text-empty mt-2")
+            empty_state(
+                titulo="No hay áreas registradas",
+                descripcion="Crea la primera área con el formulario de arriba.",
+            )
             return
         for a in areas:
             with ui.element("div").classes("lista-fila"):
@@ -329,9 +320,17 @@ def asignaturas_page() -> None:
                 if q in a.nombre.lower() or q in (a.codigo or "").lower()
             ]
         if not asigs:
-            msg = "No hay asignaturas que coincidan con la búsqueda." if q \
-                else "No hay asignaturas en esta área."
-            ui.label(msg).classes("text-empty mt-2")
+            if q:
+                empty_state(
+                    variante="search",
+                    titulo="Sin coincidencias",
+                    descripcion="No hay asignaturas que coincidan con la búsqueda.",
+                )
+            else:
+                empty_state(
+                    titulo="No hay asignaturas en esta área",
+                    descripcion="Crea una asignatura con el formulario de arriba.",
+                )
             return
         with ui.element("div").classes("w-full"):
             with ui.element("div").classes("lista-head"):

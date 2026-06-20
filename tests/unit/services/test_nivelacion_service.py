@@ -167,3 +167,27 @@ class TestCerrarNivelacion:
         svc = _make_svc(repo=repo)
         with pytest.raises(ValueError, match="sin calificar"):
             svc.cerrar_nivelacion(1, 1)
+
+
+class TestPlanillaNivelacion:
+    def test_promedio_precalculado_por_servicio(self):
+        repo = MagicMock()
+        repo.listar_actividades.return_value = [_act(1, 0.4), _act(2, 0.6)]
+        repo.listar_notas_por_asignacion.return_value = [
+            _nota(1, 10, 50.0), _nota(2, 10, 100.0),
+        ]
+        repo.get_cierre.return_value = None
+        cierre_repo = MagicMock()
+        cierre_repo.listar_cierres_periodo_por_asignaciones.return_value = [
+            _cierre_p(10, 1, 1, 40.0),
+        ]
+        svc = _make_svc(repo=repo, cierre_repo=cierre_repo)
+        planilla = svc.planilla_nivelacion(1, 1, nota_maxima=59.99)
+        assert len(planilla.filas) == 1
+        fila = planilla.filas[0]
+        assert fila.estudiante_id == 10
+        assert fila.nota_previa == 40.0
+        # 50*0.4 + 100*0.6 = 80.0
+        assert fila.promedio == pytest.approx(80.0)
+        assert planilla.suma_pesos == pytest.approx(1.0)
+        assert planilla.cerrado is False

@@ -65,7 +65,7 @@ def plan_estudios_page() -> None:
     if not ctx:
         ui.navigate.to("/login")
         return
-    if ctx.usuario_rol not in ("admin", "director", "coordinador"):
+    if ctx.usuario_rol not in ("director", "coordinador"):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -233,7 +233,8 @@ def plan_estudios_page() -> None:
 
     def _set_horas(aid: int, valor) -> None:
         # Valores vacíos/0 se ignoran (quitar una materia es vía la ✕), para no
-        # borrar la fila mientras se está escribiendo.
+        # borrar la fila mientras se está escribiendo. Guarda de UX del debounce,
+        # no validación de dominio: el tope 1–40 lo impone NuevoPlanEstudiosDTO.
         g = _s["grado_sel"]
         try:
             horas = int(valor or 0)
@@ -242,8 +243,8 @@ def plan_estudios_page() -> None:
         if horas < 1:
             return
         try:
-            Container.plan_estudios_service().set_horas(g, aid, min(horas, 40))
-            _s["plan_map"][aid] = min(horas, 40)
+            Container.plan_estudios_service().set_horas(g, aid, horas)
+            _s["plan_map"][aid] = horas
             barra_plan.refresh()
         except ValueError as exc:
             toast_warning(str(exc))
@@ -254,11 +255,9 @@ def plan_estudios_page() -> None:
     def _quitar(aid: int) -> None:
         g = _s["grado_sel"]
         try:
-            Container.plan_estudios_service().eliminar(g, aid)
-            # Propagar: quitar también las asignaciones de docentes para esa
-            # materia en todos los grupos del grado.
-            n = Container.asignacion_service().desactivar_por_grado_asignatura(
-                g, aid, usuario_id=ctx.usuario_id
+            # El servicio propaga la cascada (desactiva asignaciones del grado).
+            _, n = Container.plan_estudios_service().eliminar(
+                g, aid, cascade=True, usuario_id=ctx.usuario_id
             )
             if n:
                 toast_warning(
@@ -301,7 +300,7 @@ def plan_estudios_page() -> None:
             ui.label(
                 "Define los grados de la institución, su rango de estudiantes "
                 "(norma) y las horas semanales objetivo del plan."
-            ).classes("text-caption text-secondary q-mb-sm")
+            ).classes("text-caption text-secondary u-mb-sm")
 
             usados = {g.numero for g in _s["grados"]}
             num_opts = {n: f"{n} — {_NOMBRES_GRADO.get(n, n)}"
@@ -320,7 +319,7 @@ def plan_estudios_page() -> None:
                 btn_primary("Guardar grado", icon="add", on_click=_guardar_grado)
 
             if _s["grados"]:
-                with ui.element("div").classes("q-mt-sm"):
+                with ui.element("div").classes("u-mt-sm"):
                     with ui.element("div").classes("lista-head"):
                         ui.label("Grado").classes("w-40")
                         ui.label("Estudiantes (mín–máx)").classes("w-40")
@@ -337,8 +336,8 @@ def plan_estudios_page() -> None:
                                          on_click=lambda gg=g: _eliminar_grado(gg))
 
         # ── Sección 3: Plan de estudios del grado ────────────────────────
-        with ui.element("div").classes("panel-card q-mt-sm"):
-            ui.label("Plan de estudios por grado").classes("text-subtitle1 font-semibold q-mb-xs")
+        with ui.element("div").classes("panel-card u-mt-sm"):
+            ui.label("Plan de estudios por grado").classes("text-subtitle1 font-semibold u-mb-xs")
             if not _s["grados"]:
                 empty_state(icono=Icons.SUBJECTS, titulo="Crea primero un grado",
                             descripcion="Agrega grados arriba para definir su plan.")
@@ -353,7 +352,7 @@ def plan_estudios_page() -> None:
                     with chip:
                         ui.label(f"Grado {g.numero}")
 
-            with ui.element("div").classes("q-mt-sm"):
+            with ui.element("div").classes("u-mt-sm"):
                 barra_plan()
 
             # Vincular asignatura (filtro por área)
@@ -364,7 +363,7 @@ def plan_estudios_page() -> None:
                 a.id: a.nombre for a in _s["asignaturas"]
                 if a.id not in _s["plan_map"] and (f_area is None or a.area_id == f_area)
             }
-            with ui.row().classes("items-end gap-3 flex-wrap q-mt-sm"):
+            with ui.row().classes("items-end gap-3 flex-wrap u-mt-sm"):
                 ui.select(
                     area_opts, value=_s["vinc_area_id"], label="Filtrar por área",
                     on_change=lambda e: (_s.__setitem__("vinc_area_id", e.value), vista.refresh()),
@@ -377,10 +376,10 @@ def plan_estudios_page() -> None:
             # Tabla de asignaturas vinculadas con horas
             if not _s["plan_map"]:
                 ui.label("Aún no hay asignaturas vinculadas a este grado.").classes(
-                    "text-caption text-secondary q-mt-sm"
+                    "text-caption text-secondary u-mt-sm"
                 )
             else:
-                with ui.element("div").classes("q-mt-sm"):
+                with ui.element("div").classes("u-mt-sm"):
                     with ui.element("div").classes("lista-head"):
                         ui.label("Asignatura").classes("flex-1")
                         ui.label("Horas/sem").classes("w-28")

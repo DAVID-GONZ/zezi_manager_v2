@@ -31,9 +31,11 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger
-from src.interface.design.components.confirm_dialog import confirm_dialog
-from src.interface.design.components.form_dialog import form_dialog
-from src.interface.design.components import empty_state, toast_error, toast_success, toast_warning
+from src.interface.design.components import (
+    confirm_dialog, empty_state, form_dialog,
+    toast_error, toast_success, toast_warning,
+)
+from src.services.convivencia_service import NuevaObservacionDTO
 
 logger = logging.getLogger("OBSERVACIONES")
 
@@ -159,13 +161,8 @@ def _construir_filas(_s: dict) -> list[dict]:
 
 
 def _nueva_observacion_dto(datos: dict) -> object:
-    """
-    Construye NuevaObservacionDTO sin imports de módulos de dominio en el nivel de módulo.
-    Accede al módulo de dominio a través del módulo de servicio ya cargado.
-    """
-    import importlib
-    _mod = importlib.import_module("src.domain.models.convivencia")
-    return _mod.NuevaObservacionDTO(**datos)
+    """Construye NuevaObservacionDTO desde primitivos del formulario."""
+    return NuevaObservacionDTO(**datos)
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -177,7 +174,7 @@ def observaciones_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -357,14 +354,14 @@ def observaciones_page() -> None:
                             label="Estudiante",
                             value=_s["sel_estudiante_id"],
                             on_change=lambda e: on_estudiante_change(e.value),
-                        ).classes("andes-input").props("outlined dense").style("min-width:220px")  # DYNAMIC: ancho mínimo del selector
+                        ).classes("andes-input input-min-lg").props("outlined dense")
 
                         ui.select(
                             options=opciones_per,
                             label="Periodo",
                             value=_s["sel_periodo_id"],
                             on_change=lambda e: on_periodo_change(e.value),
-                        ).classes("andes-input").props("outlined dense").style("min-width:180px")  # DYNAMIC: ancho mínimo del selector
+                        ).classes("andes-input input-min-sm").props("outlined dense")
 
                         ui.element("div").classes("flex-1")
                         btn_primary(

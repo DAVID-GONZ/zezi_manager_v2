@@ -1,0 +1,50 @@
+/* =========================================================================
+   domain/disponibilidad.css
+   Rejilla de disponibilidad horaria docente (admin/disponibilidad-docente).
+   Clases semánticas para los estados de cada celda (slot) y la leyenda.
+   Reemplaza colores Tailwind quemados (bg-green-100, text-red-700, …).
+   ========================================================================= */
+
+.slot-cell {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.slot-disponible {
+  background: var(--color-success-light);
+  color: var(--color-success-dark, var(--color-success));
+}
+
+.slot-disponible:hover {
+  background: var(--color-success);
+  color: var(--color-on-success, #ffffff);
+}
+
+.slot-no-disponible {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+}
+
+.slot-no-disponible:hover {
+  background: var(--color-error);
+  color: var(--color-on-error, #ffffff);
+}
+
+/* Leyenda de colores */
+.slot-legend {
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid transparent;
+}
+
+.slot-legend--disponible {
+  background: var(--color-success-light);
+  border-color: var(--color-success);
+}
+
+.slot-legend--no-disponible {
+  background: var(--color-error-light);
+  border-color: var(--color-error);
+}

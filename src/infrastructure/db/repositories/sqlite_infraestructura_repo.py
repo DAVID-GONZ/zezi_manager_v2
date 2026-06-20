@@ -1037,6 +1037,30 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 conn.commit()
             return count
 
+    def reemplazar_disponibilidad_docente(
+        self, usuario_id: int, slots: list[dict]
+    ) -> int:
+        """Borra + recarga la disponibilidad de un docente en una sola transacción."""
+        with self._get_conn() as conn:
+            conn.execute(
+                "DELETE FROM disponibilidad_docente WHERE usuario_id = ?",
+                (usuario_id,),
+            )
+            count = 0
+            for slot in slots:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO disponibilidad_docente
+                        (usuario_id, dia_semana, franja_orden, disponible)
+                    VALUES (?, ?, ?, 0)
+                    """,
+                    (usuario_id, slot["dia_semana"], slot["franja_orden"]),
+                )
+                count += 1
+            if self._conn is None:
+                conn.commit()
+            return count
+
     # =========================================================================
     # Config generación (paso_15b)
     # =========================================================================

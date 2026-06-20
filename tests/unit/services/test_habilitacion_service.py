@@ -128,6 +128,26 @@ class TestProgramarHabilitacion:
         assert h1.id != h2.id
 
 
+class TestContarHabilitacionesPendientes:
+    def test_cuenta_pendientes(self):
+        # FakeHabRepo.listar_habilitaciones devuelve todas; tras programar dos
+        # quedan en estado PENDIENTE, así que el conteo debe ser 2.
+        svc, _ = _make_svc()
+        svc.programar_habilitacion(NuevaHabilitacionDTO(
+            estudiante_id=1, asignacion_id=3,
+            tipo=TipoHabilitacion.PERIODO, periodo_id=5,
+        ))
+        svc.programar_habilitacion(NuevaHabilitacionDTO(
+            estudiante_id=2, asignacion_id=3,
+            tipo=TipoHabilitacion.PERIODO, periodo_id=5,
+        ))
+        assert svc.contar_habilitaciones_pendientes(periodo_id=5) == 2
+
+    def test_cuenta_cero_sin_datos(self):
+        svc, _ = _make_svc()
+        assert svc.contar_habilitaciones_pendientes() == 0
+
+
 class TestRegistrarNotaHabilitacion:
     def test_nota_aprobatoria_cambia_a_aprobada(self):
         svc, _ = _make_svc()

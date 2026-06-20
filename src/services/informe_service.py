@@ -9,6 +9,8 @@ de presentación ni accede directamente a la BD.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.service_ports import IExporterService
 from src.domain.models.dtos import (
@@ -45,6 +47,13 @@ _CAMPO_RENOMBRAR: dict[str, str] = {
     "area_nombre":           "Área",
     "total_asignaturas":     "Asignaturas",
 }
+
+
+@dataclass
+class BoletinesGrupoDTO:
+    """Resultado de la generación masiva de boletines de un grupo."""
+    contenido: bytes | None = None              # PDF/Excel fusionado (None si nada)
+    errores: list[str] = field(default_factory=list)   # nombres con fallo
 
 
 def sanitizar_datos_exportacion(datos: list[dict]) -> list[dict]:
@@ -85,9 +94,11 @@ class InformeService:
         self,
         estadisticos_repo: IEstadisticosRepository,
         exporter: IExporterService | None = None,
+        estudiante_repo=None,
     ) -> None:
         self._estadisticos_repo = estadisticos_repo
         self._exporter          = exporter
+        self._estudiante_repo   = estudiante_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -371,8 +382,160 @@ class InformeService:
         return exporter.exportar_excel(filas, nombre_hoja="Boletín Anual")
 
     # ------------------------------------------------------------------
+    # Boletines masivos por grupo (genera + fusiona, sin merge en la vista)
+    # ------------------------------------------------------------------
+
+    def generar_boletines_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int | None = None,
+        anio_id: int | None = None,
+        formato: str = "pdf",
+        grupo_nombre: str = "",
+        periodo_nombre: str = "",
+    ) -> BoletinesGrupoDTO:
+        """Genera el boletín de cada estudiante del grupo y los fusiona en un
+        único documento (PDF combinado o Excel con una hoja por estudiante).
+
+        Modo periodo: pasar `periodo_id`. Modo anual: pasar `anio_id`.
+        Devuelve el documento fusionado y la lista de estudiantes con error.
+        """
+        if periodo_id is None and anio_id is None:
+            raise ValueError("Debe indicar periodo_id (boletín de periodo) o anio_id (anual).")
+        if self._estudiante_repo is None:
+            raise ValueError("InformeService no tiene estudiante_repo configurado.")
+
+        fmt = FormatoInforme(formato)
+        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id)
+
+        pdfs: list[bytes] = []
+        hojas: list[tuple[str, bytes]] = []
+        errores: list[str] = []
+
+        for est in estudiantes:
+            nombre = f"{est.nombre} {est.apellido}"
+            try:
+                if anio_id is not None:
+                    contenido = self.generar_boletin_anual(
+                        est.id, grupo_id, anio_id, formato,
+                        grupo_nombre=grupo_nombre,
+                    )
+                else:
+                    contenido = self.generar_boletin_periodo(
+                        est.id, grupo_id, periodo_id, formato,
+                        grupo_nombre=grupo_nombre, periodo_nombre=periodo_nombre,
+                    )
+            except Exception:
+                errores.append(nombre)
+                continue
+            if fmt == FormatoInforme.PDF:
+                pdfs.append(contenido)
+            else:
+                hojas.append((f"{est.apellido} {est.nombre}"[:31], contenido))
+
+        if fmt == FormatoInforme.PDF:
+            contenido_final = merge_pdfs(pdfs) if pdfs else None
+        else:
+            contenido_final = merge_excels(hojas) if hojas else None
+
+        return BoletinesGrupoDTO(contenido=contenido_final, errores=errores)
+
+    # ------------------------------------------------------------------
     # Helpers privados
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Exportación de estadísticos (encapsula el pipeline de la vista)
+    # ------------------------------------------------------------------
+
+    _ESTADO_ASISTENCIA_LABEL = {
+        "P": "Presente", "FJ": "Falta Justificada",
+        "FI": "Falta Injustificada", "R": "Retraso", "E": "Excusa",
+    }
+
+    # tipo → (título PDF, nombre de hoja Excel)
+    _ESTADISTICO_TITULOS = {
+        "consolidado_notas":       ("Consolidado de Notas", "Consolidado Notas"),
+        "consolidado_asistencia":  ("Consolidado de Asistencia", "Consolidado Asistencia"),
+        "ranking_grupo":           ("Ranking del Grupo", "Ranking"),
+        "distribucion_desempenos": ("Distribución de Desempeños", "Distribución Desempeños"),
+        "estados_asistencia":      ("Estados de Asistencia", "Estados Asistencia"),
+        "comparativo_periodos":    ("Comparativo por Periodos", "Comparativo Periodos"),
+        "promedios_area":          ("Promedios por Área", "Promedios por Área"),
+        "tendencia_asistencia":    ("Tendencia de Asistencia", "Tendencia Asistencia"),
+    }
+
+    def _filas_estadistico(self, tipo: str, datos) -> list[dict]:
+        """Normaliza `datos` (de cualquier tipo) a list[dict] lista para exportar."""
+        if tipo == "estados_asistencia":
+            return [
+                {"Estado": self._ESTADO_ASISTENCIA_LABEL.get(k, k), "Registros": v}
+                for k, v in (datos or {}).items()
+            ]
+        if tipo == "distribucion_desempenos":
+            return [
+                {"Nivel de Desempeño": k, "Estudiantes": v}
+                for k, v in (datos or {}).items()
+            ]
+        if tipo == "comparativo_periodos":
+            raw = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
+            return [
+                {"Periodo": r.get("periodo_nombre", r.get("Periodo", "")),
+                 "Promedio": r.get("promedio", r.get("Promedio", 0))}
+                for r in raw
+            ]
+        if tipo == "tendencia_asistencia":
+            return [
+                {"Semana": r.get("semana", ""), "% Asistencia": r.get("porcentaje", 0)}
+                for r in (datos if isinstance(datos, list) else [])
+            ]
+        # Tabulares directos (consolidado_notas/asistencia, ranking, promedios_area, …)
+        return sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
+
+    @staticmethod
+    def _inyectar_meta_html(html_str: str, contexto: dict | None) -> str:
+        """Inyecta <meta> de grupo/periodo/asignatura para el membrete del PDF."""
+        contexto = contexto or {}
+        metas = (
+            f'<meta name="report-grupo" content="{contexto.get("grupo_nombre", "")}">'
+            f'<meta name="report-periodo" content="{contexto.get("periodo_nombre", "")}">'
+            f'<meta name="report-asignatura" content="{contexto.get("asignatura_nombre", "")}">'
+        )
+        return html_str.replace("</head>", f"{metas}</head>", 1)
+
+    def exportar_estadistico(
+        self,
+        tipo: str,
+        datos,
+        formato: FormatoInforme | str,
+        contexto: dict | None = None,
+    ) -> bytes:
+        """Exporta un estadístico a Excel o PDF encapsulando todo el pipeline
+        (sanitizar + normalizar filas + to_html + inyectar meta + exporter).
+
+        `contexto` puede traer: grupo_id, anio_id (para consolidado_anual),
+        grupo_nombre/periodo_nombre/asignatura_nombre (membrete PDF).
+        """
+        fmt = FormatoInforme(formato) if isinstance(formato, str) else formato
+        contexto = contexto or {}
+        exporter = self._get_exporter_o_lanzar()
+
+        # consolidado_anual delega en su generador (ya sanitiza internamente)
+        if tipo == "consolidado_anual":
+            return self.generar_consolidado_anual(
+                contexto.get("grupo_id"), contexto.get("anio_id"), formato=fmt
+            )
+
+        if tipo not in self._ESTADISTICO_TITULOS:
+            raise ValueError(f"Tipo de informe no reconocido: {tipo!r}")
+
+        titulo, nombre_hoja = self._ESTADISTICO_TITULOS[tipo]
+        filas = self._filas_estadistico(tipo, datos)
+
+        if fmt == FormatoInforme.EXCEL:
+            return exporter.exportar_excel(filas, nombre_hoja=nombre_hoja)
+        html = self._datos_a_html(filas, titulo=titulo)
+        return exporter.exportar_pdf(self._inyectar_meta_html(html, contexto))
 
     @staticmethod
     def _datos_a_html(datos: list[dict], titulo: str = "Informe") -> str:
@@ -481,4 +644,5 @@ __all__ = [
     "sanitizar_datos_exportacion",
     "merge_pdfs",
     "merge_excels",
+    "BoletinesGrupoDTO",
 ]

@@ -43,8 +43,8 @@ from src.interface.design.components.context_selector import abrir_selector
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
-from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
-from src.interface.design.components import toast_error, toast_success, toast_warning
+from src.interface.design.components.buttons import btn_primary, btn_ghost
+from src.interface.design.components import date_input, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
@@ -231,9 +231,8 @@ def _fila_estudiante(
                 with ui.element("div").classes("asis-btn-group"):
                     for codigo, etiqueta, clase_btn, larga in _ESTADOS:
                         activo = "asis-btn-active" if estado_actual == codigo else ""
-                        from src.interface.design.components.buttons import btn_ghost as _btn_ghost
                         (
-                            _btn_ghost(etiqueta)
+                            btn_ghost(etiqueta)
                             .classes(f"asis-btn {clase_btn} {activo}".strip())
                             .tooltip(larga)
                             .on("click", lambda _, c=codigo, eid=est.id: on_estado(eid, c))
@@ -307,14 +306,15 @@ def _toolbar(
 
         with ui.element("div").classes("asis-date-wrap"):
             ThemeManager.icono(Icons.SCHEDULE, size=18, clases="asis-date-icon")
-            ui.input(
+            date_input(
+                label="",
                 value=fecha_valor,
-                on_change=lambda e: on_fecha_cambio(e.value),
-            ).props("type=date dense").classes("asis-date-input")
+                on_change=lambda v: on_fecha_cambio(v or ""),
+                classes="asis-date-input",
+            )
 
         if not readonly:
             with ui.element("div").classes("asis-actions"):
-                from src.interface.design.components.buttons import btn_ghost
                 btn_ghost(
                     "Todos presentes",
                     on_click=lambda: on_marcar_todos("P"),
@@ -417,7 +417,7 @@ def registro_asistencia_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")

@@ -20,7 +20,6 @@ from typing import Callable
 
 from nicegui import ui
 
-from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components import empty_state
 from src.interface.design.components.buttons import (
@@ -139,7 +138,7 @@ def render_franjas_editor(
     puede_editar: bool = True,
 ) -> None:
     """Tabla de franjas (ordenadas) con acciones editar/eliminar y botón añadir."""
-    with ui.row().classes("items-center justify-between q-mb-sm"):
+    with ui.row().classes("items-center justify-between u-mb-sm"):
         ui.label("Franjas de la plantilla").classes("text-subtitle2 font-semibold")
         if puede_editar and on_add:
             btn_secondary("Añadir franja", icon="add", on_click=on_add)
@@ -159,7 +158,7 @@ def render_franjas_editor(
                 with ui.element("tr"):
                     for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
                         with ui.element("th").classes(
-                            "border px-3 py-2 text-left font-semibold bg-grey-2"
+                            "border px-3 py-2 text-left font-semibold bg-surface-alt"
                         ):
                             ui.label(str(col))
             with ui.element("tbody"):
@@ -205,6 +204,7 @@ def render_plantilla_preview(plantilla, franjas: list) -> None:
     ordenadas = sorted(franjas, key=lambda f: f.orden)
     with ui.element("div").classes("parrilla-scroll"):
         with ui.element("div").classes("parrilla-grid").style(
+            # DYNAMIC: nº de columnas depende de los días activos
             f"grid-template-columns: 160px repeat({len(dias)}, minmax(100px, 1fr))"
         ):
             with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):

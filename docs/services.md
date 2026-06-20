@@ -40,7 +40,7 @@ sequenceDiagram
 
 ## Servicios Principales y sus Responsabilidades
 
-El núcleo de la aplicación está compuesto por 16 servicios funcionales altamente cohesivos. 
+El núcleo de la aplicación está compuesto por **23 servicios funcionales** altamente cohesivos. 
 
 ### 1. `CierreService`
 Es el corazón académico del sistema y el servicio más complejo.
@@ -74,6 +74,54 @@ La dupla dedicada a extraer y presentar información (Business Intelligence inte
 Control de procesos de recuperación.
 - Permite programar exámenes de nivelación para estudiantes que reprobaron asignaturas anuales.
 - Determina autónomamente la aprobación del examen evaluando la calificación frente a la configuración `nota_minima_habilitacion` de la institución.
+
+### 14. `NivelacionService` *(Nuevo — Junio 2026)*
+Gestión del proceso post-cierre de período establecido por Decreto 1290.
+- Crea y valida actividades de nivelación por asignación+periodo (cada actividad tiene peso; la suma debe ser 1.0 para poder cerrar).
+- Gestiona la calificación por estudiante (upsert de `NotaNivelacion`).
+- Cierra la nivelación emitiendo un `CierreNivelacion` — inmutable una vez cerrado.
+- Delega el cálculo de la nota definitiva al `CalculadorNivelacion`, que no almacena el valor calculado.
+- Solo acepta nivelaciones para asignaciones con `CierrePeriodo` existente.
+
+### 15. `PlanMejoramientoService` *(Nuevo — Junio 2026)*
+Gestión del plan de mejoramiento cuantitativo (distinto del plan narrativo de `HabilitacionService`).
+- **Ejecutar corte:** Calcula la nota al corte de cada estudiante de la asignación usando las notas existentes en `EvaluacionService`. Determina quién va al plan (nota < umbral proporcional).
+- **Actividades del plan:** CRUD de `ActividadPlan` con validación de suma de pesos ≤ 1.0.
+- **Notas del plan:** Calificación por estudiante en cada actividad.
+- **Cierre por estudiante:** Marca `APROBADO` o `REPROBADO` y congela la `nota_definitiva_plan`.
+
+### 16. `InfraestructuraService` *(Nuevo — Junio 2026)*
+Administrador de la topología escolar (CRUD de entidades base).
+- Gestiona `AreaConocimiento`, `Asignatura`, `Grupo`, `Grado`, `Sala`.
+- Valida integridad referencial antes de eliminar (avisa si hay asignaciones vinculadas).
+
+### 17. `PlanEstudiosService` *(Nuevo — Junio 2026)*
+Gestiona la relación `Grado → Asignatura → horas_semanales`.
+- Permite definir cuántas horas semanales tiene cada asignatura por grado.
+- Usa un `asignacion_svc_provider` callable para obtener las asignaciones existentes sin crear dependencia circular.
+- Valida que las horas del plan de estudios sean coherentes con las asignaciones activas.
+
+### 18. `PreparacionHorarioService` *(Nuevo — Junio 2026)*
+Construye el contexto de preparación necesario antes de generar horarios.
+- Gestiona `PlantillaFranja` y `Franja` (la rejilla de franjas horarias).
+- Gestiona `EscenarioHorario` (contenedor de una versión del horario maestro).
+- Gestiona `DisponibilidadDocente` (restricciones de disponibilidad por docente).
+- Gestiona `ConfigGeneracion` (parámetros y pesos para el algoritmo generador).
+- Expone `VentanaGrupo`, `BloqueAnclado`, `FranjaReunion`, `LimitesDocente` como restricciones de generación.
+
+### 19. `HorarioService` *(Nuevo — Junio 2026)*
+CRUD de bloques horarios dentro de un escenario.
+- Inserta, actualiza y elimina bloques horarios con validación de conflictos (`existe_cruce`).
+- Valida que el docente no tenga otro bloque solapado en la misma franja (mismo escenario).
+- Expone las vistas enriquecidas (`HorarioInfo`) para los grids de la UI.
+
+### 20. `GeneradorHorarioService` *(Nuevo — Junio 2026)*
+Genera automáticamente la grilla completa de horarios para un periodo.
+- Lee la `ConfigGeneracion` activa (pesos para la función objetivo: distribución, respeto de disponibilidad, cumplimiento de horas).
+- Itera por grupos y asignaturas del plan de estudios para asignar bloques a franjas disponibles.
+- Respeta las restricciones: `DisponibilidadDocente`, `VentanaGrupo`, `BloqueAnclado`, `FranjaReunion`, `LimitesDocente`.
+- Escribe los bloques generados en el `EscenarioHorario` destino indicado en la config.
+- Retorna `ResultadoGeneracionDTO` con los bloques y `MetricasCalidadDTO` para evaluación del resultado.
 
 ### 7. `EstudianteService` y `UsuarioService`
 Manejo de Actores.

@@ -11,7 +11,7 @@ De acuerdo con la Arquitectura Limpia adoptada por el proyecto:
 
 ## Entidades Principales
 
-El sistema está compuesto por 16 módulos de dominio que definen las entidades principales, agregados y objetos de valor (Value Objects).
+El sistema está compuesto por **19 módulos de dominio** que definen las entidades principales, agregados y objetos de valor (Value Objects).
 
 ### 1. Acudiente (`acudiente.py`)
 Maneja la información de los padres, tutores o responsables legales de los estudiantes.
@@ -54,11 +54,14 @@ Incluye las categorías (ej. Ser, Saber, Hacer), actividades (exámenes, tallere
 
 ### 11. Habilitacion (`habilitacion.py`)
 Maneja los procesos de recuperación de fin de año o finales de periodo.
-- Valida si un estudiante cumple los requisitos institucionales para poder habilitar una asignatura.
+- Contiene `Habilitacion` (examen de recuperación, FSM) y `PlanMejoramiento` (plan narrativo de seguimiento obligatorio según Decreto 1290). El plan narrativo documenta dificultades, actividades propuestas y fechas de seguimiento; se diferencia del Plan de Mejoramiento cuantitativo del módulo `plan_mejoramiento.py`.
 
 ### 12. Infraestructura Académica (`infraestructura.py`)
-Modelos base para la estructura del colegio:
-- `Grado`, `Grupo`, `Area` y `Asignatura`. Representan el esqueleto sobre el que se asignan los estudiantes y docentes.
+El módulo más extenso del dominio. Cubre toda la infraestructura del plantel y el subsistema de horarios:
+- Entidades base: `AreaConocimiento`, `Asignatura`, `Grupo`, `Grado`, `Sala`, `Horario`, `Logro`
+- Subsistema de plantillas y franjas: `PlantillaFranja`, `Franja`, `EscenarioHorario`
+- Subsistema de generación automática: `DisponibilidadDocente`, `ConfigGeneracion`, `PlanEstudios`, `VentanaGrupo`, `BloqueAnclado`, `FranjaReunion`, `LimitesDocente`
+- DTOs de resultado: `BloqueGeneradoDTO`, `MetricasCalidadDTO`, `ResultadoGeneracionDTO`, `HorarioInfo`, `HorarioEstadisticasDTO`
 
 ### 13. Periodo (`periodo.py`)
 Define los lapsos temporales del ciclo lectivo (ej. Primer Periodo, Segundo Periodo).
@@ -75,6 +78,27 @@ Representa a los actores del sistema (Docentes, Administrativos, Directores).
 ### 16. DTOs (`dtos.py`)
 Objetos de Transferencia de Datos.
 - Aunque no son "Entidades" estables en BD, son modelos Pydantic usados puramente para transportar datos compuestos entre la UI y los Servicios, o entre Servicios, garantizando tipos seguros durante las peticiones complejas (ej. reportes, listados enriquecidos).
+
+### 17. Nivelación (`nivelacion.py`) *(Nuevo — Junio 2026)*
+Proceso post-cierre de período obligatorio según Decreto 1290. La institución debe ofrecer actividades de recuperación documentadas a estudiantes con desempeño bajo.
+- `ActividadNivelacion` — columna compartida (una actividad aplica a todos los estudiantes bajo-desempeño de una asignación+periodo).
+- `NotaNivelacion` — celda: nota de un estudiante en una actividad.
+- `CierreNivelacion` — su existencia indica que la nivelación está cerrada (inmutable).
+- `CalculadorNivelacion` — utilidad stateless para calcular nota definitiva ponderada.
+- La nota definitiva se computa, no se almacena, para evitar redundancia.
+
+### 18. Plan de Mejoramiento Cuantitativo (`plan_mejoramiento.py`) *(Nuevo — Junio 2026)*
+Sistema de plan de mejoramiento basado en cortes con notas ponderadas (distinto del plan narrativo de `habilitacion.py`).
+- `CortePlan` — registro del corte de un periodo para una asignación; agrupa a todos los estudiantes en-plan.
+- `NotaCortePlan` — estado por estudiante (`SIN_PLAN`, `EN_PLAN`, `APROBADO`, `REPROBADO`).
+- `ActividadPlan` — actividades del plan con peso (columna compartida por todos los en-plan).
+- `NotaActividadPlan` — nota de un estudiante en una actividad del plan (celda).
+- `CalculadorPlan` — utilidades de cálculo (nota al corte, umbral, nota definitiva).
+
+### 19. PIAR (`piar.py`)
+*(Existente, refactorizado como módulo independiente)*
+
+Ver entrada 14 — el módulo fue renumerado al incorporar los nuevos módulos 17 y 18.
 
 ## Consideraciones de Mutabilidad
 

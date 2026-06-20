@@ -512,6 +512,17 @@ class IInfraestructuraRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def reemplazar_disponibilidad_docente(
+        self, usuario_id: int, slots: list[dict]
+    ) -> int:
+        """
+        Reemplaza ATÓMICAMENTE la disponibilidad de un docente: borra todas
+        sus restricciones y carga las nuevas en una sola transacción.
+        Retorna cantidad de slots cargados.
+        """
+        ...
+
     # =========================================================================
     # Config generación (paso_15b)
     # =========================================================================

@@ -1,6 +1,6 @@
 # Diseño de Arquitectura — ZECI Manager v2.0
 
-**Versión:** Mayo 2026  
+**Versión:** Junio 2026  
 **Stack:** Python 3.x · NiceGUI 3.x · SQLite · Pydantic v2 · Bcrypt · JWT (stdlib)
 
 ---
@@ -49,7 +49,7 @@ Pure Python. Sin imports externos.
 - Los DTOs de creación (`NuevoXDTO`) tienen un método `to_entidad()` que construye el modelo de dominio correspondiente.
 - Los DTOs de actualización (`ActualizarXDTO`) tienen un método `aplicar_a(entidad)` que aplica solo los campos no-`None`.
 
-**Módulos de modelos:**
+**Módulos de modelos (19 total):**
 
 | Módulo | Entidades clave | Notas |
 |---|---|---|
@@ -59,11 +59,13 @@ Pure Python. Sin imports externos.
 | `asistencia.py` | `ControlDiario`, `EstadoAsistencia` | `ResumenAsistenciaDTO` calculado por repositorio con `GROUP BY` |
 | `periodo.py` | `Periodo`, `HitoPeriodo` | Flag `cerrado` como candado de evaluación; `TipoHito` enum |
 | `configuracion.py` | `ConfiguracionAnio`, `NivelDesempeno`, `CriterioPromocion` | `NivelDesempeno.clasifica(nota)` resuelve el nivel sin consultar BD |
-| `habilitacion.py` | `Habilitacion`, `PlanMejoramiento` | FSM con `_validar_transicion()` interno |
+| `habilitacion.py` | `Habilitacion` | FSM con `_validar_transicion()` interno; plan de mejoramiento extraído a módulo propio |
+| `nivelacion.py` | `ActividadNivelacion`, `NotaNivelacion`, `CierreNivelacion`, `CalculadorNivelacion` | Proceso post-cierre (Decreto 1290); la nota definitiva se computa, no se almacena |
+| `plan_mejoramiento.py` | `CortePlan`, `NotaCortePlan`, `ActividadPlan`, `NotaActividadPlan`, `CalculadorPlan`, `EstadoNotaCorte` | Fue parte de `habilitacion.py`; ahora módulo independiente |
 | `auditoria.py` | `EventoSesion`, `RegistroCambio` | `RegistroCambio.desde_legacy()` compatibiliza v1.0 |
 | `convivencia.py` | `ObservacionPeriodo`, `RegistroComportamiento` | `es_publica` controla visibilidad en boletín |
 | `dtos.py` | `ContextoAcademicoDTO`, `DashboardMetricsDTO` | `ContextoAcademicoDTO` reemplaza `AppState` global de v1.0 |
-| `infraestructura.py` | `Grupo`, `Asignatura`, `Horario`, `Logro`, `HorarioInfo` | Invariante: `hora_inicio < hora_fin` en `model_validator` |
+| `infraestructura.py` | `AreaConocimiento`, `Asignatura`, `Grupo`, `Grado`, `Horario`, `Logro`, `Franja`, `PlantillaFranja`, `EscenarioHorario`, `DisponibilidadDocente`, `ConfigGeneracion`, `PlanEstudios`, `BloqueGeneradoDTO`, `MetricasCalidadDTO`, `ResultadoGeneracionDTO` | Módulo más extenso; cubre toda la infra académica + generación de horarios |
 | `asignacion.py` | `Asignacion`, `AsignacionInfo` | `display_completo` para UI sin queries adicionales |
 | `usuario.py` | `Usuario`, `Rol`, `DocenteInfoDTO` | La `password_hash` nunca entra al modelo |
 | `acudiente.py` | `Acudiente`, `EstudianteAcudiente` | Un acudiente puede estar vinculado a varios estudiantes |
@@ -72,7 +74,8 @@ Pure Python. Sin imports externos.
 
 ### 3.2 Puertos
 
-16 interfaces ABC en `src/domain/ports/` — un archivo por módulo, sin implementación.
+19 interfaces ABC en `src/domain/ports/` — un archivo por módulo, sin implementación.
+Nuevas respecto a Mayo 2026: `nivelacion_repo`, `plan_mejoramiento_repo`, `siee_repo`.
 
 Adicionalmente, `service_ports.py` define las interfaces de servicios externos:
 
@@ -101,7 +104,7 @@ La existencia de `service_ports.py` permite abstraer también los servicios, no 
 
 ## 4. Capa de Servicios (`src/services/`)
 
-16 servicios de aplicación. Sin SQL, sin NiceGUI, sin pandas.
+23 servicios de aplicación. Sin SQL, sin NiceGUI, sin pandas.
 
 **Principios:**
 - Reciben primitivos o DTOs Pydantic; retornan entidades de dominio.
@@ -128,13 +131,25 @@ def _auditar(
 
 `CierreService` — el más complejo (7 dependencias directas). Consolida notas por estudiante, determina `NivelDesempeno`, dispara alertas de riesgo automáticas y gestiona decisiones de promoción (`PENDIENTE → PROMOVIDO | REPROBADO | CONDICIONAL`).
 
-`EvaluacionService` — garantiza que la suma de pesos de categorías no exceda 1.0 y que notas solo se ingresen en actividades con estado `PUBLICADA`.
+`EvaluacionService` — garantiza que la suma de pesos de categorías no exceda 1.0 y que notas solo se ingresen en actividades con estado `PUBLICADA`. Incluye acceso a `siee_repo` para integración con el registro externo.
+
+`NivelacionService` — gestiona el proceso de nivelación post-cierre (Decreto 1290): actividades ponderadas, calificación por estudiante y cierre de nivelación. La nota definitiva se computa con `CalculadorNivelacion`, no se almacena redundantemente.
+
+`PlanMejoramientoService` — gestiona cortes de plan, actividades, calificaciones por estudiante y cierre por estudiante (`APROBADO | REPROBADO`).
 
 `AsistenciaService` y `ConvivenciaService` — detectan superación de umbrales configurados e instancian alertas automáticas sin intervención del docente.
 
-`EstadisticosService` — solo lectura; delega agrupaciones a queries optimizadas en el repositorio. Sin DataFrames en esta capa.
+`EstadisticosService` — solo lectura; 6 dependencias de repo para consolidar métricas académicas, de asistencia y convivencia. Sin DataFrames en esta capa.
 
 `InformeService` — no accede a BD directamente; toma consolidados de `EstadisticosService` y los pasa al `IExporterService`.
+
+**Subsistema de horarios (3 servicios):**
+
+- `InfraestructuraService` — CRUD de entidades estructurales (`Asignatura`, `Grupo`, `Grado`, `Sala`, `AreaConocimiento`).
+- `PlanEstudiosService` — gestiona el plan de estudios (asignaturas por grado con intensidad horaria). Usa un `asignacion_svc_provider` callable para romper la dependencia circular con `AsignacionService`.
+- `PreparacionHorarioService` — construye el contexto de preparación (franjas, disponibilidad docente, escenarios, límites) necesario para el generador.
+- `HorarioService` — CRUD de horarios; valida sin solapamientos.
+- `GeneradorHorarioService` — genera automáticamente la grilla de horarios respetando restricciones de disponibilidad, franjas y límites docente.
 
 ---
 
@@ -144,7 +159,7 @@ Los helpers `fetch_df` y `execute` de `src/db/queries.py` **no se reemplazan** e
 
 ### 5.1 Repositorios SQLite
 
-16 implementaciones en `src/infrastructure/db/repositories/`. Patrón uniforme:
+20 implementaciones en `src/infrastructure/db/repositories/`. Nuevos desde Mayo 2026: `sqlite_nivelacion_repo`, `sqlite_plan_mejoramiento_repo`, `sqlite_siee_repo`. Patrón uniforme:
 
 1. Implementan su interfaz de puerto correspondiente.
 2. Usan `fetch_df` / `execute` de `src/db/queries.py`.
@@ -200,25 +215,38 @@ Capacidades adicionales:
 Diagrama de dependencias del Container:
 
 ```
-auth_service         ← usuario_repo
-notification_service ← (sin dependencias)
-exporter_service     ← ExporterFactory
+auth_service              ← usuario_repo
+notification_service      ← (sin dependencias)
+exporter_service          ← ExporterFactory
 
-configuracion_service ← configuracion_repo
-usuario_service       ← usuario_repo + auth_service + auditoria_repo
-estudiante_service    ← estudiante_repo + acudiente_repo + auditoria_repo
-periodo_service       ← periodo_repo + configuracion_repo + auditoria_repo
-asignacion_service    ← asignacion_repo + periodo_repo + auditoria_repo
-evaluacion_service    ← evaluacion_repo + asignacion_repo + periodo_repo + auditoria_repo
-alerta_service        ← alerta_repo + estadisticos_repo
-asistencia_service    ← asistencia_repo + alerta_repo + config_repo
-cierre_service        ← cierre_repo + evaluacion_repo + periodo_repo + config_repo
-                         + estudiante_repo + alerta_repo + auditoria_repo
-habilitacion_service  ← habilitacion_repo + cierre_repo + config_repo
-convivencia_service   ← convivencia_repo + alerta_repo
-estadisticos_service  ← estadisticos_repo + config_repo
-informe_service       ← estadisticos_repo + exporter_service
-auditoria_service     ← auditoria_repo
+configuracion_service     ← configuracion_repo
+usuario_service           ← usuario_repo + auth_service + auditoria_repo
+estudiante_service        ← estudiante_repo + acudiente_repo + auditoria_repo
+periodo_service           ← periodo_repo + configuracion_repo + auditoria_repo
+infraestructura_service   ← infraestructura_repo
+plan_estudios_service     ← infraestructura_repo + asignacion_svc_provider (lazy)
+asignacion_service        ← asignacion_repo + periodo_repo + auditoria_repo
+                             + usuario_repo + infraestructura_repo + plan_estudios_service
+evaluacion_service        ← evaluacion_repo + asignacion_repo + periodo_repo
+                             + auditoria_repo + siee_repo
+alerta_service            ← alerta_repo + estadisticos_repo
+asistencia_service        ← asistencia_repo + alerta_repo + config_repo
+cierre_service            ← cierre_repo + evaluacion_repo + periodo_repo + config_repo
+                             + estudiante_repo + alerta_repo + auditoria_repo
+habilitacion_service      ← habilitacion_repo + cierre_repo + config_repo
+nivelacion_service        ← nivelacion_repo + cierre_repo + config_repo
+plan_mejoramiento_service ← plan_mejoramiento_repo + evaluacion_repo + estudiante_repo
+convivencia_service       ← convivencia_repo + alerta_repo
+estadisticos_service      ← estadisticos_repo + config_repo + evaluacion_repo
+                             + asistencia_repo + estudiante_repo + infraestructura_repo
+informe_service           ← estadisticos_repo + exporter_service + estudiante_repo
+auditoria_service         ← auditoria_repo
+preparacion_horario_service ← infraestructura_repo + asignacion_repo + config_repo
+                               + periodo_repo + usuario_repo + plan_estudios_service
+horario_service           ← infraestructura_repo + asignacion_repo
+                             + usuario_service + plan_estudios_service
+generador_horario_service ← infraestructura_repo + asignacion_repo + usuario_service
+                             + horario_service + infraestructura_service + plan_estudios_service
 ```
 
 ---
@@ -244,10 +272,12 @@ def mi_pagina():
 Implementación en `src/interface/design/`:
 
 - **`tokens.py`** — Constantes Python: `Colors`, `AsistenciaColors`, `DesempenoColors`, `Icons`, `Spacing`, `Layout`.
-- **`styles.css`** (~35 KB) — Variables CSS en `:root` con paridad 1:1 respecto a `tokens.py`; clases estructurales (`.andes-sidebar`, `.andes-card`, `.badge-*`); reset de NiceGUI.
+- **`styles/reset.css`** — Variables CSS en `:root` con paridad 1:1 respecto a `tokens.py`; clases estructurales (`.andes-sidebar`, `.andes-card`, `.badge-*`); reset de NiceGUI. Separado del CSS principal.
 - **`theme.py`** — `ThemeManager.aplicar()` inyecta el CSS global una sola vez en `main.py` antes de `ui.run()`.
 - **`layout.py`** — Sidebar (filtrado por rol), topbar, contenido dinámico.
-- **`components/`** — `context_bar.py`, `data_table.py`, `page_header.py`, `stat_card.py`, `status_badge.py`, `confirm_dialog.py`.
+- **`components/`** — **16 componentes** (expandido desde 6):
+  - Originales: `context_bar`, `data_table`, `page_header`, `stat_card`, `status_badge`, `confirm_dialog`
+  - Nuevos: `base_form`, `buttons`, `confirmation_card`, `context_selector`, `empty_state`, `form_dialog`, `performance_indicator`, `pipeline`, `skeleton_loader`, `toast`
 
 **Convención de color — cero colores en Python, excepto ECharts:**
 
@@ -306,19 +336,19 @@ def service():
 ┌─────────────────────────────────────────────────────────┐
 │              INTERFAZ (src/interface/)                  │
 │  NiceGUI Pages · Design System "Andes Minimal v2"       │
-│  Layout · Components · 23+ páginas                      │
+│  Layout · 16 Componentes · 37 páginas/widgets           │
 │                  ↓ solo llama a                         │
 ├─────────────────────────────────────────────────────────┤
 │             SERVICIOS (src/services/)                   │
-│  16 Application Services · DTOs Pydantic               │
+│  23 Application Services · DTOs Pydantic                │
 │        ↓ implementan puertos del          ↓ usan       │
 ├─────────────────────────────────────────────────────────┤
 │              DOMINIO (src/domain/)                      │
-│  16 Módulos Pydantic · 16 Puertos de Repositorio        │
+│  19 Módulos Pydantic · 19 Puertos de Repositorio        │
 │  service_ports.py (IAuth, IExporter, INotification)     │
 ├─────────────────────────────────────────────────────────┤
 │          INFRAESTRUCTURA (src/infrastructure/)          │
-│  16 SQLite Repos · Auth (Bcrypt+JWT) · Context         │
+│  20 SQLite Repos · Auth (Bcrypt+JWT) · Context          │
 │  ExporterFactory · NullExporter · NullNotification      │
 └─────────────────────────────────────────────────────────┘
           ↑ todo gestionado por

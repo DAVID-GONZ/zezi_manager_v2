@@ -51,6 +51,16 @@ Genera documentos formateados en PDF.
 Un exportador especial implementado siguiendo el patrón Null Object.
 - **Responsabilidad:** Proporcionar una implementación segura que no revienta la aplicación si una librería pesada (como `reportlab`) no se puede instalar en un ambiente restringido. Lanza excepciones amistosas (`RuntimeError` descriptivos) que la UI puede atrapar para mostrar mensajes claros al usuario en lugar de colapsos genéricos del servidor.
 
+## 4. Repositorio SIEE (`src/infrastructure/db/repositories/sqlite_siee_repo.py`)
+
+Adaptador para el **Sistema Institucional de Evaluación** (SIEE). *(Nuevo — Junio 2026)*
+
+- **Responsabilidad:** Persiste y lee la `ConfiguracionSIEE` (modo de evaluación y porcentaje de autonomía docente por año) y las categorías institucionales (`Categoria` con `es_institucional=True`).
+- **Implementa:** `ISIEERepository` del dominio.
+- **Consumido por:** `EvaluacionService` para determinar si la institución opera en modo SIEE centralizado o en modo libre por docente.
+
+---
+
 ## Resumen de Interacciones
 
 Ningún componente del Dominio invoca métodos de estas clases directamente. En tiempo de arranque (`container.py`), las clases de infraestructura son instanciadas e inyectadas a los Servicios como si fuesen sus respectivas interfaces (`IAuthenticationService`, `IExporterService`), adhiriendo estrictamente al Principio de Inversión de Dependencias (DIP).

@@ -18,7 +18,8 @@ from src.domain.models.usuario import (
 
 _COLS_USUARIO = (
     "id, usuario, nombre_completo, email, telefono, "
-    "rol, activo, fecha_creacion, ultima_sesion, carga_horaria_max, horas_extra"
+    "rol, activo, fecha_creacion, ultima_sesion, carga_horaria_max, horas_extra, "
+    "institucion_id"
 )
 
 
@@ -95,6 +96,9 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             sql += " AND (LOWER(nombre_completo) LIKE ? OR LOWER(usuario) LIKE ?)"
             like = f"%{filtro.busqueda.lower()}%"
             params.extend([like, like])
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         sql += " ORDER BY nombre_completo"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
@@ -103,7 +107,10 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             return [self._row_to_usuario(r) for r in rows]
 
     def listar_resumenes(self, filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]:
-        sql = "SELECT id, usuario, nombre_completo, rol, activo FROM usuarios WHERE 1=1"
+        sql = (
+            "SELECT id, usuario, nombre_completo, rol, activo, institucion_id "
+            "FROM usuarios WHERE 1=1"
+        )
         params: list = []
         if filtro.solo_activos:
             sql += " AND activo = 1"
@@ -114,6 +121,9 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             sql += " AND (LOWER(nombre_completo) LIKE ? OR LOWER(usuario) LIKE ?)"
             like = f"%{filtro.busqueda.lower()}%"
             params.extend([like, like])
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         sql += " ORDER BY nombre_completo"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
@@ -257,8 +267,8 @@ class SqliteUsuarioRepository(IUsuarioRepository):
                 """
                 INSERT INTO usuarios
                     (usuario, password_hash, nombre_completo, email, telefono,
-                     rol, activo, fecha_creacion)
-                VALUES (?,?,?,?,?,?,?,?)
+                     rol, activo, fecha_creacion, institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     usuario.usuario,
@@ -269,6 +279,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
                     usuario.rol.value,
                     int(usuario.activo),
                     usuario.fecha_creacion.isoformat(),
+                    usuario.institucion_id,
                 ),
             )
             if self._conn is None:

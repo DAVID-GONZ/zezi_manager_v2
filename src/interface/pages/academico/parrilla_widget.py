@@ -180,6 +180,7 @@ def render_parrilla(
 
     with ui.element("div").classes("parrilla-scroll"):
         with ui.element("div").classes("parrilla-grid").style(
+            # DYNAMIC: nº de columnas depende de los días visibles
             f"grid-template-columns: 160px repeat({len(dias)}, minmax(120px, 1fr))"
         ):
             with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):
@@ -258,6 +259,7 @@ def render_tablero_maestro(
 
     with ui.element("div").classes("parrilla-scroll"):
         with ui.element("div").classes("tablero-maestro").style(
+            # DYNAMIC: nº de columnas depende de los grupos presentes
             f"grid-template-columns: 160px repeat({len(grupo_ids)}, minmax(140px, 1fr))"
         ):
             with ui.element("div").classes("tablero-grupo-cabecera parrilla-esquina"):

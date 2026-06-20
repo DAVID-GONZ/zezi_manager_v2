@@ -1,6 +1,8 @@
 """Servicio de Plan de Mejoramiento."""
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalculadorPlan,
@@ -168,6 +170,7 @@ class PlanMejoramientoService:
     # Actividades del plan
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def agregar_actividad(
         self, dto: NuevaActividadPlanDTO, usuario_id: int | None = None
     ) -> ActividadPlan:
@@ -210,6 +213,20 @@ class PlanMejoramientoService:
     def listar_notas_actividad(self, actividad_plan_id: int) -> list[NotaActividadPlan]:
         """Lista todas las notas de una actividad del plan."""
         return self._plan_repo.listar_notas_actividad(actividad_plan_id)
+
+    def notas_por_actividad_corte(
+        self, corte_id: int
+    ) -> dict[int, dict[int, NotaActividadPlan]]:
+        """Devuelve las notas de TODAS las actividades de un corte en una sola
+        llamada: {actividad_id: {estudiante_id: NotaActividadPlan}}.
+
+        Reemplaza el bucle N+1 que la vista hacía llamando listar_notas_actividad
+        por cada actividad."""
+        resultado: dict[int, dict[int, NotaActividadPlan]] = {}
+        for act in self._plan_repo.listar_actividades(corte_id):
+            notas = self._plan_repo.listar_notas_actividad(act.id)
+            resultado[act.id] = {n.estudiante_id: n for n in notas}
+        return resultado
 
     def calificar_nota(
         self,
@@ -261,6 +278,7 @@ class PlanMejoramientoService:
     # Cierre por estudiante
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def cerrar_plan_estudiante(self, dto: CerrarPlanEstudianteDTO) -> NotaCortePlan:
         """
         Cierra el plan de mejoramiento de un estudiante.

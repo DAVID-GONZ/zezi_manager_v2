@@ -15,10 +15,10 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_icon
 from src.interface.design.components import (
     confirm_dialog,
+    empty_state,
     form_dialog,
     toast_error,
     toast_success,
@@ -44,7 +44,7 @@ def salas_page() -> None:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director"):
+    if ctx.usuario_rol not in ("director",):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -83,18 +83,15 @@ def salas_page() -> None:
 
     # ── CRUD ──────────────────────────────────────────────────────────────────
     def _crear_sala() -> None:
+        # El modelo Sala valida nombre (no vacío), tipo y capacidad (>=1).
         try:
-            nombre = str(_s["nombre"]).strip()
-            if not nombre:
-                toast_warning("El nombre de la sala no puede estar vacío")
-                return
             sala = Sala(
-                nombre=nombre,
+                nombre=_s["nombre"],
                 tipo=_s["tipo"] or "aula",
-                capacidad=int(_s["capacidad"] or 30),
+                capacidad=_s["capacidad"] or 30,
             )
             Container.infraestructura_service().crear_sala(sala)
-            toast_success(f"Sala '{nombre}' creada")
+            toast_success(f"Sala '{sala.nombre}' creada")
             _s["nombre"]    = ""
             _s["tipo"]      = "aula"
             _s["capacidad"] = 30
@@ -132,16 +129,13 @@ def salas_page() -> None:
 
     def _editar_sala(sala: Sala) -> None:
         def _guardar(datos: dict) -> "bool | None":
+            # El modelo Sala valida nombre/tipo/capacidad.
             try:
-                nombre = str(datos.get("nombre", "")).strip()
-                if not nombre:
-                    toast_warning("El nombre es obligatorio")
-                    return False
                 sala_act = Sala(
                     id=sala.id,
-                    nombre=nombre,
+                    nombre=datos.get("nombre", ""),
                     tipo=datos.get("tipo") or "aula",
-                    capacidad=int(datos.get("capacidad") or 1),
+                    capacidad=datos.get("capacidad") or 1,
                 )
                 Container.infraestructura_service().actualizar_sala(sala_act)
                 toast_success(f"Sala '{sala_act.nombre}' actualizada")
@@ -174,7 +168,10 @@ def salas_page() -> None:
     def tabla_salas() -> None:
         salas = _s["salas"]
         if not salas:
-            ui.label("No hay salas registradas.").classes("text-empty mt-2")
+            empty_state(
+                titulo="No hay salas registradas",
+                descripcion="Crea la primera sala con el formulario de arriba.",
+            )
             return
         with ui.element("div").classes("w-full"):
             with ui.element("div").classes("lista-head"):
@@ -216,7 +213,10 @@ def salas_page() -> None:
     def tabla_grupos_aula() -> None:
         grupos = _s["grupos"]
         if not grupos:
-            ui.label("No hay grupos registrados.").classes("text-empty mt-2")
+            empty_state(
+                titulo="No hay grupos registrados",
+                descripcion="Crea grupos para asignarles un aula base.",
+            )
             return
         sala_opts = {0: "— Sin asignar —"}
         sala_opts.update({s.id: s.nombre for s in _s["salas"]})

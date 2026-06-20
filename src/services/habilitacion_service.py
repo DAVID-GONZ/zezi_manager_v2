@@ -5,6 +5,8 @@ Orquesta los casos de uso de habilitaciones y planes de mejoramiento.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from datetime import date
 
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
@@ -120,6 +122,7 @@ class HabilitacionService:
         )
         return habilitacion
 
+    @requiere_escritura
     def registrar_nota_habilitacion(
         self,
         hab_id: int,
@@ -169,6 +172,23 @@ class HabilitacionService:
         """Retorna habilitaciones según los filtros indicados."""
         return self._repo.listar_habilitaciones(filtro)
 
+    def contar_habilitaciones_pendientes(
+        self,
+        periodo_id: int | None = None,
+    ) -> int:
+        """Cuenta las habilitaciones en estado PENDIENTE (SOLO LECTURA).
+
+        Si se indica `periodo_id`, restringe el conteo a ese periodo;
+        de lo contrario cuenta todas las pendientes. Usado por el dashboard
+        institucional del directivo.
+        """
+        filtro = FiltroHabilitacionesDTO(
+            periodo_id=periodo_id,
+            estado=EstadoHabilitacion.PENDIENTE,
+            por_pagina=200,
+        )
+        return len(self._repo.listar_habilitaciones(filtro))
+
     def get_by_id(self, hab_id: int) -> Habilitacion:
         """Retorna una habilitación por id. Lanza si no existe."""
         return self._get_habilitacion_o_lanzar(hab_id)
@@ -177,6 +197,7 @@ class HabilitacionService:
     # Planes de mejoramiento
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def crear_plan(
         self,
         dto: NuevoPlanMejoramientoDTO,
@@ -191,6 +212,7 @@ class HabilitacionService:
         )
         return plan
 
+    @requiere_escritura
     def cerrar_plan(
         self,
         plan_id: int,

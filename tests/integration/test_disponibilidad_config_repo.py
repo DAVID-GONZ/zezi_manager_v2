@@ -277,3 +277,51 @@ class TestConfigGeneracion:
         assert leida.pesos.huecos == 1.5
         assert leida.pesos.distribucion == 0.5
         assert leida.pesos.compactacion == 0.2
+
+    def test_crear_config_acepta_restricciones(self, db_conn, seed_result):
+        # El servicio debe persistir restricciones en una sola llamada
+        # (sin crear+parchear desde la vista).
+        service = make_service(db_conn)
+        plantilla_id = db_conn.execute(
+            "SELECT id FROM plantillas_franja LIMIT 1"
+        ).fetchone()[0]
+        restr = {"min_max_diario": {"modo": "preferente", "min": 1, "max": 7}}
+        creada = service.crear_config_generacion(
+            nombre="Config con restricciones",
+            periodo_id=seed_result.periodo_ids[0],
+            anio_id=seed_result.anio_id,
+            plantilla_id=plantilla_id,
+            restricciones=restr,
+        )
+        leida = service.get_config_generacion(creada.id)
+        assert leida.restricciones == restr
+
+
+class TestGuardarDisponibilidadAtomico:
+
+    def test_reemplaza_disponibilidad_en_una_llamada(self, db_conn, seed_result):
+        service = make_service(db_conn)
+        usuario_id = seed_result.usuario_ids["prof_test"]
+        # Primer guardado: bloquea 2 slots.
+        service.guardar_disponibilidad_docente(usuario_id, [
+            {"dia_semana": "Lunes", "franja_orden": 1},
+            {"dia_semana": "Lunes", "franja_orden": 2},
+        ])
+        assert service.es_disponible_docente(usuario_id, "Lunes", 1) is False
+        # Segundo guardado: ahora solo bloquea 1 slot distinto → el viejo se libera.
+        service.guardar_disponibilidad_docente(usuario_id, [
+            {"dia_semana": "Martes", "franja_orden": 3},
+        ])
+        assert service.es_disponible_docente(usuario_id, "Lunes", 1) is True
+        assert service.es_disponible_docente(usuario_id, "Martes", 3) is False
+        lista = service.listar_disponibilidad_docente(usuario_id)
+        assert len(lista) == 1
+
+    def test_guardar_vacio_limpia_todo(self, db_conn, seed_result):
+        service = make_service(db_conn)
+        usuario_id = seed_result.usuario_ids["prof_test"]
+        service.guardar_disponibilidad_docente(usuario_id, [
+            {"dia_semana": "Lunes", "franja_orden": 1},
+        ])
+        service.guardar_disponibilidad_docente(usuario_id, [])
+        assert service.listar_disponibilidad_docente(usuario_id) == []

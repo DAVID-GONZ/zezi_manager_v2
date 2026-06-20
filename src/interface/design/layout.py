@@ -40,7 +40,7 @@ from nicegui import ui
 
 from .theme import ThemeManager
 from .tokens import Icons
-from .components.buttons import btn_icon
+from .components.buttons import btn_icon, btn_secondary
 
 if TYPE_CHECKING:
     from src.interface.context.session_context import SessionContext
@@ -57,101 +57,101 @@ NAV_ITEMS: list[dict] = [
     {
         "label": "Aula",
         "icon":  "co_present",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
+        "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Planilla de Notas", "icon": "table_chart",
              "ruta": "/evaluacion/planilla",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Asistencia",        "icon": "fact_check",
              "ruta": "/asistencia",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Observaciones",     "icon": "comment",
              "ruta": "/convivencia/observaciones",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Comportamiento",    "icon": "rule",
              "ruta": "/convivencia/comportamiento",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Seguimiento",       "icon": "assignment",
              "ruta": "/convivencia/notas",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
         ],
     },
     {
         "label": "Académico",
         "icon":  "school",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
+        "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Estudiantes",   "icon": "person",
              "ruta": "/estudiantes",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Grupos",        "icon": "group",
              "ruta": "/admin/grupos",
-             "rol":  ["admin", "director"]},
+             "rol":  ["director"]},
             {"label": "Asignaturas",   "icon": "book",
              "ruta": "/admin/asignaturas",
-             "rol":  ["admin", "director"]},
+             "rol":  ["director"]},
             {"label": "Plan de estudios", "icon": "book",
              "ruta": "/admin/plan-estudios",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
             {"label": "Asignaciones",  "icon": "assignment_ind",
              "ruta": "/admin/asignaciones",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Horarios",      "icon": "calendar_today",
              "ruta": "/horarios",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Disponibilidad docente", "icon": "event_available",
              "ruta": "/admin/disponibilidad-docente",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
             {"label": "Salas",         "icon": "meeting_room",
              "ruta": "/admin/salas",
-             "rol":  ["admin", "director"]},
+             "rol":  ["director"]},
         ],
     },
     {
         "label": "Evaluación",
         "icon":  "grading",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
+        "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Configuración SIE",      "icon": "tune",
              "ruta": "/evaluacion/configuracion",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Habilitaciones",         "icon": "assignment_return",
              "ruta": "/evaluacion/habilitaciones",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Planes de Mejoramiento", "icon": "trending_up",
              "ruta": "/evaluacion/planes",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Cierre de Periodo",      "icon": "lock",
              "ruta": "/evaluacion/cierre-periodo",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
             {"label": "Cierre de Año",          "icon": "lock_clock",
              "ruta": "/evaluacion/cierre-anio",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
         ],
     },
     {
         "label": "Informes",
         "icon":  "summarize",
-        "rol":   ["admin", "director", "coordinador", "profesor"],
+        "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Tablero",                   "icon": "dashboard",
              "ruta": "/academico/tablero",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Boletín de Periodo",        "icon": "description",
              "ruta": "/informes/boletin-periodo",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Boletín Anual",             "icon": "description",
              "ruta": "/informes/boletin-anual",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Consolidado de Notas",      "icon": "bar_chart",
              "ruta": "/informes/consolidado-notas",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
             {"label": "Consolidado de Asistencia", "icon": "event_note",
              "ruta": "/informes/consolidado-asistencia",
-             "rol":  ["admin", "director", "coordinador"]},
+             "rol":  ["director", "coordinador"]},
             {"label": "Estadísticos",              "icon": "analytics",
              "ruta": "/informes/estadisticos",
-             "rol":  ["admin", "director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"]},
         ],
     },
     {
@@ -168,7 +168,10 @@ NAV_ITEMS: list[dict] = [
              "rol":  ["admin", "director"]},
             {"label": "Información Institucional", "icon": "business",
              "ruta": "/admin/configuracion-institucion",
-             "rol":  ["admin", "director"]},
+             "rol":  ["director"]},
+            {"label": "Auditoría",                 "icon": "history",
+             "ruta": "/admin/auditoria",
+             "rol":  ["admin"]},
         ],
     },
 ]
@@ -264,6 +267,37 @@ def _user_block_topbar(ctx: "SessionContext | None") -> None:
         ).classes("topbar-logout-btn")
 
 
+def _salir_ver_como(ctx: "SessionContext") -> None:
+    """Handler del botón Salir del banner de impersonación."""
+    ctx.salir_ver_como()
+    ui.navigate.to("/inicio")
+
+
+def _impersonation_banner(ctx: "SessionContext | None") -> None:
+    """
+    Banner persistente mostrado mientras un admin impersona a otro usuario
+    en modo solo lectura (paso_21). Incluye botón "Salir".
+    """
+    if not ctx or not getattr(ctx, "impersonando", False):
+        return
+    with ui.element("div").classes("impersonation-banner"):
+        ThemeManager.icono(
+            "visibility", size=18, clases="impersonation-banner-icon"
+        )
+        with ui.row().classes("impersonation-banner-text items-center gap-2"):
+            ui.label("Estás viendo como")
+            ui.label(ctx.usuario_nombre or "usuario").classes(
+                "impersonation-banner-target"
+            )
+            ui.label("solo lectura").classes("impersonation-banner-tag")
+        btn_secondary(
+            "Salir",
+            on_click=lambda: _salir_ver_como(ctx),
+            icon="logout",
+            size="sm",
+        ).classes("impersonation-exit-btn")
+
+
 def _topbar(
     ctx: "SessionContext | None",
     *,
@@ -273,6 +307,7 @@ def _topbar(
     page_acciones: "list[dict] | None" = None,
     logo_url: str | None = None,
     on_context_change=None,
+    mostrar_contexto: bool = True,
 ) -> None:
     """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
     usuario_rol = ctx.usuario_rol if ctx else ""
@@ -298,7 +333,7 @@ def _topbar(
             ui.element("div").classes("flex-1")
 
         # ── Context chip (centro/derecha) ────────────────────────────────────
-        if ctx is not None:
+        if ctx is not None and mostrar_contexto:
             from src.interface.design.components.context_selector import context_chip
             context_chip(
                 ctx=ctx,
@@ -428,6 +463,7 @@ def app_layout(
     page_icono: str = "",
     page_acciones: "list[dict] | None" = None,
     on_context_change=None,
+    mostrar_contexto: bool = True,
 ) -> None:
     """
     Layout principal de la aplicación — Rail icon-only 60px (paso_12d).
@@ -443,6 +479,9 @@ def app_layout(
         page_icono:        Material Symbol para el topbar.
         page_acciones:     Lista de dicts de acciones para botones en el topbar.
         on_context_change: Callback al cambiar contexto desde el chip.
+        mostrar_contexto:  Si False, oculta el chip de contexto (selector
+                           año/periodo/grupo) en el topbar. Default True →
+                           ninguna otra página cambia.
     """
     _ctx = ctx_or_none
     _contenido = contenido_arg
@@ -598,6 +637,7 @@ def app_layout(
     main_el = ui.element("div").classes("andes-main")
 
     with main_el:
+        _impersonation_banner(_ctx)
         _topbar(
             _ctx,
             page_titulo=page_titulo,
@@ -606,6 +646,7 @@ def app_layout(
             page_acciones=page_acciones,
             logo_url=logo_url,
             on_context_change=on_context_change,
+            mostrar_contexto=mostrar_contexto,
         )
 
         # Contenido de la página

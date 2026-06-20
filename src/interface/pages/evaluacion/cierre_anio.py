@@ -25,7 +25,7 @@ from src.interface.design.components import confirm_dialog, toast_error, toast_s
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
 
-_ROLES_PERMITIDOS = ("admin", "director", "coordinador")
+_ROLES_PERMITIDOS = ("director", "coordinador")
 
 
 @ui.page("/evaluacion/cierre-anio")
@@ -148,7 +148,7 @@ def cierre_anio_page() -> None:
                     fecha_str = (
                         c.fecha_cierre.strftime("%d/%m/%Y") if c.fecha_cierre else "—"
                     )
-                    ui.label(fecha_str).classes("w-36 text-sm text-grey-7")
+                    ui.label(fecha_str).classes("w-36 text-sm text-muted")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -166,9 +166,9 @@ def cierre_anio_page() -> None:
                         ui.label("Año lectivo activo:").classes("text-sm font-semibold")
                         ui.badge(str(anio.anio)).classes("badge-primary")
                 else:
-                    with ui.element("div").classes("p-3 rounded border border-red-200 bg-red-50 mb-4"):
+                    with ui.element("div").classes("p-3 rounded border border-error bg-error-soft mb-4"):
                         ui.label("No hay año lectivo activo. Configure uno antes de continuar.").classes(
-                            "text-sm text-red-700"
+                            "text-sm text-error"
                         )
 
                 grupos_opts = {g.id: g.codigo for g in _s["grupos"]}
@@ -184,22 +184,22 @@ def cierre_anio_page() -> None:
             # Advertencia prominente
             with ui.element("div").classes("panel-card mt-4"):
                 with ui.element("div").classes(
-                    "p-4 rounded border border-red-300 bg-red-50"
+                    "p-4 rounded border border-error bg-error-soft"
                 ):
                     with ui.row().classes("items-center gap-2 mb-2"):
                         ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")
                         ui.label("Precauciones importantes").classes(
-                            "font-bold text-red-700"
+                            "font-bold text-error"
                         )
                     ui.label(
                         "1. Todos los periodos del grupo deben estar cerrados antes de ejecutar el cierre anual."
-                    ).classes("text-sm text-red-700 mb-1")
+                    ).classes("text-sm text-error mb-1")
                     ui.label(
                         "2. El sistema generará notas definitivas anuales calculando el promedio ponderado de todos los periodos."
-                    ).classes("text-sm text-red-700 mb-1")
+                    ).classes("text-sm text-error mb-1")
                     ui.label(
                         "3. Esta operación no se puede deshacer. Verifique que los datos del periodo están correctos."
-                    ).classes("text-sm text-red-700")
+                    ).classes("text-sm text-error")
 
             # Botón de cierre
             with ui.element("div").classes("panel-card mt-4"):

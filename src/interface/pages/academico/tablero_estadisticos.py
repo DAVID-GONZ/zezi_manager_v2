@@ -720,32 +720,14 @@ def _cargar_datos_globales(_s: dict) -> None:
                    "kpi_asistencia": 0.0, "kpi_riesgo": 0})
         return
     try:
-        svc    = Container.estadisticos_service()
-        grupos = Container.infraestructura_service().listar_grupos()
-        filas  = []
-        for g in grupos:
-            if not g.id:
-                continue
-            try:
-                m = svc.metricas_dashboard(g.id, periodo_id, anio_id)
-                if m.total_estudiantes == 0:
-                    continue
-                filas.append({
-                    "grupo_id":   g.id,
-                    "codigo":     g.codigo or str(g.id),
-                    "total":      m.total_estudiantes,
-                    "promedio":   m.promedio_general,
-                    "asistencia": m.porcentaje_asistencia,
-                    "en_riesgo":  m.estudiantes_en_riesgo,
-                })
-            except Exception:
-                pass
-        filas.sort(key=lambda x: x["codigo"])
-        _s["global_data"]    = filas
-        _s["kpi_grupos"]     = len(filas)
-        _s["kpi_promedio"]   = round(sum(f["promedio"] for f in filas) / len(filas), 1) if filas else 0.0
-        _s["kpi_asistencia"] = round(sum(f["asistencia"] for f in filas) / len(filas), 1) if filas else 0.0
-        _s["kpi_riesgo"]     = sum(f["en_riesgo"] for f in filas)
+        metricas = Container.estadisticos_service().metricas_institucionales(
+            periodo_id, anio_id
+        )
+        _s["global_data"]    = metricas.grupos
+        _s["kpi_grupos"]     = metricas.kpi_grupos
+        _s["kpi_promedio"]   = metricas.kpi_promedio
+        _s["kpi_asistencia"] = metricas.kpi_asistencia
+        _s["kpi_riesgo"]     = metricas.kpi_riesgo
     except Exception as exc:
         logger.error("Error cargando datos globales: %s", exc)
         _s.update({"global_data": [], "kpi_grupos": 0, "kpi_promedio": 0.0,
@@ -934,13 +916,13 @@ def tablero_estadisticos_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
 
-    es_directivo = ctx.usuario_rol in ("admin", "director", "coordinador")
+    es_directivo = ctx.usuario_rol in ("director", "coordinador")
 
     # ── Estado mutable ─────────────────────────────────────────────────────
     _s: dict = {
@@ -1033,7 +1015,7 @@ def tablero_estadisticos_page() -> None:
             if a.asignacion_id
         }
 
-        with ui.row().classes("gap-3 items-center flex-wrap q-mb-md"):
+        with ui.row().classes("gap-3 items-center flex-wrap u-mb-md"):
             ThemeManager.icono("filter_list", size=18, clases="text-secondary")
             ui.select(
                 label   = "Grupo",

@@ -124,3 +124,145 @@ class TestConsolidados:
         svc = EstadisticosService(FakeEstadRepo())
         datos = svc.consolidado_anual_grupo(grupo_id=10, anio_id=1)
         assert isinstance(datos, list)
+
+
+# ===========================================================================
+# Group 5 — métricas institucionales (agregador, sin N+1 en la vista)
+# ===========================================================================
+
+class _Grupo:
+    def __init__(self, gid, codigo):
+        self.id = gid
+        self.codigo = codigo
+
+
+class _FakeInfraRepo:
+    def __init__(self, grupos):
+        self._grupos = grupos
+    def listar_grupos(self, grado=None):
+        return self._grupos
+
+
+class TestMetricasInstitucionales:
+    def test_agrega_todos_los_grupos(self):
+        infra = _FakeInfraRepo([_Grupo(1, "601"), _Grupo(2, "602")])
+        svc = EstadisticosService(FakeEstadRepo(), infra_repo=infra)
+        r = svc.metricas_institucionales(periodo_id=5)
+        assert r.kpi_grupos == 2
+        assert r.kpi_promedio == 72.5
+        assert r.kpi_asistencia == 90.0
+        assert r.kpi_riesgo == 6  # 3 + 3
+        assert [f["codigo"] for f in r.grupos] == ["601", "602"]
+
+    def test_sin_periodo_devuelve_vacio(self):
+        infra = _FakeInfraRepo([_Grupo(1, "601")])
+        svc = EstadisticosService(FakeEstadRepo(), infra_repo=infra)
+        r = svc.metricas_institucionales(periodo_id=0)
+        assert r.kpi_grupos == 0 and r.grupos == []
+
+    def test_sin_infra_repo_devuelve_vacio(self):
+        svc = EstadisticosService(FakeEstadRepo())
+        r = svc.metricas_institucionales(periodo_id=5)
+        assert r.kpi_grupos == 0
+
+
+# ===========================================================================
+# Group 6 — pendientes del docente (agregador de solo lectura)
+# ===========================================================================
+
+class _AsigInfo:
+    def __init__(self, asignacion_id, grupo_id):
+        self.asignacion_id = asignacion_id
+        self.grupo_id = grupo_id
+
+
+class _FakeAsignacionRepo:
+    def __init__(self, asignaciones):
+        self._asigs = asignaciones
+    def listar_por_docente(self, usuario_id, periodo_id=None, solo_activas=True):
+        return self._asigs
+
+
+class _Act:
+    def __init__(self, aid, publicada=True):
+        self.id = aid
+        self.esta_publicada = publicada
+
+
+class _FakeEvalRepo:
+    """notas_por_act: {actividad_id: [notas]}"""
+    def __init__(self, actividades_por_asig, notas_por_act):
+        self._acts = actividades_por_asig
+        self._notas = notas_por_act
+    def listar_actividades(self, asignacion_id, periodo_id):
+        return self._acts.get(asignacion_id, [])
+    def listar_notas_por_actividad(self, actividad_id):
+        return self._notas.get(actividad_id, [])
+
+
+class _FakeAsistRepo:
+    """con_registro: set de (grupo_id, asignacion_id) que SÍ tienen asistencia hoy."""
+    def __init__(self, con_registro):
+        self._con = con_registro
+    def listar_por_grupo_y_fecha(self, grupo_id, asignacion_id, fecha):
+        return ["x"] if (grupo_id, asignacion_id) in self._con else []
+
+
+class _Est:
+    def __init__(self, eid):
+        self.id = eid
+
+
+class _FakeEstRepo:
+    def __init__(self, por_grupo):
+        self._por_grupo = por_grupo
+    def listar_por_grupo(self, grupo_id, solo_activos=True):
+        return self._por_grupo.get(grupo_id, [])
+
+
+class _FakeAlertaRepo:
+    def __init__(self, pendientes_por_est):
+        self._p = pendientes_por_est
+    def contar_pendientes(self, estudiante_id, nivel=None):
+        return self._p.get(estudiante_id, 0)
+
+
+class TestPendientesDocente:
+    def _svc(self):
+        asig = _FakeAsignacionRepo([_AsigInfo(11, 1), _AsigInfo(12, 2)])
+        # asig 11 -> act 100 (sin notas), act 101 (con notas)
+        # asig 12 -> act 102 (borrador, no cuenta)
+        eval_repo = _FakeEvalRepo(
+            {11: [_Act(100), _Act(101)], 12: [_Act(102, publicada=False)]},
+            {100: [], 101: ["n1"], 102: []},
+        )
+        # asistencia hoy registrada solo para (grupo 1, asig 11)
+        asist = _FakeAsistRepo({(1, 11)})
+        est = _FakeEstRepo({1: [_Est(1001), _Est(1002)], 2: [_Est(2001)]})
+        alertas = _FakeAlertaRepo({1001: 2, 1002: 0, 2001: 1})
+        return EstadisticosService(
+            FakeEstadRepo(),
+            evaluacion_repo=eval_repo,
+            asistencia_repo=asist,
+            estudiante_repo=est,
+            asignacion_repo=asig,
+            alerta_repo=alertas,
+        )
+
+    def test_agrega_pendientes(self):
+        d = self._svc().pendientes_docente(usuario_id=4, periodo_id=5, anio_id=1)
+        assert d.total_asignaciones == 2
+        assert d.actividades_sin_calificar == 1     # solo act 100
+        assert d.asignaciones_sin_asistencia == 1   # solo asig 12 sin registro hoy
+        assert d.alertas_estudiantes == 3           # 2 + 0 + 1
+        assert d.hay_pendientes is True
+
+    def test_sin_asignacion_repo_devuelve_vacio(self):
+        svc = EstadisticosService(FakeEstadRepo())
+        d = svc.pendientes_docente(usuario_id=4, periodo_id=5)
+        assert d.total_asignaciones == 0
+        assert d.hay_pendientes is False
+
+    def test_sin_usuario_devuelve_vacio(self):
+        d = self._svc().pendientes_docente(usuario_id=0, periodo_id=5)
+        assert d.total_asignaciones == 0

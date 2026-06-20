@@ -56,6 +56,8 @@ class TipoEventoSesion(str, Enum):
     DESACTIVAR_USUARIO = "DESACTIVAR_USUARIO"
     ACTIVAR_USUARIO    = "ACTIVAR_USUARIO"
     ACCESO_DENEGADO    = "ACCESO_DENEGADO"
+    VER_COMO_INICIO    = "VER_COMO_INICIO"
+    VER_COMO_FIN       = "VER_COMO_FIN"
 
 
 class AccionCambio(str, Enum):
@@ -347,6 +349,20 @@ class CrearRegistroCambioDTO(BaseModel):
         )
 
 
+class ResumenUsoDTO(BaseModel):
+    """
+    Agregación de solo lectura del uso de la plataforma (paso_21).
+
+    Calculada sobre los eventos de sesión recientes para el dashboard de admin.
+    """
+    logins_hoy:          int = 0
+    logins_periodo:      int = 0   # en la ventana de `dias`
+    accesos_denegados:   int = 0   # en la ventana de `dias`
+    usuarios_activos:    int = 0   # distintos que iniciaron sesión en la ventana
+    sesiones_periodo:    int = 0   # total de logins exitosos en la ventana
+    dias:                int = 7
+
+
 class FiltroAuditoriaDTO(BaseModel):
     """Parámetros para consultar registros de auditoría."""
     usuario_id:   int | None                = None
@@ -371,4 +387,5 @@ __all__ = [
     "CrearEventoSesionDTO",
     "CrearRegistroCambioDTO",
     "FiltroAuditoriaDTO",
+    "ResumenUsoDTO",
 ]

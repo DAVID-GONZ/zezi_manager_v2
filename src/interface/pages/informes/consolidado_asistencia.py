@@ -24,9 +24,10 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary
 from src.services.informe_service import InformeAsistenciaDTO
 from src.services.asignacion_service import FiltroAsignacionesDTO
-from src.interface.design.components import toast_error, toast_success, toast_warning
+from src.interface.design.components import date_input, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("CONSOLIDADO_ASISTENCIA")
 
@@ -82,7 +83,7 @@ def consolidado_asistencia_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador"}
+    _ROLES_VALIDOS = {"director", "coordinador"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -95,7 +96,7 @@ def consolidado_asistencia_page() -> None:
     @ui.refreshable
     def filtros_refreshable() -> None:
         with ui.element("div").classes("andes-card"):
-            ui.label("Filtros del informe").classes("text-subtitle1 text-weight-medium q-mb-md")
+            ui.label("Filtros del informe").classes("text-subtitle1 text-weight-medium u-mb-md")
 
             with ui.element("div").classes("form-grid-2"):
                 grupos_opts = {g.id: g.nombre or g.codigo for g in _s["grupos"]}
@@ -132,24 +133,26 @@ def consolidado_asistencia_page() -> None:
                     on_change=lambda e: _s.update({"formato": e.value}),
                 ).classes("w-full")
 
-                ui.input(
+                date_input(
                     label="Fecha desde",
                     value=_s["fecha_desde"].isoformat() if _s["fecha_desde"] else "",
-                    on_change=lambda e: on_fecha(e.value, "fecha_desde"),
-                ).classes("w-full").props("type=date")
+                    on_change=lambda v: on_fecha(v, "fecha_desde"),
+                    classes="w-full",
+                )
 
-                ui.input(
+                date_input(
                     label="Fecha hasta",
                     value=_s["fecha_hasta"].isoformat() if _s["fecha_hasta"] else "",
-                    on_change=lambda e: on_fecha(e.value, "fecha_hasta"),
-                ).classes("w-full").props("type=date")
+                    on_change=lambda v: on_fecha(v, "fecha_hasta"),
+                    classes="w-full",
+                )
 
-            with ui.row().classes("justify-end q-mt-md"):
-                ui.button(
+            with ui.row().classes("justify-end u-mt-md"):
+                btn_primary(
                     "Generar informe",
                     icon=Icons.EXPORT,
                     on_click=on_generar,
-                ).classes("btn-primary")
+                )
 
     def on_grupo_change(grupo_id) -> None:
         _s["grupo_id"] = grupo_id

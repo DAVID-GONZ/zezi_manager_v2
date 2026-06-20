@@ -15,6 +15,7 @@ from .sqlite_estudiante_repo import SqliteEstudianteRepository
 from .sqlite_evaluacion_repo import SqliteEvaluacionRepository
 from .sqlite_habilitacion_repo import SqliteHabilitacionRepository
 from .sqlite_infraestructura_repo import SqliteInfraestructuraRepository
+from .sqlite_institucion_repo import SqliteInstitucionRepository
 from .sqlite_periodo_repo import SqlitePeriodoRepository
 from .sqlite_usuario_repo import SqliteUsuarioRepository
 
@@ -32,6 +33,7 @@ __all__ = [
     "SqliteEvaluacionRepository",
     "SqliteHabilitacionRepository",
     "SqliteInfraestructuraRepository",
+    "SqliteInstitucionRepository",
     "SqlitePeriodoRepository",
     "SqliteUsuarioRepository",
 ]

@@ -16,11 +16,17 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_danger, btn_ghost, btn_icon
-from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
-from src.services.infraestructura_service import Grupo, Jornada
+from src.interface.design.components.buttons import btn_primary, btn_icon
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.services.infraestructura_service import Grupo
 
 logger = logging.getLogger("ADMIN.GRUPOS")
 
@@ -40,7 +46,7 @@ def grupos_page() -> None:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director"):
+    if ctx.usuario_rol not in ("director",):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -76,23 +82,18 @@ def grupos_page() -> None:
 
     # ── Acciones CRUD ─────────────────────────────────────────────────────────
     def _crear_grupo() -> None:
+        # Sanitización y validación (strip/upper, grado 1-13, capacidad>=1,
+        # jornada) las realiza la entidad Grupo en sus field_validator.
         try:
-            codigo    = _s["form_codigo"].strip().upper()
-            grado     = int(_s["form_grado"])
-            jornada   = Jornada(_s["form_jornada"])
-            capacidad = int(_s["form_capacidad"])
-            if not codigo:
-                toast_warning("El código no puede estar vacío")
-                return
             grupo = Grupo(
                 id=None,
-                codigo=codigo,
-                grado=grado,
-                jornada=jornada,
-                capacidad_maxima=capacidad,
+                codigo=_s["form_codigo"],
+                grado=_s["form_grado"],
+                jornada=_s["form_jornada"],
+                capacidad_maxima=_s["form_capacidad"],
             )
             Container.infraestructura_service().guardar_grupo(grupo)
-            toast_success(f"Grupo {codigo} creado")
+            toast_success(f"Grupo {grupo.codigo} creado")
             _s["form_codigo"] = ""
             _s["form_grado"]  = 1
             _s["form_jornada"] = "UNICA"
@@ -130,20 +131,20 @@ def grupos_page() -> None:
         jornada_val = grupo.jornada.value if hasattr(grupo.jornada, "value") else str(grupo.jornada)
 
         def _guardar(datos: dict) -> "bool | None":
+            # La entidad Grupo valida y normaliza; la vista solo mapea el
+            # formulario y conserva los valores actuales si vienen vacíos.
+            grado = datos.get("grado")
+            capacidad = datos.get("capacidad")
             try:
-                codigo = str(datos.get("codigo", "")).strip().upper()
-                if not codigo:
-                    toast_warning("El código no puede estar vacío")
-                    return False
                 grupo_act = Grupo(
                     id=grupo.id,
-                    codigo=codigo,
-                    grado=int(datos["grado"]) if datos.get("grado") is not None else grupo.grado,
-                    jornada=Jornada(datos["jornada"]),
-                    capacidad_maxima=int(datos["capacidad"]) if datos.get("capacidad") is not None else grupo.capacidad_maxima,
+                    codigo=datos.get("codigo", ""),
+                    grado=grado if grado is not None else grupo.grado,
+                    jornada=datos.get("jornada", grupo.jornada),
+                    capacidad_maxima=capacidad if capacidad is not None else grupo.capacidad_maxima,
                 )
                 Container.infraestructura_service().actualizar_grupo(grupo_act)
-                toast_success(f"Grupo {codigo} actualizado")
+                toast_success(f"Grupo {grupo_act.codigo} actualizado")
                 _cargar_estado()
                 tabla.refresh()
             except ValueError as exc:
@@ -178,16 +179,11 @@ def grupos_page() -> None:
     def tabla() -> None:
         grupos = _s["grupos"]
         if not grupos:
-            ui.label("No hay grupos registrados.").classes("text-empty mt-4")
+            empty_state(
+                titulo="No hay grupos registrados",
+                descripcion="Crea el primer grupo con el formulario de arriba.",
+            )
             return
-
-        columnas = [
-            {"headerName": "Código",    "field": "codigo",         "sortable": True},
-            {"headerName": "Grado",     "field": "grado",          "sortable": True},
-            {"headerName": "Jornada",   "field": "jornada_label",  "sortable": True},
-            {"headerName": "Capacidad", "field": "capacidad",      "sortable": True},
-            {"headerName": "Acciones",  "field": "acciones",       "sortable": False},
-        ]
 
         filas = []
         for g in grupos:

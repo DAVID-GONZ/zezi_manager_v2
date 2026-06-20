@@ -167,6 +167,16 @@ def registrar_rutas_ui() -> None:
             return
         usuarios_page()
 
+    # ── Admin: Auditoría (solo lectura, admin) ──────────────────────────────
+    from src.interface.pages.admin.auditoria import auditoria_page
+
+    @ui.page("/admin/auditoria")
+    def pagina_admin_auditoria():
+        if not app.storage.user.get("autenticado"):
+            ui.navigate.to("/login")
+            return
+        auditoria_page()
+
     # ── Admin: Asignaciones ──────────────────────────────────────────────────
     from src.interface.pages.admin.asignaciones import asignaciones_page
 

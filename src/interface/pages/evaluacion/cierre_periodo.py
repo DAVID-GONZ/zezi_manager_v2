@@ -28,7 +28,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_danger, btn_ghost, btn_secondary, btn_icon,
+    btn_danger, btn_ghost, btn_secondary, btn_icon,
 )
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
@@ -36,7 +36,7 @@ from src.interface.design.components import confirm_dialog, form_dialog, toast_e
 
 logger = logging.getLogger("EVALUACION.CIERRE_PERIODO")
 
-_ROLES_PERMITIDOS = ("admin", "director", "coordinador")
+_ROLES_PERMITIDOS = ("director", "coordinador")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -298,7 +298,7 @@ def cierre_periodo_page() -> None:
             ui.label(
                 f"{len(asigs)} asignaturas · {cerradas} cerradas · "
                 f"{len(asigs) - cerradas} abiertas"
-            ).classes("text-sm text-grey-7")
+            ).classes("text-sm text-muted")
             btn_danger(
                 "Cerrar en bloque",
                 icon="lock_clock",
@@ -311,7 +311,7 @@ def cierre_periodo_page() -> None:
             cerrado = bool(cierres)
 
             with ui.element("div").classes(
-                "panel-card mb-3" + (" border-l-4 border-green-500" if cerrado else " border-l-4 border-grey-300")
+                "panel-card mb-3" + (" accent-left-success" if cerrado else " accent-left-neutral")
             ):
                 with ui.row().classes("items-start justify-between flex-wrap gap-2"):
 
@@ -320,13 +320,13 @@ def cierre_periodo_page() -> None:
                         with ui.row().classes("items-center gap-2 mb-1"):
                             if cerrado:
                                 ThemeManager.icono("lock", size=18, color="var(--color-success)")
-                                ui.label("CERRADA").classes("text-xs font-bold text-green-700")
+                                ui.label("CERRADA").classes("text-xs font-bold text-success")
                             else:
                                 ThemeManager.icono("lock_open", size=18, color="var(--color-text-secondary)")
-                                ui.label("ABIERTA").classes("text-xs font-bold text-grey-6")
+                                ui.label("ABIERTA").classes("text-xs font-bold text-muted")
 
                         ui.label(asig.asignatura_nombre).classes("text-base font-semibold")
-                        ui.label(f"Docente: {asig.docente_nombre}").classes("text-sm text-grey-7")
+                        ui.label(f"Docente: {asig.docente_nombre}").classes("text-sm text-muted")
 
                         if cerrado:
                             promedios = [c.nota_definitiva for c in cierres]
@@ -339,16 +339,16 @@ def cierre_periodo_page() -> None:
 
                             with ui.row().classes("gap-4 mt-2 flex-wrap"):
                                 with ui.element("div").classes("flex-col"):
-                                    ui.label("Promedio del grupo").classes("text-xs text-grey-6")
+                                    ui.label("Promedio del grupo").classes("text-xs text-muted")
                                     ui.label(f"{prom:.1f}").classes("text-xl font-bold")
                                 with ui.element("div").classes("flex-col"):
-                                    ui.label("Estudiantes").classes("text-xs text-grey-6")
+                                    ui.label("Estudiantes").classes("text-xs text-muted")
                                     ui.label(str(len(cierres))).classes("text-xl font-bold")
                                 with ui.element("div").classes("flex-col"):
-                                    ui.label("Fecha cierre").classes("text-xs text-grey-6")
+                                    ui.label("Fecha cierre").classes("text-xs text-muted")
                                     ui.label(fecha_str).classes("text-sm")
                                 with ui.element("div").classes("flex-col"):
-                                    ui.label("Cerrado por").classes("text-xs text-grey-6")
+                                    ui.label("Cerrado por").classes("text-xs text-muted")
                                     ui.label(usr_str).classes("text-sm")
 
                     # Columna derecha: acciones

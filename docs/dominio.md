@@ -1,5 +1,7 @@
 # Puertos del Dominio (Repositorios e Interfaces)
 
+> **Actualizado:** Junio 2026. Total: 19 puertos de repositorio + 3 interfaces de servicio externo.
+
 ## Modulo: `acudiente_repo.py`
 
 ### IAcudienteRepository
@@ -258,38 +260,58 @@
 ### IInfraestructuraRepository
 **Herencia**: ABC
 
-**Métodos definidos:**
-- `get_area()`
-- `listar_areas()`
-- `guardar_area()`
-- `actualizar_area()`
-- `eliminar_area()`
-- `get_asignatura()`
-- `listar_asignaturas()`
-- `guardar_asignatura()`
-- `actualizar_asignatura()`
-- `eliminar_asignatura()`
-- `get_grupo()`
-- `get_grupo_por_codigo()`
-- `listar_grupos()`
-- `guardar_grupo()`
-- `actualizar_grupo()`
-- `eliminar_grupo()`
-- `get_horario()`
-- `get_info_horario()`
-- `listar_horario_grupo()`
-- `listar_horario_docente()`
-- `existe_conflicto_horario()`
-- `get_estadisticas()`
-- `guardar_horario()`
-- `actualizar_horario()`
-- `eliminar_horario()`
-- `eliminar_horarios_por_asignacion()`
-- `get_logro()`
-- `listar_logros()`
-- `guardar_logro()`
-- `actualizar_logro()`
-- `eliminar_logro()`
+El puerto más extenso del sistema. Cubre toda la infraestructura académica y el subsistema completo de generación de horarios.
+
+**Escenarios de horario:**
+- `get_escenario()`, `listar_escenarios()`, `get_escenario_activo()`
+- `crear_escenario()`, `actualizar_escenario()`, `activar_escenario()`, `eliminar_escenario()`
+- `duplicar_escenario()`
+- `listar_horario_grupo_escenario()`, `listar_horario_escenario()`
+
+**Plantillas de franja y franjas:**
+- `crear_plantilla_franja()`, `get_plantilla_franja()`, `listar_plantillas_franja()`, `get_plantilla_activa()`
+- `actualizar_plantilla_franja()`, `activar_plantilla_franja()`, `eliminar_plantilla_franja()`
+- `crear_franja()`, `listar_franjas()`, `actualizar_franja()`, `eliminar_franja()`, `reemplazar_franjas()`
+
+**Áreas de conocimiento:**
+- `get_area()`, `listar_areas()`, `guardar_area()`, `actualizar_area()`, `eliminar_area()`, `actualizar_color_area()`
+
+**Asignaturas:**
+- `get_asignatura()`, `listar_asignaturas()`, `guardar_asignatura()`, `actualizar_asignatura()`, `eliminar_asignatura()`
+
+**Grupos:**
+- `get_grupo()`, `get_grupo_por_codigo()`, `listar_grupos()`
+- `guardar_grupo()`, `actualizar_grupo()`, `eliminar_grupo()`, `asignar_sala_a_grupo()`
+
+**Horarios:**
+- `get_horario()`, `get_info_horario()`, `listar_horario_grupo()`, `listar_horario_docente()`
+- `existe_conflicto_horario()`, `existe_cruce()`, `get_estadisticas()`
+- `guardar_horario()`, `actualizar_horario()`, `eliminar_horario()`, `eliminar_horarios_por_asignacion()`
+- `contar_bloques_asignacion()`, `contar_bloques_docente()`, `crear_bloques_masivo()`
+
+**Logros:**
+- `get_logro()`, `listar_logros()`, `guardar_logro()`, `actualizar_logro()`, `eliminar_logro()`
+
+**Disponibilidad docente:**
+- `upsert_disponibilidad()`, `listar_disponibilidad_docente()`, `es_disponible()`
+- `limpiar_disponibilidad_docente()`, `cargar_disponibilidad_lote()`, `reemplazar_disponibilidad_docente()`
+
+**Configuración de generación:**
+- `crear_config_generacion()`, `get_config_generacion()`, `listar_configs_generacion()`
+- `actualizar_config_generacion()`, `eliminar_config_generacion()`, `cambiar_estado_config()`, `duplicar_config_generacion()`
+
+**Salas:**
+- `listar_salas()`, `get_sala()`, `crear_sala()`, `actualizar_sala()`, `eliminar_sala()`
+
+**Restricciones de generación:**
+- `listar_ventanas_grupo()`, `get_ventanas_por_grupo()`, `get_ventanas_por_grado()`, `crear_ventana_grupo()`, `eliminar_ventana_grupo()`
+- `listar_bloques_anclados()`, `crear_bloque_anclado()`, `eliminar_bloque_anclado()`
+- `listar_franjas_reunion()`, `get_franja_reunion()`, `crear_franja_reunion()`, `actualizar_franja_reunion()`, `eliminar_franja_reunion()`
+- `get_limites_docente()`, `set_limites_docente()`, `listar_limites_docente()`
+
+**Grados y plan de estudios:**
+- `listar_grados()`, `upsert_grado()`, `eliminar_grado()`
+- `listar_plan_estudios()`, `get_plan_estudios_por_grado()`, `set_horas_plan()`, `eliminar_plan_estudios()`
 
 ## Modulo: `periodo_repo.py`
 
@@ -385,4 +407,83 @@ La implementación concreta gestiona las dependencias de librerías
 - `cambiar_rol()`
 - `desactivar()`
 - `reactivar()`
+
+---
+
+## Modulo: `nivelacion_repo.py` *(Nuevo — Junio 2026)*
+
+### INivelacionRepository
+**Herencia**: ABC
+
+Contrato de acceso a datos para el módulo de nivelación post-cierre (Decreto 1290).
+
+**Actividades de nivelación:**
+- `guardar_actividad()`
+- `listar_actividades()`
+- `get_actividad()`
+- `suma_pesos_actividades()`
+
+**Notas de nivelación:**
+- `guardar_nota()`
+- `actualizar_nota()`
+- `listar_notas_por_actividad()`
+- `listar_notas_por_asignacion()`
+- `get_nota()`
+
+**Cierre de nivelación:**
+- `guardar_cierre()`
+- `get_cierre()`
+
+---
+
+## Modulo: `plan_mejoramiento_repo.py` *(Nuevo — Junio 2026)*
+
+### IPlanMejoramientoRepository
+**Herencia**: ABC
+
+Contrato de acceso a datos para el plan de mejoramiento cuantitativo con cortes y notas por actividad.
+
+**Corte de plan:**
+- `guardar_corte()`
+- `get_corte()`
+- `get_corte_by_id()`
+
+**Notas de corte:**
+- `guardar_nota_corte()`
+- `get_nota_corte()`
+- `listar_notas_corte()`
+- `actualizar_nota_corte()`
+
+**Actividades del plan:**
+- `guardar_actividad()`
+- `get_actividad()`
+- `listar_actividades()`
+- `suma_pesos_actividades()`
+
+**Notas de actividades:**
+- `guardar_nota_actividad()`
+- `get_nota_actividad()`
+- `listar_notas_actividad()`
+- `listar_notas_por_corte_estudiante()`
+
+---
+
+## Modulo: `siee_repo.py` *(Nuevo — Junio 2026)*
+
+### ISIEERepository
+**Herencia**: ABC
+
+Contrato para la configuración del Sistema Institucional de Evaluación y categorías institucionales.
+
+**Configuración SIEE:**
+- `get_configuracion()`
+- `guardar_configuracion()`
+
+**Categorías institucionales:**
+- `listar_categorias_institucionales()`
+- `get_categoria_institucional()`
+- `guardar_categoria_institucional()`
+- `actualizar_categoria_institucional()`
+- `eliminar_categoria_institucional()`
+- `suma_pesos_institucionales()`
 

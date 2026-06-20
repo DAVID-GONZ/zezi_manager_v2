@@ -6,6 +6,10 @@ Orquesta los casos de uso del módulo de Evaluación
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
+from dataclasses import dataclass, field
+
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
@@ -32,6 +36,15 @@ from src.domain.models.evaluacion import (
 )
 from src.domain.models.dtos import ContextoAcademicoDTO
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
+
+
+@dataclass
+class PlanillaCompletaDTO:
+    """Agregado de la planilla de notas para la vista (una sola llamada)."""
+    actividades: list = field(default_factory=list)
+    categorias: list = field(default_factory=list)
+    planilla: list = field(default_factory=list)            # ResultadoEstudianteDTO
+    puntos_extra: dict = field(default_factory=dict)         # {estudiante_id: PuntosExtra}
 
 
 class EvaluacionService:
@@ -146,6 +159,7 @@ class EvaluacionService:
         # LIBRE o MIXTO_SUBCATEGORIAS
         return round(max(0.0, 1.0 - suma_docente), 4)
 
+    @requiere_escritura
     def agregar_categoria(
         self,
         dto: NuevaCategoriaDTO,
@@ -204,6 +218,7 @@ class EvaluacionService:
         )
         return categoria
 
+    @requiere_escritura
     def actualizar_categoria(
         self,
         cat_id: int,
@@ -234,6 +249,7 @@ class EvaluacionService:
         )
         return categoria_actualizada
 
+    @requiere_escritura
     def eliminar_categoria(
         self,
         cat_id: int,
@@ -264,6 +280,7 @@ class EvaluacionService:
     # Actividades
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def agregar_actividad(
         self,
         dto: NuevaActividadDTO,
@@ -295,6 +312,7 @@ class EvaluacionService:
         )
         return actividad_publicada
 
+    @requiere_escritura
     def cerrar_actividad(
         self,
         act_id: int,
@@ -312,6 +330,7 @@ class EvaluacionService:
         )
         return actividad_cerrada
 
+    @requiere_escritura
     def reabrir_actividad(
         self,
         act_id: int,
@@ -329,6 +348,7 @@ class EvaluacionService:
         )
         return actividad_reabierta
 
+    @requiere_escritura
     def eliminar_actividad(
         self,
         act_id: int,
@@ -364,6 +384,7 @@ class EvaluacionService:
     # Notas
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar_nota(
         self,
         dto: RegistrarNotaDTO,
@@ -388,6 +409,7 @@ class EvaluacionService:
         nota = self._repo.guardar_nota(nota)
         return nota
 
+    @requiere_escritura
     def registrar_notas_masivas(
         self,
         dto: RegistrarNotasMasivasDTO,
@@ -445,6 +467,37 @@ class EvaluacionService:
         """Retorna todos los registros de puntos extra de la asignación en el periodo."""
         return self._repo.listar_puntos_extra(asignacion_id, periodo_id)
 
+    def planilla_completa(
+        self,
+        grupo_id: int,
+        asignacion_id: int,
+        periodo_id: int,
+    ) -> PlanillaCompletaDTO:
+        """Agrega actividades, categorías, planilla (con definitivas) y puntos
+        extra de una asignación+periodo en una sola llamada para la vista."""
+        categorias = self._repo.listar_categorias(asignacion_id, periodo_id)
+        actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
+
+        resultados = self._repo.listar_resultados_grupo(
+            grupo_id, asignacion_id, periodo_id
+        )
+        for resultado in resultados:
+            resultado.definitiva = CalculadorNotas.calcular_definitiva(
+                resultado.notas, actividades, categorias
+            )
+            resultado.promedio_ajustado = CalculadorNotas.calcular_promedio_ajustado(
+                resultado.notas, actividades, categorias
+            )
+
+        puntos = self._repo.listar_puntos_extra(asignacion_id, periodo_id)
+        return PlanillaCompletaDTO(
+            actividades=actividades,
+            categorias=categorias,
+            planilla=resultados,
+            puntos_extra={r.estudiante_id: r for r in puntos},
+        )
+
+    @requiere_escritura
     def guardar_puntos_extra(
         self,
         puntos: PuntosExtra,
@@ -464,6 +517,7 @@ class EvaluacionService:
         """
         return self._get_siee_o_libre(anio_id)
 
+    @requiere_escritura
     def guardar_configuracion_siee(
         self,
         dto: NuevaConfiguracionSIEEDTO,
@@ -500,6 +554,7 @@ class EvaluacionService:
             return []
         return self._siee_repo.listar_categorias_institucionales(anio_id)
 
+    @requiere_escritura
     def agregar_categoria_institucional(
         self,
         dto: NuevaCategoriaInstitucionalDTO,
@@ -530,6 +585,7 @@ class EvaluacionService:
         )
         return categoria
 
+    @requiere_escritura
     def actualizar_categoria_institucional(
         self,
         cat_id: int,
@@ -568,6 +624,7 @@ class EvaluacionService:
         )
         return cat_actualizada
 
+    @requiere_escritura
     def eliminar_categoria_institucional(
         self,
         cat_id: int,
@@ -605,4 +662,5 @@ __all__ = [
     "ModoSIEE",
     "PuntosExtra",
     "TipoPuntosExtra",
+    "PlanillaCompletaDTO",
 ]

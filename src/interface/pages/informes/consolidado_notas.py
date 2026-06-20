@@ -29,8 +29,10 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
+from src.interface.design.components.buttons import btn_primary
 from src.services.informe_service import InformeNotasDTO
-from src.interface.design.components import toast_error, toast_success, toast_warning
+from src.services.asignacion_service import FiltroAsignacionesDTO
+from src.interface.design.components import date_input, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("CONSOLIDADO_NOTAS")
 
@@ -62,11 +64,8 @@ def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
     # Si hay grupo seleccionado, cargar asignaciones y periodos
     if _s["grupo_id"]:
         try:
-            todas = Container.asignacion_service().listar_con_info()
-            _s["asignaciones"] = [
-                a for a in todas
-                if getattr(a, "grupo_id", None) == _s["grupo_id"]
-            ]
+            filtro = FiltroAsignacionesDTO(grupo_id=_s["grupo_id"])
+            _s["asignaciones"] = Container.asignacion_service().listar_con_info(filtro)
         except Exception as exc:
             logger.error("Error cargando asignaciones: %s", exc)
             _s["asignaciones"] = []
@@ -93,7 +92,7 @@ def consolidado_notas_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador"}
+    _ROLES_VALIDOS = {"director", "coordinador"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -122,7 +121,7 @@ def consolidado_notas_page() -> None:
 
                 # Asignación
                 asig_opts = {
-                    a.id: getattr(a, "asignatura_nombre", str(a.id))
+                    a.asignacion_id: a.asignatura_nombre
                     for a in _s["asignaciones"]
                 }
                 ui.select(
@@ -153,25 +152,27 @@ def consolidado_notas_page() -> None:
                 ).classes("w-full")
 
                 # Fecha desde
-                ui.input(
+                date_input(
                     label="Fecha desde",
                     value=_s["fecha_desde"].isoformat() if _s["fecha_desde"] else "",
-                    on_change=lambda e: on_fecha_desde(e.value),
-                ).classes("w-full").props("type=date")
+                    on_change=lambda v: on_fecha_desde(v or ""),
+                    classes="w-full",
+                )
 
                 # Fecha hasta
-                ui.input(
+                date_input(
                     label="Fecha hasta",
                     value=_s["fecha_hasta"].isoformat() if _s["fecha_hasta"] else "",
-                    on_change=lambda e: on_fecha_hasta(e.value),
-                ).classes("w-full").props("type=date")
+                    on_change=lambda v: on_fecha_hasta(v or ""),
+                    classes="w-full",
+                )
 
             with ui.row().classes("justify-end mt-4"):
-                ui.button(
+                btn_primary(
                     "Generar informe",
                     on_click=on_generar,
                     icon=Icons.EXPORT,
-                ).classes("btn-primary")
+                )
 
     def on_grupo_change(grupo_id) -> None:
         _s["grupo_id"] = grupo_id

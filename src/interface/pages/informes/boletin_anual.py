@@ -21,10 +21,8 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_icon
-from src.services.informe_service import merge_pdfs, merge_excels
-from src.interface.design.components import skeleton_cards, toast_error, toast_warning
+from src.interface.design.components import empty_state, skeleton_cards, toast_error, toast_warning
 
 logger = logging.getLogger("BOLETIN_ANUAL")
 
@@ -122,62 +120,37 @@ def _descargar_excel_individual(estudiante_id: int, nombre: str, _s: dict) -> No
         toast_error(f"Error al exportar Excel de {nombre}.")
 
 
-def _generar_todos_pdf(_s: dict) -> None:
+def _generar_todos(_s: dict, formato: str, ext: str) -> None:
     if not _s["anio_id"]:
         toast_warning("Ingresa un año lectivo.")
         return
-    pdfs: list[bytes] = []
-    errores: list[str] = []
-    for est in _s["estudiantes"]:
-        nombre = f"{est.nombre} {est.apellido}"
-        try:
-            pdfs.append(_boletin_pdf(est.id, _s))
-        except Exception as exc:
-            logger.error("Error PDF %s: %s", nombre, exc)
-            errores.append(nombre)
-    if not pdfs:
+    try:
+        resultado = Container.informe_service().generar_boletines_grupo(
+            grupo_id=_s["grupo_id"],
+            anio_id=_s["anio_id"],
+            formato=formato,
+            grupo_nombre=_grupo_nombre(_s),
+        )
+    except Exception as exc:
+        logger.error("Error generando boletines anuales (%s): %s", formato, exc, exc_info=True)
+        toast_error(f"Error al generar boletines: {exc}")
+        return
+    if not resultado.contenido:
         toast_error("No se pudo generar ningún boletín.")
         return
-    try:
-        merged   = merge_pdfs(pdfs)
-        grupo    = _grupo_nombre(_s)
-        filename = f"boletines_anual_{grupo}_{_s['anio_id']}.pdf".replace(" ", "_")
-        ui.download(src=merged, filename=filename)
-        if errores:
-            toast_warning(f"Fusionado con errores en: {', '.join(errores)}")
-    except Exception as exc:
-        logger.error("Error fusionando PDFs: %s", exc, exc_info=True)
-        toast_error(f"Error al fusionar PDFs: {exc}")
+    grupo = _grupo_nombre(_s)
+    filename = f"boletines_anual_{grupo}_{_s['anio_id']}.{ext}".replace(" ", "_")
+    ui.download(src=resultado.contenido, filename=filename)
+    if resultado.errores:
+        toast_warning(f"Generado con errores en: {', '.join(resultado.errores)}")
+
+
+def _generar_todos_pdf(_s: dict) -> None:
+    _generar_todos(_s, "pdf", "pdf")
 
 
 def _generar_todos_excel(_s: dict) -> None:
-    if not _s["anio_id"]:
-        toast_warning("Ingresa un año lectivo.")
-        return
-    hojas: list[tuple[str, bytes]] = []
-    errores: list[str] = []
-    for est in _s["estudiantes"]:
-        nombre = f"{est.nombre} {est.apellido}"
-        try:
-            excel_bytes = _boletin_excel(est.id, _s)
-            hoja = f"{est.apellido} {est.nombre}"[:31]
-            hojas.append((hoja, excel_bytes))
-        except Exception as exc:
-            logger.error("Error Excel %s: %s", nombre, exc)
-            errores.append(nombre)
-    if not hojas:
-        toast_error("No se pudo generar ningún boletín.")
-        return
-    try:
-        merged   = merge_excels(hojas)
-        grupo    = _grupo_nombre(_s)
-        filename = f"boletines_anual_{grupo}_{_s['anio_id']}.xlsx".replace(" ", "_")
-        ui.download(src=merged, filename=filename)
-        if errores:
-            toast_warning(f"Generado con errores en: {', '.join(errores)}")
-    except Exception as exc:
-        logger.error("Error fusionando Excels: %s", exc, exc_info=True)
-        toast_error(f"Error al fusionar Excel: {exc}")
+    _generar_todos(_s, "excel", "xlsx")
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -189,7 +162,7 @@ def boletin_anual_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -204,8 +177,8 @@ def boletin_anual_page() -> None:
 
     @ui.refreshable
     def filtros_refreshable() -> None:
-        with ui.element("div").classes("andes-card q-mb-md"):
-            ui.label("Seleccionar grupo y año").classes("text-subtitle1 text-weight-medium q-mb-md")
+        with ui.element("div").classes("andes-card u-mb-md"):
+            ui.label("Seleccionar grupo y año").classes("text-subtitle1 text-weight-medium u-mb-md")
             with ui.element("div").classes("form-grid-2"):
                 grupos_opts = {str(g.id): g.nombre or g.codigo for g in _s["grupos"]}
                 ui.select(
@@ -227,22 +200,26 @@ def boletin_anual_page() -> None:
     @ui.refreshable
     def lista_refreshable() -> None:
         if _s.get("generando"):
-            with ui.element("div").classes("andes-card q-pa-md"):
+            with ui.element("div").classes("andes-card u-pa-md"):
                 skeleton_cards(count=4)
             return
 
         if not _s["grupo_id"] or not _s["anio_id"]:
-            with ui.element("div").classes("andes-card text-center q-pa-xl"):
-                ui.label("Selecciona un grupo y año para ver los estudiantes.").classes("text-caption")
+            empty_state(
+                titulo="Selecciona grupo y año",
+                descripcion="Elige un grupo y un año lectivo para ver los estudiantes.",
+            )
             return
 
         if not _s["estudiantes"]:
-            with ui.element("div").classes("andes-card text-center q-pa-xl"):
-                ui.label("No hay estudiantes activos en este grupo.").classes("text-caption")
+            empty_state(
+                titulo="Sin estudiantes",
+                descripcion="No hay estudiantes activos en este grupo.",
+            )
             return
 
         with ui.element("div").classes("andes-card"):
-            with ui.row().classes("items-center justify-between q-mb-md"):
+            with ui.row().classes("items-center justify-between u-mb-md"):
                 ui.label(f"Estudiantes ({len(_s['estudiantes'])})").classes("text-subtitle1 text-weight-medium")
                 with ui.row().classes("gap-2"):
                     async def _generar_pdf_masivo():
@@ -276,7 +253,7 @@ def boletin_anual_page() -> None:
 
             for est in _s["estudiantes"]:
                 nombre = f"{est.nombre} {est.apellido}"
-                with ui.row().classes("items-center justify-between q-py-xs andes-table-row"):
+                with ui.row().classes("items-center justify-between u-py-xs andes-table-row"):
                     ui.label(nombre).classes("text-body2")
                     with ui.row().classes("gap-1"):
                         btn_icon(

@@ -1,5 +1,7 @@
 # Esquema del Dominio (Modelos)
 
+> **Actualizado:** Junio 2026. Se agregan módulos `nivelacion.py` y `plan_mejoramiento.py`. El módulo `infraestructura.py` fue extendido con entidades del subsistema de horarios.
+
 ## Modulo: `acudiente.py`
 
 ### TipoDocumentoAcudiente
@@ -1981,6 +1983,8 @@ Parámetros para listar habilitaciones.
 
 ## Modulo: `infraestructura.py`
 
+> **Nota:** Este módulo fue extendido significativamente en Junio 2026. Incluye ahora el subsistema completo de generación de horarios. Las clases documentadas abajo corresponden al estado actual; las clases nuevas (`Grado`, `EscenarioHorario`, `Franja`, `PlantillaFranja`, `DisponibilidadDocente`, `ConfigGeneracion`, `PlanEstudios`, `VentanaGrupo`, `BloqueAnclado`, `FranjaReunion`, `LimitesDocente`, `Sala`, `BloqueGeneradoDTO`, `MetricasCalidadDTO`, `ResultadoGeneracionDTO`) están presentes en el código pero aún pendientes de documentación detallada en este archivo.
+
 ### Jornada
 **Herencia**: str, Enum
 
@@ -2632,3 +2636,233 @@ Parámetros para listar usuarios.
 
 **Field Validators:**
 - `limpiar_busqueda()`
+
+---
+
+## Modulo: `nivelacion.py` *(Nuevo — Junio 2026)*
+
+### ActividadNivelacion
+**Herencia**: BaseModel
+
+Columna de la planilla de nivelación. Compartida por todos los estudiantes con bajo desempeño de la misma asignacion+periodo.
+
+`peso`: fracción del total `(0, 1.0]`. La suma de pesos de todas las actividades debe ser 1.0 para poder cerrar (validado por el servicio).
+
+**Atributos:**
+- `id`: int | None
+- `asignacion_id`: int
+- `periodo_id`: int
+- `nombre`: str
+- `descripcion`: str | None
+- `peso`: float
+- `fecha`: date | None
+- `usuario_id`: int | None
+
+**Field Validators:**
+- `validar_id_positivo()`
+- `validar_peso()` — rango `(0, 1.0]`, redondeo a 4 decimales
+- `validar_nombre()` — no vacío, máx. 120 chars
+- `limpiar_descripcion()`
+
+### NotaNivelacion
+**Herencia**: BaseModel
+
+Celda de la planilla de nivelación. Una por `(estudiante × actividad_nivelacion)`.
+
+`valor=None` → pendiente de calificación.
+
+**Atributos:**
+- `id`: int | None
+- `actividad_nivelacion_id`: int
+- `estudiante_id`: int
+- `asignacion_id`: int (desnormalizado para queries)
+- `periodo_id`: int (desnormalizado para queries)
+- `valor`: float | None
+- `usuario_id`: int | None
+
+**Field Validators:**
+- `validar_id_positivo()`
+- `validar_valor()` — rango `[0, 100]`, redondeo a 2 decimales
+
+**Propiedades:**
+- `calificada`
+
+### CierreNivelacion
+**Herencia**: BaseModel
+
+Registro de cierre de nivelación para una asignacion+periodo. Su existencia implica que la nivelación está cerrada (read-only).
+
+**Atributos:**
+- `id`: int | None
+- `asignacion_id`: int
+- `periodo_id`: int
+- `fecha_cierre`: date (default_factory=date.today)
+- `usuario_cierre_id`: int | None
+
+### CalculadorNivelacion
+
+Utilidad estática. No tiene estado; recibe datos y retorna resultados.
+
+**Métodos de Dominio:**
+- `nota_definitiva()` — promedio ponderado; retorna None si alguna nota está sin calificar
+- `suma_pesos()`
+- `pesos_completos()` — True si la suma de pesos es 1.0 (tolerancia 0.005)
+
+### NuevaActividadNivelacionDTO
+**Herencia**: BaseModel
+
+Datos para crear una actividad de nivelación.
+
+**Atributos:**
+- `asignacion_id`: int
+- `periodo_id`: int
+- `nombre`: str
+- `descripcion`: str | None
+- `peso`: float
+- `fecha`: date | None
+
+**Métodos de Dominio:**
+- `to_actividad()`
+
+### CalificarNotaNivelacionDTO
+**Herencia**: BaseModel
+
+Datos para calificar (upsert) una nota de nivelación.
+
+**Atributos:**
+- `valor`: float
+- `usuario_id`: int | None
+
+---
+
+## Modulo: `plan_mejoramiento.py` *(Nuevo — Junio 2026)*
+
+### EstadoNotaCorte
+**Herencia**: str, Enum
+
+Valores: `SIN_PLAN`, `EN_PLAN`, `APROBADO`, `REPROBADO`.
+
+### CortePlan
+**Herencia**: BaseModel
+
+Registro de un corte de plan de mejoramiento para una asignación en un periodo. El corte agrupa a todos los estudiantes en-plan y sirve de contenedor para las actividades del plan.
+
+**Atributos:**
+- `id`: int | None
+- `asignacion_id`: int
+- `periodo_id`: int
+- `fecha_ejecucion`: date
+- `peso_registrado`: float — suma de pesos de categorías con notas al momento del corte
+- `nota_umbral`: float — `peso_registrado × nota_minima_aprobacion`
+- `nota_minima_aprobacion`: float
+- `usuario_id`: int | None
+
+### NotaCortePlan
+**Herencia**: BaseModel
+
+Nota de corte por estudiante. Todos los estudiantes de la asignación tienen una.
+
+**Atributos:**
+- `id`: int | None
+- `corte_id`: int
+- `estudiante_id`: int
+- `asignacion_id`: int (desnorm)
+- `periodo_id`: int (desnorm)
+- `nota_al_corte`: float — contribución parcial al corte (escala 0-100 proporcional)
+- `nota_definitiva_plan`: float | None — congelado al cerrar el plan
+- `estado`: EstadoNotaCorte
+- `usuario_cierre_id`: int | None
+
+### ActividadPlan
+**Herencia**: BaseModel
+
+Actividad del plan de mejoramiento (columna compartida para todos los en-plan).
+
+**Atributos:**
+- `id`: int | None
+- `corte_id`: int
+- `asignacion_id`: int (desnorm)
+- `periodo_id`: int (desnorm)
+- `nombre`: str
+- `descripcion`: str | None
+- `peso`: float — fracción del total `(0, 1.0]`
+- `fecha`: date | None
+- `usuario_id`: int | None
+
+**Field Validators:**
+- `peso_valido()` — rango `(0, 1.0]`
+
+### NotaActividadPlan
+**Herencia**: BaseModel
+
+Nota de una actividad del plan por estudiante (celda).
+
+**Atributos:**
+- `id`: int | None
+- `actividad_plan_id`: int
+- `estudiante_id`: int
+- `asignacion_id`: int (desnorm)
+- `periodo_id`: int (desnorm)
+- `valor`: float | None
+- `usuario_id`: int | None
+
+### CalculadorPlan
+
+Utilidades de cálculo para Plan de Mejoramiento. Sin estado.
+
+**Métodos de Dominio:**
+- `nota_al_corte()` — suma de `peso × promedio` de categorías
+- `peso_registrado()` — suma de pesos de categorías con notas
+- `nota_umbral()` — `peso_registrado × nota_minima`
+- `nota_definitiva_aprobado()` — nota que se asigna si el estudiante aprobó el plan
+- `suma_pesos_actividades()`
+- `pesos_completos()` — True si suma ≈ 1.0 (tolerancia 0.005)
+- `nota_plan_estudiante()` — promedio ponderado de actividades; None si alguna está sin calificar
+
+### EjecutarCorteDTO
+**Herencia**: BaseModel
+
+Datos para ejecutar un corte de plan de mejoramiento.
+
+**Atributos:**
+- `asignacion_id`: int
+- `periodo_id`: int
+- `nota_minima_aprobacion`: float (default 60.0)
+- `usuario_id`: int | None
+
+### NuevaActividadPlanDTO
+**Herencia**: BaseModel
+
+Datos para crear una actividad de plan de mejoramiento.
+
+**Atributos:**
+- `corte_id`: int
+- `asignacion_id`: int
+- `periodo_id`: int
+- `nombre`: str
+- `descripcion`: str | None
+- `peso`: float
+- `fecha`: date | None
+
+**Métodos de Dominio:**
+- `to_actividad()`
+
+### CalificarNotaPlanDTO
+**Herencia**: BaseModel
+
+Datos para calificar la nota de una actividad de plan.
+
+**Atributos:**
+- `valor`: float
+- `usuario_id`: int | None
+
+### CerrarPlanEstudianteDTO
+**Herencia**: BaseModel
+
+Datos para cerrar el plan de un estudiante específico.
+
+**Atributos:**
+- `estudiante_id`: int
+- `corte_id`: int
+- `aprobado`: bool — True → APROBADO, False → REPROBADO
+- `usuario_cierre_id`: int | None

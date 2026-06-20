@@ -115,11 +115,48 @@ class FakeAuth(IAuthenticationService):
         return u
 
 
-def _dto(usuario: str = "prof1") -> NuevoUsuarioDTO:
+class FakeAuditoria:
+    """Captura eventos de sesión y registros de cambio para aserciones."""
+    def __init__(self):
+        self.eventos: list = []
+        self.cambios: list = []
+
+    def registrar_evento(self, evento):
+        self.eventos.append(evento)
+        return evento
+
+    def registrar_cambio(self, registro):
+        self.cambios.append(registro)
+        return registro
+
+    def registrar_cambios_masivos(self, registros):
+        self.cambios.extend(registros)
+        return len(registros)
+
+    def listar_eventos(self, filtro):
+        return list(self.eventos)
+
+    def get_ultimo_login(self, usuario_id):
+        return None
+
+    def contar_fallos_recientes(self, usuario, ventana_minutos=30):
+        return 0
+
+    def listar_cambios(self, filtro):
+        return list(self.cambios)
+
+    def listar_cambios_por_registro(self, tabla, registro_id):
+        return []
+
+    def get_cambio(self, cambio_id):
+        return None
+
+
+def _dto(usuario: str = "prof1", rol: Rol = Rol.PROFESOR) -> NuevoUsuarioDTO:
     return NuevoUsuarioDTO(
         usuario=usuario,
         nombre_completo="Profesor Uno",
-        rol=Rol.PROFESOR,
+        rol=rol,
     )
 
 
@@ -196,3 +233,139 @@ class TestCambiarRol:
         svc.desactivar(u.id)
         with pytest.raises(ValueError, match="desactivado"):
             svc.cambiar_rol(u.id, Rol.DIRECTOR)
+
+
+# ===========================================================================
+# RBAC — política de roles en el servicio (paso_23, T1)
+# ===========================================================================
+
+class TestRbacCrear:
+    def test_admin_puede_crear_admin(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
+        assert u.rol == Rol.ADMIN
+
+    def test_admin_puede_crear_director(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("nuevo_dir", Rol.DIRECTOR), actor_rol="admin")
+        assert u.rol == Rol.DIRECTOR
+
+    def test_director_no_puede_crear_admin(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        with pytest.raises(ValueError, match="permiso"):
+            svc.crear_usuario(_dto("x_admin", Rol.ADMIN), actor_rol="director")
+
+    def test_director_no_puede_crear_director(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        with pytest.raises(ValueError, match="permiso"):
+            svc.crear_usuario(_dto("x_dir", Rol.DIRECTOR), actor_rol="director")
+
+    def test_director_puede_crear_profesor(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("prof_x", Rol.PROFESOR), actor_rol="director")
+        assert u.rol == Rol.PROFESOR
+
+    def test_sin_actor_rol_no_hay_enforcement(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("libre", Rol.ADMIN))  # actor_rol=None
+        assert u.rol == Rol.ADMIN
+
+
+class TestRbacCambiarRol:
+    def test_admin_puede_promover_a_admin(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("dir1", Rol.DIRECTOR))
+        r = svc.cambiar_rol(u.id, Rol.ADMIN, actor_rol="admin")
+        assert r.rol == Rol.ADMIN
+
+    def test_director_no_puede_cambiar_rol_de_admin(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("adm1", Rol.ADMIN))
+        with pytest.raises(ValueError, match="permiso"):
+            svc.cambiar_rol(u.id, Rol.COORDINADOR, actor_rol="director")
+
+    def test_director_no_puede_promover_a_director(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("prof_p1", Rol.PROFESOR))
+        with pytest.raises(ValueError, match="permiso"):
+            svc.cambiar_rol(u.id, Rol.DIRECTOR, actor_rol="director")
+
+    def test_director_puede_cambiar_profesor_a_coordinador(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("prof_p2", Rol.PROFESOR))
+        r = svc.cambiar_rol(u.id, Rol.COORDINADOR, actor_rol="director")
+        assert r.rol == Rol.COORDINADOR
+
+
+class TestRbacGestion:
+    def test_director_no_puede_desactivar_admin(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("adm2", Rol.ADMIN))
+        with pytest.raises(ValueError, match="permiso"):
+            svc.desactivar(u.id, actor_rol="director")
+
+    def test_director_puede_desactivar_profesor(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("prof_p3", Rol.PROFESOR))
+        r = svc.desactivar(u.id, actor_rol="director")
+        assert r.activo is False
+
+    def test_director_puede_reactivar_coordinador(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("coord1", Rol.COORDINADOR))
+        svc.desactivar(u.id)
+        r = svc.reactivar(u.id, actor_rol="director")
+        assert r.activo is True
+
+    def test_director_no_puede_reactivar_director(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("dir2", Rol.DIRECTOR))
+        svc.desactivar(u.id)
+        with pytest.raises(ValueError, match="permiso"):
+            svc.reactivar(u.id, actor_rol="director")
+
+
+class TestResetearPassword:
+    def test_lanza_si_sin_auth(self):
+        svc = UsuarioService(FakeUsuarioRepo())
+        u = svc.crear_usuario(_dto("prof_p4"))
+        with pytest.raises(ValueError, match="autenticaci"):
+            svc.resetear_password(u.id, "clave123")
+
+    def test_resetea_con_password_dada(self):
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = svc.crear_usuario(_dto("prof_p5"))
+        svc.resetear_password(u.id, "claveNueva")
+        assert auth._hashes[u.id] == "hash:claveNueva"
+
+    def test_password_vacia_usa_username(self):
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = svc.crear_usuario(_dto("prof_p6"))
+        svc.resetear_password(u.id, "")
+        assert auth._hashes[u.id] == "hash:prof_p6"
+
+    def test_audita_evento_reset(self):
+        from src.domain.models.auditoria import TipoEventoSesion
+        auth = FakeAuth()
+        audit = FakeAuditoria()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth, auditoria=audit)
+        u = svc.crear_usuario(_dto("prof_p7"))
+        svc.resetear_password(u.id, "clave")
+        tipos = [e.tipo_evento for e in audit.eventos]
+        assert TipoEventoSesion.RESETEAR_PASSWORD in tipos
+
+    def test_director_no_puede_resetear_admin(self):
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = svc.crear_usuario(_dto("adm3", Rol.ADMIN))
+        with pytest.raises(ValueError, match="permiso"):
+            svc.resetear_password(u.id, "x", actor_rol="director")
+
+    def test_director_puede_resetear_profesor(self):
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = svc.crear_usuario(_dto("prof_p8", Rol.PROFESOR))
+        svc.resetear_password(u.id, "x", actor_rol="director")
+        assert auth._hashes[u.id] == "hash:x"

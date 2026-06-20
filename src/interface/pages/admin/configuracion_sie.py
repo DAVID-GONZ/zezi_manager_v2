@@ -25,7 +25,7 @@ from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost, btn_icon,
+    btn_primary, btn_secondary, btn_ghost, btn_icon,
 )
 from src.interface.design.components import badge_estado_general, confirm_dialog, form_dialog, status_badge, toast_error, toast_success, toast_warning
 from src.services.configuracion_service import (
@@ -36,12 +36,11 @@ from src.services.evaluacion_service import (
     NuevaCategoriaInstitucionalDTO,
     ActualizarCategoriaDTO,
     NuevaConfiguracionSIEEDTO,
-    ModoSIEE,
 )
 
 logger = logging.getLogger("ADMIN.CONFIG_SIEE")
 
-_ROL_ADMIN = {"admin", "director", "coordinador"}
+_ROL_ADMIN = ("director",)
 
 _MODO_LABELS: dict[str, str] = {
     "libre":               "Libre",
@@ -125,10 +124,9 @@ def configuracion_sie_page() -> None:
     # ── Acciones — año lectivo ────────────────────────────────────────────────
     def _crear_anio() -> None:
         try:
-            anio = int(_s["nuevo_anio"])
-            dto  = NuevaConfiguracionAnioDTO(anio=anio)
+            dto = NuevaConfiguracionAnioDTO(anio=_s["nuevo_anio"])
             Container.configuracion_service().crear_anio(dto)
-            toast_success(f"Año lectivo {anio} creado")
+            toast_success(f"Año lectivo {dto.anio} creado")
             _cargar_todo()
             panel_anio.refresh()
             panel_escala.refresh()
@@ -151,9 +149,9 @@ def configuracion_sie_page() -> None:
         def _guardar(datos: dict) -> None:
             try:
                 dto = ActualizarConfiguracionAnioDTO(
-                    nota_minima_escala     = float(datos["nota_minima_escala"]),
-                    nota_maxima_escala     = float(datos["nota_maxima_escala"]),
-                    nota_minima_aprobacion = float(datos["nota_minima_aprobacion"]),
+                    nota_minima_escala     = datos["nota_minima_escala"],
+                    nota_maxima_escala     = datos["nota_maxima_escala"],
+                    nota_minima_aprobacion = datos["nota_minima_aprobacion"],
                 )
                 Container.configuracion_service().actualizar_configuracion_academica(
                     config.id, dto
@@ -235,21 +233,12 @@ def configuracion_sie_page() -> None:
             try:
                 nuevo = NuevoNivelDesempenoDTO(
                     anio_id     = anio_id,
-                    nombre      = str(datos.get("nombre", "")).strip(),
-                    rango_min   = float(datos["rango_min"]),
-                    rango_max   = float(datos["rango_max"]),
-                    descripcion = str(datos.get("descripcion", "")).strip() or None,
+                    nombre      = datos.get("nombre", ""),
+                    rango_min   = datos["rango_min"],
+                    rango_max   = datos["rango_max"],
+                    descripcion = datos.get("descripcion") or None,
                 )
-                existentes = _s["niveles"]
-                nuevos_dtos = [
-                    NuevoNivelDesempenoDTO(
-                        anio_id=anio_id, nombre=n.nombre,
-                        rango_min=n.rango_min, rango_max=n.rango_max,
-                        descripcion=n.descripcion, orden=n.orden,
-                    )
-                    for n in existentes
-                ] + [nuevo]
-                Container.configuracion_service().configurar_niveles(anio_id, nuevos_dtos)
+                Container.configuracion_service().agregar_nivel(anio_id, nuevo)
                 toast_success(f"Nivel '{nuevo.nombre}' agregado")
                 _cargar_todo()
                 panel_niveles.refresh()
@@ -278,24 +267,15 @@ def configuracion_sie_page() -> None:
 
         def _guardar(datos: dict) -> None:
             try:
-                actualizados = []
-                for n in _s["niveles"]:
-                    if n.id == nivel.id:
-                        actualizados.append(NuevoNivelDesempenoDTO(
-                            anio_id=anio_id,
-                            nombre=str(datos.get("nombre", n.nombre)).strip() or n.nombre,
-                            rango_min=float(datos["rango_min"]),
-                            rango_max=float(datos["rango_max"]),
-                            descripcion=str(datos.get("descripcion", "")).strip() or None,
-                            orden=n.orden,
-                        ))
-                    else:
-                        actualizados.append(NuevoNivelDesempenoDTO(
-                            anio_id=anio_id, nombre=n.nombre,
-                            rango_min=n.rango_min, rango_max=n.rango_max,
-                            descripcion=n.descripcion, orden=n.orden,
-                        ))
-                Container.configuracion_service().configurar_niveles(anio_id, actualizados)
+                dto = NuevoNivelDesempenoDTO(
+                    anio_id=anio_id,
+                    nombre=datos.get("nombre") or nivel.nombre,
+                    rango_min=datos["rango_min"],
+                    rango_max=datos["rango_max"],
+                    descripcion=datos.get("descripcion") or None,
+                    orden=nivel.orden,
+                )
+                Container.configuracion_service().actualizar_nivel(anio_id, nivel.id, dto)
                 toast_success("Nivel actualizado")
                 _cargar_todo()
                 panel_niveles.refresh()
@@ -324,15 +304,7 @@ def configuracion_sie_page() -> None:
 
         def _ejecutar() -> None:
             try:
-                restantes = [
-                    NuevoNivelDesempenoDTO(
-                        anio_id=anio_id, nombre=n.nombre,
-                        rango_min=n.rango_min, rango_max=n.rango_max,
-                        descripcion=n.descripcion, orden=i,
-                    )
-                    for i, n in enumerate([x for x in _s["niveles"] if x.id != nivel.id])
-                ]
-                Container.configuracion_service().configurar_niveles(anio_id, restantes)
+                Container.configuracion_service().eliminar_nivel(anio_id, nivel.id)
                 toast_success(f"Nivel '{nivel.nombre}' eliminado")
                 _cargar_todo()
                 panel_niveles.refresh()
@@ -361,10 +333,10 @@ def configuracion_sie_page() -> None:
             try:
                 nuevo = CriterioPromocion(
                     anio_id                  = anio_id,
-                    max_asignaturas_perdidas  = int(datos.get("max_asignaturas_perdidas", 2)),
-                    permite_condicionada      = bool(datos.get("permite_condicionada", True)),
-                    nota_minima_habilitacion  = float(datos["nota_minima_habilitacion"]),
-                    nota_minima_anual         = float(datos["nota_minima_anual"]),
+                    max_asignaturas_perdidas  = datos.get("max_asignaturas_perdidas", 2),
+                    permite_condicionada      = datos.get("permite_condicionada", True),
+                    nota_minima_habilitacion  = datos["nota_minima_habilitacion"],
+                    nota_minima_anual         = datos["nota_minima_anual"],
                 )
                 Container.configuracion_service().guardar_criterios(nuevo)
                 toast_success("Criterios de promoción guardados")
@@ -418,13 +390,13 @@ def configuracion_sie_page() -> None:
             anio_id = _anio_id()
             if not anio_id:
                 return
-            modo_val = datos.get("modo", "libre")
-            pct_raw  = datos.get("porcentaje_autonomia")
-            pct      = float(pct_raw) / 100.0 if pct_raw else None
+            # % autonomía (1-99) → fracción (0-1): conversión de unidad en la frontera.
+            pct_raw = datos.get("porcentaje_autonomia")
+            pct     = pct_raw / 100.0 if pct_raw else None
             try:
                 dto = NuevaConfiguracionSIEEDTO(
                     anio_id                      = anio_id,
-                    modo                         = ModoSIEE(modo_val),
+                    modo                         = datos.get("modo", "libre"),
                     porcentaje_autonomia_docente = pct,
                 )
                 Container.evaluacion_service().guardar_configuracion_siee(dto, ctx.usuario_id)
@@ -466,22 +438,21 @@ def configuracion_sie_page() -> None:
             return
 
         def _guardar(datos: dict) -> None:
-            nombre  = str(datos.get("nombre", "")).strip()
-            peso_v  = datos.get("peso")
-            permite = bool(datos.get("permite_subcategorias", False))
-            if not nombre:
-                toast_warning("El nombre es obligatorio")
-                return
+            peso_v = datos.get("peso")
             try:
-                peso = float(peso_v) / 100.0
-                dto  = NuevaCategoriaInstitucionalDTO(
-                    nombre=nombre, peso=peso,
-                    anio_id=anio_id, permite_subcategorias=permite,
+                # Porcentaje (1-100) → fracción (0-1): conversión de unidad.
+                peso = float(peso_v) / 100.0 if peso_v is not None else 0.0
+                # nombre (strip/no vacío) lo valida NuevaCategoriaInstitucionalDTO.
+                dto = NuevaCategoriaInstitucionalDTO(
+                    nombre=datos.get("nombre", ""),
+                    peso=peso,
+                    anio_id=anio_id,
+                    permite_subcategorias=datos.get("permite_subcategorias", False),
                 )
                 Container.evaluacion_service().agregar_categoria_institucional(
                     dto, usuario_id=ctx.usuario_id
                 )
-                toast_success(f"Categoría '{nombre}' creada")
+                toast_success(f"Categoría '{dto.nombre}' creada")
                 _cargar_todo()
                 panel_cats_inst.refresh()
             except (ValueError, RuntimeError) as exc:
@@ -582,7 +553,7 @@ def configuracion_sie_page() -> None:
             ui.label("Crear nuevo año lectivo").classes("text-sm font-semibold mb-2")
             ui.label(
                 "Al crear un nuevo año, este se convierte en el activo."
-            ).classes("text-xs text-grey-6 mb-3")
+            ).classes("text-xs text-muted mb-3")
             with ui.row().classes("gap-3 items-end"):
                 ui.number(
                     "Año *", value=_s["nuevo_anio"], min=2000, max=2100, step=1,
@@ -603,29 +574,25 @@ def configuracion_sie_page() -> None:
                 ui.label("Sin año activo.").classes("text-empty text-sm")
                 return
 
-            # Validación visual
-            aprobacion_en_rango = (
-                config.nota_minima_escala
-                <= config.nota_minima_aprobacion
-                <= config.nota_maxima_escala
-            )
+            # Validación visual (regla de dominio)
+            aprobacion_en_rango = config.aprobacion_en_rango
 
             with ui.element("div").classes("grid grid-cols-3 gap-4"):
-                with ui.element("div").classes("flex-col items-center p-3 bg-grey-1 rounded text-center"):
-                    ui.label("Mínima escala").classes("text-xs text-grey-6 mb-1")
+                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+                    ui.label("Mínima escala").classes("text-xs text-muted mb-1")
                     ui.label(f"{config.nota_minima_escala:.1f}").classes("text-2xl font-bold")
 
-                with ui.element("div").classes("flex-col items-center p-3 bg-grey-1 rounded text-center"):
-                    ui.label("Nota de aprobación").classes("text-xs text-grey-6 mb-1")
-                    color_ap = "text-green-700" if aprobacion_en_rango else "text-red-600"
+                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+                    ui.label("Nota de aprobación").classes("text-xs text-muted mb-1")
+                    color_ap = "text-success" if aprobacion_en_rango else "text-error"
                     ui.label(f"{config.nota_minima_aprobacion:.1f}").classes(f"text-2xl font-bold {color_ap}")
 
-                with ui.element("div").classes("flex-col items-center p-3 bg-grey-1 rounded text-center"):
-                    ui.label("Máxima escala").classes("text-xs text-grey-6 mb-1")
+                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+                    ui.label("Máxima escala").classes("text-xs text-muted mb-1")
                     ui.label(f"{config.nota_maxima_escala:.1f}").classes("text-2xl font-bold")
 
             if not aprobacion_en_rango:
-                with ui.row().classes("items-center gap-2 mt-3 p-2 bg-red-50 rounded text-red-700 text-sm"):
+                with ui.row().classes("items-center gap-2 mt-3 p-2 bg-error-soft rounded text-error text-sm"):
                     ThemeManager.icono("warning", size=24, color="var(--color-error)")
                     ui.label("La nota de aprobación está fuera del rango de la escala.")
 
@@ -653,11 +620,11 @@ def configuracion_sie_page() -> None:
                     ui.label(
                         "No hay niveles definidos. Usa 'Defaults' para cargar los estándar "
                         "(Bajo, Básico, Alto, Superior)."
-                    ).classes("text-sm text-blue-700 flex-1")
+                    ).classes("text-sm text-info flex-1")
                 return
 
             with ui.element("div").classes("w-full"):
-                with ui.element("div").classes("flex gap-3 px-2 py-1 font-semibold text-xs text-grey-7 border-b"):
+                with ui.element("div").classes("flex gap-3 px-2 py-1 font-semibold text-xs text-muted border-b"):
                     ui.label("Nombre").classes("w-28")
                     ui.label("Rango").classes("w-32")
                     ui.label("Descripción").classes("flex-1")
@@ -667,9 +634,9 @@ def configuracion_sie_page() -> None:
                     with ui.element("div").classes("flex items-center gap-3 px-2 py-2 border-b"):
                         ui.label(nivel.nombre).classes("w-28 font-medium text-sm")
                         ui.label(f"{nivel.rango_min:.1f} – {nivel.rango_max:.1f}").classes(
-                            "w-32 text-sm font-mono text-grey-7"
+                            "w-32 text-sm font-mono text-muted"
                         )
-                        ui.label(nivel.descripcion or "—").classes("flex-1 text-sm text-grey-6")
+                        ui.label(nivel.descripcion or "—").classes("flex-1 text-sm text-muted")
                         with ui.row().classes("w-20 justify-end gap-1"):
                             btn_icon("edit",   on_click=lambda n=nivel: _editar_nivel(n),   tooltip="Editar")
                             btn_icon("delete", on_click=lambda n=nivel: _eliminar_nivel(n), tooltip="Eliminar", variante="danger")
@@ -696,7 +663,7 @@ def configuracion_sie_page() -> None:
                     ThemeManager.icono("warning", size=24, color="var(--color-warning)")
                     ui.label(
                         "No hay criterios de promoción configurados. Haz clic en 'Configurar'."
-                    ).classes("text-sm text-amber-700 flex-1")
+                    ).classes("text-sm text-warning flex-1")
                 return
 
             with ui.element("div").classes("grid grid-cols-2 gap-4"):
@@ -727,7 +694,7 @@ def configuracion_sie_page() -> None:
                 if anio_id:
                     btn_secondary("Cambiar modo", icon="tune", on_click=_abrir_dialog_modo_siee)
 
-            with ui.element("div").classes("bg-info-soft rounded p-3 mb-3 text-sm text-blue-800"):
+            with ui.element("div").classes("bg-info-soft rounded p-3 mb-3 text-sm text-info"):
                 ui.label(modo_desc)
 
             if modo_val == "mixto_autonomia" and cfg and cfg.porcentaje_autonomia_docente:
@@ -816,7 +783,7 @@ def configuracion_sie_page() -> None:
 
 def _dato(label: str, valor: str) -> None:
     with ui.element("div").classes("flex-col"):
-        ui.label(label).classes("text-xs text-grey-6")
+        ui.label(label).classes("text-xs text-muted")
         ui.label(valor).classes("text-sm font-medium")
 
 

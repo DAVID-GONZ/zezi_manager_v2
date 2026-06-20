@@ -311,3 +311,55 @@ class TestDecidirPromocion:
         dto = DecidirPromocionDTO(estado=EstadoPromocion.PROMOVIDO, observacion="Sin novedades")
         resultado = svc.decidir_promocion(est_id=1, anio_id=1, dto=dto)
         assert resultado.estado == EstadoPromocion.PROMOVIDO
+
+
+class _AsigInfoStub:
+    def __init__(self, asignacion_id):
+        self.asignacion_id = asignacion_id
+
+
+class _FakeAsignacionRepoStub:
+    def __init__(self, asignacion_ids):
+        self._ids = asignacion_ids
+    def listar_info(self, filtro):
+        return [_AsigInfoStub(i) for i in self._ids]
+
+
+class TestResumenCierresInstitucional:
+    def _svc_con_asignaciones(self, asignacion_ids):
+        cierre_repo = FakeCierreRepo()
+        svc = CierreService(
+            cierre_repo=cierre_repo,
+            evaluacion_repo=FakeEvalRepo(),
+            periodo_repo=FakePeriodoRepo([]),
+            config_repo=FakeConfigRepo(),
+            estudiante_repo=FakeEstudianteRepo([]),
+            asignacion_repo=_FakeAsignacionRepoStub(asignacion_ids),
+        )
+        return svc, cierre_repo
+
+    def test_cuenta_cerradas_y_pendientes(self):
+        svc, cierre_repo = self._svc_con_asignaciones([10, 11, 12])
+        # asig 10 tiene un cierre en periodo 5 -> cerrada
+        cierre_repo.guardar_cierre_periodo(CierrePeriodo(
+            estudiante_id=1, asignacion_id=10, periodo_id=5,
+            nota_definitiva=80.0, fecha_cierre=date.today(),
+        ))
+        r = svc.resumen_cierres_institucional(periodo_id=5)
+        assert r == {"cerradas": 1, "pendientes": 2, "total": 3}
+
+    def test_sin_asignacion_repo_devuelve_ceros(self):
+        svc = CierreService(
+            cierre_repo=FakeCierreRepo(),
+            evaluacion_repo=FakeEvalRepo(),
+            periodo_repo=FakePeriodoRepo([]),
+            config_repo=FakeConfigRepo(),
+            estudiante_repo=FakeEstudianteRepo([]),
+        )
+        assert svc.resumen_cierres_institucional(periodo_id=5) == {
+            "cerradas": 0, "pendientes": 0, "total": 0,
+        }
+
+    def test_sin_periodo_devuelve_ceros(self):
+        svc, _ = self._svc_con_asignaciones([10])
+        assert svc.resumen_cierres_institucional(periodo_id=0)["total"] == 0

@@ -152,3 +152,78 @@ class TestConExporter:
         svc = InformeService(FakeEstadRepo(), exporter=FakeExporter())
         resultado = svc.exportar_csv([{"col": "val"}])
         assert resultado == b"CSV"
+
+
+# ===========================================================================
+# Group 7 — exportar_estadistico + generar_boletines_grupo
+# ===========================================================================
+
+class _Est:
+    def __init__(self, id_, nombre, apellido):
+        self.id = id_
+        self.nombre = nombre
+        self.apellido = apellido
+
+
+class _FakeEstRepo:
+    def __init__(self, ests):
+        self._ests = ests
+    def listar_por_grupo(self, grupo_id):
+        return self._ests
+
+
+class TestExportarEstadistico:
+    def test_excel_consolidado_notas(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter())
+        datos = [{"nombre_completo": "Ana", "promedio": 80.0, "estudiante_id": 1}]
+        out = svc.exportar_estadistico("consolidado_notas", datos, "excel")
+        assert out.startswith(b"EXCEL:")
+
+    def test_pdf_inyecta_meta(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter())
+        ctx = {"grupo_nombre": "601", "periodo_nombre": "P1", "asignatura_nombre": "Mat"}
+        out = svc.exportar_estadistico("ranking_grupo", [{"posicion": 1}], "pdf", ctx)
+        assert out.startswith(b"PDF:")
+
+    def test_estados_asistencia_dict(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter())
+        out = svc.exportar_estadistico("estados_asistencia", {"P": 10, "FI": 2}, "excel")
+        assert out == b"EXCEL:2"  # 2 filas
+
+    def test_tipo_desconocido_lanza(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter())
+        with pytest.raises(ValueError, match="no reconocido"):
+            svc.exportar_estadistico("xxx", [], "excel")
+
+
+class _RealXlsxExporter(FakeExporter):
+    """Exporter que devuelve un .xlsx válido (para que merge_excels funcione)."""
+    def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None) -> bytes:
+        import io, openpyxl
+        wb = openpyxl.Workbook()
+        wb.active.append(["col"])
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+
+class TestGenerarBoletinesGrupo:
+    def test_excel_fusiona_por_estudiante(self):
+        ests = [_Est(1, "Ana", "Lopez"), _Est(2, "Beto", "Diaz")]
+        svc = InformeService(FakeEstadRepo(), _RealXlsxExporter(), estudiante_repo=_FakeEstRepo(ests))
+        r = svc.generar_boletines_grupo(grupo_id=10, periodo_id=5, formato="excel")
+        assert r.contenido is not None
+        assert r.errores == []
+        import io, openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(r.contenido))
+        assert len(wb.sheetnames) == 2
+
+    def test_sin_periodo_ni_anio_lanza(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter(), estudiante_repo=_FakeEstRepo([]))
+        with pytest.raises(ValueError, match="periodo_id|anio_id"):
+            svc.generar_boletines_grupo(grupo_id=10, formato="excel")
+
+    def test_sin_estudiantes_contenido_none(self):
+        svc = InformeService(FakeEstadRepo(), FakeExporter(), estudiante_repo=_FakeEstRepo([]))
+        r = svc.generar_boletines_grupo(grupo_id=10, periodo_id=5, formato="excel")
+        assert r.contenido is None

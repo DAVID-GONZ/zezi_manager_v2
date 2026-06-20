@@ -8,6 +8,8 @@ carga_horaria_max del docente) antes de insertar o actualizar.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.models.infraestructura import (
     CupoDTO,
     Horario,
@@ -62,6 +64,7 @@ class HorarioService:
     # Escritura                                                            #
     # ------------------------------------------------------------------ #
 
+    @requiere_escritura
     def crear_bloque(
         self,
         escenario_id: int,
@@ -117,6 +120,7 @@ class HorarioService:
         )
         return self._infra.actualizar_horario(updated)
 
+    @requiere_escritura
     def actualizar_bloque(
         self,
         horario_id: int,
@@ -150,6 +154,7 @@ class HorarioService:
         )
         return self._infra.actualizar_horario(updated)
 
+    @requiere_escritura
     def eliminar_bloque(self, horario_id: int) -> bool:
         return self._infra.eliminar_horario(horario_id)
 
@@ -593,6 +598,7 @@ class HorarioService:
 
         return ReporteLoteDTO(filas=resultado)
 
+    @requiere_escritura
     def aplicar_lote(
         self,
         escenario_id: int,

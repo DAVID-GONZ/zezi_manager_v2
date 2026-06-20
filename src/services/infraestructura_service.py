@@ -7,6 +7,8 @@ Horario y Logro sin revelar el repositorio directamente.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     AreaConocimiento,
@@ -47,9 +49,11 @@ class InfraestructuraService:
     def get_escenario_activo(self, anio_id: int) -> EscenarioHorario | None:
         return self._repo.get_escenario_activo(anio_id)
 
+    @requiere_escritura
     def crear_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
         return self._repo.crear_escenario(esc)
 
+    @requiere_escritura
     def crear_escenario_simple(
         self, anio_id: int, nombre: str, descripcion: str | None = None
     ) -> EscenarioHorario:
@@ -58,6 +62,7 @@ class InfraestructuraService:
         dto = NuevoEscenarioDTO(anio_id=anio_id, nombre=nombre, descripcion=descripcion)
         return self._repo.crear_escenario(dto.to_escenario())
 
+    @requiere_escritura
     def actualizar_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
         return self._repo.actualizar_escenario(esc)
 
@@ -71,12 +76,15 @@ class InfraestructuraService:
         })
         return self._repo.actualizar_escenario(updated)
 
+    @requiere_escritura
     def activar_escenario(self, escenario_id: int) -> None:
         return self._repo.activar_escenario(escenario_id)
 
+    @requiere_escritura
     def eliminar_escenario(self, escenario_id: int) -> bool:
         return self._repo.eliminar_escenario(escenario_id)
 
+    @requiere_escritura
     def duplicar_escenario(self, escenario_id: int, nuevo_nombre: str) -> EscenarioHorario:
         return self._repo.duplicar_escenario(escenario_id, nuevo_nombre)
 
@@ -90,6 +98,7 @@ class InfraestructuraService:
 
     # ── Plantillas de franja (rejilla) ─────────────────────────────────────────
 
+    @requiere_escritura
     def crear_plantilla_simple(
         self,
         nombre: str,
@@ -114,6 +123,7 @@ class InfraestructuraService:
     def plantilla_activa(self, jornada: str = "UNICA") -> PlantillaFranja | None:
         return self._repo.get_plantilla_activa(jornada)
 
+    @requiere_escritura
     def guardar_franjas(self, plantilla_id: int, filas: list[dict]) -> int:
         """
         Reemplaza el set de franjas de una plantilla. `filas` son dicts con claves
@@ -136,9 +146,11 @@ class InfraestructuraService:
     def listar_franjas(self, plantilla_id: int) -> list[Franja]:
         return self._repo.listar_franjas(plantilla_id)
 
+    @requiere_escritura
     def activar_plantilla(self, plantilla_id: int) -> None:
         return self._repo.activar_plantilla_franja(plantilla_id)
 
+    @requiere_escritura
     def eliminar_plantilla(self, plantilla_id: int) -> bool:
         return self._repo.eliminar_plantilla_franja(plantilla_id)
 
@@ -147,15 +159,19 @@ class InfraestructuraService:
     def listar_areas(self) -> list[AreaConocimiento]:
         return self._repo.listar_areas()
 
+    @requiere_escritura
     def guardar_area(self, area: AreaConocimiento) -> AreaConocimiento:
         return self._repo.guardar_area(area)
 
+    @requiere_escritura
     def actualizar_area(self, area: AreaConocimiento) -> AreaConocimiento:
         return self._repo.actualizar_area(area)
 
+    @requiere_escritura
     def eliminar_area(self, area_id: int) -> bool:
         return self._repo.eliminar_area(area_id)
 
+    @requiere_escritura
     def set_color_area(self, area_id: int, color: str | None) -> bool:
         """Asigna (o limpia) el color hex de un área. Valida vía el modelo."""
         normalizado = AreaConocimiento(id=area_id, nombre="_", color=color).color
@@ -166,12 +182,15 @@ class InfraestructuraService:
     def listar_asignaturas(self, area_id: int | None = None) -> list[Asignatura]:
         return self._repo.listar_asignaturas(area_id=area_id)
 
+    @requiere_escritura
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
         return self._repo.guardar_asignatura(asignatura)
 
+    @requiere_escritura
     def actualizar_asignatura(self, asignatura: Asignatura) -> Asignatura:
         return self._repo.actualizar_asignatura(asignatura)
 
+    @requiere_escritura
     def eliminar_asignatura(self, asignatura_id: int) -> bool:
         return self._repo.eliminar_asignatura(asignatura_id)
 
@@ -180,16 +199,20 @@ class InfraestructuraService:
     def listar_grupos(self, grado: int | None = None) -> list[Grupo]:
         return self._repo.listar_grupos(grado=grado)
 
+    @requiere_escritura
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
         return self._repo.guardar_grupo(grupo)
 
+    @requiere_escritura
     def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
         """Asigna (o quita, con None) el aula propia de un grupo."""
         return self._repo.asignar_sala_a_grupo(grupo_id, sala_id)
 
+    @requiere_escritura
     def actualizar_grupo(self, grupo: Grupo) -> Grupo:
         return self._repo.actualizar_grupo(grupo)
 
+    @requiere_escritura
     def eliminar_grupo(self, grupo_id: int) -> bool:
         return self._repo.eliminar_grupo(grupo_id)
 
@@ -205,9 +228,11 @@ class InfraestructuraService:
     ) -> list[HorarioInfo]:
         return self._repo.listar_horario_docente(usuario_id, periodo_id)
 
+    @requiere_escritura
     def guardar_horario(self, horario: Horario) -> Horario:
         return self._repo.guardar_horario(horario)
 
+    @requiere_escritura
     def eliminar_horario(self, horario_id: int) -> bool:
         return self._repo.eliminar_horario(horario_id)
 
@@ -247,6 +272,16 @@ class InfraestructuraService:
     def limpiar_disponibilidad_docente(self, usuario_id: int) -> int:
         return self._repo.limpiar_disponibilidad_docente(usuario_id)
 
+    @requiere_escritura
+    def guardar_disponibilidad_docente(
+        self, usuario_id: int, slots: list[dict]
+    ) -> int:
+        """Reemplaza ATÓMICAMENTE la disponibilidad de un docente (borra + carga
+        en una sola transacción). `slots` son los bloques NO disponibles, cada uno
+        con 'dia_semana' y 'franja_orden'. Retorna cuántos slots quedaron cargados.
+        """
+        return self._repo.reemplazar_disponibilidad_docente(usuario_id, slots)
+
     def listar_disponibilidad_docente(
         self, usuario_id: int
     ) -> list[DisponibilidadDocente]:
@@ -254,6 +289,7 @@ class InfraestructuraService:
 
     # ── Config generación (paso_15b) ──────────────────────────────────────────
 
+    @requiere_escritura
     def crear_config_generacion(
         self,
         nombre: str,
@@ -262,6 +298,7 @@ class InfraestructuraService:
         plantilla_id: int,
         grupos: list[int] | None = None,
         pesos: dict | None = None,
+        restricciones: dict | None = None,
     ) -> ConfigGeneracion:
         from src.domain.models.infraestructura import (
             NuevaConfigGeneracionDTO,
@@ -277,8 +314,29 @@ class InfraestructuraService:
             plantilla_id=plantilla_id,
             grupos=grupos if grupos is not None else [],
             pesos=pesos_obj,
+            restricciones=restricciones if restricciones is not None else {},
         )
         return self._repo.crear_config_generacion(dto.to_config())
+
+    def construir_restricciones(
+        self, min_horas: int, max_horas: int, modo: str = "preferente"
+    ) -> dict:
+        """Ensambla el payload de restricciones de generación a partir de
+        primitivas, para que la interfaz no construya el dict anidado.
+
+        Solo incluye ``min_max_diario`` cuando el rango difiere del default
+        (mín > 0 o máx < 8); de lo contrario devuelve ``{}`` (sin restricción).
+        """
+        min_h = int(min_horas or 0)
+        max_h = int(max_horas if max_horas is not None else 8)
+        restricciones: dict = {}
+        if min_h > 0 or max_h < 8:
+            restricciones["min_max_diario"] = {
+                "modo": modo,
+                "min": min_h,
+                "max": max_h,
+            }
+        return restricciones
 
     def listar_configs_generacion(
         self, periodo_id: int | None = None
@@ -288,6 +346,7 @@ class InfraestructuraService:
     def get_config_generacion(self, config_id: int) -> ConfigGeneracion | None:
         return self._repo.get_config_generacion(config_id)
 
+    @requiere_escritura
     def actualizar_config_generacion(
         self, config_id: int, **campos
     ) -> ConfigGeneracion:
@@ -300,14 +359,17 @@ class InfraestructuraService:
         updated = config.model_copy(update=campos)
         return self._repo.actualizar_config_generacion(updated)
 
+    @requiere_escritura
     def eliminar_config_generacion(self, config_id: int) -> bool:
         return self._repo.eliminar_config_generacion(config_id)
 
+    @requiere_escritura
     def cambiar_estado_config(
         self, config_id: int, nuevo_estado: str
     ) -> ConfigGeneracion:
         return self._repo.cambiar_estado_config(config_id, nuevo_estado)
 
+    @requiere_escritura
     def duplicar_config_generacion(self, config_id: int) -> ConfigGeneracion:
         return self._repo.duplicar_config_generacion(config_id)
 
@@ -319,14 +381,17 @@ class InfraestructuraService:
     def get_sala(self, sala_id: int) -> Sala | None:
         return self._repo.get_sala(sala_id)
 
+    @requiere_escritura
     def crear_sala(self, sala: Sala) -> Sala:
         return self._repo.crear_sala(sala)
 
+    @requiere_escritura
     def actualizar_sala(self, sala: Sala) -> Sala:
         if sala.id is None:
             raise ValueError("La sala no tiene id.")
         return self._repo.actualizar_sala(sala)
 
+    @requiere_escritura
     def eliminar_sala(self, sala_id: int) -> bool:
         return self._repo.eliminar_sala(sala_id)
 
@@ -341,9 +406,11 @@ class InfraestructuraService:
     def get_ventanas_por_grado(self, grado: int) -> list[VentanaGrupo]:
         return self._repo.get_ventanas_por_grado(grado)
 
+    @requiere_escritura
     def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo:
         return self._repo.crear_ventana_grupo(v)
 
+    @requiere_escritura
     def eliminar_ventana_grupo(self, ventana_id: int) -> bool:
         return self._repo.eliminar_ventana_grupo(ventana_id)
 
@@ -352,9 +419,11 @@ class InfraestructuraService:
     def listar_bloques_anclados(self, escenario_id: int) -> list[BloqueAnclado]:
         return self._repo.listar_bloques_anclados(escenario_id)
 
+    @requiere_escritura
     def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado:
         return self._repo.crear_bloque_anclado(b)
 
+    @requiere_escritura
     def eliminar_bloque_anclado(self, bloque_id: int) -> bool:
         return self._repo.eliminar_bloque_anclado(bloque_id)
 
@@ -366,14 +435,17 @@ class InfraestructuraService:
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
         return self._repo.get_franja_reunion(franja_id)
 
+    @requiere_escritura
     def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         return self._repo.crear_franja_reunion(f)
 
+    @requiere_escritura
     def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         if f.id is None:
             raise ValueError("La franja de reunión no tiene id.")
         return self._repo.actualizar_franja_reunion(f)
 
+    @requiere_escritura
     def eliminar_franja_reunion(self, franja_id: int) -> bool:
         return self._repo.eliminar_franja_reunion(franja_id)
 
@@ -382,9 +454,11 @@ class InfraestructuraService:
     def get_limites_docente(self, usuario_id: int) -> LimitesDocente | None:
         return self._repo.get_limites_docente(usuario_id)
 
+    @requiere_escritura
     def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente:
         return self._repo.set_limites_docente(limites)
 
+    @requiere_escritura
     def set_limites_docente_simple(
         self, usuario_id: int, min_horas_dia: int = 0, max_horas_dia: int = 8
     ) -> LimitesDocente:

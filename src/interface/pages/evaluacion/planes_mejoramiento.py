@@ -22,8 +22,11 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon, btn_danger
-from src.interface.design.components import confirm_dialog, empty_state, form_dialog, status_badge, toast_error, toast_success, toast_warning
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger
+from src.interface.design.components import (
+    confirm_dialog, empty_state, status_badge,
+    toast_error, toast_success, toast_warning,
+)
 from src.services.plan_mejoramiento_service import (
     EstadoNotaCorte,
     NuevaActividadPlanDTO,
@@ -34,13 +37,13 @@ from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("EVALUACION.PLANES")
 
-_ROL_ADMIN = {"admin", "director", "coordinador"}
+_ROLES_DIRECTIVOS = ("director", "coordinador")
 
 _ESTADO_LABELS = {
-    EstadoNotaCorte.SIN_PLAN.value:  ("Sin plan",  "grey"),
+    EstadoNotaCorte.SIN_PLAN.value:  ("Sin plan",  "neutral"),
     EstadoNotaCorte.EN_PLAN.value:   ("En plan",   "warning"),
-    EstadoNotaCorte.APROBADO.value:  ("Aprobó",    "positive"),
-    EstadoNotaCorte.REPROBADO.value: ("Reprobó",   "negative"),
+    EstadoNotaCorte.APROBADO.value:  ("Aprobó",    "success"),
+    EstadoNotaCorte.REPROBADO.value: ("Reprobó",   "error"),
 }
 
 
@@ -51,7 +54,7 @@ def planes_mejoramiento_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -59,7 +62,7 @@ def planes_mejoramiento_page() -> None:
 
     logger.info("Planes mejoramiento: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    es_admin = ctx.usuario_rol in _ROL_ADMIN
+    es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVOS
 
     # ── Estado mutable ─────────────────────────────────────────────────────────
     _s: dict = {
@@ -94,7 +97,7 @@ def planes_mejoramiento_page() -> None:
             _s["periodos"] = []
 
         try:
-            usuario_id_filtro = ctx.usuario_id if not es_admin else None
+            usuario_id_filtro = ctx.usuario_id if not es_directivo else None
             filtro = FiltroAsignacionesDTO(solo_activas=True, usuario_id=usuario_id_filtro)
             _s["asignaciones"] = Container.asignacion_service().listar_con_info(filtro)
         except Exception as exc:
@@ -140,16 +143,12 @@ def planes_mejoramiento_page() -> None:
             logger.error("Error cargando actividades_plan: %s", exc)
             _s["actividades_plan"] = []
 
-        # Cargar notas por actividad
-        notas_act: dict = {}
-        for act in _s["actividades_plan"]:
-            try:
-                notas = svc.listar_notas_actividad(act.id)
-                notas_act[act.id] = {n.estudiante_id: n for n in notas}
-            except Exception as exc:
-                logger.error("Error cargando notas actividad %s: %s", act.id, exc)
-                notas_act[act.id] = {}
-        _s["notas_act"] = notas_act
+        # Cargar notas de todas las actividades en una sola llamada (sin N+1)
+        try:
+            _s["notas_act"] = svc.notas_por_actividad_corte(corte.id)
+        except Exception as exc:
+            logger.error("Error cargando notas por actividad: %s", exc)
+            _s["notas_act"] = {}
 
         # Obtener nombres de estudiantes (desde el grupo)
         try:
@@ -287,7 +286,7 @@ def planes_mejoramiento_page() -> None:
                 ThemeManager.icono("assignment_late", size=24)
                 ui.label("Estado del Corte").classes("text-lg font-bold flex-1")
                 if corte is None:
-                    ui.html('<span class="badge badge-neutral text-xs">Sin corte</span>')
+                    status_badge("Sin corte", "neutral")
                 else:
                     ui.badge(
                         f"Corte: {corte.fecha_ejecucion.strftime('%d/%m/%Y')}",
@@ -298,7 +297,7 @@ def planes_mejoramiento_page() -> None:
                 ui.label(
                     "No se ha ejecutado el corte para este periodo. "
                     "Ejecuta el corte desde Configuración de Evaluación."
-                ).classes("text-sm text-grey-7")
+                ).classes("text-sm text-muted")
                 btn_ghost(
                     "Ir a Configuración",
                     icon="settings",
@@ -315,15 +314,15 @@ def planes_mejoramiento_page() -> None:
                 with ui.row().classes("gap-4 flex-wrap text-sm"):
                     ui.label(
                         f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
-                    ).classes("text-grey-7")
+                    ).classes("text-muted")
                     ui.label(
                         f"Umbral: {corte.nota_umbral:.1f}"
-                    ).classes("text-grey-7")
+                    ).classes("text-muted")
                     ui.label(f"Total: {len(notas)}").classes("font-semibold")
-                    ui.label(f"En plan: {en_plan}").classes("font-semibold text-orange-600")
-                    ui.label(f"Sin plan: {sin_plan}").classes("font-semibold text-green-600")
+                    ui.label(f"En plan: {en_plan}").classes("font-semibold text-warning")
+                    ui.label(f"Sin plan: {sin_plan}").classes("font-semibold text-success")
                     if cerrados:
-                        ui.label(f"Cerrados: {cerrados}").classes("font-semibold text-blue-600")
+                        ui.label(f"Cerrados: {cerrados}").classes("font-semibold text-info")
 
     @ui.refreshable
     def panel_estudiantes() -> None:
@@ -344,8 +343,8 @@ def planes_mejoramiento_page() -> None:
 
             # Encabezado
             with ui.element("div").classes(
-                "grid gap-2 p-2 font-semibold text-sm border-b bg-grey-1"
-            ).style("grid-template-columns: 1fr 80px 100px 120px"):
+                "grid gap-2 p-2 font-semibold text-sm border-b bg-subtle"
+            ).classes("pm-grid-cols"):
                 ui.label("Estudiante")
                 ui.label("Nota corte").classes("text-center")
                 ui.label("Estado").classes("text-center")
@@ -354,12 +353,12 @@ def planes_mejoramiento_page() -> None:
             nombres = _s["nombres_est"]
             for nc in sorted(notas, key=lambda n: nombres.get(n.estudiante_id, "")):
                 nombre    = nombres.get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
-                lbl, color = _ESTADO_LABELS.get(nc.estado.value, (nc.estado.value, "grey"))
+                lbl, color = _ESTADO_LABELS.get(nc.estado.value, (nc.estado.value, "neutral"))
                 ya_cerrado = nc.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO)
 
                 with ui.element("div").classes(
                     "grid gap-2 p-2 border-b items-center"
-                ).style("grid-template-columns: 1fr 80px 100px 120px"):
+                ).classes("pm-grid-cols"):
                     ui.label(nombre).classes("text-sm")
                     ui.label(f"{nc.nota_al_corte:.1f}").classes("text-center text-sm font-mono")
                     status_badge(lbl, color)
@@ -381,7 +380,7 @@ def planes_mejoramiento_page() -> None:
                             if nota_def is not None:
                                 ui.label(
                                     f"Def: {nota_def:.1f}"
-                                ).classes("text-xs text-grey-7")
+                                ).classes("text-xs text-muted")
 
     @ui.refreshable
     def panel_actividades() -> None:
@@ -404,7 +403,7 @@ def planes_mejoramiento_page() -> None:
                 ui.label("Actividades del Plan").classes("text-lg font-bold flex-1")
                 # Suma de pesos
                 suma = round(sum(a.peso for a in acts) * 100, 1)
-                ui.badge(f"Peso total: {suma:.0f}%", color="primary" if suma <= 100 else "negative")
+                status_badge(f"Peso total: {suma:.0f}%", "primary" if suma <= 100 else "error")
 
             # ── Planilla de actividades ────────────────────────────────────────
             if not acts:
@@ -414,8 +413,8 @@ def planes_mejoramiento_page() -> None:
                 n_cols = 1 + len(acts)
                 header_cols = "180px " + " ".join(["80px"] * len(acts))
                 with ui.element("div").classes(
-                    "grid gap-1 p-2 font-semibold text-sm border-b bg-grey-1"
-                ).style(f"grid-template-columns: {header_cols}"):
+                    "grid gap-1 p-2 font-semibold text-sm border-b bg-subtle"
+                ).style(f"grid-template-columns: {header_cols}"):  # DYNAMIC: columnas según len(acts)
                     ui.label("Estudiante")
                     for act in acts:
                         ui.label(f"{act.nombre[:18]} ({act.peso*100:.0f}%)").classes(
@@ -430,7 +429,7 @@ def planes_mejoramiento_page() -> None:
                     )
                     with ui.element("div").classes(
                         "grid gap-1 p-2 border-b items-center"
-                    ).style(f"grid-template-columns: {header_cols}"):
+                    ).style(f"grid-template-columns: {header_cols}"):  # DYNAMIC: columnas según len(acts)
                         ui.label(nombre).classes("text-sm")
                         for act in acts:
                             nota = notas_act.get(act.id, {}).get(nc.estudiante_id)
@@ -479,7 +478,7 @@ def planes_mejoramiento_page() -> None:
                 disp = round((1.0 - suma_pesos) * 100, 1)
                 ui.label(
                     f"Peso disponible para actividades: {disp:.1f}%"
-                ).classes("text-xs text-grey-6 mt-1")
+                ).classes("text-xs text-muted mt-1")
 
     # ── Contenido principal ────────────────────────────────────────────────────
     def contenido() -> None:

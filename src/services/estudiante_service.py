@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Estudiantes y PIARs.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.acudiente_repo import IAcudienteRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
@@ -76,6 +78,7 @@ class EstudianteService:
     # Casos de uso — estudiantes
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def matricular(
         self,
         dto: NuevoEstudianteDTO,
@@ -99,6 +102,7 @@ class EstudianteService:
         )
         return estudiante
 
+    @requiere_escritura
     def actualizar(
         self,
         estudiante_id: int,
@@ -143,6 +147,7 @@ class EstudianteService:
         )
         return estudiante_retirado
 
+    @requiere_escritura
     def asignar_grupo(
         self,
         estudiante_id: int,
@@ -239,6 +244,7 @@ class EstudianteService:
     # Casos de uso — PIAR
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar_piar(
         self,
         dto: NuevoPIARDTO,
@@ -268,6 +274,7 @@ class EstudianteService:
         )
         return piar
 
+    @requiere_escritura
     def actualizar_piar(
         self,
         estudiante_id: int,
@@ -303,6 +310,7 @@ class EstudianteService:
     # Carga masiva CSV
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def matricular_masivo_csv(
         self,
         filas: list[dict],

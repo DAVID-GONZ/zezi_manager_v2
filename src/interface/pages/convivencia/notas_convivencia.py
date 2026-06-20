@@ -30,9 +30,12 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
+from src.interface.design.components.buttons import btn_primary, btn_ghost
 from src.interface.design.theme import ThemeManager
-from src.interface.design.components import toast_error, toast_info, toast_success, toast_warning
+from src.interface.design.components import (
+    empty_state, toast_error, toast_info, toast_success, toast_warning,
+)
+from src.services.convivencia_service import NuevaNotaComportamientoDTO
 
 logger = logging.getLogger("NOTAS_CONVIVENCIA")
 
@@ -153,10 +156,8 @@ def _construir_filas(_s: dict) -> list[dict]:
 
 
 def _nueva_nota_dto(datos: dict) -> object:
-    """Construye NuevaNotaComportamientoDTO sin imports de módulos de dominio en nivel de módulo."""
-    import importlib
-    _mod = importlib.import_module("src.domain.models.convivencia")
-    return _mod.NuevaNotaComportamientoDTO(**datos)
+    """Construye NuevaNotaComportamientoDTO desde primitivos del formulario."""
+    return NuevaNotaComportamientoDTO(**datos)
 
 
 # ── Guardar ───────────────────────────────────────────────────────────────────
@@ -251,7 +252,7 @@ def notas_convivencia_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -381,7 +382,7 @@ def notas_convivencia_page() -> None:
                             label="Periodo",
                             value=_s["periodo_id"],
                             on_change=lambda e: on_periodo_change(e.value),
-                        ).classes("andes-input").props("outlined dense").style("min-width:200px")  # DYNAMIC: ancho mínimo del selector
+                        ).classes("andes-input input-min-md").props("outlined dense")
 
                         if not _s["periodo_cerrado"]:
                             ui.element("div").classes("flex-1")
@@ -399,9 +400,10 @@ def notas_convivencia_page() -> None:
                 # Grilla de notas
                 with ui.element("div").classes("panel-card"):
                     if not filas:
-                        ui.label(
-                            "Sin estudiantes en el grupo o sin periodo seleccionado."
-                        ).classes("text-empty py-4")
+                        empty_state(
+                            titulo="Sin estudiantes",
+                            descripcion="No hay estudiantes en el grupo o no hay periodo seleccionado.",
+                        )
                     else:
                         grid = ui.aggrid({
                             "columnDefs":        col_defs,

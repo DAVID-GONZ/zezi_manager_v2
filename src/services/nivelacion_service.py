@@ -6,6 +6,9 @@ Sin SQL. Sin lógica de presentación.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
+from dataclasses import dataclass, field
 from datetime import date
 
 from src.domain.ports.nivelacion_repo import INivelacionRepository
@@ -20,6 +23,24 @@ from src.domain.models.nivelacion import (
     NuevaActividadNivelacionDTO,
 )
 from src.domain.models.cierre import CierrePeriodo
+
+
+@dataclass(frozen=True)
+class FilaNivelacionDTO:
+    """Una fila de la planilla de nivelación con el promedio YA calculado."""
+    estudiante_id: int
+    nota_previa: float | None              # nota del periodo (bajo desempeño)
+    notas: dict[int, NotaNivelacion]       # {actividad_id: nota}
+    promedio: float | None                 # promedio ponderado precalculado
+
+
+@dataclass(frozen=True)
+class PlanillaNivelacionDTO:
+    """Planilla completa de nivelación lista para renderizar (sin cálculo en la vista)."""
+    actividades: list[ActividadNivelacion] = field(default_factory=list)
+    filas: list[FilaNivelacionDTO] = field(default_factory=list)
+    suma_pesos: float = 0.0
+    cerrado: bool = False
 
 
 class NivelacionService:
@@ -88,6 +109,7 @@ class NivelacionService:
         """Lista actividades de nivelación para una asignacion+periodo."""
         return self._repo.listar_actividades(asignacion_id, periodo_id)
 
+    @requiere_escritura
     def agregar_actividad(
         self,
         dto: NuevaActividadNivelacionDTO,
@@ -194,6 +216,7 @@ class NivelacionService:
         """Retorna el cierre si existe (nivelación cerrada), None si está abierta."""
         return self._repo.get_cierre(asignacion_id, periodo_id)
 
+    @requiere_escritura
     def cerrar_nivelacion(
         self,
         asignacion_id: int,
@@ -270,6 +293,52 @@ class NivelacionService:
         ]
         return CalculadorNivelacion.nota_definitiva(notas, actividades)
 
+    def planilla_nivelacion(
+        self,
+        asignacion_id: int,
+        periodo_id: int,
+        nota_maxima: float | None = None,
+    ) -> PlanillaNivelacionDTO:
+        """Devuelve la planilla de nivelación completa con el promedio ponderado
+        de cada estudiante YA calculado (la vista no usa CalculadorNivelacion)."""
+        cierres = self.listar_bajo_desempeno([asignacion_id], periodo_id, nota_maxima)
+        actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
+        notas = self._repo.listar_notas_por_asignacion(asignacion_id, periodo_id)
+        cerrado = self._repo.get_cierre(asignacion_id, periodo_id) is not None
+
+        nota_map: dict[tuple[int, int], NotaNivelacion] = {
+            (n.actividad_nivelacion_id, n.estudiante_id): n for n in notas
+        }
+        cierre_map = {c.estudiante_id: c.nota_definitiva for c in cierres}
+
+        filas: list[FilaNivelacionDTO] = []
+        for cierre in cierres:
+            est_id = cierre.estudiante_id
+            notas_est_map: dict[int, NotaNivelacion] = {}
+            notas_est: list[NotaNivelacion] = []
+            for act in actividades:
+                nota_obj = nota_map.get((act.id, est_id))
+                if nota_obj is not None:
+                    notas_est_map[act.id] = nota_obj
+                    notas_est.append(nota_obj)
+            promedio = (
+                CalculadorNivelacion.nota_definitiva(notas_est, actividades)
+                if actividades else None
+            )
+            filas.append(FilaNivelacionDTO(
+                estudiante_id=est_id,
+                nota_previa=cierre_map.get(est_id),
+                notas=notas_est_map,
+                promedio=promedio,
+            ))
+
+        return PlanillaNivelacionDTO(
+            actividades=actividades,
+            filas=filas,
+            suma_pesos=sum(a.peso for a in actividades),
+            cerrado=cerrado,
+        )
+
 
 __all__ = [
     "NivelacionService",
@@ -280,4 +349,6 @@ __all__ = [
     "NuevaActividadNivelacionDTO",
     "CalificarNotaNivelacionDTO",
     "CierrePeriodo",
+    "PlanillaNivelacionDTO",
+    "FilaNivelacionDTO",
 ]

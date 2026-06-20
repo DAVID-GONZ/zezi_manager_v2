@@ -45,10 +45,10 @@ def login_page() -> None:
                 )
 
             # Contenedor para el error
-            error_container = ui.row().classes("andes-alert andes-alert-error w-full items-center hidden no-wrap gap-2 q-mt-md").style("padding: 12px 16px; border-radius: var(--radius-md);")
+            error_container = ui.row().classes("andes-alert andes-alert-error w-full items-center hidden no-wrap gap-2 u-mt-md login-alert-banner")
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
-                error_label = ui.label("").style("font-size: 13px; font-weight: 500;")
+                error_label = ui.label("").classes("login-alert-text")
 
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
@@ -91,6 +91,8 @@ def login_page() -> None:
                         usuario_id     = user_db.id,
                         usuario_nombre = user_db.nombre_completo,
                         usuario_rol    = rol_str,
+                        # Multi-tenant (paso_24): institución del usuario.
+                        institucion_id = getattr(user_db, "institucion_id", None),
                     )
 
                     ctx = Container.inicializar_contexto(ctx)
@@ -135,7 +137,7 @@ def login_page() -> None:
             password_input.on("keydown.enter", lambda _: intentar_login())
 
             # Botón instanciado mediante la fábrica
-            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full q-mt-lg")
+            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full u-mt-lg")
 
             # ── Pie ──────────────────────────────────────────────────────────
             ui.label("© 2026 Gestor Docente").classes("andes-login-footer w-full")

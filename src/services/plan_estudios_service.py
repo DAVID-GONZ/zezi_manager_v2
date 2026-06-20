@@ -7,6 +7,8 @@ que usan los validadores de PreparacionHorarioService.
 
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.models.infraestructura import (
     Grado,
     NuevoPlanEstudiosDTO,
@@ -17,13 +19,21 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 class PlanEstudiosService:
 
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        asignacion_svc_provider=None,
+    ) -> None:
         self._repo = repo
+        # Provider lazy (callable que retorna AsignacionService) para evitar la
+        # dependencia circular plan↔asignacion en el composition root.
+        self._asignacion_svc_provider = asignacion_svc_provider
 
     # ── Grados ofrecidos ───────────────────────────────────────────────
     def listar_grados(self) -> list[Grado]:
         return self._repo.listar_grados()
 
+    @requiere_escritura
     def guardar_grado(
         self, numero: int, nombre: str | None,
         min_estudiantes: int, max_estudiantes: int, horas_semanales: int,
@@ -36,6 +46,7 @@ class PlanEstudiosService:
         )
         return self._repo.upsert_grado(grado)
 
+    @requiere_escritura
     def eliminar_grado(self, numero: int) -> bool:
         return self._repo.eliminar_grado(numero)
 
@@ -76,11 +87,13 @@ class PlanEstudiosService:
             return 0
         return self.horas_por_grado(grupo.grado)
 
+    @requiere_escritura
     def actualizar(self, dto: NuevoPlanEstudiosDTO) -> PlanEstudios:
         return self._repo.set_horas_plan(
             dto.grado, dto.asignatura_id, dto.horas_semanales
         )
 
+    @requiere_escritura
     def set_horas(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios:
         """Upsert a partir de primitivas (la UI no importa DTOs de dominio)."""
         dto = NuevoPlanEstudiosDTO(
@@ -88,8 +101,29 @@ class PlanEstudiosService:
         )
         return self.actualizar(dto)
 
-    def eliminar(self, grado: int, asignatura_id: int) -> bool:
-        return self._repo.eliminar_plan_estudios(grado, asignatura_id)
+    @requiere_escritura
+    def eliminar(
+        self,
+        grado: int,
+        asignatura_id: int,
+        cascade: bool = True,
+        usuario_id: int | None = None,
+    ) -> tuple[bool, int]:
+        """Quita una asignatura del plan de un grado.
+
+        Con cascade=True (default) además desactiva las asignaciones de docentes
+        de esa materia en todos los grupos del grado, en una sola operación.
+
+        Retorna (eliminado_del_plan, n_asignaciones_desactivadas).
+        """
+        eliminado = self._repo.eliminar_plan_estudios(grado, asignatura_id)
+        n_desactivadas = 0
+        if cascade and self._asignacion_svc_provider is not None:
+            asignacion_svc = self._asignacion_svc_provider()
+            n_desactivadas = asignacion_svc.desactivar_por_grado_asignatura(
+                grado, asignatura_id, usuario_id=usuario_id
+            )
+        return eliminado, n_desactivadas
 
 
 __all__ = ["PlanEstudiosService"]

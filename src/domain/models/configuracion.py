@@ -175,6 +175,16 @@ class ConfiguracionAnio(BaseModel):
         """True si tiene los campos mínimos para generar boletines."""
         return bool(self.dane_code and self.rector)
 
+    @property
+    def aprobacion_en_rango(self) -> bool:
+        """True si la nota mínima de aprobación cae dentro de la escala
+        [nota_minima_escala, nota_maxima_escala]."""
+        return (
+            self.nota_minima_escala
+            <= self.nota_minima_aprobacion
+            <= self.nota_maxima_escala
+        )
+
     # ------------------------------------------------------------------
     # Transiciones de estado
     # ------------------------------------------------------------------

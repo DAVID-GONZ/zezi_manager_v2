@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Convivencia.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.models.convivencia import (
@@ -104,6 +106,7 @@ class ConvivenciaService:
     # Observaciones de periodo
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar_observacion(
         self,
         dto: NuevaObservacionDTO,
@@ -139,6 +142,7 @@ class ConvivenciaService:
             estudiante_id, periodo_id, solo_publicas
         )
 
+    @requiere_escritura
     def eliminar_observacion(self, observacion_id: int) -> bool:
         """Elimina una observación. Retorna True si fue eliminada."""
         self._get_observacion_o_lanzar(observacion_id)
@@ -148,6 +152,7 @@ class ConvivenciaService:
     # Registros de comportamiento
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar_comportamiento(
         self,
         dto: NuevoRegistroComportamientoDTO,
@@ -187,6 +192,7 @@ class ConvivenciaService:
         registro_notificado = registro.registrar_notificacion()
         return self._repo.actualizar_registro(registro_notificado)
 
+    @requiere_escritura
     def agregar_seguimiento(
         self,
         registro_id: int,
@@ -204,6 +210,7 @@ class ConvivenciaService:
         """Retorna registros de comportamiento según los filtros indicados."""
         return self._repo.listar_registros(filtro)
 
+    @requiere_escritura
     def eliminar_registro(self, registro_id: int) -> bool:
         """Elimina un registro de comportamiento. Retorna True si fue eliminado."""
         self._get_registro_o_lanzar(registro_id)
@@ -213,6 +220,7 @@ class ConvivenciaService:
     # Notas de comportamiento
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar_nota_comportamiento(
         self,
         dto: NuevaNotaComportamientoDTO,

@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Alertas.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from datetime import datetime
 
 from src.domain.ports.alerta_repo import IAlertaRepository
@@ -46,6 +48,7 @@ class AlertaService:
     # Configuración de alertas
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def configurar_alerta(
         self,
         config: ConfiguracionAlerta,
@@ -57,6 +60,7 @@ class AlertaService:
         """
         return self._repo.guardar_configuracion(config)
 
+    @requiere_escritura
     def desactivar_configuracion(
         self,
         anio_id: int,

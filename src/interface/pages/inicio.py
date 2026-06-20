@@ -17,7 +17,8 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.design.components.status_badge import status_badge
-from src.interface.design.components import stat_card
+from src.interface.design.components import stat_card, empty_state, form_dialog
+from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.layout import app_layout
 from src.services.auditoria_service import FiltroAuditoriaDTO
 from src.services.alerta_service import FiltroAlertasDTO
@@ -163,60 +164,84 @@ def _seccion_saludo(ctx: SessionContext, config) -> None:
 # ── SECCIÓN 2 — Stat cards ────────────────────────────────────────────────────
 
 
+_ROLES_DIRECTIVO = ("director", "coordinador")
+
+
 def _seccion_stats(ctx: SessionContext, config) -> None:
-    _CONFIGS = {
-        "profesor":    [
-            ("Estudiantes",   Icons.STUDENTS,   "primary"),
-            ("% Asistencia",  Icons.ATTENDANCE, "success"),
-            ("En riesgo",     Icons.ALERTS,     "error"),
-            ("Alertas act.",  Icons.ALERTS,     "warning"),
-        ],
-        "director":    [
-            ("Estudiantes",    Icons.STUDENTS,   "primary"),
-            ("Promedio gral.", Icons.GRADES,     "info"),
-            ("% Asistencia",  Icons.ATTENDANCE, "success"),
-            ("Alertas act.",  Icons.ALERTS,     "error"),
-        ],
-        "coordinador": [
-            ("Estudiantes",   Icons.STUDENTS,   "primary"),
-            ("% Asistencia",  Icons.ATTENDANCE, "success"),
-            ("En riesgo",     Icons.ALERTS,     "error"),
-            ("Alertas act.",  Icons.ALERTS,     "warning"),
-        ],
-        "admin":       [
-            ("Usuarios",  Icons.TEACHERS, "primary"),
-            ("Grupos",    Icons.GROUPS,   "info"),
-            ("Periodos",  Icons.PERIODS,  "success"),
-            ("Alertas",   Icons.ALERTS,  "warning"),
-        ],
-    }
-    rol     = ctx.usuario_rol if ctx else "admin"
-    configs = _CONFIGS.get(rol, _CONFIGS["admin"])
+    """Stat-cards del profesor: métricas del grupo del chip (vista personal)."""
+    _CONFIG = [
+        ("Estudiantes",   Icons.STUDENTS,   "primary"),
+        ("% Asistencia",  Icons.ATTENDANCE, "success"),
+        ("En riesgo",     Icons.ALERTS,     "error"),
+        ("Alertas act.",  Icons.ALERTS,     "warning"),
+    ]
     valores    = ["—", "—", "—", "—"]
     subtitulos = [""] * 4
 
     try:
-        if ctx and rol in ("profesor", "director", "coordinador"):
-            if ctx.grupo_id and ctx.periodo_id:
-                anio_id = config.id if config else None
-                m = Container.estadisticos_service().metricas_dashboard(
-                    ctx.grupo_id, ctx.periodo_id, anio_id
-                )
-                if rol == "profesor":
-                    valores    = [str(m.total_estudiantes), f"{m.porcentaje_asistencia:.1f}%",
-                                  str(m.estudiantes_en_riesgo), str(m.alertas_pendientes)]
-                    subtitulos = ["en tu grupo", "este periodo", "bajo el mínimo", "pendientes"]
-                else:
-                    valores    = [str(m.total_estudiantes), f"{m.promedio_general:.1f}",
-                                  f"{m.porcentaje_asistencia:.1f}%", str(m.alertas_pendientes)]
-                    subtitulos = ["matriculados", "promedio general", "asistencia", "sin resolver"]
-            else:
-                subtitulos = ["Selecciona un grupo"] * 4
+        if ctx and ctx.grupo_id and ctx.periodo_id:
+            anio_id = config.id if config else None
+            m = Container.estadisticos_service().metricas_dashboard(
+                ctx.grupo_id, ctx.periodo_id, anio_id
+            )
+            valores    = [str(m.total_estudiantes), f"{m.porcentaje_asistencia:.1f}%",
+                          str(m.estudiantes_en_riesgo), str(m.alertas_pendientes)]
+            subtitulos = ["en tu grupo", "este periodo", "bajo el mínimo", "pendientes"]
+        else:
+            subtitulos = ["Selecciona un grupo"] * 4
     except Exception as e:
-        logger.warning("Error métricas: %s", e)
+        logger.warning("Error métricas profesor: %s", e)
 
     with ui.element("div").classes("stats-grid"):
-        for i, (titulo_s, icono_s, variante_s) in enumerate(configs):
+        for i, (titulo_s, icono_s, variante_s) in enumerate(_CONFIG):
+            stat_card(
+                titulo=titulo_s, valor=valores[i],
+                icono=icono_s, subtitulo=subtitulos[i],
+                variante=variante_s,
+            )
+
+
+def _seccion_stats_institucional(ctx: SessionContext, config) -> None:
+    """Stat-cards del directivo: agregados INSTITUCIONALES del periodo
+    (todos los grupos), no las métricas de un único grupo del chip."""
+    _CONFIG = [
+        ("Estudiantes",    Icons.STUDENTS,   "primary"),
+        ("Promedio gral.", Icons.GRADES,     "info"),
+        ("% Asistencia",   Icons.ATTENDANCE, "success"),
+        ("En riesgo",      Icons.ALERTS,     "error"),
+    ]
+    valores    = ["—", "—", "—", "—"]
+    subtitulos = ["", "", "", ""]
+
+    try:
+        anio_id = config.id if config else None
+        if ctx and ctx.periodo_id:
+            mi = Container.estadisticos_service().metricas_institucionales(
+                ctx.periodo_id, anio_id
+            )
+            if mi.kpi_grupos:
+                total_est = sum(g["total"] for g in mi.grupos)
+                valores = [
+                    str(total_est),
+                    f"{mi.kpi_promedio:.1f}",
+                    f"{mi.kpi_asistencia:.1f}%",
+                    str(mi.kpi_riesgo),
+                ]
+                subtitulos = [
+                    f"en {mi.kpi_grupos} grupos",
+                    "promedio entre grupos",
+                    "asistencia media",
+                    "bajo el mínimo",
+                ]
+            else:
+                subtitulos = ["Sin datos del periodo"] * 4
+        else:
+            subtitulos = ["Sin periodo activo"] * 4
+    except Exception as e:
+        logger.warning("Error métricas institucionales: %s", e)
+
+    with ui.element("div").classes("stats-grid"):
+        for i, (titulo_s, icono_s, variante_s) in enumerate(_CONFIG):
             stat_card(
                 titulo=titulo_s, valor=valores[i],
                 icono=icono_s, subtitulo=subtitulos[i],
@@ -260,18 +285,8 @@ def _seccion_acciones_rapidas(rol: str) -> None:
             (Icons.REPORTS, "Informes", "Reportes de seguimiento",
              "/informes", "var(--color-info-light)", "var(--color-info)"),
         ],
-        "admin": [
-            (Icons.CONFIG, "Configuración SIE", "Año, niveles, criterios",
-             "/admin/configuracion", "var(--color-primary-lighter)", "var(--color-primary)"),
-            (Icons.TEACHERS, "Usuarios y Roles", "Docentes y admins",
-             "/admin/usuarios", "var(--color-success-light)", "var(--color-success)"),
-            (Icons.GROUPS, "Grupos y Asignaturas", "Estructura académica",
-             "/admin/grupos", "var(--color-info-light)", "var(--color-info)"),
-            (Icons.SCHEDULE, "Asignaciones", "Docente · Grupo · Materia",
-             "/admin/asignaciones", "var(--color-warning-light)", "var(--color-warning)"),
-        ],
     }
-    acciones = _ACCIONES.get(rol, _ACCIONES["admin"])
+    acciones = _ACCIONES.get(rol, _ACCIONES["profesor"])
 
     with ui.element("div").classes("panel-card"):
         _panel_titulo("bolt", "Accesos rápidos")
@@ -430,6 +445,422 @@ def _seccion_hitos(config) -> None:
             ui.label("No disponible").classes("unavailable-text")
 
 
+# ── SECCIÓN 7 — DIRECTIVO: grupos que requieren atención ──────────────────────
+
+def _seccion_grupos_atencion(ctx: SessionContext, config) -> None:
+    """Ranking de grupos con más estudiantes en riesgo (solo directivo).
+    Cada fila navega al tablero estadístico. Solo lectura."""
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo(Icons.ALERTS, "Grupos que requieren atención", "var(--color-error)")
+
+        try:
+            anio_id = config.id if config else None
+            if not (ctx and ctx.periodo_id):
+                ui.label("Sin periodo activo").classes("empty-state")
+                return
+
+            mi = Container.estadisticos_service().metricas_institucionales(
+                ctx.periodo_id, anio_id
+            )
+            en_riesgo = sorted(
+                [g for g in mi.grupos if g.get("en_riesgo", 0) > 0],
+                key=lambda g: g["en_riesgo"],
+                reverse=True,
+            )[:5]
+
+            if not en_riesgo:
+                with ui.element("div").classes("flex-col items-center"):
+                    ThemeManager.icono("check_circle", size=36, color="var(--color-success)")
+                    ui.label("Ningún grupo con estudiantes en riesgo").classes("success-empty-text")
+                return
+
+            for g in en_riesgo:
+                n_riesgo  = g["en_riesgo"]
+                clase_badge = _clase_dias_riesgo(n_riesgo)
+                with ui.element("div").classes("hito-item quick-action-card").on(
+                    "click", lambda gid=g["grupo_id"]: ui.navigate.to("/academico/tablero")
+                ):
+                    with ui.element("div").classes(f"hito-dias-badge {clase_badge}"):
+                        ui.label(str(n_riesgo))
+                    with ui.element("div").classes("hito-text-col"):
+                        ui.label(f"Grupo {g['codigo']}").classes("hito-desc")
+                        ui.label(
+                            f"Promedio {g['promedio']:.1f} · {g['total']} estudiantes"
+                        ).classes("hito-date")
+
+        except Exception as e:
+            logger.warning("Error grupos en atención: %s", e)
+            ui.label("No disponible").classes("unavailable-text")
+
+
+def _clase_dias_riesgo(n: int) -> str:
+    """Reusa los colores de badge de hitos según severidad del conteo en riesgo."""
+    if n >= 5:
+        return "hito-dias-danger"
+    if n >= 2:
+        return "hito-dias-warning"
+    return "hito-dias-ok"
+
+
+# ── SECCIÓN 8 — DIRECTIVO: pendientes institucionales ─────────────────────────
+
+def _seccion_pendientes_institucionales(ctx: SessionContext, config) -> None:
+    """Resumen institucional de pendientes (solo directivo): estado de cierres
+    del periodo y habilitaciones pendientes. Cada item enlaza a su módulo.
+    Solo lectura."""
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo(Icons.CLOSE_PERIOD, "Pendientes institucionales")
+
+        try:
+            if not (ctx and ctx.periodo_id):
+                ui.label("Sin periodo activo").classes("empty-state")
+                return
+
+            cierres = Container.cierre_service().resumen_cierres_institucional(
+                ctx.periodo_id
+            )
+            habs_pend = Container.habilitacion_service().contar_habilitaciones_pendientes(
+                ctx.periodo_id
+            )
+
+            cerradas   = cierres.get("cerradas", 0)
+            pendientes = cierres.get("pendientes", 0)
+            total      = cierres.get("total", 0)
+
+            if total == 0 and habs_pend == 0:
+                with ui.element("div").classes("flex-col items-center"):
+                    ThemeManager.icono("check_circle", size=36, color="var(--color-success)")
+                    ui.label("Sin pendientes institucionales").classes("success-empty-text")
+                return
+
+            # Cierres del periodo
+            clase_cierres = "hito-dias-ok" if pendientes == 0 else (
+                "hito-dias-danger" if pendientes > cerradas else "hito-dias-warning"
+            )
+            with ui.element("div").classes("hito-item quick-action-card").on(
+                "click", lambda: ui.navigate.to("/evaluacion/cierre-periodo")
+            ):
+                with ui.element("div").classes(f"hito-dias-badge {clase_cierres}"):
+                    ui.label(str(pendientes))
+                with ui.element("div").classes("hito-text-col"):
+                    ui.label("Cierres de periodo pendientes").classes("hito-desc")
+                    ui.label(
+                        f"{cerradas} de {total} asignaciones cerradas"
+                    ).classes("hito-date")
+
+            # Habilitaciones pendientes
+            clase_habs = "hito-dias-ok" if habs_pend == 0 else "hito-dias-warning"
+            with ui.element("div").classes("hito-item quick-action-card").on(
+                "click", lambda: ui.navigate.to("/evaluacion/habilitaciones")
+            ):
+                with ui.element("div").classes(f"hito-dias-badge {clase_habs}"):
+                    ui.label(str(habs_pend))
+                with ui.element("div").classes("hito-text-col"):
+                    ui.label("Habilitaciones pendientes").classes("hito-desc")
+                    ui.label("Programadas sin nota registrada").classes("hito-date")
+
+        except Exception as e:
+            logger.warning("Error pendientes institucionales: %s", e)
+            ui.label("No disponible").classes("unavailable-text")
+
+
+# ── SECCIÓN 9 — PROFESOR: tus pendientes (accionable) ─────────────────────────
+
+def _seccion_pendientes_docente(ctx: SessionContext, config) -> None:
+    """Pendientes accionables del profesor (filtrados por usuario_id): actividades
+    sin calificar, asistencia de hoy sin registrar y alertas de sus estudiantes.
+    Cada item enlaza a la pantalla que lo resuelve. Solo lectura."""
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo("checklist", "Tus pendientes")
+
+        try:
+            anio_id = config.id if config else None
+            if not (ctx and ctx.usuario_id and ctx.periodo_id):
+                ui.label("Sin periodo activo").classes("empty-state")
+                return
+
+            p = Container.estadisticos_service().pendientes_docente(
+                ctx.usuario_id, ctx.periodo_id, anio_id
+            )
+
+            if p.total_asignaciones == 0:
+                ui.label("No tienes asignaciones en este periodo").classes("empty-state")
+                return
+
+            if not p.hay_pendientes:
+                with ui.element("div").classes("flex-col items-center"):
+                    ThemeManager.icono("check_circle", size=36, color="var(--color-success)")
+                    ui.label("Estás al día").classes("success-empty-text")
+                return
+
+            # (conteo, label, sublabel, ruta, icono, color_icono)
+            items = [
+                (p.actividades_sin_calificar, "Actividades sin calificar",
+                 "Publicadas sin notas", "/evaluacion/planilla",
+                 Icons.GRADES, "var(--color-primary)"),
+                (p.asignaciones_sin_asistencia, "Asistencia de hoy sin registrar",
+                 "En tus asignaciones", "/asistencia",
+                 Icons.ATTENDANCE, "var(--color-success)"),
+                (p.alertas_estudiantes, "Alertas de tus estudiantes",
+                 "Pendientes de revisar", "/alertas",
+                 Icons.ALERTS, "var(--color-error)"),
+            ]
+
+            for conteo, label, sub, ruta, icono, color_icono in items:
+                if conteo <= 0:
+                    continue
+                with ui.element("div").classes("hito-item quick-action-card").on(
+                    "click", lambda r=ruta: ui.navigate.to(r)
+                ):
+                    with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por item
+                        "background:var(--color-surface-alt)"
+                    ):
+                        ThemeManager.icono(icono, size=20, color=color_icono)
+                    with ui.element("div").classes("hito-text-col"):
+                        ui.label(f"{conteo} · {label}").classes("hito-desc")
+                        ui.label(sub).classes("hito-date")
+
+        except Exception as e:
+            logger.warning("Error pendientes docente: %s", e)
+            ui.label("No disponible").classes("unavailable-text")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD DE PLATAFORMA (ADMIN) — paso_21
+# Solo la rama admin. NO toca profesor / director / coordinador.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_ROLES_LABEL = {
+    "admin":       "Administradores",
+    "director":    "Directores",
+    "coordinador": "Coordinadores",
+    "profesor":    "Profesores",
+}
+
+
+def _abrir_selector_ver_como(ctx: SessionContext) -> None:
+    """
+    Selector 'Ver como' de doble filtrado (institución → usuario),
+    preparado para multi-tenant.
+
+    Nivel 1 — Institución: hoy single-tenant, una sola opción = la institución
+    activa (config). Se construye como un dict de opciones (no se quema el
+    literal de la única institución) para que añadir tenants sea natural.
+
+    Nivel 2 — Usuario: lista filtrada por la institución elegida vía el hook de
+    scope `usuario_service.listar_para_ver_como(institucion_id=...)` (no-op en
+    single-tenant). Se excluye al propio admin.
+    """
+    from src.interface.design.components import toast_success, toast_warning, toast_error
+
+    # ── Nivel 1: institución activa (multi-tenant-ready) ────────────────────
+    institucion_id: int | None = None
+    institucion_opciones: dict = {}
+    try:
+        config = Container.configuracion_service().get_activa()
+        institucion_id = getattr(config, "id", None)
+        nombre_inst = getattr(config, "nombre_institucion", "Institución")
+        # Clave estable aunque id sea None (single-tenant sin id persistido).
+        clave_inst = institucion_id if institucion_id is not None else 0
+        institucion_opciones[clave_inst] = nombre_inst
+    except Exception as e:
+        logger.warning("Error al obtener la institución activa para 'Ver como': %s", e)
+        institucion_opciones = {0: "Institución activa"}
+
+    institucion_preseleccionada = next(iter(institucion_opciones), 0)
+
+    # ── Nivel 2: usuarios filtrados por la institución elegida ──────────────
+    try:
+        usuarios = Container.usuario_service().listar_para_ver_como(
+            institucion_id=institucion_id
+        )
+    except Exception as e:
+        logger.warning("Error al listar usuarios para 'Ver como': %s", e)
+        usuarios = []
+
+    candidatos = [u for u in usuarios if u.id != ctx.usuario_id]
+    if not candidatos:
+        toast_warning("No hay otros usuarios para ver como")
+        return
+
+    _index = {}
+    usuario_opciones: dict = {}
+    for u in candidatos:
+        rol_str = u.rol.value if hasattr(u.rol, "value") else str(u.rol)
+        usuario_opciones[u.id] = f"{u.nombre_completo} · {_ROLES_LABEL.get(rol_str, rol_str)}"
+        _index[u.id] = (u.nombre_completo, rol_str)
+
+    def _aplicar(datos: dict) -> "bool | None":
+        uid = datos.get("usuario_id")
+        if uid is None:
+            toast_warning("Selecciona un usuario")
+            return False
+        nombre, rol_str = _index.get(uid, ("usuario", "profesor"))
+        try:
+            ctx.iniciar_ver_como(
+                target_usuario_id=uid,
+                target_rol=rol_str,
+                target_nombre=nombre,
+            )
+            toast_success(f"Viendo como '{nombre}' (solo lectura)")
+            ui.navigate.to("/inicio")
+        except Exception as e:
+            logger.error("Error al iniciar 'Ver como': %s", e)
+            toast_error("No se pudo iniciar el modo 'Ver como'")
+            return False
+
+    form_dialog(
+        titulo="Ver como…",
+        campos=[
+            {"key": "institucion_id", "label": "Institución",
+             "tipo": "select", "opciones": institucion_opciones,
+             "valor": institucion_preseleccionada},
+            {"key": "usuario_id", "label": "Usuario a impersonar (solo lectura) *",
+             "tipo": "select", "opciones": usuario_opciones, "requerido": True},
+        ],
+        on_submit=_aplicar,
+        texto_submit="Ver como",
+        max_width="max-w-md",
+    )
+
+
+def _admin_stat_card(titulo: str, valor: str, icono: str, subtitulo: str,
+                     variante: str) -> None:
+    stat_card(titulo=titulo, valor=valor, icono=icono,
+              subtitulo=subtitulo, variante=variante)
+
+
+def _seccion_admin_saludo(ctx: SessionContext, config) -> None:
+    inst = getattr(config, "nombre_institucion", "") if config else ""
+    with ui.element("div").classes("greeting-hero w-full"):
+        nombre_corto = ctx.usuario_nombre.split()[0] if ctx.usuario_nombre else ""
+        ui.label(f"{_saludo_temporal()}, {nombre_corto}").classes("greeting-name")
+        ui.label(
+            "Panel de plataforma · auditoría, cuentas de usuario y uso del sistema"
+        ).classes("greeting-desc")
+        with ui.element("div").classes("greeting-meta"):
+            ThemeManager.icono("shield_person", size=16, color="var(--color-primary)")
+            ui.label(ctx.usuario_nombre).classes("greeting-user")
+            ui.element("span").classes("greeting-dot")
+            ui.label("Administrador de plataforma").classes("greeting-role")
+
+
+def _seccion_admin_metricas(config) -> None:
+    """Stat cards con datos REALES de uso/usuarios (servicios de solo lectura)."""
+    resumen = None
+    uso = None
+    try:
+        resumen = Container.usuario_service().resumen_por_rol()
+    except Exception as e:
+        logger.warning("Error resumen_por_rol: %s", e)
+    try:
+        uso = Container.auditoria_service().resumen_uso(7)
+    except Exception as e:
+        logger.warning("Error resumen_uso: %s", e)
+
+    total_usuarios = str(resumen.total) if resumen else "—"
+    sub_usuarios   = f"{resumen.activos} activos" if resumen else "sin datos"
+    directores     = str(resumen.directores) if resumen else "—"
+    logins_hoy     = str(uso.logins_hoy) if uso else "—"
+    activos_7d     = str(uso.usuarios_activos) if uso else "—"
+    denegados      = str(uso.accesos_denegados) if uso else "0"
+
+    with ui.element("div").classes("stats-grid"):
+        _admin_stat_card("Usuarios", total_usuarios, Icons.TEACHERS, sub_usuarios, "primary")
+        _admin_stat_card("Directores", directores, Icons.PROFILE, "cuentas de dirección", "info")
+        _admin_stat_card("Logins hoy", logins_hoy, "login", f"{activos_7d} activos (7 días)", "success")
+        _admin_stat_card("Accesos denegados", denegados, Icons.ALERTS, "últimos 7 días", "warning")
+
+
+def _seccion_admin_instituciones(config) -> None:
+    """
+    Uso por institución. Hoy single-tenant (una fila = config activa), pero la
+    presentación es una lista para que añadir tenants sea natural más adelante.
+    """
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo("apartment", "Uso por institución")
+
+        # Multi-tenant ready: lista de instituciones. Hoy: 0 o 1 (config activa).
+        instituciones = []
+        if config is not None:
+            instituciones.append(config)
+
+        if not instituciones:
+            ui.label("Sin institución configurada").classes("text-empty")
+            ui.label("Configura un año lectivo activo").classes("text-hint")
+            return
+
+        try:
+            uso = Container.auditoria_service().resumen_uso(7)
+        except Exception:
+            uso = None
+
+        with ui.element("div").classes("w-full"):
+            with ui.element("div").classes("flex gap-4 p-2 font-semibold text-sm border-b"):
+                ui.label("Institución").classes("flex-1")
+                ui.label("Sesiones (7d)").classes("w-32 text-right")
+                ui.label("Activos (7d)").classes("w-32 text-right")
+            for inst in instituciones:
+                nombre = getattr(inst, "nombre_institucion", None) or "Institución"
+                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                    ui.label(str(nombre)).classes("flex-1")
+                    ui.label(str(uso.sesiones_periodo) if uso else "—").classes("w-32 text-right")
+                    ui.label(str(uso.usuarios_activos) if uso else "—").classes("w-32 text-right")
+
+
+def _seccion_admin_accesos(ctx: SessionContext) -> None:
+    """Accesos rápidos VÁLIDOS para admin (sin enlaces rotos)."""
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo("bolt", "Accesos rápidos")
+        with ui.grid(columns=2).classes("w-full gap-3"):
+            # Auditoría
+            with ui.element("div").classes("quick-action-card").on(
+                "click", lambda: ui.navigate.to("/admin/auditoria")
+            ):
+                with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por acción
+                    "background:var(--color-primary-lighter)"
+                ):
+                    ThemeManager.icono("history", size=22, color="var(--color-primary)")
+                with ui.element("div").classes("action-text-col"):
+                    ui.label("Auditoría").classes("action-label")
+                    ui.label("Eventos de sesión y cambios").classes("action-desc")
+            # Usuarios
+            with ui.element("div").classes("quick-action-card").on(
+                "click", lambda: ui.navigate.to("/admin/usuarios")
+            ):
+                with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por acción
+                    "background:var(--color-success-light)"
+                ):
+                    ThemeManager.icono(Icons.TEACHERS, size=22, color="var(--color-success)")
+                with ui.element("div").classes("action-text-col"):
+                    ui.label("Usuarios").classes("action-label")
+                    ui.label("Cuentas y roles").classes("action-desc")
+            # Ver como…
+            with ui.element("div").classes("quick-action-card").on(
+                "click", lambda: _abrir_selector_ver_como(ctx)
+            ):
+                with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por acción
+                    "background:var(--color-warning-light)"
+                ):
+                    ThemeManager.icono("visibility", size=22, color="var(--color-warning)")
+                with ui.element("div").classes("action-text-col"):
+                    ui.label("Ver como…").classes("action-label")
+                    ui.label("Impersonar en solo lectura").classes("action-desc")
+
+
+def _dashboard_admin(ctx: SessionContext, config) -> None:
+    """Cuerpo del dashboard de plataforma (admin)."""
+    with ui.element("div").classes("page-stack"):
+        _seccion_admin_saludo(ctx, config)
+        _seccion_admin_metricas(config)
+        with ui.element("div").classes("page-body"):
+            with ui.element("div").classes("page-col-main"):
+                _seccion_admin_instituciones(config)
+                _seccion_actividad_reciente(ctx)
+            with ui.element("div").classes("page-col-side"):
+                _seccion_admin_accesos(ctx)
+
+
 # ── FUNCIÓN PRINCIPAL ─────────────────────────────────────────────────────────
 
 @ui.page("/inicio")
@@ -447,14 +878,47 @@ def inicio_page() -> None:
     except Exception as e:
         logger.warning("Sin configuración activa: %s", e)
 
+    # ── Rama admin: dashboard de plataforma (paso_21) ─────────────────────────
+    # Solo el admin real (no impersonando). Durante "Ver como", ctx.usuario_rol
+    # es el del usuario objetivo, por lo que cae en las ramas de abajo.
+    if ctx.usuario_rol == "admin":
+        def contenido_admin() -> None:
+            _dashboard_admin(ctx, config)
+
+        app_layout(
+            ctx, contenido_admin,
+            page_titulo="Plataforma",
+            page_subtitulo="Auditoría y gestión de cuentas",
+            page_icono="shield_person",
+        )
+        return
+
+    es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVO
+
     @ui.refreshable
     def stats_refreshable() -> None:
         # desde_storage() crea un snapshot DESPUÉS de que ctx.guardar() ya
         # completó (NiceGUI serializa eventos en un hilo). Siempre lee datos frescos.
-        _seccion_stats(SessionContext.desde_storage(), config)
+        ctx_fresco = SessionContext.desde_storage()
+        if es_directivo:
+            _seccion_stats_institucional(ctx_fresco, config)
+        else:
+            _seccion_stats(ctx_fresco, config)
+
+    @ui.refreshable
+    def contexto_refreshable() -> None:
+        """Secciones sensibles al periodo/grupo: institucionales (directivo)
+        o pendientes del docente (profesor)."""
+        ctx_fresco = SessionContext.desde_storage()
+        if es_directivo:
+            _seccion_grupos_atencion(ctx_fresco, config)
+            _seccion_pendientes_institucionales(ctx_fresco, config)
+        else:
+            _seccion_pendientes_docente(ctx_fresco, config)
 
     def on_context_change() -> None:
         stats_refreshable.refresh()
+        contexto_refreshable.refresh()
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
@@ -465,6 +929,7 @@ def inicio_page() -> None:
             with ui.element("div").classes("page-body"):
                 with ui.element("div").classes("page-col-main"):
                     _seccion_acciones_rapidas(ctx.usuario_rol)
+                    contexto_refreshable()
                     _seccion_actividad_reciente(ctx)
                 with ui.element("div").classes("page-col-side"):
                     _seccion_alertas(ctx)

@@ -79,7 +79,38 @@ body {
 
 .bg-info-soft       { background: var(--color-info-light); }
 .bg-warning-soft    { background: var(--color-warning-light); }
+.bg-success-soft    { background: var(--color-success-light); }
+.bg-error-soft      { background: var(--color-error-light); }
 .border-warning-soft { border: 1px solid var(--color-warning); }
+
+/* ── Superficies neutras (reemplazan bg-grey-1/2/3 de Quasar) ── */
+.bg-surface     { background: var(--color-surface); }
+.bg-surface-alt { background: var(--color-surface-alt); }
+.bg-subtle      { background: var(--color-surface-alt); }
+.bg-muted       { background: var(--color-border); }
+
+/* Hover sutil para filas/celdas (reemplaza hover:bg-grey-1 de Quasar) */
+.row-hover:hover { background: var(--color-surface-alt); }
+
+/* ── Texto atenuado (reemplaza text-grey-*/text-gray-* de Quasar) ── */
+.text-muted { color: var(--color-text-secondary) !important; }
+.text-faint { color: var(--color-text-disabled) !important; }
+
+/* ── Bordes semánticos (reemplazan border-*-NNN de Tailwind) ── */
+.border-default { border: 1px solid var(--color-border); }
+.border-soft    { border: 1px solid var(--color-divider); }
+.border-error   { border: 1px solid var(--color-error); }
+.border-success { border: 1px solid var(--color-success); }
+.border-info    { border: 1px solid var(--color-info); }
+
+/* ── Acento lateral (reemplaza border-l-4 border-*-NNN) ── */
+.accent-left          { border-left: 4px solid var(--color-border); }
+.accent-left-success  { border-left: 4px solid var(--color-success); }
+.accent-left-neutral  { border-left: 4px solid var(--color-border); }
+
+/* ── Barras de progreso rellenas (reemplazan bg-green-500/bg-red-500) ── */
+.fill-success { background: var(--color-success); }
+.fill-error   { background: var(--color-error); }
 
 .divider-y { }
 .divider-y > * + * { border-top: 1px solid var(--color-divider); }
@@ -93,6 +124,32 @@ body {
 .no-shrink     { flex-shrink: 0; }
 .text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .border-top-soft { border-top: 1px solid var(--color-divider); }
+
+/* ── Etiqueta de columna CSV (estudiantes / importación) ── */
+.csv-col-label {
+  min-width: 160px;
+  font-family: var(--font-mono);
+}
+
+/* ── Banner de alerta (login) ── */
+.login-alert-banner {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+}
+.login-alert-text {
+  font-size: var(--font-size-table);
+  font-weight: 500;
+}
+
+/* ── Anchos mínimos de selectores (convivencia) ── */
+.input-min-sm { min-width: 180px; }
+.input-min-md { min-width: 200px; }
+.input-min-lg { min-width: 220px; }
+
+/* ── Grilla de plan de mejoramiento (cabecera estática) ── */
+.pm-grid-cols {
+  grid-template-columns: 1fr 80px 100px 120px;
+}
 
 .h-grid-default { height: 600px; }
 .h-full         { height: 100%; }

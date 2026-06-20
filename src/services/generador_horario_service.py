@@ -31,6 +31,32 @@ from src.domain.models.infraestructura import (
     ResultadoGeneracionDTO,
 )
 
+# ---------------------------------------------------------------------------
+# Catálogo de pesos del motor (parámetros del optimizador).
+# Cada entrada es (clave, etiqueta, descripción). La capa de interfaz los
+# consume para construir los sliders de la configuración; viven aquí porque
+# son parámetros del motor de generación, no de la vista.
+# ---------------------------------------------------------------------------
+PESOS_PRINCIPALES: list[tuple[str, str, str]] = [
+    ("huecos",       "Evitar huecos",
+     "Reduce las horas libres entre clases de un grupo o docente. Mayor = horarios más compactos, sin ventanas."),
+    ("distribucion", "Repartir en la semana",
+     "Separa las clases de una misma materia en días distintos. Mayor = menos materias repetidas el mismo día."),
+    ("compactacion", "Compactar al docente",
+     "Concentra las clases del docente en menos jornadas. Mayor = el docente viene menos días o en bloques."),
+]
+
+PESOS_AVANZADOS: list[tuple[str, str, str]] = [
+    ("balance_diario",   "Equilibrar horas por día",
+     "Iguala cuántas horas dicta el docente cada día. Mayor = días más parejos, sin uno cargado y otro vacío."),
+    ("franja_preferida", "Respetar franja preferida",
+     "Ubica las materias en su franja preferida (mañana/tarde). Mayor = más respeto a esa preferencia."),
+    ("dia_libre",        "Dar un día libre",
+     "Intenta dejar al docente un día completo sin clases. Mayor = más prioridad a lograr ese día libre."),
+    ("hueco_comun",      "Proteger franja de reunión",
+     "Evita programar clases en la franja de reunión configurada. Mayor = más respeto a ese espacio común."),
+]
+
 
 class _Leccion:
     """Una unidad de bloque a colocar de una asignación (una hora o macro-bloque)."""
@@ -69,6 +95,42 @@ class GeneradorHorarioService:
         self._horario = horario_service
         self._infraestructura = infraestructura_service
         self._plan = plan_svc
+
+    # ------------------------------------------------------------------ #
+    # Catálogo de pesos + generabilidad (capa de interfaz delega aquí)   #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def catalogo_pesos() -> dict[str, list[tuple[str, str, str]]]:
+        """Devuelve el catálogo de pesos del motor para construir la UI.
+
+        Estructura: {"principales": [...], "avanzados": [...]} donde cada
+        entrada es (clave, etiqueta, descripción). La vista NO debe mantener
+        estas tuplas: son parámetros del optimizador.
+        """
+        return {
+            "principales": list(PESOS_PRINCIPALES),
+            "avanzados": list(PESOS_AVANZADOS),
+        }
+
+    def plantilla_generable(self, plantilla_id: int | None) -> tuple[bool, str]:
+        """¿Se puede generar un horario con esta plantilla?
+
+        Inspecciona la plantilla (días activos) y sus franjas (al menos una
+        lectiva) y devuelve (ok, motivo). Si ok=True, motivo="". Centraliza la
+        lógica de dominio que antes vivía en la vista.
+        """
+        if plantilla_id is None:
+            return False, "La configuración no tiene plantilla asignada."
+        plantilla = self._infra.get_plantilla_franja(plantilla_id)
+        if plantilla is None:
+            return False, "La plantilla de la configuración ya no existe."
+        if not getattr(plantilla, "dias_activos", None):
+            return False, "La plantilla no tiene días activos."
+        franjas = self._infra.listar_franjas(plantilla_id)
+        if not any(f.es_lectiva for f in franjas):
+            return False, "La plantilla no tiene franjas lectivas."
+        return True, ""
 
     # ------------------------------------------------------------------ #
     # Coste blando (paso_15d) — sin cambios en T5/T6; T7 lo amplía       #
@@ -954,4 +1016,8 @@ class GeneradorHorarioService:
         return resultado
 
 
-__all__ = ["GeneradorHorarioService"]
+__all__ = [
+    "GeneradorHorarioService",
+    "PESOS_PRINCIPALES",
+    "PESOS_AVANZADOS",
+]

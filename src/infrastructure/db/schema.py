@@ -35,6 +35,20 @@ SCHEMA: list[str] = [
     # 1. CONFIGURACIÓN INSTITUCIONAL
     # -------------------------------------------------------------------------
 
+    # Catálogo de instituciones (tenants). Primer ladrillo multi-tenant
+    # (paso_24). La institución #1 (id mínimo) es la institución por defecto,
+    # sembrada desde configuracion.nombre_institucion.
+    """
+    CREATE TABLE IF NOT EXISTS instituciones (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre          TEXT    NOT NULL UNIQUE,
+        nit             TEXT,
+        codigo          TEXT,
+        activa          BOOLEAN NOT NULL DEFAULT 1,
+        fecha_creacion  DATE    NOT NULL DEFAULT CURRENT_DATE
+    )
+    """,
+
     """
     CREATE TABLE IF NOT EXISTS configuracion_anio (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -220,7 +234,12 @@ SCHEMA: list[str] = [
         fecha_creacion      DATE    NOT NULL DEFAULT CURRENT_DATE,
         ultima_sesion       DATETIME,
         carga_horaria_max   INTEGER,
-        horas_extra         INTEGER NOT NULL DEFAULT 0 CHECK(horas_extra >= 0)
+        horas_extra         INTEGER NOT NULL DEFAULT 0 CHECK(horas_extra >= 0),
+
+        -- Multi-tenant (paso_24): institución a la que pertenece el usuario.
+        -- Nullable a nivel de schema para soportar migración + backfill; el
+        -- repo y el seed siempre asignan la institución por defecto.
+        institucion_id      INTEGER REFERENCES instituciones(id)
     )
     """,
 
@@ -983,7 +1002,8 @@ SCHEMA: list[str] = [
                         'LOGIN_EXITOSO', 'LOGIN_FALLIDO', 'LOGOUT',
                         'CREAR_USUARIO', 'EDITAR_USUARIO', 'RESETEAR_PASSWORD',
                         'CAMBIAR_ROL', 'DESACTIVAR_USUARIO', 'ACTIVAR_USUARIO',
-                        'ACCESO_DENEGADO'
+                        'ACCESO_DENEGADO',
+                        'VER_COMO_INICIO', 'VER_COMO_FIN'
                     )),
         ip_address  TEXT,
         fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1140,6 +1160,9 @@ INDICES: list[str] = [
 
     # configuracion_anio
     "CREATE INDEX IF NOT EXISTS idx_config_anio        ON configuracion_anio(anio)",
+
+    # usuarios (multi-tenant — paso_24)
+    "CREATE INDEX IF NOT EXISTS idx_usuarios_institucion ON usuarios(institucion_id)",
 
     # niveles_desempeno
     "CREATE INDEX IF NOT EXISTS idx_niveles_anio        ON niveles_desempeno(anio_id)",
@@ -1473,6 +1496,10 @@ def init_db(db_path: Path | None = None) -> bool:
                  "carga_horaria_max INTEGER"),
                 ("usuarios", "horas_extra",
                  "horas_extra INTEGER NOT NULL DEFAULT 0"),
+                # Multi-tenant (paso_24): columna nullable; el backfill a la
+                # institución por defecto lo hace el seed (donde ya existe #1).
+                ("usuarios", "institucion_id",
+                 "institucion_id INTEGER REFERENCES instituciones(id)"),
                 ("grupos", "sala_id", "sala_id INTEGER"),
                 ("areas_conocimiento", "color", "color TEXT"),
             ]

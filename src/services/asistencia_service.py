@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Asistencia.
 """
 from __future__ import annotations
 
+from src.services.solo_lectura import requiere_escritura
+
 from src.domain.ports.asistencia_repo import IAsistenciaRepository
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
@@ -91,6 +93,7 @@ class AsistenciaService:
     # Casos de uso
     # ------------------------------------------------------------------
 
+    @requiere_escritura
     def registrar(
         self,
         dto: RegistrarAsistenciaDTO,
@@ -105,6 +108,7 @@ class AsistenciaService:
         control = self._repo.registrar(control)
         return control
 
+    @requiere_escritura
     def registrar_masivo(
         self,
         dto: RegistrarAsistenciaMasivaDTO,
@@ -206,6 +210,7 @@ class AsistenciaService:
             for c in controles
         }
 
+    @requiere_escritura
     def guardar_asistencia_masiva(
         self,
         grupo_id: int,

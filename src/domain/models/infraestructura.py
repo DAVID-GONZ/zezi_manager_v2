@@ -645,12 +645,13 @@ class NuevaDisponibilidadDTO(BaseModel):
 
 
 class NuevaConfigGeneracionDTO(BaseModel):
-    nombre:       str
-    periodo_id:   int
-    anio_id:      int
-    plantilla_id: int
-    grupos:       list[int]        = Field(default_factory=list)
-    pesos:        PesosGeneracion  = Field(default_factory=PesosGeneracion)
+    nombre:        str
+    periodo_id:    int
+    anio_id:       int
+    plantilla_id:  int
+    grupos:        list[int]        = Field(default_factory=list)
+    pesos:         PesosGeneracion  = Field(default_factory=PesosGeneracion)
+    restricciones: dict             = Field(default_factory=dict)
 
     def to_config(self) -> ConfigGeneracion:
         return ConfigGeneracion(**self.model_dump())

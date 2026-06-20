@@ -17,11 +17,14 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_icon
 from src.services.configuracion_service import ActualizarInfoInstitucionalDTO
-from src.interface.design.components import toast_error, toast_success, toast_warning
+from src.interface.design.components import (
+    empty_state,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
 
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
 
@@ -33,7 +36,7 @@ def configuracion_institucion_page() -> None:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director"):
+    if ctx.usuario_rol not in ("director",):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -57,27 +60,24 @@ def configuracion_institucion_page() -> None:
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
+        # Fuente única: la configuración del año activo ya contiene todos los
+        # campos institucionales editables. No se usa get_info_institucional()
+        # aquí porque ese DTO es para boletines y rechaza años incompletos.
         try:
             config = Container.configuracion_service().get_activa()
-            if not config:
-                logger.warning("Sin configuración activa")
-                return
-            _s["anio_id"]    = config.id
-            _s["anio_label"] = str(config.anio)
-
-            info = Container.configuracion_service().get_info_institucional(config.id)
-            # get_info_institucional puede retornar ConfiguracionAnio o InformacionInstitucionalDTO
-            # usamos getattr para ser resilientes a cualquier tipo
-            _s["nombre_institucion"]    = str(getattr(info, "nombre_institucion", config.nombre_institucion) or "")
-            _s["dane_code"]             = str(getattr(info, "dane_code", config.dane_code) or "")
-            _s["rector"]                = str(getattr(info, "rector", config.rector) or "")
-            _s["direccion"]             = str(getattr(info, "direccion", config.direccion) or "")
-            _s["municipio"]             = str(getattr(info, "municipio", config.municipio) or "")
-            _s["telefono_institucion"]  = str(getattr(info, "telefono_institucion", config.telefono_institucion) or "")
-            _s["logo_path"]             = str(getattr(info, "logo_path", config.logo_path) or "")
-            _s["resolucion_aprobacion"] = str(getattr(info, "resolucion_aprobacion", config.resolucion_aprobacion) or "")
-        except Exception as exc:
-            logger.error("Error al cargar info institucional: %s", exc)
+        except ValueError:
+            logger.warning("Sin año lectivo activo configurado")
+            return
+        _s["anio_id"]               = config.id
+        _s["anio_label"]            = str(config.anio)
+        _s["nombre_institucion"]    = config.nombre_institucion or ""
+        _s["dane_code"]             = config.dane_code or ""
+        _s["rector"]                = config.rector or ""
+        _s["direccion"]             = config.direccion or ""
+        _s["municipio"]             = config.municipio or ""
+        _s["telefono_institucion"]  = config.telefono_institucion or ""
+        _s["logo_path"]             = config.logo_path or ""
+        _s["resolucion_aprobacion"] = config.resolucion_aprobacion or ""
 
     _cargar_estado()
 
@@ -113,13 +113,13 @@ def configuracion_institucion_page() -> None:
     @ui.refreshable
     def formulario() -> None:
         if not _s["anio_id"]:
-            with ui.element("div").classes("flex-col items-center gap-2 p-8"):
-                ThemeManager.icono("event_busy", size=36, color="var(--color-warning)")
-                ui.label("Sin año lectivo activo").classes("text-lg font-semibold mt-2")
-                ui.label(
-                    "Configura un año lectivo en la sección de Configuración SIE."
-                ).classes("text-sm text-grey-6")
-                btn_primary("Ir a Configuración SIE", on_click=lambda: ui.navigate.to("/admin/configuracion")).classes("mt-4")
+            empty_state(
+                icono="event_busy",
+                titulo="Sin año lectivo activo",
+                descripcion="Configura un año lectivo en la sección de Configuración SIE.",
+                cta_label="Ir a Configuración SIE",
+                cta_on_click=lambda: ui.navigate.to("/admin/configuracion"),
+            )
             return
 
         ui.label(f"Año lectivo: {_s['anio_label']}").classes("eyebrow-label mb-4")
@@ -158,7 +158,7 @@ def configuracion_institucion_page() -> None:
 
                 ui.label(
                     "Estos datos aparecen en los boletines e informes académicos."
-                ).classes("text-sm text-grey-6 mb-4")
+                ).classes("text-sm text-muted mb-4")
 
                 formulario()
 

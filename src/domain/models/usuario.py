@@ -79,6 +79,11 @@ class Usuario(BaseModel):
     carga_horaria_max:  int | None     = None
     horas_extra:        int            = 0
 
+    # Multi-tenant (paso_24): institución a la que pertenece el usuario.
+    # Opcional con default None; el repo/seed asignan la institución por
+    # defecto (#1). Cuando es None, el usuario aún no tiene tenant asignado.
+    institucion_id:     int | None     = None
+
     # ------------------------------------------------------------------
     # Validadores de campo
     # ------------------------------------------------------------------
@@ -318,6 +323,7 @@ class NuevoUsuarioDTO(BaseModel):
     email:           str | None      = None
     telefono:        str | None      = None
     password:        str | None      = None  # gestionada por IAuthenticationService
+    institucion_id:  int | None      = None  # multi-tenant (paso_24)
 
     @field_validator("usuario", mode="before")
     @classmethod
@@ -394,6 +400,7 @@ class UsuarioResumenDTO(BaseModel):
     nombre_completo: str
     rol:             Rol
     activo:          bool
+    institucion_id:  int | None = None  # multi-tenant (paso_24)
 
     @classmethod
     def desde_usuario(cls, u: Usuario) -> "UsuarioResumenDTO":
@@ -405,6 +412,7 @@ class UsuarioResumenDTO(BaseModel):
             nombre_completo=u.nombre_completo,
             rol=u.rol,
             activo=u.activo,
+            institucion_id=u.institucion_id,
         )
 
 
@@ -413,6 +421,7 @@ class FiltroUsuariosDTO(BaseModel):
     rol:           Rol | None   = None
     solo_activos:  bool         = True
     busqueda:      str | None   = None   # nombre o username
+    institucion_id: int | None  = None   # multi-tenant scope (paso_24)
     pagina:        int          = Field(default=1, ge=1)
     por_pagina:    int          = Field(default=50, ge=1, le=200)
 
@@ -423,6 +432,26 @@ class FiltroUsuariosDTO(BaseModel):
             return None
         v = v.strip()
         return v if v else None
+
+
+class ResumenUsuariosDTO(BaseModel):
+    """
+    Agregación de solo lectura para el dashboard de plataforma (paso_21).
+
+    `por_rol` mapea cada rol (string) a su conteo. `total` es el total de
+    usuarios considerados (activos por defecto).
+    """
+    por_rol:  dict[str, int] = Field(default_factory=dict)
+    total:    int            = 0
+    activos:  int            = 0
+
+    @property
+    def directores(self) -> int:
+        return self.por_rol.get("director", 0)
+
+    @property
+    def administradores(self) -> int:
+        return self.por_rol.get("admin", 0)
 
 
 # =============================================================================
@@ -437,5 +466,6 @@ __all__ = [
     "NuevoUsuarioDTO",
     "ActualizarUsuarioDTO",
     "UsuarioResumenDTO",
+    "ResumenUsuariosDTO",
     "FiltroUsuariosDTO",
 ]

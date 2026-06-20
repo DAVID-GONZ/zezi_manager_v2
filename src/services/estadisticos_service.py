@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Any
 
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
@@ -23,6 +24,33 @@ from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
 
 logger = logging.getLogger("ESTADISTICOS_SERVICE")
+
+
+@dataclass(frozen=True)
+class MetricasInstitucionalesDTO:
+    """Métricas institucionales agregadas sobre todos los grupos con datos."""
+    grupos: list[dict] = field(default_factory=list)   # filas por grupo
+    kpi_grupos: int = 0
+    kpi_promedio: float = 0.0
+    kpi_asistencia: float = 0.0
+    kpi_riesgo: int = 0
+
+
+@dataclass(frozen=True)
+class PendientesDocenteDTO:
+    """Resumen de pendientes accionables de un docente (solo lectura)."""
+    actividades_sin_calificar:    int = 0   # actividades publicadas sin nota alguna
+    asignaciones_sin_asistencia:  int = 0   # asignaciones sin asistencia registrada hoy
+    alertas_estudiantes:          int = 0   # alertas pendientes de sus estudiantes
+    total_asignaciones:           int = 0   # asignaciones activas del docente en el periodo
+
+    @property
+    def hay_pendientes(self) -> bool:
+        return (
+            self.actividades_sin_calificar > 0
+            or self.asignaciones_sin_asistencia > 0
+            or self.alertas_estudiantes > 0
+        )
 
 
 class EstadisticosService:
@@ -38,12 +66,18 @@ class EstadisticosService:
         evaluacion_repo=None,
         asistencia_repo=None,
         estudiante_repo=None,
+        infra_repo=None,
+        asignacion_repo=None,
+        alerta_repo=None,
     ) -> None:
         self._repo           = repo
         self._config_repo    = config_repo
         self._eval_repo      = evaluacion_repo
         self._asist_repo     = asistencia_repo
         self._est_repo       = estudiante_repo
+        self._infra_repo     = infra_repo
+        self._asignacion_repo = asignacion_repo
+        self._alerta_repo    = alerta_repo
 
     # ------------------------------------------------------------------
     # Métricas de dashboard
@@ -69,6 +103,149 @@ class EstadisticosService:
 
         return self._repo.calcular_metricas_dashboard(
             grupo_id, periodo_id, nota_minima
+        )
+
+    def metricas_institucionales(
+        self,
+        periodo_id: int,
+        anio_id: int | None = None,
+    ) -> MetricasInstitucionalesDTO:
+        """Agrega las métricas de TODOS los grupos con datos en un periodo,
+        en una sola llamada (reemplaza el bucle N+1 de la vista).
+
+        Devuelve las filas por grupo más los KPIs institucionales
+        (promedio y asistencia medios entre grupos, total en riesgo)."""
+        if not periodo_id or self._infra_repo is None:
+            return MetricasInstitucionalesDTO()
+
+        nota_minima = 60.0
+        if self._config_repo is not None and anio_id is not None:
+            config = self._config_repo.get_by_id(anio_id)
+            if config is not None:
+                nota_minima = config.nota_minima_aprobacion
+
+        filas: list[dict] = []
+        for g in self._infra_repo.listar_grupos():
+            if not g.id:
+                continue
+            try:
+                m = self._repo.calcular_metricas_dashboard(
+                    g.id, periodo_id, nota_minima
+                )
+            except Exception:
+                continue
+            if m.total_estudiantes == 0:
+                continue
+            filas.append({
+                "grupo_id":   g.id,
+                "codigo":     g.codigo or str(g.id),
+                "total":      m.total_estudiantes,
+                "promedio":   m.promedio_general,
+                "asistencia": m.porcentaje_asistencia,
+                "en_riesgo":  m.estudiantes_en_riesgo,
+            })
+
+        filas.sort(key=lambda x: x["codigo"])
+        n = len(filas)
+        return MetricasInstitucionalesDTO(
+            grupos=filas,
+            kpi_grupos=n,
+            kpi_promedio=round(sum(f["promedio"] for f in filas) / n, 1) if n else 0.0,
+            kpi_asistencia=round(sum(f["asistencia"] for f in filas) / n, 1) if n else 0.0,
+            kpi_riesgo=sum(f["en_riesgo"] for f in filas),
+        )
+
+    def pendientes_docente(
+        self,
+        usuario_id: int,
+        periodo_id: int,
+        anio_id: int | None = None,
+    ) -> PendientesDocenteDTO:
+        """Resumen de pendientes accionables de un docente (SOLO LECTURA).
+
+        Agrega, sobre las asignaciones activas del docente en el periodo:
+          - actividades publicadas que aún no tienen ninguna nota registrada,
+          - asignaciones sin asistencia registrada en la fecha de hoy,
+          - alertas pendientes de los estudiantes de sus grupos.
+
+        Usado por el dashboard del profesor. No muta nada.
+        """
+        if (
+            not usuario_id
+            or not periodo_id
+            or self._asignacion_repo is None
+        ):
+            return PendientesDocenteDTO()
+
+        from datetime import date as _date
+
+        try:
+            asignaciones = self._asignacion_repo.listar_por_docente(
+                usuario_id, periodo_id, solo_activas=True
+            )
+        except Exception:
+            return PendientesDocenteDTO()
+
+        hoy = _date.today()
+        sin_calificar = 0
+        sin_asistencia = 0
+        grupos_ids: set[int] = set()
+
+        for asig in asignaciones:
+            asig_id = getattr(asig, "asignacion_id", None)
+            grupo_id = getattr(asig, "grupo_id", None)
+            if grupo_id:
+                grupos_ids.add(grupo_id)
+            if asig_id is None:
+                continue
+
+            # Actividades publicadas sin nota alguna
+            if self._eval_repo is not None:
+                try:
+                    actividades = self._eval_repo.listar_actividades(asig_id, periodo_id)
+                    for act in actividades:
+                        if not getattr(act, "esta_publicada", False) or act.id is None:
+                            continue
+                        notas = self._eval_repo.listar_notas_por_actividad(act.id)
+                        if not notas:
+                            sin_calificar += 1
+                except Exception:
+                    pass
+
+            # Asistencia de hoy sin registrar para la asignación
+            if self._asist_repo is not None and grupo_id:
+                try:
+                    registros_hoy = self._asist_repo.listar_por_grupo_y_fecha(
+                        grupo_id, asig_id, hoy
+                    )
+                    if not registros_hoy:
+                        sin_asistencia += 1
+                except Exception:
+                    pass
+
+        # Alertas pendientes de los estudiantes de sus grupos
+        alertas = 0
+        if self._alerta_repo is not None and self._est_repo is not None:
+            vistos: set[int] = set()
+            for grupo_id in grupos_ids:
+                try:
+                    estudiantes = self._est_repo.listar_por_grupo(grupo_id, solo_activos=True)
+                except Exception:
+                    continue
+                for est in estudiantes:
+                    if est.id is None or est.id in vistos:
+                        continue
+                    vistos.add(est.id)
+                    try:
+                        alertas += self._alerta_repo.contar_pendientes(est.id)
+                    except Exception:
+                        pass
+
+        return PendientesDocenteDTO(
+            actividades_sin_calificar=sin_calificar,
+            asignaciones_sin_asistencia=sin_asistencia,
+            alertas_estudiantes=alertas,
+            total_asignaciones=len(asignaciones),
         )
 
     def promedio_general_grupo(
@@ -468,4 +645,4 @@ class EstadisticosService:
             return {"error": str(exc), "vacio": True}
 
 
-__all__ = ["EstadisticosService"]
+__all__ = ["EstadisticosService", "MetricasInstitucionalesDTO", "PendientesDocenteDTO"]

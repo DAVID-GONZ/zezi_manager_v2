@@ -1,0 +1,32 @@
+/* ═══════════════════════════════════════════════════════════════
+   spacing.css — Utilidades semánticas de espaciado (R5)
+   Reemplazan las utilidades Quasar q-mt-*/q-mb-*/q-pa-*/q-gutter-*
+   en src/interface/pages/. Todas basadas en los tokens --space-*.
+
+   Convención: u-<prop>-<size>
+     prop:  mt mb mr ml my mx pa py px
+     size:  xs sm md lg
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Margin top ──────────────────────────────────────────── */
+.u-mt-xs { margin-top: var(--space-xs); }
+.u-mt-sm { margin-top: var(--space-sm); }
+.u-mt-md { margin-top: var(--space-md); }
+.u-mt-lg { margin-top: var(--space-lg); }
+
+/* ── Margin bottom ───────────────────────────────────────── */
+.u-mb-xs { margin-bottom: var(--space-xs); }
+.u-mb-sm { margin-bottom: var(--space-sm); }
+.u-mb-md { margin-bottom: var(--space-md); }
+.u-mb-lg { margin-bottom: var(--space-lg); }
+
+/* ── Padding all ─────────────────────────────────────────── */
+.u-pa-sm { padding: var(--space-sm); }
+.u-pa-md { padding: var(--space-md); }
+
+/* ── Padding vertical ────────────────────────────────────── */
+.u-py-xs { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+
+/* ── Gutter / gap basados en tokens ──────────────────────── */
+.u-gutter-sm        { gap: var(--space-sm); }
+.u-col-gutter-md    { gap: var(--space-md); }

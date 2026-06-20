@@ -547,3 +547,26 @@ class TestCerrarPlanEstudiante:
         resultado = svc.cerrar_plan_estudiante(dto)
         assert resultado.estado == EstadoNotaCorte.REPROBADO
         assert resultado.nota_definitiva_plan == pytest.approx(70.0)
+
+
+# ===========================================================================
+# Group 6 — notas de todas las actividades del corte en una sola llamada
+# ===========================================================================
+
+def test_notas_por_actividad_corte_sin_n_mas_1():
+    plan_repo = FakePlanRepo()
+    svc = PlanMejoramientoService(plan_repo, FakeEvalRepo(), None)
+    # Dos actividades del corte 1, con notas de 2 estudiantes.
+    a1 = plan_repo.guardar_actividad(ActividadPlan(
+        corte_id=1, asignacion_id=1, periodo_id=1, nombre="A1", peso=0.5))
+    a2 = plan_repo.guardar_actividad(ActividadPlan(
+        corte_id=1, asignacion_id=1, periodo_id=1, nombre="A2", peso=0.5))
+    plan_repo.guardar_nota_actividad(NotaActividadPlan(
+        actividad_plan_id=a1.id, estudiante_id=10, asignacion_id=1, periodo_id=1, valor=70))
+    plan_repo.guardar_nota_actividad(NotaActividadPlan(
+        actividad_plan_id=a2.id, estudiante_id=10, asignacion_id=1, periodo_id=1, valor=80))
+
+    mapa = svc.notas_por_actividad_corte(1)
+    assert set(mapa.keys()) == {a1.id, a2.id}
+    assert mapa[a1.id][10].valor == 70
+    assert mapa[a2.id][10].valor == 80

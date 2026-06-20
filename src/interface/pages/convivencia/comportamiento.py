@@ -32,10 +32,16 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger, btn_icon
-from src.interface.design.components.confirm_dialog import confirm_dialog
-from src.interface.design.components.form_dialog import form_dialog
-from src.interface.design.components import toast_error, toast_success, toast_warning
+from src.interface.design.components.buttons import btn_primary, btn_ghost, btn_danger
+from src.interface.design.components import (
+    confirm_dialog, empty_state, form_dialog,
+    toast_error, toast_success, toast_warning,
+)
+from src.services.convivencia_service import (
+    FiltroConvivenciaDTO,
+    NuevoRegistroComportamientoDTO,
+    TipoRegistro,
+)
 
 logger = logging.getLogger("COMPORTAMIENTO")
 
@@ -119,19 +125,16 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
 
 def _aplicar_filtros(_s: dict) -> None:
     """Construye el filtro y llama a listar_registros."""
-    import importlib
-    _mod = importlib.import_module("src.domain.models.convivencia")
-
     tipo_valor = None
     if _s["filtro_tipo"]:
-        # Pasar string — el DTO acepta TipoRegistro | None; string válido lo convierte pydantic
+        # El DTO acepta TipoRegistro | None; string válido lo convierte Pydantic.
         try:
-            tipo_valor = _mod.TipoRegistro(_s["filtro_tipo"])
+            tipo_valor = TipoRegistro(_s["filtro_tipo"])
         except Exception:
             tipo_valor = None
 
     try:
-        filtro = _mod.FiltroConvivenciaDTO(
+        filtro = FiltroConvivenciaDTO(
             grupo_id=_s["filtro_grupo_id"],
             periodo_id=_s["filtro_periodo_id"],
             tipo=tipo_valor,
@@ -186,10 +189,8 @@ def _construir_filas(_s: dict) -> list[dict]:
 
 
 def _nuevo_registro_dto(datos: dict) -> object:
-    """Construye NuevoRegistroComportamientoDTO sin imports de módulos de dominio en nivel de módulo."""
-    import importlib
-    _mod = importlib.import_module("src.domain.models.convivencia")
-    return _mod.NuevoRegistroComportamientoDTO(**datos)
+    """Construye NuevoRegistroComportamientoDTO desde primitivos del formulario."""
+    return NuevoRegistroComportamientoDTO(**datos)
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ def comportamiento_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -436,14 +437,14 @@ def comportamiento_page() -> None:
                             label="Periodo",
                             value=_s["filtro_periodo_id"],
                             on_change=lambda e: on_periodo_change(e.value),
-                        ).classes("andes-input").props("outlined dense").style("min-width:180px")  # DYNAMIC: ancho mínimo del selector
+                        ).classes("andes-input input-min-sm").props("outlined dense")
 
                         ui.select(
                             options=opciones_tipo,
                             label="Tipo",
                             value=_s["filtro_tipo"] or "",
                             on_change=lambda e: on_tipo_change(e.value),
-                        ).classes("andes-input").props("outlined dense").style("min-width:180px")  # DYNAMIC: ancho mínimo del selector
+                        ).classes("andes-input input-min-sm").props("outlined dense")
 
                         ui.checkbox(
                             "Solo negativos",
@@ -461,9 +462,10 @@ def comportamiento_page() -> None:
                 # Tabla de registros
                 with ui.element("div").classes("panel-card"):
                     if not filas:
-                        ui.label(
-                            "Sin registros para los filtros seleccionados."
-                        ).classes("text-empty py-4")
+                        empty_state(
+                            titulo="Sin registros",
+                            descripcion="No hay registros de comportamiento para los filtros seleccionados.",
+                        )
                     else:
                         col_defs = [
                             {"headerName": "Fecha",        "field": "fecha",         "width": 110, "sortable": True},

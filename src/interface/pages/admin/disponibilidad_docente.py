@@ -16,8 +16,6 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
 from src.interface.design.components.buttons import btn_primary, btn_ghost
 from src.interface.design.components import (
     empty_state,
@@ -36,7 +34,7 @@ def disponibilidad_docente_page() -> None:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director", "coordinador"):
+    if ctx.usuario_rol not in ("director", "coordinador"):
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
         return
@@ -132,16 +130,14 @@ def disponibilidad_docente_page() -> None:
             toast_warning("Selecciona un docente primero")
             return
         try:
-            Container.infraestructura_service().limpiar_disponibilidad_docente(docente_id)
             slots_no_disponibles = [
                 {"dia_semana": dia, "franja_orden": orden, "disponible": False}
                 for (dia, orden), disponible in _s["disponibilidad"].items()
                 if not disponible
             ]
-            if slots_no_disponibles:
-                Container.infraestructura_service().bloquear_franjas_docente(
-                    docente_id, slots_no_disponibles
-                )
+            Container.infraestructura_service().guardar_disponibilidad_docente(
+                docente_id, slots_no_disponibles
+            )
             toast_success("Disponibilidad guardada")
         except Exception as exc:
             logger.error("Error guardando disponibilidad: %s", exc)
@@ -192,16 +188,11 @@ def disponibilidad_docente_page() -> None:
                             for dia in dias:
                                 clave = (dia, franja.orden)
                                 disponible = _s["disponibilidad"].get(clave, True)
-                                color_cls = (
-                                    "cursor-pointer select-none transition-colors "
-                                    "bg-green-100 hover:bg-green-200 text-green-800"
-                                    if disponible
-                                    else
-                                    "cursor-pointer select-none transition-colors "
-                                    "bg-red-100 hover:bg-red-200 text-red-700"
+                                estado_cls = (
+                                    "slot-disponible" if disponible else "slot-no-disponible"
                                 )
                                 td = ui.element("td").classes(
-                                    f"p-2 border text-center {color_cls}"
+                                    f"p-2 border text-center slot-cell {estado_cls}"
                                 )
                                 td.on("click", lambda _, c=clave: _toggle_celda(c))
                                 with td:
@@ -281,14 +272,10 @@ def disponibilidad_docente_page() -> None:
                     ui.label("Disponibilidad horaria").classes("text-lg font-bold")
                     with ui.row().classes("gap-2"):
                         with ui.element("div").classes("flex items-center gap-1"):
-                            ui.element("div").classes(
-                                "w-4 h-4 bg-green-100 border border-green-300 rounded-sm"
-                            )
+                            ui.element("div").classes("slot-legend slot-legend--disponible")
                             ui.label("Disponible").classes("text-xs")
                         with ui.element("div").classes("flex items-center gap-1"):
-                            ui.element("div").classes(
-                                "w-4 h-4 bg-red-100 border border-red-300 rounded-sm"
-                            )
+                            ui.element("div").classes("slot-legend slot-legend--no-disponible")
                             ui.label("No disponible").classes("text-xs")
 
                 _rejilla_disponibilidad()

@@ -31,7 +31,7 @@ from src.interface.design.tokens import Icons, DesempenoColors, AsistenciaColors
 from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.interface.design.components.stat_card import stat_card
-from src.services.informe_service import sanitizar_datos_exportacion, FormatoInforme
+from src.services.informe_service import FormatoInforme
 from src.interface.design.components import skeleton_table, toast_error, toast_warning
 
 logger = logging.getLogger("ESTADISTICOS")
@@ -110,6 +110,9 @@ _TIPOS_SELECT_OPTS: dict[str, str] = {t["id"]: t["label"] for t in _TIPOS_INFORM
 
 
 # ── Colores ECharts ───────────────────────────────────────────────────────────
+
+# Color de respaldo para categorías sin color definido (gris neutro de la paleta).
+_EC_FALLBACK_COLOR = "#9D9D9D"  # = --graphite-300
 
 _NIVEL_COLORES: dict[str, str] = {
     "Bajo":     DesempenoColors.BAJO,
@@ -529,7 +532,7 @@ def _render_donut(datos: dict) -> None:
         {
             "name":      nivel,
             "value":     cant,
-            "itemStyle": {"color": _NIVEL_COLORES.get(nivel, "#999")},
+            "itemStyle": {"color": _NIVEL_COLORES.get(nivel, _EC_FALLBACK_COLOR)},
         }
         for nivel, cant in datos.items()
     ]
@@ -588,7 +591,7 @@ def _render_pie_asistencia(datos: dict) -> None:
         {
             "name":      estado,
             "value":     cant,
-            "itemStyle": {"color": _ASISTENCIA_COLORES.get(estado, "#999")},
+            "itemStyle": {"color": _ASISTENCIA_COLORES.get(estado, _EC_FALLBACK_COLOR)},
         }
         for estado, cant in datos.items()
     ]
@@ -633,68 +636,38 @@ def _render_preview(_s: dict) -> None:
 
 # ── Helpers de exportación ───────────────────────────────────────────────────
 
+def _contexto_export(ctx: SessionContext, _s: dict) -> dict:
+    """Datos de membrete (grupo/periodo/asignatura) + IDs para la exportación."""
+    grupo_nombre = next(
+        (g.nombre or g.codigo for g in _s["grupos"] if g.id == _s["grupo_id"]), ""
+    )
+    periodo_nombre = next(
+        (getattr(p, "nombre", str(p.id)) for p in _s["periodos"] if p.id == _s["periodo_id"]), ""
+    )
+    asig_nombre = next(
+        (
+            getattr(a, "asignatura_nombre", "")
+            for a in _s["asignaciones"]
+            if getattr(a, "asignacion_id", None) == _s["asignacion_id"]
+        ),
+        "",
+    ) if _s.get("asignacion_id") else ""
+    return {
+        "grupo_id":           _s["grupo_id"],
+        "anio_id":            ctx.anio_id,
+        "grupo_nombre":       grupo_nombre,
+        "periodo_nombre":     periodo_nombre,
+        "asignatura_nombre":  asig_nombre,
+    }
+
+
 def _exportar_excel(ctx: SessionContext, _s: dict) -> None:
-    tipo  = _s["tipo"]
-    gid   = _s["grupo_id"]
-    pid   = _s["periodo_id"]
-    anio  = ctx.anio_id
-    datos = _s["datos"]
+    tipo = _s["tipo"]
     nombre = _nombre_archivo(_s) + ".xlsx"
-
     try:
-        svc_inf  = Container.informe_service()
-        exporter = svc_inf._get_exporter_o_lanzar()
-
-        # Para tipos tabulares (list[dict]), sanitizar antes de exportar
-        if tipo == "consolidado_notas":
-            content = exporter.exportar_excel(
-                sanitizar_datos_exportacion(datos or []),
-                nombre_hoja="Consolidado Notas",
-            )
-        elif tipo == "consolidado_asistencia":
-            content = exporter.exportar_excel(
-                sanitizar_datos_exportacion(datos or []),
-                nombre_hoja="Consolidado Asistencia",
-            )
-        elif tipo == "consolidado_anual":
-            # generar_consolidado_anual ya aplica sanitizar_datos_exportacion internamente
-            content = svc_inf.generar_consolidado_anual(
-                gid, anio, formato=FormatoInforme.EXCEL
-            )
-        elif tipo == "ranking_grupo":
-            content = exporter.exportar_excel(
-                sanitizar_datos_exportacion(datos if isinstance(datos, list) else []),
-                nombre_hoja="Ranking",
-            )
-        elif tipo == "estados_asistencia":
-            _LABEL_ESTADO = {"P": "Presente", "FJ": "Falta Justificada",
-                             "FI": "Falta Injustificada", "R": "Retraso", "E": "Excusa"}
-            filas = [{"Estado": _LABEL_ESTADO.get(k, k), "Registros": v}
-                     for k, v in (datos or {}).items()]
-            content = exporter.exportar_excel(filas, nombre_hoja="Estados Asistencia")
-        elif tipo == "distribucion_desempenos":
-            filas = [{"Nivel de Desempeño": k, "Estudiantes": v}
-                     for k, v in (datos or {}).items()]
-            content = exporter.exportar_excel(filas, nombre_hoja="Distribución Desempeños")
-        elif tipo == "comparativo_periodos":
-            raw = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            filas = [
-                {"Periodo": r.get("periodo_nombre", r.get("Periodo", "")),
-                 "Promedio": r.get("promedio", r.get("Promedio", 0))}
-                for r in raw
-            ]
-            content = exporter.exportar_excel(filas, nombre_hoja="Comparativo Periodos")
-        elif tipo == "promedios_area":
-            filas = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            content = exporter.exportar_excel(filas, nombre_hoja="Promedios por Área")
-        elif tipo == "tendencia_asistencia":
-            filas = [{"Semana": r.get("semana", ""), "% Asistencia": r.get("porcentaje", 0)}
-                     for r in (datos if isinstance(datos, list) else [])]
-            content = exporter.exportar_excel(filas, nombre_hoja="Tendencia Asistencia")
-        else:
-            filas = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            content = exporter.exportar_excel(filas, nombre_hoja=tipo)
-
+        content = Container.informe_service().exportar_estadistico(
+            tipo, _s["datos"], FormatoInforme.EXCEL, _contexto_export(ctx, _s),
+        )
         ui.download(content, nombre)
     except Exception as exc:
         logger.error("Error exportando Excel (%s): %s", tipo, exc)
@@ -702,92 +675,15 @@ def _exportar_excel(ctx: SessionContext, _s: dict) -> None:
 
 
 def _exportar_pdf(ctx: SessionContext, _s: dict) -> None:
-    tipo   = _s["tipo"]
-    gid    = _s["grupo_id"]
-    pid    = _s["periodo_id"]
-    anio   = ctx.anio_id
-    datos  = _s["datos"]
+    tipo = _s["tipo"]
     nombre = _nombre_archivo(_s) + ".pdf"
-
     try:
-        svc_inf  = Container.informe_service()
-        exporter = svc_inf._get_exporter_o_lanzar()
-
-        def _inyectar_meta(html_str: str) -> str:
-            """Inyecta <meta> tags de informe en el <head> del HTML para el membrete PDF."""
-            grupo_nombre = next(
-                (g.nombre or g.codigo for g in _s["grupos"] if g.id == _s["grupo_id"]), ""
-            )
-            periodo_nombre = next(
-                (getattr(p, "nombre", str(p.id)) for p in _s["periodos"] if p.id == _s["periodo_id"]), ""
-            )
-            asig_nombre = next(
-                (
-                    getattr(a, "asignatura_nombre", "")
-                    for a in _s["asignaciones"]
-                    if getattr(a, "asignacion_id", None) == _s["asignacion_id"]
-                ),
-                "",
-            ) if _s.get("asignacion_id") else ""
-            metas = (
-                f'<meta name="report-grupo" content="{grupo_nombre}">'
-                f'<meta name="report-periodo" content="{periodo_nombre}">'
-                f'<meta name="report-asignatura" content="{asig_nombre}">'
-            )
-            return html_str.replace("</head>", f"{metas}</head>", 1)
-
-        if tipo == "consolidado_notas":
-            filas   = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            html    = svc_inf._datos_a_html(filas, titulo="Consolidado de Notas")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "consolidado_asistencia":
-            filas   = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            html    = svc_inf._datos_a_html(filas, titulo="Consolidado de Asistencia")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "consolidado_anual":
-            # generar_consolidado_anual ya aplica sanitizar_datos_exportacion internamente
-            content = svc_inf.generar_consolidado_anual(
-                gid, anio, formato=FormatoInforme.PDF
-            )
-        elif tipo == "ranking_grupo":
-            filas   = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            html    = svc_inf._datos_a_html(filas, titulo="Ranking del Grupo")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "distribucion_desempenos":
-            filas = [{"Nivel de Desempeño": k, "Estudiantes": v} for k, v in (datos or {}).items()]
-            html  = svc_inf._datos_a_html(filas, titulo="Distribución de Desempeños")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "estados_asistencia":
-            _LABEL_ESTADO = {"P": "Presente", "FJ": "Falta Justificada",
-                             "FI": "Falta Injustificada", "R": "Retraso", "E": "Excusa"}
-            filas = [{"Estado": _LABEL_ESTADO.get(k, k), "Registros": v}
-                     for k, v in (datos or {}).items()]
-            html  = svc_inf._datos_a_html(filas, titulo="Estados de Asistencia")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "comparativo_periodos":
-            filas = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            # Renombrar campos específicos de este tipo
-            filas = [
-                {"Periodo": r.get("periodo_nombre", r.get("Periodo", "")),
-                 "Promedio": r.get("promedio", r.get("Promedio", 0))}
-                for r in filas
-            ]
-            html  = svc_inf._datos_a_html(filas, titulo="Comparativo por Periodos")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "promedios_area":
-            filas = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
-            html  = svc_inf._datos_a_html(filas, titulo="Promedios por Área")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        elif tipo == "tendencia_asistencia":
-            filas = [{"Semana": r.get("semana", ""), "% Asistencia": r.get("porcentaje", 0)}
-                     for r in (datos if isinstance(datos, list) else [])]
-            html  = svc_inf._datos_a_html(filas, titulo="Tendencia de Asistencia")
-            content = exporter.exportar_pdf(_inyectar_meta(html))
-        else:
-            toast_warning("Tipo de informe no reconocido.")
-            return
-
+        content = Container.informe_service().exportar_estadistico(
+            tipo, _s["datos"], FormatoInforme.PDF, _contexto_export(ctx, _s),
+        )
         ui.download(content, nombre)
+    except ValueError as exc:
+        toast_warning(str(exc))
     except Exception as exc:
         logger.error("Error exportando PDF (%s): %s", tipo, exc)
         toast_error(f"Error al exportar PDF: {exc}")
@@ -802,7 +698,7 @@ def estadisticos_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _ROLES_VALIDOS = {"admin", "director", "coordinador", "profesor"}
+    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
     if ctx.usuario_rol not in _ROLES_VALIDOS:
         toast_error("Acceso no autorizado")
         ui.navigate.to("/inicio")
@@ -839,7 +735,7 @@ def estadisticos_page() -> None:
                 options=_TIPOS_SELECT_OPTS,
                 value=_s["tipo"],
                 on_change=lambda e: on_tipo_change(e.value),
-            ).classes("w-full q-mb-md")
+            ).classes("w-full u-mb-md")
 
             tipo = _tipo_activo(_s)
             if not tipo:
@@ -892,7 +788,7 @@ def estadisticos_page() -> None:
                         on_change=lambda e: on_periodo_change(e.value),
                     ).classes("w-full")
 
-            with ui.row().classes("justify-end q-mt-md"):
+            with ui.row().classes("justify-end u-mt-md"):
                 btn_primary(
                     "Previsualizar",
                     icon=Icons.GRADES,
@@ -921,14 +817,14 @@ def estadisticos_page() -> None:
             if not _s["datos_listos"]:
                 ui.label(
                     "Haz clic en 'Previsualizar' para habilitar la descarga."
-                ).classes("text-caption text-grey-6 q-pa-sm")
+                ).classes("text-caption text-muted u-pa-sm")
                 return
 
             tipo_info = _tipo_activo(_s)
             if not tipo_info:
                 return
 
-            with ui.row().classes("q-gutter-sm"):
+            with ui.row().classes("u-gutter-sm"):
                 btn_primary(
                     "Descargar Excel (.xlsx)",
                     icon=Icons.EXPORT,
