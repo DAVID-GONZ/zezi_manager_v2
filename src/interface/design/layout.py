@@ -345,6 +345,8 @@ def _topbar(
     logo_url: str | None = None,
     on_context_change=None,
     mostrar_contexto: bool = True,
+    mostrar_grupo: bool = True,
+    mostrar_asignatura: bool = True,
 ) -> None:
     """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
     usuario_rol = ctx.usuario_rol if ctx else ""
@@ -372,10 +374,12 @@ def _topbar(
         # ── Context chip (centro/derecha) ────────────────────────────────────
         if ctx is not None and mostrar_contexto:
             from src.interface.design.components.context_selector import context_chip
+            # Dimensiones declaradas POR PÁGINA (no derivadas del rol).
             context_chip(
                 ctx=ctx,
                 on_change=on_context_change,
-                mostrar_asignatura=(usuario_rol == "profesor"),
+                mostrar_grupo=mostrar_grupo,
+                mostrar_asignatura=mostrar_asignatura,
             )
 
         # ── Acciones de página ───────────────────────────────────────────────
@@ -501,6 +505,8 @@ def app_layout(
     page_acciones: "list[dict] | None" = None,
     on_context_change=None,
     mostrar_contexto: bool = True,
+    mostrar_grupo: bool = True,
+    mostrar_asignatura: bool = True,
 ) -> None:
     """
     Layout principal de la aplicación — Rail icon-only 60px (paso_12d).
@@ -519,6 +525,12 @@ def app_layout(
         mostrar_contexto:  Si False, oculta el chip de contexto (selector
                            año/periodo/grupo) en el topbar. Default True →
                            ninguna otra página cambia.
+        mostrar_grupo:     Si False, el selector no muestra el paso Grupo
+                           (página de agregados institucionales: solo periodo/año).
+                           Default True. Asignatura implica grupo.
+        mostrar_asignatura: Si False, el selector no muestra el paso Asignatura
+                           (página que solo usa periodo+grupo). Default True.
+                           Lo declara cada PÁGINA según su uso real de contexto.
     """
     _ctx = ctx_or_none
     _contenido = contenido_arg
@@ -684,6 +696,8 @@ def app_layout(
             logo_url=logo_url,
             on_context_change=on_context_change,
             mostrar_contexto=mostrar_contexto,
+            mostrar_grupo=mostrar_grupo,
+            mostrar_asignatura=mostrar_asignatura,
         )
 
         # Contenido de la página

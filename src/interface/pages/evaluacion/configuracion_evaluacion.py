@@ -600,13 +600,10 @@ def configuracion_evaluacion_page() -> None:
             # Sección C — Corte plan de mejoramiento
             seccion_corte()
 
-    def on_context_change() -> None:
-        ui.navigate.reload()
-
     app_layout(
         ctx, contenido,
         page_titulo       = "Evaluación · Configuración",
-        on_context_change = on_context_change,
+        mostrar_contexto  = False,  # selectores internos; no depende del chip (paso_41)
     )
 
 

@@ -2245,16 +2245,13 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         with ui.element("div").classes("page-stack"):
             hub_refreshable()
 
-    def on_context_change() -> None:
-        ui.navigate.reload()
-
     app_layout(
         ctx,
         contenido,
         page_titulo="Horarios",
         page_subtitulo="Gestión unificada de horarios",
         page_icono=Icons.SCHEDULE,
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # hub sobre contexto activo; no depende del chip (paso_41)
     )
 
 

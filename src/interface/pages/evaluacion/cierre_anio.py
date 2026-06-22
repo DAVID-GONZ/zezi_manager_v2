@@ -203,13 +203,10 @@ def cierre_anio_page() -> None:
             with ui.element("div").classes("panel-card mt-4"):
                 tabla_resultado()
 
-    def on_context_change() -> None:
-        ui.navigate.reload()
-
     app_layout(
         ctx, contenido,
         page_titulo="Evaluación · Cierre de Año",
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # selector de grupo interno; no depende del chip (paso_41)
     )
 
 

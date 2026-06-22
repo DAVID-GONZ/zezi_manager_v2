@@ -516,6 +516,7 @@ def comportamiento_page() -> None:
             ctx_actual, contenido_pagina,
             page_titulo="Comportamiento",
             on_context_change=on_context_change,
+            mostrar_asignatura=False,  # usa periodo+grupo (no asignación)
         )
 
     _contenido()

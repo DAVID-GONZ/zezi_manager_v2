@@ -7,8 +7,11 @@ Reemplaza context_bar.py con una arquitectura correcta:
   - Sin AppState (usa SessionContext)
 
 Dos componentes públicos:
-  context_chip(ctx, on_change, mostrar_asignatura) → chip para la topbar
-  abrir_selector(ctx, on_change, mostrar_asignatura) → dialog de selección visual
+  context_chip(ctx, on_change, mostrar_grupo, mostrar_asignatura) → chip para la topbar
+  abrir_selector(ctx, on_change, mostrar_grupo, mostrar_asignatura) → dialog de selección visual
+
+Las dimensiones del chip (grupo, asignatura) las declara cada PÁGINA según el
+contexto que realmente consume — no se derivan del rol del usuario.
 
 El chip siempre visible en la topbar muestra el contexto activo.
 Hacer clic abre el dialog de selección por tarjetas.
@@ -73,11 +76,58 @@ def _texto_chip(ctx: SessionContext) -> tuple[str, bool]:
     return "  ·  ".join(partes), True
 
 
+# ── Lógica pura de dimensiones (testeable sin render) ──────────────────────────
+
+def dimensiones_visibles(
+    mostrar_grupo: bool,
+    mostrar_asignatura: bool,
+) -> tuple[bool, bool, bool]:
+    """
+    Normaliza qué pasos del selector son visibles según los flags de la página.
+
+    Reglas (declaradas por la PÁGINA, no por el rol):
+      - Periodo: siempre visible (es la base).
+      - Asignatura ⇒ Grupo: elegir asignación requiere antes elegir grupo.
+
+    Retorna (periodo_visible, grupo_visible, asignatura_visible).
+    """
+    grupo_visible = mostrar_grupo or mostrar_asignatura
+    return True, grupo_visible, mostrar_asignatura
+
+
+def seleccion_completa(
+    *,
+    periodo_id,
+    grupo_id,
+    asignacion_id,
+    mostrar_grupo: bool,
+    mostrar_asignatura: bool,
+) -> bool:
+    """
+    True si la selección cubre exactamente las dimensiones VISIBLES.
+
+    Solo exige periodo (siempre), grupo (si visible) y asignación (si visible).
+    El botón "Aplicar" usa esto: se habilita con las dimensiones de la página,
+    no con todas. Aplica la implicación asignatura ⇒ grupo.
+    """
+    _, grupo_visible, asig_visible = dimensiones_visibles(
+        mostrar_grupo, mostrar_asignatura
+    )
+    if not periodo_id:
+        return False
+    if grupo_visible and not grupo_id:
+        return False
+    if asig_visible and not asignacion_id:
+        return False
+    return True
+
+
 # ── Chip del topbar ───────────────────────────────────────────────────────────
 
 def context_chip(
     ctx: SessionContext,
     on_change=None,
+    mostrar_grupo: bool = True,
     mostrar_asignatura: bool = True,
 ) -> None:
     """
@@ -87,13 +137,19 @@ def context_chip(
     Args:
         ctx: Contexto de sesión activo.
         on_change: Callback llamado al confirmar un nuevo contexto.
+        mostrar_grupo: False para páginas que solo necesitan periodo/año.
         mostrar_asignatura: False para páginas que solo necesitan P+G.
     """
     texto, tiene_contexto = _texto_chip(ctx)
     clase_chip = "cs-chip" + ("" if tiene_contexto else " cs-chip-empty")
 
     def abrir():
-        abrir_selector(ctx=ctx, on_change=on_change, mostrar_asignatura=mostrar_asignatura)
+        abrir_selector(
+            ctx=ctx,
+            on_change=on_change,
+            mostrar_grupo=mostrar_grupo,
+            mostrar_asignatura=mostrar_asignatura,
+        )
 
     with ui.element("div").classes(clase_chip).on("click", abrir):
         ThemeManager.icono("swap_horiz", size=16, clases="cs-chip-icon")
@@ -106,21 +162,31 @@ def context_chip(
 def abrir_selector(
     ctx: SessionContext,
     on_change=None,
+    mostrar_grupo: bool = True,
     mostrar_asignatura: bool = True,
 ) -> None:
     """
     Abre el diálogo de selección visual de contexto académico.
 
-    Flujo guiado en tres pasos:
-      1. Periodo   — tarjetas con progress bar y estado
-      2. Grupo     — tarjetas con código y número de estudiantes
-      3. Asignatura — lista con nombre y horario (si mostrar_asignatura=True)
+    Flujo guiado en hasta tres pasos:
+      1. Periodo    — tarjetas con progress bar y estado (siempre visible)
+      2. Grupo      — tarjetas con código y número de estudiantes (si mostrar_grupo)
+      3. Asignatura — lista con nombre y horario (si mostrar_asignatura)
+
+    Dimensiones por página: asignatura ⇒ grupo ⇒ periodo. Si una página pide
+    asignatura, el paso Grupo se muestra aunque mostrar_grupo sea False (es
+    prerequisito para elegir asignación).
 
     Preserva la lógica de asignatura_hint del legacy:
     Al cambiar de periodo, guarda el asignatura_id (entidad estable)
     y lo usa para encontrar la asignacion equivalente en el nuevo periodo.
     """
     rol = ctx.usuario_rol
+
+    # Asignatura implica grupo (la asignación se elige dentro de un grupo).
+    _, mostrar_grupo, mostrar_asignatura = dimensiones_visibles(
+        mostrar_grupo, mostrar_asignatura
+    )
 
     # Estado interno del dialog (selecciones en progreso, no confirmadas)
     seleccion = {
@@ -138,9 +204,14 @@ def abrir_selector(
     def _actualizar_btn_aplicar():
         if not btn_aplicar:
             return
-        completo = bool(seleccion["periodo_id"] and seleccion["grupo_id"])
-        if mostrar_asignatura:
-            completo = completo and bool(seleccion["asignacion_id"])
+        # Solo exige las dimensiones visibles (periodo siempre es la base).
+        completo = seleccion_completa(
+            periodo_id=seleccion["periodo_id"],
+            grupo_id=seleccion["grupo_id"],
+            asignacion_id=seleccion["asignacion_id"],
+            mostrar_grupo=mostrar_grupo,
+            mostrar_asignatura=mostrar_asignatura,
+        )
         if completo:
             btn_aplicar.enable()
         else:
@@ -203,7 +274,8 @@ def abrir_selector(
                                 except Exception:
                                     pass
                             _render_periodos(cont_periodos)
-                            _render_grupos(cont_grupos)
+                            if mostrar_grupo:
+                                _render_grupos(cont_grupos)
                             if mostrar_asignatura:
                                 _render_asignaturas(cont_asignaturas)
                             _actualizar_btn_aplicar()
@@ -389,16 +461,20 @@ def abrir_selector(
                 cont_periodos = ui.element("div")
                 _render_periodos(cont_periodos)
 
-            # PASO 2: Grupo
-            with ui.column().classes("gap-2 mb-5"):
-                with ui.element("div").classes("cs-step-label"):
-                    num_clase = "cs-step-number" + (
-                        "" if seleccion["periodo_id"] else " cs-step-number-pending"
-                    )
-                    ui.label("2").classes(num_clase)
-                    ui.label("Grupo")
-                cont_grupos = ui.element("div")
-                _render_grupos(cont_grupos)
+            # PASO 2: Grupo (condicional)
+            # cont_grupos siempre definido para que los callbacks de periodo
+            # puedan referenciarlo sin importar mostrar_grupo.
+            cont_grupos = ui.element("div")  # placeholder (vacío si no aplica)
+            if mostrar_grupo:
+                with ui.column().classes("gap-2 mb-5"):
+                    with ui.element("div").classes("cs-step-label"):
+                        num_clase = "cs-step-number" + (
+                            "" if seleccion["periodo_id"] else " cs-step-number-pending"
+                        )
+                        ui.label("2").classes(num_clase)
+                        ui.label("Grupo")
+                    cont_grupos = ui.element("div")
+                    _render_grupos(cont_grupos)
 
             # PASO 3: Asignatura (condicional)
             # cont_asignaturas siempre definido para que los callbacks de los pasos
@@ -442,4 +518,9 @@ def abrir_selector(
     dialog.open()
 
 
-__all__ = ["context_chip", "abrir_selector"]
+__all__ = [
+    "context_chip",
+    "abrir_selector",
+    "dimensiones_visibles",
+    "seleccion_completa",
+]

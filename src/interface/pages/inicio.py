@@ -789,6 +789,7 @@ def inicio_page() -> None:
             page_titulo="Plataforma",
             page_subtitulo="Auditoría y gestión de cuentas",
             page_icono="shield_person",
+            mostrar_contexto=False,  # dashboard admin de plataforma; sin chip (paso_41)
         )
         return
 
@@ -815,10 +816,6 @@ def inicio_page() -> None:
         else:
             _seccion_pendientes_docente(ctx_fresco, config)
 
-    def on_context_change() -> None:
-        stats_refreshable.refresh()
-        contexto_refreshable.refresh()
-
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             _seccion_saludo(ctx, config)
@@ -837,7 +834,7 @@ def inicio_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Dashboard",
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # dashboard sobre contexto activo; no depende del chip (paso_41)
     )
 
 

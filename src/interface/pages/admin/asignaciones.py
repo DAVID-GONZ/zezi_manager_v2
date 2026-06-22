@@ -797,6 +797,7 @@ def asignaciones_page() -> None:
             else "Asigna docentes a materias por grupo, o materias a cada docente según su carga"
         ),
         page_icono     = "assignment_ind",
+        mostrar_contexto = False,  # selectores internos; no depende del chip (paso_41)
     )
 
 

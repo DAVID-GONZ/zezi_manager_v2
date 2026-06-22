@@ -193,13 +193,6 @@ def consolidado_asistencia_page() -> None:
             logger.error("Error generando informe de asistencia: %s", exc, exc_info=True)
             toast_error("Error al generar el informe.")
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _s["grupo_id"] = nuevo_ctx.grupo_id
-            _cargar_listas(nuevo_ctx, _s)
-        filtros_refreshable.refresh()
-
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -207,7 +200,7 @@ def consolidado_asistencia_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Consolidado de Asistencia",
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # filtros internos periodo/grupo; no depende del chip (paso_41)
     )
 
 

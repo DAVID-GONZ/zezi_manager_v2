@@ -884,19 +884,6 @@ def estadisticos_page() -> None:
 
     # ── Contenido ────────────────────────────────────────────────────────────
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _cargar_grupos(nuevo_ctx, _s)
-            _cargar_periodos(nuevo_ctx, _s)
-            if nuevo_ctx.usuario_rol == "profesor" and nuevo_ctx.grupo_id:
-                _s["grupo_id"] = nuevo_ctx.grupo_id
-            if _s["grupo_id"]:
-                _cargar_asignaciones(nuevo_ctx, _s)
-        filtros_refreshable.refresh()
-        preview_refreshable.refresh()
-        export_refreshable.refresh()
-
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -906,7 +893,7 @@ def estadisticos_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Estadísticos",
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # filtros internos grupo/periodo/asignatura; no depende del chip (paso_41)
     )
 
 

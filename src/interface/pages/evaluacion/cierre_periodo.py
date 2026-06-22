@@ -418,18 +418,10 @@ def cierre_periodo_page() -> None:
             with ui.element("div").classes("panel-card"):
                 lista_refreshable()
 
-    def on_context_change() -> None:
-        nuevo = SessionContext.desde_storage()
-        if nuevo:
-            _s["periodo_id"] = nuevo.periodo_id
-            _s["grupo_id"]   = nuevo.grupo_id
-            _recargar_asignaciones()
-        lista_refreshable.refresh()
-
     app_layout(
         ctx, contenido,
         page_titulo       = "Evaluación · Cierre de Periodo",
-        on_context_change = on_context_change,
+        mostrar_contexto  = False,  # selectores internos periodo/grupo; no depende del chip (paso_41)
     )
 
 

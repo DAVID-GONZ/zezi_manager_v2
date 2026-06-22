@@ -271,17 +271,6 @@ def boletin_anual_page() -> None:
         _s["anio_id"] = anio_id
         lista_refreshable.refresh()
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _s["grupo_id"] = nuevo_ctx.grupo_id
-            _s["anio_id"]  = nuevo_ctx.anio_id
-            _cargar_grupos(nuevo_ctx, _s)
-            if _s["grupo_id"]:
-                _cargar_estudiantes(_s)
-        filtros_refreshable.refresh()
-        lista_refreshable.refresh()
-
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             filtros_refreshable()
@@ -290,7 +279,7 @@ def boletin_anual_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Boletines Anuales",
-        on_context_change=on_context_change,
+        mostrar_contexto=False,  # filtros internos año/grupo; no depende del chip (paso_41)
     )
 
 
