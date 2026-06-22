@@ -52,17 +52,11 @@ def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> "float | None":
     return round(sum(vals) / len(vals), 1)
 
 
-@ui.page("/evaluacion/planilla")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def planilla_notas_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)

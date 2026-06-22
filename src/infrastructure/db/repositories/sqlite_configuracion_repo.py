@@ -35,11 +35,18 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
     # ConfiguracionAnio
     # =========================================================================
 
-    def get_activa(self) -> ConfiguracionAnio | None:
+    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM configuracion_anio WHERE activo = 1 LIMIT 1"
-            ).fetchone()
+            if institucion_id is None:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio WHERE activo = 1 LIMIT 1"
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio "
+                    "WHERE institucion_id = ? AND activo = 1 LIMIT 1",
+                    (institucion_id,),
+                ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
     def get_by_id(self, anio_id: int) -> ConfiguracionAnio | None:
@@ -49,18 +56,36 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def get_by_anio(self, anio: int) -> ConfiguracionAnio | None:
+    def get_by_anio(
+        self, institucion_id: int | None, anio: int
+    ) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM configuracion_anio WHERE anio = ?", (anio,)
-            ).fetchone()
+            if institucion_id is None:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio WHERE anio = ?", (anio,)
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio "
+                    "WHERE institucion_id = ? AND anio = ?",
+                    (institucion_id, anio),
+                ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def listar(self) -> list[ConfiguracionAnio]:
+    def listar(
+        self, institucion_id: int | None = None
+    ) -> list[ConfiguracionAnio]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM configuracion_anio ORDER BY anio DESC"
-            ).fetchall()
+            if institucion_id is None:
+                rows = conn.execute(
+                    "SELECT * FROM configuracion_anio ORDER BY anio DESC"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM configuracion_anio "
+                    "WHERE institucion_id = ? ORDER BY anio DESC",
+                    (institucion_id,),
+                ).fetchall()
             return [ConfiguracionAnio(**dict(r)) for r in rows]
 
     def guardar(self, config: ConfiguracionAnio) -> ConfiguracionAnio:
@@ -68,15 +93,16 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             cursor = conn.execute(
                 """
                 INSERT INTO configuracion_anio (
-                    anio, fecha_inicio_clases, fecha_fin_clases,
+                    anio, institucion_id, fecha_inicio_clases, fecha_fin_clases,
                     nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala,
                     nombre_institucion,
                     dane_code, rector, direccion, municipio,
                     telefono_institucion, logo_path, resolucion_aprobacion, activo
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     config.anio,
+                    config.institucion_id,
                     config.fecha_inicio_clases.isoformat() if config.fecha_inicio_clases else None,
                     config.fecha_fin_clases.isoformat() if config.fecha_fin_clases else None,
                     config.nota_minima_aprobacion,
@@ -102,7 +128,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             conn.execute(
                 """
                 UPDATE configuracion_anio SET
-                    anio = ?, fecha_inicio_clases = ?, fecha_fin_clases = ?,
+                    anio = ?, institucion_id = ?, fecha_inicio_clases = ?, fecha_fin_clases = ?,
                     nota_minima_aprobacion = ?, nota_minima_escala = ?, nota_maxima_escala = ?,
                     nombre_institucion = ?,
                     dane_code = ?, rector = ?, direccion = ?, municipio = ?,
@@ -112,6 +138,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 """,
                 (
                     config.anio,
+                    config.institucion_id,
                     config.fecha_inicio_clases.isoformat() if config.fecha_inicio_clases else None,
                     config.fecha_fin_clases.isoformat() if config.fecha_fin_clases else None,
                     config.nota_minima_aprobacion,
@@ -135,8 +162,19 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
 
     def activar(self, anio_id: int) -> bool:
         with self._get_conn() as conn:
+            # Multi-tenant (paso_27): desactivar SOLO los años de la misma
+            # institución que el año a activar. Si el año objetivo tiene
+            # institucion_id NULL (single-tenant), el subselect devuelve NULL
+            # y `institucion_id IS ?` cubre ambos casos.
             conn.execute(
-                "UPDATE configuracion_anio SET activo = 0 WHERE activo = 1"
+                """
+                UPDATE configuracion_anio SET activo = 0
+                WHERE activo = 1
+                  AND institucion_id IS (
+                      SELECT institucion_id FROM configuracion_anio WHERE id = ?
+                  )
+                """,
+                (anio_id,),
             )
             cursor = conn.execute(
                 "UPDATE configuracion_anio SET activo = 1 WHERE id = ?",

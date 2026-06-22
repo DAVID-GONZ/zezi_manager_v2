@@ -44,6 +44,10 @@ class ConfiguracionAnio(BaseModel):
     """
     id:                     int | None  = None
     anio:                   int
+    # Multi-tenant (paso_27): institución dueña de esta configuración.
+    # Nullable a nivel de modelo para compatibilidad con la migración/backfill;
+    # el repo y el servicio siempre lo resuelven a la institución por defecto.
+    institucion_id:         int | None  = None
     fecha_inicio_clases:    date | None = None
     fecha_fin_clases:       date | None = None
     nota_minima_aprobacion: float       = 60.0
@@ -212,6 +216,9 @@ class ConfiguracionAnio(BaseModel):
 class NuevaConfiguracionAnioDTO(BaseModel):
     """Datos para crear un año lectivo nuevo."""
     anio:                   int
+    # Multi-tenant (paso_27): si falta, el servicio asigna la institución
+    # por defecto (#1).
+    institucion_id:         int | None  = None
     fecha_inicio_clases:    date | None = None
     fecha_fin_clases:       date | None = None
     nota_minima_aprobacion: float       = 60.0
@@ -257,6 +264,7 @@ class NuevaConfiguracionAnioDTO(BaseModel):
 class ActualizarConfiguracionAnioDTO(BaseModel):
     """Campos académicos actualizables. Todos opcionales."""
     anio:                   int | None   = None
+    institucion_id:         int | None   = None
     fecha_inicio_clases:    date | None  = None
     fecha_fin_clases:       date | None  = None
     nota_minima_aprobacion: float | None = None

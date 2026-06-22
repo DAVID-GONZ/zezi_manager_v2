@@ -58,10 +58,10 @@ class FakeConvRepo(IConvivenciaRepository):
     def get_registro(self, rid: int) -> RegistroComportamiento | None:
         return self._regs.get(rid)
 
-    def listar_registros(self, filtro: FiltroConvivenciaDTO) -> list[RegistroComportamiento]:
+    def listar_registros(self, filtro: FiltroConvivenciaDTO, institucion_id=None) -> list[RegistroComportamiento]:
         return list(self._regs.values())
 
-    def contar_registros(self, filtro: FiltroConvivenciaDTO) -> int:
+    def contar_registros(self, filtro: FiltroConvivenciaDTO, institucion_id=None) -> int:
         return len(self._regs)
 
     def guardar_registro(self, r: RegistroComportamiento) -> RegistroComportamiento:

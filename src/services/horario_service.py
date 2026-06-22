@@ -299,10 +299,16 @@ class HorarioService:
             })
 
         # --- Franjas: desde la plantilla activa "UNICA", o derivadas de bloques ---
+        # Multi-tenant (paso_32, T5): `self._infra` es el repo (sin scope). La
+        # parrilla es de un grupo/escenario ya scopeado, así que la rejilla de
+        # franjas debe venir de la plantilla activa de la MISMA institución.
+        from src.services.contexto_tenant import institucion_actual
         franjas: list[dict] = []
         plantilla = None
         try:
-            plantilla = self._infra.get_plantilla_activa("UNICA")
+            plantilla = self._infra.get_plantilla_activa(
+                "UNICA", institucion_id=institucion_actual()
+            )
         except Exception:
             plantilla = None
 

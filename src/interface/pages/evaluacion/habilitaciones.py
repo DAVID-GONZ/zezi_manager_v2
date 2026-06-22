@@ -31,17 +31,11 @@ from src.services.nivelacion_service import (
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
 
 
-@ui.page("/evaluacion/habilitaciones")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def habilitaciones_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Habilitaciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)

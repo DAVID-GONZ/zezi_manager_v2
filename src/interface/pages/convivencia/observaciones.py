@@ -167,17 +167,11 @@ def _nueva_observacion_dto(datos: dict) -> object:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
-@ui.page("/convivencia/observaciones")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def observaciones_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     _s = _estado_inicial()

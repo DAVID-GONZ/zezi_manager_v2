@@ -94,6 +94,14 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         if filtro.periodo_id is not None:
             sql += " AND periodo_id = ?"
             params.append(filtro.periodo_id)
+        # Scope multi-tenant (paso_31): sin JOIN aquí (read plano de IDs), se
+        # scopea con subconsulta a `grupos` por la institución del grupo.
+        if filtro.institucion_id is not None:
+            sql += (
+                " AND grupo_id IN "
+                "(SELECT id FROM grupos WHERE institucion_id = ?)"
+            )
+            params.append(filtro.institucion_id)
         sql += " ORDER BY id"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
@@ -147,6 +155,11 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         if filtro.periodo_id is not None:
             sql += " AND a.periodo_id = ?"
             params.append(filtro.periodo_id)
+        # Scope multi-tenant (paso_31): el JOIN a `grupos` ya está, filtra por
+        # la institución del grupo.
+        if filtro.institucion_id is not None:
+            sql += " AND g.institucion_id = ?"
+            params.append(filtro.institucion_id)
         sql += " ORDER BY g.codigo, s.nombre"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
@@ -159,11 +172,18 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         grupo_id: int,
         periodo_id: int,
         solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         sql = self._INFO_SQL + " WHERE a.grupo_id = ? AND a.periodo_id = ?"
         params: list = [grupo_id, periodo_id]
         if solo_activas:
             sql += " AND a.activo = 1"
+        # Scope multi-tenant (paso_31): defensa en profundidad — el grupo ya
+        # acota el tenant, pero si el caller pasa institucion_id se exige la
+        # coincidencia (evita filtrar un grupo de otra institución).
+        if institucion_id is not None:
+            sql += " AND g.institucion_id = ?"
+            params.append(institucion_id)
         sql += " ORDER BY s.nombre"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
@@ -174,6 +194,7 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         usuario_id: int,
         periodo_id: int | None = None,
         solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         sql = self._INFO_SQL + " WHERE a.usuario_id = ?"
         params: list = [usuario_id]
@@ -182,6 +203,12 @@ class SqliteAsignacionRepository(IAsignacionRepository):
             params.append(periodo_id)
         if solo_activas:
             sql += " AND a.activo = 1"
+        # Scope multi-tenant (paso_31): un docente puede pertenecer a una
+        # institución, pero si el caller pasa institucion_id se restringe a las
+        # asignaciones cuyo grupo es de esa institución.
+        if institucion_id is not None:
+            sql += " AND g.institucion_id = ?"
+            params.append(institucion_id)
         sql += " ORDER BY g.codigo, s.nombre"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()

@@ -207,8 +207,16 @@ class ConvivenciaService:
         self,
         filtro: FiltroConvivenciaDTO,
     ) -> list[RegistroComportamiento]:
-        """Retorna registros de comportamiento según los filtros indicados."""
-        return self._repo.listar_registros(filtro)
+        """Retorna registros de comportamiento según los filtros indicados.
+
+        Multi-tenant (paso_32, T4): cuando el listado cruza grupos (filtro sin
+        grupo ni estudiante) se acota por la institución del scope (director →
+        su institución; admin / arranque → None = todas) vía join a `grupos`.
+        """
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_registros(
+            filtro, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def eliminar_registro(self, registro_id: int) -> bool:

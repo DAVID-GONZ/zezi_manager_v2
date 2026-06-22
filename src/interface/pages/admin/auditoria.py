@@ -48,16 +48,11 @@ _EVENTOS_OPCIONES = {t.value: t.value.replace("_", " ").capitalize() for t in Ti
 _POR_PAGINA = 100
 
 
-@ui.page("/admin/auditoria")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def auditoria_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol != "admin":
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Auditoría: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -306,6 +301,7 @@ def auditoria_page() -> None:
         page_titulo    = "Auditoría",
         page_subtitulo = "Registro de cambios y eventos de sesión (solo lectura)",
         page_icono     = "history",
+        mostrar_contexto = False,
     )
 
 

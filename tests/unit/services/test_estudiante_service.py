@@ -40,30 +40,51 @@ class FakeEstudianteRepo(IEstudianteRepository):
     def get_by_id(self, eid: int) -> Estudiante | None:
         return self._ests.get(eid)
 
-    def get_by_documento(self, doc: str) -> Estudiante | None:
+    def get_by_documento(self, doc: str, institucion_id: int | None = None) -> Estudiante | None:
         for e in self._ests.values():
-            if e.numero_documento == doc:
+            if e.numero_documento == doc and (
+                institucion_id is None or e.institucion_id == institucion_id
+            ):
                 return e
         return None
 
-    def existe_documento(self, doc: str) -> bool:
-        return any(e.numero_documento == doc for e in self._ests.values())
+    def existe_documento(self, doc: str, institucion_id: int | None = None) -> bool:
+        return any(
+            e.numero_documento == doc
+            and (institucion_id is None or e.institucion_id == institucion_id)
+            for e in self._ests.values()
+        )
 
     def asignar_grupo(self, eid: int, grupo_id: int) -> None:
         e = self._ests[eid]
         self._ests[eid] = e.model_copy(update={"grupo_id": grupo_id})
 
-    def listar_por_grupo(self, grupo_id: int, solo_activos: bool = True) -> list[Estudiante]:
-        return [e for e in self._ests.values() if e.grupo_id == grupo_id]
+    def listar_por_grupo(
+        self, grupo_id: int, solo_activos: bool = True, institucion_id: int | None = None
+    ) -> list[Estudiante]:
+        return [
+            e for e in self._ests.values()
+            if e.grupo_id == grupo_id
+            and (institucion_id is None or e.institucion_id == institucion_id)
+        ]
 
     def listar_filtrado(self, filtro: FiltroEstudiantesDTO) -> list[Estudiante]:
-        return list(self._ests.values())
+        return [
+            e for e in self._ests.values()
+            if filtro.institucion_id is None or e.institucion_id == filtro.institucion_id
+        ]
 
     def listar_resumenes(self, filtro: FiltroEstudiantesDTO) -> list[EstudianteResumenDTO]:
         return []
 
-    def contar_por_grupo(self, grupo_id: int) -> int:
-        return sum(1 for e in self._ests.values() if e.grupo_id == grupo_id)
+    def contar_por_grupo(
+        self, grupo_id: int, solo_activos: bool = True, institucion_id: int | None = None
+    ) -> int:
+        return sum(
+            1 for e in self._ests.values()
+            if e.grupo_id == grupo_id
+            and (institucion_id is None or e.institucion_id == institucion_id)
+        )
 
     def get_resumen(self, eid: int) -> EstudianteResumenDTO | None:
         return None

@@ -139,8 +139,11 @@ class _Grupo:
 class _FakeInfraRepo:
     def __init__(self, grupos):
         self._grupos = grupos
-    def listar_grupos(self, grado=None):
-        return self._grupos
+    def listar_grupos(self, grado=None, institucion_id=None):
+        if institucion_id is None:
+            return self._grupos
+        return [g for g in self._grupos
+                if getattr(g, "institucion_id", None) == institucion_id]
 
 
 class TestMetricasInstitucionales:

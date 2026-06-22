@@ -104,6 +104,11 @@ class Estudiante(BaseModel):
     fecha_ingreso:      date                = Field(default_factory=date.today)
     estado_matricula:   EstadoMatricula     = EstadoMatricula.ACTIVO
 
+    # Multi-tenant (paso_30, frente B2): institución a la que pertenece el
+    # estudiante. Nullable a nivel de modelo para soportar construcción desde
+    # BDs preexistentes / arranque sin sesión; el servicio lo resuelve al crear.
+    institucion_id:     int | None          = None
+
     # ------------------------------------------------------------------
     # Validadores de campo individual
     # ------------------------------------------------------------------
@@ -378,6 +383,10 @@ class FiltroEstudiantesDTO(BaseModel):
     estado_matricula: EstadoMatricula | None    = None
     posee_piar:       bool | None               = None
     busqueda:         str | None                = None   # nombre, apellido o documento
+    # Multi-tenant (paso_30, frente B2): scope de institución. El servicio lo
+    # resuelve desde institucion_actual() (None → admin ve todo; institución →
+    # filtra). El repo aplica WHERE e.institucion_id = ? cuando no es None.
+    institucion_id:   int | None                = None
     pagina:           int                       = Field(default=1, ge=1)
     por_pagina:       int                       = Field(default=50, ge=1, le=200)
 

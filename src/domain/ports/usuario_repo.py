@@ -63,7 +63,11 @@ class IUsuarioRepository(ABC):
         """
         Busca un usuario por su nombre de usuario (case-insensitive).
         Usado en el proceso de autenticación.
-        Retorna None si no existe o está desactivado.
+
+        El username es ÚNICO GLOBAL (paso_37): hay como mucho un usuario con ese
+        nombre en todo el sistema, así que la búsqueda es determinista sin
+        necesidad de filtrar por institución (un username = un usuario = una
+        institución).
         """
         ...
 
@@ -81,6 +85,9 @@ class IUsuarioRepository(ABC):
         True si ya existe un usuario con ese nombre de usuario.
         El servicio verifica esto antes de insertar para emitir un
         error útil antes de llegar al UNIQUE constraint de la BD.
+
+        El username es ÚNICO GLOBAL (paso_37): la comprobación es global, no
+        por institución (el mismo nombre NO puede repetirse en otra).
         """
         ...
 

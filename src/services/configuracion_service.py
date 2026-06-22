@@ -30,22 +30,59 @@ class ConfiguracionService:
         self._repo = repo
 
     # ------------------------------------------------------------------
+    # Resolución de institución (multi-tenant — paso_27)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """
+        Resuelve el tenant en este orden (frente C — paso_28):
+          1. `institucion_id` explícito (el caller manda y no se toca).
+          2. `institucion_actual()` — scope de la sesión (director → su
+             institución; admin → None, ver todo / filtrar explícito).
+          3. `id_por_defecto()` (#1) — fallback de arranque/seed sin sesión.
+
+        Así los callers ya no NECESITAN pasar `ctx.institucion_id` (queda
+        automático vía el contextvar); pueden seguir pasándolo sin daño. Si
+        todavía no hay ninguna institución sembrada, devuelve None (modo
+        single-tenant temprano: las filas conviven con institucion_id NULL).
+        """
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            # Sin catálogo de instituciones disponible (p.ej. tests con repos
+            # falsos en memoria): degradar a single-tenant (institucion NULL).
+            return None
+
+    # ------------------------------------------------------------------
     # ConfiguracionAnio
     # ------------------------------------------------------------------
 
     @requiere_escritura
     def crear_anio(self, dto: NuevaConfiguracionAnioDTO) -> ConfiguracionAnio:
         """
-        Crea un año lectivo nuevo.
+        Crea un año lectivo nuevo para una institución.
 
-        Verifica que no exista ya un año con ese número, crea la
-        configuración y registra cuántos periodos tendrá.
+        La unicidad del año es por institución (paso_27): dos instituciones
+        pueden tener el mismo número de año. Asigna la institución del DTO o,
+        si falta, la institución por defecto (#1).
         """
-        if self._repo.get_by_anio(dto.anio) is not None:
+        institucion_id = self._resolver_institucion(dto.institucion_id)
+        if self._repo.get_by_anio(institucion_id, dto.anio) is not None:
             raise ValueError(
-                f"Ya existe una configuración para el año {dto.anio}."
+                f"Ya existe una configuración para el año {dto.anio} "
+                "en esta institución."
             )
-        config = dto.to_configuracion()
+        config = dto.to_configuracion().model_copy(
+            update={"institucion_id": institucion_id}
+        )
         config = self._repo.guardar(config)
         # Registrar configuración de 4 periodos con pesos iguales
         self._repo.guardar_numero_periodos(config.id, 4, pesos_iguales=True)
@@ -61,6 +98,11 @@ class ConfiguracionService:
         config = self._repo.get_by_id(anio_id)
         if config is None:
             raise ValueError(f"No existe configuración con id {anio_id}.")
+        # Autorización a nivel de objeto (paso_36): el año debe pertenecer a la
+        # institución activa (se verifica contra el registro leído; scope None
+        # → admin cross-tenant).
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(config.institucion_id)
         self._repo.activar(anio_id)
         return self._repo.get_by_id(anio_id)
 
@@ -77,9 +119,16 @@ class ConfiguracionService:
         config_actualizada = dto.aplicar_a(config)
         return self._repo.actualizar(config_actualizada)
 
-    def get_activa(self) -> ConfiguracionAnio:
-        """Retorna la configuración del año activo. Lanza si no hay activo."""
-        config = self._repo.get_activa()
+    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio:
+        """
+        Retorna la configuración del año activo de la institución.
+
+        Multi-tenant (paso_27): si `institucion_id` es None, resuelve a la
+        institución por defecto (#1) para no romper callers sin sesión.
+        Lanza ValueError si no hay año activo en ese scope.
+        """
+        institucion_id = self._resolver_institucion(institucion_id)
+        config = self._repo.get_activa(institucion_id)
         if config is None:
             raise ValueError(
                 "No hay ningún año lectivo activo. "
@@ -92,6 +141,11 @@ class ConfiguracionService:
         config = self._repo.get_by_id(anio_id)
         if config is None:
             raise ValueError(f"No existe configuración con id {anio_id}.")
+        # Autorización a nivel de objeto (paso_36): choke point de las lecturas
+        # y mutaciones por anio_id (actualizar_info_institucional, niveles,
+        # criterios, config académica). Verifica el tenant del registro leído.
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(config.institucion_id)
         return config
 
     def get_info_institucional(self, anio_id: int) -> InformacionInstitucionalDTO:

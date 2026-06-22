@@ -83,13 +83,13 @@ class FakeInfraRepoLote(IInfraestructuraRepository):
     def actualizar_area(self, area): return area
     def eliminar_area(self, *a): return False
     def actualizar_color_area(self, *a): return False
-    def listar_asignaturas(self, area_id=None): return []
+    def listar_asignaturas(self, area_id=None, institucion_id=None): return []
     def guardar_asignatura(self, a): return a
     def actualizar_asignatura(self, a): return a
     def eliminar_asignatura(self, *a): return False
     def get_grupo(self, *a): return None
     def get_grupo_por_codigo(self, *a): return None
-    def listar_grupos(self, grado=None): return []
+    def listar_grupos(self, grado=None, institucion_id=None): return []
     def guardar_grupo(self, g): return g
     def asignar_sala_a_grupo(self, *a): return True
     def actualizar_grupo(self, g): return g
@@ -112,7 +112,7 @@ class FakeInfraRepoLote(IInfraestructuraRepository):
     def eliminar_logro(self, *a): return False
     def crear_plantilla_franja(self, p): return p
     def get_plantilla_franja(self, *a): return None
-    def listar_plantillas_franja(self): return []
+    def listar_plantillas_franja(self, institucion_id=None): return []
     def get_plantilla_activa(self, *a): return None
     def actualizar_plantilla_franja(self, p): return p
     def activar_plantilla_franja(self, *a): pass
@@ -137,7 +137,7 @@ class FakeInfraRepoLote(IInfraestructuraRepository):
     def cambiar_estado_config(self, config_id, nuevo_estado): return None
     def duplicar_config_generacion(self, config_id): return None
     # paso_17 stubs
-    def listar_salas(self): return []
+    def listar_salas(self, institucion_id=None): return []
     def get_sala(self, *a): return None
     def crear_sala(self, sala): return sala
     def actualizar_sala(self, sala): return sala

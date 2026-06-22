@@ -37,16 +37,11 @@ _TIPOS_SALA = {
 }
 
 
-@ui.page("/admin/salas")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def salas_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director",):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Salas admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -276,6 +271,7 @@ def salas_page() -> None:
         page_titulo    = "Gestión de Salas",
         page_subtitulo = "Espacios físicos disponibles para asignación de clases",
         page_icono     = "meeting_room",
+        mostrar_contexto = False,
     )
 
 

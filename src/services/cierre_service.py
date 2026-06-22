@@ -404,8 +404,17 @@ class CierreService:
 
         try:
             from src.domain.models.asignacion import FiltroAsignacionesDTO
+            from src.services.contexto_tenant import institucion_actual
+            # Scope multi-tenant (paso_31): este agregado cruza TODAS las
+            # asignaciones del periodo (todos los grupos), así que un director
+            # no debe ver el estado de cierres de otra institución. None
+            # (admin) ve todo; institución → filtra vía g.institucion_id.
             asignaciones = self._asignacion_repo.listar_info(
-                FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True)
+                FiltroAsignacionesDTO(
+                    periodo_id=periodo_id,
+                    solo_activas=True,
+                    institucion_id=institucion_actual(),
+                )
             )
         except Exception:
             return vacio

@@ -60,12 +60,18 @@ class SessionContext:
         """
         storage = app.storage.user
         if not storage.get("autenticado"):
-            # Sesión cerrada: el contexto deja de imponer solo lectura.
+            # Sesión cerrada: el contexto deja de imponer solo lectura ni scope.
             cls._sincronizar_solo_lectura(False)
+            cls._sincronizar_institucion(None, None)
             return None
         solo_lectura = bool(storage.get("solo_lectura", False))
         # Sincroniza el ContextVar de servicios con el estado persistido.
         cls._sincronizar_solo_lectura(solo_lectura)
+        # Sincroniza el scope de institución (regla admin→None / resto→su tenant).
+        cls._sincronizar_institucion(
+            storage.get("usuario_rol", ""),
+            storage.get("institucion_id"),
+        )
         return cls(
             usuario_id        = storage.get("usuario_id"),
             usuario_nombre    = storage.get("usuario_nombre", ""),
@@ -93,6 +99,21 @@ class SessionContext:
         from src.services.solo_lectura import activar_solo_lectura
         activar_solo_lectura(valor)
 
+    @staticmethod
+    def _sincronizar_institucion(rol: str, institucion_id: int | None) -> None:
+        """
+        Refleja el scope de institución en la capa de servicios (frente C).
+
+        REGLA DE SCOPE: el admin opera cross-tenant → scope None (los
+        servicios no auto-filtran y respetan el filtro explícito). Cualquier
+        otro rol queda acotado a su institución. Durante "Ver como" el rol
+        efectivo es el del objetivo (no admin), así que queda scopeado a la
+        institución del objetivo; al salir vuelve a None (admin real).
+        """
+        from src.services.contexto_tenant import activar_institucion
+        scope = None if rol == "admin" else institucion_id
+        activar_institucion(scope)
+
     def guardar(self) -> None:
         """Persiste el contexto completo en app.storage.user."""
         app.storage.user.update({
@@ -117,6 +138,8 @@ class SessionContext:
         })
         # Mantener el flag de servicios coherente tras cualquier persistencia.
         self._sincronizar_solo_lectura(self.solo_lectura)
+        # Mantener el scope de institución coherente (regla admin→None).
+        self._sincronizar_institucion(self.usuario_rol, self.institucion_id)
 
     def to_contexto_academico(self):
         """

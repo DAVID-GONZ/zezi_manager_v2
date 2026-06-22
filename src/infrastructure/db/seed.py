@@ -179,7 +179,7 @@ _USUARIOS_DEV = [
     ("coordinador", "Coord2025*",    "Jorge Iván Coordinador",  "coordinador@zeci.edu.co", "coordinador"),
     ("rgomez",      "Pass2025*",     "Ricardo Gómez Ríos",      "rgomez@zeci.edu.co",      "profesor"),
     ("cmoreno",     "Pass2025*",     "Claudia Moreno Díaz",     "cmoreno@zeci.edu.co",     "profesor"),
-    ("jvargas",     "Pass2025*",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
+    ("jvargas",     "   ",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
     ("amartinez",   "Pass2025*",     "Ana Martínez Soto",       "amartinez@zeci.edu.co",   "profesor"),
     ("pjimenez",    "Pass2025*",     "Paula Jiménez Lara",      "pjimenez@zeci.edu.co",    "profesor"),
     ("dortiz",      "Pass2025*",     "Diego Ortiz Cano",        "dortiz@zeci.edu.co",      "profesor"),
@@ -369,7 +369,152 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
         "UPDATE usuarios SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
+    # Backfill (paso_27): toda configuración de año sin tenant → #1.
+    conn.execute(
+        "UPDATE configuracion_anio SET institucion_id = ? "
+        "WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    # Backfill (paso_29, frente B1): grupos y asignaturas sin tenant → #1.
+    conn.execute(
+        "UPDATE grupos SET institucion_id = ? WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    conn.execute(
+        "UPDATE asignaturas SET institucion_id = ? WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    # Backfill (paso_30, frente B2): estudiantes sin tenant → #1.
+    conn.execute(
+        "UPDATE estudiantes SET institucion_id = ? WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    # Backfill (paso_32, frente B4): salas y plantillas_franja sin tenant → #1.
+    conn.execute(
+        "UPDATE salas SET institucion_id = ? WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    conn.execute(
+        "UPDATE plantillas_franja SET institucion_id = ? "
+        "WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
     return institucion_id
+
+
+def _seed_segunda_institucion(
+    conn: sqlite3.Connection,
+    anio: int,
+    hasher: PasswordHasher,
+) -> int:
+    """
+    Siembra una 2ª institución ("Institución de Prueba") con datos mínimos para
+    ejercitar el multi-tenant a mano (solo en seed_dev, NO en seed_base).
+
+    A diferencia de los `_seed_*` reutilizables (que insertan sin tenant y
+    dependen del backfill a #1), aquí TODO se inserta con institucion_id = #2
+    explícito, reutilizando deliberadamente identificadores compuestos de la #1
+    para demostrar que la unicidad compuesta lo permite:
+      - un grupo reutilizando un `codigo` de la #1 (`601`).
+      - un estudiante reutilizando un `numero_documento` de la #1.
+      - una asignatura propia.
+
+    El director de la #2 usa un username DISTINTO y global-único
+    (`director.prueba`): paso_37 revirtió la unicidad del username a GLOBAL, así
+    que ya NO puede repetir el `director` de la #1 (login simple, sin ambigüedad).
+
+    Idempotente: vuelve a usarse `_get_or_insert` por (institucion_id, clave).
+    Requiere que la institución por defecto (#1) ya exista. Retorna el id de #2.
+    """
+    inst2_id = _get_or_insert(
+        conn,
+        "SELECT id FROM instituciones WHERE nombre = ?", ("Institución de Prueba",),
+        "INSERT INTO instituciones (nombre, activa) VALUES (?, 1)",
+        ("Institución de Prueba",),
+    )
+
+    # Configuración de año activa propia de la #2 (mismo `anio`, distinto tenant).
+    anio2_id = _get_or_insert(
+        conn,
+        "SELECT id FROM configuracion_anio WHERE institucion_id = ? AND anio = ?",
+        (inst2_id, anio),
+        """
+        INSERT INTO configuracion_anio (
+            anio, institucion_id, fecha_inicio_clases, fecha_fin_clases,
+            nota_minima_aprobacion, nombre_institucion, activo
+        ) VALUES (?, ?, ?, ?, ?, ?, 1)
+        """,
+        (anio, inst2_id, f"{anio}-01-20", f"{anio}-12-15",
+         60.0, "Institución de Prueba"),
+    )
+
+    # Director de la #2 con un username DISTINTO y global-único (paso_37): el
+    # username es único global, no puede repetir el `director` de la #1.
+    _get_or_insert(
+        conn,
+        "SELECT id FROM usuarios WHERE institucion_id = ? AND usuario = ?",
+        (inst2_id, "director.prueba"),
+        """
+        INSERT INTO usuarios (
+            usuario, password_hash, nombre_completo, email, rol, activo,
+            institucion_id
+        ) VALUES (?, ?, ?, ?, 'director', 1, ?)
+        """,
+        ("director.prueba", hasher("Prueba2025*"), "Director Institución de Prueba",
+         "director@prueba.edu.co", inst2_id),
+    )
+
+    # Grupo reutilizando un `codigo` de la #1 (601) bajo otro tenant.
+    _get_or_insert(
+        conn,
+        "SELECT id FROM grupos WHERE institucion_id = ? AND codigo = ?",
+        (inst2_id, "601"),
+        """
+        INSERT INTO grupos (codigo, nombre, grado, jornada, capacidad_maxima,
+                            institucion_id)
+        VALUES (?, ?, ?, 'UNICA', 40, ?)
+        """,
+        ("601", "Sexto A (Prueba)", 6, inst2_id),
+    )
+    grupo2_id = conn.execute(
+        "SELECT id FROM grupos WHERE institucion_id = ? AND codigo = ?",
+        (inst2_id, "601"),
+    ).fetchone()[0]
+
+    # Asignatura propia de la #2.
+    _get_or_insert(
+        conn,
+        "SELECT id FROM asignaturas WHERE institucion_id = ? AND codigo = ?",
+        (inst2_id, "PRB"),
+        """
+        INSERT INTO asignaturas (nombre, codigo, horas_semanales, institucion_id)
+        VALUES (?, ?, ?, ?)
+        """,
+        ("Asignatura de Prueba", "PRB", 4, inst2_id),
+    )
+
+    # Estudiante reutilizando un `numero_documento` de un estudiante de la #1.
+    doc_row = conn.execute(
+        "SELECT numero_documento FROM estudiantes WHERE institucion_id = ? "
+        "ORDER BY id LIMIT 1",
+        (1,),
+    ).fetchone()
+    doc_compartido = doc_row[0] if doc_row else "1000000001"
+    _get_or_insert(
+        conn,
+        "SELECT id FROM estudiantes WHERE institucion_id = ? AND numero_documento = ?",
+        (inst2_id, doc_compartido),
+        """
+        INSERT INTO estudiantes (
+            id_publico, tipo_documento, numero_documento,
+            nombre, apellido, genero, grupo_id, estado_matricula, institucion_id
+        ) VALUES (?, 'TI', ?, ?, ?, 'F', ?, 'activo', ?)
+        """,
+        (f"EPRB{inst2_id:02d}001", doc_compartido,
+         "Estudiante", "De Prueba", grupo2_id, inst2_id),
+    )
+
+    return inst2_id
 
 
 def _seed_configuracion_periodos(conn: sqlite3.Connection, anio_id: int) -> None:
@@ -911,6 +1056,14 @@ def _seed_estudiantes(
     Retorna lista de estudiante_ids.
     """
     ids: list[int] = []
+    # Multi-tenant (paso_30): institución por defecto (#1) para sembrar los
+    # estudiantes directamente con tenant. En seed_dev, _seed_estudiantes corre
+    # DESPUÉS de _seed_institucion, así que ya existe #1; el backfill de
+    # _seed_institucion cubre cualquier fila NULL residual (idempotente).
+    row = conn.execute(
+        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
+    ).fetchone()
+    institucion_default = int(row[0]) if row else None
     por_grupo = max(1, total // len(grupo_map))
     for idx_g, (codigo_grupo, grupo_id) in enumerate(grupo_map.items()):
         for i in range(por_grupo):
@@ -934,11 +1087,12 @@ def _seed_estudiantes(
                 INSERT INTO estudiantes (
                     id_publico, tipo_documento, numero_documento,
                     nombre, apellido, genero,
-                    grupo_id, fecha_nacimiento, estado_matricula
-                ) VALUES (?, 'TI', ?, ?, ?, ?, ?, ?, 'activo')
+                    grupo_id, fecha_nacimiento, estado_matricula,
+                    institucion_id
+                ) VALUES (?, 'TI', ?, ?, ?, ?, ?, ?, 'activo', ?)
                 """,
                 (id_publico, numero_doc, nombre, apellido, genero,
-                 grupo_id, fecha_nac.isoformat()),
+                 grupo_id, fecha_nac.isoformat(), institucion_default),
             )
             ids.append(eid)
     return ids
@@ -1598,6 +1752,20 @@ def seed_dev(
     # motor a empaquetar por backtracking, dejando lecciones sin colocar. Los
     # límites son opt-in: se configuran por docente cuando se necesitan.
 
+    # Multi-tenant (paso_32, frente B4): backfill final. salas y
+    # plantillas_franja (y cualquier fila NULL residual) se siembran DESPUÉS de
+    # los _seed_institucion tempranos; esta re-llamada idempotente las asigna a
+    # la institución por defecto (#1). Solo toca filas con institucion_id NULL.
+    _seed_institucion(conn)
+
+    # 2ª institución de prueba (paso_34, ajustada en paso_37): codigo/documento
+    # compartidos con la #1 para probar a mano el aislamiento. El director usa un
+    # username distinto (`director.prueba`) por la unicidad global. Corre DESPUÉS
+    # de establecer la #1 y sus estudiantes (de los que reutiliza un documento).
+    _seed_segunda_institucion(
+        conn, anio or __import__("datetime").datetime.now().year, hasher
+    )
+
     result.counts.update({
         "usuarios_total":     len(result.usuario_ids),
         "grupos":             len(result.grupo_ids),
@@ -1612,6 +1780,9 @@ def seed_dev(
         "notas":              n_notas,
         "asistencias":        n_asist,
         "observaciones":      n_obs,
+        "instituciones":      conn.execute(
+            "SELECT COUNT(*) FROM instituciones"
+        ).fetchone()[0],
     })
     result.log_resumen()
     return result
@@ -1719,6 +1890,11 @@ def seed_test(
     conn.execute(
         "INSERT OR IGNORE INTO salas (id, nombre, tipo, capacidad) VALUES (1, 'Aula Test', 'aula', 40)"
     )
+
+    # Multi-tenant (paso_32, frente B4): backfill final idempotente. salas y
+    # plantillas_franja se siembran tras el _seed_institucion temprano; esta
+    # re-llamada las asigna a la institución por defecto (#1).
+    _seed_institucion(conn)
 
     result.counts = {
         "usuarios":    len(result.usuario_ids),

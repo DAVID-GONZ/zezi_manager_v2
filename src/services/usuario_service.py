@@ -77,10 +77,40 @@ class UsuarioService:
             )
         self._auditoria.registrar_cambio(cambio)
 
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """
+        Resuelve el tenant al CREAR un usuario, en este orden (espejo de
+        estudiante_service/infraestructura_service):
+          1. `institucion_id` explícito (el caller manda y no se toca).
+          2. `institucion_actual()` — scope de la sesión (director → su
+             institución; admin → None).
+          3. `id_por_defecto()` (#1) — fallback de arranque/seed sin sesión.
+
+        Devuelve None si no hay catálogo de instituciones todavía (single-tenant
+        temprano) o si el Container no está disponible (tests con repos falsos).
+        """
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            return None
+
     def _get_usuario_o_lanzar(self, usuario_id: int) -> Usuario:
         usuario = self._repo.get_by_id(usuario_id)
         if usuario is None:
             raise ValueError(f"Usuario con id {usuario_id} no existe.")
+        # Autorización a nivel de objeto (paso_36): el target debe pertenecer a
+        # la institución activa. Se verifica contra el institucion_id LEÍDO del
+        # repo, no el que pueda venir del caller. Scope None (admin/seed) → pasa.
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(usuario.institucion_id)
         return usuario
 
     def _registrar_evento(
@@ -156,11 +186,17 @@ class UsuarioService:
                     f"Tu rol no tiene permiso para crear usuarios con rol "
                     f"'{rol_str}'."
                 )
+        usuario = dto.to_usuario()
+        # Username ÚNICO GLOBAL (paso_37): un username no puede repetirse en
+        # ninguna institución. Se valida la unicidad GLOBAL antes de insertar.
+        # La institución del nuevo usuario se sigue resolviendo (scope de sesión
+        # o #1 en seed/arranque) para scopear todo lo demás del multi-tenant.
         if self._repo.existe_usuario(dto.usuario):
             raise ValueError(
                 f"Ya existe un usuario con el nombre '{dto.usuario}'."
             )
-        usuario = dto.to_usuario()
+        institucion_id = self._resolver_institucion(usuario.institucion_id)
+        usuario = usuario.model_copy(update={"institucion_id": institucion_id})
         usuario = self._repo.guardar(usuario)
 
         # Hash de contraseña
@@ -348,33 +384,56 @@ class UsuarioService:
             periodo_id=periodo_id, solo_activos=True
         )
 
+    @staticmethod
+    def _aplicar_scope(filtro: FiltroUsuariosDTO) -> FiltroUsuariosDTO:
+        """
+        Auto-scope por institución (frente C — paso_28).
+
+        Si el `filtro.institucion_id` viene None, lo resuelve desde el scope
+        de la sesión (`institucion_actual()`): None para admin → ve TODAS;
+        institución para director → filtrado. Un `institucion_id` explícito
+        (selector del admin "Todas"/concreta) NO se toca. `solo_activos` y el
+        resto del filtro se conservan.
+        """
+        if filtro.institucion_id is not None:
+            return filtro
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is None:
+            return filtro
+        return filtro.model_copy(update={"institucion_id": scope})
+
     def listar_filtrado(self, filtro: FiltroUsuariosDTO) -> list[Usuario]:
-        """Retorna usuarios según los filtros indicados."""
-        return self._repo.listar_filtrado(filtro)
+        """Retorna usuarios según los filtros indicados (auto-scope por tenant)."""
+        return self._repo.listar_filtrado(self._aplicar_scope(filtro))
 
     def listar_resumenes(self, filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]:
-        """Retorna la vista resumida de usuarios para selects y lookups."""
-        return self._repo.listar_resumenes(filtro)
+        """Retorna la vista resumida de usuarios (auto-scope por tenant)."""
+        return self._repo.listar_resumenes(self._aplicar_scope(filtro))
 
     def listar_para_ver_como(
         self, institucion_id: int | None = None
     ) -> list[UsuarioResumenDTO]:
         """
         Listado de SOLO LECTURA de usuarios activos candidatos a 'Ver como',
-        con scope por institución (multi-tenant, paso_24).
+        con scope por institución (multi-tenant, paso_24 / frente C paso_28).
 
         `institucion_id`:
-          - None  → todos los usuarios activos (vista de plataforma / admin).
-          - int   → solo los usuarios activos de esa institución.
+          - None  → resuelve desde el scope de la sesión (`institucion_actual()`):
+                    None para admin → todos los usuarios activos (plataforma);
+                    institución para director → solo los de su institución.
+          - int   → solo los usuarios activos de esa institución (explícito).
 
         El filtro se aplica en el repositorio (FiltroUsuariosDTO.institucion_id),
         de modo que el resumen ya viene scopeado por tenant.
         """
         return self._repo.listar_resumenes(
-            FiltroUsuariosDTO(
-                solo_activos=True,
-                por_pagina=200,
-                institucion_id=institucion_id,
+            self._aplicar_scope(
+                FiltroUsuariosDTO(
+                    solo_activos=True,
+                    por_pagina=200,
+                    institucion_id=institucion_id,
+                )
             )
         )
 

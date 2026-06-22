@@ -172,13 +172,47 @@ NAV_ITEMS: list[dict] = [
             {"label": "Auditoría",                 "icon": "history",
              "ruta": "/admin/auditoria",
              "rol":  ["admin"]},
+            {"label": "Diagnóstico",               "icon": "monitor_heart",
+             "ruta": "/diagnostico",
+             "rol":  ["admin"]},
         ],
     },
 ]
 
 
+def _rol_permitido_en_ruta(ruta: str, usuario_rol: str) -> bool:
+    """
+    Decide visibilidad de UNA ruta consultando el registro central
+    (`roles_de_ruta`) — la ÚNICA fuente de verdad de autorización (paso_35).
+
+    - Sentinels PUBLICO / AUTENTICADO → visible para cualquier rol con sesión.
+    - frozenset[Rol] → visible si el rol del usuario está dentro.
+    - Ruta no registrada (None) → no visible (deny-by-default; evita drift).
+    """
+    from src.interface.auth import AUTENTICADO, PUBLICO, roles_de_ruta
+
+    roles = roles_de_ruta(ruta)
+    if roles is None:
+        return False
+    if roles is PUBLICO or roles is AUTENTICADO:
+        return True
+    return usuario_rol in {r.value for r in roles}
+
+
 def _usuario_puede_ver(item: dict, usuario_rol: str) -> bool:
-    """Determina si el usuario con el rol dado puede ver un ítem de navegación."""
+    """
+    Determina si el usuario con el rol dado puede ver un ítem de navegación.
+
+    Fuente única (paso_35): para ítems con `ruta` la visibilidad se deriva del
+    registro central `roles_de_ruta`. Para grupos (con `children`) el grupo es
+    visible si ALGÚN hijo lo es. Para ítems sin ruta ni hijos (p.ej. divider)
+    se conserva la lista `"rol"` (no es una ruta autorizable).
+    """
+    if "ruta" in item:
+        return _rol_permitido_en_ruta(item["ruta"], usuario_rol)
+    if "children" in item:
+        return any(_usuario_puede_ver(c, usuario_rol) for c in item["children"])
+    # Sin ruta ni hijos: divisor u otro adorno. Usa su lista de rol declarativa.
     roles = item.get("rol", [])
     return "*" in roles or usuario_rol in roles
 
@@ -190,7 +224,10 @@ def _get_logo_institucional() -> str | None:
     """
     try:
         from container import Container
-        config = Container.configuracion_service().get_activa()
+        from src.interface.context.session_context import SessionContext
+        ctx = SessionContext.desde_storage()
+        institucion_id = ctx.institucion_id if ctx else None
+        config = Container.configuracion_service().get_activa(institucion_id)
         if config and hasattr(config, "logo_url") and config.logo_url:
             return config.logo_url
     except Exception:

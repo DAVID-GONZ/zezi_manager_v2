@@ -25,19 +25,12 @@ from src.interface.design.components import confirm_dialog, toast_error, toast_s
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
 
-_ROLES_PERMITIDOS = ("director", "coordinador")
 
-
-@ui.page("/evaluacion/cierre-anio")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def cierre_anio_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in _ROLES_PERMITIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Cierre año: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)

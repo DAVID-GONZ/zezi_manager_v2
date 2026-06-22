@@ -85,17 +85,11 @@ def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
-@ui.page("/informes/consolidado-notas")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def consolidado_notas_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     _s = _estado_inicial()

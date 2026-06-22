@@ -40,10 +40,16 @@ class IConfiguracionRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def get_activa(self) -> ConfiguracionAnio | None:
+    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio | None:
         """
         Retorna la configuración del año lectivo activo.
-        Retorna None si no hay ningún año marcado como activo.
+
+        Multi-tenant (paso_27): si se pasa `institucion_id`, el scope es
+        WHERE institucion_id = ? AND activo = 1. Si es None, devuelve el
+        primer año activo sin filtrar por institución (compatibilidad con
+        callers single-tenant que aún no resuelven el tenant).
+
+        Retorna None si no hay ningún año marcado como activo en ese scope.
         Es el método más llamado del sistema: casi todas las operaciones
         necesitan saber el año en curso.
         """
@@ -55,18 +61,25 @@ class IConfiguracionRepository(ABC):
         ...
 
     @abstractmethod
-    def get_by_anio(self, anio: int) -> ConfiguracionAnio | None:
+    def get_by_anio(
+        self, institucion_id: int | None, anio: int
+    ) -> ConfiguracionAnio | None:
         """
-        Busca la configuración por número de año (ej: 2025).
-        Útil al crear un año nuevo para verificar que no exista ya.
+        Busca la configuración por número de año (ej: 2025), scopeada por
+        institución (paso_27). Útil al crear un año nuevo para verificar que
+        no exista ya en esa institución. Si `institucion_id` es None, busca
+        sin filtrar por institución.
         """
         ...
 
     @abstractmethod
-    def listar(self) -> list[ConfiguracionAnio]:
+    def listar(
+        self, institucion_id: int | None = None
+    ) -> list[ConfiguracionAnio]:
         """
-        Retorna todas las configuraciones anuales, ordenadas por año
-        descendente (más reciente primero).
+        Retorna las configuraciones anuales ordenadas por año descendente
+        (más reciente primero). Si se pasa `institucion_id`, scopea a esa
+        institución (paso_27); si es None, retorna todas.
         """
         ...
 
@@ -90,9 +103,9 @@ class IConfiguracionRepository(ABC):
     @abstractmethod
     def activar(self, anio_id: int) -> bool:
         """
-        Marca el año indicado como activo y desactiva todos los demás.
-        Operación atómica: los dos UPDATEs van en la misma transacción.
-        Retorna True si la fila fue afectada.
+        Marca el año indicado como activo y desactiva los demás años de la
+        MISMA institución (paso_27). Operación atómica: los dos UPDATEs van
+        en la misma transacción. Retorna True si la fila fue afectada.
         """
         ...
 

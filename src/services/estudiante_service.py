@@ -72,7 +72,37 @@ class EstudianteService:
         est = self._repo.get_by_id(estudiante_id)
         if est is None:
             raise ValueError(f"Estudiante con id {estudiante_id} no existe.")
+        # Autorización a nivel de objeto (paso_36): el estudiante debe pertenecer
+        # a la institución activa. Se verifica contra el institucion_id LEÍDO del
+        # repo. Scope None (admin/seed) → pasa.
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(est.institucion_id)
         return est
+
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """
+        Resuelve el tenant al CREAR/IMPORTAR estudiantes, en este orden
+        (espejo de infraestructura_service):
+          1. `institucion_id` explícito (el caller manda y no se toca).
+          2. `institucion_actual()` — scope de la sesión (director → su
+             institución; admin → None).
+          3. `id_por_defecto()` (#1) — fallback de arranque/seed sin sesión.
+
+        Devuelve None si no hay catálogo de instituciones todavía (single-tenant
+        temprano) o si el Container no está disponible (tests con repos falsos).
+        """
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            return None
 
     # ------------------------------------------------------------------
     # Casos de uso — estudiantes
@@ -90,11 +120,17 @@ class EstudianteService:
         Verifica que el documento no esté duplicado, construye la
         entidad desde el DTO y la persiste.
         """
-        if self._repo.existe_documento(dto.numero_documento):
+        estudiante = dto.to_estudiante()
+        # Multi-tenant (paso_30): resuelve la institución del scope (o #1 en
+        # seed/arranque sin sesión) ANTES de verificar el documento, porque el
+        # documento es único POR institución: el mismo documento puede existir
+        # en otra institución sin colisionar.
+        institucion_id = self._resolver_institucion(estudiante.institucion_id)
+        if self._repo.existe_documento(dto.numero_documento, institucion_id=institucion_id):
             raise ValueError(
                 f"Ya existe un estudiante con el documento '{dto.numero_documento}'."
             )
-        estudiante = dto.to_estudiante()
+        estudiante = estudiante.model_copy(update={"institucion_id": institucion_id})
         estudiante = self._repo.guardar(estudiante)
         self._auditar(
             AccionCambio.CREATE, "estudiantes", estudiante.id,
@@ -162,24 +198,48 @@ class EstudianteService:
         self._repo.asignar_grupo(estudiante_id, grupo_id)
         return estudiante.model_copy(update={"grupo_id": grupo_id})
 
+    def _con_scope(self, filtro: FiltroEstudiantesDTO) -> FiltroEstudiantesDTO:
+        """
+        Inyecta el scope multi-tenant (paso_30) en el filtro de listados.
+
+        Resuelve desde `institucion_actual()`: None (admin / arranque) → sin
+        filtro de institución (ve todo); institución → filtra. NO se cae al
+        id_por_defecto en listados: admin debe ver todas las instituciones.
+        Respeta un institucion_id ya presente en el filtro (caller explícito).
+        """
+        if filtro.institucion_id is not None:
+            return filtro
+        from src.services.contexto_tenant import institucion_actual
+        return filtro.model_copy(update={"institucion_id": institucion_actual()})
+
     def listar_por_grupo(
         self,
         grupo_id: int,
         solo_activos: bool = True,
     ) -> list[Estudiante]:
-        """Retorna todos los estudiantes de un grupo."""
-        return self._repo.listar_por_grupo(grupo_id, solo_activos=solo_activos)
+        """
+        Retorna todos los estudiantes de un grupo.
+
+        Scope multi-tenant (paso_30): None (admin / arranque) → sin filtro;
+        director → su institución.
+        """
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_por_grupo(
+            grupo_id,
+            solo_activos=solo_activos,
+            institucion_id=institucion_actual(),
+        )
 
     def listar_filtrado(self, filtro: FiltroEstudiantesDTO) -> list[Estudiante]:
-        """Retorna estudiantes según los filtros indicados."""
-        return self._repo.listar_filtrado(filtro)
+        """Retorna estudiantes según los filtros indicados (scopeado por tenant)."""
+        return self._repo.listar_filtrado(self._con_scope(filtro))
 
     def listar_resumenes(
         self,
         filtro: FiltroEstudiantesDTO,
     ) -> list[EstudianteResumenDTO]:
-        """Retorna la vista resumida de estudiantes para selects."""
-        return self._repo.listar_resumenes(filtro)
+        """Retorna la vista resumida de estudiantes para selects (scopeado)."""
+        return self._repo.listar_resumenes(self._con_scope(filtro))
 
     def listar_resumenes_plano(
         self,
@@ -196,7 +256,7 @@ class EstudianteService:
           id, nombre_completo, documento_display, grupo_id,
           estado_matricula (str), genero (str|None), posee_piar (bool)
         """
-        resumenes = self._repo.listar_resumenes(filtro)
+        resumenes = self._repo.listar_resumenes(self._con_scope(filtro))
         resultado = []
         for r in resumenes:
             datos = r.model_dump(mode="json")
@@ -287,6 +347,15 @@ class EstudianteService:
 
         Lanza ValueError si no existe PIAR para ese estudiante y año.
         """
+        # Autorización a nivel de objeto (paso_36): el PIAR cuelga de un
+        # estudiante; verificamos la pertenencia contra el institucion_id del
+        # estudiante leído del repo (lanza OperacionFueraDeInstitucionError si es
+        # de otra institución). Si el estudiante no existe, dejamos que el chequeo
+        # de "no existe PIAR" de abajo produzca el mensaje habitual.
+        est = self._repo.get_by_id(estudiante_id)
+        if est is not None:
+            from src.services.contexto_tenant import verificar_pertenencia
+            verificar_pertenencia(est.institucion_id)
         piar_actual = self._repo.get_piar(estudiante_id, anio_id)
         if piar_actual is None:
             raise ValueError(

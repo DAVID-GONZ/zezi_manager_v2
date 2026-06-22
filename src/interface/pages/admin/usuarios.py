@@ -49,26 +49,23 @@ _ROLES_OPCIONES = {
 }
 
 
-@ui.page("/admin/usuarios")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def usuarios_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
         return
 
-    if ctx.usuario_rol not in ("admin", "director"):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
-        return
-
     svc = Container.usuario_service()
     es_admin = ctx.usuario_rol == "admin"
     puede_crear = ctx.usuario_rol in ("admin", "director")
 
-    # ── Scope multi-tenant (paso_24) ──────────────────────────────────────────
+    # ── Scope multi-tenant (paso_24 / frente C paso_28) ───────────────────────
     # - admin: puede filtrar por institución (opciones desde InstitucionService),
-    #   "Todas" por defecto.
-    # - director: el listado se fuerza a SU institución; no ve otras.
+    #   "Todas" por defecto. Su sesión NO impone scope (contextvar None), así que
+    #   el filtro del selector se pasa explícito.
+    # - director: el servicio auto-scopea a SU institución vía el contextvar de
+    #   sesión; la página ya no necesita forzar el institucion_id.
     instituciones_opts: dict = {None: "Todas las instituciones"}
     if es_admin:
         try:
@@ -76,7 +73,6 @@ def usuarios_page() -> None:
                 instituciones_opts[i.id] = i.nombre
         except Exception as exc:
             logger.error("Error al cargar instituciones: %s", exc)
-    institucion_forzada = None if es_admin else ctx.institucion_id
     # Roles asignables del actor según la política RBAC del servicio (paso_23):
     #   admin    → admin, director.
     #   director → coordinador, profesor.
@@ -103,14 +99,12 @@ def usuarios_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            institucion_id = (
-                institucion_forzada if institucion_forzada is not None
-                else _s["filtro_institucion"]
-            )
+            # admin: pasa el filtro del selector (None = todas). director: deja
+            # institucion_id None y el servicio lo auto-scopea a su institución.
             filtro = FiltroUsuariosDTO(
                 rol=_s["filtro_rol"] or None,
                 solo_activos=_s["filtro_activos"],
-                institucion_id=institucion_id,
+                institucion_id=_s["filtro_institucion"] if es_admin else None,
             )
             _s["usuarios"] = Container.usuario_service().listar_resumenes(filtro)
         except Exception as exc:

@@ -128,13 +128,26 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_plantillas_franja(self) -> list[PlantillaFranja]:
-        """Retorna todas las plantillas de franja, ordenadas por nombre."""
+    def listar_plantillas_franja(
+        self, institucion_id: int | None = None
+    ) -> list[PlantillaFranja]:
+        """
+        Retorna las plantillas de franja, ordenadas por nombre.
+
+        Multi-tenant (paso_32): si `institucion_id` es None devuelve todas
+        (admin / arranque); si es un id concreto filtra por esa institución.
+        """
         ...
 
     @abstractmethod
-    def get_plantilla_activa(self, jornada: str) -> PlantillaFranja | None:
-        """Retorna la plantilla activa de la jornada indicada, o None."""
+    def get_plantilla_activa(
+        self, jornada: str, institucion_id: int | None = None
+    ) -> PlantillaFranja | None:
+        """
+        Retorna la plantilla activa de la jornada indicada, o None.
+
+        Multi-tenant (paso_32): filtra por institución si se indica.
+        """
         ...
 
     @abstractmethod
@@ -239,10 +252,13 @@ class IInfraestructuraRepository(ABC):
     def listar_asignaturas(
         self,
         area_id: int | None = None,
+        institucion_id: int | None = None,
     ) -> list[Asignatura]:
         """
-        Retorna asignaturas, opcionalmente filtradas por área.
-        Ordenadas por nombre.
+        Retorna asignaturas, opcionalmente filtradas por área y/o institución.
+        Si `institucion_id` se pasa, aplica `WHERE institucion_id = ?` (scope
+        multi-tenant — paso_29); None = sin filtro de institución (admin ve
+        todo). Ordenadas por nombre.
         """
         ...
 
@@ -282,10 +298,16 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_grupos(self, grado: int | None = None) -> list[Grupo]:
+    def listar_grupos(
+        self,
+        grado: int | None = None,
+        institucion_id: int | None = None,
+    ) -> list[Grupo]:
         """
-        Retorna grupos, opcionalmente filtrados por grado.
-        Ordenados por código.
+        Retorna grupos, opcionalmente filtrados por grado y/o institución.
+        Si `institucion_id` se pasa, aplica `WHERE institucion_id = ?` (scope
+        multi-tenant — paso_29); None = sin filtro (admin ve todo). Ordenados
+        por código.
         """
         ...
 
@@ -577,7 +599,14 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_salas(self) -> list[Sala]: ...
+    def listar_salas(self, institucion_id: int | None = None) -> list[Sala]:
+        """
+        Retorna las salas ordenadas por nombre.
+
+        Multi-tenant (paso_32): si `institucion_id` es None devuelve todas
+        (admin / arranque); si es un id concreto filtra por esa institución.
+        """
+        ...
 
     @abstractmethod
     def get_sala(self, sala_id: int) -> Sala | None: ...

@@ -27,16 +27,11 @@ from src.interface.design.components import (
 logger = logging.getLogger("ADMIN.DISPONIBILIDAD_DOCENTE")
 
 
-@ui.page("/admin/disponibilidad-docente")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def disponibilidad_docente_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director", "coordinador"):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info(
@@ -303,6 +298,7 @@ def disponibilidad_docente_page() -> None:
         page_titulo="Disponibilidad docente",
         page_subtitulo="Gestión de disponibilidad horaria y límites de carga por docente",
         page_icono="event_available",
+        mostrar_contexto=False,
     )
 
 

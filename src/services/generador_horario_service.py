@@ -417,10 +417,14 @@ class GeneradorHorarioService:
         hay_salas = bool(todas_salas)
 
         # Aula propia (salón base) por grupo + grado de cada grupo (para las
-        # horas del plan de estudios).
+        # horas del plan de estudios). Multi-tenant (paso_32, T5): `self._infra`
+        # es el repo (sin scope); `self._infraestructura.listar_salas()` ya viene
+        # acotado por institución, así que se acotan los grupos al mismo tenant
+        # para que `sala_id` resuelva contra el mismo conjunto de salas.
+        from src.services.contexto_tenant import institucion_actual
         sala_grupo_nombre: dict[int, str] = {}
         grado_de_grupo: dict[int, int | None] = {}
-        for g in self._infra.listar_grupos():
+        for g in self._infra.listar_grupos(institucion_id=institucion_actual()):
             grado_de_grupo[g.id] = g.grado
             sid_g = getattr(g, "sala_id", None)
             if sid_g and sid_g in sala_nombre_map:

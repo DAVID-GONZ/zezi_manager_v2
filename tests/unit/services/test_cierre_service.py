@@ -165,10 +165,10 @@ class FakePeriodoRepo(IPeriodoRepository):
 
 
 class FakeConfigRepo(IConfiguracionRepository):
-    def get_activa(self): return None
+    def get_activa(self, institucion_id=None): return None
     def get_by_id(self, anio_id): return None
-    def get_by_anio(self, anio): return None
-    def listar(self): return []
+    def get_by_anio(self, institucion_id, anio): return None
+    def listar(self, institucion_id=None): return []
     def guardar(self, c): return c
     def actualizar(self, c): return c
     def activar(self, anio_id): pass

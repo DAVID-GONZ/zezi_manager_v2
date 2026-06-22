@@ -177,6 +177,11 @@ class FiltroAsignacionesDTO(BaseModel):
     grupo_id:      int | None = None
     asignatura_id: int | None = None
     periodo_id:    int | None = None
+    # Scope multi-tenant (paso_31, frente B3): None = sin filtro (admin ve
+    # todo); un entero filtra por la institución del grupo vía el JOIN a
+    # `grupos` (g.institucion_id = ?). No hay columna en `asignaciones`: el
+    # scope se hereda transitivamente del grupo.
+    institucion_id: int | None = None
     solo_activas:  bool       = True
     pagina:        int        = Field(default=1, ge=1)
     por_pagina:    int        = Field(default=100, ge=1, le=500)

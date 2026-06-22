@@ -898,7 +898,7 @@ def _render_global_comparativo(_s: dict, nota_minima: float) -> None:
 # PÁGINA PRINCIPAL
 # ─────────────────────────────────────────────────────────────────────────────
 
-@ui.page("/academico/tablero")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def tablero_estadisticos_page() -> None:
     """
     Tablero estadístico dual — ruta /academico/tablero.
@@ -914,12 +914,6 @@ def tablero_estadisticos_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     es_directivo = ctx.usuario_rol in ("director", "coordinador")

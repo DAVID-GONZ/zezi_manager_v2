@@ -17,7 +17,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.design.components.status_badge import status_badge
-from src.interface.design.components import stat_card, empty_state, form_dialog
+from src.interface.design.components import stat_card, empty_state
 from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.layout import app_layout
 from src.services.auditoria_service import FiltroAuditoriaDTO
@@ -628,100 +628,10 @@ def _seccion_pendientes_docente(ctx: SessionContext, config) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # DASHBOARD DE PLATAFORMA (ADMIN) — paso_21
 # Solo la rama admin. NO toca profesor / director / coordinador.
+#
+# paso_38: el lanzador "Ver como…" se movió a la página de herramientas de admin
+# (/diagnostico). El dashboard ya no expone esa tarjeta de acceso rápido.
 # ══════════════════════════════════════════════════════════════════════════════
-
-_ROLES_LABEL = {
-    "admin":       "Administradores",
-    "director":    "Directores",
-    "coordinador": "Coordinadores",
-    "profesor":    "Profesores",
-}
-
-
-def _abrir_selector_ver_como(ctx: SessionContext) -> None:
-    """
-    Selector 'Ver como' de doble filtrado (institución → usuario),
-    preparado para multi-tenant.
-
-    Nivel 1 — Institución: hoy single-tenant, una sola opción = la institución
-    activa (config). Se construye como un dict de opciones (no se quema el
-    literal de la única institución) para que añadir tenants sea natural.
-
-    Nivel 2 — Usuario: lista filtrada por la institución elegida vía el hook de
-    scope `usuario_service.listar_para_ver_como(institucion_id=...)` (no-op en
-    single-tenant). Se excluye al propio admin.
-    """
-    from src.interface.design.components import toast_success, toast_warning, toast_error
-
-    # ── Nivel 1: institución activa (multi-tenant-ready) ────────────────────
-    institucion_id: int | None = None
-    institucion_opciones: dict = {}
-    try:
-        config = Container.configuracion_service().get_activa()
-        institucion_id = getattr(config, "id", None)
-        nombre_inst = getattr(config, "nombre_institucion", "Institución")
-        # Clave estable aunque id sea None (single-tenant sin id persistido).
-        clave_inst = institucion_id if institucion_id is not None else 0
-        institucion_opciones[clave_inst] = nombre_inst
-    except Exception as e:
-        logger.warning("Error al obtener la institución activa para 'Ver como': %s", e)
-        institucion_opciones = {0: "Institución activa"}
-
-    institucion_preseleccionada = next(iter(institucion_opciones), 0)
-
-    # ── Nivel 2: usuarios filtrados por la institución elegida ──────────────
-    try:
-        usuarios = Container.usuario_service().listar_para_ver_como(
-            institucion_id=institucion_id
-        )
-    except Exception as e:
-        logger.warning("Error al listar usuarios para 'Ver como': %s", e)
-        usuarios = []
-
-    candidatos = [u for u in usuarios if u.id != ctx.usuario_id]
-    if not candidatos:
-        toast_warning("No hay otros usuarios para ver como")
-        return
-
-    _index = {}
-    usuario_opciones: dict = {}
-    for u in candidatos:
-        rol_str = u.rol.value if hasattr(u.rol, "value") else str(u.rol)
-        usuario_opciones[u.id] = f"{u.nombre_completo} · {_ROLES_LABEL.get(rol_str, rol_str)}"
-        _index[u.id] = (u.nombre_completo, rol_str)
-
-    def _aplicar(datos: dict) -> "bool | None":
-        uid = datos.get("usuario_id")
-        if uid is None:
-            toast_warning("Selecciona un usuario")
-            return False
-        nombre, rol_str = _index.get(uid, ("usuario", "profesor"))
-        try:
-            ctx.iniciar_ver_como(
-                target_usuario_id=uid,
-                target_rol=rol_str,
-                target_nombre=nombre,
-            )
-            toast_success(f"Viendo como '{nombre}' (solo lectura)")
-            ui.navigate.to("/inicio")
-        except Exception as e:
-            logger.error("Error al iniciar 'Ver como': %s", e)
-            toast_error("No se pudo iniciar el modo 'Ver como'")
-            return False
-
-    form_dialog(
-        titulo="Ver como…",
-        campos=[
-            {"key": "institucion_id", "label": "Institución",
-             "tipo": "select", "opciones": institucion_opciones,
-             "valor": institucion_preseleccionada},
-            {"key": "usuario_id", "label": "Usuario a impersonar (solo lectura) *",
-             "tipo": "select", "opciones": usuario_opciones, "requerido": True},
-        ],
-        on_submit=_aplicar,
-        texto_submit="Ver como",
-        max_width="max-w-md",
-    )
 
 
 def _admin_stat_card(titulo: str, valor: str, icono: str, subtitulo: str,
@@ -808,7 +718,7 @@ def _seccion_admin_instituciones(config) -> None:
                     ui.label(str(uso.usuarios_activos) if uso else "—").classes("w-32 text-right")
 
 
-def _seccion_admin_accesos(ctx: SessionContext) -> None:
+def _seccion_admin_accesos() -> None:
     """Accesos rápidos VÁLIDOS para admin (sin enlaces rotos)."""
     with ui.element("div").classes("panel-card"):
         _panel_titulo("bolt", "Accesos rápidos")
@@ -835,17 +745,6 @@ def _seccion_admin_accesos(ctx: SessionContext) -> None:
                 with ui.element("div").classes("action-text-col"):
                     ui.label("Usuarios").classes("action-label")
                     ui.label("Cuentas y roles").classes("action-desc")
-            # Ver como…
-            with ui.element("div").classes("quick-action-card").on(
-                "click", lambda: _abrir_selector_ver_como(ctx)
-            ):
-                with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por acción
-                    "background:var(--color-warning-light)"
-                ):
-                    ThemeManager.icono("visibility", size=22, color="var(--color-warning)")
-                with ui.element("div").classes("action-text-col"):
-                    ui.label("Ver como…").classes("action-label")
-                    ui.label("Impersonar en solo lectura").classes("action-desc")
 
 
 def _dashboard_admin(ctx: SessionContext, config) -> None:
@@ -858,12 +757,12 @@ def _dashboard_admin(ctx: SessionContext, config) -> None:
                 _seccion_admin_instituciones(config)
                 _seccion_actividad_reciente(ctx)
             with ui.element("div").classes("page-col-side"):
-                _seccion_admin_accesos(ctx)
+                _seccion_admin_accesos()
 
 
 # ── FUNCIÓN PRINCIPAL ─────────────────────────────────────────────────────────
 
-@ui.page("/inicio")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def inicio_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
@@ -874,7 +773,7 @@ def inicio_page() -> None:
 
     config = None
     try:
-        config = Container.configuracion_service().get_activa()
+        config = Container.configuracion_service().get_activa(ctx.institucion_id)
     except Exception as e:
         logger.warning("Sin configuración activa: %s", e)
 

@@ -5,6 +5,10 @@ Invariantes:
 - Todas las rutas que existían antes del refactor siguen presentes.
 - Exactamente 6 grupos raíz no-divider.
 - El filtro por rol funciona: profesores no ven Administración.
+
+paso_35 — Fuente única: la visibilidad del NAV se deriva del registro central
+`roles_de_ruta`. Estos tests dependen del fixture autouse `registro_rutas`
+(tests/unit/interface/conftest.py) que puebla el registro.
 """
 from src.interface.design.layout import NAV_ITEMS
 
@@ -61,9 +65,8 @@ def test_navitems_grupos_raiz_seis():
 
 
 def test_navitems_filtro_profesor():
-    """Profesor: Inicio + Aula (5) + Académico (Estudiantes + Horarios) +
-    Evaluación (4 visibles, sin Cierre de Año si no aplica — verificar contra
-    los roles) + Informes (4 visibles) — sin Administración."""
+    """Profesor: Inicio + Aula + Académico + Evaluación + Informes; sin
+    Administración."""
     from src.interface.design.layout import _usuario_puede_ver
 
     visibles = [i for i in NAV_ITEMS if _usuario_puede_ver(i, "profesor")]
@@ -117,3 +120,53 @@ def test_navitems_director_hereda_institucional():
     assert "Información Institucional" in hijos_dir
     assert "Usuarios" in hijos_dir
     assert "Auditoría" not in hijos_dir
+
+
+# ── paso_35: fuente única — sin drift entre NAV y registro ────────────────────
+
+def test_navitems_rutas_existen_en_registro():
+    """Cada ruta del NAV debe estar registrada en el guard central (no drift)."""
+    from src.interface.auth import roles_de_ruta
+
+    rutas_nav = set(_todas_las_rutas(NAV_ITEMS))
+    sin_registro = {r for r in rutas_nav if roles_de_ruta(r) is None}
+    assert not sin_registro, f"Rutas del NAV sin registro de guard: {sin_registro}"
+
+
+def test_navitems_visibilidad_coincide_con_registro():
+    """
+    Para cada ruta del NAV y cada rol institucional, la visibilidad del NAV
+    coincide EXACTAMENTE con la decisión del registro central (deny-by-default,
+    sin segunda fuente de verdad que pueda divergir).
+    """
+    from src.interface.auth import AUTENTICADO, PUBLICO, roles_de_ruta
+    from src.interface.design.layout import _rol_permitido_en_ruta
+
+    roles_sistema = ["admin", "director", "coordinador", "profesor"]
+    for ruta in _todas_las_rutas(NAV_ITEMS):
+        roles = roles_de_ruta(ruta)
+        assert roles is not None, f"{ruta} no registrada"
+        for rol in roles_sistema:
+            esperado = (
+                roles in (PUBLICO, AUTENTICADO)
+                or rol in {r.value for r in roles}
+            )
+            assert _rol_permitido_en_ruta(ruta, rol) is esperado, (
+                f"Drift NAV↔registro en {ruta} para {rol}"
+            )
+
+
+def test_configuracion_sie_nav_solo_profesor():
+    """C reconciliado: la ruta /evaluacion/configuracion es solo profesor; en
+    el NAV 'Configuración SIE' se muestra solo a profesor (NAV ↔ ruta)."""
+    from src.interface.design.layout import _usuario_puede_ver
+
+    eval_grupo = next(i for i in NAV_ITEMS if i.get("label") == "Evaluación")
+    sie = next(
+        c for c in eval_grupo["children"]
+        if c.get("ruta") == "/evaluacion/configuracion"
+    )
+    assert _usuario_puede_ver(sie, "profesor") is True
+    assert _usuario_puede_ver(sie, "director") is False
+    assert _usuario_puede_ver(sie, "coordinador") is False
+    assert _usuario_puede_ver(sie, "admin") is False

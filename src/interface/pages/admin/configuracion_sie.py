@@ -40,8 +40,6 @@ from src.services.evaluacion_service import (
 
 logger = logging.getLogger("ADMIN.CONFIG_SIEE")
 
-_ROL_ADMIN = ("director",)
-
 _MODO_LABELS: dict[str, str] = {
     "libre":               "Libre",
     "institucional_fijo":  "Institucional fijo",
@@ -57,16 +55,11 @@ _MODO_DESC: dict[str, str] = {
 }
 
 
-@ui.page("/admin/configuracion")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def configuracion_sie_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in _ROL_ADMIN:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Config SIEE: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -83,7 +76,7 @@ def configuracion_sie_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_todo() -> None:
         try:
-            _s["config_activa"] = Container.configuracion_service().get_activa()
+            _s["config_activa"] = Container.configuracion_service().get_activa(ctx.institucion_id)
         except Exception as exc:
             logger.warning("Sin año activo: %s", exc)
             _s["config_activa"] = None
@@ -778,6 +771,7 @@ def configuracion_sie_page() -> None:
         page_titulo    = "Configuración SIEE",
         page_subtitulo = "Escala, niveles de desempeño, criterios de promoción y categorías institucionales",
         page_icono     = "school",
+        mostrar_contexto = False,
     )
 
 

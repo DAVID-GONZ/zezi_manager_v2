@@ -41,21 +41,34 @@ class FakeConfigRepo(IConfiguracionRepository):
     def get_by_id(self, anio_id: int) -> ConfiguracionAnio | None:
         return self._configs.get(anio_id)
 
-    def get_by_anio(self, anio: int) -> ConfiguracionAnio | None:
+    def get_by_anio(
+        self, institucion_id: int | None, anio: int
+    ) -> ConfiguracionAnio | None:
         for c in self._configs.values():
-            if c.anio == anio:
+            if c.anio == anio and (
+                institucion_id is None or c.institucion_id == institucion_id
+            ):
                 return c
         return None
 
-    def get_activa(self) -> ConfiguracionAnio | None:
+    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio | None:
         for c in self._configs.values():
-            if c.activo:
+            if c.activo and (
+                institucion_id is None or c.institucion_id == institucion_id
+            ):
                 return c
         return None
 
     def activar(self, anio_id: int) -> None:
+        # Multi-tenant (paso_27): desactivar SOLO los años de la misma
+        # institución que el año a activar.
+        objetivo = self._configs.get(anio_id)
+        inst = objetivo.institucion_id if objetivo else None
         for c in self._configs.values():
-            self._configs[c.id] = c.model_copy(update={"activo": c.id == anio_id})
+            if c.id == anio_id:
+                self._configs[c.id] = c.model_copy(update={"activo": True})
+            elif c.institucion_id == inst:
+                self._configs[c.id] = c.model_copy(update={"activo": False})
 
     def guardar_numero_periodos(self, anio_id: int, numero: int, pesos_iguales: bool = True) -> None:
         pass  # No-op en test
@@ -103,8 +116,15 @@ class FakeConfigRepo(IConfiguracionRepository):
                     return True
         return False
 
-    def listar(self) -> list[ConfiguracionAnio]:
-        return list(self._configs.values())
+    def listar(
+        self, institucion_id: int | None = None
+    ) -> list[ConfiguracionAnio]:
+        if institucion_id is None:
+            return list(self._configs.values())
+        return [
+            c for c in self._configs.values()
+            if c.institucion_id == institucion_id
+        ]
 
     def get_numero_periodos(self, anio_id: int) -> int:
         return 4
@@ -283,3 +303,96 @@ class TestAprobacionEnRango:
         c2 = ConfiguracionAnio(anio=2026, nota_minima_escala=10,
                                nota_maxima_escala=50, nota_minima_aprobacion=60)
         assert c2.aprobacion_en_rango is False
+
+
+# ===========================================================================
+# Multi-tenant (paso_27) — configuración por institución
+# ===========================================================================
+
+class TestConfigPorInstitucion:
+    def test_anio_activo_por_institucion(self):
+        """get_activa(institucion_id) devuelve el año activo de ese tenant."""
+        svc, _ = _make_service()
+        svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=2))
+        a1 = svc.get_activa(institucion_id=1)
+        a2 = svc.get_activa(institucion_id=2)
+        assert a1.institucion_id == 1 and a1.anio == 2025
+        assert a2.institucion_id == 2 and a2.anio == 2025
+        assert a1.id != a2.id
+
+    def test_mismo_anio_dos_instituciones_no_colisiona(self):
+        """Dos instituciones pueden tener el mismo número de año."""
+        svc, _ = _make_service()
+        c1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        c2 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=2))
+        assert c1.id != c2.id
+
+    def test_anio_duplicado_misma_institucion_falla(self):
+        svc, _ = _make_service()
+        svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        with pytest.raises(ValueError, match="institución"):
+            svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+
+    def test_activar_no_desactiva_anios_de_otra_institucion(self):
+        """Activar un año de una institución no toca los de otra."""
+        svc, _ = _make_service()
+        # Institución 1: dos años (2024 activo por defecto, 2025 nuevo).
+        a2024 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2024, institucion_id=1))
+        a2025 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        # Institución 2: un año, debe quedar intacto.
+        b2025 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=2))
+
+        svc.activar_anio(a2025.id)
+
+        assert svc.get_by_id(a2025.id).activo is True
+        assert svc.get_by_id(a2024.id).activo is False   # desactivado (misma inst)
+        assert svc.get_by_id(b2025.id).activo is True     # intacto (otra inst)
+
+
+# ===========================================================================
+# Scope desde el contextvar (frente C — paso_28)
+# ===========================================================================
+
+class TestScopeContextvar:
+    """`get_activa()` sin argumento resuelve el tenant del contextvar."""
+
+    def test_get_activa_resuelve_institucion_del_contextvar(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        svc, _ = _make_service()
+        # Año activo en institución 1 y en institución 2.
+        a1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        a2 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=2))
+        svc.activar_anio(a1.id)
+        svc.activar_anio(a2.id)
+
+        # Con el scope en la institución 2, get_activa() sin argumento la resuelve.
+        with usar_institucion(2):
+            activa = svc.get_activa()
+        assert activa.id == a2.id
+        assert activa.institucion_id == 2
+
+    def test_id_explicito_tiene_prioridad_sobre_contextvar(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        svc, _ = _make_service()
+        a1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        a2 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=2))
+        svc.activar_anio(a1.id)
+        svc.activar_anio(a2.id)
+
+        # Aunque el scope sea 2, el id explícito 1 manda.
+        with usar_institucion(2):
+            activa = svc.get_activa(institucion_id=1)
+        assert activa.id == a1.id
+
+    def test_sin_scope_cae_a_institucion_por_defecto(self):
+        """Sin sesión (scope None) y sin catálogo, _resolver_institucion → None."""
+        svc, _ = _make_service()
+        # FakeConfigRepo.get_activa(None) devuelve el primer activo (single-tenant
+        # temprano): cubre el fallback #1/None sin Container disponible.
+        a1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))
+        svc.activar_anio(a1.id)
+        activa = svc.get_activa()  # sin scope ni id explícito
+        assert activa.id == a1.id

@@ -91,10 +91,14 @@ class BcryptAuthService(IAuthenticationService):
         """
         Autentica un usuario por nombre de usuario y contraseña en texto plano.
 
-        Encapsula tres comprobaciones que la vista NUNCA debe hacer por su cuenta:
+        Encapsula las comprobaciones que la vista NUNCA debe hacer por su cuenta:
           1. Existencia del usuario en la BD.
           2. Verificación del hash de contraseña.
           3. Estado activo/inactivo de la cuenta.
+
+        Login simple (paso_37): el username es ÚNICO GLOBAL, así que
+        ``get_by_username`` devuelve como mucho un usuario. Sin selector de
+        institución, sin desambiguación, sin divulgación.
 
         Raises:
             ValueError("credenciales_invalidas"): usuario no encontrado o
@@ -110,8 +114,8 @@ class BcryptAuthService(IAuthenticationService):
                 "BcryptAuthService requiere un repo para autenticar usuarios."
             )
 
-        # 1. Buscar el usuario (incluye usuarios inactivos para distinguir
-        #    el caso "cuenta desactivada" del caso "usuario no existe").
+        # 1. Buscar el usuario por username (incluye inactivos para distinguir
+        #    "cuenta desactivada" de "usuario no existe").
         user = self._repo.get_by_username(nombre_usuario)
         if user is None:
             raise ValueError("credenciales_invalidas")

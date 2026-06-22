@@ -54,20 +54,31 @@ class IEstudianteRepository(ABC):
         ...
 
     @abstractmethod
-    def get_by_documento(self, numero_documento: str) -> Estudiante | None:
+    def get_by_documento(
+        self, numero_documento: str, institucion_id: int | None = None
+    ) -> Estudiante | None:
         """
         Busca un estudiante por número de documento.
         Útil para evitar duplicados en el proceso de matrícula.
         Retorna None si no existe.
+
+        `institucion_id` (multi-tenant — paso_30): el documento es único POR
+        institución; acota al tenant cuando no es None para no cruzar entre
+        instituciones. None → busca global (admin / arranque).
         """
         ...
 
     @abstractmethod
-    def existe_documento(self, numero_documento: str) -> bool:
+    def existe_documento(
+        self, numero_documento: str, institucion_id: int | None = None
+    ) -> bool:
         """
         True si ya existe un estudiante con ese número de documento.
         Más eficiente que get_by_documento cuando solo se necesita
         saber si existe (evita construir el objeto completo).
+
+        `institucion_id` (multi-tenant — paso_30): acota al tenant cuando no es
+        None (el documento es único por institución).
         """
         ...
 
@@ -107,18 +118,29 @@ class IEstudianteRepository(ABC):
         self,
         grupo_id: int,
         solo_activos: bool = True,
+        institucion_id: int | None = None,
     ) -> list[Estudiante]:
         """
         Retorna todos los estudiantes de un grupo, ordenados por apellido.
         Usado para generar planillas de notas y asistencia.
+
+        `institucion_id` (multi-tenant — paso_30): scope opcional; cuando no es
+        None filtra por institución. None → sin filtro (admin / arranque).
         """
         ...
 
     @abstractmethod
-    def contar_por_grupo(self, grupo_id: int, solo_activos: bool = True) -> int:
+    def contar_por_grupo(
+        self,
+        grupo_id: int,
+        solo_activos: bool = True,
+        institucion_id: int | None = None,
+    ) -> int:
         """
         Cuenta los estudiantes de un grupo.
         Usado por Grupo.esta_lleno() y Grupo.cupos_disponibles().
+
+        `institucion_id` (multi-tenant — paso_30): scope opcional por tenant.
         """
         ...
 

@@ -71,7 +71,7 @@ def _row_from_args(args) -> dict:
 # Página principal
 # =============================================================================
 
-@ui.page("/estudiantes")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def estudiantes_page() -> None:
     """Página de gestión de estudiantes — ruta /estudiantes."""
 
@@ -79,12 +79,6 @@ def estudiantes_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     # ── Estado mutable de la página ───────────────────────────────────────────
@@ -701,6 +695,7 @@ def estudiantes_page() -> None:
         page_titulo    = "Gestión de Estudiantes",
         page_subtitulo = "Matrícula, estado y PIAR",
         page_icono     = Icons.STUDENTS,
+        mostrar_contexto = False,
     )
 
 

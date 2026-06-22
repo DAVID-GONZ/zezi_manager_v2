@@ -38,16 +38,11 @@ _PASOS_HORARIO = [
 ]
 
 
-@ui.page("/admin/asignaturas")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def asignaturas_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director",):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Asignaturas admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -417,6 +412,7 @@ def asignaturas_page() -> None:
         page_titulo    = "Gestión de Asignaturas",
         page_subtitulo = "Áreas de conocimiento y asignaturas del currículo",
         page_icono     = Icons.SUBJECTS,
+        mostrar_contexto = False,
     )
 
 

@@ -36,8 +36,6 @@ from src.interface.design.components import confirm_dialog, form_dialog, toast_e
 
 logger = logging.getLogger("EVALUACION.CIERRE_PERIODO")
 
-_ROLES_PERMITIDOS = ("director", "coordinador")
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -83,16 +81,11 @@ def _nombre_usuario(usuario_id: int | None) -> str:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
-@ui.page("/evaluacion/cierre-periodo")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def cierre_periodo_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in _ROLES_PERMITIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Cierre periodo: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)

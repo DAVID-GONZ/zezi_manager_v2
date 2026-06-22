@@ -38,6 +38,45 @@ class InfraestructuraService:
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         self._repo = repo
 
+    # ── Resolución de institución (multi-tenant — paso_29, frente B1) ──────────
+
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """
+        Resuelve el tenant en este orden (espejo de configuracion_service):
+          1. `institucion_id` explícito (el caller manda y no se toca).
+          2. `institucion_actual()` — scope de la sesión (director → su
+             institución; admin → None, ve todo).
+          3. `id_por_defecto()` (#1) — fallback de arranque/seed sin sesión.
+
+        Devuelve None si no hay catálogo de instituciones todavía (single-tenant
+        temprano) o si el Container no está disponible (tests con repos falsos).
+        """
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            return None
+
+    # ── Autorización a nivel de objeto (paso_36 — hallazgo E) ───────────────────
+
+    @staticmethod
+    def _verificar_pertenencia_obj(obj, etiqueta: str) -> None:
+        """
+        Verifica que `obj` (leído del repo por su id) pertenezca a la institución
+        activa. `obj` None → ValueError (no existe). Scope None (admin/seed) → pasa.
+        """
+        if obj is None:
+            raise ValueError(f"{etiqueta} no existe.")
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(obj.institucion_id)
+
     # ── Escenarios ────────────────────────────────────────────────────────────
 
     def get_escenario(self, escenario_id: int) -> EscenarioHorario | None:
@@ -115,13 +154,27 @@ class InfraestructuraService:
             jornada=jornada,
             dias_activos=dias if dias is not None else list(DIAS_VALIDOS[:5]),
         )
-        return self._repo.crear_plantilla_franja(dto.to_plantilla())
+        # Multi-tenant (paso_32): asigna la institución del scope (o #1 en
+        # seed/arranque) si no viene ya en la plantilla.
+        plantilla = dto.to_plantilla()
+        institucion_id = self._resolver_institucion(plantilla.institucion_id)
+        plantilla = plantilla.model_copy(update={"institucion_id": institucion_id})
+        return self._repo.crear_plantilla_franja(plantilla)
 
     def listar_plantillas(self) -> list[PlantillaFranja]:
-        return self._repo.listar_plantillas_franja()
+        # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
+        # director → su institución.
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_plantillas_franja(
+            institucion_id=institucion_actual()
+        )
 
     def plantilla_activa(self, jornada: str = "UNICA") -> PlantillaFranja | None:
-        return self._repo.get_plantilla_activa(jornada)
+        # Scope multi-tenant (paso_32): la plantilla activa es por institución.
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.get_plantilla_activa(
+            jornada, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def guardar_franjas(self, plantilla_id: int, filas: list[dict]) -> int:
@@ -152,6 +205,11 @@ class InfraestructuraService:
 
     @requiere_escritura
     def eliminar_plantilla(self, plantilla_id: int) -> bool:
+        # Autorización a nivel de objeto (paso_36): la plantilla debe ser del
+        # tenant activo (se lee del repo por id; scope None → cross-tenant).
+        self._verificar_pertenencia_obj(
+            self._repo.get_plantilla_franja(plantilla_id), "La plantilla"
+        )
         return self._repo.eliminar_plantilla_franja(plantilla_id)
 
     # ── Áreas ─────────────────────────────────────────────────────────────────
@@ -180,27 +238,56 @@ class InfraestructuraService:
     # ── Asignaturas ───────────────────────────────────────────────────────────
 
     def listar_asignaturas(self, area_id: int | None = None) -> list[Asignatura]:
-        return self._repo.listar_asignaturas(area_id=area_id)
+        # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro de
+        # institución (ve todo); director → su institución. NO se cae al
+        # id_por_defecto aquí: admin debe ver todas las instituciones.
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_asignaturas(
+            area_id=area_id, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
+        # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
+        institucion_id = self._resolver_institucion(asignatura.institucion_id)
+        asignatura = asignatura.model_copy(update={"institucion_id": institucion_id})
         return self._repo.guardar_asignatura(asignatura)
 
     @requiere_escritura
     def actualizar_asignatura(self, asignatura: Asignatura) -> Asignatura:
+        # Autorización a nivel de objeto (paso_36): se lee la asignatura
+        # persistida por id y se verifica su tenant; NO se confía en el
+        # institucion_id del objeto recibido (podría venir forjado). Además se
+        # preserva la institución existente (un update no puede mover de tenant).
+        actual = self._repo.get_asignatura(asignatura.id)
+        self._verificar_pertenencia_obj(actual, "La asignatura")
+        asignatura = asignatura.model_copy(
+            update={"institucion_id": actual.institucion_id}
+        )
         return self._repo.actualizar_asignatura(asignatura)
 
     @requiere_escritura
     def eliminar_asignatura(self, asignatura_id: int) -> bool:
+        self._verificar_pertenencia_obj(
+            self._repo.get_asignatura(asignatura_id), "La asignatura"
+        )
         return self._repo.eliminar_asignatura(asignatura_id)
 
     # ── Grupos ────────────────────────────────────────────────────────────────
 
     def listar_grupos(self, grado: int | None = None) -> list[Grupo]:
-        return self._repo.listar_grupos(grado=grado)
+        # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro;
+        # director → su institución.
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_grupos(
+            grado=grado, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
+        # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
+        institucion_id = self._resolver_institucion(grupo.institucion_id)
+        grupo = grupo.model_copy(update={"institucion_id": institucion_id})
         return self._repo.guardar_grupo(grupo)
 
     @requiere_escritura
@@ -210,10 +297,18 @@ class InfraestructuraService:
 
     @requiere_escritura
     def actualizar_grupo(self, grupo: Grupo) -> Grupo:
+        # Autorización a nivel de objeto (paso_36): tenant verificado contra el
+        # grupo persistido; institución preservada (no se permite mover de tenant).
+        actual = self._repo.get_grupo(grupo.id)
+        self._verificar_pertenencia_obj(actual, "El grupo")
+        grupo = grupo.model_copy(update={"institucion_id": actual.institucion_id})
         return self._repo.actualizar_grupo(grupo)
 
     @requiere_escritura
     def eliminar_grupo(self, grupo_id: int) -> bool:
+        self._verificar_pertenencia_obj(
+            self._repo.get_grupo(grupo_id), "El grupo"
+        )
         return self._repo.eliminar_grupo(grupo_id)
 
     # ── Horarios ──────────────────────────────────────────────────────────────
@@ -376,23 +471,37 @@ class InfraestructuraService:
     # ── Salas (paso_17) ───────────────────────────────────────────────────────
 
     def listar_salas(self) -> list[Sala]:
-        return self._repo.listar_salas()
+        # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
+        # director → su institución.
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_salas(institucion_id=institucion_actual())
 
     def get_sala(self, sala_id: int) -> Sala | None:
         return self._repo.get_sala(sala_id)
 
     @requiere_escritura
     def crear_sala(self, sala: Sala) -> Sala:
+        # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
+        institucion_id = self._resolver_institucion(sala.institucion_id)
+        sala = sala.model_copy(update={"institucion_id": institucion_id})
         return self._repo.crear_sala(sala)
 
     @requiere_escritura
     def actualizar_sala(self, sala: Sala) -> Sala:
         if sala.id is None:
             raise ValueError("La sala no tiene id.")
+        # Autorización a nivel de objeto (paso_36): tenant verificado contra la
+        # sala persistida; institución preservada (no se permite mover de tenant).
+        actual = self._repo.get_sala(sala.id)
+        self._verificar_pertenencia_obj(actual, "La sala")
+        sala = sala.model_copy(update={"institucion_id": actual.institucion_id})
         return self._repo.actualizar_sala(sala)
 
     @requiere_escritura
     def eliminar_sala(self, sala_id: int) -> bool:
+        self._verificar_pertenencia_obj(
+            self._repo.get_sala(sala_id), "La sala"
+        )
         return self._repo.eliminar_sala(sala_id)
 
     # ── VentanaGrupo (paso_17) ────────────────────────────────────────────────

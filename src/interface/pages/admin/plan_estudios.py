@@ -59,15 +59,11 @@ def _barra(actual: int, objetivo: int) -> None:
         ui.element("div").classes(cls).style(f"width:{pct}%")  # DYNAMIC: progreso del plan
 
 
-@ui.page("/admin/plan-estudios")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def plan_estudios_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-    if ctx.usuario_rol not in ("director", "coordinador"):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Plan de estudios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -410,6 +406,7 @@ def plan_estudios_page() -> None:
         page_titulo    = "Plan de estudios",
         page_subtitulo = "Grados, horas objetivo y asignaturas por grado",
         page_icono     = Icons.SUBJECTS,
+        mostrar_contexto = False,
     )
 
 

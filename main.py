@@ -71,345 +71,167 @@ def configurar_logging() -> None:
 
 def registrar_rutas_internas(app) -> None:
     """
-    Registra rutas FastAPI auxiliares (health, diagnóstico).
+    Registra rutas FastAPI auxiliares (health).
     Separadas de las rutas NiceGUI para mantener claridad.
-    """
-    from nicegui import ui
 
+    Nota (paso_38): la antigua página inline `/diagnostico` se movió a una
+    página de herramientas de admin (src/interface/pages/admin/diagnostico.py)
+    y ahora se registra en `registrar_rutas_ui()` (surgida en el NAV).
+    """
     @app.get("/health")
     def health():
         return {"status": "ok", "version": settings.APP_VERSION}
-
-    # Ruta interna — health/diagnóstico del sistema; no aparece en NAV_ITEMS intencionalmente.
-    @ui.page("/diagnostico")
-    def pagina_diagnostico():
-        resultado = Container.diagnostico()
-        with ui.card().classes("m-4 p-4"):
-            ui.label("Diagnóstico del Container").classes("text-xl font-bold")
-            for nombre, estado in resultado.items():
-                color = "text-green-600" if estado == "OK" else "text-red-600"
-                ui.label(f"{nombre}: {estado}").classes(color)
 
 
 def registrar_rutas_ui() -> None:
     """
     Registra todas las páginas NiceGUI de la aplicación.
     Llamar DESPUÉS de ThemeManager.aplicar() para que el CSS esté disponible.
+
+    Autorización central (paso_35): TODAS las páginas se registran vía
+    `registrar_pagina(ruta, page_fn, roles=...)`, que envuelve el `@ui.page`
+    con el guard deny-by-default (auth + rol). `roles` es obligatorio; la
+    matriz de roles por ruta de abajo es la ÚNICA fuente de verdad y el NAV
+    (layout.py) deriva su visibilidad del mismo registro.
     """
     from nicegui import app, ui
+    from src.domain.models.usuario import Rol
+    from src.interface.auth import AUTENTICADO, PUBLICO, registrar_pagina
     from src.interface.pages.login import login_page
 
-    # ── Raíz: redirige según estado de sesión ────────────────────────────────
-    @ui.page("/")
+    # Conjuntos de roles reutilizados (matriz del spec paso_35).
+    _ADMIN          = {Rol.ADMIN}
+    _ADMIN_DIRECTOR = {Rol.ADMIN, Rol.DIRECTOR}
+    _DIRECTOR       = {Rol.DIRECTOR}
+    _DIR_COORD      = {Rol.DIRECTOR, Rol.COORDINADOR}
+    _AULA           = {Rol.DIRECTOR, Rol.COORDINADOR, Rol.PROFESOR}
+    _PROFESOR       = {Rol.PROFESOR}
+
+    # ── Públicas (con lógica propia de redirección por sesión) ────────────────
     def raiz():
         if app.storage.user.get("autenticado"):
             ui.navigate.to("/inicio")
         else:
             ui.navigate.to("/login")
 
-    # ── Login ────────────────────────────────────────────────────────────────
-    @ui.page("/login")
     def pagina_login():
         if app.storage.user.get("autenticado"):
             ui.navigate.to("/inicio")
         else:
             login_page()
 
-    # ── Logout ───────────────────────────────────────────────────────────────
-    @ui.page("/logout")
     def pagina_logout():
         app.storage.user.clear()
         ui.navigate.to("/login")
-    
-    # ──tablero estadístico──
-    from src.interface.pages.academico.tablero_estadisticos import tablero_estadisticos_page
-    
-    # ──registro de asistencia──
-    from src.interface.pages.academico.registro_asistencia  import registro_asistencia_page
 
-    # ── Inicio / Dashboard ───────────────────────────────────────────────────
+    registrar_pagina("/", raiz, roles=PUBLICO)
+    registrar_pagina("/login", pagina_login, roles=PUBLICO)
+    registrar_pagina("/logout", pagina_logout, roles=PUBLICO)
+
+    # ── Inicio / Dashboard (cualquier autenticado) ────────────────────────────
     from src.interface.pages.inicio import inicio_page
+    registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
 
-    @ui.page("/inicio")
-    def pagina_inicio():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        inicio_page()
-
-    # ── Admin: Grupos ────────────────────────────────────────────────────────
-    from src.interface.pages.admin.grupos import grupos_page
-
-    @ui.page("/admin/grupos")
-    def pagina_admin_grupos():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        grupos_page()
-
-    # ── Admin: Asignaturas ───────────────────────────────────────────────────
-    from src.interface.pages.admin.asignaturas import asignaturas_page
-
-    @ui.page("/admin/asignaturas")
-    def pagina_admin_asignaturas():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        asignaturas_page()
-
-    # ── Admin: Usuarios ──────────────────────────────────────────────────────
+    # ── Administración ────────────────────────────────────────────────────────
     from src.interface.pages.admin.usuarios import usuarios_page
-
-    @ui.page("/admin/usuarios")
-    def pagina_admin_usuarios():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        usuarios_page()
-
-    # ── Admin: Auditoría (solo lectura, admin) ──────────────────────────────
     from src.interface.pages.admin.auditoria import auditoria_page
-
-    @ui.page("/admin/auditoria")
-    def pagina_admin_auditoria():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        auditoria_page()
-
-    # ── Admin: Asignaciones ──────────────────────────────────────────────────
-    from src.interface.pages.admin.asignaciones import asignaciones_page
-
-    @ui.page("/admin/asignaciones")
-    def pagina_admin_asignaciones():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        asignaciones_page()
-
-    # ── Admin: Plan de estudios ──────────────────────────────────────────────
-    from src.interface.pages.admin.plan_estudios import plan_estudios_page
-
-    @ui.page("/admin/plan-estudios")
-    def pagina_admin_plan_estudios():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        plan_estudios_page()
-
-    # ── Admin: Configuración SIE ─────────────────────────────────────────────
-    from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
-
-    @ui.page("/admin/configuracion")
-    def pagina_admin_configuracion():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        configuracion_sie_page()
-
-    # ── Admin: Información Institucional ─────────────────────────────────────
-    from src.interface.pages.admin.configuracion_institucion import configuracion_institucion_page
-
-    @ui.page("/admin/configuracion-institucion")
-    def pagina_admin_configuracion_institucion():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        configuracion_institucion_page()
-
-    # ── Académico: Estudiantes y PIAR ─────────────────────────────────────────
-    from src.interface.pages.academico.estudiantes import estudiantes_page
-
-    @ui.page("/estudiantes")
-    def pagina_estudiantes():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        estudiantes_page()
-
-    # ── Académico: Horarios (hub unificado paso_18) ───────────────────────────
-    from src.interface.pages.academico.horarios_hub import horarios_hub_page
-
-    @ui.page("/horarios")
-    def pagina_horarios():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        horarios_hub_page(seccion_inicial="visualizar")
-
-    @ui.page("/academico/generar-horario")
-    def pagina_generar_horario():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        horarios_hub_page(seccion_inicial="generar")
-
-    @ui.page("/academico/horarios")
-    def pagina_horarios_hub():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        horarios_hub_page(seccion_inicial="visualizar")
-
-    # ── Admin: Disponibilidad docente ─────────────────────────────────────────
-    from src.interface.pages.admin.disponibilidad_docente import disponibilidad_docente_page
-
-    @ui.page("/admin/disponibilidad-docente")
-    def pagina_admin_disponibilidad_docente():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        disponibilidad_docente_page()
-
-    # ── Admin: Salas ──────────────────────────────────────────────────────────
+    from src.interface.pages.admin.grupos import grupos_page
+    from src.interface.pages.admin.asignaturas import asignaturas_page
     from src.interface.pages.admin.salas import salas_page
+    from src.interface.pages.admin.plan_estudios import plan_estudios_page
+    from src.interface.pages.admin.disponibilidad_docente import disponibilidad_docente_page
+    from src.interface.pages.admin.asignaciones import asignaciones_page
+    from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
+    from src.interface.pages.admin.configuracion_institucion import configuracion_institucion_page
+    from src.interface.pages.admin.diagnostico import diagnostico_page
 
-    @ui.page("/admin/salas")
-    def pagina_admin_salas():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        salas_page()
+    registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
+    registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
+    registrar_pagina("/diagnostico", diagnostico_page, roles=_ADMIN)
+    registrar_pagina("/admin/grupos", grupos_page, roles=_DIRECTOR)
+    registrar_pagina("/admin/asignaturas", asignaturas_page, roles=_DIRECTOR)
+    registrar_pagina("/admin/salas", salas_page, roles=_DIRECTOR)
+    registrar_pagina("/admin/configuracion", configuracion_sie_page, roles=_DIRECTOR)
+    registrar_pagina(
+        "/admin/configuracion-institucion",
+        configuracion_institucion_page,
+        roles=_DIRECTOR,
+    )
+    registrar_pagina("/admin/plan-estudios", plan_estudios_page, roles=_DIR_COORD)
+    registrar_pagina(
+        "/admin/disponibilidad-docente",
+        disponibilidad_docente_page,
+        roles=_DIR_COORD,
+    )
+    registrar_pagina("/admin/asignaciones", asignaciones_page, roles=_AULA)
 
-    # ── Evaluación: Configuración de categorías ───────────────────────────────
+    # ── Académico ─────────────────────────────────────────────────────────────
+    from src.interface.pages.academico.estudiantes import estudiantes_page
+    from src.interface.pages.academico.horarios_hub import horarios_hub_page
+    from src.interface.pages.academico.registro_asistencia import registro_asistencia_page
+    from src.interface.pages.academico.tablero_estadisticos import tablero_estadisticos_page
+
+    registrar_pagina("/estudiantes", estudiantes_page, roles=_AULA)
+    registrar_pagina("/asistencia", registro_asistencia_page, roles=_AULA)
+    registrar_pagina("/academico/tablero", tablero_estadisticos_page, roles=_AULA)
+
+    # Horarios (hub unificado paso_18) — protegido por la ruta (B reconciliado).
+    registrar_pagina(
+        "/horarios", horarios_hub_page, roles=_AULA, seccion_inicial="visualizar"
+    )
+    registrar_pagina(
+        "/academico/horarios", horarios_hub_page, roles=_AULA,
+        seccion_inicial="visualizar",
+    )
+    registrar_pagina(
+        "/academico/generar-horario", horarios_hub_page, roles=_AULA,
+        seccion_inicial="generar",
+    )
+
+    # ── Evaluación ────────────────────────────────────────────────────────────
     from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page
-
-    @ui.page("/evaluacion/configuracion")
-    def pagina_evaluacion_configuracion():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        configuracion_evaluacion_page()
-
-    # ── Evaluación: Planilla de notas ─────────────────────────────────────────
     from src.interface.pages.evaluacion.planilla_notas import planilla_notas_page
-
-    @ui.page("/evaluacion/planilla")
-    def pagina_planilla_notas():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        planilla_notas_page()
-
-    # ── Evaluación: Cierre de periodo ─────────────────────────────────────────
     from src.interface.pages.evaluacion.cierre_periodo import cierre_periodo_page
-
-    @ui.page("/evaluacion/cierre-periodo")
-    def pagina_cierre_periodo():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        cierre_periodo_page()
-
-    # ── Evaluación: Cierre de año ─────────────────────────────────────────────
     from src.interface.pages.evaluacion.cierre_anio import cierre_anio_page
-
-    @ui.page("/evaluacion/cierre-anio")
-    def pagina_cierre_anio():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        cierre_anio_page()
-
-    # ── Evaluación: Habilitaciones ────────────────────────────────────────────
     from src.interface.pages.evaluacion.habilitaciones import habilitaciones_page
-
-    @ui.page("/evaluacion/habilitaciones")
-    def pagina_habilitaciones():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        habilitaciones_page()
-
-    # ── Evaluación: Planes de mejoramiento ────────────────────────────────────
     from src.interface.pages.evaluacion.planes_mejoramiento import planes_mejoramiento_page
 
-    @ui.page("/evaluacion/planes")
-    def pagina_planes_mejoramiento():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        planes_mejoramiento_page()
+    # C reconciliado: /evaluacion/configuracion = solo profesor (config docente).
+    registrar_pagina(
+        "/evaluacion/configuracion", configuracion_evaluacion_page, roles=_PROFESOR
+    )
+    registrar_pagina("/evaluacion/planilla", planilla_notas_page, roles=_AULA)
+    registrar_pagina("/evaluacion/habilitaciones", habilitaciones_page, roles=_AULA)
+    registrar_pagina("/evaluacion/planes", planes_mejoramiento_page, roles=_AULA)
+    registrar_pagina("/evaluacion/cierre-periodo", cierre_periodo_page, roles=_DIR_COORD)
+    registrar_pagina("/evaluacion/cierre-anio", cierre_anio_page, roles=_DIR_COORD)
 
-    # ── Convivencia: Observaciones ────────────────────────────────────────────
+    # ── Convivencia ───────────────────────────────────────────────────────────
     from src.interface.pages.convivencia.observaciones import observaciones_page
-
-    @ui.page("/convivencia/observaciones")
-    def pagina_observaciones():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        observaciones_page()
-
-    # ── Convivencia: Comportamiento ───────────────────────────────────────────
     from src.interface.pages.convivencia.comportamiento import comportamiento_page
-
-    @ui.page("/convivencia/comportamiento")
-    def pagina_comportamiento():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        comportamiento_page()
-
-    # ── Convivencia: Notas ────────────────────────────────────────────────────
     from src.interface.pages.convivencia.notas_convivencia import notas_convivencia_page
 
-    @ui.page("/convivencia/notas")
-    def pagina_notas_convivencia():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        notas_convivencia_page()
+    registrar_pagina("/convivencia/observaciones", observaciones_page, roles=_AULA)
+    registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)
+    registrar_pagina("/convivencia/notas", notas_convivencia_page, roles=_AULA)
 
-    # ── Informes: Boletín Periodo ─────────────────────────────────────────────
+    # ── Informes ──────────────────────────────────────────────────────────────
     from src.interface.pages.informes.boletin_periodo import boletin_periodo_page
-
-    @ui.page("/informes/boletin-periodo")
-    def pagina_boletin_periodo():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        boletin_periodo_page()
-
-    # ── Informes: Boletín Anual ───────────────────────────────────────────────
     from src.interface.pages.informes.boletin_anual import boletin_anual_page
-
-    @ui.page("/informes/boletin-anual")
-    def pagina_boletin_anual():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        boletin_anual_page()
-
-    # ── Informes: Consolidado de Notas ────────────────────────────────────────
     from src.interface.pages.informes.consolidado_notas import consolidado_notas_page
-
-    @ui.page("/informes/consolidado-notas")
-    def pagina_consolidado_notas():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        consolidado_notas_page()
-
-    # ── Informes: Consolidado de Asistencia ───────────────────────────────────
     from src.interface.pages.informes.consolidado_asistencia import consolidado_asistencia_page
-
-    @ui.page("/informes/consolidado-asistencia")
-    def pagina_consolidado_asistencia():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        consolidado_asistencia_page()
-
-    # ── Informes: Estadísticos ────────────────────────────────────────────────
     from src.interface.pages.informes.estadisticos import estadisticos_page
 
-    @ui.page("/informes/estadisticos")
-    def pagina_estadisticos():
-        if not app.storage.user.get("autenticado"):
-            ui.navigate.to("/login")
-            return
-        estadisticos_page()
+    registrar_pagina("/informes/boletin-periodo", boletin_periodo_page, roles=_AULA)
+    registrar_pagina("/informes/boletin-anual", boletin_anual_page, roles=_AULA)
+    registrar_pagina("/informes/estadisticos", estadisticos_page, roles=_AULA)
+    registrar_pagina(
+        "/informes/consolidado-notas", consolidado_notas_page, roles=_DIR_COORD
+    )
+    registrar_pagina(
+        "/informes/consolidado-asistencia", consolidado_asistencia_page,
+        roles=_DIR_COORD,
+    )
 
 
 def main() -> None:

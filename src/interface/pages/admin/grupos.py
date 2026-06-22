@@ -39,16 +39,11 @@ _JORNADAS = {
 _JORNADA_LABELS = {v: k for k, v in _JORNADAS.items()}
 
 
-@ui.page("/admin/grupos")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def grupos_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director",):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Grupos admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -248,6 +243,7 @@ def grupos_page() -> None:
         page_titulo    = "Gestión de Grupos",
         page_subtitulo = "Crea y administra los grupos académicos de la institución",
         page_icono     = Icons.GROUPS,
+        mostrar_contexto = False,
     )
 
 

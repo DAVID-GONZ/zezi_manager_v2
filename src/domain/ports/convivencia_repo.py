@@ -101,18 +101,32 @@ class IConvivenciaRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_registros(self, filtro: FiltroConvivenciaDTO) -> list[RegistroComportamiento]:
+    def listar_registros(
+        self,
+        filtro: FiltroConvivenciaDTO,
+        institucion_id: int | None = None,
+    ) -> list[RegistroComportamiento]:
         """
         Retorna una lista paginada de registros que cumplen con los criterios
         del filtro (estudiante, grupo, periodo, tipo, etc.).
+
+        Multi-tenant (paso_32): cuando el listado cruza grupos (sin grupo ni
+        estudiante en el filtro), `institucion_id` lo acota a una institución
+        vía join a `grupos`. None = sin acotar (admin / arranque).
         """
         ...
 
     @abstractmethod
-    def contar_registros(self, filtro: FiltroConvivenciaDTO) -> int:
+    def contar_registros(
+        self,
+        filtro: FiltroConvivenciaDTO,
+        institucion_id: int | None = None,
+    ) -> int:
         """
         Retorna la cantidad total de registros que cumplen con el filtro,
         útil para paginación o métricas.
+
+        Multi-tenant (paso_32): acota por institución igual que listar_registros.
         """
         ...
 

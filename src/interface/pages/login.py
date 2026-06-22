@@ -14,7 +14,7 @@ from src.interface.design.components.buttons import btn_primary
 logger = logging.getLogger("LOGIN")
 
 
-@ui.page("/login")
+# page-delegate: ruta registrada en main.py vía registrar_pagina (paso_35)
 def login_page() -> None:
     # Fondo usando la clase del design system
     ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
@@ -73,7 +73,9 @@ def login_page() -> None:
 
                 try:
                     svc_auth = Container.auth_service()
-                    user_db = svc_auth.autenticar_usuario(nombre_usuario, contrasena)
+                    user_db = svc_auth.autenticar_usuario(
+                        nombre_usuario, contrasena
+                    )
 
                     rol_str = (
                         user_db.rol.value

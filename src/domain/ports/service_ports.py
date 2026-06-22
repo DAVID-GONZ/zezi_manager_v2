@@ -115,19 +115,22 @@ class IAuthenticationService(ABC):
         del estado de la cuenta. La capa de interfaz NO debe acceder al
         repositorio directamente para ninguno de estos pasos.
 
+        Login simple (paso_37): el username es ÚNICO GLOBAL, así que hay como
+        mucho un usuario con ese nombre. No hay selector de institución ni
+        desambiguación: ``get_by_username`` → verificar contraseña → estado.
+        La ``institucion_id`` de la sesión se deriva del usuario autenticado.
+
         Returns:
             La entidad ``Usuario`` autenticada y activa.
 
         Raises:
             ValueError("credenciales_invalidas"):
-                Si el usuario no existe en la BD o la contraseña no coincide.
-                Se usa un mensaje genérico para no facilitar enumeración de
-                usuarios a un atacante.
+                Si no hay ningún usuario con ese username o la contraseña no
+                coincide. Mensaje genérico deliberado para no facilitar
+                enumeración de usuarios.
             ValueError("cuenta_inactiva"):
                 Si las credenciales son correctas pero la cuenta está
-                desactivada. Permite mostrar un mensaje diferenciado al
-                usuario sin revelar información a atacantes (el mensaje solo
-                se muestra tras verificar exitosamente la contraseña).
+                desactivada (solo tras verificar exitosamente la contraseña).
             RuntimeError:
                 Si el servicio fue construido sin repositorio inyectado.
         """

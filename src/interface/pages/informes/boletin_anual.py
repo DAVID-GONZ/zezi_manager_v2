@@ -155,17 +155,11 @@ def _generar_todos_excel(_s: dict) -> None:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
-@ui.page("/informes/boletin-anual")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def boletin_anual_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    _ROLES_VALIDOS = {"director", "coordinador", "profesor"}
-    if ctx.usuario_rol not in _ROLES_VALIDOS:
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     _s = _estado_inicial()

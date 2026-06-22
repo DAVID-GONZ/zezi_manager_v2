@@ -6,7 +6,9 @@ Categorías de evaluación propias del docente.
 Ruta:   /evaluacion/configuracion
 Acceso: profesor (exclusivamente)
 
-Roles admin/director/coordinador son redirigidos a /admin/configuracion.
+El guard de ruta (paso_35) deniega a los roles institucionales
+(admin/director/coordinador) con toast + /inicio; ya NO hay redirección
+oculta a /admin/configuracion. La config institucional del SIEE vive allí.
 
 Secciones:
   B — Mis categorías (solo si modo != INSTITUCIONAL_FIJO)
@@ -50,16 +52,14 @@ from src.services.plan_mejoramiento_service import (
 logger = logging.getLogger("EVALUACION.CONFIGURACION")
 
 
-@ui.page("/evaluacion/configuracion")
+# C reconciliado: la ruta es SOLO profesor (config docente). Ya no hay
+# redirección-sorpresa a /admin/configuracion; el guard de ruta deniega a los
+# roles institucionales con toast + /inicio, coherente con el NAV.
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def configuracion_evaluacion_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("profesor",):
-        # Roles institucionales: redirigir a su módulo
-        ui.navigate.to("/admin/configuracion")
         return
 
     logger.info("Config evaluación: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)

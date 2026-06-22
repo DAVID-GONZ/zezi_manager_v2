@@ -106,7 +106,9 @@ class FakeAuth(IAuthenticationService):
     def resetear_password(self, uid: int, nueva: str) -> None:
         self._hashes[uid] = f"hash:{nueva}"
 
-    def autenticar_usuario(self, nombre_usuario: str, password_plain: str):
+    def autenticar_usuario(
+        self, nombre_usuario: str, password_plain: str
+    ):
         if not self._pass_ok:
             raise ValueError("Credenciales incorrectas")
         from unittest.mock import MagicMock
@@ -369,3 +371,74 @@ class TestResetearPassword:
         u = svc.crear_usuario(_dto("prof_p8", Rol.PROFESOR))
         svc.resetear_password(u.id, "x", actor_rol="director")
         assert auth._hashes[u.id] == "hash:x"
+
+
+# ===========================================================================
+# Auto-scope por institución desde el contextvar (frente C — paso_28)
+# ===========================================================================
+
+class _SpyResumenRepo(FakeUsuarioRepo):
+    """Captura el FiltroUsuariosDTO con que se invoca listar_resumenes."""
+
+    def __init__(self):
+        super().__init__()
+        self.ultimo_filtro: FiltroUsuariosDTO | None = None
+
+    def listar_resumenes(self, filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]:
+        self.ultimo_filtro = filtro
+        return []
+
+
+class TestAutoScopeInstitucion:
+    @pytest.fixture(autouse=True)
+    def _reset_scope(self):
+        from src.services.contexto_tenant import activar_institucion
+        activar_institucion(None)
+        yield
+        activar_institucion(None)
+
+    def test_listar_resumenes_auto_scopea_director(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        repo = _SpyResumenRepo()
+        svc = UsuarioService(repo)
+        with usar_institucion(7):  # sesión de director scopeada a la institución 7
+            svc.listar_resumenes(FiltroUsuariosDTO())
+        assert repo.ultimo_filtro.institucion_id == 7
+
+    def test_listar_resumenes_no_filtra_admin(self):
+        repo = _SpyResumenRepo()
+        svc = UsuarioService(repo)
+        # Sin scope (admin → contextvar None): no se inyecta institucion_id.
+        svc.listar_resumenes(FiltroUsuariosDTO())
+        assert repo.ultimo_filtro.institucion_id is None
+
+    def test_filtro_explicito_admin_no_se_pisa(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        repo = _SpyResumenRepo()
+        svc = UsuarioService(repo)
+        # Aunque hubiese scope, un institucion_id explícito manda.
+        with usar_institucion(7):
+            svc.listar_resumenes(FiltroUsuariosDTO(institucion_id=3))
+        assert repo.ultimo_filtro.institucion_id == 3
+
+    def test_solo_activos_se_conserva_al_auto_scopear(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        repo = _SpyResumenRepo()
+        svc = UsuarioService(repo)
+        with usar_institucion(7):
+            svc.listar_resumenes(FiltroUsuariosDTO(solo_activos=False))
+        assert repo.ultimo_filtro.institucion_id == 7
+        assert repo.ultimo_filtro.solo_activos is False
+
+    def test_listar_para_ver_como_auto_scopea(self):
+        from src.services.contexto_tenant import usar_institucion
+
+        repo = _SpyResumenRepo()
+        svc = UsuarioService(repo)
+        with usar_institucion(7):
+            svc.listar_para_ver_como()
+        assert repo.ultimo_filtro.institucion_id == 7
+        assert repo.ultimo_filtro.solo_activos is True

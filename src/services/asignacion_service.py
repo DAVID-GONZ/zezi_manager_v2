@@ -445,20 +445,41 @@ class AsignacionService:
         )
         return asig_reasignada
 
+    def _con_scope(self, filtro: FiltroAsignacionesDTO) -> FiltroAsignacionesDTO:
+        """
+        Inyecta el scope multi-tenant (paso_31, frente B3) en el filtro.
+
+        Resuelve desde `institucion_actual()`: None (admin / arranque sin
+        sesión) → sin filtro de institución (ve todo); un entero → filtra por
+        los grupos de esa institución vía el JOIN a `grupos`. Respeta un
+        `institucion_id` ya presente en el filtro (caller explícito).
+        """
+        if filtro.institucion_id is not None:
+            return filtro
+        from src.services.contexto_tenant import institucion_actual
+        return filtro.model_copy(update={"institucion_id": institucion_actual()})
+
     def listar_con_info(
         self,
         filtro: FiltroAsignacionesDTO,
     ) -> list[AsignacionInfo]:
-        """Retorna asignaciones con nombres resueltos por JOIN."""
-        return self._repo.listar_info(filtro)
+        """Retorna asignaciones con nombres resueltos por JOIN (scopeado)."""
+        return self._repo.listar_info(self._con_scope(filtro))
 
     def listar_por_docente(
         self,
         usuario_id: int,
         periodo_id: int | None = None,
     ) -> list[AsignacionInfo]:
-        """Retorna las asignaciones de un docente con info completa."""
-        return self._repo.listar_por_docente(usuario_id, periodo_id)
+        """Retorna las asignaciones de un docente con info completa (scopeado).
+
+        Scope multi-tenant (paso_31): None (admin / arranque) → sin filtro;
+        director → su institución.
+        """
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_por_docente(
+            usuario_id, periodo_id, institucion_id=institucion_actual()
+        )
 
     def get_by_id(self, asignacion_id: int) -> Asignacion:
         """Retorna una asignación por id. Lanza si no existe."""
@@ -469,9 +490,9 @@ class AsignacionService:
         grupo_id: int,
         solo_activas: bool = True,
     ) -> list[AsignacionInfo]:
-        """Retorna las asignaciones de un grupo con info completa."""
+        """Retorna las asignaciones de un grupo con info completa (scopeado)."""
         filtro = FiltroAsignacionesDTO(grupo_id=grupo_id, solo_activas=solo_activas)
-        return self._repo.listar_info(filtro)
+        return self._repo.listar_info(self._con_scope(filtro))
 
 
 __all__ = [

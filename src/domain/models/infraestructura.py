@@ -105,6 +105,9 @@ class Asignatura(BaseModel):
     tipo_sala_requerido: str | None = None   # None = cualquier sala / "Aula"
     bloque_doble:        bool       = False   # requiere franjas consecutivas
     horas_consecutivas:  int        = Field(default=1, ge=1)  # bloques dobles N horas seguidas
+    # Multi-tenant (paso_29): institución dueña. None = sin tenant (single-tenant
+    # temprano / arranque sin sesión); el servicio y el seed la resuelven a #1.
+    institucion_id:  int | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -148,6 +151,9 @@ class Grupo(BaseModel):
     jornada:          Jornada    = Jornada.UNICA
     capacidad_maxima: int        = Field(default=40, ge=1)
     sala_id:          int | None = None   # aula propia del grupo (salón base)
+    # Multi-tenant (paso_29): institución dueña. None = sin tenant; el servicio
+    # y el seed la resuelven a #1.
+    institucion_id:   int | None = None
 
     @field_validator("codigo", mode="before")
     @classmethod
@@ -498,6 +504,7 @@ class PlantillaFranja(BaseModel):
     dias_activos: list[str]
     activa:       bool       = False
     created_at:   str | None = None
+    institucion_id: int | None = None   # paso_32: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -828,6 +835,7 @@ class NuevaAsignaturaDTO(BaseModel):
     tipo_sala_requerido: str | None = None
     bloque_doble:        bool       = False
     horas_consecutivas:  int        = Field(default=1, ge=1)
+    institucion_id:  int | None = None   # paso_29: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -847,6 +855,7 @@ class NuevoGrupoDTO(BaseModel):
     grado:            int | None = None
     jornada:          Jornada    = Jornada.UNICA
     capacidad_maxima: int        = 40
+    institucion_id:   int | None = None   # paso_29: lo resuelve el servicio si falta
 
     @field_validator("codigo", mode="before")
     @classmethod
@@ -870,6 +879,7 @@ class Sala(BaseModel):
     nombre:    str
     tipo:      str = "aula"   # "aula" | "laboratorio" | "computo" | "ed_fisica" | "otro"
     capacidad: int = Field(default=30, ge=1)
+    institucion_id: int | None = None   # paso_32: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod

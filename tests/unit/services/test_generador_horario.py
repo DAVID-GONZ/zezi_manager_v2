@@ -73,7 +73,7 @@ class FakeInfraRepo:
     def get_asignatura(self, asignatura_id):
         return self._asignaturas.get(asignatura_id)
 
-    def listar_grupos(self, grado=None):
+    def listar_grupos(self, grado=None, institucion_id=None):
         return []
 
     def es_disponible(self, usuario_id, dia, franja_orden):
@@ -134,7 +134,7 @@ class FakeInfraestructuraService:
         self.creados.append(esc)
         return esc
 
-    def listar_salas(self):
+    def listar_salas(self, institucion_id=None):
         return list(self._salas)
 
     def listar_ventanas_grupo(self):

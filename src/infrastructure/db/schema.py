@@ -49,10 +49,18 @@ SCHEMA: list[str] = [
     )
     """,
 
+    # Multi-tenant (paso_27, frente A): la configuración académica es por
+    # institución. `anio` ya NO es único global; la unicidad es
+    # UNIQUE(institucion_id, anio). institucion_id es nullable a nivel de
+    # schema; el repo y el seed siempre lo asignan a la institución por
+    # defecto (#1). Las tablas hijas
+    # (niveles_desempeno/configuracion_periodos/criterios_promocion)
+    # heredan la institución transitivamente vía anio_id.
     """
     CREATE TABLE IF NOT EXISTS configuracion_anio (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio                    INTEGER UNIQUE NOT NULL,
+        anio                    INTEGER NOT NULL,
+        institucion_id          INTEGER REFERENCES instituciones(id),
         fecha_inicio_clases     DATE,
         fecha_fin_clases        DATE,
 
@@ -71,7 +79,13 @@ SCHEMA: list[str] = [
                                 CHECK(nota_minima_aprobacion >= 0
                                   AND nota_minima_aprobacion <= 100),
 
-        activo                  BOOLEAN NOT NULL DEFAULT 1
+        -- Escala de notas configurable (boletines/informes)
+        nota_minima_escala      REAL    NOT NULL DEFAULT 0.0,
+        nota_maxima_escala      REAL    NOT NULL DEFAULT 100.0,
+
+        activo                  BOOLEAN NOT NULL DEFAULT 1,
+
+        UNIQUE(institucion_id, anio)
     )
     """,
 
@@ -141,12 +155,14 @@ SCHEMA: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS plantillas_franja (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre       TEXT    NOT NULL UNIQUE,
+        nombre       TEXT    NOT NULL,
         jornada      TEXT    NOT NULL DEFAULT 'UNICA'
                      CHECK(jornada IN ('AM', 'PM', 'UNICA')),
         dias_activos TEXT    NOT NULL DEFAULT 'Lunes,Martes,Miércoles,Jueves,Viernes',
         activa       INTEGER NOT NULL DEFAULT 0,
-        created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+        created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+        institucion_id INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre)
     )
     """,
 
@@ -175,31 +191,50 @@ SCHEMA: list[str] = [
     )
     """,
 
+    # Multi-tenant (paso_29, frente B1): catálogo de asignaturas por
+    # institución. `nombre` y `codigo` ya NO son únicos globales; la unicidad
+    # es UNIQUE(institucion_id, nombre) / UNIQUE(institucion_id, codigo). El
+    # `area_id` sigue siendo catálogo global (FK a areas_conocimiento).
+    # institucion_id es nullable a nivel de schema para soportar el rebuild +
+    # backfill de BDs preexistentes (migración idempotente en init_db); repo,
+    # servicio y seed siempre lo asignan a la institución por defecto (#1).
     """
     CREATE TABLE IF NOT EXISTS asignaturas (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre              TEXT    NOT NULL UNIQUE,
-        codigo              TEXT    UNIQUE,
+        nombre              TEXT    NOT NULL,
+        codigo              TEXT,
         area_id             INTEGER,
         horas_semanales     INTEGER NOT NULL DEFAULT 1 CHECK(horas_semanales > 0),
         tipo_sala_requerido TEXT    DEFAULT NULL,
         bloque_doble        INTEGER NOT NULL DEFAULT 0,
         horas_consecutivas  INTEGER NOT NULL DEFAULT 1 CHECK(horas_consecutivas >= 1),
+        institucion_id      INTEGER REFERENCES instituciones(id),
 
+        UNIQUE(institucion_id, nombre),
+        UNIQUE(institucion_id, codigo),
         FOREIGN KEY(area_id) REFERENCES areas_conocimiento(id) ON DELETE SET NULL
     )
     """,
 
+    # Multi-tenant (paso_29, frente B1): grupos por institución. `codigo` ya
+    # NO es único global; la unicidad es UNIQUE(institucion_id, codigo).
+    # CRÍTICO: grupos(id) es referenciado por estudiantes, asignaciones,
+    # control_diario, historial_estudiantes, etc.; el rebuild de la migración
+    # preserva los ids. institucion_id nullable a nivel de schema (rebuild +
+    # backfill #1).
     """
     CREATE TABLE IF NOT EXISTS grupos (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        codigo           TEXT    NOT NULL UNIQUE,
+        codigo           TEXT    NOT NULL,
         nombre           TEXT,
         grado            INTEGER CHECK(grado BETWEEN 1 AND 13),
         jornada          TEXT    NOT NULL DEFAULT 'UNICA'
                          CHECK(jornada IN ('AM', 'PM', 'UNICA')),
         capacidad_maxima INTEGER NOT NULL DEFAULT 40 CHECK(capacidad_maxima > 0),
-        sala_id          INTEGER
+        sala_id          INTEGER,
+        institucion_id   INTEGER REFERENCES instituciones(id),
+
+        UNIQUE(institucion_id, codigo)
     )
     """,
 
@@ -219,6 +254,14 @@ SCHEMA: list[str] = [
     # 3. USUARIOS Y ACUDIENTES
     # -------------------------------------------------------------------------
 
+    # Multi-tenant (paso_37, frente D): `usuario` vuelve a ser ÚNICO GLOBAL.
+    # El login ambiguo de paso_33 (mismo username en varias instituciones)
+    # filtraba información, así que se revirtió SOLO la unicidad del username:
+    # ahora un username = un usuario = una institución (login simple, sin
+    # selector). El resto del multi-tenant (institucion_id en usuarios y tablas,
+    # scope por institución, config por institución, autorización por objeto)
+    # se mantiene intacto. institucion_id sigue siendo nullable a nivel de
+    # schema; el repo y el seed siempre lo asignan a la institución.
     """
     CREATE TABLE IF NOT EXISTS usuarios (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -266,13 +309,25 @@ SCHEMA: list[str] = [
     )
     """,
 
+    # Multi-tenant (paso_30, frente B2): estudiantes por institución.
+    # `numero_documento` ya NO es único global; la unicidad es
+    # UNIQUE(institucion_id, numero_documento) — el mismo documento puede
+    # existir en dos instituciones distintas. `id_publico` SE MANTIENE UNIQUE
+    # global (es un surrogate público, sin colisión de tenant).
+    # institucion_id es nullable a nivel de schema para soportar el rebuild +
+    # backfill de BDs preexistentes (migración idempotente en init_db); repo,
+    # servicio y seed siempre lo asignan a la institución por defecto (#1).
+    # CRÍTICO: estudiantes(id) es referenciado por FK por 19 tablas hijas
+    # (notas, control_diario, cierres, habilitaciones, planes, alertas, piar,
+    # boletines, historial_estudiantes, estudiante_acudiente…); el rebuild de
+    # la migración preserva los ids para no romper esas referencias.
     """
     CREATE TABLE IF NOT EXISTS estudiantes (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
         id_publico        TEXT    UNIQUE,
         tipo_documento    TEXT    NOT NULL DEFAULT 'TI'
                           CHECK(tipo_documento IN ('TI', 'CC', 'CE', 'NUIP')),
-        numero_documento  TEXT    NOT NULL UNIQUE,
+        numero_documento  TEXT    NOT NULL,
         nombre            TEXT    NOT NULL,
         apellido          TEXT    NOT NULL,
         genero            TEXT    CHECK(genero IN ('M', 'F', 'OTRO')),
@@ -284,7 +339,9 @@ SCHEMA: list[str] = [
         estado_matricula  TEXT    NOT NULL DEFAULT 'activo'
                           CHECK(estado_matricula IN ('activo', 'inactivo',
                                                      'retirado', 'graduado')),
+        institucion_id    INTEGER REFERENCES instituciones(id),
 
+        UNIQUE(institucion_id, numero_documento),
         FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE SET NULL
     )
     """,
@@ -1077,10 +1134,12 @@ SCHEMA: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS salas (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre    TEXT    NOT NULL UNIQUE,
+        nombre    TEXT    NOT NULL,
         tipo      TEXT    NOT NULL DEFAULT 'aula'
                   CHECK(tipo IN ('aula','laboratorio','computo','ed_fisica','otro')),
-        capacidad INTEGER NOT NULL DEFAULT 30 CHECK(capacidad >= 1)
+        capacidad INTEGER NOT NULL DEFAULT 30 CHECK(capacidad >= 1),
+        institucion_id INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre)
     )
     """,
 
@@ -1160,6 +1219,8 @@ INDICES: list[str] = [
 
     # configuracion_anio
     "CREATE INDEX IF NOT EXISTS idx_config_anio        ON configuracion_anio(anio)",
+    # Multi-tenant (paso_27): scope por institución.
+    "CREATE INDEX IF NOT EXISTS idx_config_institucion ON configuracion_anio(institucion_id)",
 
     # usuarios (multi-tenant — paso_24)
     "CREATE INDEX IF NOT EXISTS idx_usuarios_institucion ON usuarios(institucion_id)",
@@ -1169,11 +1230,18 @@ INDICES: list[str] = [
 
     # asignaturas
     "CREATE INDEX IF NOT EXISTS idx_asig_area           ON asignaturas(area_id)",
+    # Multi-tenant (paso_29): scope por institución.
+    "CREATE INDEX IF NOT EXISTS idx_asig_institucion    ON asignaturas(institucion_id)",
+
+    # grupos (multi-tenant — paso_29)
+    "CREATE INDEX IF NOT EXISTS idx_grupos_institucion  ON grupos(institucion_id)",
 
     # estudiantes
     "CREATE INDEX IF NOT EXISTS idx_est_grupo           ON estudiantes(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_est_estado          ON estudiantes(estado_matricula)",
     "CREATE INDEX IF NOT EXISTS idx_est_documento       ON estudiantes(numero_documento)",
+    # estudiantes (multi-tenant — paso_30, frente B2)
+    "CREATE INDEX IF NOT EXISTS idx_est_institucion     ON estudiantes(institucion_id)",
 
     # acudientes
     "CREATE INDEX IF NOT EXISTS idx_acud_documento      ON acudientes(numero_documento)",
@@ -1197,8 +1265,11 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_escenarios_anio     ON escenarios_horario(anio_id)",
 
     # plantillas_franja / franjas
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(jornada) WHERE activa = 1",
+    # Multi-tenant (paso_32): unicidad de plantilla activa por (institucion, jornada),
+    # no global — cada institución puede tener su propia plantilla activa por jornada.
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(institucion_id, jornada) WHERE activa = 1",
     "CREATE INDEX IF NOT EXISTS idx_franjas_plantilla ON franjas(plantilla_id)",
+    "CREATE INDEX IF NOT EXISTS idx_plantilla_institucion ON plantillas_franja(institucion_id)",
 
     # horarios
     "CREATE INDEX IF NOT EXISTS idx_horarios_grupo      ON horarios(grupo_id)",
@@ -1308,6 +1379,7 @@ INDICES: list[str] = [
 
     # salas (paso_17)
     "CREATE INDEX IF NOT EXISTS idx_salas_tipo           ON salas(tipo)",
+    "CREATE INDEX IF NOT EXISTS idx_salas_institucion    ON salas(institucion_id)",
     "CREATE INDEX IF NOT EXISTS idx_ventanas_grupo       ON ventanas_grupo(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_ventanas_grado       ON ventanas_grupo(grado)",
     "CREATE INDEX IF NOT EXISTS idx_bloques_anclados_esc ON bloques_anclados(escenario_id)",
@@ -1432,22 +1504,6 @@ TRIGGERS: list[str] = [
 # INICIALIZACIÓN
 # =============================================================================
 
-def _column_exists(conn, table: str, column: str) -> bool:
-    """Verifica si una columna existe en una tabla (para micro-migraciones)."""
-    try:
-        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-        return any(r[1] == column for r in rows)
-    except Exception:
-        return False
-
-
-def _table_exists(conn, table: str) -> bool:
-    """Verifica si una tabla existe."""
-    row = conn.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?",
-        (table,)
-    ).fetchone()
-    return bool(row and row[0])
 
 
 def init_db(db_path: Path | None = None) -> bool:
@@ -1455,11 +1511,14 @@ def init_db(db_path: Path | None = None) -> bool:
     Inicializa el esquema completo de la base de datos.
 
     Ejecuta en orden:
-      1. CREATE TABLE IF NOT EXISTS  — idempotente
-      2. Micro-migraciones           — ALTER TABLE ADD COLUMN si falta columna
-      3. CREATE INDEX IF NOT EXISTS  — idempotente
-      4. CREATE TRIGGER IF NOT EXISTS — idempotente
-      5. PRAGMA integrity_check
+      1. CREATE TABLE IF NOT EXISTS  — idempotente (única fuente de verdad)
+      2. CREATE INDEX IF NOT EXISTS  — idempotente
+      3. CREATE TRIGGER IF NOT EXISTS — idempotente
+      4. PRAGMA integrity_check
+
+    El proyecto es pre-producción: no se migran BDs viejas (la de desarrollo se
+    recrea). No hay ALTER TABLE ni rebuilds aquí — el CREATE TABLE trae el
+    esquema completo (institucion_id + uniques compuestos + columnas de escala).
 
     Args:
         db_path: Ruta opcional a la BD. Si es None usa la configurada en connection.py.
@@ -1482,32 +1541,6 @@ def init_db(db_path: Path | None = None) -> bool:
                 except Exception as exc:
                     logger.error(f"Error en tabla {i}: {exc}")
                     raise
-
-            # ------------------------------------------------------------------
-            # Micro-migraciones (columnas nuevas en tablas ya existentes)
-            # Formato: (tabla, columna, DDL de la columna)
-            # ------------------------------------------------------------------
-            migraciones = [
-                ("configuracion_anio", "nota_minima_escala",
-                 "nota_minima_escala REAL NOT NULL DEFAULT 0.0"),
-                ("configuracion_anio", "nota_maxima_escala",
-                 "nota_maxima_escala REAL NOT NULL DEFAULT 100.0"),
-                ("usuarios", "carga_horaria_max",
-                 "carga_horaria_max INTEGER"),
-                ("usuarios", "horas_extra",
-                 "horas_extra INTEGER NOT NULL DEFAULT 0"),
-                # Multi-tenant (paso_24): columna nullable; el backfill a la
-                # institución por defecto lo hace el seed (donde ya existe #1).
-                ("usuarios", "institucion_id",
-                 "institucion_id INTEGER REFERENCES instituciones(id)"),
-                ("grupos", "sala_id", "sala_id INTEGER"),
-                ("areas_conocimiento", "color", "color TEXT"),
-            ]
-
-            for tabla, columna, ddl in migraciones:
-                if not _column_exists(conn, tabla, columna):
-                    logger.info(f"Migración: ALTER TABLE {tabla} ADD COLUMN {columna}")
-                    conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {ddl}")
 
             # ------------------------------------------------------------------
             # Índices

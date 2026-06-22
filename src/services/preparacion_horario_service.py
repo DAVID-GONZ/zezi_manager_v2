@@ -66,13 +66,25 @@ class PreparacionHorarioService:
         plantilla_id: int,
     ) -> ReportePreparacionDTO:
         """Ejecuta las 7 puertas en orden y devuelve el reporte."""
+        # Multi-tenant (paso_32, T5): `self._infra` es el repositorio (no el
+        # servicio), así que el scope NO viene aplicado. Se resuelve aquí la
+        # institución del contexto para acotar grupos/asignaturas/salas/plantillas
+        # al tenant activo (director → su institución; admin/arranque → None =
+        # todo). La validación opera dentro de un anio/periodo ya scopeados.
+        from src.services.contexto_tenant import institucion_actual
+        inst_id = institucion_actual()
+
         asignaciones = self._listar_asignaciones(periodo_id)
-        grupos       = self._infra.listar_grupos()
-        asignaturas  = self._infra.listar_asignaturas()
-        salas        = self._infra.listar_salas()
+        grupos       = self._infra.listar_grupos(institucion_id=inst_id)
+        asignaturas  = self._infra.listar_asignaturas(institucion_id=inst_id)
+        salas        = self._infra.listar_salas(institucion_id=inst_id)
         franjas      = self._infra.listar_franjas(plantilla_id) if plantilla_id else []
         plantilla    = (
-            next((p for p in self._infra.listar_plantillas_franja() if p.id == plantilla_id), None)
+            next(
+                (p for p in self._infra.listar_plantillas_franja(institucion_id=inst_id)
+                 if p.id == plantilla_id),
+                None,
+            )
             if plantilla_id else None
         )
 

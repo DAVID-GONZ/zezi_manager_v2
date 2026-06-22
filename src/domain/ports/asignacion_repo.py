@@ -102,10 +102,14 @@ class IAsignacionRepository(ABC):
         grupo_id: int,
         periodo_id: int,
         solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         """
         Retorna todas las asignaciones de un grupo en un periodo.
         Usado para generar el horario completo del grupo y el boletín.
+
+        `institucion_id` (paso_31): None = sin filtro; un entero restringe a
+        las asignaciones cuyo grupo pertenece a esa institución (scope tenant).
         """
         ...
 
@@ -115,11 +119,15 @@ class IAsignacionRepository(ABC):
         usuario_id: int,
         periodo_id: int | None = None,
         solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         """
         Retorna todas las asignaciones de un docente.
         Si periodo_id es None, retorna de todos los periodos.
         Usado para la vista de carga académica del docente.
+
+        `institucion_id` (paso_31): None = sin filtro; un entero restringe a
+        las asignaciones cuyo grupo pertenece a esa institución (scope tenant).
         """
         ...
 

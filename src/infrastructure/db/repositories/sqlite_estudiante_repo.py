@@ -71,20 +71,30 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             ).fetchone()
             return self._row_to_estudiante(row) if row else None
 
-    def get_by_documento(self, numero_documento: str) -> Estudiante | None:
+    def get_by_documento(
+        self, numero_documento: str, institucion_id: int | None = None
+    ) -> Estudiante | None:
+        sql = "SELECT * FROM estudiantes WHERE numero_documento = ?"
+        params: list = [numero_documento.upper()]
+        # Multi-tenant (paso_30): el documento es único POR institución; al
+        # acotar al tenant evitamos colisiones cruzadas entre instituciones.
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM estudiantes WHERE numero_documento = ?",
-                (numero_documento.upper(),),
-            ).fetchone()
+            row = conn.execute(sql, params).fetchone()
             return self._row_to_estudiante(row) if row else None
 
-    def existe_documento(self, numero_documento: str) -> bool:
+    def existe_documento(
+        self, numero_documento: str, institucion_id: int | None = None
+    ) -> bool:
+        sql = "SELECT 1 FROM estudiantes WHERE numero_documento = ?"
+        params: list = [numero_documento.upper()]
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT 1 FROM estudiantes WHERE numero_documento = ?",
-                (numero_documento.upper(),),
-            ).fetchone()
+            row = conn.execute(sql, params).fetchone()
             return row is not None
 
     def get_resumen(self, estudiante_id: int) -> EstudianteResumenDTO | None:
@@ -97,6 +107,11 @@ class SqliteEstudianteRepository(IEstudianteRepository):
     def listar_filtrado(self, filtro: FiltroEstudiantesDTO) -> list[Estudiante]:
         sql = "SELECT * FROM estudiantes WHERE 1=1"
         params: list = []
+        # Multi-tenant (paso_30): scope por institución cuando el filtro lo trae
+        # (director → su institución; None → admin / sin scope, ve todo).
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         if filtro.grupo_id is not None:
             sql += " AND grupo_id = ?"
             params.append(filtro.grupo_id)
@@ -123,6 +138,10 @@ class SqliteEstudianteRepository(IEstudianteRepository):
     def listar_resumenes(self, filtro: FiltroEstudiantesDTO) -> list[EstudianteResumenDTO]:
         sql = "SELECT * FROM estudiantes WHERE 1=1"
         params: list = []
+        # Multi-tenant (paso_30): scope por institución (ver listar_filtrado).
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         if filtro.grupo_id is not None:
             sql += " AND grupo_id = ?"
             params.append(filtro.grupo_id)
@@ -144,9 +163,18 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_resumen(r) for r in rows]
 
-    def listar_por_grupo(self, grupo_id: int, solo_activos: bool = True) -> list[Estudiante]:
+    def listar_por_grupo(
+        self,
+        grupo_id: int,
+        solo_activos: bool = True,
+        institucion_id: int | None = None,
+    ) -> list[Estudiante]:
         sql = "SELECT * FROM estudiantes WHERE grupo_id = ?"
         params: list = [grupo_id]
+        # Multi-tenant (paso_30): scope opcional por institución.
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         if solo_activos:
             sql += " AND estado_matricula = 'activo'"
         sql += " ORDER BY apellido, nombre"
@@ -154,9 +182,17 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_estudiante(r) for r in rows]
 
-    def contar_por_grupo(self, grupo_id: int, solo_activos: bool = True) -> int:
+    def contar_por_grupo(
+        self,
+        grupo_id: int,
+        solo_activos: bool = True,
+        institucion_id: int | None = None,
+    ) -> int:
         sql = "SELECT COUNT(*) FROM estudiantes WHERE grupo_id = ?"
         params: list = [grupo_id]
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         if solo_activos:
             sql += " AND estado_matricula = 'activo'"
         with self._get_conn() as conn:
@@ -174,8 +210,9 @@ class SqliteEstudianteRepository(IEstudianteRepository):
                 INSERT INTO estudiantes
                     (id_publico, tipo_documento, numero_documento,
                      nombre, apellido, genero, grupo_id, posee_piar,
-                     fecha_nacimiento, direccion, fecha_ingreso, estado_matricula)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                     fecha_nacimiento, direccion, fecha_ingreso, estado_matricula,
+                     institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     estudiante.id_publico,
@@ -191,6 +228,7 @@ class SqliteEstudianteRepository(IEstudianteRepository):
                     estudiante.direccion,
                     estudiante.fecha_ingreso.isoformat(),
                     estudiante.estado_matricula.value,
+                    estudiante.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -198,6 +236,8 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             return estudiante.model_copy(update={"id": cursor.lastrowid})
 
     def actualizar(self, estudiante: Estudiante) -> Estudiante:
+        # Multi-tenant (paso_30): NO se toca institucion_id en update; la
+        # institución de un estudiante no se mueve entre tenants en este paso.
         with self._get_conn() as conn:
             conn.execute(
                 """

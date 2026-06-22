@@ -198,10 +198,12 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         with self._get_conn() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO plantillas_franja (nombre, jornada, dias_activos, activa)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO plantillas_franja
+                    (nombre, jornada, dias_activos, activa, institucion_id)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (p.nombre, p.jornada, ",".join(p.dias_activos), int(p.activa)),
+                (p.nombre, p.jornada, ",".join(p.dias_activos), int(p.activa),
+                 p.institucion_id),
             )
             if self._conn is None:
                 conn.commit()
@@ -214,19 +216,38 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_plantilla(row) if row else None
 
-    def listar_plantillas_franja(self) -> list[PlantillaFranja]:
+    def listar_plantillas_franja(
+        self, institucion_id: int | None = None
+    ) -> list[PlantillaFranja]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM plantillas_franja ORDER BY nombre"
-            ).fetchall()
+            if institucion_id is not None:
+                rows = conn.execute(
+                    "SELECT * FROM plantillas_franja "
+                    "WHERE institucion_id = ? ORDER BY nombre",
+                    (institucion_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM plantillas_franja ORDER BY nombre"
+                ).fetchall()
             return [self._row_to_plantilla(r) for r in rows]
 
-    def get_plantilla_activa(self, jornada: str) -> PlantillaFranja | None:
+    def get_plantilla_activa(
+        self, jornada: str, institucion_id: int | None = None
+    ) -> PlantillaFranja | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM plantillas_franja WHERE jornada = ? AND activa = 1",
-                (jornada,),
-            ).fetchone()
+            if institucion_id is not None:
+                row = conn.execute(
+                    "SELECT * FROM plantillas_franja "
+                    "WHERE jornada = ? AND activa = 1 AND institucion_id = ?",
+                    (jornada, institucion_id),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM plantillas_franja "
+                    "WHERE jornada = ? AND activa = 1",
+                    (jornada,),
+                ).fetchone()
             return self._row_to_plantilla(row) if row else None
 
     def actualizar_plantilla_franja(self, p: PlantillaFranja) -> PlantillaFranja:
@@ -246,16 +267,27 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def activar_plantilla_franja(self, plantilla_id: int) -> None:
         with self._get_conn() as conn:
             row = conn.execute(
-                "SELECT jornada FROM plantillas_franja WHERE id = ?", (plantilla_id,)
+                "SELECT jornada, institucion_id FROM plantillas_franja WHERE id = ?",
+                (plantilla_id,),
             ).fetchone()
             if not row:
                 raise ValueError(f"Plantilla {plantilla_id} no existe.")
             jornada = row[0]
-            # Desactivar todas las de la misma jornada y activar solo la indicada
-            conn.execute(
-                "UPDATE plantillas_franja SET activa = 0 WHERE jornada = ?",
-                (jornada,),
-            )
+            institucion_id = row[1]
+            # Multi-tenant (paso_32): desactivar solo las de la MISMA jornada y la
+            # MISMA institución (el índice único de activa es por institución).
+            if institucion_id is not None:
+                conn.execute(
+                    "UPDATE plantillas_franja SET activa = 0 "
+                    "WHERE jornada = ? AND institucion_id = ?",
+                    (jornada, institucion_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE plantillas_franja SET activa = 0 "
+                    "WHERE jornada = ? AND institucion_id IS NULL",
+                    (jornada,),
+                )
             conn.execute(
                 "UPDATE plantillas_franja SET activa = 1 WHERE id = ?",
                 (plantilla_id,),
@@ -415,17 +447,24 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_asignatura(row) if row else None
 
-    def listar_asignaturas(self, area_id: int | None = None) -> list[Asignatura]:
+    def listar_asignaturas(
+        self,
+        area_id: int | None = None,
+        institucion_id: int | None = None,
+    ) -> list[Asignatura]:
         with self._get_conn() as conn:
+            condiciones: list[str] = []
+            params: list = []
             if area_id is not None:
-                rows = conn.execute(
-                    "SELECT * FROM asignaturas WHERE area_id = ? ORDER BY nombre",
-                    (area_id,),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT * FROM asignaturas ORDER BY nombre"
-                ).fetchall()
+                condiciones.append("area_id = ?")
+                params.append(area_id)
+            if institucion_id is not None:
+                condiciones.append("institucion_id = ?")
+                params.append(institucion_id)
+            where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
+            rows = conn.execute(
+                f"SELECT * FROM asignaturas{where} ORDER BY nombre", params
+            ).fetchall()
             return [self._row_to_asignatura(r) for r in rows]
 
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
@@ -434,8 +473,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 """
                 INSERT INTO asignaturas
                     (nombre, codigo, area_id, horas_semanales,
-                     tipo_sala_requerido, bloque_doble, horas_consecutivas)
-                VALUES (?,?,?,?,?,?,?)
+                     tipo_sala_requerido, bloque_doble, horas_consecutivas,
+                     institucion_id)
+                VALUES (?,?,?,?,?,?,?,?)
                 """,
                 (
                     asignatura.nombre,
@@ -445,6 +485,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     asignatura.tipo_sala_requerido,
                     int(asignatura.bloque_doble),
                     asignatura.horas_consecutivas,
+                    asignatura.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -452,6 +493,8 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             return asignatura.model_copy(update={"id": cursor.lastrowid})
 
     def actualizar_asignatura(self, asignatura: Asignatura) -> Asignatura:
+        # Multi-tenant (paso_29): NO se toca institucion_id en update; la
+        # institución de una asignatura no se mueve entre tenants en este paso.
         with self._get_conn() as conn:
             conn.execute(
                 """
@@ -510,17 +553,24 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             d["jornada"] = Jornada(d["jornada"]) if d.get("jornada") else Jornada.UNICA
             return Grupo(**d)
 
-    def listar_grupos(self, grado: int | None = None) -> list[Grupo]:
+    def listar_grupos(
+        self,
+        grado: int | None = None,
+        institucion_id: int | None = None,
+    ) -> list[Grupo]:
         with self._get_conn() as conn:
+            condiciones: list[str] = []
+            params: list = []
             if grado is not None:
-                rows = conn.execute(
-                    "SELECT * FROM grupos WHERE grado = ? ORDER BY codigo",
-                    (grado,),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT * FROM grupos ORDER BY codigo"
-                ).fetchall()
+                condiciones.append("grado = ?")
+                params.append(grado)
+            if institucion_id is not None:
+                condiciones.append("institucion_id = ?")
+                params.append(institucion_id)
+            where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
+            rows = conn.execute(
+                f"SELECT * FROM grupos{where} ORDER BY codigo", params
+            ).fetchall()
             resultado = []
             for r in rows:
                 d = dict(r)
@@ -541,8 +591,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         with self._get_conn() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO grupos (codigo, nombre, grado, jornada, capacidad_maxima)
-                VALUES (?,?,?,?,?)
+                INSERT INTO grupos
+                    (codigo, nombre, grado, jornada, capacidad_maxima, institucion_id)
+                VALUES (?,?,?,?,?,?)
                 """,
                 (
                     grupo.codigo,
@@ -550,6 +601,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     grupo.grado,
                     grupo.jornada.value if grupo.jornada else None,
                     grupo.capacidad_maxima,
+                    grupo.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -557,6 +609,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             return grupo.model_copy(update={"id": cursor.lastrowid})
 
     def actualizar_grupo(self, grupo: Grupo) -> Grupo:
+        # Multi-tenant (paso_29): institucion_id no se modifica en update.
         with self._get_conn() as conn:
             conn.execute(
                 """
@@ -1237,9 +1290,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         return Sala(**{k: v for k, v in d.items() if k in Sala.model_fields})
 
-    def listar_salas(self) -> list[Sala]:
+    def listar_salas(self, institucion_id: int | None = None) -> list[Sala]:
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM salas ORDER BY nombre").fetchall()
+            if institucion_id is not None:
+                rows = conn.execute(
+                    "SELECT * FROM salas WHERE institucion_id = ? ORDER BY nombre",
+                    (institucion_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM salas ORDER BY nombre"
+                ).fetchall()
             return [self._row_to_sala(r) for r in rows]
 
     def get_sala(self, sala_id: int) -> Sala | None:
@@ -1250,14 +1311,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def crear_sala(self, sala: Sala) -> Sala:
         with self._get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO salas (nombre, tipo, capacidad) VALUES (?, ?, ?)",
-                (sala.nombre, sala.tipo, sala.capacidad),
+                "INSERT INTO salas (nombre, tipo, capacidad, institucion_id) "
+                "VALUES (?, ?, ?, ?)",
+                (sala.nombre, sala.tipo, sala.capacidad, sala.institucion_id),
             )
             if self._conn is None:
                 conn.commit()
             return sala.model_copy(update={"id": cur.lastrowid})
 
     def actualizar_sala(self, sala: Sala) -> Sala:
+        # Multi-tenant (paso_32): NO se toca institucion_id en update; una sala
+        # no se mueve entre instituciones en este paso.
         with self._get_conn() as conn:
             conn.execute(
                 "UPDATE salas SET nombre=?, tipo=?, capacidad=? WHERE id=?",

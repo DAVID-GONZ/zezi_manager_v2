@@ -29,16 +29,11 @@ from src.interface.design.components import (
 logger = logging.getLogger("ADMIN.CONFIG_INSTITUCION")
 
 
-@ui.page("/admin/configuracion-institucion")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def configuracion_institucion_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director",):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     logger.info("Config institución: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -64,7 +59,7 @@ def configuracion_institucion_page() -> None:
         # campos institucionales editables. No se usa get_info_institucional()
         # aquí porque ese DTO es para boletines y rechaza años incompletos.
         try:
-            config = Container.configuracion_service().get_activa()
+            config = Container.configuracion_service().get_activa(ctx.institucion_id)
         except ValueError:
             logger.warning("Sin año lectivo activo configurado")
             return
@@ -168,6 +163,7 @@ def configuracion_institucion_page() -> None:
         page_titulo    = "Información Institucional",
         page_subtitulo = "Datos básicos y generales de la institución educativa",
         page_icono     = "business",
+        mostrar_contexto = False,
     )
 
 

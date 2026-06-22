@@ -81,16 +81,11 @@ def _barra_progreso(actual: int, tope: int | None, *, alerta_sobre: bool = True)
         ui.element("div").classes(cls).style(f"width:{pct}%")  # DYNAMIC: progreso
 
 
-@ui.page("/admin/asignaciones")
+# page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def asignaciones_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
-        return
-
-    if ctx.usuario_rol not in ("director", "coordinador", "profesor"):
-        toast_error("Acceso no autorizado")
-        ui.navigate.to("/inicio")
         return
 
     # Directivos (director/coordinador): gestión completa.

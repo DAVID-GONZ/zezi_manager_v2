@@ -151,41 +151,66 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             ).fetchone()
             return self._row_to_registro(row) if row else None
 
-    def _build_filtro_sql(self, filtro: FiltroConvivenciaDTO) -> tuple[str, list]:
-        sql = "SELECT * FROM registro_comportamiento WHERE 1=1"
+    def _build_filtro_sql(
+        self,
+        filtro: FiltroConvivenciaDTO,
+        institucion_id: int | None = None,
+        *,
+        select: str = "rc.*",
+    ) -> tuple[str, list]:
+        # Multi-tenant (paso_32): cuando el listado cruza grupos (sin grupo ni
+        # estudiante en el filtro) se acota por institución vía join a `grupos`.
+        # El join solo se añade cuando hace falta para no penalizar las consultas
+        # ya scopeadas por estudiante/grupo.
         params: list = []
+        join = ""
+        if institucion_id is not None:
+            join = " JOIN grupos g ON g.id = rc.grupo_id"
+        sql = f"SELECT {select} FROM registro_comportamiento rc{join} WHERE 1=1"
+        if institucion_id is not None:
+            sql += " AND g.institucion_id = ?"
+            params.append(institucion_id)
         if filtro.estudiante_id is not None:
-            sql += " AND estudiante_id = ?"
+            sql += " AND rc.estudiante_id = ?"
             params.append(filtro.estudiante_id)
         if filtro.grupo_id is not None:
-            sql += " AND grupo_id = ?"
+            sql += " AND rc.grupo_id = ?"
             params.append(filtro.grupo_id)
         if filtro.periodo_id is not None:
-            sql += " AND periodo_id = ?"
+            sql += " AND rc.periodo_id = ?"
             params.append(filtro.periodo_id)
         if filtro.tipo is not None:
-            sql += " AND tipo = ?"
+            sql += " AND rc.tipo = ?"
             params.append(filtro.tipo.value)
         if filtro.solo_negativos:
             placeholders = ",".join("?" for _ in _TIPOS_NEGATIVOS)
-            sql += f" AND tipo IN ({placeholders})"
+            sql += f" AND rc.tipo IN ({placeholders})"
             params.extend(_TIPOS_NEGATIVOS)
         return sql, params
 
-    def listar_registros(self, filtro: FiltroConvivenciaDTO) -> list[RegistroComportamiento]:
-        sql, params = self._build_filtro_sql(filtro)
-        sql += " ORDER BY fecha DESC, id DESC"
+    def listar_registros(
+        self,
+        filtro: FiltroConvivenciaDTO,
+        institucion_id: int | None = None,
+    ) -> list[RegistroComportamiento]:
+        sql, params = self._build_filtro_sql(filtro, institucion_id)
+        sql += " ORDER BY rc.fecha DESC, rc.id DESC"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_registro(r) for r in rows]
 
-    def contar_registros(self, filtro: FiltroConvivenciaDTO) -> int:
-        sql, params = self._build_filtro_sql(filtro)
-        count_sql = sql.replace("SELECT *", "SELECT COUNT(*)", 1)
+    def contar_registros(
+        self,
+        filtro: FiltroConvivenciaDTO,
+        institucion_id: int | None = None,
+    ) -> int:
+        sql, params = self._build_filtro_sql(
+            filtro, institucion_id, select="COUNT(*)"
+        )
         with self._get_conn() as conn:
-            row = conn.execute(count_sql, params).fetchone()
+            row = conn.execute(sql, params).fetchone()
             return int(row[0])
 
     def guardar_registro(self, registro: RegistroComportamiento) -> RegistroComportamiento:
