@@ -13,7 +13,10 @@ from src.domain.models.estudiante import (
     EstudianteResumenDTO,
     FiltroEstudiantesDTO,
     Genero,
+    MovimientoEstudiante,
+    MovimientoEstudianteInfoDTO,
     TipoDocumento,
+    TipoMovimiento,
 )
 from src.domain.models.piar import PIAR
 
@@ -115,6 +118,14 @@ class SqliteEstudianteRepository(IEstudianteRepository):
         if filtro.grupo_id is not None:
             sql += " AND grupo_id = ?"
             params.append(filtro.grupo_id)
+        # Restricción por conjunto de grupos (docente): lista vacía → 0
+        # resultados sin generar un `IN ()` inválido; coexiste con grupo_id (AND).
+        if filtro.grupos_ids is not None:
+            if not filtro.grupos_ids:
+                return []
+            placeholders = ",".join("?" for _ in filtro.grupos_ids)
+            sql += f" AND grupo_id IN ({placeholders})"
+            params.extend(filtro.grupos_ids)
         if filtro.estado_matricula is not None:
             sql += " AND estado_matricula = ?"
             params.append(filtro.estado_matricula.value)
@@ -145,6 +156,14 @@ class SqliteEstudianteRepository(IEstudianteRepository):
         if filtro.grupo_id is not None:
             sql += " AND grupo_id = ?"
             params.append(filtro.grupo_id)
+        # Restricción por conjunto de grupos (docente): lista vacía → 0
+        # resultados sin generar un `IN ()` inválido; coexiste con grupo_id (AND).
+        if filtro.grupos_ids is not None:
+            if not filtro.grupos_ids:
+                return []
+            placeholders = ",".join("?" for _ in filtro.grupos_ids)
+            sql += f" AND grupo_id IN ({placeholders})"
+            params.extend(filtro.grupos_ids)
         if filtro.estado_matricula is not None:
             sql += " AND estado_matricula = ?"
             params.append(filtro.estado_matricula.value)
@@ -283,6 +302,101 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
+
+    # ------------------------------------------------------------------
+    # Historial de movimientos (paso_43)
+    # ------------------------------------------------------------------
+
+    def registrar_movimiento(
+        self,
+        estudiante_id: int,
+        grupo_origen_id: int | None,
+        grupo_destino_id: int | None,
+        tipo: TipoMovimiento,
+        motivo: str | None = None,
+        usuario_registro_id: int | None = None,
+    ) -> MovimientoEstudiante:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO historial_estudiantes
+                    (estudiante_id, grupo_origen_id, grupo_destino_id,
+                     tipo_movimiento, motivo, usuario_registro_id)
+                VALUES (?,?,?,?,?,?)
+                """,
+                (
+                    estudiante_id,
+                    grupo_origen_id,
+                    grupo_destino_id,
+                    tipo.value,
+                    motivo,
+                    usuario_registro_id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            row = conn.execute(
+                "SELECT fecha_movimiento FROM historial_estudiantes WHERE id = ?",
+                (cursor.lastrowid,),
+            ).fetchone()
+            fecha = self._parse_fecha(row["fecha_movimiento"]) if row else None
+            return MovimientoEstudiante(
+                id=cursor.lastrowid,
+                estudiante_id=estudiante_id,
+                grupo_origen_id=grupo_origen_id,
+                grupo_destino_id=grupo_destino_id,
+                fecha_movimiento=fecha,
+                tipo_movimiento=tipo,
+                motivo=motivo,
+                usuario_registro_id=usuario_registro_id,
+            )
+
+    def listar_historial(
+        self, estudiante_id: int
+    ) -> list[MovimientoEstudianteInfoDTO]:
+        sql = """
+            SELECT  h.id,
+                    h.estudiante_id,
+                    go.codigo  AS grupo_origen_codigo,
+                    gd.codigo  AS grupo_destino_codigo,
+                    h.fecha_movimiento,
+                    h.tipo_movimiento,
+                    h.motivo,
+                    h.usuario_registro_id
+            FROM    historial_estudiantes h
+            LEFT JOIN grupos go ON go.id = h.grupo_origen_id
+            LEFT JOIN grupos gd ON gd.id = h.grupo_destino_id
+            WHERE   h.estudiante_id = ?
+            ORDER BY h.fecha_movimiento DESC, h.id DESC
+        """
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, (estudiante_id,)).fetchall()
+            return [self._row_to_movimiento_info(r) for r in rows]
+
+    @staticmethod
+    def _parse_fecha(valor):
+        from datetime import datetime
+        if valor is None:
+            return None
+        if isinstance(valor, datetime):
+            return valor
+        try:
+            return datetime.fromisoformat(str(valor))
+        except ValueError:
+            return None
+
+    def _row_to_movimiento_info(self, row) -> MovimientoEstudianteInfoDTO:
+        d = dict(row)
+        return MovimientoEstudianteInfoDTO(
+            id=d["id"],
+            estudiante_id=d["estudiante_id"],
+            grupo_origen_codigo=d.get("grupo_origen_codigo"),
+            grupo_destino_codigo=d.get("grupo_destino_codigo"),
+            fecha_movimiento=self._parse_fecha(d.get("fecha_movimiento")),
+            tipo_movimiento=TipoMovimiento(d["tipo_movimiento"]),
+            motivo=d.get("motivo"),
+            usuario_registro_id=d.get("usuario_registro_id"),
+        )
 
     # ------------------------------------------------------------------
     # PIAR

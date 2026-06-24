@@ -261,6 +261,12 @@ class FakeEstRepo(IEstudianteRepository):
     def asignar_grupo(self, estudiante_id, grupo_id):
         return True
 
+    def registrar_movimiento(self, estudiante_id, grupo_origen_id, grupo_destino_id, tipo, motivo=None, usuario_registro_id=None):
+        return None
+
+    def listar_historial(self, estudiante_id):
+        return []
+
     def get_piar(self, estudiante_id, anio_id):
         return None
 

@@ -17,6 +17,8 @@ from src.domain.models.estudiante import (
     ActualizarEstudianteDTO,
     FiltroEstudiantesDTO,
     EstudianteResumenDTO,
+    MovimientoEstudianteInfoDTO,
+    TipoMovimiento,
 )
 from src.domain.models.piar import PIAR, NuevoPIARDTO, ActualizarPIARDTO
 from src.domain.models.dtos import MatriculaMasivaResultadoDTO
@@ -34,14 +36,43 @@ class EstudianteService:
         repo: IEstudianteRepository,
         acudiente_repo: IAcudienteRepository | None = None,
         auditoria: IAuditoriaRepository | None = None,
+        grupo_reader=None,
     ) -> None:
         self._repo           = repo
         self._acudiente_repo = acudiente_repo
         self._auditoria      = auditoria
+        # Lector de grupos para el traslado (paso_43). Callable[[int], Grupo|None].
+        # Por defecto resuelve vía Container.infraestructura_service().get_grupo;
+        # inyectable en tests para evitar el Container.
+        self._grupo_reader   = grupo_reader
+
+    # Roles con permiso de gestión (crear/importar/editar/PIAR) en /estudiantes.
+    # admin se incluye por coherencia con es_directivo (no accede a la ruta, pero
+    # no debe ser rechazado si llegara a invocar el servicio).
+    _ROLES_GESTION: frozenset[str] = frozenset({"director", "coordinador", "admin"})
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _verificar_gestion(cls, actor_rol: str | None) -> None:
+        """Defensa en profundidad (RBAC ligero, espejo de paso_23): solo
+        director/coordinador (y admin) pueden mutar estudiantes/PIAR desde
+        /estudiantes.
+
+        `actor_rol=None` desactiva el enforcement (callers internos / tests /
+        carga seed). Si se provee un rol sin permiso (p. ej. "profesor"), lanza
+        un ``ValueError`` accionable.
+        """
+        if actor_rol is None:
+            return
+        if actor_rol not in cls._ROLES_GESTION:
+            raise ValueError(
+                f"Tu rol ('{actor_rol}') no tiene permiso para gestionar "
+                "estudiantes. Solo director y coordinador pueden crear, "
+                "importar, editar o registrar PIAR."
+            )
 
     def _auditar(
         self,
@@ -113,13 +144,17 @@ class EstudianteService:
         self,
         dto: NuevoEstudianteDTO,
         usuario_id: int | None = None,
+        actor_rol: str | None = None,
     ) -> Estudiante:
         """
         Matricula un estudiante nuevo.
 
         Verifica que el documento no esté duplicado, construye la
         entidad desde el DTO y la persiste.
+
+        Si `actor_rol` se provee, valida (RBAC) que pueda gestionar estudiantes.
         """
+        self._verificar_gestion(actor_rol)
         estudiante = dto.to_estudiante()
         # Multi-tenant (paso_30): resuelve la institución del scope (o #1 en
         # seed/arranque sin sesión) ANTES de verificar el documento, porque el
@@ -144,12 +179,32 @@ class EstudianteService:
         estudiante_id: int,
         dto: ActualizarEstudianteDTO,
         usuario_id: int | None = None,
+        actor_rol: str | None = None,
     ) -> Estudiante:
-        """Actualiza los datos de un estudiante existente."""
+        """Actualiza los datos de un estudiante existente.
+
+        Si `actor_rol` se provee, valida (RBAC) que pueda gestionar estudiantes.
+        """
+        self._verificar_gestion(actor_rol)
         estudiante = self._get_estudiante_o_lanzar(estudiante_id)
         datos_ant = estudiante.model_dump(mode="json")
         estudiante_actualizado = dto.aplicar_a(estudiante)
         self._repo.actualizar(estudiante_actualizado)
+        # Barrido del trigger (paso_43): la edición puede cambiar grupo_id. Como
+        # el trigger de BD se eliminó, registramos el movimiento aquí cuando el
+        # grupo realmente cambia, para no dejar este camino sin historial.
+        if (
+            estudiante.grupo_id != estudiante_actualizado.grupo_id
+            and estudiante_actualizado.grupo_id is not None
+        ):
+            self._repo.registrar_movimiento(
+                estudiante_id=estudiante_id,
+                grupo_origen_id=estudiante.grupo_id,
+                grupo_destino_id=estudiante_actualizado.grupo_id,
+                tipo=TipoMovimiento.TRASLADO,
+                motivo=None,
+                usuario_registro_id=usuario_id,
+            )
         self._auditar(
             AccionCambio.UPDATE, "estudiantes", estudiante_id,
             datos_ant, estudiante_actualizado.model_dump(mode="json"), usuario_id,
@@ -188,15 +243,145 @@ class EstudianteService:
         self,
         estudiante_id: int,
         grupo_id: int,
+        usuario_id: int | None = None,
     ) -> Estudiante:
         """
         Asigna o cambia el grupo de un estudiante.
 
-        El trigger de BD registra automáticamente el historial de cambios de grupo.
+        Barrido del trigger (paso_43): el trigger de BD se eliminó; el servicio
+        es la única fuente de verdad del historial. Si el grupo realmente cambia,
+        registra un movimiento TRASLADO (sin motivo, asignación operativa). Para
+        traslados con regla de grado y motivo, usar `trasladar`.
         """
         estudiante = self._get_estudiante_o_lanzar(estudiante_id)
+        origen = estudiante.grupo_id
         self._repo.asignar_grupo(estudiante_id, grupo_id)
+        if origen != grupo_id:
+            self._repo.registrar_movimiento(
+                estudiante_id=estudiante_id,
+                grupo_origen_id=origen,
+                grupo_destino_id=grupo_id,
+                tipo=TipoMovimiento.TRASLADO,
+                motivo=None,
+                usuario_registro_id=usuario_id,
+            )
         return estudiante.model_copy(update={"grupo_id": grupo_id})
+
+    # ------------------------------------------------------------------
+    # Traslado e historial (paso_43)
+    # ------------------------------------------------------------------
+
+    def _leer_grupo(self, grupo_id: int):
+        """
+        Lee un grupo (id, codigo, grado, institucion_id). Usa el `grupo_reader`
+        inyectado si existe; si no, resuelve vía infraestructura_service del
+        Container. Devuelve None si no existe o si el Container no está
+        disponible (tests con repos falsos sin infraestructura).
+        """
+        if self._grupo_reader is not None:
+            return self._grupo_reader(grupo_id)
+        try:
+            from container import Container
+            return Container.infraestructura_service().get_grupo(grupo_id)
+        except Exception:
+            return None
+
+    @requiere_escritura
+    def trasladar(
+        self,
+        estudiante_id: int,
+        grupo_destino_id: int,
+        motivo: str | None,
+        usuario_id: int | None = None,
+        actor_rol: str | None = None,
+        permitir_cambio_grado: bool = False,
+    ) -> Estudiante:
+        """
+        Traslada un estudiante a otro grupo, registrando el movimiento en el
+        historial (única fuente de verdad — paso_43).
+
+        Reglas:
+          - RBAC: solo director/coordinador (vía `actor_rol`).
+          - Pertenencia: el estudiante debe ser de la institución activa.
+          - El grupo destino debe existir y ser de la misma institución.
+          - Regla de grado: mismo grado = traslado libre. Distinto grado solo
+            con `permitir_cambio_grado=True` Y `motivo` no vacío; sin confirmar,
+            se bloquea con un ValueError accionable (evita p. ej. 1101→602
+            accidental).
+          - NO copia notas ni registros: cuelgan del `estudiante_id`, que no
+            cambia, así que lo siguen automáticamente.
+        """
+        self._verificar_gestion(actor_rol)
+        estudiante = self._get_estudiante_o_lanzar(estudiante_id)
+        origen_id = estudiante.grupo_id
+
+        grupo_destino = self._leer_grupo(grupo_destino_id)
+        if grupo_destino is None:
+            raise ValueError(
+                f"El grupo destino (id {grupo_destino_id}) no existe."
+            )
+        # Aislamiento por institución: no se traslada a un grupo de otra
+        # institución. Scope None (admin/seed) → pasa.
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(grupo_destino.institucion_id)
+
+        if origen_id == grupo_destino_id:
+            raise ValueError(
+                "El estudiante ya pertenece a ese grupo; no hay traslado que registrar."
+            )
+
+        grupo_origen = self._leer_grupo(origen_id) if origen_id is not None else None
+        grado_origen = grupo_origen.grado if grupo_origen is not None else None
+        grado_destino = grupo_destino.grado
+
+        # Regla de grado: distinto grado exige confirmación explícita + motivo.
+        es_cambio_grado = (
+            grado_origen is not None
+            and grado_destino is not None
+            and grado_origen != grado_destino
+        )
+        motivo_limpio = (motivo or "").strip() or None
+        if es_cambio_grado:
+            if not permitir_cambio_grado:
+                raise ValueError(
+                    "El grupo destino es de otro grado "
+                    f"({grado_origen} → {grado_destino}); confirma el cambio de "
+                    "grado y registra un motivo (promoción, repitencia o corrección)."
+                )
+            if motivo_limpio is None:
+                raise ValueError(
+                    "Un cambio de grado requiere un motivo "
+                    "(promoción, repitencia o corrección)."
+                )
+
+        datos_ant = estudiante.model_dump(mode="json")
+        self._repo.asignar_grupo(estudiante_id, grupo_destino_id)
+        self._repo.registrar_movimiento(
+            estudiante_id=estudiante_id,
+            grupo_origen_id=origen_id,
+            grupo_destino_id=grupo_destino_id,
+            tipo=TipoMovimiento.TRASLADO,
+            motivo=motivo_limpio,
+            usuario_registro_id=usuario_id,
+        )
+        estudiante_actualizado = estudiante.model_copy(
+            update={"grupo_id": grupo_destino_id}
+        )
+        self._auditar(
+            AccionCambio.UPDATE, "estudiantes", estudiante_id,
+            datos_ant, estudiante_actualizado.model_dump(mode="json"), usuario_id,
+        )
+        return estudiante_actualizado
+
+    def listar_historial(
+        self, estudiante_id: int
+    ) -> list[MovimientoEstudianteInfoDTO]:
+        """
+        Retorna el historial de movimientos del estudiante (más reciente
+        primero). Verifica pertenencia a la institución activa (paso_36).
+        """
+        self._get_estudiante_o_lanzar(estudiante_id)
+        return self._repo.listar_historial(estudiante_id)
 
     def _con_scope(self, filtro: FiltroEstudiantesDTO) -> FiltroEstudiantesDTO:
         """
@@ -341,12 +526,15 @@ class EstudianteService:
         anio_id: int,
         dto: ActualizarPIARDTO,
         usuario_id: int | None = None,
+        actor_rol: str | None = None,
     ) -> PIAR:
         """
         Actualiza un PIAR existente.
 
         Lanza ValueError si no existe PIAR para ese estudiante y año.
+        Si `actor_rol` se provee, valida (RBAC) que pueda gestionar estudiantes.
         """
+        self._verificar_gestion(actor_rol)
         # Autorización a nivel de objeto (paso_36): el PIAR cuelga de un
         # estudiante; verificamos la pertenencia contra el institucion_id del
         # estudiante leído del repo (lanza OperacionFueraDeInstitucionError si es
@@ -385,6 +573,7 @@ class EstudianteService:
         filas: list[dict],
         mapa_grupos: dict[str, int],
         usuario_id: int | None = None,
+        actor_rol: str | None = None,
     ) -> MatriculaMasivaResultadoDTO:
         """
         Matricula una lista de estudiantes proveniente de un CSV.
@@ -393,10 +582,15 @@ class EstudianteService:
             filas:        Lista de dicts con claves del CSV (una por fila).
             mapa_grupos:  Mapeo codigo_grupo → grupo_id para resolver grupos.
             usuario_id:   ID del usuario que realiza la carga (auditoría).
+            actor_rol:    Rol del actor; si se provee, valida RBAC antes de
+                          procesar (rechaza profesor sin recorrer las filas).
 
         Returns:
             DTO con totales y lista de errores por fila.
         """
+        # RBAC una sola vez al inicio: si no puede gestionar, falla toda la carga
+        # con un mensaje accionable en vez de marcar cada fila como error.
+        self._verificar_gestion(actor_rol)
         resultado = MatriculaMasivaResultadoDTO(
             total_procesadas=len(filas),
             exitosas=0,
@@ -433,4 +627,6 @@ __all__ = [
     "FiltroEstudiantesDTO",
     "NuevoPIARDTO",
     "ActualizarPIARDTO",
+    "MovimientoEstudianteInfoDTO",
+    "TipoMovimiento",
 ]

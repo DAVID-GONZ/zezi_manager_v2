@@ -38,6 +38,9 @@ from ..models.estudiante import (
     Estudiante,
     EstudianteResumenDTO,
     FiltroEstudiantesDTO,
+    MovimientoEstudiante,
+    MovimientoEstudianteInfoDTO,
+    TipoMovimiento,
 )
 from ..models.piar import PIAR
 
@@ -184,6 +187,42 @@ class IEstudianteRepository(ABC):
         """
         Asigna o cambia el grupo de un estudiante.
         Retorna True si la fila fue afectada.
+        """
+        ...
+
+    # =========================================================================
+    # Historial de movimientos (paso_43)
+    # =========================================================================
+
+    @abstractmethod
+    def registrar_movimiento(
+        self,
+        estudiante_id: int,
+        grupo_origen_id: int | None,
+        grupo_destino_id: int | None,
+        tipo: TipoMovimiento,
+        motivo: str | None = None,
+        usuario_registro_id: int | None = None,
+    ) -> MovimientoEstudiante:
+        """
+        Inserta un registro en `historial_estudiantes`.
+
+        El servicio es la única fuente de verdad del historial (paso_43): NO
+        existe un trigger de BD que lo escriba automáticamente. Cada cambio de
+        grupo debe registrarse llamando este método explícitamente.
+
+        Retorna el movimiento con id y fecha_movimiento asignados.
+        """
+        ...
+
+    @abstractmethod
+    def listar_historial(
+        self, estudiante_id: int
+    ) -> list[MovimientoEstudianteInfoDTO]:
+        """
+        Retorna el historial de movimientos de un estudiante, más reciente
+        primero, con los códigos de grupo origen/destino resueltos (join a
+        grupos). Lista vacía si no hay movimientos.
         """
         ...
 

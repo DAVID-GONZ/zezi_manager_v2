@@ -275,6 +275,10 @@ class InfraestructuraService:
 
     # ── Grupos ────────────────────────────────────────────────────────────────
 
+    def get_grupo(self, grupo_id: int) -> Grupo | None:
+        """Lee un grupo por id (lectura; sin scope de escritura)."""
+        return self._repo.get_grupo(grupo_id)
+
     def listar_grupos(self, grado: int | None = None) -> list[Grupo]:
         # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro;
         # director → su institución.

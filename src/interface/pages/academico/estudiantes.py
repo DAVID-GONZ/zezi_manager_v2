@@ -12,18 +12,6 @@ Secciones:
   5. Dialog de carga masiva CSV
   6. Sección resultado masivo (@ui.refreshable)
   7. Dialog de PIAR (ver / registrar / editar)
-
-Reglas de capas:
-  - NUNCA llama repositorios directamente (solo Container.*_service()).
-  - NINGÚN color, tamaño ni propiedad visual en Python — solo clases CSS.
-  - No importa EstadoMatricula, Estudiante ni PIAR directamente.
-    Pydantic v2 coerce strings automáticamente en los DTOs.
-
-Nota técnica — botones de tabla:
-  NiceGUI crea un componente Vue anónimo por cada slot template. Usar
-  $emit() dentro de ese componente emite DESDE ÉL, no desde la tabla,
-  por lo que tabla.on() nunca lo recibe. La solución es emitir explícitamente
-  desde el componente NiceGUI correcto usando getElement(tabla.id).$emit().
 """
 from __future__ import annotations
 
@@ -81,6 +69,12 @@ def estudiantes_page() -> None:
         ui.navigate.to("/login")
         return
 
+    # ── Gating por rol (paso_42) ──────────────────────────────────────────────
+    # Solo director/coordinador gestionan (crear, importar CSV, editar, PIAR).
+    # El profesor ve la tabla en modo lectura (ya restringida a sus grupos).
+    # admin no accede a esta ruta, así que aquí basta director/coordinador.
+    puede_gestionar = ctx.usuario_rol in ("director", "coordinador")
+
     # ── Estado mutable de la página ───────────────────────────────────────────
     _s: dict = {
         "estudiantes":     [],
@@ -88,7 +82,12 @@ def estudiantes_page() -> None:
         "filtro_estado":   None,
         "filtro_piar":     None,
         "filtro_busqueda": "",
+        # True una vez el usuario interactúa con cualquier filtro (incl. elegir
+        # "Todos los grupos", que usa None igual que el estado inicial). Permite
+        # distinguir "aún no filtró" de "eligió ver todos".
+        "filtro_tocado":   False,
         "grupos":          [],
+        "grupos_ids_docente": None,   # None → sin restricción; list → grupos del docente
         "config":          None,
         "resultado_masivo": None,
     }
@@ -99,6 +98,20 @@ def estudiantes_page() -> None:
     except Exception as exc:
         logger.error("Error cargando grupos: %s", exc)
 
+    # ── Restricción por asignaciones del docente ──────────────────────────────
+    # Un profesor solo ve estudiantes de los grupos donde tiene asignación.
+    # Directivos/admin conservan el scope por institución (grupos_ids_docente=None).
+    if ctx.es_docente:
+        grupos_docente: set[int] = set()
+        try:
+            asignaciones = Container.asignacion_service().listar_por_docente(ctx.usuario_id)
+            grupos_docente = {a.grupo_id for a in asignaciones}
+        except Exception as exc:
+            logger.error("Error cargando asignaciones del docente %s: %s", ctx.usuario_id, exc)
+        _s["grupos_ids_docente"] = sorted(grupos_docente)
+        # Limitar el dropdown de grupos a los grupos asignados al docente.
+        _s["grupos"] = [g for g in _s["grupos"] if g.id in grupos_docente]
+
     try:
         _s["config"] = Container.configuracion_service().get_activa()
     except Exception as exc:
@@ -106,10 +119,23 @@ def estudiantes_page() -> None:
 
     # ── Función de carga de estudiantes ──────────────────────────────────────
 
+    def _hay_filtro_activo() -> bool:
+        """
+        El listado solo se consulta cuando el usuario ha interactuado con los
+        filtros (incl. elegir "Todos los grupos") o hay una búsqueda no vacía.
+        Sin filtro activo la página arranca (y permanece) vacía.
+        """
+        return _s["filtro_tocado"] or bool((_s["filtro_busqueda"] or "").strip())
+
     def _cargar_estudiantes() -> None:
+        # Sin filtro activo no consultamos: listado vacío hasta que el usuario filtre.
+        if not _hay_filtro_activo():
+            _s["estudiantes"] = []
+            return
         try:
             filtro = FiltroEstudiantesDTO(
                 grupo_id=_s["filtro_grupo_id"],
+                grupos_ids=_s["grupos_ids_docente"],   # None para directivos/admin
                 estado_matricula=_s["filtro_estado"],
                 posee_piar=_s["filtro_piar"],
                 busqueda=_s["filtro_busqueda"] or None,
@@ -120,7 +146,8 @@ def estudiantes_page() -> None:
             logger.error("Error cargando estudiantes: %s", exc)
             _s["estudiantes"] = []
 
-    _cargar_estudiantes()
+    # NOTA: no se precarga el listado al abrir la página. El estado arranca
+    # con estudiantes=[] y solo se consulta cuando el usuario filtra.
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -144,6 +171,24 @@ def estudiantes_page() -> None:
         opts: dict = {None: "Sin grupo"}
         for g in _s["grupos"]:
             opts[g.id] = f"{g.codigo} — {g.grado}"
+        return opts
+
+    def _grupo_grado(grupo_id: int | None):
+        if grupo_id is None:
+            return None
+        for g in _s["grupos"]:
+            if g.id == grupo_id:
+                return g.grado
+        return None
+
+    def _grupos_traslado_select(excluir_grupo_id: int | None) -> dict:
+        """Opciones de grupo destino (codigo — grado), excluyendo el grupo actual."""
+        opts: dict = {}
+        for g in _s["grupos"]:
+            if g.id == excluir_grupo_id:
+                continue
+            grado_txt = g.grado if g.grado is not None else "—"
+            opts[g.id] = f"{g.codigo} — grado {grado_txt}"
         return opts
 
     # ── Generador de plantilla CSV descargable ───────────────────────────────
@@ -181,6 +226,7 @@ def estudiantes_page() -> None:
             filas=filas,
             mapa_grupos=mapa_grupos,
             usuario_id=ctx.usuario_id,
+            actor_rol=ctx.usuario_rol,
         )
 
         _s["resultado_masivo"] = resultado
@@ -215,6 +261,18 @@ def estudiantes_page() -> None:
             """
             estudiantes = _s["estudiantes"]
 
+            # Sin filtro activo: el listado no se ha consultado todavía.
+            if not _hay_filtro_activo():
+                empty_state(
+                    icono=Icons.SEARCH,
+                    titulo="Selecciona un grupo para ver los estudiantes",
+                    descripcion="Elige un grupo en el filtro (o escribe una búsqueda) "
+                                "para cargar el listado de estudiantes.",
+                    variante="search",
+                )
+                return
+
+            # Filtro activo pero sin coincidencias.
             if not estudiantes:
                 empty_state(
                     icono=Icons.STUDENTS,
@@ -252,6 +310,7 @@ def estudiantes_page() -> None:
                                 "id":               est["id"],
                                 "nombre_completo":  est["nombre_completo"],
                                 "documento_display": est["documento_display"],
+                                "grupo_id":         est["grupo_id"],
                                 "grupo_codigo":     _grupo_codigo(est["grupo_id"]),
                                 "estado_str":       _estado_label(estado_raw),
                                 "estado_raw":       estado_raw,
@@ -267,6 +326,12 @@ def estudiantes_page() -> None:
 
                             def _fila_piar(_, f=fila):
                                 _abrir_dialog_piar(f)
+
+                            def _fila_trasladar(_, f=fila):
+                                _abrir_dialog_traslado(f)
+
+                            def _fila_historial(_, f=fila):
+                                _abrir_dialog_historial(f)
 
                             with ui.element("tr").classes("est-table__row"):
 
@@ -299,15 +364,22 @@ def estudiantes_page() -> None:
                                         variante="info" if fila["posee_piar"] else "neutral",
                                     )
 
-                                # Acciones — botones Python reales, sin slots ni $emit
+                                # Acciones — botones Python reales, sin slots ni $emit.
+                                # Gating paso_42: el profesor ve la tabla en modo
+                                # lectura (sin editar/retirar/PIAR). Solo
+                                # director/coordinador gestionan.
                                 with ui.element("td").classes("est-table__td est-table__td--center"):
                                     with ui.row().classes("gap-1 justify-center"):
                                         es_retirado = fila["estado_raw"] == "retirado"
 
-                                        if not es_retirado:
+                                        if puede_gestionar and not es_retirado:
                                             btn_icon("edit", on_click=_fila_editar, tooltip="Editar estudiante", variante="primary")
+                                            btn_icon("swap_horiz", on_click=_fila_trasladar, tooltip="Trasladar a otro grupo", variante="secondary")
                                             btn_icon("person_remove", on_click=_fila_retirar, tooltip="Retirar matrícula", variante="danger")
                                             btn_icon("description", on_click=_fila_piar, tooltip="Ver / registrar PIAR", variante="secondary")
+                                        # Historial: visible para todos los que ven la página
+                                        # (incluido el profesor en modo lectura).
+                                        btn_icon("history", on_click=_fila_historial, tooltip="Ver historial de movimientos", variante="ghost")
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -354,7 +426,9 @@ def estudiantes_page() -> None:
                         genero=datos.get("genero"),
                         posee_piar=datos.get("posee_piar", False),
                     )
-                    Container.estudiante_service().matricular(dto, usuario_id=ctx.usuario_id)
+                    Container.estudiante_service().matricular(
+                        dto, usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
+                    )
                     toast_success("Estudiante matriculado exitosamente.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -453,7 +527,9 @@ def estudiantes_page() -> None:
                         posee_piar=datos.get("posee_piar", False),
                         estado_matricula=datos.get("estado"),
                     )
-                    Container.estudiante_service().actualizar(est_id, dto, usuario_id=ctx.usuario_id)
+                    Container.estudiante_service().actualizar(
+                        est_id, dto, usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
+                    )
                     toast_success("Estudiante actualizado.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -514,6 +590,160 @@ def estudiantes_page() -> None:
                 texto_cancelar="Cancelar",
             )
 
+        def _abrir_dialog_traslado(fila: dict) -> None:
+            est_id = fila.get("id")
+            nombre = fila.get("nombre_completo", "este estudiante")
+            grupo_actual_id = fila.get("grupo_id")
+            if not est_id:
+                return
+
+            opciones = _grupos_traslado_select(grupo_actual_id)
+            if not opciones:
+                toast_warning("No hay otros grupos disponibles para trasladar.")
+                return
+
+            grado_origen = _grupo_grado(grupo_actual_id)
+
+            with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-md"):
+                ui.label(f"Trasladar — {nombre}").classes("font-h3 form-dialog-title")
+                ui.label(
+                    f"Grupo actual: {fila.get('grupo_codigo', '—')}"
+                ).classes("text-caption text-muted u-mb-sm")
+
+                sel_destino = ui.select(
+                    label="Grupo destino",
+                    options=opciones,
+                    with_input=True,
+                ).classes("w-full")
+
+                inp_motivo = ui.input(
+                    label="Motivo (requerido si cambia de grado)",
+                    placeholder="Ej: promoción, repitencia, corrección de cupo...",
+                ).classes("w-full")
+
+                # Aviso + confirmación de cambio de grado (se muestra dinámicamente).
+                aviso_box = ui.column().classes("w-full u-mt-sm")
+                chk_grado = {"valor": False, "widget": None}
+
+                @ui.refreshable
+                def _aviso_grado() -> None:
+                    destino_id = sel_destino.value
+                    grado_destino = _grupo_grado(destino_id)
+                    es_cambio = (
+                        grado_origen is not None
+                        and grado_destino is not None
+                        and grado_origen != grado_destino
+                    )
+                    aviso_box.clear()
+                    with aviso_box:
+                        if es_cambio:
+                            with ui.element("div").classes("andes-alert andes-alert-warning w-full"):
+                                ui.label(
+                                    f"El grupo destino es de OTRO grado "
+                                    f"({grado_origen} → {grado_destino}). "
+                                    "Confirma el cambio y registra un motivo."
+                                ).classes("text-caption")
+                            chk = ui.checkbox(
+                                "Confirmar cambio de grado (promoción / repitencia / corrección)",
+                                value=chk_grado["valor"],
+                                on_change=lambda e: chk_grado.update({"valor": e.value}),
+                            )
+                            chk_grado["widget"] = chk
+                        else:
+                            chk_grado["valor"] = False
+                            chk_grado["widget"] = None
+
+                sel_destino.on_value_change(lambda _: _aviso_grado.refresh())
+                _aviso_grado()
+
+                def _ejecutar_traslado() -> None:
+                    destino_id = sel_destino.value
+                    if destino_id is None:
+                        toast_warning("Selecciona un grupo destino.")
+                        return
+                    grado_destino = _grupo_grado(destino_id)
+                    es_cambio = (
+                        grado_origen is not None
+                        and grado_destino is not None
+                        and grado_origen != grado_destino
+                    )
+                    if es_cambio and not chk_grado["valor"]:
+                        toast_warning(
+                            "Debes confirmar el cambio de grado con la casilla antes de trasladar."
+                        )
+                        return
+                    try:
+                        Container.estudiante_service().trasladar(
+                            est_id,
+                            destino_id,
+                            motivo=inp_motivo.value or None,
+                            usuario_id=ctx.usuario_id,
+                            actor_rol=ctx.usuario_rol,
+                            permitir_cambio_grado=bool(chk_grado["valor"]),
+                        )
+                        toast_success(f"{nombre} trasladado correctamente.")
+                        dlg.close()
+                        _cargar_estudiantes()
+                        tabla_refreshable.refresh()
+                    except ValueError as exc:
+                        toast_warning(str(exc))
+                    except Exception as exc:
+                        logger.error("Error trasladando %s: %s", est_id, exc)
+                        toast_error("Error inesperado al trasladar.")
+
+                with ui.row().classes("u-mt-md justify-end gap-2"):
+                    btn_ghost("Cancelar", on_click=dlg.close)
+                    btn_primary("Trasladar", icon="swap_horiz", on_click=_ejecutar_traslado)
+
+            dlg.open()
+
+        def _abrir_dialog_historial(fila: dict) -> None:
+            est_id = fila.get("id")
+            nombre = fila.get("nombre_completo", "Estudiante")
+            if not est_id:
+                return
+
+            try:
+                movimientos = Container.estudiante_service().listar_historial(est_id)
+            except Exception as exc:
+                logger.error("Error cargando historial de %s: %s", est_id, exc)
+                toast_error("No se pudo cargar el historial.")
+                return
+
+            with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-lg"):
+                ui.label(f"Historial — {nombre}").classes("font-h3 form-dialog-title")
+
+                if not movimientos:
+                    empty_state(
+                        icono="history",
+                        titulo="Sin movimientos",
+                        descripcion="Este estudiante no tiene movimientos registrados.",
+                    )
+                else:
+                    with ui.element("div").classes("est-table w-full overflow-auto"):
+                        with ui.element("table").classes("w-full est-table__table"):
+                            with ui.element("thead"):
+                                with ui.element("tr").classes("est-table__head-row"):
+                                    for label in ("Fecha", "Movimiento", "Tipo", "Motivo"):
+                                        with ui.element("th").classes("est-table__th est-table__th--left"):
+                                            ui.label(label)
+                            with ui.element("tbody"):
+                                for m in movimientos:
+                                    with ui.element("tr").classes("est-table__row"):
+                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                            ui.label(m.fecha_display)
+                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                            ui.label(m.ruta_display)
+                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                            ui.label(m.tipo_movimiento.value)
+                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                            ui.label(m.motivo or "—")
+
+                with ui.row().classes("u-mt-md justify-end"):
+                    btn_ghost("Cerrar", on_click=dlg.close)
+
+            dlg.open()
+
         def _abrir_dialog_piar(fila: dict) -> None:
             est_id = fila.get("id")
             nombre = fila.get("nombre_completo", "Estudiante")
@@ -544,7 +774,8 @@ def estudiantes_page() -> None:
                             profesionales_apoyo=datos.get("profesionales_apoyo") or None,
                         )
                         Container.estudiante_service().actualizar_piar(
-                            est_id, anio_id, dto, usuario_id=ctx.usuario_id,
+                            est_id, anio_id, dto,
+                            usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
                         )
                         toast_success("PIAR actualizado.")
                     else:
@@ -625,7 +856,11 @@ def estudiantes_page() -> None:
                         label="Grupo",
                         options=_grupos_opts,
                         value=None,
-                        on_change=lambda e: _s.update({"filtro_grupo_id": e.value}),
+                        on_change=lambda e: (
+                            _s.update({"filtro_grupo_id": e.value, "filtro_tocado": True}),
+                            _cargar_estudiantes(),
+                            tabla_refreshable.refresh(),
+                        ),
                     ).classes("flex-3")
 
                     ui.select(
@@ -633,17 +868,29 @@ def estudiantes_page() -> None:
                         options={None: "Todos", "activo": "Activo", "inactivo": "Inactivo",
                                  "retirado": "Retirado", "graduado": "Graduado"},
                         value=None,
-                        on_change=lambda e: _s.update({"filtro_estado": e.value}),
+                        on_change=lambda e: (
+                            _s.update({"filtro_estado": e.value, "filtro_tocado": True}),
+                            _cargar_estudiantes(),
+                            tabla_refreshable.refresh(),
+                        ),
                     ).classes("flex-3")
 
                     ui.checkbox(
                         "Solo con PIAR",
-                        on_change=lambda e: _s.update({"filtro_piar": True if e.value else None}),
+                        on_change=lambda e: (
+                            _s.update({"filtro_piar": True if e.value else None, "filtro_tocado": True}),
+                            _cargar_estudiantes(),
+                            tabla_refreshable.refresh(),
+                        ),
                     )
 
                     ui.input(
                         label="Buscar (nombre / documento)",
-                        on_change=lambda e: _s.update({"filtro_busqueda": e.value}),
+                        on_change=lambda e: (
+                            _s.update({"filtro_busqueda": e.value, "filtro_tocado": True}),
+                            _cargar_estudiantes(),
+                            tabla_refreshable.refresh(),
+                        ),
                     ).classes("flex-4")
 
                     btn_primary(
@@ -663,25 +910,29 @@ def estudiantes_page() -> None:
                         ).classes("tablero-panel-subtitle")
 
                     # ── 2a. Botones de acción ─────────────────────────────────
-                    with ui.row().classes("gap-2"):
-                        btn_primary(
-                            "Matricular",
-                            icon="person_add",
-                            on_click=_abrir_dialog_matricula,
-                            size="sm",
-                        )
-                        btn_secondary(
-                            "Carga CSV",
-                            icon="upload_file",
-                            on_click=_abrir_dialog_csv,
-                            size="sm",
-                        )
-                        btn_ghost(
-                            "Plantilla",
-                            icon="download",
-                            on_click=_descargar_plantilla_csv,
-                            size="sm",
-                        )
+                    # Gating paso_42: solo director/coordinador ven las acciones
+                    # de gestión (matricular, importar CSV, plantilla). El
+                    # profesor consulta la tabla en modo lectura.
+                    if puede_gestionar:
+                        with ui.row().classes("gap-2"):
+                            btn_primary(
+                                "Matricular",
+                                icon="person_add",
+                                on_click=_abrir_dialog_matricula,
+                                size="sm",
+                            )
+                            btn_secondary(
+                                "Carga CSV",
+                                icon="upload_file",
+                                on_click=_abrir_dialog_csv,
+                                size="sm",
+                            )
+                            btn_ghost(
+                                "Plantilla",
+                                icon="download",
+                                on_click=_descargar_plantilla_csv,
+                                size="sm",
+                            )
 
                 tabla_refreshable()
 

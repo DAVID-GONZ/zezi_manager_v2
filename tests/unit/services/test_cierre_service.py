@@ -197,6 +197,8 @@ class FakeEstudianteRepo(IEstudianteRepository):
     def get_by_documento(self, doc): return None
     def existe_documento(self, doc): return False
     def asignar_grupo(self, eid, grupo_id): pass
+    def registrar_movimiento(self, estudiante_id, grupo_origen_id, grupo_destino_id, tipo, motivo=None, usuario_registro_id=None): return None
+    def listar_historial(self, estudiante_id): return []
     def listar_filtrado(self, filtro): return []
     def listar_resumenes(self, filtro): return []
     def contar_por_grupo(self, grupo_id): return 0

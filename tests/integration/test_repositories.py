@@ -169,6 +169,72 @@ class TestSqliteEstudianteRepository:
         resumenes = repo.listar_resumenes(FiltroEstudiantesDTO(grupo_id=gid))
         assert len(resumenes) == 3
 
+    def test_grupos_ids_restringe_conjunto(self, db_conn, seed_result):
+        """grupos_ids no-None acota el listado a `grupo_id IN (...)`."""
+        from src.domain.models.estudiante import FiltroEstudiantesDTO
+        repo = SqliteEstudianteRepository(conn=db_conn)
+        gid = seed_result.grupo_ids[0]
+        resumenes = repo.listar_resumenes(FiltroEstudiantesDTO(grupos_ids=[gid]))
+        assert all(r.grupo_id == gid for r in resumenes)
+        assert len(resumenes) == 3
+        # listar_filtrado aplica la misma restricción
+        ests = repo.listar_filtrado(FiltroEstudiantesDTO(grupos_ids=[gid]))
+        assert all(e.grupo_id == gid for e in ests)
+        assert len(ests) == 3
+
+    def test_grupos_ids_vacio_devuelve_cero(self, db_conn, seed_result):
+        """Lista vacía (docente sin asignaciones) → 0 resultados, sin IN () inválido."""
+        from src.domain.models.estudiante import FiltroEstudiantesDTO
+        repo = SqliteEstudianteRepository(conn=db_conn)
+        assert repo.listar_resumenes(FiltroEstudiantesDTO(grupos_ids=[])) == []
+        assert repo.listar_filtrado(FiltroEstudiantesDTO(grupos_ids=[])) == []
+
+    def test_grupos_ids_none_no_restringe(self, db_conn, seed_result):
+        """grupos_ids None (directivo/admin) → comportamiento previo intacto."""
+        from src.domain.models.estudiante import FiltroEstudiantesDTO
+        repo = SqliteEstudianteRepository(conn=db_conn)
+        todos = repo.listar_resumenes(FiltroEstudiantesDTO())
+        assert len(todos) == len(seed_result.estudiante_ids)
+
+    # ── Historial de movimientos (paso_43) ────────────────────────────────
+    @staticmethod
+    def _crear_grupo_destino(db_conn, codigo: str = "DEST1", grado: int = 7) -> int:
+        cur = db_conn.execute(
+            "INSERT INTO grupos (codigo, grado) VALUES (?, ?)", (codigo, grado)
+        )
+        return cur.lastrowid
+
+    def test_registrar_y_listar_historial(self, db_conn, seed_result):
+        from src.domain.models.estudiante import TipoMovimiento
+        repo = SqliteEstudianteRepository(conn=db_conn)
+        eid = seed_result.estudiante_ids[0]
+        g_origen = seed_result.grupo_ids[0]
+        g_destino = self._crear_grupo_destino(db_conn)
+        mov = repo.registrar_movimiento(
+            estudiante_id=eid,
+            grupo_origen_id=g_origen,
+            grupo_destino_id=g_destino,
+            tipo=TipoMovimiento.TRASLADO,
+            motivo="cambio de salón",
+            usuario_registro_id=None,
+        )
+        assert mov.id is not None
+        hist = repo.listar_historial(eid)
+        assert len(hist) == 1
+        assert hist[0].tipo_movimiento == TipoMovimiento.TRASLADO
+        assert hist[0].motivo == "cambio de salón"
+        # Los códigos de grupo se resuelven por join.
+        assert hist[0].grupo_destino_codigo == "DEST1"
+
+    def test_sin_trigger_cambio_grupo_no_duplica(self, db_conn, seed_result):
+        """Tras eliminar el trigger, un UPDATE crudo de grupo_id NO genera
+        historial automático: el servicio es la única fuente de verdad."""
+        repo = SqliteEstudianteRepository(conn=db_conn)
+        eid = seed_result.estudiante_ids[0]
+        g_destino = self._crear_grupo_destino(db_conn, codigo="DEST2")
+        repo.asignar_grupo(eid, g_destino)   # antes esto disparaba el trigger
+        assert repo.listar_historial(eid) == []
+
 
 # =============================================================================
 # SqliteAcudienteRepository

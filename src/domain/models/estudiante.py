@@ -25,7 +25,7 @@ Dependencias:
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Self
 
@@ -54,6 +54,22 @@ class EstadoMatricula(str, Enum):
     INACTIVO    = "inactivo"
     RETIRADO    = "retirado"
     GRADUADO    = "graduado"
+
+
+class TipoMovimiento(str, Enum):
+    """
+    Tipo de movimiento registrado en historial_estudiantes.
+
+    Refleja el CHECK de la columna `tipo_movimiento` en el esquema:
+      TRASLADO   — cambio de grupo (mismo o distinto grado).
+      RETIRO     — salida del establecimiento.
+      REINGRESO  — reactivación de matrícula.
+      GRADUACION — egreso por finalización del ciclo.
+    """
+    TRASLADO    = "TRASLADO"
+    RETIRO      = "RETIRO"
+    REINGRESO   = "REINGRESO"
+    GRADUACION  = "GRADUACION"
 
 
 # =============================================================================
@@ -380,6 +396,10 @@ class FiltroEstudiantesDTO(BaseModel):
     Consumido por IEstudianteRepository.listar_filtrado().
     """
     grupo_id:         int | None                = None
+    # Restricción por conjunto de grupos (paso docente): cuando NO es None el
+    # listado se acota a `e.grupo_id IN (...)`. Lista vacía → 0 resultados
+    # (docente sin asignaciones). Coexiste con grupo_id (se aplican en AND).
+    grupos_ids:       list[int] | None          = None
     estado_matricula: EstadoMatricula | None    = None
     posee_piar:       bool | None               = None
     busqueda:         str | None                = None   # nombre, apellido o documento
@@ -430,6 +450,70 @@ class EstudianteResumenDTO(BaseModel):
 
 
 # =============================================================================
+# Historial de movimientos (paso_43)
+# =============================================================================
+
+class MovimientoEstudiante(BaseModel):
+    """
+    Un registro de la tabla `historial_estudiantes`: un movimiento de un
+    estudiante (traslado entre grupos, retiro, reingreso o graduación).
+
+    El servicio es la única fuente de verdad del historial (paso_43): cada
+    cambio de grupo se registra explícitamente con motivo/usuario/tipo, sin
+    depender de triggers de BD.
+
+    `grupo_origen_id` puede ser None (primer grupo / estudiante sin grupo previo);
+    `grupo_destino_id` puede ser None en movimientos que no son traslados.
+    """
+    id:                  int | None        = None
+    estudiante_id:       int
+    grupo_origen_id:     int | None        = None
+    grupo_destino_id:    int | None        = None
+    fecha_movimiento:    datetime | None   = None
+    tipo_movimiento:     TipoMovimiento    = TipoMovimiento.TRASLADO
+    motivo:              str | None        = None
+    usuario_registro_id: int | None        = None
+
+    @field_validator("motivo", mode="before")
+    @classmethod
+    def limpiar_motivo(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = str(v).strip()
+        return v if v else None
+
+
+class MovimientoEstudianteInfoDTO(BaseModel):
+    """
+    Vista de lectura de un movimiento, con los códigos de grupo legibles
+    resueltos por el repositorio (join a grupos). Pensado para la vista de
+    Historial: no expone ids de grupo crudos, sino sus códigos.
+    """
+    id:                  int | None        = None
+    estudiante_id:       int
+    grupo_origen_codigo: str | None        = None
+    grupo_destino_codigo: str | None       = None
+    fecha_movimiento:    datetime | None   = None
+    tipo_movimiento:     TipoMovimiento    = TipoMovimiento.TRASLADO
+    motivo:              str | None        = None
+    usuario_registro_id: int | None        = None
+
+    @property
+    def fecha_display(self) -> str:
+        """Fecha formateada 'YYYY-MM-DD HH:MM' o '—' si no hay fecha."""
+        if self.fecha_movimiento is None:
+            return "—"
+        return self.fecha_movimiento.strftime("%Y-%m-%d %H:%M")
+
+    @property
+    def ruta_display(self) -> str:
+        """Origen → destino legible: 'A1 → A2', '— → A1', etc."""
+        origen = self.grupo_origen_codigo or "—"
+        destino = self.grupo_destino_codigo or "—"
+        return f"{origen} → {destino}"
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -438,11 +522,14 @@ __all__ = [
     "TipoDocumento",
     "Genero",
     "EstadoMatricula",
+    "TipoMovimiento",
     # Entidad
     "Estudiante",
+    "MovimientoEstudiante",
     # DTOs
     "NuevoEstudianteDTO",
     "ActualizarEstudianteDTO",
     "FiltroEstudiantesDTO",
     "EstudianteResumenDTO",
+    "MovimientoEstudianteInfoDTO",
 ]

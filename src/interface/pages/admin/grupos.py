@@ -5,7 +5,17 @@ Página de administración de grupos escolares.
 Ruta: /admin/grupos
 Acceso: admin, director
 
-Permite listar, crear, editar y eliminar grupos.
+Permite listar, crear, editar y eliminar grupos, y administrar el catálogo
+global de grados (numero → nombre, min/max estudiantes, horas) que los grupos
+referencian.
+
+Regla de capas:
+  Esta página NO importa ningún símbolo de src.domain.models.*. El campo `grado`
+  se maneja como primitivo (int); el modelo Grupo lo valida en el servicio.
+
+Refreshables:
+  tabla()        — re-renderiza la lista de grupos
+  grados_tabla() — re-renderiza el catálogo de grados
 """
 from __future__ import annotations
 
@@ -51,6 +61,7 @@ def grupos_page() -> None:
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
         "grupos":         [],
+        "grados":         [],
         "cargando":       False,
         # formulario crear
         "form_codigo":    "",
@@ -73,9 +84,42 @@ def grupos_page() -> None:
             logger.error("Error al cargar grupos: %s", exc)
             _s["grupos"] = []
 
-    _cargar_estado()
+    def _cargar_grados() -> None:
+        try:
+            _s["grados"] = Container.plan_estudios_service().listar_grados()
+        except Exception as exc:
+            logger.error("Error al cargar grados: %s", exc)
+            _s["grados"] = []
 
-    # ── Acciones CRUD ─────────────────────────────────────────────────────────
+    _cargar_estado()
+    _cargar_grados()
+
+    # ── Helpers de catálogo ───────────────────────────────────────────────────
+    def _opciones_grado() -> dict:
+        """Mapa {numero: 'numero — nombre'} para los selects de grado.
+
+        Fallback: si el catálogo está vacío, ofrece 1-13 sin nombre para no
+        bloquear la creación de grupos (la validación 1-13 la hace el modelo).
+        """
+        grados = sorted(_s["grados"], key=lambda g: g.numero)
+        if not grados:
+            return {n: str(n) for n in range(1, 14)}
+        return {
+            g.numero: (f"{g.numero} — {g.nombre}" if g.nombre else str(g.numero))
+            for g in grados
+        }
+
+    def _grado_valido(numero: int | None) -> int:
+        """Valor inicial seguro para el select de grado en formularios."""
+        opciones = _opciones_grado()
+        if numero in opciones:
+            return numero
+        return next(iter(opciones))
+
+    def _contar_grupos_por_grado(numero: int) -> int:
+        return sum(1 for g in _s["grupos"] if (g.grado or 0) == numero)
+
+    # ── Acciones CRUD: grupos ─────────────────────────────────────────────────
     def _crear_grupo() -> None:
         # Sanitización y validación (strip/upper, grado 1-13, capacidad>=1,
         # jornada) las realiza la entidad Grupo en sus field_validator.
@@ -90,7 +134,7 @@ def grupos_page() -> None:
             Container.infraestructura_service().guardar_grupo(grupo)
             toast_success(f"Grupo {grupo.codigo} creado")
             _s["form_codigo"] = ""
-            _s["form_grado"]  = 1
+            _s["form_grado"]  = _grado_valido(None)
             _s["form_jornada"] = "UNICA"
             _s["form_capacidad"] = 40
             _cargar_estado()
@@ -155,8 +199,9 @@ def grupos_page() -> None:
             campos    = [
                 {"key": "codigo",    "label": "Código *",  "tipo": "text",
                  "valor": grupo.codigo,           "requerido": True},
-                {"key": "grado",     "label": "Grado",     "tipo": "number",
-                 "valor": grupo.grado or 1,       "min": 1, "max": 13},
+                {"key": "grado",     "label": "Grado",     "tipo": "select",
+                 "valor": _grado_valido(grupo.grado),
+                 "opciones": _opciones_grado()},
                 {"key": "jornada",   "label": "Jornada",   "tipo": "select",
                  "valor": jornada_val,
                  "opciones": {v: k for k, v in _JORNADAS.items()}},
@@ -169,7 +214,127 @@ def grupos_page() -> None:
             columnas     = 2,
         )
 
+    # ── Acciones CRUD: grados ─────────────────────────────────────────────────
+    def _guardar_grado(datos: dict) -> "bool | None":
+        try:
+            Container.plan_estudios_service().guardar_grado(
+                numero          = int(datos.get("numero")),
+                nombre          = (datos.get("nombre") or "").strip() or None,
+                min_estudiantes = int(datos.get("min_estudiantes") or 0),
+                max_estudiantes = int(datos.get("max_estudiantes") or 1),
+                horas_semanales = int(datos.get("horas_semanales") or 0),
+            )
+            toast_success("Grado guardado")
+            _cargar_grados()
+            grados_tabla.refresh()
+        except (ValueError, TypeError) as exc:
+            toast_warning(str(exc))
+            return False
+        except Exception as exc:
+            logger.error("Error al guardar grado: %s", exc)
+            toast_error("Error al guardar el grado")
+            return False
+
+    def _abrir_crear_grado() -> None:
+        form_dialog(
+            titulo    = "Nuevo grado",
+            campos    = [
+                {"key": "numero",          "label": "Número *",      "tipo": "number",
+                 "valor": None, "min": 1, "max": 13, "requerido": True},
+                {"key": "nombre",          "label": "Nombre",        "tipo": "text",
+                 "valor": "", "placeholder": "Sexto, Décimo…"},
+                {"key": "min_estudiantes", "label": "Mín. estud.",   "tipo": "number",
+                 "valor": 0,  "min": 0},
+                {"key": "max_estudiantes", "label": "Máx. estud.",   "tipo": "number",
+                 "valor": 40, "min": 1},
+                {"key": "horas_semanales", "label": "Horas/semana",  "tipo": "number",
+                 "valor": 0,  "min": 0},
+            ],
+            on_submit    = _guardar_grado,
+            texto_submit = "Crear",
+            max_width    = "max-w-md",
+            columnas     = 2,
+        )
+
+    def _abrir_editar_grado(grado) -> None:
+        form_dialog(
+            titulo    = f"Editar grado {grado.numero}",
+            campos    = [
+                {"key": "numero",          "label": "Número *",      "tipo": "number",
+                 "valor": grado.numero, "min": 1, "max": 13, "requerido": True},
+                {"key": "nombre",          "label": "Nombre",        "tipo": "text",
+                 "valor": grado.nombre or "", "placeholder": "Sexto, Décimo…"},
+                {"key": "min_estudiantes", "label": "Mín. estud.",   "tipo": "number",
+                 "valor": grado.min_estudiantes, "min": 0},
+                {"key": "max_estudiantes", "label": "Máx. estud.",   "tipo": "number",
+                 "valor": grado.max_estudiantes, "min": 1},
+                {"key": "horas_semanales", "label": "Horas/semana",  "tipo": "number",
+                 "valor": grado.horas_semanales, "min": 0},
+            ],
+            on_submit    = _guardar_grado,
+            texto_submit = "Guardar",
+            max_width    = "max-w-md",
+            columnas     = 2,
+        )
+
+    def _confirmar_eliminar_grado(numero: int) -> None:
+        try:
+            ok = Container.plan_estudios_service().eliminar_grado(numero)
+            if ok:
+                toast_success(f"Grado {numero} eliminado")
+            else:
+                toast_warning(f"No existe el grado {numero}")
+            _cargar_grados()
+            grados_tabla.refresh()
+        except ValueError as exc:
+            toast_warning(str(exc))
+        except Exception as exc:
+            logger.error("Error al eliminar grado %s: %s", numero, exc)
+            toast_error("Error al eliminar el grado")
+
+    def _eliminar_grado(numero: int) -> None:
+        en_uso = _contar_grupos_por_grado(numero)
+        if en_uso:
+            mensaje = (
+                f"El grado {numero} está asignado a {en_uso} "
+                f"grupo(s). Esos grupos quedarán con un grado inexistente. "
+                f"¿Eliminar de todas formas?"
+            )
+        else:
+            mensaje = f"¿Eliminar el grado {numero}? Esta acción es irreversible."
+        confirm_dialog(
+            titulo          = "Eliminar grado",
+            mensaje         = mensaje,
+            on_confirm      = lambda: _confirmar_eliminar_grado(numero),
+            variante        = "danger",
+            texto_confirmar = "Eliminar",
+        )
+
     # ── Secciones refreshables ────────────────────────────────────────────────
+    @ui.refreshable
+    def grados_tabla() -> None:
+        grados = sorted(_s["grados"], key=lambda g: g.numero)
+        if not grados:
+            empty_state(
+                titulo="No hay grados definidos",
+                descripcion="Crea los grados (Sexto, Décimo…) para darles significado real.",
+            )
+            return
+
+        with ui.element("div").classes("w-full"):
+            for g in grados:
+                en_uso = _contar_grupos_por_grado(g.numero)
+                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                    ui.label(str(g.numero)).classes("font-mono font-bold w-12")
+                    ui.label(g.nombre or "—").classes("w-32 font-medium")
+                    ui.label(f"{g.min_estudiantes}–{g.max_estudiantes} estud.").classes("w-32")
+                    ui.label(f"{g.horas_semanales} h/sem").classes("w-24")
+                    if en_uso:
+                        ui.badge(f"{en_uso} grupo(s)").classes("badge-primary")
+                    with ui.row().classes("gap-2 ml-auto"):
+                        btn_icon("edit", on_click=lambda g=g: _abrir_editar_grado(g), tooltip="Editar")
+                        btn_icon("delete", on_click=lambda n=g.numero: _eliminar_grado(n), tooltip="Eliminar", variante="danger")
+
     @ui.refreshable
     def tabla() -> None:
         grupos = _s["grupos"]
@@ -207,8 +372,17 @@ def grupos_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
 
-            # Panel de gestión
+            # Panel: catálogo de grados
             with ui.element("div").classes("panel-card"):
+                with ui.row().classes("items-center gap-2 mb-3"):
+                    ui.label("Grados").classes("text-base font-semibold")
+                    ui.badge(str(len(_s["grados"]))).classes("badge-primary")
+                    btn_icon("add", on_click=_abrir_crear_grado, tooltip="Nuevo grado")
+                    btn_icon("refresh", on_click=lambda: (_cargar_grados(), grados_tabla.refresh()), tooltip="Recargar")
+                grados_tabla()
+
+            # Panel de gestión de grupos
+            with ui.element("div").classes("panel-card mt-4"):
 
                 # Formulario de creación
                 ui.label("Crear nuevo grupo").classes("text-base font-semibold mb-2")
@@ -216,9 +390,12 @@ def grupos_page() -> None:
                     cod = ui.input("Código *", placeholder="601").classes("w-28").bind_value(
                         _s, "form_codigo"
                     )
-                    grd = ui.number("Grado", value=1, min=1, max=13).classes("w-24").bind_value(
-                        _s, "form_grado"
-                    )
+                    # Asegura un valor inicial dentro del catálogo
+                    _s["form_grado"] = _grado_valido(_s["form_grado"])
+                    grd = ui.select(
+                        _opciones_grado(),
+                        label="Grado",
+                    ).classes("w-40").bind_value(_s, "form_grado")
                     jor = ui.select(
                         {v: k for k, v in _JORNADAS.items()},
                         value="UNICA",
