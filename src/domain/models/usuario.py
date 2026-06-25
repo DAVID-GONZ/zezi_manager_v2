@@ -74,6 +74,11 @@ class Usuario(BaseModel):
     telefono:           str | None     = None
     rol:                Rol            = Rol.PROFESOR
     activo:             bool           = True
+    # Cambio forzado de contraseña (A2 — seguridad_01): se activa cuando el
+    # admin crea/resetea sin contraseña explícita (temporal aleatoria). El
+    # guard fuerza /cambiar-password hasta que el dueño la cambie. Default
+    # seguro: los usuarios existentes NO quedan forzados.
+    debe_cambiar_password: bool        = False
     fecha_creacion:     date           = Field(default_factory=date.today)
     ultima_sesion:      datetime | None = None
     carga_horaria_max:  int | None     = None
@@ -83,6 +88,13 @@ class Usuario(BaseModel):
     # Opcional con default None; el repo/seed asignan la institución por
     # defecto (#1). Cuando es None, el usuario aún no tiene tenant asignado.
     institucion_id:     int | None     = None
+
+    # Canal efímero de la contraseña temporal (A2 — seguridad_01). NO se
+    # persiste (el repo usa columnas explícitas) ni se serializa: lo marca el
+    # servicio en la entidad RETORNADA por crear/resetear para que el admin la
+    # comunique al usuario. `exclude=True` lo saca de model_dump (auditoría,
+    # logs); `repr=False` evita que aparezca en reprs/trazas.
+    password_temporal:  str | None     = Field(default=None, exclude=True, repr=False)
 
     # ------------------------------------------------------------------
     # Validadores de campo

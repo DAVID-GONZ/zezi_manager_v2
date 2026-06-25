@@ -45,6 +45,7 @@ class FakeRepoAuth(IUsuarioRepository):
     def cambiar_rol(self, uid, rol): return True
     def desactivar(self, uid): return True
     def reactivar(self, uid): return True
+    def marcar_debe_cambiar_password(self, uid, valor): return True
 
 
 # ===========================================================================

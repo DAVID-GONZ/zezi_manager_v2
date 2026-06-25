@@ -212,6 +212,17 @@ class IUsuarioRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def marcar_debe_cambiar_password(self, usuario_id: int, valor: bool) -> bool:
+        """
+        Activa o limpia el flag `debe_cambiar_password` del usuario (A2).
+
+        Lo activa el servicio al crear/resetear sin contraseña explícita
+        (temporal aleatoria) y lo limpia cuando el dueño cambia su contraseña.
+        Retorna True si la fila fue afectada.
+        """
+        ...
+
     # =========================================================================
     # Credenciales — uso exclusivo de IAuthenticationService
     # =========================================================================

@@ -274,6 +274,11 @@ SCHEMA: list[str] = [
                             CHECK(rol IN ('admin', 'director', 'coordinador',
                                           'profesor', 'estudiante', 'apoderado')),
         activo              BOOLEAN NOT NULL DEFAULT 1,
+        -- Cambio forzado de contraseña (A2 — seguridad_01). Se activa al
+        -- crear/resetear sin contraseña explícita (temporal aleatoria); el
+        -- guard fuerza /cambiar-password hasta que el dueño la cambie. Default
+        -- 0 para no forzar a los usuarios existentes.
+        debe_cambiar_password BOOLEAN NOT NULL DEFAULT 0,
         fecha_creacion      DATE    NOT NULL DEFAULT CURRENT_DATE,
         ultima_sesion       DATETIME,
         carga_horaria_max   INTEGER,
@@ -1501,6 +1506,21 @@ TRIGGERS: list[str] = [
 
 
 
+def _asegurar_columna(conn, tabla: str, columna: str, definicion: str) -> None:
+    """
+    Añade ``columna`` a ``tabla`` solo si aún no existe (ALTER TABLE idempotente).
+
+    Lee el esquema actual con ``PRAGMA table_info`` y ejecuta el ``ADD COLUMN``
+    únicamente cuando la columna falta, de modo que es seguro llamarlo en cada
+    arranque sin romper BDs ya migradas ni perder datos.
+    """
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
+    if columna in cols:
+        return
+    conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}")
+    logger.info("Columna '%s.%s' añadida (migración idempotente)", tabla, columna)
+
+
 def init_db(db_path: Path | None = None) -> bool:
     """
     Inicializa el esquema completo de la base de datos.
@@ -1536,6 +1556,18 @@ def init_db(db_path: Path | None = None) -> bool:
                 except Exception as exc:
                     logger.error(f"Error en tabla {i}: {exc}")
                     raise
+
+            # ------------------------------------------------------------------
+            # Migraciones de columnas (idempotentes)
+            # ------------------------------------------------------------------
+            # CREATE TABLE IF NOT EXISTS trae el esquema completo en BDs nuevas,
+            # pero NO añade columnas a tablas preexistentes. Para BDs ya creadas
+            # (desarrollo, demos) añadimos las columnas nuevas con ALTER TABLE
+            # idempotente: solo se ejecuta si la columna falta. No pierde datos.
+            _asegurar_columna(
+                conn, "usuarios", "debe_cambiar_password",
+                "BOOLEAN NOT NULL DEFAULT 0",
+            )
 
             # ------------------------------------------------------------------
             # Índices

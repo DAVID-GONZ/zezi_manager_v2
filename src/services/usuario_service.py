@@ -5,6 +5,9 @@ Orquesta los casos de uso del módulo de Usuarios.
 """
 from __future__ import annotations
 
+import secrets
+import string
+
 from src.services.solo_lectura import requiere_escritura
 
 from src.domain.ports.usuario_repo import IUsuarioRepository
@@ -146,6 +149,21 @@ class UsuarioService:
                 f"'{target.usuario}'."
             )
 
+    @staticmethod
+    def _generar_password_temporal() -> str:
+        """
+        Genera una contraseña temporal fuerte y aleatoria (A2 — seguridad_01).
+
+        Usa ``secrets`` (CSPRNG): 16 caracteres alfanuméricos. Se entrega al
+        admin una sola vez para que la comunique al usuario; el flag
+        ``debe_cambiar_password`` obliga a cambiarla en el primer acceso.
+
+        NO se loguea ni se persiste en claro: solo viaja como hash (vía
+        IAuthenticationService) y como valor de retorno efímero.
+        """
+        alfabeto = string.ascii_letters + string.digits
+        return "".join(secrets.choice(alfabeto) for _ in range(16))
+
     # ------------------------------------------------------------------
     # Consultas de política (solo lectura) — para gating en la vista
     # ------------------------------------------------------------------
@@ -176,8 +194,16 @@ class UsuarioService:
 
         - Si `actor_rol` se provee, valida que pueda asignar `dto.rol` (RBAC).
         - Verifica que el username no exista.
-        - Hashea la contraseña (usa el username si no se provee password).
+        - Si NO se provee contraseña explícita, genera una temporal aleatoria
+          fuerte (A2) y marca `debe_cambiar_password=True`; el usuario deberá
+          cambiarla en el primer acceso.
         - Guarda el usuario y audita la creación.
+
+        Returns:
+            El `Usuario` creado. Cuando se generó una contraseña temporal (sin
+            contraseña explícita), viaja en `usuario.password_temporal` para que
+            el admin la comunique; es `None` cuando el admin fijó una contraseña.
+            Ese campo es efímero: no se persiste ni se serializa (no se loguea).
         """
         if actor_rol is not None:
             rol_str = dto.rol.value if hasattr(dto.rol, "value") else str(dto.rol)
@@ -195,20 +221,36 @@ class UsuarioService:
             raise ValueError(
                 f"Ya existe un usuario con el nombre '{dto.usuario}'."
             )
+
+        # A2 — credencial inicial. Sin contraseña explícita → temporal fuerte
+        # aleatoria + cambio forzado (nunca el username, que es predecible).
+        if dto.password:
+            password = dto.password
+            temporal: str | None = None
+            debe_cambiar = False
+        else:
+            password = self._generar_password_temporal()
+            temporal = password
+            debe_cambiar = True
+
         institucion_id = self._resolver_institucion(usuario.institucion_id)
-        usuario = usuario.model_copy(update={"institucion_id": institucion_id})
+        usuario = usuario.model_copy(update={
+            "institucion_id": institucion_id,
+            "debe_cambiar_password": debe_cambiar,
+        })
         usuario = self._repo.guardar(usuario)
 
-        # Hash de contraseña
+        # Hash de contraseña (delegado a IAuthenticationService).
         if self._auth is not None:
-            password = dto.password or dto.usuario
             self._auth.resetear_password(usuario.id, password)
 
         self._auditar(
             AccionCambio.CREATE, "usuarios", usuario.id,
             None, usuario.model_dump(mode="json"), creado_por_id,
         )
-        return usuario
+        # La temporal viaja en la entidad retornada (campo efímero, no persistido
+        # ni serializado). model_dump de la auditoría arriba ya la excluye.
+        return usuario.model_copy(update={"password_temporal": temporal})
 
     @requiere_escritura
     def actualizar(
@@ -331,15 +373,22 @@ class UsuarioService:
         nueva_password: str,
         actor_rol: str | None = None,
         reset_por_id: int | None = None,
-    ) -> None:
+    ) -> str | None:
         """
         Restablece la contraseña de un usuario SIN verificar la anterior.
 
         Flujo administrativo (admin/director recuperando una cuenta):
         - Si `actor_rol` se provee, valida que pueda gestionar al destino (RBAC).
-        - Si `nueva_password` viene vacía, usa el username como contraseña.
+        - Si `nueva_password` viene vacía, genera una temporal aleatoria fuerte
+          (A2) en lugar del username (predecible) y la retorna para comunicarla.
+        - En ambos casos marca `debe_cambiar_password=True`: tras un reset
+          administrativo el dueño debe re-elegir su contraseña.
         - Delega el hash al servicio de autenticación.
         - Audita el evento con TipoEventoSesion.RESETEAR_PASSWORD.
+
+        Returns:
+            La contraseña temporal generada cuando no se dio una explícita
+            (para comunicarla), o `None` cuando el admin fijó una. NUNCA se loguea.
         """
         if self._auth is None:
             raise ValueError(
@@ -347,12 +396,21 @@ class UsuarioService:
             )
         usuario = self._get_usuario_o_lanzar(usuario_id)
         self._verificar_gestion(actor_rol, usuario)
-        password = (nueva_password or "").strip() or usuario.usuario
+        explicita = (nueva_password or "").strip()
+        if explicita:
+            password = explicita
+            temporal: str | None = None
+        else:
+            password = self._generar_password_temporal()
+            temporal = password
         self._auth.resetear_password(usuario_id, password)
+        # A2: reset administrativo → el dueño debe re-elegir en el primer acceso.
+        self._repo.marcar_debe_cambiar_password(usuario_id, True)
         self._registrar_evento(
             TipoEventoSesion.RESETEAR_PASSWORD, usuario, reset_por_id,
             detalles=f"Contraseña restablecida para '{usuario.usuario}'",
         )
+        return temporal
 
     @requiere_escritura
     def cambiar_password(
@@ -374,6 +432,8 @@ class UsuarioService:
         )
         if not exito:
             raise ValueError("La contraseña actual no es correcta.")
+        # A2: el dueño cambió su contraseña → ya no está forzado.
+        self._repo.marcar_debe_cambiar_password(usuario_id, False)
 
     def listar_docentes(
         self,

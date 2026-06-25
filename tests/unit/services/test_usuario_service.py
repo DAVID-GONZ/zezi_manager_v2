@@ -67,6 +67,13 @@ class FakeUsuarioRepo(IUsuarioRepository):
         u = self._users[uid]
         self._users[uid] = u.model_copy(update={"rol": rol})
 
+    def marcar_debe_cambiar_password(self, uid: int, valor: bool) -> bool:
+        u = self._users.get(uid)
+        if u is None:
+            return False
+        self._users[uid] = u.model_copy(update={"debe_cambiar_password": valor})
+        return True
+
     def listar_filtrado(self, filtro: FiltroUsuariosDTO) -> list[Usuario]:
         return list(self._users.values())
 
@@ -162,6 +169,11 @@ def _dto(usuario: str = "prof1", rol: Rol = Rol.PROFESOR) -> NuevoUsuarioDTO:
     )
 
 
+def _crear(svc: UsuarioService, *args, **kwargs) -> Usuario:
+    """Atajo: crea y retorna el Usuario (la temporal viaja en .password_temporal)."""
+    return svc.crear_usuario(*args, **kwargs)
+
+
 # ===========================================================================
 # Tests
 # ===========================================================================
@@ -169,7 +181,7 @@ def _dto(usuario: str = "prof1", rol: Rol = Rol.PROFESOR) -> NuevoUsuarioDTO:
 class TestCrearUsuario:
     def test_crea_usuario_nuevo(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof1"))
+        u = _crear(svc, _dto("prof1"))
         assert u.id is not None
         assert u.usuario == "prof1"
 
@@ -182,20 +194,53 @@ class TestCrearUsuario:
     def test_llama_resetear_password_cuando_hay_auth(self):
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
-        u = svc.crear_usuario(_dto("prof1"))
+        u = _crear(svc, _dto("prof1"))
         assert u.id in auth._hashes
+
+    def test_sin_password_genera_temporal_y_flag(self):
+        # R-A2: crear sin contraseña → temporal aleatoria fuerte (no el username)
+        # + debe_cambiar_password=True, y la temporal viaja en .password_temporal.
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        usuario = svc.crear_usuario(_dto("prof_tmp"))
+        temporal = usuario.password_temporal
+        assert temporal is not None
+        assert temporal != "prof_tmp"
+        assert len(temporal) >= 12
+        assert usuario.debe_cambiar_password is True
+        assert auth._hashes[usuario.id] == f"hash:{temporal}"
+
+    def test_temporal_no_se_serializa_ni_persiste(self):
+        # R-A2: el campo efímero NO aparece en model_dump (auditoría/logs).
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth())
+        usuario = svc.crear_usuario(_dto("prof_tmp2"))
+        assert usuario.password_temporal is not None
+        assert "password_temporal" not in usuario.model_dump()
+
+    def test_con_password_explicita_no_fuerza_cambio(self):
+        # R-A2: si el admin fija contraseña, no hay temporal ni cambio forzado.
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        dto = NuevoUsuarioDTO(
+            usuario="prof_fija", nombre_completo="Profesor Fija",
+            rol=Rol.PROFESOR, password="claveDelAdmin1",
+        )
+        usuario = svc.crear_usuario(dto)
+        assert usuario.password_temporal is None
+        assert usuario.debe_cambiar_password is False
+        assert auth._hashes[usuario.id] == "hash:claveDelAdmin1"
 
 
 class TestDesactivar:
     def test_desactiva_usuario_activo(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto())
+        u = _crear(svc, _dto())
         resultado = svc.desactivar(u.id)
         assert resultado.activo is False
 
     def test_lanza_si_ya_inactivo(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto())
+        u = _crear(svc, _dto())
         svc.desactivar(u.id)
         with pytest.raises(ValueError):
             svc.desactivar(u.id)
@@ -221,17 +266,27 @@ class TestCambiarPassword:
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
         svc.cambiar_password(1, "vieja", "nueva")  # no lanza
 
+    def test_cambiar_password_limpia_flag_forzado(self):
+        # R-A2: cuando el dueño cambia su contraseña, se limpia el flag.
+        repo = FakeUsuarioRepo()
+        auth = FakeAuth(pass_ok=True)
+        svc = UsuarioService(repo, auth_service=auth)
+        usuario = svc.crear_usuario(_dto("prof_flag"))  # nace forzado
+        assert repo.get_by_id(usuario.id).debe_cambiar_password is True
+        svc.cambiar_password(usuario.id, "temporal", "nuevaClave1")
+        assert repo.get_by_id(usuario.id).debe_cambiar_password is False
+
 
 class TestCambiarRol:
     def test_cambia_rol_de_usuario_activo(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto())
+        u = _crear(svc, _dto())
         resultado = svc.cambiar_rol(u.id, Rol.COORDINADOR)
         assert resultado.rol == Rol.COORDINADOR
 
     def test_lanza_si_usuario_inactivo(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto())
+        u = _crear(svc, _dto())
         svc.desactivar(u.id)
         with pytest.raises(ValueError, match="desactivado"):
             svc.cambiar_rol(u.id, Rol.DIRECTOR)
@@ -244,12 +299,12 @@ class TestCambiarRol:
 class TestRbacCrear:
     def test_admin_puede_crear_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
+        u = _crear(svc, _dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
         assert u.rol == Rol.ADMIN
 
     def test_admin_puede_crear_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("nuevo_dir", Rol.DIRECTOR), actor_rol="admin")
+        u = _crear(svc, _dto("nuevo_dir", Rol.DIRECTOR), actor_rol="admin")
         assert u.rol == Rol.DIRECTOR
 
     def test_director_no_puede_crear_admin(self):
@@ -264,37 +319,37 @@ class TestRbacCrear:
 
     def test_director_puede_crear_profesor(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof_x", Rol.PROFESOR), actor_rol="director")
+        u = _crear(svc, _dto("prof_x", Rol.PROFESOR), actor_rol="director")
         assert u.rol == Rol.PROFESOR
 
     def test_sin_actor_rol_no_hay_enforcement(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("libre", Rol.ADMIN))  # actor_rol=None
+        u = _crear(svc, _dto("libre", Rol.ADMIN))  # actor_rol=None
         assert u.rol == Rol.ADMIN
 
 
 class TestRbacCambiarRol:
     def test_admin_puede_promover_a_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("dir1", Rol.DIRECTOR))
+        u = _crear(svc, _dto("dir1", Rol.DIRECTOR))
         r = svc.cambiar_rol(u.id, Rol.ADMIN, actor_rol="admin")
         assert r.rol == Rol.ADMIN
 
     def test_director_no_puede_cambiar_rol_de_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("adm1", Rol.ADMIN))
+        u = _crear(svc, _dto("adm1", Rol.ADMIN))
         with pytest.raises(ValueError, match="permiso"):
             svc.cambiar_rol(u.id, Rol.COORDINADOR, actor_rol="director")
 
     def test_director_no_puede_promover_a_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof_p1", Rol.PROFESOR))
+        u = _crear(svc, _dto("prof_p1", Rol.PROFESOR))
         with pytest.raises(ValueError, match="permiso"):
             svc.cambiar_rol(u.id, Rol.DIRECTOR, actor_rol="director")
 
     def test_director_puede_cambiar_profesor_a_coordinador(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof_p2", Rol.PROFESOR))
+        u = _crear(svc, _dto("prof_p2", Rol.PROFESOR))
         r = svc.cambiar_rol(u.id, Rol.COORDINADOR, actor_rol="director")
         assert r.rol == Rol.COORDINADOR
 
@@ -302,26 +357,26 @@ class TestRbacCambiarRol:
 class TestRbacGestion:
     def test_director_no_puede_desactivar_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("adm2", Rol.ADMIN))
+        u = _crear(svc, _dto("adm2", Rol.ADMIN))
         with pytest.raises(ValueError, match="permiso"):
             svc.desactivar(u.id, actor_rol="director")
 
     def test_director_puede_desactivar_profesor(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof_p3", Rol.PROFESOR))
+        u = _crear(svc, _dto("prof_p3", Rol.PROFESOR))
         r = svc.desactivar(u.id, actor_rol="director")
         assert r.activo is False
 
     def test_director_puede_reactivar_coordinador(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("coord1", Rol.COORDINADOR))
+        u = _crear(svc, _dto("coord1", Rol.COORDINADOR))
         svc.desactivar(u.id)
         r = svc.reactivar(u.id, actor_rol="director")
         assert r.activo is True
 
     def test_director_no_puede_reactivar_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("dir2", Rol.DIRECTOR))
+        u = _crear(svc, _dto("dir2", Rol.DIRECTOR))
         svc.desactivar(u.id)
         with pytest.raises(ValueError, match="permiso"):
             svc.reactivar(u.id, actor_rol="director")
@@ -330,30 +385,52 @@ class TestRbacGestion:
 class TestResetearPassword:
     def test_lanza_si_sin_auth(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = svc.crear_usuario(_dto("prof_p4"))
+        u = _crear(svc, _dto("prof_p4"))
         with pytest.raises(ValueError, match="autenticaci"):
             svc.resetear_password(u.id, "clave123")
 
     def test_resetea_con_password_dada(self):
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
-        u = svc.crear_usuario(_dto("prof_p5"))
+        u = _crear(svc, _dto("prof_p5"))
         svc.resetear_password(u.id, "claveNueva")
         assert auth._hashes[u.id] == "hash:claveNueva"
 
-    def test_password_vacia_usa_username(self):
+    def test_password_vacia_genera_temporal_no_username(self):
+        # R-A2: un reset sin contraseña explícita NO usa el username (predecible);
+        # genera una temporal aleatoria fuerte y la retorna.
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
-        u = svc.crear_usuario(_dto("prof_p6"))
-        svc.resetear_password(u.id, "")
-        assert auth._hashes[u.id] == "hash:prof_p6"
+        u = _crear(svc, _dto("prof_p6"))
+        temporal = svc.resetear_password(u.id, "")
+        assert temporal is not None
+        assert temporal != "prof_p6"
+        assert len(temporal) >= 12
+        assert auth._hashes[u.id] == f"hash:{temporal}"
+
+    def test_reset_con_password_dada_no_retorna_temporal(self):
+        # R-A2: con contraseña explícita no hay temporal que comunicar.
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = _crear(svc, _dto("prof_p6b"))
+        temporal = svc.resetear_password(u.id, "claveExplicita")
+        assert temporal is None
+
+    def test_reset_marca_debe_cambiar_password(self):
+        # R-A2: tras un reset administrativo el dueño debe re-elegir.
+        repo = FakeUsuarioRepo()
+        auth = FakeAuth()
+        svc = UsuarioService(repo, auth_service=auth)
+        u = _crear(svc, _dto("prof_p6c"))
+        svc.resetear_password(u.id, "claveExplicita")
+        assert repo.get_by_id(u.id).debe_cambiar_password is True
 
     def test_audita_evento_reset(self):
         from src.domain.models.auditoria import TipoEventoSesion
         auth = FakeAuth()
         audit = FakeAuditoria()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth, auditoria=audit)
-        u = svc.crear_usuario(_dto("prof_p7"))
+        u = _crear(svc, _dto("prof_p7"))
         svc.resetear_password(u.id, "clave")
         tipos = [e.tipo_evento for e in audit.eventos]
         assert TipoEventoSesion.RESETEAR_PASSWORD in tipos
@@ -361,14 +438,14 @@ class TestResetearPassword:
     def test_director_no_puede_resetear_admin(self):
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
-        u = svc.crear_usuario(_dto("adm3", Rol.ADMIN))
+        u = _crear(svc, _dto("adm3", Rol.ADMIN))
         with pytest.raises(ValueError, match="permiso"):
             svc.resetear_password(u.id, "x", actor_rol="director")
 
     def test_director_puede_resetear_profesor(self):
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
-        u = svc.crear_usuario(_dto("prof_p8", Rol.PROFESOR))
+        u = _crear(svc, _dto("prof_p8", Rol.PROFESOR))
         svc.resetear_password(u.id, "x", actor_rol="director")
         assert auth._hashes[u.id] == "hash:x"
 

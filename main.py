@@ -132,6 +132,12 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.inicio import inicio_page
     registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
 
+    # ── Cambio forzado de contraseña (A2 — seguridad_01) ──────────────────────
+    # El route_guard fuerza esta ruta cuando la sesión tiene
+    # debe_cambiar_password activo. Accesible por cualquier autenticado.
+    from src.interface.pages.cambiar_password import cambiar_password_page
+    registrar_pagina("/cambiar-password", cambiar_password_page, roles=AUTENTICADO)
+
     # ── Administración ────────────────────────────────────────────────────────
     from src.interface.pages.admin.usuarios import usuarios_page
     from src.interface.pages.admin.auditoria import auditoria_page

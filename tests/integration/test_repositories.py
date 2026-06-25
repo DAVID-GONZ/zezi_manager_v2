@@ -114,6 +114,33 @@ class TestSqliteUsuarioRepository:
         assert repo.reactivar(uid) is True
         assert repo.get_by_id(uid).activo is True
 
+    def test_debe_cambiar_password_default_false(self, db_conn, seed_result):
+        # Los usuarios sembrados NO deben quedar forzados a cambiar contraseña.
+        repo = SqliteUsuarioRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["prof_test"]
+        assert repo.get_by_id(uid).debe_cambiar_password is False
+
+    def test_marcar_debe_cambiar_password_round_trip(self, db_conn, seed_result):
+        # A2: el flag persiste y se limpia vía marcar_debe_cambiar_password.
+        repo = SqliteUsuarioRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["prof_test"]
+        assert repo.marcar_debe_cambiar_password(uid, True) is True
+        assert repo.get_by_id(uid).debe_cambiar_password is True
+        assert repo.marcar_debe_cambiar_password(uid, False) is True
+        assert repo.get_by_id(uid).debe_cambiar_password is False
+
+    def test_guardar_persiste_flag_forzado(self, db_conn, seed_result):
+        # A2: un usuario creado con debe_cambiar_password=True lo conserva.
+        repo = SqliteUsuarioRepository(conn=db_conn)
+        nuevo = Usuario(
+            usuario="forzado_test",
+            nombre_completo="Forzado Test",
+            rol=Rol.PROFESOR,
+            debe_cambiar_password=True,
+        )
+        guardado = repo.guardar(nuevo)
+        assert repo.get_by_id(guardado.id).debe_cambiar_password is True
+
 
 # =============================================================================
 # SqliteEstudianteRepository

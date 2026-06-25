@@ -27,6 +27,9 @@ class SessionContext:
     usuario_nombre:  str
     usuario_rol:     str
     institucion_id:  int | None = None   # multi-tenant (paso_24)
+    # A2 (seguridad_01): cambio forzado de contraseña. Lo setea login.py desde
+    # user_db.debe_cambiar_password; el route_guard fuerza /cambiar-password.
+    debe_cambiar_password: bool = False
     anio_id:         int | None = None
     periodo_id:      int | None = None
     grupo_id:        int | None = None
@@ -77,6 +80,7 @@ class SessionContext:
             usuario_nombre    = storage.get("usuario_nombre", ""),
             usuario_rol       = storage.get("usuario_rol", ""),
             institucion_id    = storage.get("institucion_id"),
+            debe_cambiar_password = bool(storage.get("debe_cambiar_password", False)),
             anio_id           = storage.get("anio_id"),
             periodo_id        = storage.get("periodo_id"),
             grupo_id          = storage.get("grupo_id"),
@@ -121,6 +125,7 @@ class SessionContext:
             "usuario_nombre":    self.usuario_nombre,
             "usuario_rol":       self.usuario_rol,
             "institucion_id":    self.institucion_id,
+            "debe_cambiar_password": self.debe_cambiar_password,
             "anio_id":           self.anio_id,
             "periodo_id":        self.periodo_id,
             "grupo_id":          self.grupo_id,

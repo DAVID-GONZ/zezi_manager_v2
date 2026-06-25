@@ -18,8 +18,8 @@ from src.domain.models.usuario import (
 
 _COLS_USUARIO = (
     "id, usuario, nombre_completo, email, telefono, "
-    "rol, activo, fecha_creacion, ultima_sesion, carga_horaria_max, horas_extra, "
-    "institucion_id"
+    "rol, activo, debe_cambiar_password, fecha_creacion, ultima_sesion, "
+    "carga_horaria_max, horas_extra, institucion_id"
 )
 
 
@@ -45,6 +45,8 @@ class SqliteUsuarioRepository(IUsuarioRepository):
         d = dict(row)
         d["rol"] = Rol(d["rol"])
         d["activo"] = bool(d["activo"])
+        if "debe_cambiar_password" in d:
+            d["debe_cambiar_password"] = bool(d["debe_cambiar_password"])
         return Usuario(**d)
 
     # ------------------------------------------------------------------
@@ -267,8 +269,9 @@ class SqliteUsuarioRepository(IUsuarioRepository):
                 """
                 INSERT INTO usuarios
                     (usuario, password_hash, nombre_completo, email, telefono,
-                     rol, activo, fecha_creacion, institucion_id)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                     rol, activo, debe_cambiar_password, fecha_creacion,
+                     institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     usuario.usuario,
@@ -278,6 +281,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
                     usuario.telefono,
                     usuario.rol.value,
                     int(usuario.activo),
+                    int(usuario.debe_cambiar_password),
                     usuario.fecha_creacion.isoformat(),
                     usuario.institucion_id,
                 ),
@@ -342,6 +346,17 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             cursor = conn.execute(
                 "UPDATE usuarios SET activo = 1 WHERE id = ?",
                 (usuario_id,),
+            )
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount > 0
+
+    def marcar_debe_cambiar_password(self, usuario_id: int, valor: bool) -> bool:
+        """Marca/limpia el flag de cambio forzado de contraseña (A2)."""
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                "UPDATE usuarios SET debe_cambiar_password = ? WHERE id = ?",
+                (int(valor), usuario_id),
             )
             if self._conn is None:
                 conn.commit()

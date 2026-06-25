@@ -164,6 +164,16 @@ def registrar_pagina(
             toast_error("Acceso no autorizado")
             ui.navigate.to("/inicio")
             return
+        # A2 (seguridad_01) — cambio forzado de contraseña: deny-by-default real.
+        # Si la sesión está marcada y la ruta no es /cambiar-password ni /logout,
+        # se fuerza el cambio antes de servir cualquier otra página.
+        if (
+            autenticado
+            and app.storage.user.get("debe_cambiar_password")
+            and ruta not in ("/cambiar-password", "/logout")
+        ):
+            ui.navigate.to("/cambiar-password")
+            return
         page_fn(**page_fn_kwargs)
 
 

@@ -71,6 +71,18 @@ def login_page() -> None:
                     on_finish()
                     return
 
+                # A1 — throttle/lockout: si el username está bloqueado por exceso
+                # de fallos, abortar sin tocar el servicio de auth.
+                from src.services import login_throttle
+                bloqueado, segundos = login_throttle.estado_bloqueo(nombre_usuario)
+                if bloqueado:
+                    error_label.set_text(
+                        f"Demasiados intentos. Espera {segundos} s e inténtalo de nuevo."
+                    )
+                    error_container.classes(remove="hidden")
+                    on_finish()
+                    return
+
                 try:
                     svc_auth = Container.auth_service()
                     user_db = svc_auth.autenticar_usuario(
@@ -83,10 +95,18 @@ def login_page() -> None:
                         else str(user_db.rol)
                     )
 
+                    # A1 — credenciales correctas: limpiar el contador de fallos.
+                    login_throttle.registrar_exito(nombre_usuario)
+
                     app.storage.user["autenticado"]    = True
                     app.storage.user["usuario_id"]     = user_db.id
                     app.storage.user["usuario_nombre"] = user_db.nombre_completo
                     app.storage.user["usuario_rol"]    = rol_str
+                    # A2 — cambio forzado: el guard fuerza /cambiar-password si
+                    # el flag está activo. Lo lee desde la entidad autenticada.
+                    app.storage.user["debe_cambiar_password"] = bool(
+                        getattr(user_db, "debe_cambiar_password", False)
+                    )
 
                     from src.interface.context.session_context import SessionContext
                     ctx = SessionContext(
@@ -124,8 +144,28 @@ def login_page() -> None:
                 except ValueError as exc:
                     codigo = str(exc)
                     if codigo == "cuenta_inactiva":
+                        # Credenciales válidas pero cuenta desactivada: no es un
+                        # intento de fuerza bruta, no cuenta para el throttle.
                         error_label.set_text("Tu cuenta está desactivada.")
                     else:
+                        # A1 — credenciales inválidas: contar el fallo (puede
+                        # disparar el bloqueo) y auditar el evento ya existente.
+                        login_throttle.registrar_fallo(nombre_usuario)
+                        try:
+                            from src.services.auditoria_service import (
+                                EventoSesion,
+                                TipoEventoSesion,
+                            )
+                            Container.auditoria_service().registrar_evento(
+                                EventoSesion(
+                                    usuario     = nombre_usuario,
+                                    tipo_evento = TipoEventoSesion.LOGIN_FALLIDO,
+                                )
+                            )
+                        except Exception as audit_exc:
+                            logger.warning(
+                                "No se pudo registrar login fallido: %s", audit_exc
+                            )
                         error_label.set_text("Usuario o contraseña incorrectos.")
                     error_container.classes(remove="hidden")
                     on_finish()
