@@ -12,9 +12,12 @@ Regla de capas:
 
 Flujo:
   1. El usuario introduce su contraseña actual (la temporal) y la nueva (x2).
-  2. Validaciones de UI (no vacías, coinciden, longitud mínima).
-  3. usuario_service().cambiar_password(...) verifica la actual y persiste la
-     nueva; el servicio limpia debe_cambiar_password en la BD.
+  2. Validaciones de UI (no vacías, coinciden, distinta de la actual). La
+     política de fortaleza (longitud, letra+dígito, != username) la valida el
+     SERVIDOR; aquí solo se muestran las reglas como ayuda (seguridad_02 — M4).
+  3. usuario_service().cambiar_password(...) verifica la actual, valida la nueva
+     contra la policy de dominio y persiste; el servicio limpia
+     debe_cambiar_password en la BD.
   4. Se limpia el flag en app.storage.user y se navega a /inicio.
 """
 from __future__ import annotations
@@ -28,8 +31,6 @@ from src.interface.design.theme import ThemeManager
 from src.interface.design.components.buttons import btn_primary
 
 logger = logging.getLogger("CAMBIAR_PASSWORD")
-
-_LONGITUD_MINIMA = 8
 
 
 # page-delegate: ruta registrada en main.py vía registrar_pagina (T6)
@@ -69,6 +70,13 @@ def cambiar_password_page() -> None:
                     .props("outlined")
                 )
 
+                # ── Requisitos de la contraseña (de la policy, vía servicio) ──
+                # La página NO importa src.domain.*: pide los textos al servicio.
+                requisitos = Container.usuario_service().requisitos_password()
+                ui.label("La nueva contraseña debe cumplir: " + " ".join(
+                    f"• {regla}" for regla in requisitos
+                )).classes("andes-login-logo-subtitle w-full")
+
             # ── Banner de error ──────────────────────────────────────────────
             error_container = ui.row().classes(
                 "andes-alert andes-alert-error w-full items-center hidden "
@@ -106,12 +114,6 @@ def cambiar_password_page() -> None:
                     _mostrar_error("La nueva contraseña y su confirmación no coinciden.")
                     on_finish()
                     return
-                if len(nueva) < _LONGITUD_MINIMA:
-                    _mostrar_error(
-                        f"La nueva contraseña debe tener al menos {_LONGITUD_MINIMA} caracteres."
-                    )
-                    on_finish()
-                    return
                 if nueva == actual:
                     _mostrar_error("La nueva contraseña debe ser distinta de la actual.")
                     on_finish()
@@ -132,11 +134,13 @@ def cambiar_password_page() -> None:
                     logger.info("Cambio de contraseña forzado completado: usuario_id=%s", usuario_id)
                     ui.navigate.to("/inicio")
                 except ValueError as exc:
-                    codigo = str(exc)
-                    if "no es correcta" in codigo:
-                        _mostrar_error("La contraseña actual no es correcta.")
-                    else:
-                        _mostrar_error("No se pudo cambiar la contraseña. Revisa los datos.")
+                    # El servidor valida la actual y la política de la nueva.
+                    # Surfacing del mensaje accionable (no tragar el texto de la
+                    # policy: longitud / letra+dígito / != usuario).
+                    mensaje = str(exc).strip()
+                    _mostrar_error(
+                        mensaje or "No se pudo cambiar la contraseña. Revisa los datos."
+                    )
                     on_finish()
                 except Exception:
                     logger.exception("Error inesperado al cambiar contraseña")

@@ -24,12 +24,14 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_icon
+from src.interface.design.components.buttons import btn_icon, btn_secondary
 from src.interface.design.components import (
     data_table,
     date_range_input,
     empty_state,
+    status_badge,
     toast_error,
+    toast_success,
 )
 from src.services.auditoria_service import (
     AccionCambio,
@@ -86,6 +88,9 @@ def auditoria_page() -> None:
         # datos cargados
         "cambios":      [],
         "sesiones":     [],
+        # verificación de integridad (encadenamiento por hash — seguridad_03)
+        # None = aún no verificado; dict de primitivos del servicio si ya se corrió.
+        "integridad":   None,
     }
 
     # ── Helpers de filtro ──────────────────────────────────────────────────────
@@ -139,6 +144,40 @@ def auditoria_page() -> None:
         _cargar_todo()
         tabla_cambios.refresh()
         tabla_sesiones.refresh()
+
+    # ── Integridad de la bitácora (read-only) ──────────────────────────────────
+    @ui.refreshable
+    def badge_integridad() -> None:
+        estado = _s["integridad"]
+        if estado is None:
+            status_badge("Sin verificar", variante="neutral")
+            return
+        ok = estado["eventos_ok"] and estado["cambios_ok"]
+        if ok:
+            status_badge("Íntegra", variante="success")
+            return
+        # Reportar el primer registro roto de cada cadena alterada.
+        rotos = []
+        if not estado["eventos_ok"] and estado["evento_roto_id"] is not None:
+            rotos.append(f"sesión #{estado['evento_roto_id']}")
+        if not estado["cambios_ok"] and estado["cambio_roto_id"] is not None:
+            rotos.append(f"cambio #{estado['cambio_roto_id']}")
+        detalle = ", ".join(rotos) if rotos else "registro desconocido"
+        status_badge(f"Alterada ({detalle})", variante="error")
+
+    def _verificar_integridad() -> None:
+        try:
+            _s["integridad"] = Container.auditoria_service().verificar_integridad()
+        except Exception as exc:
+            logger.error("Error al verificar integridad de auditoría: %s", exc)
+            _s["integridad"] = None
+            toast_error("No se pudo verificar la integridad")
+            badge_integridad.refresh()
+            return
+        badge_integridad.refresh()
+        estado = _s["integridad"]
+        if estado["eventos_ok"] and estado["cambios_ok"]:
+            toast_success("Bitácora íntegra: la cadena de hashes cuadra")
 
     # ── Tablas (refreshable, solo lectura) ─────────────────────────────────────
     @ui.refreshable
@@ -244,6 +283,14 @@ def auditoria_page() -> None:
                     ThemeManager.icono("history", size=22, color="var(--color-primary)")
                     ui.label("Registro de auditoría").classes("text-xl font-bold")
                     ui.label("Solo lectura").classes("text-sm text-secondary ml-2")
+                    with ui.row().classes("items-center gap-2 ml-auto"):
+                        btn_secondary(
+                            "Verificar integridad",
+                            on_click=_verificar_integridad,
+                            icon="verified",
+                            size="sm",
+                        )
+                        badge_integridad()
 
                 _render_filtros_comunes()
 

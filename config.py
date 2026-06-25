@@ -20,6 +20,7 @@ Variables de entorno relevantes:
     APP_ENV             development | production | test  (default: development)
     DATABASE_PATH       Ruta al archivo SQLite           (default: data/app.db)
     JWT_SECRET          Clave para firmar tokens JWT     (requerida en producción)
+    STORAGE_SECRET      Clave para firmar cookie sesión  (requerida en producción)
     JWT_EXPIRE_MINUTES  Minutos de vida del token        (default: 480)
     HOST                Host para NiceGUI                (default: 127.0.0.1)
     PORT                Puerto para NiceGUI              (default: 8080)
@@ -89,6 +90,15 @@ class Settings(BaseSettings):
         min_length=32,
         description="Clave secreta para firmar tokens JWT. DEBE cambiarse en producción.",
     )
+    STORAGE_SECRET: str = Field(
+        default="cambia-este-storage-secret-en-produccion",
+        min_length=32,
+        description=(
+            "Clave secreta para firmar la cookie de sesión de NiceGUI. "
+            "Independiente de JWT_SECRET (seguridad_02 — M1). "
+            "DEBE cambiarse en producción y ser distinta de JWT_SECRET."
+        ),
+    )
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = Field(
         default=480,   # 8 horas — jornada escolar completa
@@ -135,26 +145,35 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def verificar_jwt_seguro(self) -> "Settings":
         """
-        Bloquea el arranque si JWT_SECRET tiene el valor por defecto en producción.
+        Bloquea el arranque si JWT_SECRET o STORAGE_SECRET tienen su valor por
+        defecto en producción (seguridad_02 — M1: ambos secretos son
+        independientes y se blindan con el mismo criterio).
 
         En desarrollo solo registra una advertencia en el log (no bloquea).
         En producción, un secret inseguro es un error irrecuperable que
         no debe llegar a servir requests.
         """
-        _SECRET_INSEGURO = "cambia-esta-clave" in self.JWT_SECRET
+        inseguros: list[str] = []
+        if "cambia-esta-clave" in self.JWT_SECRET:
+            inseguros.append("JWT_SECRET")
+        if "cambia-est" in self.STORAGE_SECRET:
+            inseguros.append("STORAGE_SECRET")
 
-        if _SECRET_INSEGURO:
+        if inseguros:
+            nombres = " y ".join(inseguros)
             if self.APP_ENV == "production":
                 raise ValueError(
-                    "JWT_SECRET tiene el valor por defecto inseguro. "
-                    "Define JWT_SECRET con al menos 32 caracteres de entropía "
-                    "en el archivo .env o como variable de entorno antes de desplegar."
+                    f"{nombres} tiene(n) el valor por defecto inseguro. "
+                    f"Define {nombres} con al menos 32 caracteres de entropía "
+                    "(y distintos entre sí) en el archivo .env o como variable "
+                    "de entorno antes de desplegar."
                 )
             else:
                 import logging as _log
                 _log.getLogger("CONFIG").warning(
-                    "JWT_SECRET usa el valor por defecto. "
-                    "Cambiarlo antes de pasar a producción."
+                    "%s usa(n) el valor por defecto. "
+                    "Cambiarlo(s) antes de pasar a producción.",
+                    nombres,
                 )
         return self
 

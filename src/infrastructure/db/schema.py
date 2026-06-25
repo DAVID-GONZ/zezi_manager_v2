@@ -1071,6 +1071,13 @@ SCHEMA: list[str] = [
         fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         detalles    TEXT,
 
+        -- Encadenamiento por hash (seguridad_03, M3): SHA256(hash_previo||payload)
+        -- del registro anterior de esta tabla. NULL = registro pre-cadena
+        -- (anterior a la migración); la verificación arranca desde el primer
+        -- hash_cadena no nulo. El repo lo calcula al insertar; el mapper de
+        -- dominio lo descarta (los modelos Pydantic prohíben campos extra).
+        hash_cadena TEXT,
+
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
@@ -1085,6 +1092,9 @@ SCHEMA: list[str] = [
         valor_anterior  TEXT,
         valor_nuevo     TEXT,
         timestamp       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+        -- Encadenamiento por hash (seguridad_03, M3): ver tabla `auditoria`.
+        hash_cadena     TEXT,
 
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
@@ -1568,6 +1578,11 @@ def init_db(db_path: Path | None = None) -> bool:
                 conn, "usuarios", "debe_cambiar_password",
                 "BOOLEAN NOT NULL DEFAULT 0",
             )
+            # Encadenamiento por hash de la bitácora (seguridad_03, M3). En BDs
+            # preexistentes los registros previos quedan con hash_cadena NULL
+            # (pre-cadena); la verificación arranca desde el primer hash no nulo.
+            _asegurar_columna(conn, "auditoria", "hash_cadena", "TEXT")
+            _asegurar_columna(conn, "audit_log", "hash_cadena", "TEXT")
 
             # ------------------------------------------------------------------
             # Índices

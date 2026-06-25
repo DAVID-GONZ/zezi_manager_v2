@@ -272,7 +272,8 @@ def main() -> None:
         title=settings.APP_NAME,
         reload=settings.RELOAD,
         show=False,
-        storage_secret=settings.JWT_SECRET,
+        # Secreto de la cookie de sesión, separado del de JWT (seguridad_02 — M1).
+        storage_secret=settings.STORAGE_SECRET,
     )
 
 

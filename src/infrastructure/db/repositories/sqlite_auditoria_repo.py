@@ -7,6 +7,7 @@ import sqlite3
 from contextlib import contextmanager
 
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.policies.audit_chain import calcular_hash, primer_eslabon_roto
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
@@ -14,6 +15,12 @@ from src.domain.models.auditoria import (
     RegistroCambio,
     TipoEventoSesion,
 )
+
+# Columnas que existen en las tablas de auditoría pero NO son campos del modelo
+# de dominio. El mapper las descarta antes de construir la entidad Pydantic
+# (que prohíbe campos extra). `hash_cadena` es metadato de integridad, no dato
+# de negocio.
+_COLUMNAS_NO_DOMINIO = frozenset({"hash_cadena"})
 
 
 class SqliteAuditoriaRepository(IAuditoriaRepository):
@@ -35,14 +42,76 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
     # ------------------------------------------------------------------
 
     def _row_to_evento(self, row: sqlite3.Row) -> EventoSesion:
-        d = dict(row)
+        d = {k: v for k, v in dict(row).items() if k not in _COLUMNAS_NO_DOMINIO}
         d["tipo_evento"] = TipoEventoSesion(d["tipo_evento"])
         return EventoSesion(**d)
 
     def _row_to_cambio(self, row: sqlite3.Row) -> RegistroCambio:
-        d = dict(row)
+        d = {k: v for k, v in dict(row).items() if k not in _COLUMNAS_NO_DOMINIO}
         d["accion"] = AccionCambio(d["accion"])
         return RegistroCambio(**d)
+
+    # ------------------------------------------------------------------
+    # Encadenamiento por hash (seguridad_03, M3)
+    # ------------------------------------------------------------------
+
+    def _ultimo_hash(self, conn: sqlite3.Connection, tabla: str) -> str | None:
+        """Último `hash_cadena` almacenado en `tabla` (None si está vacía)."""
+        row = conn.execute(
+            f"SELECT hash_cadena FROM {tabla} ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        return row[0] if row is not None else None
+
+    @staticmethod
+    def _payload_evento(evento: EventoSesion) -> dict:
+        """Campos persistidos de un evento (sin id), en el orden de inserción."""
+        return {
+            "usuario": evento.usuario,
+            "usuario_id": evento.usuario_id,
+            "tipo_evento": evento.tipo_evento.value,
+            "ip_address": evento.ip_address,
+            "fecha_hora": evento.fecha_hora.isoformat(),
+            "detalles": evento.detalles,
+        }
+
+    @staticmethod
+    def _payload_cambio(registro: RegistroCambio) -> dict:
+        """Campos persistidos de un cambio (sin id), en el orden de inserción."""
+        return {
+            "usuario_id": registro.usuario_id,
+            "accion": registro.accion.value,
+            "tabla": registro.tabla,
+            "registro_id": registro.registro_id,
+            "valor_anterior": registro.valor_anterior,
+            "valor_nuevo": registro.valor_nuevo,
+            "timestamp": registro.timestamp.isoformat(),
+        }
+
+    def _verificar_cadena(self, tabla: str) -> int | None:
+        """
+        Reconstruye la cadena de `tabla` (solo filas con hash_cadena no nulo,
+        orden id ASC) y devuelve el `id` real del primer registro roto, o None.
+        """
+        if tabla == "auditoria":
+            payload_de = self._payload_evento
+            row_a_entidad = self._row_to_evento
+        else:
+            payload_de = self._payload_cambio
+            row_a_entidad = self._row_to_cambio
+
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM {tabla} "
+                "WHERE hash_cadena IS NOT NULL ORDER BY id ASC"
+            ).fetchall()
+
+        secuencia: list[tuple[dict, str]] = [
+            (payload_de(row_a_entidad(r)), r["hash_cadena"]) for r in rows
+        ]
+        indice = primer_eslabon_roto(secuencia)
+        if indice is None:
+            return None
+        return int(rows[indice]["id"])
 
     # ------------------------------------------------------------------
     # EventoSesion — escritura
@@ -50,12 +119,14 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
     def registrar_evento(self, evento: EventoSesion) -> EventoSesion:
         with self._get_conn() as conn:
+            payload = self._payload_evento(evento)
+            hash_cadena = calcular_hash(self._ultimo_hash(conn, "auditoria"), payload)
             cursor = conn.execute(
                 """
                 INSERT INTO auditoria
                     (usuario, usuario_id, tipo_evento, ip_address,
-                     fecha_hora, detalles)
-                VALUES (?,?,?,?,?,?)
+                     fecha_hora, detalles, hash_cadena)
+                VALUES (?,?,?,?,?,?,?)
                 """,
                 (
                     evento.usuario,
@@ -64,6 +135,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                     evento.ip_address,
                     evento.fecha_hora.isoformat(),
                     evento.detalles,
+                    hash_cadena,
                 ),
             )
             if self._conn is None:
@@ -132,12 +204,14 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
     def registrar_cambio(self, registro: RegistroCambio) -> RegistroCambio:
         with self._get_conn() as conn:
+            payload = self._payload_cambio(registro)
+            hash_cadena = calcular_hash(self._ultimo_hash(conn, "audit_log"), payload)
             cursor = conn.execute(
                 """
                 INSERT INTO audit_log
                     (usuario_id, accion, tabla, registro_id,
-                     valor_anterior, valor_nuevo, timestamp)
-                VALUES (?,?,?,?,?,?,?)
+                     valor_anterior, valor_nuevo, timestamp, hash_cadena)
+                VALUES (?,?,?,?,?,?,?,?)
                 """,
                 (
                     registro.usuario_id,
@@ -147,6 +221,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                     registro.valor_anterior,
                     registro.valor_nuevo,
                     registro.timestamp.isoformat(),
+                    hash_cadena,
                 ),
             )
             if self._conn is None:
@@ -157,29 +232,46 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
         if not registros:
             return 0
         with self._get_conn() as conn:
+            # Precomputar los hashes SECUENCIALMENTE: cada registro encadena con
+            # el anterior del lote, partiendo del último hash ya en la tabla. No
+            # un hash constante por lote.
+            hash_previo = self._ultimo_hash(conn, "audit_log")
+            params: list[tuple] = []
+            for r in registros:
+                hash_cadena = calcular_hash(hash_previo, self._payload_cambio(r))
+                params.append((
+                    r.usuario_id,
+                    r.accion.value,
+                    r.tabla,
+                    r.registro_id,
+                    r.valor_anterior,
+                    r.valor_nuevo,
+                    r.timestamp.isoformat(),
+                    hash_cadena,
+                ))
+                hash_previo = hash_cadena
             conn.executemany(
                 """
                 INSERT INTO audit_log
                     (usuario_id, accion, tabla, registro_id,
-                     valor_anterior, valor_nuevo, timestamp)
-                VALUES (?,?,?,?,?,?,?)
+                     valor_anterior, valor_nuevo, timestamp, hash_cadena)
+                VALUES (?,?,?,?,?,?,?,?)
                 """,
-                [
-                    (
-                        r.usuario_id,
-                        r.accion.value,
-                        r.tabla,
-                        r.registro_id,
-                        r.valor_anterior,
-                        r.valor_nuevo,
-                        r.timestamp.isoformat(),
-                    )
-                    for r in registros
-                ],
+                params,
             )
             if self._conn is None:
                 conn.commit()
             return len(registros)
+
+    # ------------------------------------------------------------------
+    # Verificación de integridad (override del port — seguridad_03, M3)
+    # ------------------------------------------------------------------
+
+    def verificar_cadena_eventos(self) -> int | None:
+        return self._verificar_cadena("auditoria")
+
+    def verificar_cadena_cambios(self) -> int | None:
+        return self._verificar_cadena("audit_log")
 
     # ------------------------------------------------------------------
     # RegistroCambio — lectura

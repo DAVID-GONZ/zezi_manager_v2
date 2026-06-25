@@ -873,6 +873,87 @@ class TestSqliteAuditoriaRepository:
         count = repo.registrar_cambios_masivos(cambios)
         assert count == 3
 
+    # -- Encadenamiento por hash (seguridad_03, M3) ----------------------------
+
+    def test_eventos_se_encadenan_y_verifican(self, db_conn, seed_result):
+        repo = SqliteAuditoriaRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["admin_test"]
+        for _ in range(3):
+            repo.registrar_evento(EventoSesion(
+                usuario="admin_test", usuario_id=uid,
+                tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
+            ))
+        # Todas las filas insertadas llevan hash_cadena no nulo.
+        nulos = db_conn.execute(
+            "SELECT COUNT(*) FROM auditoria WHERE hash_cadena IS NULL"
+        ).fetchone()[0]
+        assert nulos == 0
+        # Cadena íntegra → None.
+        assert repo.verificar_cadena_eventos() is None
+
+    def test_evento_alterado_rompe_la_cadena(self, db_conn, seed_result):
+        repo = SqliteAuditoriaRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["admin_test"]
+        ids = [
+            repo.registrar_evento(EventoSesion(
+                usuario="admin_test", usuario_id=uid,
+                tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
+                detalles=f"e{i}",
+            )).id
+            for i in range(3)
+        ]
+        # Manipular `detalles` del segundo registro por SQL directo, sin tocar
+        # su hash_cadena: la verificación debe delatarlo devolviendo su id.
+        db_conn.execute(
+            "UPDATE auditoria SET detalles = 'HACKEADO' WHERE id = ?", (ids[1],)
+        )
+        assert repo.verificar_cadena_eventos() == ids[1]
+
+    def test_cambios_se_encadenan_y_verifican(self, db_conn, seed_result):
+        repo = SqliteAuditoriaRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["admin_test"]
+        for i in range(3):
+            repo.registrar_cambio(RegistroCambio(
+                usuario_id=uid, accion=AccionCambio.UPDATE,
+                tabla="notas", registro_id=i, valor_nuevo=f'{{"v": {i}}}',
+            ))
+        assert repo.verificar_cadena_cambios() is None
+
+    def test_cambio_alterado_rompe_la_cadena(self, db_conn, seed_result):
+        repo = SqliteAuditoriaRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["admin_test"]
+        ids = [
+            repo.registrar_cambio(RegistroCambio(
+                usuario_id=uid, accion=AccionCambio.UPDATE,
+                tabla="notas", registro_id=i, valor_nuevo=f'{{"v": {i}}}',
+            )).id
+            for i in range(3)
+        ]
+        db_conn.execute(
+            "UPDATE audit_log SET valor_nuevo = '{\"v\": 999}' WHERE id = ?",
+            (ids[0],),
+        )
+        assert repo.verificar_cadena_cambios() == ids[0]
+
+    def test_cambios_masivos_encadenan_secuencialmente(self, db_conn, seed_result):
+        repo = SqliteAuditoriaRepository(conn=db_conn)
+        uid = seed_result.usuario_ids["admin_test"]
+        cambios = [
+            RegistroCambio(usuario_id=uid, accion=AccionCambio.UPDATE,
+                           tabla="notas", registro_id=i, valor_nuevo=f'{{"v": {i}}}')
+            for i in range(1, 6)
+        ]
+        repo.registrar_cambios_masivos(cambios)
+        # Los hashes del lote deben ser distintos entre sí (no constante por lote)
+        # y la cadena resultante íntegra.
+        hashes = [
+            r[0] for r in db_conn.execute(
+                "SELECT hash_cadena FROM audit_log ORDER BY id ASC"
+            ).fetchall()
+        ]
+        assert len(set(hashes)) == len(hashes)
+        assert repo.verificar_cadena_cambios() is None
+
 
 # =============================================================================
 # SqliteInfraestructuraRepository

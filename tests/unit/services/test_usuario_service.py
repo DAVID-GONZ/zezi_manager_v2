@@ -230,6 +230,23 @@ class TestCrearUsuario:
         assert usuario.debe_cambiar_password is False
         assert auth._hashes[usuario.id] == "hash:claveDelAdmin1"
 
+    def test_password_explicita_debil_es_rechazada(self):
+        # M4: contraseña explícita al crear debe cumplir la política de dominio.
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth())
+        dto = NuevoUsuarioDTO(
+            usuario="prof_debil", nombre_completo="Prof Debil",
+            rol=Rol.PROFESOR, password="abcdefgh",  # sin dígito
+        )
+        with pytest.raises(ValueError):
+            svc.crear_usuario(dto)
+
+    def test_temporal_generada_cumple_la_policy(self):
+        # T5: N temporales generadas cumplen la política por construcción.
+        from src.domain.policies.password_policy import errores_password
+        for _ in range(200):
+            temp = UsuarioService._generar_password_temporal()
+            assert errores_password(temp) == []
+
 
 class TestDesactivar:
     def test_desactiva_usuario_activo(self):
@@ -260,11 +277,11 @@ class TestCambiarPassword:
     def test_lanza_si_password_incorrecta(self):
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=False))
         with pytest.raises(ValueError, match="no es correcta"):
-            svc.cambiar_password(1, "vieja", "nueva")
+            svc.cambiar_password(1, "vieja", "Clave2026")
 
     def test_cambia_password_correctamente(self):
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
-        svc.cambiar_password(1, "vieja", "nueva")  # no lanza
+        svc.cambiar_password(1, "vieja", "Clave2026")  # no lanza
 
     def test_cambiar_password_limpia_flag_forzado(self):
         # R-A2: cuando el dueño cambia su contraseña, se limpia el flag.
@@ -275,6 +292,29 @@ class TestCambiarPassword:
         assert repo.get_by_id(usuario.id).debe_cambiar_password is True
         svc.cambiar_password(usuario.id, "temporal", "nuevaClave1")
         assert repo.get_by_id(usuario.id).debe_cambiar_password is False
+
+    # M4 — enforcement de la política en el servidor (seguridad_02).
+    def test_rechaza_password_solo_letras(self):
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
+        with pytest.raises(ValueError):
+            svc.cambiar_password(1, "vieja", "abcdefgh")
+
+    def test_rechaza_password_solo_digitos(self):
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
+        with pytest.raises(ValueError):
+            svc.cambiar_password(1, "vieja", "1234567")
+
+    def test_rechaza_password_igual_al_username(self):
+        repo = FakeUsuarioRepo()
+        auth = FakeAuth(pass_ok=True)
+        svc = UsuarioService(repo, auth_service=auth)
+        u = svc.crear_usuario(_dto("juan2026"))
+        with pytest.raises(ValueError):
+            svc.cambiar_password(u.id, "vieja", "juan2026")
+
+    def test_acepta_password_que_cumple_policy(self):
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
+        svc.cambiar_password(1, "vieja", "Clave2026")  # no lanza
 
 
 class TestCambiarRol:
@@ -393,8 +433,16 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
         u = _crear(svc, _dto("prof_p5"))
-        svc.resetear_password(u.id, "claveNueva")
-        assert auth._hashes[u.id] == "hash:claveNueva"
+        svc.resetear_password(u.id, "claveNueva1")
+        assert auth._hashes[u.id] == "hash:claveNueva1"
+
+    def test_resetea_rechaza_password_explicita_debil(self):
+        # M4: una contraseña explícita en el reset debe cumplir la política.
+        auth = FakeAuth()
+        svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
+        u = _crear(svc, _dto("prof_p5b"))
+        with pytest.raises(ValueError):
+            svc.resetear_password(u.id, "abcdefgh")  # sin dígito
 
     def test_password_vacia_genera_temporal_no_username(self):
         # R-A2: un reset sin contraseña explícita NO usa el username (predecible);
@@ -413,7 +461,7 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
         u = _crear(svc, _dto("prof_p6b"))
-        temporal = svc.resetear_password(u.id, "claveExplicita")
+        temporal = svc.resetear_password(u.id, "claveExplicita1")
         assert temporal is None
 
     def test_reset_marca_debe_cambiar_password(self):
@@ -422,7 +470,7 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(repo, auth_service=auth)
         u = _crear(svc, _dto("prof_p6c"))
-        svc.resetear_password(u.id, "claveExplicita")
+        svc.resetear_password(u.id, "claveExplicita1")
         assert repo.get_by_id(u.id).debe_cambiar_password is True
 
     def test_audita_evento_reset(self):
@@ -431,7 +479,7 @@ class TestResetearPassword:
         audit = FakeAuditoria()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth, auditoria=audit)
         u = _crear(svc, _dto("prof_p7"))
-        svc.resetear_password(u.id, "clave")
+        svc.resetear_password(u.id, "Clave2026")
         tipos = [e.tipo_evento for e in audit.eventos]
         assert TipoEventoSesion.RESETEAR_PASSWORD in tipos
 
@@ -446,8 +494,8 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
         u = _crear(svc, _dto("prof_p8", Rol.PROFESOR))
-        svc.resetear_password(u.id, "x", actor_rol="director")
-        assert auth._hashes[u.id] == "hash:x"
+        svc.resetear_password(u.id, "Clave2026", actor_rol="director")
+        assert auth._hashes[u.id] == "hash:Clave2026"
 
 
 # ===========================================================================

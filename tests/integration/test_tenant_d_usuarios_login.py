@@ -121,7 +121,7 @@ class TestLoginSimple:
         with usar_institucion(1):
             svc.crear_usuario(
                 NuevoUsuarioDTO(usuario="passcheck", nombre_completo="Pass",
-                                password="correcta")
+                                password="correcta1")
             )
         with pytest.raises(ValueError, match="credenciales_invalidas"):
             auth.autenticar_usuario("passcheck", "incorrecta")

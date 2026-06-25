@@ -137,5 +137,34 @@ class IAuditoriaRepository(ABC):
         """Retorna el registro de cambio con ese id, o None si no existe."""
         ...
 
+    # =========================================================================
+    # Verificación de integridad (encadenamiento por hash — seguridad_03, M3)
+    # =========================================================================
+    #
+    # Métodos CONCRETOS (no abstractos) a propósito: los repos sin soporte de
+    # cadena (fakes de tests) los heredan sin cambios y se consideran "no
+    # verificables" (devuelven None). El repo SQLite los sobreescribe.
+
+    def verificar_cadena_eventos(self) -> int | None:
+        """
+        Verifica el encadenamiento por hash de la tabla `auditoria`.
+
+        Retorna el `id` del primer evento cuya cadena no cuadra (edición,
+        inserción o borrado intermedio), o None si la cadena es íntegra.
+        Los repos sin soporte de cadena se consideran no verificables y
+        devuelven None.
+        """
+        return None
+
+    def verificar_cadena_cambios(self) -> int | None:
+        """
+        Verifica el encadenamiento por hash de la tabla `audit_log`.
+
+        Retorna el `id` del primer cambio cuya cadena no cuadra, o None si la
+        cadena es íntegra. Los repos sin soporte de cadena se consideran no
+        verificables y devuelven None.
+        """
+        return None
+
 
 __all__ = ["IAuditoriaRepository"]

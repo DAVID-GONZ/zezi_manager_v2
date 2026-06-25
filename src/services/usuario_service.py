@@ -33,6 +33,11 @@ from src.domain.policies.rbac_usuarios import (
     puede_gestionar,
     roles_asignables,
 )
+from src.domain.policies.password_policy import (
+    errores_password,
+    requisitos_password,
+    validar_password,
+)
 
 
 class UsuarioService:
@@ -158,11 +163,27 @@ class UsuarioService:
         admin una sola vez para que la comunique al usuario; el flag
         ``debe_cambiar_password`` obliga a cambiarla en el primer acceso.
 
+        Cumple la política de contraseñas (seguridad_02) POR CONSTRUCCIÓN:
+        garantiza al menos una letra y al menos un dígito (no puede salir
+        solo-letras ni solo-dígitos) y longitud 16 (>= 8). Los dos caracteres
+        fijados se insertan en posiciones aleatorias para no ser predecibles.
+
         NO se loguea ni se persiste en claro: solo viaja como hash (vía
         IAuthenticationService) y como valor de retorno efímero.
         """
         alfabeto = string.ascii_letters + string.digits
-        return "".join(secrets.choice(alfabeto) for _ in range(16))
+        # Garantía por construcción: al menos una letra y al menos un dígito.
+        chars = [
+            secrets.choice(string.ascii_letters),
+            secrets.choice(string.digits),
+        ]
+        chars += [secrets.choice(alfabeto) for _ in range(14)]
+        # Barajado criptográfico para que las dos posiciones fijadas no sean
+        # predecibles (no usar random.shuffle: no es CSPRNG).
+        for i in range(len(chars) - 1, 0, -1):
+            j = secrets.randbelow(i + 1)
+            chars[i], chars[j] = chars[j], chars[i]
+        return "".join(chars)
 
     # ------------------------------------------------------------------
     # Consultas de política (solo lectura) — para gating en la vista
@@ -177,6 +198,16 @@ class UsuarioService:
         if actor_rol is None:
             return False
         return puede_gestionar(actor_rol, target_rol)
+
+    @staticmethod
+    def requisitos_password() -> list[str]:
+        """
+        Textos legibles de las reglas de la política de contraseñas (M4).
+
+        Passthrough de la policy de dominio que devuelve primitivos (strings),
+        para que la UI muestre los requisitos sin importar `src.domain.*`.
+        """
+        return requisitos_password()
 
     # ------------------------------------------------------------------
     # Casos de uso
@@ -225,6 +256,9 @@ class UsuarioService:
         # A2 — credencial inicial. Sin contraseña explícita → temporal fuerte
         # aleatoria + cambio forzado (nunca el username, que es predecible).
         if dto.password:
+            # M4: si el admin fija una contraseña explícita, debe cumplir la
+            # política de dominio (>=8, letra+dígito, != username).
+            validar_password(dto.password, username=dto.usuario)
             password = dto.password
             temporal: str | None = None
             debe_cambiar = False
@@ -398,6 +432,8 @@ class UsuarioService:
         self._verificar_gestion(actor_rol, usuario)
         explicita = (nueva_password or "").strip()
         if explicita:
+            # M4: una contraseña explícita debe cumplir la política de dominio.
+            validar_password(explicita, username=usuario.usuario)
             password = explicita
             temporal: str | None = None
         else:
@@ -427,6 +463,14 @@ class UsuarioService:
             raise ValueError(
                 "El servicio de autenticación no está configurado."
             )
+        # M4: la nueva contraseña debe cumplir la política de dominio ANTES de
+        # delegar al auth (>=8, letra+dígito, != username). Se resuelve el
+        # username del usuario para la regla anti-igualdad (lectura best-effort:
+        # si el repo no lo encuentra, se valida sin username).
+        usuario = self._repo.get_by_id(usuario_id)
+        username = usuario.usuario if usuario is not None else None
+        validar_password(password_nuevo, username=username)
+
         exito = self._auth.cambiar_password(
             usuario_id, password_actual, password_nuevo
         )
