@@ -174,6 +174,16 @@ def registrar_pagina(
         ):
             ui.navigate.to("/cambiar-password")
             return
+        # B1 (seguridad_04) — sync central del contexto antes de renderizar.
+        # Centraliza la reconstrucción de los ContextVar de servicios
+        # (solo_lectura + scope de institución) en el guard, de modo que TODA
+        # petición protegida los sincronice independientemente de lo que recuerde
+        # la página. Defensa en profundidad: una página de mutación futura que
+        # olvide llamar a desde_storage() ya no correría con el flag heredado.
+        # Import perezoso: este módulo de dominio/auth no debe arrastrar NiceGUI
+        # en import-time, y desde_storage() requiere el contexto de petición.
+        from src.interface.context.session_context import SessionContext
+        SessionContext.desde_storage()
         page_fn(**page_fn_kwargs)
 
 

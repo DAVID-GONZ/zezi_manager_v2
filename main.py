@@ -248,6 +248,16 @@ def main() -> None:
     log.info("Entorno: %s", settings.APP_ENV)
     log.info("Base de datos: %s", settings.DATABASE_PATH)
 
+    # M2 (seguridad_04) — recordatorio de TLS en producción. NiceGUI no termina
+    # TLS: la app DEBE servirse tras un reverse proxy (nginx/Caddy) con HTTPS, o
+    # la cookie de sesión viaja en claro. Ver docs/seguridad.md.
+    if settings.is_production:
+        log.warning(
+            "Producción: sirve la app SIEMPRE tras un reverse proxy con TLS "
+            "(HTTPS). Sin HTTPS la cookie de sesión viaja en claro. "
+            "Ver docs/seguridad.md."
+        )
+
     # 1. Inicializar BD
     if not inicializar_base_de_datos():
         raise SystemExit(1)

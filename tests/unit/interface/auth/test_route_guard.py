@@ -17,6 +17,9 @@ el registro central antes de estos tests.
 """
 from __future__ import annotations
 
+import ast
+import inspect
+
 import pytest
 
 from src.domain.models.usuario import Rol
@@ -173,6 +176,35 @@ def test_configuracion_evaluacion_solo_profesor():
     assert _veredicto_para(ruta, "director", autenticado=True) == ACCESO_DENEGADO
     assert _veredicto_para(ruta, "coordinador", autenticado=True) == ACCESO_DENEGADO
     assert _veredicto_para(ruta, "admin", autenticado=True) == ACCESO_DENEGADO
+
+
+# ── 4. Guardarraíl B1: sync central del contexto en el guard ──────────────────
+
+def test_guard_sincroniza_contexto_central():
+    """
+    B1 (seguridad_04): el wrapper de página del guard DEBE invocar
+    `SessionContext.desde_storage()` para centralizar el sync de los ContextVar
+    (solo_lectura + scope de institución) en cada render protegido. Verificado a
+    nivel de AST del módulo (sin servidor NiceGUI) para que el sync central no
+    pueda eliminarse sin romper este test.
+    """
+    from src.interface.auth import route_guard
+
+    arbol = ast.parse(inspect.getsource(route_guard))
+
+    llamadas_desde_storage = [
+        nodo
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Call)
+        and isinstance(nodo.func, ast.Attribute)
+        and nodo.func.attr == "desde_storage"
+        and isinstance(nodo.func.value, ast.Name)
+        and nodo.func.value.id == "SessionContext"
+    ]
+    assert llamadas_desde_storage, (
+        "El guard debe invocar SessionContext.desde_storage() para sincronizar "
+        "el contexto (solo_lectura + institucion) de forma central (B1)."
+    )
 
 
 def test_admin_solo_inicio_y_rutas_admin():
