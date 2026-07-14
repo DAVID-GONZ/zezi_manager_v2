@@ -31,6 +31,7 @@ class AlertaService:
         repo: IAlertaRepository,
         estadisticos_repo: IEstadisticosRepository | None = None,
     ) -> None:
+        """Inyecta el repositorio de alertas y el de estadísticos (opcional)."""
         self._repo              = repo
         self._estadisticos_repo = estadisticos_repo
 

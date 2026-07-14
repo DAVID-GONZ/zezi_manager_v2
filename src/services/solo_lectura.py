@@ -44,6 +44,7 @@ class OperacionSoloLecturaError(PermissionError):
     """
 
     def __init__(self, mensaje: str | None = None) -> None:
+        """Construye el error con un mensaje por defecto de solo lectura."""
         super().__init__(
             mensaje
             or "Sesión en modo solo lectura (Ver como): no se permiten cambios."

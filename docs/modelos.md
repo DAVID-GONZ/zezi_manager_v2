@@ -2,6 +2,12 @@
 
 Este documento describe las entidades que conforman el núcleo de la lógica de negocio en **ZECI Manager v2.0**. Estas entidades están implementadas en `src/domain/models/` y utilizan **Pydantic v2** para garantizar la validación estricta de tipos y datos en tiempo de ejecución.
 
+> 📖 **Referencia detallada:** el catálogo campo a campo está en
+> [`docs/schema.md`](schema.md); la referencia por método (validators,
+> propiedades, métodos de dominio con firma exacta) está en
+> [`docs/api_reference/dominio_modelos.md`](api_reference/dominio_modelos.md),
+> generada con `tools/gen_api_reference.py`.
+
 ## Principios de Diseño
 
 De acuerdo con la Arquitectura Limpia adoptada por el proyecto:
@@ -11,7 +17,14 @@ De acuerdo con la Arquitectura Limpia adoptada por el proyecto:
 
 ## Entidades Principales
 
-El sistema está compuesto por **19 módulos de dominio** que definen las entidades principales, agregados y objetos de valor (Value Objects).
+El sistema está compuesto por **19 módulos de dominio** (`src/domain/models/`,
+incluyendo `dtos.py`) que definen las entidades principales, agregados y objetos
+de valor (Value Objects).
+
+> Además de los modelos, el dominio incluye el paquete `src/domain/policies/` con
+> **funciones puras de reglas transversales** (no son entidades): `rbac_usuarios`
+> (matriz de roles), `password_policy` (requisitos de contraseña) y `audit_chain`
+> (encadenamiento por hash de la auditoría). Ver `docs/architecture.md` §7.2.
 
 ### 1. Acudiente (`acudiente.py`)
 Maneja la información de los padres, tutores o responsables legales de los estudiantes.
@@ -99,6 +112,18 @@ Sistema de plan de mejoramiento basado en cortes con notas ponderadas (distinto 
 *(Existente, refactorizado como módulo independiente)*
 
 Ver entrada 14 — el módulo fue renumerado al incorporar los nuevos módulos 17 y 18.
+
+### 20. Institución (`institucion.py`) *(Nuevo — multi-tenant, paso_24)*
+Primer ladrillo del modelo multi-tenant: catálogo de instituciones (tenants).
+- `Institucion` — entidad tenant. `nombre` obligatorio y normalizado (≤200);
+  `nit`/`codigo` opcionales (identificadores externos, p.ej. DANE); *soft state*
+  (`activa`, no se elimina). La unicidad del nombre la garantiza el servicio, no
+  el modelo.
+- DTOs `NuevaInstitucionDTO` (creación) e `InstitucionResumenDTO` (selects/filtros).
+- La institución **#1** se siembra desde `configuracion.nombre_institucion` y es
+  el default de usuarios nuevos. El aislamiento por tenant se aplica en la capa de
+  servicios (ver `docs/architecture.md` §9). El modelo `Usuario` incorpora el
+  campo `institucion_id` (default `None`).
 
 ## Consideraciones de Mutabilidad
 

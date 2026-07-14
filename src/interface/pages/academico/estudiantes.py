@@ -94,7 +94,7 @@ def estudiantes_page() -> None:
 
     # ── Carga inicial de datos de soporte ─────────────────────────────────────
     try:
-        _s["grupos"] = Container.infraestructura_service().listar_grupos()
+        _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
     except Exception as exc:
         logger.error("Error cargando grupos: %s", exc)
 

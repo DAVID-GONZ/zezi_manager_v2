@@ -1,427 +1,122 @@
-# Análisis de Arquitectura e Ingeniería de Software
-## ZECI Manager v2.0 — Auditoría Integral
+# Análisis de Arquitectura — ZECI Manager v2.0
 
-> **Fecha de auditoría:** 2026-05-18 (última revisión)  
-> **Estado del proyecto:** Activo / En desarrollo  
-> **Stack:** Python 3.x · NiceGUI 3.x · SQLite · Pydantic v2 · Bcrypt · JWT (stdlib)
-
----
-
-## 1. Inventario de Módulos (Estado Actual)
-
-La siguiente tabla refleja el estado real del proyecto al momento del análisis, obtenido directamente de la estructura de archivos.
-
-### 1.1 Capa de Dominio (`src/domain/`)
-
-| Sublayer | Módulos |
-|---|---|
-| **Modelos** | `acudiente`, `alerta`, `asignacion`, `asistencia`, `auditoria`, `cierre`, `configuracion`, `convivencia`, `dtos`, `estudiante`, `evaluacion`, `habilitacion`, `infraestructura`, `periodo`, `piar`, `usuario` (+ `__init__`) = **17 archivos** |
-| **Puertos** | `acudiente_repo`, `alerta_repo`, `asignacion_repo`, `asistencia_repo`, `auditoria_repo`, `cierre_repo`, `configuracion_repo`, `convivencia_repo`, `estadisticos_repo`, `estudiante_repo`, `evaluacion_repo`, `habilitacion_repo`, `infraestructura_repo`, `periodo_repo`, `service_ports`, `usuario_repo` (+ `__init__`) = **17 archivos** |
-
-> [!NOTE]
-> El archivo `service_ports.py` representa los puertos de servicio (interfaces de aplicación). Su existencia indica que la arquitectura contempla la posibilidad de abstraer también los servicios, no solo los repositorios. Este es un nivel de madurez arquitectónica superior al promedio.
-
-### 1.2 Capa de Servicios (`src/services/`)
-
-16 servicios de aplicación implementados:
-
-| Servicio | Descripción breve |
-|---|---|
-| `AcudienteService` | Gestión de acudientes/tutores |
-| `AlertaService` | Detección y gestión de alertas académicas |
-| `AsignacionService` | Asignación docente-grupo-asignatura |
-| `AsistenciaService` | Registro y consulta de asistencia |
-| `AuditoriaService` ✅ | Lectura de logs de auditoría (ya existe) |
-| `CierreService` | Cierre de periodos y años académicos |
-| `ConfiguracionService` | Configuración institucional y SIE |
-| `ConvivenciaService` | Registro de eventos de convivencia |
-| `EstadisticosService` | Cálculo de métricas académicas |
-| `EstudianteService` | Gestión del ciclo de vida del estudiante |
-| `EvaluacionService` | Registro y cálculo de calificaciones |
-| `HabilitacionService` | Gestión de habilitaciones y recuperaciones |
-| `InformeService` | Generación de boletines e informes |
-| `PeriodoService` | Gestión de periodos académicos |
-| `UsuarioService` | Gestión de usuarios y autenticación |
-| *(`AuditoriaService`)* | **Nota:** existe en `/services/` pero **no está exportado en `__init__.py`** |
-
-> [!WARNING]
-> **Gap de exportación:** `AuditoriaService` existe en `src/services/auditoria_service.py` y está registrado en `Container.auditoria_service()`, pero **no aparece en el `__all__` del `__init__.py`** de `src/services/`. Esto significa que `from src.services import AuditoriaService` fallará silenciosamente. Se debe agregar a las exportaciones.
-
-### 1.3 Capa de Infraestructura (`src/infrastructure/`)
-
-| Submódulo | Contenido |
-|---|---|
-| `db/repositories/` | 16 implementaciones SQLite (`sqlite_*.py`) — paridad 1:1 con los puertos |
-| `db/schema.py` | Definición DDL completa (~49 KB) |
-| `db/seed.py` | Datos semilla iniciales (~40 KB) |
-| `db/queries.py` | Consultas reutilizables |
-| `db/connection.py` | Pool de conexiones SQLite con soporte WAL |
-| `auth/` | `BcryptAuthService`, `JWTHandler`, `bcrypt_auth.py` |
-| `context/` | `ContextInitializer`, `session_context.py` |
-| `exporters/` | `ExcelExporter` (openpyxl), `NullExporter`, `ExporterFactory`, stubs PDF/Excel |
-| `notifications/` | `LogNotificationService`, `NullNotificationService` |
-
-### 1.4 Capa de Interfaz (`src/interface/`)
-
-| Submódulo | Contenido |
-|---|---|
-| `design/` | `tokens.py`, `theme.py`, `layout.py`, `styles.css` (~35 KB), `components/` |
-| `pages/` | `login.py`, `inicio.py` (dashboard, ~29 KB) |
-| `pages/admin/` | `asignaciones`, `asignaturas`, `configuracion_institucion`, `configuracion_sie`, `grupos`, `usuarios` (6 páginas) |
-| `pages/academico/` | `asistencia`, `dashboard`, `estudiantes`, `horarios`, `tablero_estadisticos` (5 páginas) |
-| `pages/convivencia/` | *(en desarrollo)* |
-| `pages/evaluacion/` | `cierre_anio`, `cierre_periodo`, `configuracion_evaluacion`, `habilitaciones`, `planes_mejoramiento`, `planilla_notas` (6 páginas) |
-| `pages/informes/` | `boletin_anual`, `boletin_periodo`, `consolidado_asistencia`, `consolidado_notas`, `estadisticos` (5 páginas) |
-
-**Total de páginas NiceGUI:** ~23+ páginas implementadas.
+> **Fecha:** 2026-07-11 · **Tipo:** Auditoría integral del estado construido.
+> Snapshot en el tiempo (no doc vivo). La referencia vigente es
+> `docs/architecture.md`; la referencia por método,
+> `docs/api_reference.md`. Reemplaza a la auditoría de mayo-2026 (obsoleta).
 
 ---
 
-## 2. Análisis del Composition Root (`container.py`)
+## 1. Veredicto ejecutivo
 
-El `Container` es un **Singleton lazy por clave de caché** implementado como una clase con métodos de clase. Es uno de los componentes arquitectónicamente más sólidos del sistema.
+Sistema de gestión académica **maduro y bien arquitecturado**, en fase de
+**cierre de migración**: **94 de 95 pasos** del roadmap están `done` (~99%); el
+único pendiente es `audit_design_system`. La
+Arquitectura Limpia no es decorativa — está **enforced por tooling** (`init.py`
+con gate de anti-patrones, guard de rutas deny-by-default, `Container` como único
+punto de instanciación). La deuda restante es de *afinado y saneamiento*, no
+estructural.
 
-### 2.1 Fortalezas del Container
-
-- **Lazy initialization:** Cada componente se instancia bajo demanda, reduciendo el tiempo de arranque y evitando errores de dependencias circulares en módulos con errores.
-- **Cache dict-based:** `_cache: dict[str, Any] = {}` es un atributo de clase compartido entre todos los accesos, garantizando singleton efectivo por proceso.
-- **`Container.reset()`:** Permite vaciar el caché para tests de integración, lo que hace al sistema verdaderamente testeable.
-- **`Container.diagnostico()`:** Introspección en tiempo de arranque que intenta instanciar todos los servicios y reporta errores antes de servir el primer request. Se ejecuta automáticamente en `is_development`.
-- **Imports lazy:** Todos los imports de infraestructura y servicios están dentro de cada método factory, evitando la carga de módulos no necesarios y los errores en cascada.
-
-### 2.2 Mapa de Dependencias del Container
-
-```
-auth_service         ← usuario_repo
-notification_service ← (sin dependencias)
-exporter_service     ← (ExporterFactory)
-
-configuracion_service ← configuracion_repo
-usuario_service       ← usuario_repo + auth_service + auditoria_repo
-estudiante_service    ← estudiante_repo + acudiente_repo + auditoria_repo
-periodo_service       ← periodo_repo + configuracion_repo + auditoria_repo
-asignacion_service    ← asignacion_repo + periodo_repo + auditoria_repo
-evaluacion_service    ← evaluacion_repo + asignacion_repo + periodo_repo + auditoria_repo
-alerta_service        ← alerta_repo + estadisticos_repo
-asistencia_service    ← asistencia_repo + alerta_repo + config_repo
-cierre_service        ← cierre_repo + evaluacion_repo + periodo_repo + config_repo
-                         + estudiante_repo + alerta_repo + auditoria_repo  (7 dependencias)
-habilitacion_service  ← habilitacion_repo + cierre_repo + config_repo
-convivencia_service   ← convivencia_repo + alerta_repo
-estadisticos_service  ← estadisticos_repo + config_repo
-informe_service       ← estadisticos_repo + exporter_service
-auditoria_service     ← auditoria_repo
-```
-
-> [!IMPORTANT]
-> **`CierreService` tiene 7 dependencias directas.** Es el servicio más acoplado del sistema. Si bien esto refleja la complejidad real del dominio (el cierre de periodo es la operación más compleja académicamente), se debería considerar si parte de la lógica puede ser delegada a otros servicios para reducir la carga de responsabilidades en un solo punto.
-
----
-
-## 3. Sistema de Autenticación y Seguridad
-
-El sistema implementa una **arquitectura de seguridad de doble capa** que merece análisis detallado.
-
-### 3.1 Capa de Sesión (NiceGUI — v2.x actual)
-
-- **Mecanismo:** `app.storage.user` (diccionario de sesión cifrado gestionado por NiceGUI/Starlette).
-- **Clave de cifrado:** `storage_secret=settings.JWT_SECRET` en `ui.run()`.
-- **Flujo:** Login → `BcryptAuthService.autenticar()` → `ContextInitializer.inicializar()` → `SessionContext.guardar()` → redirect a `/inicio`.
-- **Guard en páginas:** Verificación manual `app.storage.user.get("autenticado")` en cada `@ui.page`.
-
-### 3.2 Capa JWT (preparada para API REST — v3.0)
-
-- **`JWTHandler`** implementado con **stdlib pura** (`hmac`, `hashlib`, `base64`), sin dependencias externas.
-- **Algoritmo:** HS256 (HMAC-SHA256).
-- **Expiración:** Configurable, default 8 horas (jornada escolar completa).
-- **Estado:** El docstring del archivo lo deja claro: *"No se usa en v2.x, preparado para v3.0 (API REST)"*.
-
-> [!NOTE]
-> La decisión de implementar `JWTHandler` con stdlib es una elección deliberada de reducción de dependencias. Es correcta para el contexto, pero implica que la implementación no soporta claims estándar avanzados (RS256, JWKS, etc.) que serían necesarios si se integra con un Identity Provider externo (OAuth2/OIDC).
-
-### 3.3 Riesgo de Seguridad Identificado
-
-> [!CAUTION]
-> **JWT_SECRET tiene un valor por defecto inseguro** (`"cambia-esta-clave-en-produccion-ahora"`). El `model_validator` en `config.py` emite un `warnings.warn()` si el entorno es `production` y el secret tiene ese valor. Sin embargo:
-> 1. `warnings.warn()` es silencioso si `logging` está configurado antes de que Python cargue el módulo de warnings.
-> 2. No hay ningún mecanismo que **bloquee** el arranque si el secret es inseguro en producción.
-> **Recomendación:** Cambiar a `raise ValueError(...)` en el `model_validator` cuando `APP_ENV == "production"`.
-
----
-
-## 4. Subsistema de Contexto de Sesión (`ContextInitializer`)
-
-Este subsistema es una de las piezas más sofisticadas del proyecto y merece análisis propio.
-
-### 4.1 Arquitectura del Contexto
-
-`ContextInitializer` actúa como un **servicio de resolución de contexto académico** que se ejecuta una vez en el login para materializar en la sesión del usuario:
-
-- El **año académico activo** (via `ConfiguracionService`)
-- El **período activo** (via `PeriodoService`, con fallback al primer período no cerrado)
-- El **grupo y asignatura** del docente (via `AsignacionRepository`, con ordenación determinista)
-- Solo el **grupo** para directores (sin asignatura)
-
-### 4.2 Fortalezas
-
-- **Stateless:** Todos los métodos son `@staticmethod`. No hay estado de instancia que pueda corromperse.
-- **Resiliente a fallos:** Cada paso de resolución (`_resolver_anio`, `_resolver_periodo`, etc.) captura sus propias excepciones y retorna `False` sin propagar. La inicialización siempre retorna un contexto, aunque sea parcial.
-- **Contexto con auto-refresco:** `ContextInitializer.refrescar_si_invalido(ctx)` detecta si el contexto guardado sigue siendo válido en la BD (el año fue desactivado, el periodo fue cerrado, la asignación fue removida) y lo re-inicializa automáticamente sin forzar al usuario a hacer logout.
-
-### 4.3 Inconsistencia Detectada: Bypass de Repositorio en ContextInitializer
-
-> [!WARNING]
-> En `_resolver_grupo_y_asignatura()` (línea 203), el `ContextInitializer` llama directamente a `Container.asignacion_repo().listar_por_docente(...)` en lugar de usar `Container.asignacion_service()`. Esto es un bypass similar al detectado en `inicio.py`. Si en el futuro `AsignacionService` añade lógica de permisos o cache, esta ruta la saltaría.
-> 
-> Adicionalmente, en `contexto_es_valido()` (línea 290), se llama directamente a `Container.periodo_repo().get_by_id(...)` en lugar de `Container.periodo_service()`.
-
----
-
-## 5. Design System (`src/interface/design/`)
-
-El sistema de diseño **"Andes Minimal v2"** implementa una arquitectura de tokens que es notable por su completitud:
-
-### 5.1 Componentes del Design System
-
-| Archivo | Responsabilidad |
-|---|---|
-| `tokens.py` | Constantes Python: `Colors`, `AsistenciaColors`, `DesempenoColors`, `Icons`, `Spacing`, `Layout` |
-| `styles.css` | Variables CSS (`:root { --color-primary: ... }`), clases utilitarias, componentes |
-| `theme.py` | `ThemeManager.aplicar()` — inyecta el CSS global en NiceGUI una sola vez |
-| `layout.py` | Layout global: sidebar + topbar con toggle y estado de sesión |
-| `components/` | Componentes NiceGUI reutilizables |
-
-### 5.2 Fortaleza: Representación Triple de Tokens de Color
-
-Los colores existen en **tres formas sincronizadas**:
-- **Variables CSS** en `styles.css` (`:root { --color-primary: #2563EB; }`) — consumidas por componentes HTML y NiceGUI.
-- **Constantes Python** en `tokens.py` (`Colors.PRIMARY = "#2563EB"`) — usadas para lógica condicional y clases CSS dinámicas.
-- **Bloque `_EC_*`** en páginas con ECharts (ej. `tablero_estadisticos.py`) — alias locales de `tokens.py` exclusivamente para opciones de gráficos ECharts.
-
-> [!NOTE]
-> ECharts renderiza en `<canvas>` y no puede leer variables CSS ni clases HTML. El bloque `_EC_*` es la solución canónica: centraliza todos los valores de color de ECharts al inicio del módulo, todos derivados de `tokens.py`. El patrón está documentado en el docstring del módulo y es la excepción explícita a la regla de "cero colores en Python".
-
-> [!WARNING]
-> La representación triple introduce un riesgo de desincronización en tres puntos. Si se cambia un color, debe actualizarse en: `styles.css` (variable CSS), `tokens.py` (constante Python) y el bloque `_EC_*` del módulo correspondiente. Una mejora futura sería generar los tokens CSS desde Python en el arranque via `ThemeManager`, reduciendo la duplicación a dos fuentes.
-
-### 5.3 Regla de Estilo: Cero Colores en Python (excepto ECharts)
-
-A partir de la refactorización de `tablero_estadisticos.py` (2026-05-18), se establece la siguiente convención para **toda la capa de interfaz**:
-
-| Componente | Color en Python | Color en CSS |
+| Dimensión | Madurez | Nota |
 |---|---|---|
-| Elementos HTML / NiceGUI | ❌ Prohibido | ✅ Clases CSS |
-| ag-Grid `cellClass` / `rowClassRules` | ✅ Nombre de clase (string) | ✅ Definición en CSS |
-| ag-Grid `cellRenderer` (HTML inline) | ❌ Prohibido | ✅ Clase CSS en el string |
-| ECharts (opciones JSON) | ✅ Solo bloque `_EC_*` | ❌ No aplica |
+| Arquitectura / separación de capas | 🟢 Excelente | Regla de dependencias verificada por tooling; dominio puro |
+| Cobertura funcional | 🟢 Alta | Evaluación, asistencia, convivencia, horarios, informes, admin |
+| Seguridad | 🟢 Sólida | Épico A1–A2 / M1–M4 / B1–B4 cerrado en código + decisiones |
+| Testing | 🟢 Fuerte | ~1.276 tests; ratio test/código sano |
+| Documentación | 🟢 Completa | Narrativa + referencia por método auto-generada |
+| Multi-tenant | 🟡 Inicial | Solo "primer ladrillo" (scope por servicio, sin aislamiento total) |
+| Salud del entorno/CI | 🟡 Con fricciones | 1 test roto; drift de bookkeeping |
 
-Esta convención garantiza que el theming sea controlable desde `styles.css` sin tocar Python.
+## 2. Métricas del sistema
 
-### 5.4 Lógica de Dominio en Tokens de Diseño
+| | Valor |
+|---|---|
+| Código fuente | ~48.500 líneas (`domain` 13k · `services` 10k · `infrastructure` 14k · `interface` 22k) |
+| Tests | ~19.400 líneas, **1.276 tests** (`tests/unit` + `tests/integration`) |
+| Capas de dominio | 19 modelos · 20 puertos · 3 políticas · ~23 servicios (+3 mecanismos) · 19 repos SQLite · ~30 páginas |
+| Superficie de API | 484 métodos de modelo · 364 de puerto · 351 de servicio · 429 de infra |
+| Base de datos | SQLite, **60 tablas**, WAL |
+| Roadmap | 95 pasos: **94 done**, 1 pending (`audit_design_system`) |
 
-> [!WARNING]
-> `DesempenoColors.para_nota()` (tokens.py, línea 141) contiene lógica de dominio educativo:
-> ```python
-> if nota < 3.0:  return "Bajo"
-> if nota < 3.8:  return "Básico"  
-> if nota < 4.6:  return "Alto"
-> return "Superior"
-> ```
-> Estos umbrales (3.0, 3.8, 4.6) son **reglas de negocio del sistema educativo colombiano**, no decisiones de diseño visual. Deberían vivir en el modelo de dominio `Evaluacion` o en `ConfiguracionService`. Tenerlos en `tokens.py` los vuelve inaccesibles para la capa de servicios sin crear una dependencia inversa.
+## 3. Fortalezas (lo bien construido)
 
----
+1. **Disciplina de capas real, no aspiracional.** El dominio no importa nada
+   externo; los servicios no ven SQL ni NiceGUI; `pandas` confinado a
+   infraestructura. Un **gate automático** (`init.py`) rompe el build si alguien
+   cruza la frontera.
+2. **Composition root único** (`container.py`) con singleton lazy y `diagnostico()`
+   que instancia todo al arrancar para detectar config rota antes de servir.
+3. **Seguridad como mecanismos transversales, no parches por página**:
+   autorización deny-by-default centralizada (`registrar_pagina`), políticas de
+   dominio puras (RBAC, contraseñas, cadena hash) como fuente de verdad para
+   servicio *y* vista, y `ContextVar` para solo-lectura ("Ver como") y scope de
+   tenant.
+4. **Auditoría con integridad criptográfica** (cadena SHA-256 append-only).
+5. **Testing serio**: 1.276 tests, trazabilidad requisito↔test, BD en memoria.
+6. **Documentación completa y sostenible**: narrativa + referencia por método
+   **generada desde el código** (`tools/gen_api_reference.py`).
 
-## 6. Análisis de la Cobertura de Tests
+## 4. Cobertura funcional construida
 
-### 6.1 Estructura del Suite de Tests
+Académico: matrícula/estudiantes + PIAR · evaluación (categorías, actividades,
+planilla en vivo, SIEE) · cierre de periodo/año con **decisiones de promoción** ·
+habilitaciones · **nivelación** y **planes de mejoramiento** (Decreto 1290) ·
+asistencia con alertas automáticas · convivencia · **generador automático de
+horarios** (backtracking + restricciones) · informes/boletines (Excel/PDF/CSV con
+degradación en cascada) · administración (usuarios, roles, auditoría, config
+institucional) · 6 roles.
 
-```
-tests/
-├── conftest.py           (5.2 KB) — fixtures compartidos
-├── test_container.py     (2.7 KB) — smoke tests del Container
-├── unit/
-│   ├── domain/
-│   ├── infrastructure/
-│   └── services/
-└── integration/
-    ├── audit_ports.py    (12.9 KB) — auditoría de puertos
-    ├── generate_schema.py (6.0 KB) — generación de schema
-    ├── test_repositories.py (41.8 KB) — tests de repositorios
-    └── test_scratch.py   (92 B)  — placeholder
-```
+## 5. Seguridad — estado
 
-### 6.2 Observaciones sobre el Suite
+Épico cerrado: bcrypt(12) + política de contraseñas + throttle (A1), cambio
+forzado (A2), secretos independientes con bloqueo de arranque (M1/M3), cadena hash
+de auditoría (M4), sync central de contexto (B1). Diferido explícitamente: TLS por
+reverse proxy (M2), revocación JWT a v3 (B4), `check_same_thread` aceptado (B3). No
+enumeración de usuarios en login. Modelo coherente y documentado (`docs/seguridad.md`).
 
-> [!IMPORTANT]
-> `test_repositories.py` con **41.8 KB** es el archivo de tests más grande del proyecto. Indica una cobertura significativa a nivel de repositorio (infraestructura), lo cual es positivo para detectar errores de hidratación Pydantic ↔ SQLite.
->
-> Sin embargo, la carpeta `tests/unit/services/` está presente pero no se pudo confirmar la cobertura de los 16 servicios de aplicación. Los servicios contienen la lógica de negocio más crítica (cálculo de promedios, cierre de periodo, detección de riesgo académico) y deberían tener tests unitarios con mocks.
+## 6. Debilidades, riesgos y deuda técnica
 
----
+> **Nota de entorno.** El proyecto usa un virtualenv en `.venv/` con las
+> dependencias instaladas (`requirements.txt`). Toda verificación debe correrse
+> con `.venv/Scripts/python.exe`, no con el Python global. Los hallazgos #1 y #3
+> de una versión previa de este análisis resultaron ser artefactos de usar el
+> intérprete global (sin `pydantic-settings`), no defectos reales.
 
-## 7. Inconsistencias Arquitectónicas (Inventario Actualizado)
+| # | Hallazgo | Evidencia | Severidad |
+|---|---|---|---|
+| 1 | **Dependencias del entorno** instaladas en `.venv/`; la app arranca. Verificar siempre con el intérprete del venv | app OK con `.venv` | ✅ Resuelto |
+| 2 | **Off-by-one en throttle**: `login_throttle.estado_bloqueo` devuelve `int(restante)+1`, que puede exceder `BLOQUEO_SEGUNDOS` (301 > 300) con timer grueso de Windows | `test_bloquea_al_alcanzar_el_limite` falla (con `.venv`) | 🟠 Media |
+| 3 | ~~Módulo de test no colecta~~ — **falso positivo**: `test_config_secrets.py` pasa (7/7) con el intérprete del `.venv` | 7 passed | ✅ No es defecto |
+| 4 | ~~Drift de bookkeeping~~ — **reconciliado**: `seguridad_04` marcado `done` (guardarraíl B1: 18/18 verde, criterio de done cumplido) | `step_list.json` | ✅ Resuelto |
+| 5 | **Multi-tenant = primer ladrillo**: aislamiento por *scope de servicio*, pero las tablas académicas aún no llevan `institucion_id`; la separación real entre colegios no está completa | docstring de `institucion.py` | 🟡 Media |
+| 6 | **Objeto-Dios en infraestructura académica**: `InfraestructuraService` (75 métodos) e `IInfraestructuraRepository` (100 métodos) violaban SRP. **Fase 1 (`mejora_01`)**: lógica movida a 5 sub-servicios cohesivos. **Fase 2 (`mejora_05`)**: interfaz **100% desacoplada** (0 referencias a la fachada), horarios consolidados en `HorarioService`. La fachada se retiene como **agregador del generador de horarios** (uso legítimo, no deuda). Pendiente opcional: partir `IInfraestructuraRepository` (100 métodos) | conteos de métodos | 🟢 Resuelto (fachada = agregador) |
+| 7 | **Generador de horarios**: backtracking/coloreo — mayor complejidad y riesgo de rendimiento/calidad; difícil de testear exhaustivamente | `generador_horario_service.py` | 🟡 Media |
+| 8 | **Docstrings de modelos al 28%** (muchos validators/propiedades triviales) | `docs/api_reference/dominio_modelos.md` | 🟢 Baja |
+| 9 | `audit_design_system` **pending**: saneamiento del design system sin cerrar | `step_list.json` | 🟢 Baja |
 
-### 7.1 — Bypass de Servicios desde la UI *(Severidad: Alta)*
+## 7. Recomendaciones priorizadas
 
-**Problema original (detectado en análisis previo):** La UI en `inicio.py` accedía directamente a `Container.auditoria_repo()` y `Container.periodo_repo()`.
+**P0 — desbloquear ejecución** ✅ *(hecho: entorno con deps instaladas, la app arranca)*
 
-**Estado actual:** `AuditoriaService` **ya existe** (`src/services/auditoria_service.py`) y está **registrado** en el Container. Sin embargo, se debe verificar si `inicio.py` ya fue actualizado para usarlo.
+**P1 — cerrar lo casi-terminado**
+- Corregir el off-by-one del throttle (#2): acotar el retorno a
+  `(0, BLOQUEO_SEGUNDOS]`.
+- Reconciliar `step_list.json` (#4): marcar `seguridad_04` `done` si B1 está
+  cerrado y verificado.
 
-**Bypass adicional encontrado:** `ContextInitializer` también accede directamente a repositorios (ver §4.3).
-
-### 7.2 — `AuditoriaService` No Exportado en `__init__.py` *(Severidad: Media)*
-
-`src/services/__init__.py` lista 14 servicios en `__all__` pero **omite `AuditoriaService`**. Esto rompe el contrato de importación del módulo de servicios.
-
-```python
-# Corrección requerida en src/services/__init__.py:
-from src.services.auditoria_service import AuditoriaService
-# Y en __all__: agregar "AuditoriaService"
-```
-
-### 7.3 — Lógica de Dominio en Capa de Presentación *(Severidad: Media)*
-
-`DesempenoColors.para_nota()` en `tokens.py` contiene los umbrales de calificación del sistema educativo colombiano. Estos deben migrarse al dominio o a configuración.
-
-### 7.4 — Seguridad del JWT Secret *(Severidad: Alta en Producción)*
-
-`config.py` emite `warnings.warn()` pero no bloquea el arranque si `JWT_SECRET` tiene el valor por defecto en producción. Riesgo de despliegue inseguro inadvertido.
-
-### 7.5 — Posible Race Condition en `app.storage.user` *(Severidad: Media)*
-
-El `SessionContext` y los componentes `refreshable` en NiceGUI pueden leer/mutar `app.storage.user` concurrentemente. NiceGUI 3.x gestiona las conexiones WebSocket por usuario en corutinas separadas, lo que puede generar estados inconsistentes si dos callbacks asíncronos modifican el storage simultáneamente.
-
-### 7.6 — Exportadores Incompletos *(Severidad: Baja — Deuda técnica)*
-
-`src/infrastructure/exporters/excel_exporter.py` y `pdf_exporter.py` tienen **0 bytes** (stubs vacíos). `ExporterFactory` devuelve el `NullExporter` si las dependencias no están disponibles (patrón Null Object correcto), pero la funcionalidad de exportación PDF y Excel no está implementada.
-
-### 7.7 — Bug Corregido: `contexto_completo` llamado como método *(Resuelto 2026-05-18)*
-
-`SessionContext.contexto_completo` está declarado como `@property` (retorna `bool`). En `tablero_estadisticos.py` se llamaba erróneamente como `ctx.contexto_completo()`, lo que producía `TypeError: 'bool' object is not callable` al intentar llamar el resultado de la propiedad.
-
-**Corrección aplicada:** eliminar los `()` en las dos ocurrencias (líneas 701 y 726 del módulo). El error era silencioso durante el import y solo se manifestaba en tiempo de ejecución al navegar a `/academico/tablero`.
-
-> [!NOTE]
-> Patrón preventivo recomendado: las propiedades booleanas de `SessionContext` (`es_docente`, `es_directivo`, `es_admin`, `tiene_grupo`, `contexto_completo`) **nunca deben llevar paréntesis**. Deben usarse siempre como `ctx.contexto_completo`, no `ctx.contexto_completo()`.
-
----
-
-## 8. Fortalezas Arquitectónicas Confirmadas
-
-1. **Clean Architecture estricta:** La regla de dependencia se respeta en >95% del código. El núcleo de dominio no importa NiceGUI, SQLite, ni bcrypt.
-
-2. **Patrón Repositorio con DI completa:** Los 16 repositorios tienen interfaces abstractas en `domain/ports/` y sus implementaciones SQLite en `infrastructure/`. El Container inyecta las implementaciones concretas sin que los servicios conozcan SQLite.
-
-3. **Auditoría transversal no invasiva:** El mecanismo `_auditar()` en los servicios registra cambios sin contaminar la lógica de negocio. La auditoría de lectura está separada en `AuditoriaService`.
-
-4. **Configuración 12-Factor:** `config.py` con `pydantic-settings` lee desde variables de entorno y `.env`. Soporte explícito para `development`, `production` y `test`. Validación de configuración en el arranque.
-
-5. **Arranque defensivo:** `Container.diagnostico()` + `inicializar_base_de_datos()` en `main.py` garantizan que los errores de configuración se detecten antes de servir el primer request.
-
-6. **Sistema de contexto académico inteligente:** `ContextInitializer.refrescar_si_invalido()` protege contra sesiones con contexto desactualizado después de cierres de periodo.
-
-7. **Diseño de tokens triple-capa:** El design system "Andes Minimal v2" sincroniza colores entre CSS (`:root`), Python (`tokens.py`) y ECharts (`_EC_*`). La convención "cero colores en Python excepto ECharts" mantiene el theming centralizado en `styles.css`.
-
-8. **Patrón Null Object en adaptadores externos:** `NullExporter` y `NullNotificationService` permiten que el sistema funcione en entornos sin dependencias opcionales instaladas (openpyxl, etc.).
-
-9. **Separación CSS/lógica en ag-Grid:** La refactorización de `tablero_estadisticos.py` establece el patrón de usar `cellClass` y `rowClassRules` con nombres de clase CSS en lugar de `cellStyle` con colores inline. Esto hace que ag-Grid respete el tema visual sin hardcodear valores hexadecimales en Python.
+**P2 — deuda de mantenibilidad (cuando haya margen)**
+- Decidir el rumbo de multi-tenant (#5): si es objetivo real, planificar
+  `institucion_id` en tablas académicas; si no, documentarlo como single-tenant
+  con catálogo.
+- Descomponer `InfraestructuraService`/repo (#6) en sub-servicios cohesivos
+  (Escenarios, Franjas, Catálogo académico, Restricciones). **Fase 1 completada en
+  `mejora_01`**; fase 2 (re-apuntado + retiro de fachada) en `mejora_05`.
+- Backfill de docstrings de modelos con lógica no trivial (#8).
+- Planificar `audit_design_system` (#9) como paso propio con su spec.
 
 ---
 
-## 9. Hoja de Ruta de Refactorización
-
-### ✅ Completado (2026-05-18)
-
-| # | Acción | Estado |
-|---|---|---|
-| ~~C1~~ | Corregir `TypeError: 'bool' object is not callable` en `tablero_estadisticos.py` (`contexto_completo`) | ✅ Resuelto |
-| ~~C2~~ | Refactorizar paleta ECharts a bloque `_EC_*` centralizado en `tablero_estadisticos.py` | ✅ Completado |
-| ~~C3~~ | Migrar `cellStyle` con colores inline a `cellClass`/`rowClassRules` en ag-Grid | ✅ Completado |
-| ~~C4~~ | Estandarizar clases de estado vacío a `tablero-empty-hint` en toda la página | ✅ Completado |
-
-### 🔴 Prioridad Alta (Ahora)
-
-| # | Acción | Archivo(s) |
-|---|---|---|
-| R1 | Agregar `AuditoriaService` a `__init__.py` de services | `src/services/__init__.py` |
-| R2 | Reemplazar `JWT_SECRET` warning por `ValueError` en producción | `config.py` |
-| R3 | Verificar que `inicio.py` usa `Container.auditoria_service()` en vez de `auditoria_repo()` | `src/interface/pages/inicio.py` |
-| R4 | Reemplazar el bypass de repositorio en `ContextInitializer` | `src/infrastructure/context/context_initializer.py` |
-| R5 | Definir clases CSS `tablero-badge-riesgo`, `tablero-badge-normal`, `tablero-promedio-*`, `tablero-row-riesgo` en `styles.css` | `src/interface/design/styles.css` |
-
-### 🟡 Prioridad Media (Próximo sprint)
-
-| # | Acción | Archivo(s) |
-|---|---|---|
-| R6 | Migrar umbrales de calificación de `tokens.py` al dominio | `tokens.py` → `domain/models/evaluacion.py` |
-| R7 | Encapsular mutations de `app.storage.user` para atomicidad | `SessionContext.guardar()` |
-| R8 | Tests unitarios para los 16 servicios con mocks de repositorios | `tests/unit/services/` |
-| R9 | Aplicar patrón `_EC_*` a todas las páginas con ECharts que aún usen `Colors.*` directamente | `pages/informes/estadisticos.py`, otros |
-
-### 🟢 Prioridad Baja (Deuda técnica)
-
-| # | Acción | Archivo(s) |
-|---|---|---|
-| R10 | Implementar `ExcelExporter` y `PDFExporter` | `src/infrastructure/exporters/` |
-| R11 | Generar tokens CSS dinámicamente desde `tokens.py` en `ThemeManager.aplicar()` | `theme.py` |
-| R12 | Documentar guía de creación de nuevos clientes (API, CLI) | Raíz del proyecto |
-
----
-
-## 10. Capacidad de Escalabilidad Futura
-
-Dado que el núcleo del sistema (`domain/` + `services/`) es completamente agnóstico a NiceGUI y SQLite, el sistema puede escalar hacia:
-
-### 10.1 API RESTful (FastAPI — v3.0)
-- Crear capa `src/api/routers/` con endpoints que deleguen directamente en `Container.<x>_service()`.
-- El `JWTHandler` ya está implementado y listo para autenticar requests HTTP.
-- Los modelos Pydantic de dominio pueden reutilizarse como schemas de respuesta con mínimas adaptaciones.
-
-### 10.2 Aplicaciones Móviles (Flutter / React Native)
-- Con la API REST operativa, apps móviles para acudientes pueden consumir `InformeService` y `AlertaService`.
-- Notificaciones Push pueden implementarse como un nuevo adaptador en `src/infrastructure/notifications/`.
-
-### 10.3 Workers Programados (CronJobs / Celery)
-- `AlertaService.detectar_riesgo_academico()` puede ejecutarse en scripts CLI que usen el mismo `Container`.
-- `CierreService` podría recibir un trigger automatizado a final de periodo.
-
-### 10.4 Integraciones Gubernamentales (SIMAT)
-- Los adaptadores de exportación en `src/infrastructure/exporters/` pueden extenderse con `XmlExporter` o `SimatExporter` sin modificar ningún servicio.
-
----
-
-## 11. Diagrama de Capas (Arquitectura Limpia)
-
-```
-┌─────────────────────────────────────────────────────────┐
-│              INTERFAZ (src/interface/)                  │
-│  NiceGUI Pages · Design System · Layout · Components    │
-│                  ↓ solo llama a                         │
-├─────────────────────────────────────────────────────────┤
-│             SERVICIOS (src/services/)                   │
-│  16 Application Services · DTOs Pydantic               │
-│        ↓ implementan puertos de            ↓ usan      │
-├─────────────────────────────────────────────────────────┤
-│              DOMINIO (src/domain/)                      │
-│  17 Modelos Pydantic · 16 Puertos de Repositorio        │
-│  dtos.py · service_ports.py                             │
-├─────────────────────────────────────────────────────────┤
-│          INFRAESTRUCTURA (src/infrastructure/)          │
-│  16 SQLite Repos · Auth (Bcrypt+JWT) · Context         │
-│  Exporters (Excel/PDF/Null) · Notifications             │
-└─────────────────────────────────────────────────────────┘
-          ↑ todo gestionado por
-┌─────────────────────────────────────────────────────────┐
-│        COMPOSITION ROOT (container.py)                  │
-│  Singleton lazy · DI · diagnóstico · reset para tests   │
-└─────────────────────────────────────────────────────────┘
-          ↑ configurado por
-┌─────────────────────────────────────────────────────────┐
-│           CONFIGURACIÓN (config.py)                     │
-│  pydantic-settings · .env · validación en arranque      │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-*Análisis generado el 2026-05-17. Última revisión: 2026-05-18 — refactorización ECharts, corrección `contexto_completo`, actualización de hoja de ruta.*
+**Síntesis.** Lo construido es un sistema académico completo, con una arquitectura
+y una postura de seguridad de calidad poco común para su dominio. Lo que falta es
+*higiene de cierre* (1 test, bookkeeping) y dos decisiones de rumbo (multi-tenant y
+descomposición del módulo de infraestructura), no reconstrucción.

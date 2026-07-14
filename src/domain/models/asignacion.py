@@ -53,6 +53,7 @@ class Asignacion(BaseModel):
     @field_validator("grupo_id", "asignatura_id", "usuario_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK de la asignación (grupo, asignatura, docente, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
@@ -63,6 +64,7 @@ class Asignacion(BaseModel):
 
     @property
     def esta_activa(self) -> bool:
+        """True si la asignación está activa (acepta nuevos registros)."""
         return self.activo
 
     # ------------------------------------------------------------------
@@ -115,6 +117,7 @@ class AsignacionInfo(BaseModel):
                      "periodo_nombre", mode="before")
     @classmethod
     def no_vacio(cls, v: str) -> str:
+        """Normaliza los nombres resueltos por JOIN; ninguno puede quedar vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El campo no puede estar vacío.")
@@ -163,11 +166,13 @@ class NuevaAsignacionDTO(BaseModel):
     @field_validator("grupo_id", "asignatura_id", "usuario_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del DTO (grupo, asignatura, docente, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
 
     def to_asignacion(self) -> Asignacion:
+        """Construye una Asignacion a partir de los datos del DTO."""
         return Asignacion(**self.model_dump())
 
 

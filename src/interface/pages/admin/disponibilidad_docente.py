@@ -60,7 +60,7 @@ def disponibilidad_docente_page() -> None:
 
     def _cargar_plantilla() -> None:
         try:
-            plantilla = Container.infraestructura_service().plantilla_activa("UNICA")
+            plantilla = Container.franja_service().plantilla_activa("UNICA")
             if plantilla is None:
                 _s["plantilla_ok"] = False
                 _s["franjas"] = []
@@ -68,7 +68,7 @@ def disponibilidad_docente_page() -> None:
                 return
             _s["plantilla_ok"] = True
             _s["dias_activos"] = list(getattr(plantilla, "dias_activos", []) or [])
-            franjas_todas = Container.infraestructura_service().listar_franjas(plantilla.id)
+            franjas_todas = Container.franja_service().listar_franjas(plantilla.id)
             _s["franjas"] = [
                 f for f in franjas_todas
                 if (f.tipo if isinstance(f.tipo, str) else f.tipo.value) == "lectiva"
@@ -81,7 +81,7 @@ def disponibilidad_docente_page() -> None:
 
     def _cargar_disponibilidad_docente(docente_id: int) -> None:
         try:
-            disp_bd = Container.infraestructura_service().listar_disponibilidad_docente(
+            disp_bd = Container.restriccion_generacion_service().listar_disponibilidad_docente(
                 docente_id
             )
             disp_dict = {
@@ -98,7 +98,7 @@ def disponibilidad_docente_page() -> None:
             _s["disponibilidad"] = {}
 
         try:
-            limites = Container.infraestructura_service().get_limites_docente(docente_id)
+            limites = Container.restriccion_generacion_service().get_limites_docente(docente_id)
             _s["min_horas_dia"] = limites.min_horas_dia if limites else 0
             _s["max_horas_dia"] = limites.max_horas_dia if limites else 8
         except Exception as exc:
@@ -130,7 +130,7 @@ def disponibilidad_docente_page() -> None:
                 for (dia, orden), disponible in _s["disponibilidad"].items()
                 if not disponible
             ]
-            Container.infraestructura_service().guardar_disponibilidad_docente(
+            Container.restriccion_generacion_service().guardar_disponibilidad_docente(
                 docente_id, slots_no_disponibles
             )
             toast_success("Disponibilidad guardada")
@@ -222,7 +222,7 @@ def disponibilidad_docente_page() -> None:
                 try:
                     min_val = int(in_min.value or 0)
                     max_val = int(in_max.value or 8)
-                    Container.infraestructura_service().set_limites_docente_simple(
+                    Container.restriccion_generacion_service().set_limites_docente_simple(
                         usuario_id=docente_id,
                         min_horas_dia=min_val,
                         max_horas_dia=max_val,

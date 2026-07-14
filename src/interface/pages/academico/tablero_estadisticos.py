@@ -998,7 +998,7 @@ def tablero_estadisticos_page() -> None:
             return
 
         try:
-            grupos_lista = Container.infraestructura_service().listar_grupos()
+            grupos_lista = Container.catalogo_academico_service().listar_grupos()
         except Exception:
             grupos_lista = []
 

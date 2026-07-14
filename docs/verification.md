@@ -8,8 +8,14 @@
 ## Comando base (aplica a todos los pasos)
 
 ```bash
-./init.sh
+python init.py            # verificación completa (fail-closed)
+python init.py --quick    # todo salvo la suite de tests
 ```
+
+`init.py` es el reemplazo cross-platform de `init.sh` (Windows/macOS/Linux). Corre
+en **modo estricto**: dependencias, versión de Python, un **gate de anti-patrones
+arquitectónicos** (imports prohibidos por capa, `.dict()`, instanciación de repos
+fuera del container) y la suite de tests.
 
 Si falla, el paso NO está done, sin excepción.
 
@@ -97,6 +103,31 @@ python -m pytest tests/ -v --tb=short
 
 ---
 
+### Seguridad, roles y multi-tenant — guardarraíles
+
+```bash
+# Guard central deny-by-default y sync de contexto (paso_35 / B1)
+python -m pytest tests/unit/interface/auth/ -v
+
+# Políticas de dominio puras (RBAC, contraseñas, cadena de auditoría)
+python -m pytest tests/unit/domain/ -k "rbac or password or audit_chain or policy" -v
+
+# Mecanismos neutrales de la capa de servicios (solo-lectura, tenant, throttle)
+python -m pytest tests/unit/services/ -k "solo_lectura or tenant or throttle or ver_como" -v
+
+# Ningún módulo neutral importa interfaz/infra (regla de capas)
+grep -rE "from src.(interface|infrastructure)" src/services/solo_lectura.py \
+  src/services/contexto_tenant.py src/services/login_throttle.py \
+  && echo "ERROR: import prohibido" || echo "OK"
+
+# Las políticas de dominio no importan nada externo
+grep -rE "import (sqlite3|pandas|bcrypt)|from nicegui|from src.(services|interface|infrastructure)" \
+  src/domain/policies/ && echo "ERROR" || echo "OK"
+```
+
+Test guardarraíl clave (verifica vía AST que el guard mantiene el sync central):
+`tests/unit/interface/auth/test_route_guard.py::test_guard_sincroniza_contexto_central`.
+
 ## Cómo verificar trazabilidad R\<n\> ↔ test
 
 Cada requisito en `specs/<paso>/requirements.md` tiene un identificador `R1`, `R2`, etc.
@@ -118,8 +149,8 @@ El reviewer verifica que ningún `R<n>` del spec quede sin test asociado.
 ## Checklist de cierre de sesión
 
 ```bash
-# 1. Tests verdes
-./init.sh
+# 1. Tests verdes + gate de anti-patrones
+python init.py
 
 # 2. Sin archivos temporales
 find . -name "*.pyc" -not -path "./.venv/*" | head -5
@@ -127,4 +158,12 @@ find . -name "__pycache__" -not -path "./.venv/*" | head -5
 
 # 3. Sin prints de debug (fuera de logging)
 grep -r "^[[:space:]]*print(" src/ --include="*.py" | grep -v "# debug-ok"
+
+# 4. Regenerar la referencia de API por método (si cambiaron firmas/docstrings)
+python tools/gen_api_reference.py
+git diff --stat docs/api_reference.md docs/api_reference/
 ```
+
+> La referencia por método (`docs/api_reference/`) se **genera desde el código**,
+> nunca se edita a mano. Si `git diff` muestra cambios tras regenerar, commitéalos
+> junto al cambio de código que los produjo.

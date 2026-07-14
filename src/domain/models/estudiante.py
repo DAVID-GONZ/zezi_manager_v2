@@ -132,6 +132,7 @@ class Estudiante(BaseModel):
     @field_validator("numero_documento", mode="before")
     @classmethod
     def validar_documento(cls, v: str) -> str:
+        """Normaliza el documento a mayúsculas; exige no vacío y solo letras, números y guiones."""
         v = str(v).strip()
         if not v:
             raise ValueError("El número de documento no puede estar vacío.")
@@ -145,6 +146,7 @@ class Estudiante(BaseModel):
     @field_validator("nombre", "apellido", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza nombre/apellido a title-case; exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El valor no puede estar vacío.")
@@ -156,6 +158,7 @@ class Estudiante(BaseModel):
     @field_validator("fecha_nacimiento", mode="before")
     @classmethod
     def validar_fecha_nacimiento(cls, v: date | str | None) -> date | None:
+        """Acepta date o string ISO; rechaza fechas futuras o edades mayores a 25 años."""
         if v is None:
             return None
         if isinstance(v, str):
@@ -180,6 +183,7 @@ class Estudiante(BaseModel):
     @field_validator("id_publico", mode="before")
     @classmethod
     def validar_id_publico(cls, v: str | None) -> str | None:
+        """Normaliza el id público a mayúsculas (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip().upper()
@@ -328,6 +332,7 @@ class NuevoEstudianteDTO(BaseModel):
     @field_validator("numero_documento", mode="before")
     @classmethod
     def validar_documento(cls, v: str) -> str:
+        """Normaliza el documento a mayúsculas y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El número de documento no puede estar vacío.")
@@ -336,6 +341,7 @@ class NuevoEstudianteDTO(BaseModel):
     @field_validator("nombre", "apellido", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza nombre/apellido a title-case; exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El valor no puede estar vacío.")
@@ -367,6 +373,7 @@ class ActualizarEstudianteDTO(BaseModel):
     @field_validator("nombre", "apellido", mode="before")
     @classmethod
     def validar_nombre(cls, v: str | None) -> str | None:
+        """Si se actualiza, normaliza a title-case; exige no vacío y ≤100 caracteres."""
         if v is None:
             return None
         v = str(v).strip()
@@ -413,6 +420,7 @@ class FiltroEstudiantesDTO(BaseModel):
     @field_validator("busqueda", mode="before")
     @classmethod
     def limpiar_busqueda(cls, v: str | None) -> str | None:
+        """Normaliza el término de búsqueda (strip); cadena vacía → None."""
         if v is None:
             return None
         v = v.strip()
@@ -435,6 +443,7 @@ class EstudianteResumenDTO(BaseModel):
 
     @classmethod
     def desde_estudiante(cls, est: Estudiante) -> "EstudianteResumenDTO":
+        """Construye el resumen desde un Estudiante persistido; exige que tenga id."""
         if est.id is None:
             raise ValueError("No se puede crear un resumen de un estudiante sin id.")
         return cls(
@@ -477,6 +486,7 @@ class MovimientoEstudiante(BaseModel):
     @field_validator("motivo", mode="before")
     @classmethod
     def limpiar_motivo(cls, v: str | None) -> str | None:
+        """Normaliza el motivo del movimiento (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()

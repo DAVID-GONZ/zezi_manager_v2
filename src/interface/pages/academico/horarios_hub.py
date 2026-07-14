@@ -49,7 +49,7 @@ from src.interface.pages.academico.plantilla_editor_widget import (
     render_franjas_editor,
     render_plantilla_preview,
 )
-from src.services.infraestructura_service import DiaSemana
+from src.services.franja_service import DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
 
 logger = logging.getLogger("HORARIOS_HUB")
@@ -227,7 +227,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     if not es_profesor:
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
         try:
@@ -286,7 +286,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             _s["escenario_sel"] = None
             return
         try:
-            svc = Container.infraestructura_service()
+            svc = Container.escenario_horario_service()
             _s["escenarios"] = svc.listar_escenarios(anio_id)
             activo = next((e for e in _s["escenarios"] if e.activo), None)
             _s["escenario_sel"] = activo or (_s["escenarios"][0] if _s["escenarios"] else None)
@@ -302,7 +302,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             _s["bloques"] = []
             return
         try:
-            _s["bloques"] = Container.infraestructura_service().listar_horario_grupo_escenario(
+            _s["bloques"] = Container.escenario_horario_service().listar_horario_grupo_escenario(
                 grp, esc.id
             )
         except Exception as exc:
@@ -389,21 +389,21 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _gen_cargar_plantillas() -> None:
         try:
-            _s["gen_plantillas"] = Container.infraestructura_service().listar_plantillas()
+            _s["gen_plantillas"] = Container.franja_service().listar_plantillas()
         except Exception as exc:
             logger.error("Error cargando plantillas: %s", exc)
             _s["gen_plantillas"] = []
 
     def _gen_cargar_grupos() -> None:
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error cargando grupos (gen): %s", exc)
             _s["grupos"] = []
 
     def _gen_cargar_configs() -> None:
         try:
-            _s["gen_configs"] = Container.infraestructura_service().listar_configs_generacion(
+            _s["gen_configs"] = Container.restriccion_generacion_service().listar_configs_generacion(
                 _s["gen_periodo_id"]
             )
         except Exception as exc:
@@ -421,7 +421,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             _s["gen_franjas_sel"] = []
             return
         try:
-            _s["gen_franjas_sel"] = Container.infraestructura_service().listar_franjas(p.id)
+            _s["gen_franjas_sel"] = Container.franja_service().listar_franjas(p.id)
         except Exception as exc:
             logger.error("Error cargando franjas: %s", exc)
             _s["gen_franjas_sel"] = []
@@ -501,7 +501,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 toast_warning("El nombre es obligatorio.")
                 return False
             try:
-                nuevo = Container.infraestructura_service().crear_escenario_simple(
+                nuevo = Container.escenario_horario_service().crear_escenario_simple(
                     anio_id=_s["anio_id"],
                     nombre=nombre,
                     descripcion=datos.get("descripcion") or None,
@@ -531,7 +531,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _vis_activar_escenario(escenario_id: int) -> None:
         try:
-            Container.infraestructura_service().activar_escenario(escenario_id)
+            Container.escenario_horario_service().activar_escenario(escenario_id)
             _cargar_escenarios()
             escenarios_refreshable.refresh()
             toast_success("Escenario activado")
@@ -546,7 +546,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 toast_warning("El nombre es obligatorio.")
                 return False
             try:
-                Container.infraestructura_service().renombrar_escenario(
+                Container.escenario_horario_service().renombrar_escenario(
                     esc_existente=esc,
                     nombre=nombre,
                     descripcion=datos.get("descripcion") or None,
@@ -580,7 +580,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 toast_warning("El nombre es obligatorio.")
                 return False
             try:
-                nuevo = Container.infraestructura_service().duplicar_escenario(esc.id, nombre)
+                nuevo = Container.escenario_horario_service().duplicar_escenario(esc.id, nombre)
                 _cargar_escenarios()
                 _s["escenario_sel"] = nuevo
                 _cargar_bloques_escenario()
@@ -607,7 +607,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _eliminar_escenario_confirm(esc) -> None:
         def _ok() -> None:
             try:
-                Container.infraestructura_service().eliminar_escenario(esc.id)
+                Container.escenario_horario_service().eliminar_escenario(esc.id)
                 _cargar_escenarios()
                 escenarios_refreshable.refresh()
                 _s["bloques"] = []
@@ -717,7 +717,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             esc = _s["escenario_sel"]
             if esc:
                 try:
-                    todos = Container.infraestructura_service().listar_horario_escenario(esc.id)
+                    todos = Container.escenario_horario_service().listar_horario_escenario(esc.id)
                     bloque = next((b for b in todos if b.id == horario_id), None)
                 except Exception as exc:
                     logger.error("Error obteniendo bloque del escenario: %s", exc)
@@ -796,7 +796,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         def _guardar(datos: dict) -> "bool | None":
             color = (datos.get("color") or "").strip() or None
             try:
-                Container.infraestructura_service().set_color_area(area["area_id"], color)
+                Container.catalogo_academico_service().set_color_area(area["area_id"], color)
                 toast_success(f"Color de '{area['area_nombre']}' actualizado")
                 parrilla_unificada_refreshable.refresh()
             except ValueError as exc:
@@ -871,7 +871,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 toast_warning("El nombre de la plantilla es obligatorio")
                 return False
             try:
-                nueva = Container.infraestructura_service().crear_plantilla_simple(
+                nueva = Container.franja_service().crear_plantilla_simple(
                     nombre, datos.get("jornada", "UNICA"), list(datos.get("dias") or []),
                 )
                 _gen_cargar_plantillas()
@@ -900,7 +900,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         def _ok() -> None:
             try:
-                Container.infraestructura_service().eliminar_plantilla(plantilla.id)
+                Container.franja_service().eliminar_plantilla(plantilla.id)
                 if _s.get("gen_plantilla_sel") and _s["gen_plantilla_sel"].id == plantilla.id:
                     _s["gen_plantilla_sel"] = None
                     _s["gen_franjas_sel"] = []
@@ -921,7 +921,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _gen_activar_plantilla(plantilla) -> None:
         try:
-            Container.infraestructura_service().activar_plantilla(plantilla.id)
+            Container.franja_service().activar_plantilla(plantilla.id)
             _gen_cargar_plantillas()
             _s["gen_plantilla_sel"] = next(
                 (p for p in _s["gen_plantillas"] if p.id == plantilla.id), plantilla
@@ -949,7 +949,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         if p is None:
             return False
         try:
-            Container.infraestructura_service().guardar_franjas(p.id, filas)
+            Container.franja_service().guardar_franjas(p.id, filas)
             _gen_cargar_franjas_sel()
             toast_success("Franjas guardadas")
             gen_refreshable.refresh()
@@ -1166,7 +1166,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 pesos_ext = {k: round(float(sliders_extra[k].value), 1) for k in sliders_extra}
                 pesos_completo = {**pesos, **pesos_ext}
 
-                infra = Container.infraestructura_service()
+                infra = Container.restriccion_generacion_service()
                 restricciones = infra.construir_restricciones(
                     in_min_horas.value or 0,
                     in_max_horas.value if in_max_horas.value is not None else 8,
@@ -1216,7 +1216,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _gen_duplicar_config(config_id: int) -> None:
         try:
-            Container.infraestructura_service().duplicar_config_generacion(config_id)
+            Container.restriccion_generacion_service().duplicar_config_generacion(config_id)
             toast_success("Configuración duplicada")
             _gen_cargar_configs()
             gen_refreshable.refresh()
@@ -1227,7 +1227,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _gen_eliminar_config(config: Any) -> None:
         def _confirmar() -> None:
             try:
-                Container.infraestructura_service().eliminar_config_generacion(config.id)
+                Container.restriccion_generacion_service().eliminar_config_generacion(config.id)
                 toast_success("Configuración eliminada")
                 if _s.get("gen_config_sel") and _s["gen_config_sel"].id == config.id:
                     _gen_seleccionar_config(None)
@@ -1304,12 +1304,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _gen_activar_escenario(config: Any, escenario_id: int) -> None:
         def _confirmar() -> None:
             try:
-                infra = Container.infraestructura_service()
-                infra.activar_escenario(escenario_id)
+                Container.escenario_horario_service().activar_escenario(escenario_id)
                 estado = getattr(config, "estado", "borrador")
                 if estado == "generado":
                     try:
-                        infra.cambiar_estado_config(config.id, "aplicado")
+                        Container.restriccion_generacion_service().cambiar_estado_config(config.id, "aplicado")
                     except Exception as exc:
                         logger.warning("No se pudo transicionar config a aplicado: %s", exc)
                 toast_success("Escenario activado")
@@ -1633,7 +1632,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             elif _s.get("gen_config_sel"):
                 plantilla_id = getattr(_s["gen_config_sel"], "plantilla_id", 0) or 0
             else:
-                plantillas = Container.infraestructura_service().listar_plantillas()
+                plantillas = Container.franja_service().listar_plantillas()
                 activas = [p for p in plantillas if getattr(p, "activa", False)]
                 if activas:
                     plantilla_id = activas[0].id

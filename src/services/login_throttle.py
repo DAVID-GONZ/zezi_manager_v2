@@ -90,7 +90,7 @@ def estado_bloqueo(usuario: str) -> tuple[bool, int]:
         # La ventana expiró: limpiar para empezar de cero.
         _estados.pop(clave, None)
         return (False, 0)
-    return (True, int(restante) + 1)
+    return (True, min(int(restante) + 1, BLOQUEO_SEGUNDOS))
 
 
 def reset_throttle() -> None:

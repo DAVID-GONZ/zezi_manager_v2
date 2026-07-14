@@ -128,6 +128,25 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/login", pagina_login, roles=PUBLICO)
     registrar_pagina("/logout", pagina_logout, roles=PUBLICO)
 
+    # Convención: un alias de redirección hereda los roles de su ruta destino.
+    # Registrarlo con `roles` == los del destino evita el rebote
+    # redirección→denegación (el guard decide una sola vez, en el alias).
+    def redirigir_a(destino: str):
+        def _pagina() -> None:
+            ui.navigate.to(destino)
+        return _pagina
+
+    registrar_pagina(
+        "/informes",
+        redirigir_a("/informes/estadisticos"),
+        roles=_AULA,
+    )
+    registrar_pagina(
+        "/evaluacion/cierre",
+        redirigir_a("/evaluacion/cierre-periodo"),
+        roles=_DIR_COORD,
+    )
+
     # ── Inicio / Dashboard (cualquier autenticado) ────────────────────────────
     from src.interface.pages.inicio import inicio_page
     registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)

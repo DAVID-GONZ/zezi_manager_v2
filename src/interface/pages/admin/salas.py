@@ -24,7 +24,7 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
-from src.services.infraestructura_service import Sala
+from src.services.sala_service import Sala
 
 logger = logging.getLogger("ADMIN.SALAS")
 
@@ -58,7 +58,7 @@ def salas_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_salas() -> None:
         try:
-            _s["salas"] = Container.infraestructura_service().listar_salas()
+            _s["salas"] = Container.sala_service().listar_salas()
         except Exception as exc:
             logger.error("Error cargando salas: %s", exc)
             _s["salas"] = []
@@ -66,7 +66,7 @@ def salas_page() -> None:
     def _cargar_grupos() -> None:
         try:
             _s["grupos"] = sorted(
-                Container.infraestructura_service().listar_grupos(),
+                Container.catalogo_academico_service().listar_grupos(),
                 key=lambda g: g.codigo,
             )
         except Exception as exc:
@@ -85,7 +85,7 @@ def salas_page() -> None:
                 tipo=_s["tipo"] or "aula",
                 capacidad=_s["capacidad"] or 30,
             )
-            Container.infraestructura_service().crear_sala(sala)
+            Container.sala_service().crear_sala(sala)
             toast_success(f"Sala '{sala.nombre}' creada")
             _s["nombre"]    = ""
             _s["tipo"]      = "aula"
@@ -101,7 +101,7 @@ def salas_page() -> None:
 
     def _confirmar_eliminar_sala(sala_id: int, nombre: str) -> None:
         try:
-            Container.infraestructura_service().eliminar_sala(sala_id)
+            Container.sala_service().eliminar_sala(sala_id)
             toast_success(f"Sala '{nombre}' eliminada")
             _cargar_salas()
             _cargar_grupos()
@@ -132,7 +132,7 @@ def salas_page() -> None:
                     tipo=datos.get("tipo") or "aula",
                     capacidad=datos.get("capacidad") or 1,
                 )
-                Container.infraestructura_service().actualizar_sala(sala_act)
+                Container.sala_service().actualizar_sala(sala_act)
                 toast_success(f"Sala '{sala_act.nombre}' actualizada")
                 _cargar_salas()
                 tabla_salas.refresh()
@@ -195,7 +195,7 @@ def salas_page() -> None:
     # ── Aula propia por grupo ─────────────────────────────────────────────────
     def _asignar_aula(grupo_id: int, sala_id: int | None) -> None:
         try:
-            Container.infraestructura_service().asignar_sala_a_grupo(grupo_id, sala_id)
+            Container.sala_service().asignar_sala_a_grupo(grupo_id, sala_id)
             toast_success("Aula del grupo actualizada")
         except Exception as exc:
             logger.error("Error asignando aula a grupo %s: %s", grupo_id, exc)

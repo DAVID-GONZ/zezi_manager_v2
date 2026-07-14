@@ -96,6 +96,8 @@ class InformeService:
         exporter: IExporterService | None = None,
         estudiante_repo=None,
     ) -> None:
+        """Inyecta el repo de estadísticos y, opcionalmente, el exportador y
+        el repo de estudiantes."""
         self._estadisticos_repo = estadisticos_repo
         self._exporter          = exporter
         self._estudiante_repo   = estudiante_repo

@@ -1,6 +1,15 @@
 # Esquema del Dominio (Modelos)
 
-> **Actualizado:** Junio 2026. Se agregan módulos `nivelacion.py` y `plan_mejoramiento.py`. El módulo `infraestructura.py` fue extendido con entidades del subsistema de horarios.
+> **Actualizado:** Julio 2026. Referencia campo a campo de las entidades Pydantic
+> de `src/domain/models/`. Se agrega el módulo `institucion.py` (multi-tenant,
+> paso_24) y los campos de seguridad de `usuario.py` (`debe_cambiar_password`,
+> `institucion_id`, `password_temporal`). Junio 2026 había agregado `nivelacion.py`
+> y `plan_mejoramiento.py` y extendido `infraestructura.py` con el subsistema de
+> horarios.
+>
+> Nota: este documento cataloga los **modelos de dominio** (no el DDL SQL). El
+> `hash_cadena` de la auditoría, por ejemplo, es una columna de BD calculada por
+> el repositorio, no un campo de las entidades `EventoSesion`/`RegistroCambio`.
 
 ## Modulo: `acudiente.py`
 
@@ -504,11 +513,22 @@ Parámetros para consultar registros de asistencia.
 
 ## Modulo: `auditoria.py`
 
+Dos bitácoras append-only: `EventoSesion` → tabla `auditoria` (autenticación y
+acceso); `RegistroCambio` → tabla `audit_log` (CRUD). Ambas entidades son
+inmutables. La integridad de la cadena hash (`hash_cadena`) la calcula el
+repositorio, no el modelo (ver `docs/architecture.md` §6).
+
 ### TipoEventoSesion
 **Herencia**: str, Enum
 
+**Valores:** `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `LOGOUT`, `CREAR_USUARIO`,
+`EDITAR_USUARIO`, `RESETEAR_PASSWORD`, `CAMBIAR_ROL`, `DESACTIVAR_USUARIO`,
+`ACTIVAR_USUARIO`, `ACCESO_DENEGADO`, `VER_COMO_INICIO`, `VER_COMO_FIN`.
+
 ### AccionCambio
 **Herencia**: str, Enum
+
+**Valores:** `CREATE`, `UPDATE`, `DELETE`, `READ` (accesos sensibles auditables).
 
 ### EventoSesion
 **Herencia**: BaseModel
@@ -626,6 +646,24 @@ Parámetros para consultar registros de auditoría.
 - `hasta`: datetime | None
 - `pagina`: int
 - `por_pagina`: int
+
+### ResumenUsoDTO
+**Herencia**: BaseModel
+
+Agregación de solo lectura del uso de la plataforma (paso_21), calculada sobre
+los eventos de sesión recientes para el dashboard de admin.
+
+**Atributos:**
+- `logins_hoy`: int
+- `logins_periodo`: int — en la ventana de `dias`
+- `accesos_denegados`: int — en la ventana de `dias`
+- `usuarios_activos`: int — distintos que iniciaron sesión en la ventana
+- `sesiones_periodo`: int — total de logins exitosos en la ventana
+- `dias`: int — default 7
+
+**Compatibilidad legacy:** `CrearRegistroCambioDTO.desde_legacy()` convierte las
+llamadas al `registrar_cambio()` de v1.0; `RegistroCambio` ofrece factories
+`para_creacion()` / `para_actualizacion()` / `para_eliminacion()`.
 
 ## Modulo: `cierre.py`
 
@@ -2489,14 +2527,20 @@ Roles y sus usos habituales:
 - `telefono`: str | None
 - `rol`: Rol
 - `activo`: bool
+- `debe_cambiar_password`: bool — cambio forzado (A2); el guard fuerza `/cambiar-password`. Default `False`.
 - `fecha_creacion`: date
 - `ultima_sesion`: datetime | None
+- `carga_horaria_max`: int | None
+- `horas_extra`: int
+- `institucion_id`: int | None — multi-tenant (paso_24); default institución #1 vía repo/seed.
+- `password_temporal`: str | None — canal efímero de la clave temporal al crear/resetear; `exclude=True`, `repr=False` (no se persiste ni serializa).
 
 **Field Validators:**
-- `validar_usuario()`
+- `validar_usuario()` — normaliza a minúsculas, sin espacios, 3–50 chars.
 - `validar_nombre()`
 - `validar_email()`
 - `limpiar_telefono()`
+- `validar_carga_horaria_max()`
 
 **Propiedades:**
 - `esta_activo`
@@ -2866,3 +2910,59 @@ Datos para cerrar el plan de un estudiante específico.
 - `corte_id`: int
 - `aprobado`: bool — True → APROBADO, False → REPROBADO
 - `usuario_cierre_id`: int | None
+
+## Modulo: `institucion.py` *(Nuevo — multi-tenant, paso_24)*
+
+Primer ladrillo del modelo multi-tenant: catálogo de instituciones (tenants). La
+institución **#1** se siembra desde `configuracion.nombre_institucion` y es el
+default de usuarios nuevos. La unicidad del nombre la garantiza el servicio, no el
+modelo. *Soft state*: las instituciones no se eliminan, se marcan inactivas.
+
+### Institucion
+**Herencia**: BaseModel
+
+Una institución educativa (tenant) registrada en la plataforma.
+
+**Atributos:**
+- `id`: int | None
+- `nombre`: str — obligatorio, normalizado (strip), ≤ 200 chars
+- `nit`: str | None — NIT / identificador tributario
+- `codigo`: str | None — código externo (p.ej. DANE)
+- `activa`: bool — default `True`
+- `fecha_creacion`: date
+
+**Field Validators:**
+- `validar_nombre()` — no vacío, ≤ 200 chars
+- `limpiar_opcional()` — `nit`/`codigo`: strip → `None` si queda vacío
+
+**Propiedades:**
+- `nombre_display` — `'Colegio X'` o `'Colegio X (inactiva)'`
+
+### NuevaInstitucionDTO
+**Herencia**: BaseModel
+
+Datos para crear una institución nueva.
+
+**Atributos:**
+- `nombre`: str
+- `nit`: str | None
+- `codigo`: str | None
+
+**Field Validators:**
+- `validar_nombre()`, `limpiar_opcional()`
+
+**Métodos de Dominio:**
+- `to_institucion()`
+
+### InstitucionResumenDTO
+**Herencia**: BaseModel
+
+Vista mínima para selects, filtros y lookups.
+
+**Atributos:**
+- `id`: int
+- `nombre`: str
+- `activa`: bool
+
+**Métodos de Dominio:**
+- `desde_institucion()` *(classmethod)*

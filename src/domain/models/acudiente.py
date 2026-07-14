@@ -83,6 +83,7 @@ class Acudiente(BaseModel):
     @field_validator("numero_documento", mode="before")
     @classmethod
     def validar_documento(cls, v: str) -> str:
+        """Normaliza el documento a mayúsculas; exige no vacío y solo letras, números y guiones."""
         v = str(v).strip()
         if not v:
             raise ValueError("El número de documento no puede estar vacío.")
@@ -95,6 +96,7 @@ class Acudiente(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre completo; exige entre 3 y 150 caracteres."""
         v = str(v).strip()
         if len(v) < 3:
             raise ValueError(
@@ -109,6 +111,7 @@ class Acudiente(BaseModel):
     @field_validator("celular", mode="before")
     @classmethod
     def limpiar_celular(cls, v: str | None) -> str | None:
+        """Normaliza el celular quitando espacios y guiones; cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip().replace(" ", "").replace("-", "")
@@ -117,6 +120,7 @@ class Acudiente(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, v: str | None) -> str | None:
+        """Normaliza el email y valida formato mínimo ('@' con dominio); vacío → None."""
         if v is None:
             return None
         v = str(v).strip().lower()
@@ -129,6 +133,7 @@ class Acudiente(BaseModel):
     @field_validator("direccion", mode="before")
     @classmethod
     def limpiar_direccion(cls, v: str | None) -> str | None:
+        """Normaliza la dirección opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -140,6 +145,7 @@ class Acudiente(BaseModel):
 
     @property
     def esta_activo(self) -> bool:
+        """True si el acudiente está activo (no dado de baja)."""
         return self.activo
 
     @property
@@ -158,6 +164,7 @@ class Acudiente(BaseModel):
 
     @property
     def documento_display(self) -> str:
+        """Documento formateado para UI: 'CC 12345678'."""
         return f"{self.tipo_documento.value} {self.numero_documento}"
 
     # ------------------------------------------------------------------
@@ -165,6 +172,7 @@ class Acudiente(BaseModel):
     # ------------------------------------------------------------------
 
     def desactivar(self) -> "Acudiente":
+        """Retorna una copia con activo=False (soft delete); falla si ya está inactivo."""
         if not self.activo:
             raise ValueError(
                 f"El acudiente '{self.nombre_completo}' ya está desactivado."
@@ -172,6 +180,7 @@ class Acudiente(BaseModel):
         return self.model_copy(update={"activo": False})
 
     def reactivar(self) -> "Acudiente":
+        """Retorna una copia con activo=True; falla si ya está activo."""
         if self.activo:
             raise ValueError(
                 f"El acudiente '{self.nombre_completo}' ya está activo."
@@ -194,6 +203,7 @@ class EstudianteAcudiente(BaseModel):
     @field_validator("estudiante_id", "acudiente_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """Las FK del vínculo (estudiante, acudiente) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -216,6 +226,7 @@ class NuevoAcudienteDTO(BaseModel):
     @field_validator("numero_documento", mode="before")
     @classmethod
     def validar_documento(cls, v: str) -> str:
+        """Normaliza el documento a mayúsculas y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El número de documento no puede estar vacío.")
@@ -224,6 +235,7 @@ class NuevoAcudienteDTO(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre completo; exige al menos 3 caracteres."""
         v = str(v).strip()
         if len(v) < 3:
             raise ValueError(f"El nombre debe tener al menos 3 caracteres (tiene {len(v)}).")
@@ -232,6 +244,7 @@ class NuevoAcudienteDTO(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, v: str | None) -> str | None:
+        """Normaliza el email y exige que contenga '@'; vacío → None."""
         if not v:
             return None
         v = str(v).strip().lower()
@@ -240,6 +253,7 @@ class NuevoAcudienteDTO(BaseModel):
         return v
 
     def to_acudiente(self) -> Acudiente:
+        """Construye un Acudiente a partir de los datos del DTO."""
         return Acudiente(**self.model_dump())
 
 
@@ -254,6 +268,7 @@ class ActualizarAcudienteDTO(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str | None) -> str | None:
+        """Si se actualiza, el nombre debe tener al menos 3 caracteres."""
         if v is None:
             return None
         v = str(v).strip()
@@ -262,6 +277,7 @@ class ActualizarAcudienteDTO(BaseModel):
         return v
 
     def aplicar_a(self, acudiente: Acudiente) -> Acudiente:
+        """Devuelve una copia del acudiente con solo los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return acudiente.model_copy(update=cambios) if cambios else acudiente
 
@@ -275,11 +291,13 @@ class VincularAcudienteDTO(BaseModel):
     @field_validator("estudiante_id", "acudiente_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """Las FK del vínculo (estudiante, acudiente) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
 
     def to_vinculo(self) -> EstudianteAcudiente:
+        """Construye un EstudianteAcudiente a partir de los datos del DTO."""
         return EstudianteAcudiente(**self.model_dump())
 
 
@@ -298,6 +316,7 @@ class AcudienteResumenDTO(BaseModel):
         acudiente: Acudiente,
         es_principal: bool = False,
     ) -> "AcudienteResumenDTO":
+        """Construye el resumen desde un Acudiente persistido, marcando si es el principal."""
         if acudiente.id is None:
             raise ValueError("El acudiente no tiene id asignado.")
         return cls(

@@ -29,6 +29,7 @@ class PlanMejoramientoService:
         eval_repo: IEvaluacionRepository,
         est_repo: IEstudianteRepository,
     ) -> None:
+        """Inyecta los repos de plan de mejoramiento, evaluación y estudiante."""
         self._plan_repo = plan_repo
         self._eval_repo = eval_repo
         self._est_repo = est_repo

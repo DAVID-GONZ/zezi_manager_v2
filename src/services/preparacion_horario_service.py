@@ -48,6 +48,8 @@ class PreparacionHorarioService:
         usuario_repo:     IUsuarioRepository,
         plan_svc:         "PlanEstudiosService",
     ) -> None:
+        """Inyecta los repos de infraestructura, asignación, configuración,
+        periodo y usuario, más el servicio de plan de estudios."""
         self._infra      = infra_repo
         self._asigs      = asignacion_repo
         self._cfg        = config_repo

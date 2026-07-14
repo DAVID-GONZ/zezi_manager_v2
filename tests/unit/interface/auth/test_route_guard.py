@@ -123,6 +123,12 @@ def test_todas_las_rutas_publicas_ok_sin_sesion():
             assert _veredicto_para(ruta, None, autenticado=False) == ACCESO_OK
 
 
+def test_aliases_de_rutas_antiguas_estan_registrados():
+    """Mantiene compatibilidad con enlaces previos del inicio."""
+    assert roles_de_ruta("/informes") is not None
+    assert roles_de_ruta("/evaluacion/cierre") is not None
+
+
 def test_toda_ruta_no_publica_exige_sesion():
     """Sin sesión, cualquier ruta no pública → /login."""
     for ruta, roles in rutas_registradas().items():

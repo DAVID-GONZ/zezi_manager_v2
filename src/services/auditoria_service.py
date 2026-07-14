@@ -35,9 +35,11 @@ class AuditoriaService:
     """
 
     def __init__(self, repo: IAuditoriaRepository) -> None:
+        """Inyecta el repositorio de auditoría."""
         self._repo = repo
 
     def registrar_evento(self, evento: EventoSesion) -> EventoSesion:
+        """Registra un evento de sesión (delegado al repositorio)."""
         return self._repo.registrar_evento(evento)
 
     def listar_cambios(

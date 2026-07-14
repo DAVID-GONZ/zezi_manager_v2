@@ -90,6 +90,7 @@ class EventoSesion(BaseModel):
     @field_validator("usuario", mode="before")
     @classmethod
     def validar_usuario(cls, v: str) -> str:
+        """Normaliza el username del evento y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de usuario no puede estar vacío.")
@@ -98,6 +99,7 @@ class EventoSesion(BaseModel):
     @field_validator("detalles", mode="before")
     @classmethod
     def limpiar_detalles(cls, v: str | None) -> str | None:
+        """Normaliza los detalles opcionales (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -106,6 +108,7 @@ class EventoSesion(BaseModel):
     @field_validator("ip_address", mode="before")
     @classmethod
     def limpiar_ip(cls, v: str | None) -> str | None:
+        """Normaliza la IP opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -117,18 +120,22 @@ class EventoSesion(BaseModel):
 
     @property
     def es_exitoso(self) -> bool:
+        """True si el evento es un login exitoso."""
         return self.tipo_evento == TipoEventoSesion.LOGIN_EXITOSO
 
     @property
     def es_fallido(self) -> bool:
+        """True si el evento es un login fallido."""
         return self.tipo_evento == TipoEventoSesion.LOGIN_FALLIDO
 
     @property
     def es_acceso_denegado(self) -> bool:
+        """True si el evento es un acceso denegado."""
         return self.tipo_evento == TipoEventoSesion.ACCESO_DENEGADO
 
     @property
     def fecha_display(self) -> str:
+        """Fecha y hora del evento formateada 'YYYY-MM-DD HH:MM:SS'."""
         return self.fecha_hora.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -155,6 +162,7 @@ class RegistroCambio(BaseModel):
     @field_validator("tabla", mode="before")
     @classmethod
     def validar_tabla(cls, v: str) -> str:
+        """Normaliza el nombre de la tabla auditada; exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la tabla no puede estar vacío.")
@@ -204,14 +212,17 @@ class RegistroCambio(BaseModel):
 
     @property
     def es_creacion(self) -> bool:
+        """True si el cambio corresponde a una operación CREATE."""
         return self.accion == AccionCambio.CREATE
 
     @property
     def es_eliminacion(self) -> bool:
+        """True si el cambio corresponde a una operación DELETE."""
         return self.accion == AccionCambio.DELETE
 
     @property
     def timestamp_display(self) -> str:
+        """Marca de tiempo del cambio formateada 'YYYY-MM-DD HH:MM:SS'."""
         return self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
     # ------------------------------------------------------------------
@@ -287,6 +298,7 @@ class CrearEventoSesionDTO(BaseModel):
     detalles:    str | None            = None
 
     def to_evento(self) -> EventoSesion:
+        """Construye un EventoSesion a partir de los datos del DTO."""
         return EventoSesion(**self.model_dump())
 
 
@@ -305,6 +317,7 @@ class CrearRegistroCambioDTO(BaseModel):
     valor_nuevo:     dict | None     = None
 
     def to_registro(self) -> RegistroCambio:
+        """Construye un RegistroCambio a partir de los datos del DTO."""
         return RegistroCambio(**self.model_dump())
 
     @classmethod

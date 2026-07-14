@@ -2,6 +2,11 @@
 
 La capa de servicios (`src/services/`) representa los **Casos de Uso** de la aplicación ZECI Manager v2.0. Actúa como el orquestador principal del sistema, coordinando la lógica de negocio, validando permisos y restricciones, y sirviendo como puente absoluto entre la capa de presentación (API/Controladores) y los modelos de dominio.
 
+> 📖 **Referencia por método (firma + docstring):**
+> [`docs/api_reference/servicios.md`](api_reference/servicios.md) — generada
+> desde el código con `tools/gen_api_reference.py`. Este documento describe
+> **responsabilidades**; la referencia enumera los 351 métodos con su firma exacta.
+
 ## Principios de Diseño
 
 De acuerdo con la Arquitectura Limpia adoptada por el proyecto, los servicios siguen estos principios estrictos:
@@ -40,7 +45,7 @@ sequenceDiagram
 
 ## Servicios Principales y sus Responsabilidades
 
-El núcleo de la aplicación está compuesto por **23 servicios funcionales** altamente cohesivos. 
+El núcleo de la aplicación está compuesto por **~23 servicios funcionales** altamente cohesivos, más **3 mecanismos neutrales** de la capa de servicios (solo-lectura, scope de tenant y throttle de login — ver la sección final). El cableado exacto de dependencias de cada servicio vive en `container.py` (composition root); esta sección resume responsabilidades.
 
 ### 1. `CierreService`
 Es el corazón académico del sistema y el servicio más complejo.
@@ -90,10 +95,36 @@ Gestión del plan de mejoramiento cuantitativo (distinto del plan narrativo de `
 - **Notas del plan:** Calificación por estudiante en cada actividad.
 - **Cierre por estudiante:** Marca `APROBADO` o `REPROBADO` y congela la `nota_definitiva_plan`.
 
-### 16. `InfraestructuraService` *(Nuevo — Junio 2026)*
-Administrador de la topología escolar (CRUD de entidades base).
-- Gestiona `AreaConocimiento`, `Asignatura`, `Grupo`, `Grado`, `Sala`.
-- Valida integridad referencial antes de eliminar (avisa si hay asignaciones vinculadas).
+### 16. `InfraestructuraService` *(fachada — descompuesto en `mejora_01`)*
+Históricamente el "objeto-Dios" de la infraestructura académica (~75 métodos). En
+`mejora_01` (fase 1, import-safe) su **lógica se movió a 5 sub-servicios cohesivos**
+y quedó como **fachada por delegación**: conserva sus métodos públicos (y sus
+re-exports de dominio) delegando en los sub-servicios vía `self._repo`, de modo que
+la capa de interfaz no cambió. El re-apuntado de consumidores y el retiro de la
+fachada son la fase 2 (`mejora_05`).
+
+#### Sub-servicios resultantes (`mejora_01`)
+
+| Servicio | Subdominio | Métodos |
+|---|---|---|
+| `SalaService` | Salas (CRUD + asignar sala a grupo) | 6 |
+| `FranjaService` | Plantillas de franja y franjas | 7 |
+| `EscenarioHorarioService` | Escenarios de horario + horario por escenario | 12 |
+| `CatalogoAcademicoService` | Áreas, asignaturas, grupos | 14 |
+| `RestriccionGeneracionService` | Config de generación, ventanas, bloques anclados, franjas de reunión, límites y disponibilidad docente | 30 |
+
+Cada uno recibe `infraestructura_repo` por constructor y está cableado en
+`Container` (`Container.sala_service()`, etc.).
+
+**Fase 2 (`mejora_05`) — completada:** la capa de interfaz quedó **100%
+re-apuntada** a los sub-servicios (0 referencias a `Container.infraestructura_service()`
+en `src/interface/`), y los métodos de bloques de horario se consolidaron en
+`HorarioService`. `InfraestructuraService` **se conserva como agregador del
+`GeneradorHorarioService`** (le expone `construir_restricciones()` y varios
+subdominios en un solo objeto); es un uso legítimo del patrón Facade, no deuda.
+Los tipos que la interfaz importaba de este módulo (`DiaSemana`,
+`AreaConocimiento`, `Asignatura`, `Grupo`, `Sala`) ahora se re-exportan desde el
+sub-servicio dueño (la interfaz no puede importar `src.domain.models`, convención §2).
 
 ### 17. `PlanEstudiosService` *(Nuevo — Junio 2026)*
 Gestiona la relación `Grado → Asignatura → horas_semanales`.
@@ -156,6 +187,40 @@ Administrador de la topología escolar.
 Ciclo de vida del tiempo académico.
 - Controla el estado `ACTIVO`, `CERRADO` o `FUTURO` de los lapsos lectivos del año escolar.
 - Sus transiciones bloquean o permiten de forma absoluta la escritura de nuevas calificaciones a nivel de todo el colegio.
+
+### 21. `InstitucionService` *(Nuevo — multi-tenant, paso_24)*
+Orquesta el catálogo de instituciones (tenants).
+- `listar()`, `get()`, `get_por_defecto()` / `id_por_defecto()` (institución #1),
+  y `crear()` (verifica unicidad del nombre antes de insertar).
+- Es *tenant-aware*: el caso de uso de creación está protegido con
+  `@requiere_escritura` (respeta el modo "Ver como"). No contiene SQL ni
+  presentación. Ver `docs/architecture.md` §9.
+
+---
+
+## Mecanismos neutrales de la capa de servicios
+
+Tres módulos de `src/services/` **no son servicios de casos de uso** sino
+mecanismos transversales sin estado de negocio. No importan interfaz ni
+infraestructura (misma regla de capas que los servicios).
+
+- **`solo_lectura.py`** — modo solo lectura central para la impersonación
+  "Ver como". Expone `verificar_escritura()` y el decorador `@requiere_escritura`
+  que los métodos de **mutación** de todos los servicios usan al inicio; lanza
+  `OperacionSoloLecturaError` (subclase de `PermissionError`). Estado en un
+  `ContextVar` con default `False` (los métodos de lectura no se tocan).
+- **`contexto_tenant.py`** — scope de institución activo de la sesión.
+  `institucion_actual()` (regla admin→`None` / resto→su tenant),
+  `verificar_pertenencia(id_del_objeto_leído)` para operaciones por `id`, y el
+  context manager `usar_institucion(id)` para seed/scripts/tests sin sesión.
+- **`login_throttle.py`** — freno de fuerza bruta del login (A1): tras
+  `MAX_INTENTOS=5` fallos consecutivos por username, bloquea `BLOQUEO_SEGUNDOS=300`.
+  Estado en un `dict` de **proceso** (visible a todas las peticiones). No audita;
+  el fallo se audita en la capa de interfaz (`login.py`).
+
+El choke point que activa `solo_lectura` y `contexto_tenant` desde la cookie de
+sesión es `SessionContext.desde_storage()`, invocado por el guard central antes
+de renderizar cada página protegida (ver `docs/architecture.md` §7.3–7.4).
 
 ---
 

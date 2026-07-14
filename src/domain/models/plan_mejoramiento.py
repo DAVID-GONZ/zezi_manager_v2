@@ -55,6 +55,7 @@ class ActividadPlan(BaseModel):
     @field_validator("peso")
     @classmethod
     def peso_valido(cls, v: float) -> float:
+        """El peso de la actividad debe estar en (0, 1.0] (fracción del peso del plan)."""
         if not (0 < v <= 1.0):
             raise ValueError("El peso debe estar entre 0 y 1.0 (exclusivo en 0)")
         return v
@@ -96,11 +97,13 @@ class NuevaActividadPlanDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def peso_valido(cls, v: float) -> float:
+        """El peso de la actividad debe estar en (0, 1.0]."""
         if not (0 < v <= 1.0):
             raise ValueError("El peso debe ser mayor a 0 y hasta 1.0")
         return v
 
     def to_actividad(self, usuario_id: int | None = None) -> ActividadPlan:
+        """Construye una ActividadPlan del DTO, fijando el usuario que la crea."""
         return ActividadPlan(
             corte_id=self.corte_id,
             asignacion_id=self.asignacion_id,
@@ -121,6 +124,7 @@ class CalificarNotaPlanDTO(BaseModel):
     @field_validator("valor")
     @classmethod
     def valor_valido(cls, v: float) -> float:
+        """La nota de la actividad de plan debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError("El valor debe estar entre 0 y 100")
         return v
@@ -173,6 +177,7 @@ class CalculadorPlan:
 
     @staticmethod
     def suma_pesos_actividades(actividades: list[ActividadPlan]) -> float:
+        """Suma de los pesos de todas las actividades del plan."""
         return sum(a.peso for a in actividades)
 
     @staticmethod

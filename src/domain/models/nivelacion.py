@@ -46,6 +46,7 @@ class ActividadNivelacion(BaseModel):
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK de la actividad (asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -53,6 +54,7 @@ class ActividadNivelacion(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso de la actividad debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
             raise ValueError(
                 f"El peso debe estar en el rango (0, 1.0] (recibido: {v})."
@@ -62,6 +64,7 @@ class ActividadNivelacion(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la actividad; exige no vacío y ≤120 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la actividad no puede estar vacío.")
@@ -72,6 +75,7 @@ class ActividadNivelacion(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def limpiar_descripcion(cls, v: str | None) -> str | None:
+        """Normaliza la descripción opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -97,6 +101,7 @@ class NotaNivelacion(BaseModel):
                      "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK de la nota (actividad, estudiante, asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -104,6 +109,7 @@ class NotaNivelacion(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float | None) -> float | None:
+        """Si está calificada, la nota debe estar en 0-100 (redondeada a 2)."""
         if v is None:
             return None
         if not (0 <= v <= 100):
@@ -112,6 +118,7 @@ class NotaNivelacion(BaseModel):
 
     @property
     def calificada(self) -> bool:
+        """True si la nota ya tiene un valor registrado (no está pendiente)."""
         return self.valor is not None
 
 
@@ -130,6 +137,7 @@ class CierreNivelacion(BaseModel):
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del cierre (asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -167,6 +175,7 @@ class CalculadorNivelacion:
 
     @staticmethod
     def suma_pesos(actividades: list[ActividadNivelacion]) -> float:
+        """Suma de los pesos de las actividades de nivelación (redondeada a 4)."""
         return round(sum(a.peso for a in actividades), 4)
 
     @staticmethod
@@ -194,6 +203,7 @@ class NuevaActividadNivelacionDTO(BaseModel):
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK (asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -201,6 +211,7 @@ class NuevaActividadNivelacionDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso de la actividad debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
             raise ValueError(f"El peso debe estar en (0, 1.0] (recibido: {v}).")
         return round(v, 4)
@@ -208,12 +219,14 @@ class NuevaActividadNivelacionDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
         return v
 
     def to_actividad(self, usuario_id: int | None = None) -> ActividadNivelacion:
+        """Construye una ActividadNivelacion del DTO, fijando el usuario que la crea."""
         return ActividadNivelacion(
             **self.model_dump(),
             usuario_id=usuario_id,
@@ -228,6 +241,7 @@ class CalificarNotaNivelacionDTO(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """La nota de nivelación debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)

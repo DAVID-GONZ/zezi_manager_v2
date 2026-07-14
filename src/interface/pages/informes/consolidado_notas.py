@@ -56,7 +56,7 @@ def _estado_inicial() -> dict:
 def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
     """Carga grupos, asignaciones y periodos desde los servicios."""
     try:
-        _s["grupos"] = Container.infraestructura_service().listar_grupos()
+        _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
     except Exception as exc:
         logger.error("Error cargando grupos: %s", exc)
         _s["grupos"] = []

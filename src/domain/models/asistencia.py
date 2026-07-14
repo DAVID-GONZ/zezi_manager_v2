@@ -56,6 +56,7 @@ class EstadoAsistencia(str, Enum):
 
     @property
     def es_falta(self) -> bool:
+        """True si el estado es una falta (justificada o injustificada)."""
         return self in (
             EstadoAsistencia.FALTA_JUSTIFICADA,
             EstadoAsistencia.FALTA_INJUSTIFICADA,
@@ -70,6 +71,7 @@ class EstadoAsistencia(str, Enum):
 
     @property
     def descripcion(self) -> str:
+        """Etiqueta legible del estado (p. ej. 'FI' → 'Falta Injustificada')."""
         descripciones = {
             "P":  "Presente",
             "FJ": "Falta Justificada",
@@ -110,6 +112,7 @@ class ControlDiario(BaseModel):
     @field_validator("estudiante_id", "grupo_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del registro (estudiante, grupo, asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -117,6 +120,7 @@ class ControlDiario(BaseModel):
     @field_validator("fecha", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; no se puede registrar asistencia en fecha futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -128,6 +132,7 @@ class ControlDiario(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -136,6 +141,7 @@ class ControlDiario(BaseModel):
     @field_validator("hora_entrada", "hora_salida", mode="before")
     @classmethod
     def parsear_hora(cls, v: time | str | None) -> time | None:
+        """Acepta time, string 'HH:MM' o None y lo convierte a datetime.time."""
         if v is None:
             return None
         if isinstance(v, time):
@@ -150,6 +156,7 @@ class ControlDiario(BaseModel):
 
     @model_validator(mode="after")
     def validar_horas(self) -> Self:
+        """Si ambas están presentes, la hora de entrada debe ser anterior a la de salida."""
         if (
             self.hora_entrada is not None
             and self.hora_salida is not None
@@ -184,6 +191,7 @@ class ControlDiario(BaseModel):
 
     @property
     def estado_descripcion(self) -> str:
+        """Etiqueta legible del estado de asistencia del registro."""
         return self.estado.descripcion
 
 
@@ -208,6 +216,7 @@ class ResumenAsistenciaDTO(BaseModel):
                      "faltas_injustificadas", "retrasos", "excusas")
     @classmethod
     def no_negativo(cls, v: int) -> int:
+        """Ningún conteo del resumen (clases, presentes, faltas…) puede ser negativo."""
         if v < 0:
             raise ValueError(f"El conteo no puede ser negativo (recibido: {v}).")
         return v
@@ -225,6 +234,7 @@ class ResumenAsistenciaDTO(BaseModel):
 
     @property
     def total_faltas(self) -> int:
+        """Total de faltas (justificadas + injustificadas)."""
         return self.faltas_justificadas + self.faltas_injustificadas
 
     @property
@@ -254,6 +264,7 @@ class RegistroAsistenciaItemDTO(BaseModel):
     @field_validator("estudiante_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """El estudiante del ítem debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"estudiante_id debe ser positivo (recibido: {v}).")
         return v
@@ -281,6 +292,7 @@ class RegistrarAsistenciaDTO(BaseModel):
     @field_validator("fecha", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; la fecha del registro no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -288,6 +300,7 @@ class RegistrarAsistenciaDTO(BaseModel):
         return v
 
     def to_control(self) -> ControlDiario:
+        """Construye un ControlDiario a partir de los datos del DTO."""
         return ControlDiario(**self.model_dump())
 
 
@@ -307,6 +320,7 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
     @field_validator("fecha", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; la fecha del registro masivo no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -316,12 +330,14 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
     @field_validator("registros")
     @classmethod
     def validar_registros(cls, v: list) -> list:
+        """La lista de registros del grupo no puede estar vacía."""
         if not v:
             raise ValueError("La lista de registros no puede estar vacía.")
         return v
 
     @property
     def total_estudiantes(self) -> int:
+        """Cantidad de estudiantes incluidos en el registro masivo."""
         return len(self.registros)
 
     def to_controles(

@@ -25,6 +25,7 @@ class InstitucionService:
     """
 
     def __init__(self, repo: IInstitucionRepository) -> None:
+        """Inyecta el repositorio de instituciones."""
         self._repo = repo
 
     # ------------------------------------------------------------------

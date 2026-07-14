@@ -1,6 +1,13 @@
 # Puertos del Dominio (Repositorios e Interfaces)
 
-> **Actualizado:** Junio 2026. Total: 19 puertos de repositorio + 3 interfaces de servicio externo.
+> **Actualizado:** Julio 2026. Total: **19 puertos de repositorio** (incluye
+> `institucion_repo`, multi-tenant) + **3 interfaces de servicio externo**
+> (`service_ports.py`). Todos en `src/domain/ports/`.
+>
+> 📖 **Referencia por método (firma + docstring):**
+> [`docs/api_reference/dominio_puertos.md`](api_reference/dominio_puertos.md)
+> — generada desde el código con `tools/gen_api_reference.py`. Este documento
+> resume responsabilidades; la referencia lista cada método con su firma exacta.
 
 ## Modulo: `acudiente_repo.py`
 
@@ -312,6 +319,23 @@ El puerto más extenso del sistema. Cubre toda la infraestructura académica y e
 **Grados y plan de estudios:**
 - `listar_grados()`, `upsert_grado()`, `eliminar_grado()`
 - `listar_plan_estudios()`, `get_plan_estudios_por_grado()`, `set_horas_plan()`, `eliminar_plan_estudios()`
+
+## Modulo: `institucion_repo.py` *(Nuevo — multi-tenant, paso_24)*
+
+### IInstitucionRepository
+**Herencia**: ABC
+
+Contrato de acceso a datos para el catálogo de instituciones (tenants). La
+institución **#1** es la institución por defecto, sembrada desde la configuración
+institucional existente; el servicio garantiza la unicidad del nombre antes de
+insertar.
+
+**Métodos definidos:**
+- `get_by_id()`
+- `listar()` — orden por id; `solo_activas` omite las inactivas.
+- `existe_nombre()` — case-insensitive.
+- `guardar()`
+- `get_por_defecto()` — institución de id mínimo (#1), o None.
 
 ## Modulo: `periodo_repo.py`
 

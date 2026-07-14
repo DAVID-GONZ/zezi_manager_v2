@@ -24,6 +24,8 @@ class PlanEstudiosService:
         repo: IInfraestructuraRepository,
         asignacion_svc_provider=None,
     ) -> None:
+        """Inyecta el repo de infraestructura y un provider lazy del servicio de
+        asignaciones (evita la dependencia circular plan↔asignación)."""
         self._repo = repo
         # Provider lazy (callable que retorna AsignacionService) para evitar la
         # dependencia circular plan↔asignacion en el composition root.
@@ -31,6 +33,7 @@ class PlanEstudiosService:
 
     # ── Grados ofrecidos ───────────────────────────────────────────────
     def listar_grados(self) -> list[Grado]:
+        """Lista los grados ofrecidos (delegado al repositorio)."""
         return self._repo.listar_grados()
 
     @requiere_escritura
@@ -48,6 +51,7 @@ class PlanEstudiosService:
 
     @requiere_escritura
     def eliminar_grado(self, numero: int) -> bool:
+        """Elimina un grado por su número (delegado al repositorio)."""
         return self._repo.eliminar_grado(numero)
 
     def horas_objetivo(self, grado: int) -> int:
@@ -57,9 +61,11 @@ class PlanEstudiosService:
 
     # ── Plan de estudios ───────────────────────────────────────────────
     def listar(self) -> list[PlanEstudios]:
+        """Lista todo el plan de estudios (delegado al repositorio)."""
         return self._repo.listar_plan_estudios()
 
     def por_grado(self, grado: int) -> list[PlanEstudios]:
+        """Lista el plan de estudios de un grado (delegado al repositorio)."""
         return self._repo.get_plan_estudios_por_grado(grado)
 
     def horas_por_grado(self, grado: int) -> int:
@@ -89,6 +95,7 @@ class PlanEstudiosService:
 
     @requiere_escritura
     def actualizar(self, dto: NuevoPlanEstudiosDTO) -> PlanEstudios:
+        """Fija (upsert) las horas de una asignatura en el plan de un grado."""
         return self._repo.set_horas_plan(
             dto.grado, dto.asignatura_id, dto.horas_semanales
         )

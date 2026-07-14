@@ -47,7 +47,7 @@ def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
             todas = Container.asignacion_service().listar_por_docente(ctx.usuario_id)
             _s["todas_asignaciones_docente"] = todas
             grupos_ids   = {a.grupo_id for a in todas}
-            grupos_infra = Container.infraestructura_service().listar_grupos()
+            grupos_infra = Container.catalogo_academico_service().listar_grupos()
             _s["grupos"] = [g for g in grupos_infra if g.id in grupos_ids]
         except Exception as exc:
             logger.error("Error cargando grupos (profesor): %s", exc)
@@ -55,7 +55,7 @@ def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
     else:
         _s["todas_asignaciones_docente"] = []
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
             _s["grupos"] = []

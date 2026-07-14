@@ -98,6 +98,7 @@ class ConfiguracionSIEE(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -105,6 +106,7 @@ class ConfiguracionSIEE(BaseModel):
     @field_validator("porcentaje_autonomia_docente")
     @classmethod
     def validar_porcentaje(cls, v: float | None) -> float | None:
+        """Si se define, la autonomía docente debe estar en (0, 1.0] (fracción, no porcentaje)."""
         if v is not None and not (0 < v <= 1.0):
             raise ValueError(
                 f"porcentaje_autonomia_docente debe estar entre 0 (exclusivo) y 1.0 "
@@ -160,6 +162,7 @@ class Categoria(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la categoría; exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la categoría no puede estar vacío.")
@@ -172,6 +175,7 @@ class Categoria(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso de la categoría debe estar en (0, 1.0] (escala 0-1, no porcentaje)."""
         if not (0 < v <= 1.0):
             raise ValueError(
                 f"El peso debe estar entre 0 (exclusivo) y 1.0 (inclusivo) "
@@ -182,6 +186,7 @@ class Categoria(BaseModel):
     @field_validator("asignacion_id", "periodo_id", "anio_id", "categoria_padre_id")
     @classmethod
     def validar_id_opcional(cls, v: int | None) -> int | None:
+        """Cada FK opcional, si está presente, debe ser un id positivo."""
         if v is not None and v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -218,6 +223,7 @@ class Actividad(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la actividad; exige no vacío y ≤150 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la actividad no puede estar vacío.")
@@ -230,6 +236,7 @@ class Actividad(BaseModel):
     @field_validator("valor_maximo")
     @classmethod
     def validar_valor_maximo(cls, v: float) -> float:
+        """El valor máximo de la actividad debe ser positivo."""
         if v <= 0:
             raise ValueError(
                 f"El valor máximo debe ser positivo (recibido: {v})."
@@ -239,6 +246,7 @@ class Actividad(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def limpiar_descripcion(cls, v: str | None) -> str | None:
+        """Normaliza la descripción opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -247,6 +255,7 @@ class Actividad(BaseModel):
     @field_validator("fecha", mode="before")
     @classmethod
     def parsear_fecha(cls, v: date | str | None) -> date | None:
+        """Acepta un date o string ISO ('YYYY-MM-DD') y lo convierte a date."""
         if v is None:
             return None
         if isinstance(v, str):
@@ -256,6 +265,7 @@ class Actividad(BaseModel):
     @field_validator("categoria_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """La categoría dueña de la actividad debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"categoria_id debe ser positivo (recibido: {v}).")
         return v
@@ -266,6 +276,7 @@ class Actividad(BaseModel):
 
     @property
     def esta_publicada(self) -> bool:
+        """True si la actividad está en estado PUBLICADA."""
         return self.estado == EstadoActividad.PUBLICADA
 
     @property
@@ -323,6 +334,7 @@ class Nota(BaseModel):
     @field_validator("estudiante_id", "actividad_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """Las FK de la nota (estudiante y actividad) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -330,6 +342,7 @@ class Nota(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """La nota debe estar en el rango 0-100; se redondea a 2 decimales."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"La nota debe estar entre 0 y 100 (recibido: {v})."
@@ -338,6 +351,7 @@ class Nota(BaseModel):
 
     @property
     def es_aprobatoria(self, nota_minima: float = 60.0) -> bool:
+        """True si el valor alcanza la nota mínima aprobatoria (por defecto 60)."""
         return self.valor >= nota_minima
 
 
@@ -366,6 +380,7 @@ class PuntosExtra(BaseModel):
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """Las FK (estudiante, asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -373,6 +388,7 @@ class PuntosExtra(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -380,10 +396,12 @@ class PuntosExtra(BaseModel):
 
     @property
     def balance(self) -> int:
+        """Diferencia neta entre puntos positivos y negativos."""
         return self.positivos - self.negativos
 
     @property
     def tiene_impacto(self) -> bool:
+        """True si hay al menos un punto positivo o negativo registrado."""
         return self.positivos > 0 or self.negativos > 0
 
 
@@ -658,6 +676,7 @@ class NuevaConfiguracionSIEEDTO(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -665,6 +684,7 @@ class NuevaConfiguracionSIEEDTO(BaseModel):
     @field_validator("porcentaje_autonomia_docente")
     @classmethod
     def validar_porcentaje(cls, v: float | None) -> float | None:
+        """Si se define, la autonomía docente debe estar en (0, 1.0]."""
         if v is not None and not (0 < v <= 1.0):
             raise ValueError(
                 f"porcentaje_autonomia_docente debe estar entre 0 y 1.0 "
@@ -673,6 +693,7 @@ class NuevaConfiguracionSIEEDTO(BaseModel):
         return v
 
     def to_configuracion_siee(self) -> ConfiguracionSIEE:
+        """Construye una ConfiguracionSIEE a partir de los datos del DTO."""
         return ConfiguracionSIEE(**self.model_dump())
 
 
@@ -692,6 +713,7 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre; exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
@@ -702,6 +724,7 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso institucional debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
             raise ValueError(
                 f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v})."
@@ -711,11 +734,13 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
 
     def to_categoria(self) -> Categoria:
+        """Construye la Categoria institucional (es_institucional=True) del DTO."""
         return Categoria(
             nombre=self.nombre,
             peso=self.peso,
@@ -736,6 +761,7 @@ class NuevaCategoriaDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
@@ -744,6 +770,7 @@ class NuevaCategoriaDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso de la categoría debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
             raise ValueError(
                 f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v})."
@@ -751,6 +778,7 @@ class NuevaCategoriaDTO(BaseModel):
         return round(v, 4)
 
     def to_categoria(self) -> Categoria:
+        """Construye una Categoria de docente a partir de los datos del DTO."""
         return Categoria(**self.model_dump())
 
 
@@ -762,11 +790,13 @@ class ActualizarCategoriaDTO(BaseModel):
     @field_validator("peso")
     @classmethod
     def validar_peso(cls, v: float | None) -> float | None:
+        """Si se actualiza el peso, debe permanecer en (0, 1.0]."""
         if v is not None and not (0 < v <= 1.0):
             raise ValueError(f"El peso debe estar entre 0 y 1.0 (recibido: {v}).")
         return v
 
     def aplicar_a(self, categoria: Categoria) -> Categoria:
+        """Devuelve una copia de la categoría con solo los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return categoria.model_copy(update=cambios) if cambios else categoria
 
@@ -783,6 +813,7 @@ class NuevaActividadDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
@@ -791,11 +822,13 @@ class NuevaActividadDTO(BaseModel):
     @field_validator("valor_maximo")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """El valor máximo de la actividad debe ser positivo."""
         if v <= 0:
             raise ValueError(f"El valor máximo debe ser positivo (recibido: {v}).")
         return v
 
     def to_actividad(self) -> Actividad:
+        """Construye una Actividad a partir de los datos del DTO."""
         return Actividad(**self.model_dump())
 
 
@@ -807,6 +840,7 @@ class ActualizarActividadDTO(BaseModel):
     valor_maximo: float | None = None
 
     def aplicar_a(self, actividad: Actividad) -> Actividad:
+        """Aplica los campos no nulos a la actividad; rechaza si está CERRADA."""
         if actividad.estado == EstadoActividad.CERRADA:
             raise ValueError("No se puede modificar una actividad cerrada.")
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
@@ -823,11 +857,13 @@ class RegistrarNotaDTO(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """La nota debe estar en el rango 0-100; se redondea a 2 decimales."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     def to_nota(self, usuario_registro_id: int | None = None) -> Nota:
+        """Construye una Nota del DTO, fijando el usuario que la registra si se indica."""
         data = self.model_dump()
         if usuario_registro_id is not None:
             data["usuario_registro_id"] = usuario_registro_id
@@ -846,12 +882,14 @@ class RegistrarNotasMasivasDTO(BaseModel):
     @field_validator("actividad_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
+        """La actividad destino del registro masivo debe tener id positivo."""
         if v <= 0:
             raise ValueError(f"actividad_id debe ser positivo (recibido: {v}).")
         return v
 
     @property
     def total_notas(self) -> int:
+        """Cantidad de notas incluidas en el registro masivo."""
         return len(self.notas)
 
     def to_notas(self, usuario_registro_id: int | None = None) -> "list[Nota]":

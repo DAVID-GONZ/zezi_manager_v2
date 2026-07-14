@@ -119,6 +119,7 @@ class Habilitacion(BaseModel):
     @field_validator("estudiante_id", "asignacion_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK de la habilitación (estudiante, asignación) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
@@ -126,6 +127,7 @@ class Habilitacion(BaseModel):
     @field_validator("nota_antes", "nota_habilitacion")
     @classmethod
     def validar_nota(cls, v: float | None) -> float | None:
+        """Cada nota, si está presente, debe estar en 0-100 (redondeada a 2)."""
         if v is None:
             return None
         if not (0 <= v <= 100):
@@ -137,6 +139,7 @@ class Habilitacion(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -148,6 +151,7 @@ class Habilitacion(BaseModel):
 
     @model_validator(mode="after")
     def validar_coherencia(self) -> Self:
+        """Reglas cruzadas: PERIODO exige periodo_id, ANUAL lo prohíbe, y no hay nota si está PENDIENTE."""
         # tipo=PERIODO exige periodo_id
         if self.tipo == TipoHabilitacion.PERIODO and self.periodo_id is None:
             raise ValueError(
@@ -177,14 +181,17 @@ class Habilitacion(BaseModel):
 
     @property
     def esta_pendiente(self) -> bool:
+        """True si la habilitación está programada pero aún no se presenta."""
         return self.estado == EstadoHabilitacion.PENDIENTE
 
     @property
     def fue_realizada(self) -> bool:
+        """True si la habilitación ya se presentó (estado distinto de PENDIENTE)."""
         return self.estado != EstadoHabilitacion.PENDIENTE
 
     @property
     def tiene_resultado_final(self) -> bool:
+        """True si ya se decidió el resultado (APROBADA o REPROBADA)."""
         return self.estado in (
             EstadoHabilitacion.APROBADA,
             EstadoHabilitacion.REPROBADA,
@@ -296,6 +303,7 @@ class PlanMejoramiento(BaseModel):
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del plan (estudiante, asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
@@ -303,6 +311,7 @@ class PlanMejoramiento(BaseModel):
     @field_validator("descripcion_dificultad", "actividades_propuestas", mode="before")
     @classmethod
     def validar_texto_requerido(cls, v: str) -> str:
+        """Normaliza el texto; exige no vacío y ≤2000 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El campo no puede estar vacío.")
@@ -315,6 +324,7 @@ class PlanMejoramiento(BaseModel):
     @field_validator("observacion_cierre", mode="before")
     @classmethod
     def limpiar_observacion_cierre(cls, v: str | None) -> str | None:
+        """Normaliza la observación de cierre opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -326,6 +336,7 @@ class PlanMejoramiento(BaseModel):
 
     @model_validator(mode="after")
     def validar_coherencia(self) -> Self:
+        """Reglas de fechas y estado: cronología válida, cierre exige observación y un plan ACTIVO no lleva fecha_cierre."""
         # fecha_seguimiento no puede ser anterior al inicio
         if (
             self.fecha_seguimiento
@@ -370,14 +381,17 @@ class PlanMejoramiento(BaseModel):
 
     @property
     def esta_activo(self) -> bool:
+        """True si el plan sigue en curso (estado ACTIVO)."""
         return self.estado == EstadoPlanMejoramiento.ACTIVO
 
     @property
     def esta_cerrado(self) -> bool:
+        """True si el plan ya fue cerrado (CUMPLIDO o INCUMPLIDO)."""
         return not self.esta_activo
 
     @property
     def tiene_seguimiento_programado(self) -> bool:
+        """True si el plan tiene una fecha de seguimiento fijada."""
         return self.fecha_seguimiento is not None
 
     @property
@@ -469,12 +483,14 @@ class NuevaHabilitacionDTO(BaseModel):
     @field_validator("nota_antes")
     @classmethod
     def validar_nota(cls, v: float | None) -> float | None:
+        """Si se indica nota previa, debe estar en 0-100."""
         if v is not None and not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return v
 
     @model_validator(mode="after")
     def validar_tipo_periodo(self) -> Self:
+        """Coherencia tipo/periodo: PERIODO exige periodo_id y ANUAL lo prohíbe."""
         if self.tipo == TipoHabilitacion.PERIODO and self.periodo_id is None:
             raise ValueError(
                 "Una habilitación de tipo PERIODO requiere periodo_id."
@@ -486,6 +502,7 @@ class NuevaHabilitacionDTO(BaseModel):
         return self
 
     def to_habilitacion(self, usuario_id: int | None = None) -> Habilitacion:
+        """Construye una Habilitacion del DTO, fijando el usuario que la registra."""
         return Habilitacion(
             **self.model_dump(),
             usuario_registro_id=usuario_id,
@@ -502,6 +519,7 @@ class RegistrarNotaHabilitacionDTO(BaseModel):
     @field_validator("nota")
     @classmethod
     def validar_nota(cls, v: float) -> float:
+        """La nota de la habilitación debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
@@ -519,12 +537,14 @@ class NuevoPlanMejoramientoDTO(BaseModel):
     @field_validator("descripcion_dificultad", "actividades_propuestas", mode="before")
     @classmethod
     def validar_texto(cls, v: str) -> str:
+        """Normaliza el texto y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El campo no puede estar vacío.")
         return v
 
     def to_plan(self, usuario_id: int | None = None) -> PlanMejoramiento:
+        """Construye un PlanMejoramiento del DTO, fijando el usuario responsable."""
         return PlanMejoramiento(
             **self.model_dump(),
             usuario_id=usuario_id,
@@ -540,6 +560,7 @@ class CerrarPlanMejoramientoDTO(BaseModel):
     @field_validator("estado")
     @classmethod
     def validar_estado_cierre(cls, v: EstadoPlanMejoramiento) -> EstadoPlanMejoramiento:
+        """El estado de cierre debe ser CUMPLIDO o INCUMPLIDO, nunca ACTIVO."""
         if v == EstadoPlanMejoramiento.ACTIVO:
             raise ValueError(
                 "No se puede cerrar un plan con estado ACTIVO. "
@@ -550,6 +571,7 @@ class CerrarPlanMejoramientoDTO(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def validar_observacion(cls, v: str) -> str:
+        """Normaliza la observación de cierre; es obligatoria (no vacía)."""
         v = str(v).strip()
         if not v:
             raise ValueError("La observación de cierre no puede estar vacía.")

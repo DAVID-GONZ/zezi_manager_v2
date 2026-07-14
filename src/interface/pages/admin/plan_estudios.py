@@ -83,7 +83,7 @@ def plan_estudios_page() -> None:
     # ── Carga ─────────────────────────────────────────────────────────────────
     def _cargar_catalogo() -> None:
         svc = Container.plan_estudios_service()
-        infra = Container.infraestructura_service()
+        infra = Container.catalogo_academico_service()
         try:
             _s["grados"] = svc.listar_grados()
         except Exception as exc:

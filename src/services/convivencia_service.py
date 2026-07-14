@@ -33,6 +33,7 @@ class ConvivenciaService:
         repo: IConvivenciaRepository,
         alerta_repo: IAlertaRepository | None = None,
     ) -> None:
+        """Inyecta el repositorio de convivencia y el de alertas (opcional)."""
         self._repo        = repo
         self._alerta_repo = alerta_repo
 

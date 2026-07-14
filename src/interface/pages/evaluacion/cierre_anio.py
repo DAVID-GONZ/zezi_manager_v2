@@ -46,7 +46,7 @@ def cierre_anio_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
             _s["grupos"] = []

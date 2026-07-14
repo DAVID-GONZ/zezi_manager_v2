@@ -2,6 +2,12 @@
 
 Este documento describe la arquitectura y los detalles de implementación de la capa de repositorios en el proyecto **ZECI Manager v2.0**. La capa de repositorios actúa como un puente entre la lógica de dominio (casos de uso) y la infraestructura de almacenamiento (base de datos SQLite), siguiendo los principios de la **Arquitectura Limpia (Clean Architecture)**.
 
+> 📖 **Referencia por método:** los contratos (con firma + docstring) están en
+> [`docs/api_reference/dominio_puertos.md`](api_reference/dominio_puertos.md); las
+> implementaciones SQLite, en
+> [`docs/api_reference/infraestructura.md`](api_reference/infraestructura.md).
+> Ambas se generan con `tools/gen_api_reference.py`.
+
 ## 1. Arquitectura y Patrón Repositorio
 
 El sistema implementa el **Patrón Repositorio** utilizando el concepto de Puertos y Adaptadores:
@@ -27,6 +33,7 @@ Los puertos se encuentran en el directorio `src/domain/ports/` y definen las ope
 | `IEvaluacionRepository` | Evaluacion | Manejo de calificaciones, notas parciales y definitivas. |
 | `IHabilitacionRepository` | Habilitacion, PlanMejoramiento (narrativo) | Registro de procesos de recuperación académica y planes narrativos de seguimiento. |
 | `IInfraestructuraRepository`| Grupos, Asignaturas, Grados, Salas, Horarios, Franjas, Escenarios, Disponibilidad, PlanEstudios | Gestión de toda la infraestructura académica y subsistema de horarios. |
+| `IInstitucionRepository` | Institucion | Catálogo de instituciones (tenants). Institución #1 por defecto. *(Nuevo — multi-tenant, paso_24)* |
 | `INivelacionRepository` | ActividadNivelacion, NotaNivelacion, CierreNivelacion | Proceso de nivelación post-cierre (Decreto 1290). *(Nuevo — Junio 2026)* |
 | `IPeriodoRepository` | PeriodoAcademico | Administración de los periodos escolares (trimestres, semestres, etc.). |
 | `IPlanMejoramientoRepository` | CortePlan, NotaCortePlan, ActividadPlan, NotaActividadPlan | Plan de mejoramiento cuantitativo con cortes y notas por actividad. *(Nuevo — Junio 2026)* |
@@ -44,13 +51,13 @@ Cada repositorio implementa su interfaz correspondiente y se encarga de:
 - Mapear las tuplas obtenidas de SQLite a las entidades de dominio (modelos).
 - Manejar las transacciones.
 
-### Lista de Repositorios Implementados (20 total)
+### Lista de Repositorios Implementados (19 total)
 
 - `SqliteAcudienteRepository`
 - `SqliteAlertaRepository`
 - `SqliteAsignacionRepository`
 - `SqliteAsistenciaRepository`
-- `SqliteAuditoriaRepository`
+- `SqliteAuditoriaRepository` — calcula y verifica la cadena hash de la bitácora (ver §7).
 - `SqliteCierreRepository`
 - `SqliteConfiguracionRepository`
 - `SqliteConvivenciaRepository`
@@ -59,6 +66,7 @@ Cada repositorio implementa su interfaz correspondiente y se encarga de:
 - `SqliteEvaluacionRepository`
 - `SqliteHabilitacionRepository`
 - `SqliteInfraestructuraRepository`
+- `SqliteInstitucionRepository` *(Nuevo — multi-tenant, paso_24)*
 - `SqliteNivelacionRepository` *(Nuevo — Junio 2026)*
 - `SqlitePeriodoRepository`
 - `SqlitePlanMejoramientoRepository` *(Nuevo — Junio 2026)*
@@ -91,3 +99,22 @@ Los repositorios se encargan manualmente de mapear los resultados (filas) devuel
 ## 6. Pruebas de los Repositorios
 
 Las pruebas para la capa de repositorios (`tests/integration/`) se realizan como pruebas de integración. Utilizan una base de datos SQLite configurada en memoria (`:memory:`) para aislar el entorno, lo que permite verificar la sintaxis SQL, la correcta ejecución de las operaciones CRUD y el mapeo exacto de los datos a los modelos sin afectar los datos reales de la aplicación.
+
+## 7. Integridad de la auditoría (cadena hash)
+
+`SqliteAuditoriaRepository` es el único repositorio con lógica de integridad
+adicional (M4). Al insertar un registro en las tablas append-only (`auditoria`,
+`audit_log`) calcula su `hash_cadena` delegando en la política de dominio
+`src/domain/policies/audit_chain.py` (`calcular_hash(hash_previo, campos)`), y la
+verificación reconstruye la secuencia y delega en `primer_eslabon_roto(...)`. El
+repositorio hace el IO (leer la secuencia ordenada, persistir el hash); el
+**algoritmo** vive en el dominio, sin IO. Ver `docs/architecture.md` §6.
+
+## 8. Repositorios *tenant-aware* (multi-tenant)
+
+Los repositorios que participan del aislamiento por institución reciben el
+`institucion_id` **por parámetro** (nunca importan de `src/services/`). El scope
+(qué institución) lo resuelve el **servicio** a partir de
+`contexto_tenant.institucion_actual()` — regla admin→`None` / resto→su tenant.
+`SqliteInstitucionRepository` implementa el catálogo de tenants
+(`IInstitucionRepository`), con la institución #1 como default sembrado.

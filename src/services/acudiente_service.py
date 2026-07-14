@@ -15,6 +15,7 @@ class AcudienteService:
     """
 
     def __init__(self, repo: IAcudienteRepository) -> None:
+        """Inyecta el repositorio de acudientes."""
         self._repo = repo
 
     def get_principal(self, estudiante_id: int):

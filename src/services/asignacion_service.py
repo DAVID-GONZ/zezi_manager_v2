@@ -45,10 +45,12 @@ class CompletitudGrupoDTO:
 
     @property
     def completo(self) -> bool:
+        """True si las horas asignadas cubren el total del plan del grupo."""
         return bool(self.horas_totales) and self.horas_asignadas >= self.horas_totales
 
     @property
     def faltantes(self) -> int:
+        """Horas del plan aún sin asignar (nunca negativo)."""
         return max(0, self.horas_totales - self.horas_asignadas)
 
 
@@ -67,6 +69,8 @@ class AsignacionService:
         infra_repo:    IInfraestructuraRepository   | None = None,
         plan_svc=None,
     ) -> None:
+        """Inyecta el repo de asignaciones y las dependencias opcionales
+        (periodos, auditoría, usuarios, infraestructura y plan de estudios)."""
         self._repo         = repo
         self._periodo_repo = periodo_repo
         self._auditoria    = auditoria

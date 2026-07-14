@@ -78,6 +78,7 @@ class Periodo(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser un entero positivo (recibido: {v}).")
         return v
@@ -85,6 +86,7 @@ class Periodo(BaseModel):
     @field_validator("numero")
     @classmethod
     def validar_numero(cls, v: int) -> int:
+        """El número de periodo debe estar en el rango 1..6."""
         if not (1 <= v <= 6):
             raise ValueError(
                 f"El número de periodo debe estar entre 1 y 6 (recibido: {v})."
@@ -94,6 +96,7 @@ class Periodo(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre del periodo; exige no vacío y ≤50 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre del periodo no puede estar vacío.")
@@ -106,6 +109,7 @@ class Periodo(BaseModel):
     @field_validator("peso_porcentual")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso porcentual del periodo debe estar en (0, 100] (redondeado a 2)."""
         if not (0 < v <= 100):
             raise ValueError(
                 f"El peso porcentual debe estar entre 0 y 100 (recibido: {v})."
@@ -118,6 +122,7 @@ class Periodo(BaseModel):
 
     @model_validator(mode="after")
     def validar_coherencia_fechas(self) -> Self:
+        """Coherencia de fechas y cierre: inicio ≤ fin, y fecha_cierre_real existe si y solo si está cerrado."""
         if (
             self.fecha_inicio is not None
             and self.fecha_fin is not None
@@ -229,6 +234,7 @@ class HitoPeriodo(BaseModel):
     @field_validator("periodo_id")
     @classmethod
     def validar_periodo_id(cls, v: int) -> int:
+        """El periodo dueño del hito debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"periodo_id debe ser positivo (recibido: {v}).")
         return v
@@ -236,6 +242,7 @@ class HitoPeriodo(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def limpiar_descripcion(cls, v: str | None) -> str | None:
+        """Normaliza la descripción opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -272,6 +279,7 @@ class NuevoPeriodoDTO(BaseModel):
     @field_validator("numero")
     @classmethod
     def validar_numero(cls, v: int) -> int:
+        """El número de periodo debe estar en el rango 1..6."""
         if not (1 <= v <= 6):
             raise ValueError(f"El número debe estar entre 1 y 6 (recibido: {v}).")
         return v
@@ -279,12 +287,14 @@ class NuevoPeriodoDTO(BaseModel):
     @field_validator("peso_porcentual")
     @classmethod
     def validar_peso(cls, v: float) -> float:
+        """El peso porcentual debe estar en (0, 100] (redondeado a 2)."""
         if not (0 < v <= 100):
             raise ValueError(f"El peso debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @model_validator(mode="after")
     def validar_fechas(self) -> Self:
+        """Si ambas están definidas, fecha_inicio no puede ser posterior a fecha_fin."""
         if (
             self.fecha_inicio and self.fecha_fin
             and self.fecha_inicio > self.fecha_fin
@@ -293,6 +303,7 @@ class NuevoPeriodoDTO(BaseModel):
         return self
 
     def to_periodo(self) -> Periodo:
+        """Construye un Periodo a partir de los datos del DTO."""
         return Periodo(**self.model_dump())
 
 
@@ -307,12 +318,14 @@ class ActualizarPeriodoDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str | None) -> str | None:
+        """Normaliza el nombre opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = v.strip()
         return v if v else None
 
     def aplicar_a(self, periodo: Periodo) -> Periodo:
+        """Aplica los campos no nulos al periodo; rechaza si el periodo está cerrado."""
         if periodo.cerrado:
             raise ValueError(
                 "No se puede modificar un periodo cerrado."
@@ -338,6 +351,7 @@ class NuevoHitoPeriodoDTO(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
+        """Normaliza la descripción del hito; es obligatoria y ≤300 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("La descripción del hito no puede estar vacía.")
@@ -350,11 +364,13 @@ class NuevoHitoPeriodoDTO(BaseModel):
     @field_validator("periodo_id")
     @classmethod
     def validar_periodo_id(cls, v: int) -> int:
+        """El periodo dueño del hito debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"periodo_id debe ser positivo (recibido: {v}).")
         return v
 
     def to_hito(self) -> HitoPeriodo:
+        """Construye un HitoPeriodo a partir de los datos del DTO."""
         return HitoPeriodo(**self.model_dump())
 
 

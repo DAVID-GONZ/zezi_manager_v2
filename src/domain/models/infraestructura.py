@@ -61,6 +61,7 @@ class AreaConocimiento(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre del área (strip) y exige no vacío y ≤120 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre del área no puede estar vacío.")
@@ -73,6 +74,7 @@ class AreaConocimiento(BaseModel):
     @field_validator("codigo", mode="before")
     @classmethod
     def limpiar_codigo(cls, v: str | None) -> str | None:
+        """Normaliza el código a mayúsculas sin espacios; cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip().upper()
@@ -112,6 +114,7 @@ class Asignatura(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la asignatura y exige no vacío y ≤100 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la asignatura no puede estar vacío.")
@@ -124,6 +127,7 @@ class Asignatura(BaseModel):
     @field_validator("codigo", mode="before")
     @classmethod
     def limpiar_codigo(cls, v: str | None) -> str | None:
+        """Normaliza el código a mayúsculas sin espacios; cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip().upper()
@@ -132,6 +136,7 @@ class Asignatura(BaseModel):
     @field_validator("area_id")
     @classmethod
     def validar_area_id(cls, v: int | None) -> int | None:
+        """Si se especifica área, su id debe ser positivo (FK válida)."""
         if v is not None and v <= 0:
             raise ValueError(f"area_id debe ser positivo (recibido: {v}).")
         return v
@@ -158,6 +163,7 @@ class Grupo(BaseModel):
     @field_validator("codigo", mode="before")
     @classmethod
     def validar_codigo(cls, v: str) -> str:
+        """Normaliza el código del grupo a mayúsculas; exige no vacío y ≤20 caracteres."""
         v = str(v).strip().upper()
         if not v:
             raise ValueError("El código del grupo no puede estar vacío.")
@@ -170,6 +176,7 @@ class Grupo(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def limpiar_nombre(cls, v: str | None) -> str | None:
+        """Normaliza el nombre opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -178,6 +185,7 @@ class Grupo(BaseModel):
     @field_validator("grado")
     @classmethod
     def validar_grado(cls, v: int | None) -> int | None:
+        """Si se indica grado, debe estar en el rango 1..13 del sistema colombiano."""
         if v is not None and not (1 <= v <= 13):
             raise ValueError(
                 f"El grado debe estar entre 1 y 13 (recibido: {v})."
@@ -232,6 +240,7 @@ class Grado(BaseModel):
 
     @model_validator(mode="after")
     def validar_rango_estudiantes(self) -> "Grado":
+        """El mínimo de estudiantes no puede superar el máximo del grado."""
         if self.min_estudiantes > self.max_estudiantes:
             raise ValueError(
                 f"El mínimo de estudiantes ({self.min_estudiantes}) no puede "
@@ -255,6 +264,7 @@ class EscenarioHorario(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -262,6 +272,7 @@ class EscenarioHorario(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre del escenario y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre del escenario no puede estar vacío.")
@@ -277,6 +288,7 @@ class NuevoEscenarioDTO(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -284,12 +296,14 @@ class NuevoEscenarioDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre del escenario y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre del escenario no puede estar vacío.")
         return v
 
     def to_escenario(self) -> EscenarioHorario:
+        """Construye un EscenarioHorario a partir de los datos del DTO."""
         return EscenarioHorario(**self.model_dump())
 
 
@@ -316,6 +330,7 @@ class Horario(BaseModel):
     @field_validator("grupo_id", "asignatura_id", "usuario_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del bloque (grupo, asignatura, docente) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
@@ -323,6 +338,7 @@ class Horario(BaseModel):
     @field_validator("escenario_id")
     @classmethod
     def validar_escenario_id(cls, v: int) -> int:
+        """El escenario dueño del bloque debe referenciarse con un id positivo."""
         if v <= 0:
             raise ValueError(f"escenario_id debe ser un entero positivo (recibido: {v}).")
         return v
@@ -330,6 +346,7 @@ class Horario(BaseModel):
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
     def parsear_hora(cls, v: time | str) -> time:
+        """Acepta un time o un string 'HH:MM' y lo convierte a datetime.time."""
         if isinstance(v, time):
             return v
         if isinstance(v, str):
@@ -349,11 +366,13 @@ class Horario(BaseModel):
     @field_validator("sala", mode="before")
     @classmethod
     def validar_sala(cls, v: str) -> str:
+        """Normaliza la sala; si queda vacía usa 'Aula' por defecto."""
         v = str(v).strip()
         return v if v else "Aula"
 
     @model_validator(mode="after")
     def validar_orden_horas(self) -> Self:
+        """Invariante temporal: la hora de inicio debe ser anterior a la de fin."""
         if self.hora_inicio >= self.hora_fin:
             raise ValueError(
                 f"hora_inicio ({self.hora_inicio}) debe ser anterior "
@@ -402,6 +421,7 @@ class Logro(BaseModel):
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del logro (asignación y periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -409,6 +429,7 @@ class Logro(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
+        """Normaliza el enunciado del logro; exige no vacío y ≤500 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("La descripción del logro no puede estar vacía.")
@@ -449,6 +470,7 @@ class Franja(BaseModel):
     @field_validator("plantilla_id")
     @classmethod
     def validar_plantilla_id(cls, v: int) -> int:
+        """La plantilla dueña de la franja debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"plantilla_id debe ser positivo (recibido: {v}).")
         return v
@@ -456,6 +478,7 @@ class Franja(BaseModel):
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
     def normalizar_hora(cls, v: str) -> str:
+        """Normaliza la hora 'HH:MM' (strip); no puede quedar vacía."""
         v = str(v).strip()
         if not v:
             raise ValueError("La hora no puede estar vacía.")
@@ -464,6 +487,7 @@ class Franja(BaseModel):
     @field_validator("tipo", mode="before")
     @classmethod
     def validar_tipo(cls, v: str) -> str:
+        """El tipo de franja debe ser uno de TIPOS_FRANJA (lectiva/descanso/almuerzo)."""
         v = str(v).strip().lower()
         if v not in TIPOS_FRANJA:
             raise ValueError(
@@ -474,6 +498,7 @@ class Franja(BaseModel):
     @field_validator("etiqueta", mode="before")
     @classmethod
     def limpiar_etiqueta(cls, v: str | None) -> str | None:
+        """Normaliza la etiqueta opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -481,6 +506,7 @@ class Franja(BaseModel):
 
     @model_validator(mode="after")
     def validar_orden_horas(self) -> Self:
+        """Invariante temporal: la hora de inicio debe ser anterior a la de fin."""
         if self.hora_inicio >= self.hora_fin:
             raise ValueError(
                 f"hora_inicio ({self.hora_inicio}) debe ser anterior "
@@ -490,6 +516,7 @@ class Franja(BaseModel):
 
     @property
     def es_lectiva(self) -> bool:
+        """True si la franja es de tipo lectiva (dictada, no descanso ni almuerzo)."""
         return self.tipo == "lectiva"
 
 
@@ -509,6 +536,7 @@ class PlantillaFranja(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la plantilla y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la plantilla no puede estar vacío.")
@@ -517,6 +545,7 @@ class PlantillaFranja(BaseModel):
     @field_validator("jornada", mode="before")
     @classmethod
     def validar_jornada(cls, v: str) -> str:
+        """La jornada debe ser una de JORNADAS_VALIDAS (AM/PM/UNICA)."""
         v = str(v).strip().upper()
         if v not in JORNADAS_VALIDAS:
             raise ValueError(
@@ -527,6 +556,7 @@ class PlantillaFranja(BaseModel):
     @field_validator("dias_activos", mode="before")
     @classmethod
     def validar_dias(cls, v: list[str]) -> list[str]:
+        """Acepta lista o CSV de días, normaliza y exige que todos estén en DIAS_VALIDOS y no vacío."""
         if isinstance(v, str):
             v = [d.strip() for d in v.split(",") if d.strip()]
         if not isinstance(v, (list, tuple)):
@@ -549,6 +579,7 @@ class NuevaPlantillaFranjaDTO(BaseModel):
     dias_activos: list[str]
 
     def to_plantilla(self) -> PlantillaFranja:
+        """Construye una PlantillaFranja a partir de los datos del DTO."""
         return PlantillaFranja(**self.model_dump())
 
 
@@ -561,6 +592,7 @@ class NuevaFranjaDTO(BaseModel):
     etiqueta:     str | None = None
 
     def to_franja(self) -> Franja:
+        """Construye una Franja a partir de los datos del DTO."""
         return Franja(**self.model_dump())
 
 
@@ -600,6 +632,7 @@ class DisponibilidadDocente(BaseModel):
     @field_validator("dia_semana", mode="before")
     @classmethod
     def validar_dia(cls, v: str) -> str:
+        """El día de la disponibilidad debe pertenecer a DIAS_VALIDOS."""
         v = str(v).strip()
         if v not in DIAS_VALIDOS:
             raise ValueError(
@@ -625,6 +658,7 @@ class ConfigGeneracion(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la configuración y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
@@ -633,11 +667,13 @@ class ConfigGeneracion(BaseModel):
     @field_validator("estado", mode="before")
     @classmethod
     def validar_estado(cls, v: str) -> str:
+        """El estado debe ser uno de ESTADOS_CONFIG (borrador/generado/aplicado)."""
         if v not in ESTADOS_CONFIG:
             raise ValueError(f"estado inválido: {v!r}")
         return v
 
     def puede_transicionar_a(self, nuevo: str) -> bool:
+        """True si el estado destino es alcanzable desde el actual según TRANSICIONES_CONFIG."""
         return nuevo in TRANSICIONES_CONFIG.get(self.estado, set())
 
 
@@ -648,6 +684,7 @@ class NuevaDisponibilidadDTO(BaseModel):
     disponible:   bool = True
 
     def to_modelo(self) -> DisponibilidadDocente:
+        """Construye una DisponibilidadDocente a partir de los datos del DTO."""
         return DisponibilidadDocente(**self.model_dump())
 
 
@@ -661,6 +698,7 @@ class NuevaConfigGeneracionDTO(BaseModel):
     restricciones: dict             = Field(default_factory=dict)
 
     def to_config(self) -> ConfigGeneracion:
+        """Construye una ConfigGeneracion a partir de los datos del DTO."""
         return ConfigGeneracion(**self.model_dump())
 
 
@@ -719,6 +757,7 @@ class VentanaGrupo(BaseModel):
 
     @model_validator(mode="after")
     def validar_exclusividad(self) -> "VentanaGrupo":
+        """La ventana aplica a grupo_id XOR grado: exige exactamente uno de los dos."""
         if self.grupo_id is None and self.grado is None:
             raise ValueError("VentanaGrupo requiere grupo_id o grado.")
         if self.grupo_id is not None and self.grado is not None:
@@ -738,6 +777,7 @@ class BloqueAnclado(BaseModel):
     @field_validator("dia_semana", mode="before")
     @classmethod
     def validar_dia(cls, v: str) -> str:
+        """El día del bloque anclado debe pertenecer a DIAS_VALIDOS."""
         v = str(v).strip()
         if v not in DIAS_VALIDOS:
             raise ValueError(f"dia_semana inválido: '{v}'.")
@@ -756,6 +796,7 @@ class FranjaReunion(BaseModel):
     @field_validator("dia_semana", mode="before")
     @classmethod
     def validar_dia(cls, v: str) -> str:
+        """El día de la franja de reunión debe pertenecer a DIAS_VALIDOS."""
         v = str(v).strip()
         if v not in DIAS_VALIDOS:
             raise ValueError(f"dia_semana inválido: '{v}'.")
@@ -764,6 +805,7 @@ class FranjaReunion(BaseModel):
     @field_validator("modo", mode="before")
     @classmethod
     def validar_modo(cls, v: str) -> str:
+        """El modo de la reunión debe ser 'estricta' o 'preferente'."""
         v = str(v).strip().lower()
         if v not in {"estricta", "preferente"}:
             raise ValueError(f"modo inválido: '{v}'. Use 'estricta' o 'preferente'.")
@@ -772,6 +814,7 @@ class FranjaReunion(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la franja de reunión y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la franja de reunión no puede estar vacío.")
@@ -787,6 +830,7 @@ class LimitesDocente(BaseModel):
 
     @model_validator(mode="after")
     def validar_rango(self) -> "LimitesDocente":
+        """El mínimo de horas diarias no puede superar el máximo del docente."""
         if self.min_horas_dia > self.max_horas_dia:
             raise ValueError(
                 f"min_horas_dia ({self.min_horas_dia}) no puede ser mayor "
@@ -818,12 +862,14 @@ class NuevaAreaDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
         return v
 
     def to_area(self) -> AreaConocimiento:
+        """Construye un AreaConocimiento a partir de los datos del DTO."""
         return AreaConocimiento(**self.model_dump())
 
 
@@ -840,12 +886,14 @@ class NuevaAsignaturaDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
         return v
 
     def to_asignatura(self) -> Asignatura:
+        """Construye una Asignatura a partir de los datos del DTO."""
         return Asignatura(**self.model_dump())
 
 
@@ -860,12 +908,14 @@ class NuevoGrupoDTO(BaseModel):
     @field_validator("codigo", mode="before")
     @classmethod
     def validar_codigo(cls, v: str) -> str:
+        """Normaliza el código a mayúsculas y exige que no esté vacío."""
         v = str(v).strip().upper()
         if not v:
             raise ValueError("El código no puede estar vacío.")
         return v
 
     def to_grupo(self) -> Grupo:
+        """Construye un Grupo a partir de los datos del DTO."""
         return Grupo(**self.model_dump())
 
 
@@ -884,6 +934,7 @@ class Sala(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre de la sala y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la sala no puede estar vacío.")
@@ -892,6 +943,7 @@ class Sala(BaseModel):
     @field_validator("tipo", mode="before")
     @classmethod
     def validar_tipo(cls, v: str) -> str:
+        """El tipo de sala debe ser uno de aula/laboratorio/computo/ed_fisica/otro."""
         v = str(v).strip().lower()
         tipos = {"aula", "laboratorio", "computo", "ed_fisica", "otro"}
         if v not in tipos:
@@ -905,6 +957,7 @@ class NuevaSalaDTO(BaseModel):
     capacidad: int = 30
 
     def to_sala(self) -> Sala:
+        """Construye una Sala a partir de los datos del DTO."""
         return Sala(**self.model_dump())
 
 
@@ -923,6 +976,7 @@ class NuevoHorarioDTO(BaseModel):
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
     def parsear_hora(cls, v: time | str) -> time:
+        """Acepta un time o string 'HH:MM' y lo convierte a datetime.time."""
         if isinstance(v, time):
             return v
         partes = str(v).strip().split(":")
@@ -930,11 +984,13 @@ class NuevoHorarioDTO(BaseModel):
 
     @model_validator(mode="after")
     def validar_horas(self) -> Self:
+        """Invariante temporal: la hora de inicio debe ser anterior a la de fin."""
         if self.hora_inicio >= self.hora_fin:
             raise ValueError("hora_inicio debe ser anterior a hora_fin.")
         return self
 
     def to_horario(self) -> Horario:
+        """Construye un Horario a partir de los datos del DTO."""
         return Horario(**self.model_dump())
 
 
@@ -947,12 +1003,14 @@ class NuevoLogroDTO(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
+        """Normaliza la descripción y exige que no esté vacía."""
         v = str(v).strip()
         if not v:
             raise ValueError("La descripción no puede estar vacía.")
         return v
 
     def to_logro(self) -> Logro:
+        """Construye un Logro a partir de los datos del DTO."""
         return Logro(**self.model_dump())
 
 
@@ -992,6 +1050,7 @@ class HorarioInfo(BaseModel):
                      "docente_nombre", mode="before")
     @classmethod
     def no_vacio(cls, v: str) -> str:
+        """Normaliza los nombres resueltos por JOIN; ninguno puede quedar vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El campo no puede estar vacío.")
@@ -1000,6 +1059,7 @@ class HorarioInfo(BaseModel):
     @field_validator("periodo_nombre", mode="before")
     @classmethod
     def limpiar_periodo_nombre(cls, v: str | None) -> str:
+        """Normaliza el nombre de periodo; None se representa como cadena vacía."""
         if v is None:
             return ""
         return str(v).strip()
@@ -1007,6 +1067,7 @@ class HorarioInfo(BaseModel):
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
     def parsear_hora(cls, v: time | str) -> time:
+        """Acepta un time o string 'HH:MM' y lo convierte a datetime.time."""
         if isinstance(v, time):
             return v
         partes = str(v).strip().split(":")
@@ -1032,6 +1093,7 @@ class HorarioInfo(BaseModel):
 
     @property
     def duracion_minutos(self) -> int:
+        """Duración del bloque en minutos."""
         inicio = self.hora_inicio.hour * 60 + self.hora_inicio.minute
         fin    = self.hora_fin.hour    * 60 + self.hora_fin.minute
         return fin - inicio
@@ -1072,12 +1134,14 @@ class CupoDTO(BaseModel):
 
     @property
     def disponibles(self) -> int | None:
+        """Cupos libres (máximas − usadas); None si no hay tope definido."""
         if self.maximas is None:
             return None
         return max(0, self.maximas - self.usadas)
 
     @property
     def excedido(self) -> bool:
+        """True si las usadas superan el máximo; False si no hay tope."""
         if self.maximas is None:
             return False
         return self.usadas > self.maximas
@@ -1109,14 +1173,17 @@ class ReporteLoteDTO(BaseModel):
 
     @property
     def validas(self) -> int:
+        """Número de filas del lote marcadas como válidas (ok=True)."""
         return sum(1 for f in self.filas if f.ok)
 
     @property
     def invalidas(self) -> int:
+        """Número de filas del lote marcadas como inválidas (ok=False)."""
         return sum(1 for f in self.filas if not f.ok)
 
     @property
     def todo_ok(self) -> bool:
+        """True solo si hay filas y todas son válidas."""
         return bool(self.filas) and all(f.ok for f in self.filas)
 
 

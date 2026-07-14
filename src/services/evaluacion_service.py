@@ -61,6 +61,8 @@ class EvaluacionService:
         auditoria: IAuditoriaRepository | None = None,
         siee_repo: ISIEERepository | None = None,
     ) -> None:
+        """Inyecta el repo de evaluación y los repos opcionales de asignación,
+        periodo, auditoría y SIEE."""
         self._repo            = repo
         self._asignacion_repo = asignacion_repo
         self._periodo_repo    = periodo_repo

@@ -78,6 +78,7 @@ class CierrePeriodo(BaseModel):
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del cierre (estudiante, asignación, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -85,6 +86,7 @@ class CierrePeriodo(BaseModel):
     @field_validator("nota_definitiva")
     @classmethod
     def validar_nota(cls, v: float) -> float:
+        """La nota definitiva debe estar en 0-100; se redondea a 2 decimales."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"La nota definitiva debe estar entre 0 y 100 (recibido: {v})."
@@ -94,6 +96,7 @@ class CierrePeriodo(BaseModel):
     @field_validator("fecha_cierre", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; la fecha de cierre no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -157,6 +160,7 @@ class CierreAnio(BaseModel):
     @field_validator("estudiante_id", "asignacion_id", "anio_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK del cierre anual (estudiante, asignación, año) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -168,6 +172,7 @@ class CierreAnio(BaseModel):
     )
     @classmethod
     def validar_nota(cls, v: float | None) -> float | None:
+        """Cada nota anual, si está presente, debe estar en 0-100 (redondeada a 2)."""
         if v is None:
             return None
         if not (0 <= v <= 100):
@@ -179,6 +184,7 @@ class CierreAnio(BaseModel):
     @field_validator("fecha_cierre", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; la fecha de cierre no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -214,6 +220,7 @@ class CierreAnio(BaseModel):
 
     @property
     def tiene_habilitacion(self) -> bool:
+        """True si el cierre anual incluye una nota de habilitación."""
         return self.nota_habilitacion is not None
 
     @property
@@ -228,6 +235,7 @@ class CierreAnio(BaseModel):
 
     @property
     def nota_display(self) -> str:
+        """Nota anual formateada con un decimal: '75.5'."""
         return f"{self.nota_definitiva_anual:.1f}"
 
 
@@ -261,6 +269,7 @@ class PromocionAnual(BaseModel):
     @field_validator("estudiante_id", "anio_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
+        """Las FK de la promoción (estudiante, año) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -268,6 +277,7 @@ class PromocionAnual(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -276,6 +286,7 @@ class PromocionAnual(BaseModel):
     @field_validator("fecha_decision", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str | None) -> date | None:
+        """Acepta date, string ISO o None; la fecha de decisión no puede ser futura."""
         if v is None:
             return None
         if isinstance(v, str):
@@ -308,14 +319,17 @@ class PromocionAnual(BaseModel):
 
     @property
     def esta_pendiente(self) -> bool:
+        """True si la promoción aún no ha sido decidida (estado PENDIENTE)."""
         return self.estado == EstadoPromocion.PENDIENTE
 
     @property
     def esta_finalizado(self) -> bool:
+        """True si la promoción ya fue decidida (cualquier estado distinto de PENDIENTE)."""
         return self.estado != EstadoPromocion.PENDIENTE
 
     @property
     def fue_promovido(self) -> bool:
+        """True si el estudiante pasó de año (PROMOVIDO o CONDICIONAL)."""
         return self.estado in (
             EstadoPromocion.PROMOVIDO,
             EstadoPromocion.CONDICIONAL,
@@ -323,10 +337,12 @@ class PromocionAnual(BaseModel):
 
     @property
     def fue_reprobado(self) -> bool:
+        """True si el estudiante reprobó el año."""
         return self.estado == EstadoPromocion.REPROBADO
 
     @property
     def es_condicional(self) -> bool:
+        """True si fue promovido de forma condicional (con materias pendientes)."""
         return self.estado == EstadoPromocion.CONDICIONAL
 
     # ------------------------------------------------------------------
@@ -395,11 +411,13 @@ class CrearCierrePeriodoDTO(BaseModel):
     @field_validator("nota_definitiva")
     @classmethod
     def validar_nota(cls, v: float) -> float:
+        """La nota definitiva del cierre debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     def to_cierre(self) -> CierrePeriodo:
+        """Construye un CierrePeriodo a partir de los datos del DTO."""
         return CierrePeriodo(**self.model_dump())
 
 
@@ -422,6 +440,7 @@ class CrearCierreAnioDTO(BaseModel):
     )
     @classmethod
     def validar_nota(cls, v: float | None) -> float | None:
+        """Cada nota anual, si está presente, debe estar en 0-100 (redondeada a 2)."""
         if v is None:
             return None
         if not (0 <= v <= 100):
@@ -429,6 +448,7 @@ class CrearCierreAnioDTO(BaseModel):
         return round(v, 2)
 
     def to_cierre(self) -> CierreAnio:
+        """Construye un CierreAnio a partir de los datos del DTO."""
         return CierreAnio(**self.model_dump())
 
 
@@ -443,6 +463,7 @@ class DecidirPromocionDTO(BaseModel):
     @field_validator("estado")
     @classmethod
     def validar_estado(cls, v: EstadoPromocion) -> EstadoPromocion:
+        """El estado de la decisión no puede ser PENDIENTE (debe ser un resultado final)."""
         if v == EstadoPromocion.PENDIENTE:
             raise ValueError(
                 "No se puede usar PENDIENTE como estado de decisión."
@@ -452,6 +473,7 @@ class DecidirPromocionDTO(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()

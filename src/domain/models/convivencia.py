@@ -75,6 +75,7 @@ class ObservacionPeriodo(BaseModel):
     @field_validator("texto", mode="before")
     @classmethod
     def validar_texto(cls, v: str) -> str:
+        """Normaliza el texto de la observación; exige no vacío y ≤2000 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("La observación no puede estar vacía.")
@@ -120,6 +121,7 @@ class RegistroComportamiento(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
+        """Normaliza la descripción del registro; exige no vacío y ≤1000 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("La descripción del registro no puede estar vacía.")
@@ -132,6 +134,7 @@ class RegistroComportamiento(BaseModel):
     @field_validator("seguimiento", mode="before")
     @classmethod
     def limpiar_seguimiento(cls, v: str | None) -> str | None:
+        """Normaliza el seguimiento opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = v.strip()
@@ -140,6 +143,7 @@ class RegistroComportamiento(BaseModel):
     @field_validator("fecha", mode="before")
     @classmethod
     def validar_fecha(cls, v: date | str) -> date:
+        """Acepta date o string ISO; la fecha del registro no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
@@ -188,6 +192,7 @@ class RegistroComportamiento(BaseModel):
 
     @property
     def tiene_seguimiento(self) -> bool:
+        """True si el registro tiene texto de seguimiento asociado."""
         return bool(self.seguimiento)
 
     # ------------------------------------------------------------------
@@ -243,6 +248,7 @@ class NotaComportamiento(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """La nota de comportamiento debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"La nota de comportamiento debe estar entre 0 y 100 (recibido: {v})."
@@ -252,6 +258,7 @@ class NotaComportamiento(BaseModel):
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
+        """Normaliza la observación opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -282,12 +289,14 @@ class NuevaObservacionDTO(BaseModel):
     @field_validator("texto", mode="before")
     @classmethod
     def validar_texto(cls, v: str) -> str:
+        """Normaliza el texto y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El texto no puede estar vacío.")
         return v
 
     def to_observacion(self, usuario_id: int | None = None) -> ObservacionPeriodo:
+        """Construye una ObservacionPeriodo del DTO, fijando el usuario autor."""
         return ObservacionPeriodo(
             **self.model_dump(),
             usuario_id=usuario_id,
@@ -307,12 +316,14 @@ class NuevoRegistroComportamientoDTO(BaseModel):
     @field_validator("descripcion", mode="before")
     @classmethod
     def validar_descripcion(cls, v: str) -> str:
+        """Normaliza la descripción y exige que no esté vacía."""
         v = str(v).strip()
         if not v:
             raise ValueError("La descripción no puede estar vacía.")
         return v
 
     def to_registro(self, usuario_id: int | None = None) -> RegistroComportamiento:
+        """Construye un RegistroComportamiento del DTO, fijando el usuario que lo registra."""
         return RegistroComportamiento(
             **self.model_dump(),
             usuario_registro_id=usuario_id,
@@ -330,11 +341,13 @@ class NuevaNotaComportamientoDTO(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
+        """El valor de la nota de comportamiento debe estar en 0-100 (redondeado a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"El valor debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     def to_nota(self, usuario_id: int | None = None) -> NotaComportamiento:
+        """Construye una NotaComportamiento del DTO, fijando el usuario autor."""
         return NotaComportamiento(
             **self.model_dump(),
             usuario_id=usuario_id,

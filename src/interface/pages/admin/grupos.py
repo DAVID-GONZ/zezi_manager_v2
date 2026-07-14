@@ -36,7 +36,7 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
-from src.services.infraestructura_service import Grupo
+from src.services.catalogo_academico_service import Grupo
 
 logger = logging.getLogger("ADMIN.GRUPOS")
 
@@ -79,7 +79,7 @@ def grupos_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error al cargar grupos: %s", exc)
             _s["grupos"] = []
@@ -131,7 +131,7 @@ def grupos_page() -> None:
                 jornada=_s["form_jornada"],
                 capacidad_maxima=_s["form_capacidad"],
             )
-            Container.infraestructura_service().guardar_grupo(grupo)
+            Container.catalogo_academico_service().guardar_grupo(grupo)
             toast_success(f"Grupo {grupo.codigo} creado")
             _s["form_codigo"] = ""
             _s["form_grado"]  = _grado_valido(None)
@@ -147,7 +147,7 @@ def grupos_page() -> None:
 
     def _confirmar_eliminar_grupo(grupo_id: int, codigo: str) -> None:
         try:
-            Container.infraestructura_service().eliminar_grupo(grupo_id)
+            Container.catalogo_academico_service().eliminar_grupo(grupo_id)
             toast_success(f"Grupo {codigo} eliminado")
             _cargar_estado()
             tabla.refresh()
@@ -182,7 +182,7 @@ def grupos_page() -> None:
                     jornada=datos.get("jornada", grupo.jornada),
                     capacidad_maxima=capacidad if capacidad is not None else grupo.capacidad_maxima,
                 )
-                Container.infraestructura_service().actualizar_grupo(grupo_act)
+                Container.catalogo_academico_service().actualizar_grupo(grupo_act)
                 toast_success(f"Grupo {grupo_act.codigo} actualizado")
                 _cargar_estado()
                 tabla.refresh()

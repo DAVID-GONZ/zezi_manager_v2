@@ -60,6 +60,7 @@ class NivelacionService:
         cierre_repo: ICierreRepository,
         config_repo: IConfiguracionRepository | None = None,
     ) -> None:
+        """Inyecta el repo de nivelación, el de cierre y el de configuración (opcional)."""
         self._repo        = repo
         self._cierre_repo = cierre_repo
         self._config_repo = config_repo

@@ -48,6 +48,8 @@ class CierreService:
         auditoria: IAuditoriaRepository | None = None,
         asignacion_repo=None,
     ) -> None:
+        """Inyecta los repos de cierre, evaluación, periodo, configuración y
+        estudiante, más los de alertas, auditoría y asignación (opcionales)."""
         self._cierre_repo    = cierre_repo
         self._eval_repo      = evaluacion_repo
         self._periodo_repo   = periodo_repo

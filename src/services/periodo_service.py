@@ -33,6 +33,7 @@ class PeriodoService:
         config_repo: IConfiguracionRepository | None = None,
         auditoria: IAuditoriaRepository | None = None,
     ) -> None:
+        """Inyecta el repo de periodos y los repos opcionales de configuración y auditoría."""
         self._repo        = repo
         self._config_repo = config_repo
         self._auditoria   = auditoria

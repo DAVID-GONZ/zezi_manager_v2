@@ -75,6 +75,7 @@ class ConfiguracionAnio(BaseModel):
     @field_validator("anio")
     @classmethod
     def validar_anio(cls, v: int) -> int:
+        """El año lectivo debe estar en el rango válido 2000..2100."""
         if not (2000 <= v <= 2100):
             raise ValueError(
                 f"El año debe estar entre 2000 y 2100 (recibido: {v})."
@@ -84,6 +85,7 @@ class ConfiguracionAnio(BaseModel):
     @field_validator("nota_minima_aprobacion")
     @classmethod
     def validar_nota_minima(cls, v: float) -> float:
+        """La nota mínima de aprobación debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
@@ -93,6 +95,7 @@ class ConfiguracionAnio(BaseModel):
     @field_validator("nota_minima_escala", "nota_maxima_escala")
     @classmethod
     def validar_escala(cls, v: float) -> float:
+        """Los límites de la escala de notas deben estar en 0-100 (redondeados a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
@@ -100,6 +103,7 @@ class ConfiguracionAnio(BaseModel):
     @field_validator("nombre_institucion", mode="before")
     @classmethod
     def validar_nombre_institucion(cls, v: str) -> str:
+        """Normaliza el nombre institucional; exige no vacío y ≤200 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de la institución no puede estar vacío.")
@@ -116,6 +120,7 @@ class ConfiguracionAnio(BaseModel):
     )
     @classmethod
     def limpiar_campo_opcional(cls, v: str | None) -> str | None:
+        """Normaliza los campos institucionales opcionales (strip); vacío → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -127,6 +132,7 @@ class ConfiguracionAnio(BaseModel):
 
     @model_validator(mode="after")
     def validar_fechas(self) -> Self:
+        """Si ambas están definidas, la fecha de inicio no puede ser posterior a la de fin."""
         if (
             self.fecha_inicio_clases
             and self.fecha_fin_clases
@@ -140,6 +146,7 @@ class ConfiguracionAnio(BaseModel):
 
     @model_validator(mode="after")
     def validar_escala_coherente(self) -> Self:
+        """El límite inferior de la escala debe ser estrictamente menor que el superior."""
         if self.nota_minima_escala >= self.nota_maxima_escala:
             raise ValueError(
                 f"nota_minima_escala ({self.nota_minima_escala}) debe ser menor que "
@@ -229,6 +236,7 @@ class NuevaConfiguracionAnioDTO(BaseModel):
     @field_validator("anio")
     @classmethod
     def validar_anio(cls, v: int) -> int:
+        """El año lectivo debe estar en el rango válido 2000..2100."""
         if not (2000 <= v <= 2100):
             raise ValueError(f"El año debe estar entre 2000 y 2100 (recibido: {v}).")
         return v
@@ -236,6 +244,7 @@ class NuevaConfiguracionAnioDTO(BaseModel):
     @field_validator("nota_minima_aprobacion")
     @classmethod
     def validar_nota(cls, v: float) -> float:
+        """La nota mínima de aprobación debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
@@ -243,12 +252,14 @@ class NuevaConfiguracionAnioDTO(BaseModel):
     @field_validator("nota_minima_escala", "nota_maxima_escala")
     @classmethod
     def validar_escala(cls, v: float) -> float:
+        """Los límites de la escala de notas deben estar en 0-100 (redondeados a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @model_validator(mode="after")
     def validar_fechas(self) -> Self:
+        """Si ambas están definidas, la fecha de inicio no puede ser posterior a la de fin."""
         if (
             self.fecha_inicio_clases
             and self.fecha_fin_clases
@@ -258,6 +269,7 @@ class NuevaConfiguracionAnioDTO(BaseModel):
         return self
 
     def to_configuracion(self) -> ConfiguracionAnio:
+        """Construye una ConfiguracionAnio a partir de los datos del DTO."""
         return ConfiguracionAnio(**self.model_dump())
 
 
@@ -274,11 +286,13 @@ class ActualizarConfiguracionAnioDTO(BaseModel):
     @field_validator("nota_minima_aprobacion")
     @classmethod
     def validar_nota(cls, v: float | None) -> float | None:
+        """Si se actualiza, la nota mínima debe permanecer en 0-100."""
         if v is not None and not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
         return v
 
     def aplicar_a(self, config: ConfiguracionAnio) -> ConfiguracionAnio:
+        """Devuelve una copia de la configuración con los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return config.model_copy(update=cambios) if cambios else config
 
@@ -302,6 +316,7 @@ class ActualizarInfoInstitucionalDTO(BaseModel):
     @field_validator("nombre_institucion", mode="before")
     @classmethod
     def validar_nombre(cls, v: str | None) -> str | None:
+        """Normaliza el nombre; si se envía no puede quedar como cadena vacía."""
         if v is None:
             return None
         v = str(v).strip()
@@ -310,6 +325,7 @@ class ActualizarInfoInstitucionalDTO(BaseModel):
         return v
 
     def aplicar_a(self, config: ConfiguracionAnio) -> ConfiguracionAnio:
+        """Devuelve una copia de la configuración con los campos institucionales no nulos aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return config.model_copy(update=cambios) if cambios else config
 
@@ -395,6 +411,7 @@ class NivelDesempeno(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -402,6 +419,7 @@ class NivelDesempeno(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre del nivel; exige no vacío y ≤50 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre del nivel no puede estar vacío.")
@@ -412,6 +430,7 @@ class NivelDesempeno(BaseModel):
     @field_validator("rango_min", "rango_max")
     @classmethod
     def validar_rango(cls, v: float) -> float:
+        """Los límites del rango del nivel deben estar en 0-100 (redondeados a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"El rango debe estar entre 0 y 100 (recibido: {v})."
@@ -420,6 +439,7 @@ class NivelDesempeno(BaseModel):
 
     @model_validator(mode="after")
     def validar_orden_rangos(self) -> "NivelDesempeno":
+        """El rango mínimo del nivel debe ser estrictamente menor que el máximo."""
         if self.rango_min >= self.rango_max:
             raise ValueError(
                 f"rango_min ({self.rango_min}) debe ser menor que "
@@ -455,6 +475,7 @@ class CriterioPromocion(BaseModel):
     @field_validator("anio_id")
     @classmethod
     def validar_anio_id(cls, v: int) -> int:
+        """El año lectivo referenciado (FK) debe ser positivo."""
         if v <= 0:
             raise ValueError(f"anio_id debe ser positivo (recibido: {v}).")
         return v
@@ -462,6 +483,7 @@ class CriterioPromocion(BaseModel):
     @field_validator("nota_minima_habilitacion", "nota_minima_anual")
     @classmethod
     def validar_nota(cls, v: float) -> float:
+        """Las notas mínimas de promoción deben estar en 0-100 (redondeadas a 2)."""
         if not (0 <= v <= 100):
             raise ValueError(
                 f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
@@ -493,6 +515,7 @@ class NuevoNivelDesempenoDTO(BaseModel):
     @field_validator("nombre", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre y exige que no esté vacío."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre no puede estar vacío.")
@@ -501,17 +524,20 @@ class NuevoNivelDesempenoDTO(BaseModel):
     @field_validator("rango_min", "rango_max")
     @classmethod
     def validar_rango(cls, v: float) -> float:
+        """Los límites del rango deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"El rango debe estar entre 0 y 100 (recibido: {v}).")
         return v
 
     @model_validator(mode="after")
     def validar_orden_rangos(self) -> "NuevoNivelDesempenoDTO":
+        """El rango mínimo debe ser estrictamente menor que el máximo."""
         if self.rango_min >= self.rango_max:
             raise ValueError(f"rango_min debe ser menor que rango_max.")
         return self
 
     def to_nivel(self) -> NivelDesempeno:
+        """Construye un NivelDesempeno a partir de los datos del DTO."""
         return NivelDesempeno(**self.model_dump())
 
 
@@ -524,6 +550,7 @@ class ActualizarNivelDesempenoDTO(BaseModel):
     orden:       int | None   = None
 
     def aplicar_a(self, nivel: NivelDesempeno) -> NivelDesempeno:
+        """Devuelve una copia del nivel con solo los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return nivel.model_copy(update=cambios) if cambios else nivel
 

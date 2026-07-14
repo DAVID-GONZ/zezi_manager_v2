@@ -103,6 +103,7 @@ class Usuario(BaseModel):
     @field_validator("usuario", mode="before")
     @classmethod
     def validar_usuario(cls, v: str) -> str:
+        """Normaliza el username a minúsculas; exige sin espacios y entre 3 y 50 caracteres."""
         v = str(v).strip()
         if not v:
             raise ValueError("El nombre de usuario no puede estar vacío.")
@@ -123,6 +124,7 @@ class Usuario(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre completo; exige entre 3 y 150 caracteres."""
         v = str(v).strip()
         if len(v) < 3:
             raise ValueError(
@@ -138,6 +140,7 @@ class Usuario(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, v: str | None) -> str | None:
+        """Normaliza el email a minúsculas y valida formato mínimo ('@' con dominio); vacío → None."""
         if v is None:
             return None
         v = str(v).strip().lower()
@@ -155,6 +158,7 @@ class Usuario(BaseModel):
     @field_validator("telefono", mode="before")
     @classmethod
     def limpiar_telefono(cls, v: str | None) -> str | None:
+        """Normaliza el teléfono opcional (strip); cadena vacía → None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -163,6 +167,7 @@ class Usuario(BaseModel):
     @field_validator("carga_horaria_max")
     @classmethod
     def validar_carga_horaria_max(cls, v: int | None) -> int | None:
+        """Si se define, la carga horaria máxima no puede ser negativa."""
         if v is not None and v < 0:
             raise ValueError(
                 f"carga_horaria_max no puede ser negativo (recibido: {v})."
@@ -172,6 +177,7 @@ class Usuario(BaseModel):
     @field_validator("horas_extra")
     @classmethod
     def validar_horas_extra(cls, v: int) -> int:
+        """Las horas extra no pueden ser negativas."""
         if v < 0:
             raise ValueError(f"horas_extra no puede ser negativo (recibido: {v}).")
         return v
@@ -192,14 +198,17 @@ class Usuario(BaseModel):
 
     @property
     def esta_activo(self) -> bool:
+        """True si el usuario está activo (no dado de baja por soft delete)."""
         return self.activo
 
     @property
     def es_docente(self) -> bool:
+        """True si el rol del usuario es PROFESOR."""
         return self.rol == Rol.PROFESOR
 
     @property
     def es_directivo(self) -> bool:
+        """True si el rol es directivo (admin, director o coordinador)."""
         return self.rol in (Rol.ADMIN, Rol.DIRECTOR, Rol.COORDINADOR)
 
     @property
@@ -267,6 +276,7 @@ class DocenteInfoDTO(BaseModel):
 
     @property
     def tiene_carga(self) -> bool:
+        """True si el docente tiene al menos una asignación."""
         return self.total_asignaciones > 0
 
     @property
@@ -340,6 +350,7 @@ class NuevoUsuarioDTO(BaseModel):
     @field_validator("usuario", mode="before")
     @classmethod
     def validar_usuario(cls, v: str) -> str:
+        """Normaliza el username a minúsculas; exige mínimo 3 caracteres y sin espacios."""
         v = str(v).strip()
         if not v or " " in v or len(v) < 3:
             raise ValueError(
@@ -350,6 +361,7 @@ class NuevoUsuarioDTO(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
+        """Normaliza el nombre completo; exige al menos 3 caracteres."""
         v = str(v).strip()
         if len(v) < 3:
             raise ValueError(
@@ -360,6 +372,7 @@ class NuevoUsuarioDTO(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, v: str | None) -> str | None:
+        """Normaliza el email y valida formato mínimo ('@' con dominio); vacío → None."""
         if not v:
             return None
         v = str(v).strip().lower()
@@ -368,6 +381,7 @@ class NuevoUsuarioDTO(BaseModel):
         return v
 
     def to_usuario(self) -> Usuario:
+        """Construye un Usuario del DTO, excluyendo la contraseña (la gestiona auth)."""
         return Usuario(**self.model_dump(exclude={"password"}))
 
 
@@ -383,6 +397,7 @@ class ActualizarUsuarioDTO(BaseModel):
     @field_validator("nombre_completo", mode="before")
     @classmethod
     def validar_nombre(cls, v: str | None) -> str | None:
+        """Si se actualiza el nombre, debe tener al menos 3 caracteres."""
         if v is None:
             return None
         v = str(v).strip()
@@ -393,6 +408,7 @@ class ActualizarUsuarioDTO(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, v: str | None) -> str | None:
+        """Si se actualiza el email, normaliza y exige que contenga '@'; vacío → None."""
         if not v:
             return None
         v = str(v).strip().lower()
@@ -401,6 +417,7 @@ class ActualizarUsuarioDTO(BaseModel):
         return v
 
     def aplicar_a(self, usuario: Usuario) -> Usuario:
+        """Devuelve una copia del usuario con solo los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return usuario.model_copy(update=cambios) if cambios else usuario
 
@@ -416,6 +433,7 @@ class UsuarioResumenDTO(BaseModel):
 
     @classmethod
     def desde_usuario(cls, u: Usuario) -> "UsuarioResumenDTO":
+        """Construye el resumen desde un Usuario persistido; exige que tenga id."""
         if u.id is None:
             raise ValueError("No se puede crear un resumen de un usuario sin id.")
         return cls(
@@ -440,6 +458,7 @@ class FiltroUsuariosDTO(BaseModel):
     @field_validator("busqueda", mode="before")
     @classmethod
     def limpiar_busqueda(cls, v: str | None) -> str | None:
+        """Normaliza el término de búsqueda (strip); cadena vacía → None."""
         if v is None:
             return None
         v = v.strip()
@@ -459,10 +478,12 @@ class ResumenUsuariosDTO(BaseModel):
 
     @property
     def directores(self) -> int:
+        """Cantidad de usuarios con rol director."""
         return self.por_rol.get("director", 0)
 
     @property
     def administradores(self) -> int:
+        """Cantidad de usuarios con rol admin."""
         return self.por_rol.get("admin", 0)
 
 

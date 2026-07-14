@@ -13,6 +13,7 @@ from src.services.solo_lectura import requiere_escritura
 from src.domain.models.infraestructura import (
     CupoDTO,
     Horario,
+    HorarioInfo,
     NuevoHorarioDTO,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
@@ -46,6 +47,8 @@ class HorarioService:
         usuario_repo,
         plan_svc=None,
     ):
+        """Inyecta los repos de infraestructura, asignación y usuario, más el
+        servicio de plan de estudios (opcional) para los topes de horas."""
         self._infra = infra_repo
         self._asig = asignacion_repo
         self._usuario = usuario_repo
@@ -74,6 +77,8 @@ class HorarioService:
         hora_fin: str,
         sala: str = "Aula",
     ) -> Horario:
+        """Crea un bloque de horario tras validar cruces (docente, grupo, sala)
+        y topes de horas de la materia y del docente."""
         asig = self._resolver_asignacion(asignacion_id)
         self._validar_cruces(escenario_id, dia, hora_inicio, hora_fin, asig, sala)
         self._validar_topes(escenario_id, asig)
@@ -97,6 +102,7 @@ class HorarioService:
         hora_inicio: str,
         hora_fin: str,
     ) -> Horario:
+        """Mueve un bloque a otro día/hora (misma sala) validando cruces."""
         horario = self._infra.get_horario(horario_id)
         if horario is None:
             raise ValueError("Bloque no encontrado.")
@@ -130,6 +136,7 @@ class HorarioService:
         hora_fin: str,
         sala: str,
     ) -> Horario:
+        """Actualiza día, horas y sala de un bloque validando cruces."""
         horario = self._infra.get_horario(horario_id)
         if horario is None:
             raise ValueError("Bloque no encontrado.")
@@ -156,7 +163,18 @@ class HorarioService:
 
     @requiere_escritura
     def eliminar_bloque(self, horario_id: int) -> bool:
+        """Elimina un bloque de horario (delegado al repositorio)."""
         return self._infra.eliminar_horario(horario_id)
+
+    # ------------------------------------------------------------------ #
+    # Consultas de bloques por periodo (mejora_05 — dueño canónico R3)     #
+    # ------------------------------------------------------------------ #
+
+    def listar_horario_grupo(
+        self, grupo_id: int, periodo_id: int
+    ) -> list[HorarioInfo]:
+        """Lista el horario de un grupo en un periodo (delegado al repositorio)."""
+        return self._infra.listar_horario_grupo(grupo_id, periodo_id)
 
     # ------------------------------------------------------------------ #
     # Consultas de cupo                                                    #
@@ -165,6 +183,7 @@ class HorarioService:
     def disponibilidad_asignacion(
         self, escenario_id: int, asignacion_id: int
     ) -> CupoDTO:
+        """Cupo de bloques de una asignación: usados vs. horas de la asignatura."""
         asig = self._resolver_asignacion(asignacion_id)
         asignatura = self._get_asignatura(asig.asignatura_id)
         usadas = self._infra.contar_bloques_asignacion(escenario_id, asignacion_id)
@@ -176,6 +195,7 @@ class HorarioService:
     def disponibilidad_docente(
         self, escenario_id: int, usuario_id: int
     ) -> CupoDTO:
+        """Cupo de bloques de un docente: usados vs. su carga horaria máxima."""
         usadas = self._infra.contar_bloques_docente(escenario_id, usuario_id)
         max_horas = self._usuario.carga_horaria_max(usuario_id)
         return CupoDTO(usadas=usadas, maximas=max_horas)
@@ -499,6 +519,9 @@ class HorarioService:
         periodo_id: int,
         filas: list[dict],
     ) -> "ReporteLoteDTO":
+        """Analiza un lote de filas como escenario virtual (sin persistir):
+        valida asignación, campos obligatorios, cruces (docente/grupo/sala) y
+        topes de materia y docente, y devuelve un reporte fila por fila."""
         from src.domain.models.infraestructura import FilaReporteDTO, ReporteLoteDTO
 
         resultado: list[FilaReporteDTO] = []
@@ -612,6 +635,9 @@ class HorarioService:
         filas: list[dict],
         solo_validas: bool = False,
     ) -> "ResultadoLoteDTO":
+        """Persiste un lote de bloques: lo analiza y, si es válido (o si
+        `solo_validas`), crea de forma masiva solo las filas OK; devuelve el
+        conteo de creados/omitidos junto con el reporte."""
         from src.domain.models.infraestructura import ResultadoLoteDTO, Horario
 
         reporte = self.analizar_lote(escenario_id, periodo_id, filas)

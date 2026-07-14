@@ -53,6 +53,30 @@ server {
 }
 ```
 
+## Mecanismos de seguridad en código (dónde vive cada control)
+
+Mapa rápido de los controles activos y su ubicación. El detalle arquitectónico
+está en `docs/architecture.md` §7.
+
+| Control | Ubicación | Nota |
+|---|---|---|
+| Hash de contraseñas | `src/infrastructure/auth/bcrypt_auth_service.py` | `bcrypt` directo, `ROUNDS=12`; compat legacy `sha256:`. |
+| Política de contraseñas (A1) | `src/domain/policies/password_policy.py` | ≥8, letra+dígito, ≠ username. Enforcement en `usuario_service`; textos legibles en la UI. |
+| Throttle / lockout de login (A1) | `src/services/login_throttle.py` | 5 fallos → bloqueo 300 s por username (estado de proceso). |
+| Cambio forzado de contraseña (A2) | `route_guard.py` + `SessionContext.debe_cambiar_password` | Deny-by-default: fuerza `/cambiar-password` hasta cambiarla. |
+| Autorización por ruta (deny by default) | `src/interface/auth/route_guard.py` (`registrar_pagina`) | `roles` obligatorio; registro único ruta→roles; el NAV deriva de él. |
+| Matriz RBAC de gestión de usuarios | `src/domain/policies/rbac_usuarios.py` | Fuente de verdad; consultada por servicio (enforcement) y vista (gating). |
+| Secretos independientes (M1/M3) | `config.py` | `JWT_SECRET` ≠ `STORAGE_SECRET`; bloqueo de arranque en producción con defaults. |
+| Integridad de auditoría (M4) | `src/domain/policies/audit_chain.py` + `SqliteAuditoriaRepository` | Cadena SHA-256 append-only. |
+| No enumeración de usuarios | `bcrypt_auth_service.autenticar_usuario` | Errores genéricos; estado de cuenta solo tras verificar la clave. |
+| Scope multi-tenant | `src/services/contexto_tenant.py` | admin→sin scope / resto→su institución; `verificar_pertenencia` en ops por id. |
+| Modo solo lectura ("Ver como") | `src/services/solo_lectura.py` | `@requiere_escritura` en mutadores; impersonación en `SessionContext`. |
+| Sync central del contexto (B1) | `route_guard._pagina_protegida` → `SessionContext.desde_storage()` | Sincroniza los `ContextVar` antes de renderizar. |
+
+> **No enumeración por login (paso_37):** el username es único global, así que el
+> login no expone selector de institución ni desambiguación. `autenticar_usuario`
+> devuelve mensajes genéricos para no revelar si un usuario existe.
+
 ## Decisiones aceptadas / diferidas
 
 ### B3 — `check_same_thread=False` (aceptado)

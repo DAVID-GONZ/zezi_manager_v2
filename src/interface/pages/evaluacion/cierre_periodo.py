@@ -113,7 +113,7 @@ def cierre_periodo_page() -> None:
             _s["periodos"] = []
 
         try:
-            _s["grupos"] = Container.infraestructura_service().listar_grupos()
+            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
             _s["grupos"] = []

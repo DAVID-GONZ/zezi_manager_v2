@@ -46,6 +46,7 @@ class PendientesDocenteDTO:
 
     @property
     def hay_pendientes(self) -> bool:
+        """True si el docente tiene actividades, asistencias o alertas pendientes."""
         return (
             self.actividades_sin_calificar > 0
             or self.asignaciones_sin_asistencia > 0
@@ -70,6 +71,9 @@ class EstadisticosService:
         asignacion_repo=None,
         alerta_repo=None,
     ) -> None:
+        """Inyecta el repo de estadísticos y los repos opcionales de
+        configuración, evaluación, asistencia, estudiante, infraestructura,
+        asignación y alertas."""
         self._repo           = repo
         self._config_repo    = config_repo
         self._eval_repo      = evaluacion_repo

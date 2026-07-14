@@ -25,7 +25,7 @@ from src.interface.design.components import (
     confirm_dialog, empty_state, form_dialog, pipeline_nav,
     toast_error, toast_success, toast_warning,
 )
-from src.services.infraestructura_service import AreaConocimiento, Asignatura
+from src.services.catalogo_academico_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
 
@@ -65,7 +65,7 @@ def asignaturas_page() -> None:
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_areas() -> None:
         try:
-            _s["areas"] = Container.infraestructura_service().listar_areas()
+            _s["areas"] = Container.catalogo_academico_service().listar_areas()
         except Exception as exc:
             logger.error("Error al cargar áreas: %s", exc)
             _s["areas"] = []
@@ -73,7 +73,7 @@ def asignaturas_page() -> None:
     def _cargar_asignaturas() -> None:
         try:
             area_id = _s["area_filtro_id"] if _s["area_filtro_id"] else None
-            _s["asignaturas"] = Container.infraestructura_service().listar_asignaturas(
+            _s["asignaturas"] = Container.catalogo_academico_service().listar_asignaturas(
                 area_id=area_id
             )
         except Exception as exc:
@@ -99,7 +99,7 @@ def asignaturas_page() -> None:
                 nombre=_s["area_nombre"],
                 codigo=_s["area_codigo"],
             )
-            Container.infraestructura_service().guardar_area(area)
+            Container.catalogo_academico_service().guardar_area(area)
             toast_success(f"Área '{area.nombre}' creada")
             _s["area_nombre"] = ""
             _s["area_codigo"] = ""
@@ -116,7 +116,7 @@ def asignaturas_page() -> None:
 
     def _confirmar_eliminar_area(area_id: int, nombre: str) -> None:
         try:
-            Container.infraestructura_service().eliminar_area(area_id)
+            Container.catalogo_academico_service().eliminar_area(area_id)
             toast_success(f"Área '{nombre}' eliminada")
             _cargar_areas()
             _cargar_asignaturas()
@@ -147,7 +147,7 @@ def asignaturas_page() -> None:
                     nombre=datos.get("nombre", ""),
                     codigo=datos.get("codigo"),
                 )
-                Container.infraestructura_service().actualizar_area(area_act)
+                Container.catalogo_academico_service().actualizar_area(area_act)
                 toast_success(f"Área '{area_act.nombre}' actualizada")
                 _cargar_areas()
                 _cargar_asignaturas()
@@ -185,7 +185,7 @@ def asignaturas_page() -> None:
                 codigo=_s["asig_codigo"],
                 area_id=_s["asig_area_id"] or None,
             )
-            Container.infraestructura_service().guardar_asignatura(asig)
+            Container.catalogo_academico_service().guardar_asignatura(asig)
             toast_success(f"Asignatura '{asig.nombre}' creada")
             _s["asig_nombre"]  = ""
             _s["asig_codigo"]  = ""
@@ -200,7 +200,7 @@ def asignaturas_page() -> None:
 
     def _confirmar_eliminar_asig(asig_id: int, nombre: str) -> None:
         try:
-            Container.infraestructura_service().eliminar_asignatura(asig_id)
+            Container.catalogo_academico_service().eliminar_asignatura(asig_id)
             toast_success(f"Asignatura '{nombre}' eliminada")
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
@@ -232,7 +232,7 @@ def asignaturas_page() -> None:
                     "codigo": datos.get("codigo"),
                     "area_id": datos.get("area_id") or None,
                 })
-                Container.infraestructura_service().actualizar_asignatura(asig_act)
+                Container.catalogo_academico_service().actualizar_asignatura(asig_act)
                 toast_success(f"Asignatura '{asig_act.nombre}' actualizada")
                 _cargar_asignaturas()
                 tabla_asignaturas.refresh()

@@ -433,6 +433,50 @@ class Container:
             lambda: InfraestructuraService(repo=cls.infraestructura_repo()),
         )
 
+    # ── Sub-servicios de infraestructura (mejora_01 — fachada por delegación) ──
+
+    @classmethod
+    def sala_service(cls):
+        from src.services.sala_service import SalaService
+        return cls._get_or_create(
+            "sala_service",
+            lambda: SalaService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def franja_service(cls):
+        from src.services.franja_service import FranjaService
+        return cls._get_or_create(
+            "franja_service",
+            lambda: FranjaService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def escenario_horario_service(cls):
+        from src.services.escenario_horario_service import EscenarioHorarioService
+        return cls._get_or_create(
+            "escenario_horario_service",
+            lambda: EscenarioHorarioService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def restriccion_generacion_service(cls):
+        from src.services.restriccion_generacion_service import (
+            RestriccionGeneracionService,
+        )
+        return cls._get_or_create(
+            "restriccion_generacion_service",
+            lambda: RestriccionGeneracionService(repo=cls.infraestructura_repo()),
+        )
+
+    @classmethod
+    def catalogo_academico_service(cls):
+        from src.services.catalogo_academico_service import CatalogoAcademicoService
+        return cls._get_or_create(
+            "catalogo_academico_service",
+            lambda: CatalogoAcademicoService(repo=cls.infraestructura_repo()),
+        )
+
     @classmethod
     def plan_estudios_service(cls):
         from src.services.plan_estudios_service import PlanEstudiosService
@@ -523,6 +567,8 @@ class Container:
             "estadisticos_service", "informe_service", "auditoria_service",
             "infraestructura_service", "plan_estudios_service",
             "preparacion_horario_service",
+            "sala_service", "franja_service", "escenario_horario_service",
+            "restriccion_generacion_service", "catalogo_academico_service",
         ]
         for nombre in metodos:
             try:

@@ -27,6 +27,7 @@ class ConfiguracionService:
     """
 
     def __init__(self, repo: IConfiguracionRepository) -> None:
+        """Inyecta el repositorio de configuración."""
         self._repo = repo
 
     # ------------------------------------------------------------------

@@ -70,6 +70,8 @@ class _Leccion:
         self, asignacion_id, grupo_id, usuario_id, etiqueta,
         tipo_sala_req=None, n_horas=1,
     ):
+        """Inicializa la unidad de bloque con su asignación, grupo, docente,
+        etiqueta, tipo de sala requerido y número de horas consecutivas."""
         self.asignacion_id = asignacion_id
         self.grupo_id = grupo_id
         self.usuario_id = usuario_id
@@ -89,6 +91,8 @@ class GeneradorHorarioService:
         infraestructura_service,
         plan_svc=None,
     ):
+        """Inyecta los repos de infraestructura, asignación y usuario, los
+        servicios de horario e infraestructura, y el plan de estudios (opcional)."""
         self._infra = infra_repo
         self._asig = asignacion_repo
         self._usuario = usuario_repo
@@ -343,6 +347,12 @@ class GeneradorHorarioService:
         max_iteraciones: int = 200_000,
         optimizar: bool = True,
     ) -> ResultadoGeneracionDTO:
+        """Genera un horario para una config: carga asignaciones y restricciones,
+        coloca las lecciones por coloreo o backtracking, aplica mejora local,
+        valida el lote contra el oráculo y lo persiste en el escenario destino.
+
+        Devuelve un ResultadoGeneracionDTO con bloques, métricas e incidencias.
+        """
         config = self._infra.get_config_generacion(config_id)
         if config is None:
             raise ValueError(f"Config de generación {config_id} no existe.")

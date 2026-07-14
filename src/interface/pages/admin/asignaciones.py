@@ -127,14 +127,14 @@ def asignaciones_page() -> None:
             _s["docentes"] = []
         try:
             _s["grupos"] = sorted(
-                Container.infraestructura_service().listar_grupos(),
+                Container.catalogo_academico_service().listar_grupos(),
                 key=lambda g: g.codigo,
             )
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
             _s["grupos"] = []
         try:
-            _s["asignaturas"] = Container.infraestructura_service().listar_asignaturas()
+            _s["asignaturas"] = Container.catalogo_academico_service().listar_asignaturas()
         except Exception as exc:
             logger.error("Error cargando asignaturas: %s", exc)
             _s["asignaturas"] = []

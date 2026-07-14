@@ -52,6 +52,8 @@ class UsuarioService:
         auth_service: IAuthenticationService | None = None,
         auditoria: IAuditoriaRepository | None = None,
     ) -> None:
+        """Inyecta el repo de usuarios y los servicios opcionales de
+        autenticación y auditoría."""
         self._repo      = repo
         self._auth      = auth_service
         self._auditoria = auditoria

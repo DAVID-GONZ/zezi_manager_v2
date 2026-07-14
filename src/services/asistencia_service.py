@@ -33,6 +33,7 @@ class AsistenciaService:
         alerta_repo: IAlertaRepository | None = None,
         config_repo: IConfiguracionRepository | None = None,
     ) -> None:
+        """Inyecta el repo de asistencia y los de alertas y configuración (opcionales)."""
         self._repo       = repo
         self._alerta_repo = alerta_repo
         self._config_repo = config_repo

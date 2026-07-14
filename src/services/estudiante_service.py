@@ -38,11 +38,13 @@ class EstudianteService:
         auditoria: IAuditoriaRepository | None = None,
         grupo_reader=None,
     ) -> None:
+        """Inyecta el repo de estudiantes, los repos opcionales de acudientes
+        y auditoría, y el lector de grupos usado en el traslado."""
         self._repo           = repo
         self._acudiente_repo = acudiente_repo
         self._auditoria      = auditoria
         # Lector de grupos para el traslado (paso_43). Callable[[int], Grupo|None].
-        # Por defecto resuelve vía Container.infraestructura_service().get_grupo;
+        # Por defecto resuelve vía Container.catalogo_academico_service().get_grupo;
         # inyectable en tests para evitar el Container.
         self._grupo_reader   = grupo_reader
 
@@ -282,7 +284,7 @@ class EstudianteService:
             return self._grupo_reader(grupo_id)
         try:
             from container import Container
-            return Container.infraestructura_service().get_grupo(grupo_id)
+            return Container.catalogo_academico_service().get_grupo(grupo_id)
         except Exception:
             return None
 

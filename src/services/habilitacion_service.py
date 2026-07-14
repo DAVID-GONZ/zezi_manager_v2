@@ -41,6 +41,8 @@ class HabilitacionService:
         config_repo: IConfiguracionRepository | None = None,
         auditoria: IAuditoriaRepository | None = None,
     ) -> None:
+        """Inyecta el repo de habilitación y los repos opcionales de cierre,
+        configuración y auditoría."""
         self._repo        = repo
         self._cierre_repo = cierre_repo
         self._config_repo = config_repo

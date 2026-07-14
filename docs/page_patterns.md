@@ -5,6 +5,38 @@
 
 ---
 
+## 0. Autorización central — la página NO se decora con `@ui.page`
+
+Desde paso_35 la autorización es **deny-by-default y central**. La función de
+página es una función normal (sin `@ui.page`) que se **registra** en `main.py`:
+
+```python
+# En main.py::registrar_rutas_ui()
+from src.interface.auth import registrar_pagina, AUTENTICADO
+from src.domain.models.usuario import Rol
+
+registrar_pagina("/asistencia", registro_asistencia_page, roles=_AULA)
+registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
+```
+
+`registrar_pagina` envuelve la página con el guard que aplica **auth + rol**,
+fuerza el cambio de contraseña si aplica (A2) y **sincroniza el contexto**
+(`SessionContext.desde_storage()`) antes de renderizar. Por eso la página ya no
+necesita su propio guard de redirección; sí puede leer el contexto para usarlo:
+
+```python
+def registro_asistencia_page() -> None:      # sin @ui.page
+    ctx = SessionContext.desde_storage()      # el guard ya autorizó; aquí solo se lee
+    _s = _estado_inicial()
+    _cargar_estado(ctx, _s)
+    # ...
+```
+
+El template de §1 conserva el patrón por compatibilidad, pero **el registro y la
+autorización van por `registrar_pagina`**, no por un `@ui.page` con guard inline.
+
+---
+
 ## 1. Estructura de un archivo de página
 
 ```python
@@ -225,12 +257,21 @@ periodo.cerrado
 try:
     Container.evaluacion_service().guardar_nota(...)
     ui.notify("Nota guardada", type="positive", timeout=3000)
+except OperacionSoloLecturaError:
+    # Modo "Ver como" (impersonación admin): no se permiten cambios.
+    ui.notify("Estás en modo solo lectura (Ver como).", type="warning")
 except ValueError as exc:
     ui.notify(f"Error de validación: {exc}", type="warning")
 except Exception as exc:
     logger.error("Error guardando nota: %s", exc, exc_info=True)
     ui.notify("Error al guardar. Intenta de nuevo.", type="negative")
 ```
+
+> `OperacionSoloLecturaError` (de `src/services/solo_lectura.py`) hereda de
+> `PermissionError` y la lanzan los mutadores de servicio cuando la sesión está
+> impersonando en solo lectura. Captúrala **antes** que `ValueError`/`Exception`
+> para dar un mensaje claro. Idealmente, la página además oculta/deshabilita los
+> controles de edición cuando `ctx.solo_lectura` es `True`.
 
 ---
 
