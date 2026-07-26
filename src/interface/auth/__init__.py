@@ -16,8 +16,8 @@ from .route_guard import (
 )
 
 __all__ = [
-    "PUBLICO",
     "AUTENTICADO",
+    "PUBLICO",
     "registrar_pagina",
     "roles_de_ruta",
     "rutas_registradas",

@@ -7,7 +7,6 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import date
 
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.models.evaluacion import (
     Actividad,
     Categoria,
@@ -17,6 +16,7 @@ from src.domain.models.evaluacion import (
     ResultadoEstudianteDTO,
     TipoPuntosExtra,
 )
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 
 
 class SqliteEvaluacionRepository(IEvaluacionRepository):

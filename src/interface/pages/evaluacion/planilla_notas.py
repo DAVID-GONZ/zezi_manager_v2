@@ -24,19 +24,31 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    skeleton_table,
+    status_badge,
+    toast_error,
+    toast_info,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_ghost,
+    btn_icon,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_ghost, btn_icon,
-)
-from src.interface.design.components import (
-    confirm_dialog, empty_state, skeleton_table, status_badge,
-    toast_error, toast_info, toast_success, toast_warning,
-)
 from src.services.evaluacion_service import (
-    NuevaActividadDTO, RegistrarNotaDTO, EstadoActividad,
-    PuntosExtra, TipoPuntosExtra,
+    EstadoActividad,
+    NuevaActividadDTO,
+    PuntosExtra,
+    RegistrarNotaDTO,
+    TipoPuntosExtra,
 )
 from src.services.plan_mejoramiento_service import EstadoNotaCorte
 
@@ -45,7 +57,7 @@ logger = logging.getLogger("EVALUACION.PLANILLA")
 _ROLES_DIRECTIVOS = ("director", "coordinador")
 
 
-def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> "float | None":
+def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> float | None:
     vals = [notas_dict.get(a.id) for a in acts_de_cat if notas_dict.get(a.id) is not None]
     if not vals:
         return None

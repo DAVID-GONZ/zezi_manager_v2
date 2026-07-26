@@ -39,7 +39,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -85,11 +84,11 @@ class ObservacionPeriodo(BaseModel):
             )
         return v
 
-    def hacer_publica(self) -> "ObservacionPeriodo":
+    def hacer_publica(self) -> ObservacionPeriodo:
         """Retorna una copia marcada como pública (aparece en boletín)."""
         return self.model_copy(update={"es_publica": True})
 
-    def hacer_privada(self) -> "ObservacionPeriodo":
+    def hacer_privada(self) -> ObservacionPeriodo:
         """Retorna una copia marcada como privada (solo visible al docente)."""
         return self.model_copy(update={"es_publica": False})
 
@@ -199,7 +198,7 @@ class RegistroComportamiento(BaseModel):
     # Métodos de dominio
     # ------------------------------------------------------------------
 
-    def registrar_notificacion(self) -> "RegistroComportamiento":
+    def registrar_notificacion(self) -> RegistroComportamiento:
         """
         Retorna una copia marcando que el acudiente fue notificado.
 
@@ -216,7 +215,7 @@ class RegistroComportamiento(BaseModel):
             )
         return self.model_copy(update={"acudiente_notificado": True})
 
-    def agregar_seguimiento(self, texto: str) -> "RegistroComportamiento":
+    def agregar_seguimiento(self, texto: str) -> RegistroComportamiento:
         """
         Retorna una copia con el texto de seguimiento añadido o reemplazado.
 
@@ -370,12 +369,12 @@ class FiltroConvivenciaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "TipoRegistro",
-    "ObservacionPeriodo",
-    "RegistroComportamiento",
+    "FiltroConvivenciaDTO",
     "NotaComportamiento",
+    "NuevaNotaComportamientoDTO",
     "NuevaObservacionDTO",
     "NuevoRegistroComportamientoDTO",
-    "NuevaNotaComportamientoDTO",
-    "FiltroConvivenciaDTO",
+    "ObservacionPeriodo",
+    "RegistroComportamiento",
+    "TipoRegistro",
 ]

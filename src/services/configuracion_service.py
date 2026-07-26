@@ -5,19 +5,18 @@ Orquesta los casos de uso de configuración del año lectivo.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.models.configuracion import (
-    ConfiguracionAnio,
-    NivelDesempeno,
-    CriterioPromocion,
-    NuevaConfiguracionAnioDTO,
     ActualizarConfiguracionAnioDTO,
     ActualizarInfoInstitucionalDTO,
+    ConfiguracionAnio,
+    CriterioPromocion,
     InformacionInstitucionalDTO,
+    NivelDesempeno,
+    NuevaConfiguracionAnioDTO,
     NuevoNivelDesempenoDTO,
 )
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class ConfiguracionService:

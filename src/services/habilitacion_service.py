@@ -5,27 +5,23 @@ Orquesta los casos de uso de habilitaciones y planes de mejoramiento.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from datetime import date
-
-from src.domain.ports.habilitacion_repo import IHabilitacionRepository
-from src.domain.ports.cierre_repo import ICierreRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.habilitacion import (
+    CerrarPlanMejoramientoDTO,
     EstadoHabilitacion,
     EstadoPlanMejoramiento,
     FiltroHabilitacionesDTO,
     Habilitacion,
     NuevaHabilitacionDTO,
     NuevoPlanMejoramientoDTO,
-    CerrarPlanMejoramientoDTO,
     PlanMejoramiento,
-    TipoHabilitacion,
     RegistrarNotaHabilitacionDTO,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.cierre_repo import ICierreRepository
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.ports.habilitacion_repo import IHabilitacionRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class HabilitacionService:

@@ -38,8 +38,9 @@ Aislamiento:
 
 from __future__ import annotations
 
-import sqlite3
 import logging
+import sqlite3
+
 import pytest
 
 logging.disable(logging.CRITICAL)   # silenciar logs durante tests
@@ -52,7 +53,7 @@ logging.disable(logging.CRITICAL)   # silenciar logs durante tests
 def _apply_schema(conn: sqlite3.Connection) -> None:
     """Aplica SCHEMA, INDICES y TRIGGERS a una conexión en memoria."""
     # Import tardío para no romper si el módulo tiene errores durante discovery
-    from src.infrastructure.db.schema import SCHEMA, INDICES, TRIGGERS
+    from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
 
     conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
@@ -97,7 +98,7 @@ def db_seed():
     Yields:
         tuple[sqlite3.Connection, SeedResult]
     """
-    from src.infrastructure.db.seed import seed_test, _fast_hasher
+    from src.infrastructure.db.seed import _fast_hasher, seed_test
 
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     _apply_schema(conn)
@@ -143,7 +144,7 @@ def db_dev():
     Yields:
         tuple[sqlite3.Connection, SeedResult]
     """
-    from src.infrastructure.db.seed import seed_dev, _fast_hasher
+    from src.infrastructure.db.seed import _fast_hasher, seed_dev
 
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     _apply_schema(conn)

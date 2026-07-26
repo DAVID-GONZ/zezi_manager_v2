@@ -31,19 +31,27 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    form_dialog,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_ghost,
+    btn_icon,
+    btn_primary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_ghost, btn_icon,
-)
-from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
+from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.evaluacion_service import (
-    NuevaCategoriaDTO,
     ActualizarCategoriaDTO,
     ContextoAcademicoDTO,
+    NuevaCategoriaDTO,
 )
-from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.plan_mejoramiento_service import (
     EjecutarCorteDTO,
     EstadoNotaCorte,
@@ -222,7 +230,7 @@ def configuracion_evaluacion_page() -> None:
             toast_error("Error al crear la categoría")
 
     def _editar_cat_docente(cat) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             try:
                 nuevo_nombre = str(datos.get("nombre", "")).strip() or None
                 if not nuevo_nombre:

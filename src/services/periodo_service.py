@@ -5,20 +5,19 @@ Orquesta los casos de uso del módulo de Periodos académicos.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from datetime import datetime
 
-from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.periodo import (
     HitoPeriodo,
-    NuevoPeriodoDTO,
     NuevoHitoPeriodoDTO,
+    NuevoPeriodoDTO,
     Periodo,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class PeriodoService:

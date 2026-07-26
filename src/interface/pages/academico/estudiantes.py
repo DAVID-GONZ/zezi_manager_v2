@@ -23,19 +23,31 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    stat_card,
+    status_badge,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_ghost,
+    btn_icon,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_ghost, btn_icon,
-)
-from src.interface.design.components import confirm_dialog, empty_state, form_dialog, stat_card, status_badge, toast_error, toast_success, toast_warning
 from src.services.estudiante_service import (
-    NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
-    FiltroEstudiantesDTO,
-    NuevoPIARDTO,
     ActualizarPIARDTO,
+    FiltroEstudiantesDTO,
+    NuevoEstudianteDTO,
+    NuevoPIARDTO,
 )
 
 logger = logging.getLogger("ESTUDIANTES")
@@ -413,7 +425,7 @@ def estudiantes_page() -> None:
         # ── Acciones de página ────────────────────────────────────────────────
 
         def _abrir_dialog_matricula() -> None:
-            def _guardar(datos: dict) -> "bool | None":
+            def _guardar(datos: dict) -> bool | None:
                 # NuevoEstudianteDTO valida documento/nombre/apellido (strip, no vacío)
                 # y coacciona tipo_documento/genero.
                 try:
@@ -515,7 +527,7 @@ def estudiantes_page() -> None:
                 toast_error("No se pudo cargar el estudiante.")
                 return
 
-            def _guardar_edicion(datos: dict) -> "bool | None":
+            def _guardar_edicion(datos: dict) -> bool | None:
                 # ActualizarEstudianteDTO valida nombre/apellido y coacciona enums;
                 # `or None` conserva la semántica "solo actualiza lo provisto".
                 try:
@@ -763,7 +775,7 @@ def estudiantes_page() -> None:
 
             is_edit = piar is not None
 
-            def _submit_piar(datos: dict) -> "bool | None":
+            def _submit_piar(datos: dict) -> bool | None:
                 # La descripción (obligatoria, no vacía) la validan los DTOs de PIAR.
                 try:
                     if is_edit:

@@ -52,7 +52,7 @@ class SessionContext:
     solo_lectura:      bool        = False
 
     @classmethod
-    def desde_storage(cls) -> "SessionContext | None":
+    def desde_storage(cls) -> SessionContext | None:
         """
         Construye el contexto desde app.storage.user de NiceGUI.
         Retorna None si no hay sesión activa.

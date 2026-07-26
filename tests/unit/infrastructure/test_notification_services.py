@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import logging
 
-import pytest
-
-from src.infrastructure.notifications.null_notification_service import NullNotificationService
-from src.infrastructure.notifications.log_notification_service import LogNotificationService
 from src.domain.ports.service_ports import INotificationService
-
+from src.infrastructure.notifications.log_notification_service import (
+    LogNotificationService,
+)
+from src.infrastructure.notifications.null_notification_service import (
+    NullNotificationService,
+)
 
 # ===========================================================================
 # NullNotificationService

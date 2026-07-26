@@ -18,24 +18,34 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.infrastructure.db.schema import SCHEMA, INDICES, TRIGGERS
-from src.infrastructure.db.seed import seed_dev, _fast_hasher
-
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import SqliteInfraestructuraRepository
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import SqliteAsignacionRepository
-from src.infrastructure.db.repositories.sqlite_usuario_repo import SqliteUsuarioRepository
-from src.infrastructure.db.repositories.sqlite_periodo_repo import SqlitePeriodoRepository
-from src.infrastructure.db.repositories.sqlite_configuracion_repo import SqliteConfiguracionRepository
-
-from src.services.plan_estudios_service import PlanEstudiosService
-from src.services.infraestructura_service import InfraestructuraService, Asignatura
-from src.services.usuario_service import UsuarioService
-from src.services.asignacion_service import (
-    AsignacionService, FiltroAsignacionesDTO, NuevaAsignacionDTO,
+from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
+    SqliteAsignacionRepository,
 )
-from src.services.horario_service import HorarioService
+from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
+    SqliteConfiguracionRepository,
+)
+from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
+    SqliteInfraestructuraRepository,
+)
+from src.infrastructure.db.repositories.sqlite_periodo_repo import (
+    SqlitePeriodoRepository,
+)
+from src.infrastructure.db.repositories.sqlite_usuario_repo import (
+    SqliteUsuarioRepository,
+)
+from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
+from src.infrastructure.db.seed import _fast_hasher, seed_dev
+from src.services.asignacion_service import (
+    AsignacionService,
+    FiltroAsignacionesDTO,
+    NuevaAsignacionDTO,
+)
 from src.services.generador_horario_service import GeneradorHorarioService
+from src.services.horario_service import HorarioService
+from src.services.infraestructura_service import Asignatura, InfraestructuraService
+from src.services.plan_estudios_service import PlanEstudiosService
 from src.services.preparacion_horario_service import PreparacionHorarioService
+from src.services.usuario_service import UsuarioService
 
 
 @pytest.fixture()

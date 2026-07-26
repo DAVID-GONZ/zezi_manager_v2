@@ -26,31 +26,42 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
-from nicegui import background_tasks, context as ng_context, ui
+from nicegui import background_tasks, ui
+from nicegui import context as ng_context
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    status_badge,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_danger,
+    btn_ghost,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_danger, btn_ghost,
-)
-from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, status_badge,
-    toast_error, toast_success, toast_warning,
-)
 from src.interface.pages.academico.parrilla_widget import (
-    render_parrilla, render_tablero_maestro, _opciones_eje,
+    _opciones_eje,
+    render_parrilla,
+    render_tablero_maestro,
 )
 from src.interface.pages.academico.plantilla_editor_widget import (
-    plantilla_form_dialog,
     franja_form_dialog,
+    plantilla_form_dialog,
     render_franjas_editor,
     render_plantilla_preview,
 )
-from src.services.franja_service import DiaSemana
 from src.services.asignacion_service import FiltroAsignacionesDTO
+from src.services.franja_service import DiaSemana
 
 logger = logging.getLogger("HORARIOS_HUB")
 
@@ -495,7 +506,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         parrilla_unificada_refreshable.refresh()
 
     def _crear_escenario_dialog() -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             nombre = (datos.get("nombre") or "").strip()
             if not nombre:
                 toast_warning("El nombre es obligatorio.")
@@ -540,7 +551,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             toast_error(_texto_error(exc))
 
     def _renombrar_escenario_dialog(esc) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             nombre = (datos.get("nombre") or "").strip()
             if not nombre:
                 toast_warning("El nombre es obligatorio.")
@@ -574,7 +585,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         )
 
     def _duplicar_escenario_dialog(esc) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             nombre = (datos.get("nombre") or "").strip()
             if not nombre:
                 toast_warning("El nombre es obligatorio.")
@@ -667,7 +678,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             for a in _s["asignaciones"]
         }
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             asig_id = datos.get("asignacion_id")
             if not asig_id:
                 toast_warning("Selecciona una asignación.")
@@ -725,7 +736,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             toast_warning("Bloque no encontrado.")
             return
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             try:
                 Container.horario_service().actualizar_bloque(
                     horario_id,
@@ -793,7 +804,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         parrilla_unificada_refreshable.refresh()
 
     def _editar_color_area(area: dict) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             color = (datos.get("color") or "").strip() or None
             try:
                 Container.catalogo_academico_service().set_color_area(area["area_id"], color)
@@ -865,7 +876,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             return False, "No se pudo verificar la plantilla de la configuración."
 
     def _gen_crear_plantilla(on_creada=None) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             nombre = (datos.get("nombre") or "").strip()
             if not nombre:
                 toast_warning("El nombre de la plantilla es obligatorio")
@@ -967,7 +978,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             toast_warning("Selecciona o crea una plantilla primero")
             return
 
-        def _submit(datos: dict) -> "bool | None":
+        def _submit(datos: dict) -> bool | None:
             if not datos.get("hora_inicio") or not datos.get("hora_fin"):
                 toast_warning("La hora de inicio y fin son obligatorias")
                 return False
@@ -987,7 +998,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         if franja is None:
             return
 
-        def _submit(datos: dict) -> "bool | None":
+        def _submit(datos: dict) -> bool | None:
             if not datos.get("hora_inicio") or not datos.get("hora_fin"):
                 toast_warning("La hora de inicio y fin son obligatorias")
                 return False

@@ -7,27 +7,11 @@ Ejecutar:
 """
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 import pytest
 from pydantic import ValidationError
 
-from src.domain.models.usuario import (
-    ActualizarUsuarioDTO,
-    DocenteInfoDTO,
-    FiltroUsuariosDTO,
-    NuevoUsuarioDTO,
-    Rol,
-    Usuario,
-    UsuarioResumenDTO,
-)
-from src.domain.models.configuracion import (
-    ActualizarConfiguracionAnioDTO,
-    ActualizarInfoInstitucionalDTO,
-    ConfiguracionAnio,
-    InformacionInstitucionalDTO,
-    NuevaConfiguracionAnioDTO,
-)
 from src.domain.models.auditoria import (
     AccionCambio,
     CrearEventoSesionDTO,
@@ -37,7 +21,22 @@ from src.domain.models.auditoria import (
     RegistroCambio,
     TipoEventoSesion,
 )
-
+from src.domain.models.configuracion import (
+    ActualizarConfiguracionAnioDTO,
+    ActualizarInfoInstitucionalDTO,
+    ConfiguracionAnio,
+    InformacionInstitucionalDTO,
+    NuevaConfiguracionAnioDTO,
+)
+from src.domain.models.usuario import (
+    ActualizarUsuarioDTO,
+    DocenteInfoDTO,
+    FiltroUsuariosDTO,
+    NuevoUsuarioDTO,
+    Rol,
+    Usuario,
+    UsuarioResumenDTO,
+)
 
 # =============================================================================
 # USUARIO

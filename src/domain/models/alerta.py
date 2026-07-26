@@ -26,7 +26,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -201,7 +200,7 @@ class Alerta(BaseModel):
         usuario_id: int,
         observacion: str | None = None,
         fecha: datetime | None = None,
-    ) -> "Alerta":
+    ) -> Alerta:
         """
         Retorna una nueva instancia de la alerta marcada como resuelta.
 
@@ -278,11 +277,11 @@ class FiltroAlertasDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "TipoAlerta",
-    "NivelAlerta",
-    "ConfiguracionAlerta",
     "Alerta",
+    "ConfiguracionAlerta",
     "CrearAlertaDTO",
-    "ResolverAlertaDTO",
     "FiltroAlertasDTO",
+    "NivelAlerta",
+    "ResolverAlertaDTO",
+    "TipoAlerta",
 ]

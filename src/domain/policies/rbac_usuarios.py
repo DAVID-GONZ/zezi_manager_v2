@@ -26,7 +26,6 @@ strings como objetos con atributo `.value` (p.ej. el enum Rol).
 """
 from __future__ import annotations
 
-
 # Matriz de asignación: actor_rol -> conjunto de roles que puede asignar/crear.
 _ASIGNABLES: dict[str, frozenset[str]] = {
     "admin":    frozenset({"admin", "director"}),
@@ -76,7 +75,7 @@ def puede_gestionar(actor_rol: object, target_rol: object) -> bool:
 
 
 __all__ = [
-    "roles_asignables",
     "puede_asignar_rol",
     "puede_gestionar",
+    "roles_asignables",
 ]

@@ -6,11 +6,14 @@ from datetime import datetime
 import pytest
 
 from src.domain.models.alerta import (
-    Alerta, ConfiguracionAlerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta,
+    Alerta,
+    ConfiguracionAlerta,
+    FiltroAlertasDTO,
+    NivelAlerta,
+    TipoAlerta,
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.services.alerta_service import AlertaService
-
 
 # ===========================================================================
 # Fake

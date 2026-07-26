@@ -2,31 +2,28 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 import pytest
 
 from src.domain.models.cierre import (
-    CierreAnio, CierrePeriodo, DecidirPromocionDTO,
-    EstadoPromocion, PromocionAnual,
+    CierreAnio,
+    CierrePeriodo,
+    DecidirPromocionDTO,
+    EstadoPromocion,
+    PromocionAnual,
+)
+from src.domain.models.dtos import ContextoAcademicoDTO
+from src.domain.models.estudiante import (
+    Estudiante,
 )
 from src.domain.models.evaluacion import Actividad, Categoria, Nota
-from src.domain.models.configuracion import NivelDesempeno
-from src.domain.models.dtos import ContextoAcademicoDTO, DashboardMetricsDTO
-from src.domain.models.estudiante import Estudiante
 from src.domain.models.periodo import Periodo
-
 from src.domain.ports.cierre_repo import ICierreRepository
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
-from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
-
-from src.domain.models.piar import PIAR
-from src.domain.models.estudiante import FiltroEstudiantesDTO, EstudianteResumenDTO
-
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
+from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.services.cierre_service import CierreService
-
 
 # ===========================================================================
 # Fakes
@@ -86,7 +83,7 @@ class FakeCierreRepo(ICierreRepository):
         asignacion_ids: list[int],
         periodo_id: int,
         nota_maxima: float | None = None,
-    ) -> list["CierrePeriodo"]:
+    ) -> list[CierrePeriodo]:
         result = [
             c for c in self._cierres_per.values()
             if c.asignacion_id in asignacion_ids and c.periodo_id == periodo_id

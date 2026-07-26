@@ -15,12 +15,10 @@ import pytest
 
 from src.domain.models.asistencia import (
     ControlDiario,
-    EstadoAsistencia,
     ResumenAsistenciaDTO,
 )
 from src.domain.ports.asistencia_repo import IAsistenciaRepository
 from src.services.asistencia_service import AsistenciaService
-
 
 # ===========================================================================
 # FakeAsistenciaRepo con lógica de conteo en memoria

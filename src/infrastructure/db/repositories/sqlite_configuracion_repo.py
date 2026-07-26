@@ -9,12 +9,12 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.models.configuracion import (
     ConfiguracionAnio,
-    NivelDesempeno,
     CriterioPromocion,
+    NivelDesempeno,
 )
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
 
 
 class SqliteConfiguracionRepository(IConfiguracionRepository):

@@ -25,7 +25,6 @@ from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
 from src.services.contexto_tenant import usar_institucion
 from src.services.infraestructura_service import InfraestructuraService
 
-
 # =============================================================================
 # Scope desde el contextvar — listados auto-scopeados
 # =============================================================================

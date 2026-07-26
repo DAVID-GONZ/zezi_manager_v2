@@ -1,0 +1,504 @@
+@startuml classes_class_services
+set namespaceSeparator none
+class "AcudienteService" as services.acudiente_service.AcudienteService {
+  get_principal(estudiante_id: int)
+  listar_por_estudiante(estudiante_id: int)
+}
+class "AlertaService" as services.alerta_service.AlertaService {
+  configurar_alerta(config: ConfiguracionAlerta) -> ConfiguracionAlerta
+  contar_pendientes(estudiante_id: int | None, nivel: NivelAlerta | None) -> int
+  desactivar_configuracion(anio_id: int, tipo_alerta: TipoAlerta) -> bool
+  detectar_riesgo_academico(grupo_id: int, periodo_id: int, anio_id: int, nota_minima: float, min_asignaturas: int) -> int
+  get_configuracion(anio_id: int, tipo_alerta: TipoAlerta) -> ConfiguracionAlerta | None
+  listar_alertas(filtro: FiltroAlertasDTO) -> list[Alerta]
+  listar_configuraciones(anio_id: int, solo_activas: bool) -> list[ConfiguracionAlerta]
+  resolver_alerta(alerta_id: int, usuario_id: int, observacion: str | None) -> bool
+  resolver_alertas_de_estudiante(estudiante_id: int, tipo_alerta: TipoAlerta, usuario_id: int, observacion: str | None) -> int
+}
+class "AsignacionService" as services.asignacion_service.AsignacionService {
+  asignar_docente_a_materia(grupo_id: int, asignatura_id: int, periodo_id: int, nuevo_usuario_id: int | None, usuario_id: int | None) -> Asignacion | None
+  carga_docente(usuario_id: int, periodo_id: int) -> int
+  completitud_grupo(grupo_id: int, grado: int | None, periodo_id: int) -> CompletitudGrupoDTO
+  crear_asignacion(dto: NuevaAsignacionDTO, usuario_id: int | None) -> Asignacion
+  desactivar(asignacion_id: int, usuario_id: int | None) -> Asignacion
+  desactivar_por_grado_asignatura(grado: int, asignatura_id: int, usuario_id: int | None) -> int
+  docentes_con_cupo(asignatura_id: int, grupo_id: int, horas: int, periodo_id: int, docente_ids: list[int], usuario_actual_id: int | None) -> dict[int, CupoDocenteDTO]
+  get_by_id(asignacion_id: int) -> Asignacion
+  horas_de_asignacion(grupo_id: int, asignatura_id: int) -> int
+  listar_con_info(filtro: FiltroAsignacionesDTO) -> list[AsignacionInfo]
+  listar_por_docente(usuario_id: int, periodo_id: int | None) -> list[AsignacionInfo]
+  listar_por_grupo(grupo_id: int, solo_activas: bool) -> list[AsignacionInfo]
+  materias_sin_docente(grupo_id: int, grado: int | None, periodo_id: int) -> list[int]
+  reactivar(asignacion_id: int, usuario_id: int | None) -> Asignacion
+  reasignar_docente(asignacion_id: int, nuevo_usuario_id: int, usuario_id: int | None) -> Asignacion
+}
+class "AsistenciaService" as services.asistencia_service.AsistenciaService {
+  clases_mes_por_asignacion(usuario_id: int, anio: int, mes: int) -> dict[int, int]
+  contar_clases_mes(usuario_id: int, anio: int, mes: int) -> int
+  estados_por_grupo_y_fecha(grupo_id: int, asignacion_id: int, fecha: object) -> dict[int, dict[str, str]]
+  get_por_fecha(estudiante_id: int, grupo_id: int, asignacion_id: int, fecha: object) -> ControlDiario | None
+  guardar_asistencia_masiva(grupo_id: int, asignacion_id: int, periodo_id: int, fecha: object, lista: list[dict], usuario_id: int | None, anio_id: int | None) -> int
+  listar_por_grupo_y_fecha(grupo_id: int, asignacion_id: int, fecha: object) -> list[ControlDiario]
+  registrar(dto: RegistrarAsistenciaDTO, usuario_id: int | None) -> ControlDiario
+  registrar_masivo(dto: RegistrarAsistenciaMasivaDTO, usuario_id: int | None, anio_id: int | None) -> int
+  resumen_estudiante(estudiante_id: int, periodo_id: int, asignacion_id: int | None) -> ResumenAsistenciaDTO
+  resumen_grupo(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[ResumenAsistenciaDTO]
+}
+class "AuditoriaService" as services.auditoria_service.AuditoriaService {
+  listar_cambios(filtro: FiltroAuditoriaDTO) -> list[RegistroCambio]
+  listar_eventos_sesion(filtro: FiltroAuditoriaDTO) -> list[EventoSesion]
+  registrar_evento(evento: EventoSesion) -> EventoSesion
+  resumen_uso(dias: int) -> ResumenUsoDTO
+  verificar_integridad() -> dict
+}
+class "BoletinesGrupoDTO" as services.informe_service.BoletinesGrupoDTO {
+  contenido : bytes | None
+  errores : list[str]
+}
+class "CatalogoAcademicoService" as services.catalogo_academico_service.CatalogoAcademicoService {
+  actualizar_area(area: AreaConocimiento) -> AreaConocimiento
+  actualizar_asignatura(asignatura: Asignatura) -> Asignatura
+  actualizar_grupo(grupo: Grupo) -> Grupo
+  eliminar_area(area_id: int) -> bool
+  eliminar_asignatura(asignatura_id: int) -> bool
+  eliminar_grupo(grupo_id: int) -> bool
+  get_grupo(grupo_id: int) -> Grupo | None
+  guardar_area(area: AreaConocimiento) -> AreaConocimiento
+  guardar_asignatura(asignatura: Asignatura) -> Asignatura
+  guardar_grupo(grupo: Grupo) -> Grupo
+  listar_areas() -> list[AreaConocimiento]
+  listar_asignaturas(area_id: int | None) -> list[Asignatura]
+  listar_grupos(grado: int | None) -> list[Grupo]
+  set_color_area(area_id: int, color: str | None) -> bool
+}
+class "CierreService" as services.cierre_service.CierreService {
+  cerrar_anio(grupo_id: int, anio_id: int, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> list[CierreAnio]
+  cerrar_grupo(asignacion_ids: list[int], grupo_id: int, periodo_id: int, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> dict[int, list[CierrePeriodo] | str]
+  cerrar_periodo(asignacion_id: int, periodo_id: int, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> list[CierrePeriodo]
+  decidir_promocion(est_id: int, anio_id: int, dto: DecidirPromocionDTO, usuario_id: int | None) -> PromocionAnual
+  estado_cierres_por_asignaciones(asignacion_ids: list[int], periodo_id: int) -> dict[int, list[CierrePeriodo]]
+  get_cierre_periodo(est_id: int, asignacion_id: int, periodo_id: int) -> CierrePeriodo | None
+  get_promocion(est_id: int, anio_id: int) -> PromocionAnual | None
+  reabrir_asignacion(asignacion_id: int, periodo_id: int, usuario_id: int | None, motivo: str | None) -> int
+  resumen_cierres_institucional(periodo_id: int) -> dict
+}
+class "CompletitudGrupoDTO" as services.asignacion_service.CompletitudGrupoDTO {
+  completo : bool
+  faltantes : int
+  horas_asignadas : int
+  horas_totales : int
+}
+class "ConfiguracionService" as services.configuracion_service.ConfiguracionService {
+  activar_anio(anio_id: int) -> ConfiguracionAnio
+  actualizar_configuracion_academica(anio_id: int, dto: ActualizarConfiguracionAnioDTO) -> ConfiguracionAnio
+  actualizar_info_institucional(anio_id: int, dto: ActualizarInfoInstitucionalDTO) -> ConfiguracionAnio
+  actualizar_nivel(anio_id: int, nivel_id: int, dto: NuevoNivelDesempenoDTO) -> NivelDesempeno
+  agregar_nivel(anio_id: int, dto: NuevoNivelDesempenoDTO) -> NivelDesempeno
+  clasificar_nota(nota: float, anio_id: int) -> NivelDesempeno | None
+  configurar_niveles(anio_id: int, niveles: list[NuevoNivelDesempenoDTO]) -> list[NivelDesempeno]
+  crear_anio(dto: NuevaConfiguracionAnioDTO) -> ConfiguracionAnio
+  eliminar_nivel(anio_id: int, nivel_id: int) -> bool
+  get_activa(institucion_id: int | None) -> ConfiguracionAnio
+  get_by_id(anio_id: int) -> ConfiguracionAnio
+  get_criterios(anio_id: int) -> CriterioPromocion | None
+  get_info_institucional(anio_id: int) -> InformacionInstitucionalDTO
+  guardar_criterios(criterios: CriterioPromocion) -> CriterioPromocion
+  listar_niveles(anio_id: int) -> list[NivelDesempeno]
+}
+class "ConvivenciaService" as services.convivencia_service.ConvivenciaService {
+  agregar_seguimiento(registro_id: int, texto: str) -> RegistroComportamiento
+  eliminar_observacion(observacion_id: int) -> bool
+  eliminar_registro(registro_id: int) -> bool
+  get_nota_comportamiento(estudiante_id: int, periodo_id: int) -> NotaComportamiento | None
+  listar_notas_grupo(grupo_id: int, periodo_id: int) -> list[NotaComportamiento]
+  listar_observaciones(estudiante_id: int, periodo_id: int | None, solo_publicas: bool) -> list[ObservacionPeriodo]
+  listar_registros(filtro: FiltroConvivenciaDTO) -> list[RegistroComportamiento]
+  notificar_acudiente(registro_id: int) -> RegistroComportamiento
+  registrar_comportamiento(dto: NuevoRegistroComportamientoDTO, usuario_id: int | None, anio_id: int | None) -> RegistroComportamiento
+  registrar_nota_comportamiento(dto: NuevaNotaComportamientoDTO, usuario_id: int | None) -> NotaComportamiento
+  registrar_observacion(dto: NuevaObservacionDTO, usuario_id: int | None) -> ObservacionPeriodo
+}
+class "CupoDocenteDTO" as services.asignacion_service.CupoDocenteDTO {
+  cap_efectivo : int | None
+  carga_actual : int
+  es_actual : bool
+  tiene_cupo : bool
+  usuario_id : int
+}
+class "EscenarioHorarioService" as services.escenario_horario_service.EscenarioHorarioService {
+  activar_escenario(escenario_id: int) -> None
+  actualizar_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  crear_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  crear_escenario_simple(anio_id: int, nombre: str, descripcion: str | None) -> EscenarioHorario
+  duplicar_escenario(escenario_id: int, nuevo_nombre: str) -> EscenarioHorario
+  eliminar_escenario(escenario_id: int) -> bool
+  get_escenario(escenario_id: int) -> EscenarioHorario | None
+  get_escenario_activo(anio_id: int) -> EscenarioHorario | None
+  listar_escenarios(anio_id: int) -> list[EscenarioHorario]
+  listar_horario_escenario(escenario_id: int) -> list[HorarioInfo]
+  listar_horario_grupo_escenario(grupo_id: int, escenario_id: int) -> list[HorarioInfo]
+  renombrar_escenario(esc_existente, nombre: str, descripcion: str | None) -> EscenarioHorario
+}
+class "EstadisticosService" as services.estadisticos_service.EstadisticosService {
+  comparativo_periodos(grupo_id: int, asignacion_id: int, anio_id: int) -> list[dict[str, Any]]
+  consolidado_anual_grupo(grupo_id: int, anio_id: int) -> list[dict[str, Any]]
+  consolidado_asistencia_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  consolidado_notas_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  contar_alertas_pendientes(grupo_id: int) -> int
+  datos_tablero(asignacion_id: int, periodo_id: int, grupo_id: int, anio_id: int | None) -> dict
+  distribucion_desempenos(grupo_id: int, asignacion_id: int, periodo_id: int, anio_id: int | None) -> dict[str, int]
+  distribucion_estados_asistencia(grupo_id: int, asignacion_id: int, periodo_id: int) -> dict[str, int]
+  estudiantes_en_riesgo_academico(grupo_id: int, periodo_id: int, nota_minima: float, min_asignaturas: int) -> list[int]
+  metricas_dashboard(grupo_id: int, periodo_id: int, anio_id: int | None) -> DashboardMetricsDTO
+  metricas_institucionales(periodo_id: int, anio_id: int | None) -> MetricasInstitucionalesDTO
+  pendientes_docente(usuario_id: int, periodo_id: int, anio_id: int | None) -> PendientesDocenteDTO
+  porcentaje_asistencia_global(grupo_id: int, periodo_id: int) -> float
+  promedio_general_grupo(grupo_id: int, periodo_id: int, nota_minima: float) -> float
+  promedio_por_asignacion(grupo_id: int, asignacion_id: int, periodo_id: int) -> float
+  promedios_por_area(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  ranking_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  tendencia_asistencia(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[dict[str, Any]]
+}
+class "EstudianteService" as services.estudiante_service.EstudianteService {
+  actualizar(estudiante_id: int, dto: ActualizarEstudianteDTO, usuario_id: int | None, actor_rol: str | None) -> Estudiante
+  actualizar_piar(estudiante_id: int, anio_id: int, dto: ActualizarPIARDTO, usuario_id: int | None, actor_rol: str | None) -> PIAR
+  asignar_grupo(estudiante_id: int, grupo_id: int, usuario_id: int | None) -> Estudiante
+  get_by_id(estudiante_id: int) -> Estudiante
+  get_para_edicion(estudiante_id: int) -> dict
+  get_piar(estudiante_id: int, anio_id: int) -> PIAR | None
+  listar_filtrado(filtro: FiltroEstudiantesDTO) -> list[Estudiante]
+  listar_historial(estudiante_id: int) -> list[MovimientoEstudianteInfoDTO]
+  listar_por_grupo(grupo_id: int, solo_activos: bool) -> list[Estudiante]
+  listar_resumenes(filtro: FiltroEstudiantesDTO) -> list[EstudianteResumenDTO]
+  listar_resumenes_plano(filtro: FiltroEstudiantesDTO) -> list[dict]
+  matricular(dto: NuevoEstudianteDTO, usuario_id: int | None, actor_rol: str | None) -> Estudiante
+  matricular_masivo_csv(filas: list[dict], mapa_grupos: dict[str, int], usuario_id: int | None, actor_rol: str | None) -> MatriculaMasivaResultadoDTO
+  registrar_piar(dto: NuevoPIARDTO, usuario_id: int | None) -> PIAR
+  retirar(estudiante_id: int, motivo: str | None, usuario_id: int | None) -> Estudiante
+  trasladar(estudiante_id: int, grupo_destino_id: int, motivo: str | None, usuario_id: int | None, actor_rol: str | None, permitir_cambio_grado: bool) -> Estudiante
+}
+class "EvaluacionService" as services.evaluacion_service.EvaluacionService {
+  actualizar_categoria(cat_id: int, dto: ActualizarCategoriaDTO, usuario_id: int | None) -> Categoria
+  actualizar_categoria_institucional(cat_id: int, dto: ActualizarCategoriaDTO, anio_id: int, usuario_id: int | None) -> Categoria
+  agregar_actividad(dto: NuevaActividadDTO, usuario_id: int | None) -> Actividad
+  agregar_categoria(dto: NuevaCategoriaDTO, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> Categoria
+  agregar_categoria_institucional(dto: NuevaCategoriaInstitucionalDTO, usuario_id: int | None) -> Categoria
+  cerrar_actividad(act_id: int, usuario_id: int | None) -> Actividad
+  eliminar_actividad(act_id: int, usuario_id: int | None) -> None
+  eliminar_categoria(cat_id: int, usuario_id: int | None) -> None
+  eliminar_categoria_institucional(cat_id: int, usuario_id: int | None) -> None
+  get_configuracion_siee(anio_id: int) -> ConfiguracionSIEE
+  guardar_configuracion_siee(dto: NuevaConfiguracionSIEEDTO, usuario_id: int | None) -> ConfiguracionSIEE
+  guardar_puntos_extra(puntos: PuntosExtra, usuario_id: int | None) -> PuntosExtra
+  listar_actividades(asignacion_id: int, periodo_id: int) -> list[Actividad]
+  listar_categorias(asignacion_id: int, periodo_id: int) -> list[Categoria]
+  listar_categorias_institucionales(anio_id: int) -> list[Categoria]
+  listar_puntos_extra(asignacion_id: int, periodo_id: int) -> list[PuntosExtra]
+  obtener_planilla(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[ResultadoEstudianteDTO]
+  peso_autonomia_disponible(asignacion_id: int, periodo_id: int, anio_id: int) -> float
+  planilla_completa(grupo_id: int, asignacion_id: int, periodo_id: int) -> PlanillaCompletaDTO
+  publicar_actividad(act_id: int, usuario_id: int | None) -> Actividad
+  reabrir_actividad(act_id: int, usuario_id: int | None) -> Actividad
+  registrar_nota(dto: RegistrarNotaDTO, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> Nota
+  registrar_notas_masivas(dto: RegistrarNotasMasivasDTO, ctx: ContextoAcademicoDTO, usuario_id: int | None) -> int
+}
+class "FilaNivelacionDTO" as services.nivelacion_service.FilaNivelacionDTO {
+  estudiante_id : int
+  nota_previa : float | None
+  notas : dict[int, NotaNivelacion]
+  promedio : float | None
+}
+class "FranjaService" as services.franja_service.FranjaService {
+  activar_plantilla(plantilla_id: int) -> None
+  crear_plantilla_simple(nombre: str, jornada: str, dias: list[str] | None) -> PlantillaFranja
+  eliminar_plantilla(plantilla_id: int) -> bool
+  guardar_franjas(plantilla_id: int, filas: list[dict]) -> int
+  listar_franjas(plantilla_id: int) -> list[Franja]
+  listar_plantillas() -> list[PlantillaFranja]
+  plantilla_activa(jornada: str) -> PlantillaFranja | None
+}
+class "GeneradorHorarioService" as services.generador_horario_service.GeneradorHorarioService {
+  catalogo_pesos() -> dict[str, list[tuple[str, str, str]]]
+  generar(config_id: int) -> ResultadoGeneracionDTO
+  plantilla_generable(plantilla_id: int | None) -> tuple[bool, str]
+}
+class "HabilitacionService" as services.habilitacion_service.HabilitacionService {
+  cerrar_plan(plan_id: int, dto: CerrarPlanMejoramientoDTO, usuario_id: int | None) -> PlanMejoramiento
+  contar_habilitaciones_pendientes(periodo_id: int | None) -> int
+  crear_plan(dto: NuevoPlanMejoramientoDTO, usuario_id: int | None) -> PlanMejoramiento
+  get_by_id(hab_id: int) -> Habilitacion
+  listar_habilitaciones(filtro: FiltroHabilitacionesDTO) -> list[Habilitacion]
+  listar_planes_por_estudiante(estudiante_id: int, asignacion_id: int | None, estado: EstadoPlanMejoramiento | None) -> list[PlanMejoramiento]
+  programar_habilitacion(dto: NuevaHabilitacionDTO, usuario_id: int | None) -> Habilitacion
+  registrar_nota_habilitacion(hab_id: int, dto: RegistrarNotaHabilitacionDTO, anio_id: int | None) -> Habilitacion
+}
+class "HorarioService" as services.horario_service.HorarioService {
+  actualizar_bloque(horario_id: int) -> Horario
+  analizar_lote(escenario_id: int, periodo_id: int, filas: list[dict]) -> ReporteLoteDTO
+  aplicar_lote(escenario_id: int, periodo_id: int, filas: list[dict], solo_validas: bool) -> ResultadoLoteDTO
+  areas_parrilla(escenario_id: int) -> list[dict]
+  crear_bloque(escenario_id: int, asignacion_id: int, dia: str, hora_inicio: str, hora_fin: str, sala: str) -> Horario
+  datos_parrilla(escenario_id: int) -> dict
+  disponibilidad_asignacion(escenario_id: int, asignacion_id: int) -> CupoDTO
+  disponibilidad_docente(escenario_id: int, usuario_id: int) -> CupoDTO
+  eliminar_bloque(horario_id: int) -> bool
+  filas_exportables(escenario_id: int, grupo_id: int | None) -> list[dict]
+  listar_horario_grupo(grupo_id: int, periodo_id: int) -> list[HorarioInfo]
+  metricas_parrilla(escenario_id: int) -> dict
+  mover_bloque(horario_id: int, dia: str, hora_inicio: str, hora_fin: str) -> Horario
+  plantilla_filas(periodo_id: int) -> list[dict]
+}
+class "InformeService" as services.informe_service.InformeService {
+  datos_consolidado_anual(grupo_id: int, anio_id: int) -> list[dict]
+  datos_informe_asistencia(dto: InformeAsistenciaDTO) -> list[dict]
+  datos_informe_notas(dto: InformeNotasDTO) -> list[dict]
+  exportar_csv(datos: list[dict], encoding: str) -> bytes
+  exportar_estadistico(tipo: str, datos, formato: FormatoInforme | str, contexto: dict | None) -> bytes
+  generar_asistencia(dto: InformeAsistenciaDTO) -> bytes
+  generar_boletin_anual(estudiante_id: int, grupo_id: int, anio_id: int, formato: str, grupo_nombre: str) -> bytes
+  generar_boletin_periodo(estudiante_id: int, grupo_id: int, periodo_id: int, formato: str, grupo_nombre: str, periodo_nombre: str) -> bytes
+  generar_boletines_grupo(grupo_id: int, periodo_id: int | None, anio_id: int | None, formato: str, grupo_nombre: str, periodo_nombre: str) -> BoletinesGrupoDTO
+  generar_consolidado_anual(grupo_id: int, anio_id: int, formato: FormatoInforme) -> bytes
+  generar_notas(dto: InformeNotasDTO) -> bytes
+}
+class "InfraestructuraService" as services.infraestructura_service.InfraestructuraService {
+  activar_escenario(escenario_id: int) -> None
+  activar_plantilla(plantilla_id: int) -> None
+  actualizar_area(area: AreaConocimiento) -> AreaConocimiento
+  actualizar_asignatura(asignatura: Asignatura) -> Asignatura
+  actualizar_config_generacion(config_id: int) -> ConfigGeneracion
+  actualizar_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  actualizar_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  actualizar_grupo(grupo: Grupo) -> Grupo
+  actualizar_sala(sala: Sala) -> Sala
+  asignar_sala_a_grupo(grupo_id: int, sala_id: int | None) -> bool
+  bloquear_franjas_docente(usuario_id: int, slots: list[dict]) -> int
+  cambiar_estado_config(config_id: int, nuevo_estado: str) -> ConfigGeneracion
+  construir_restricciones(min_horas: int, max_horas: int, modo: str) -> dict
+  crear_bloque_anclado(b: BloqueAnclado) -> BloqueAnclado
+  crear_config_generacion(nombre: str, periodo_id: int, anio_id: int, plantilla_id: int, grupos: list[int] | None, pesos: dict | None, restricciones: dict | None) -> ConfigGeneracion
+  crear_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  crear_escenario_simple(anio_id: int, nombre: str, descripcion: str | None) -> EscenarioHorario
+  crear_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  crear_plantilla_simple(nombre: str, jornada: str, dias: list[str] | None) -> PlantillaFranja
+  crear_sala(sala: Sala) -> Sala
+  crear_ventana_grupo(v: VentanaGrupo) -> VentanaGrupo
+  duplicar_config_generacion(config_id: int) -> ConfigGeneracion
+  duplicar_escenario(escenario_id: int, nuevo_nombre: str) -> EscenarioHorario
+  eliminar_area(area_id: int) -> bool
+  eliminar_asignatura(asignatura_id: int) -> bool
+  eliminar_bloque_anclado(bloque_id: int) -> bool
+  eliminar_config_generacion(config_id: int) -> bool
+  eliminar_escenario(escenario_id: int) -> bool
+  eliminar_franja_reunion(franja_id: int) -> bool
+  eliminar_grupo(grupo_id: int) -> bool
+  eliminar_plantilla(plantilla_id: int) -> bool
+  eliminar_sala(sala_id: int) -> bool
+  eliminar_ventana_grupo(ventana_id: int) -> bool
+  es_disponible_docente(usuario_id: int, dia: str, franja_orden: int) -> bool
+  get_config_generacion(config_id: int) -> ConfigGeneracion | None
+  get_escenario(escenario_id: int) -> EscenarioHorario | None
+  get_escenario_activo(anio_id: int) -> EscenarioHorario | None
+  get_franja_reunion(franja_id: int) -> FranjaReunion | None
+  get_grupo(grupo_id: int) -> Grupo | None
+  get_limites_docente(usuario_id: int) -> LimitesDocente | None
+  get_sala(sala_id: int) -> Sala | None
+  get_ventanas_por_grado(grado: int) -> list[VentanaGrupo]
+  get_ventanas_por_grupo(grupo_id: int) -> list[VentanaGrupo]
+  guardar_area(area: AreaConocimiento) -> AreaConocimiento
+  guardar_asignatura(asignatura: Asignatura) -> Asignatura
+  guardar_disponibilidad_docente(usuario_id: int, slots: list[dict]) -> int
+  guardar_franjas(plantilla_id: int, filas: list[dict]) -> int
+  guardar_grupo(grupo: Grupo) -> Grupo
+  limpiar_disponibilidad_docente(usuario_id: int) -> int
+  listar_areas() -> list[AreaConocimiento]
+  listar_asignaturas(area_id: int | None) -> list[Asignatura]
+  listar_bloques_anclados(escenario_id: int) -> list[BloqueAnclado]
+  listar_configs_generacion(periodo_id: int | None) -> list[ConfigGeneracion]
+  listar_disponibilidad_docente(usuario_id: int) -> list[DisponibilidadDocente]
+  listar_escenarios(anio_id: int) -> list[EscenarioHorario]
+  listar_franjas(plantilla_id: int) -> list[Franja]
+  listar_franjas_reunion() -> list[FranjaReunion]
+  listar_grupos(grado: int | None) -> list[Grupo]
+  listar_horario_escenario(escenario_id: int) -> list[HorarioInfo]
+  listar_horario_grupo_escenario(grupo_id: int, escenario_id: int) -> list[HorarioInfo]
+  listar_limites_docente() -> list[LimitesDocente]
+  listar_plantillas() -> list[PlantillaFranja]
+  listar_salas() -> list[Sala]
+  listar_ventanas_grupo() -> list[VentanaGrupo]
+  plantilla_activa(jornada: str) -> PlantillaFranja | None
+  renombrar_escenario(esc_existente, nombre: str, descripcion: str | None) -> EscenarioHorario
+  set_color_area(area_id: int, color: str | None) -> bool
+  set_limites_docente(limites: LimitesDocente) -> LimitesDocente
+  set_limites_docente_simple(usuario_id: int, min_horas_dia: int, max_horas_dia: int) -> LimitesDocente
+}
+class "InstitucionService" as services.institucion_service.InstitucionService {
+  crear(dto: NuevaInstitucionDTO) -> Institucion
+  get(institucion_id: int) -> Institucion
+  get_por_defecto() -> Institucion | None
+  id_por_defecto() -> int | None
+  listar(solo_activas: bool) -> list[InstitucionResumenDTO]
+}
+class "MetricasInstitucionalesDTO" as services.estadisticos_service.MetricasInstitucionalesDTO {
+  grupos : list[dict]
+  kpi_asistencia : float
+  kpi_grupos : int
+  kpi_promedio : float
+  kpi_riesgo : int
+}
+class "NivelacionService" as services.nivelacion_service.NivelacionService {
+  agregar_actividad(dto: NuevaActividadNivelacionDTO, estudiante_ids: list[int], usuario_id: int | None) -> ActividadNivelacion
+  calcular_nota_estudiante(estudiante_id: int, asignacion_id: int, periodo_id: int) -> float | None
+  calificar_nota(actividad_nivelacion_id: int, estudiante_id: int, dto: CalificarNotaNivelacionDTO) -> NotaNivelacion
+  cerrar_nivelacion(asignacion_id: int, periodo_id: int, usuario_id: int | None) -> CierreNivelacion
+  get_cierre(asignacion_id: int, periodo_id: int) -> CierreNivelacion | None
+  listar_actividades(asignacion_id: int, periodo_id: int) -> list[ActividadNivelacion]
+  listar_bajo_desempeno(asignacion_ids: list[int], periodo_id: int, nota_maxima: float | None) -> list[CierrePeriodo]
+  listar_notas(asignacion_id: int, periodo_id: int) -> list[NotaNivelacion]
+  planilla_nivelacion(asignacion_id: int, periodo_id: int, nota_maxima: float | None) -> PlanillaNivelacionDTO
+}
+class "<color:red>OperacionFueraDeInstitucionError</color>" as services.contexto_tenant.OperacionFueraDeInstitucionError {
+}
+class "<color:red>OperacionSoloLecturaError</color>" as services.solo_lectura.OperacionSoloLecturaError {
+}
+class "PendientesDocenteDTO" as services.estadisticos_service.PendientesDocenteDTO {
+  actividades_sin_calificar : int
+  alertas_estudiantes : int
+  asignaciones_sin_asistencia : int
+  hay_pendientes : bool
+  total_asignaciones : int
+}
+class "PeriodoService" as services.periodo_service.PeriodoService {
+  activar_periodo(periodo_id: int) -> Periodo
+  agregar_hito(dto: NuevoHitoPeriodoDTO, usuario_id: int | None) -> HitoPeriodo
+  cerrar_periodo(periodo_id: int, usuario_id: int | None) -> Periodo
+  crear_periodo(dto: NuevoPeriodoDTO) -> Periodo
+  get_activo(anio_id: int) -> Periodo
+  get_by_id(periodo_id: int) -> Periodo
+  listar_hitos_proximos(anio_id: int, dias: int) -> list[HitoPeriodo]
+  listar_por_anio(anio_id: int) -> list[Periodo]
+}
+class "PlanEstudiosService" as services.plan_estudios_service.PlanEstudiosService {
+  actualizar(dto: NuevoPlanEstudiosDTO) -> PlanEstudios
+  eliminar(grado: int, asignatura_id: int, cascade: bool, usuario_id: int | None) -> tuple[bool, int]
+  eliminar_grado(numero: int) -> bool
+  guardar_grado(numero: int, nombre: str | None, min_estudiantes: int, max_estudiantes: int, horas_semanales: int) -> Grado
+  horas_de(grado: int, asignatura_id: int) -> int
+  horas_objetivo(grado: int) -> int
+  horas_por_grado(grado: int) -> int
+  horas_por_grupo(grupo) -> int
+  listar() -> list[PlanEstudios]
+  listar_grados() -> list[Grado]
+  por_grado(grado: int) -> list[PlanEstudios]
+  set_horas(grado: int, asignatura_id: int, horas: int) -> PlanEstudios
+}
+class "PlanMejoramientoService" as services.plan_mejoramiento_service.PlanMejoramientoService {
+  agregar_actividad(dto: NuevaActividadPlanDTO, usuario_id: int | None) -> ActividadPlan
+  calcular_nota_plan_estudiante(corte_id: int, estudiante_id: int) -> float | None
+  calificar_nota(actividad_plan_id: int, estudiante_id: int, dto: CalificarNotaPlanDTO) -> NotaActividadPlan
+  cerrar_plan_estudiante(dto: CerrarPlanEstudianteDTO) -> NotaCortePlan
+  ejecutar_corte(dto: EjecutarCorteDTO, grupo_id: int) -> tuple[CortePlan, list[NotaCortePlan]]
+  get_corte(asignacion_id: int, periodo_id: int) -> CortePlan | None
+  listar_actividades(corte_id: int) -> list[ActividadPlan]
+  listar_en_plan(corte_id: int) -> list[NotaCortePlan]
+  listar_notas_actividad(actividad_plan_id: int) -> list[NotaActividadPlan]
+  listar_notas_corte(corte_id: int) -> list[NotaCortePlan]
+  notas_por_actividad_corte(corte_id: int) -> dict[int, dict[int, NotaActividadPlan]]
+}
+class "PlanillaCompletaDTO" as services.evaluacion_service.PlanillaCompletaDTO {
+  actividades : list
+  categorias : list
+  planilla : list
+  puntos_extra : dict
+}
+class "PlanillaNivelacionDTO" as services.nivelacion_service.PlanillaNivelacionDTO {
+  actividades : list[ActividadNivelacion]
+  cerrado : bool
+  filas : list[FilaNivelacionDTO]
+  suma_pesos : float
+}
+class "PreparacionHorarioService" as services.preparacion_horario_service.PreparacionHorarioService {
+  puede_generar(reporte: ReportePreparacionDTO) -> bool
+  validar(anio_id: int, periodo_id: int, plantilla_id: int) -> ReportePreparacionDTO
+}
+class "PuertaDTO" as services.preparacion_horario_service.PuertaDTO {
+  detalle : str
+  fix_ruta : str | None
+  id : str
+  ok : bool
+  severidad : str
+  titulo : str
+}
+class "RestriccionGeneracionService" as services.restriccion_generacion_service.RestriccionGeneracionService {
+  actualizar_config_generacion(config_id: int) -> ConfigGeneracion
+  actualizar_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  bloquear_franjas_docente(usuario_id: int, slots: list[dict]) -> int
+  cambiar_estado_config(config_id: int, nuevo_estado: str) -> ConfigGeneracion
+  construir_restricciones(min_horas: int, max_horas: int, modo: str) -> dict
+  crear_bloque_anclado(b: BloqueAnclado) -> BloqueAnclado
+  crear_config_generacion(nombre: str, periodo_id: int, anio_id: int, plantilla_id: int, grupos: list[int] | None, pesos: dict | None, restricciones: dict | None) -> ConfigGeneracion
+  crear_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  crear_ventana_grupo(v: VentanaGrupo) -> VentanaGrupo
+  duplicar_config_generacion(config_id: int) -> ConfigGeneracion
+  eliminar_bloque_anclado(bloque_id: int) -> bool
+  eliminar_config_generacion(config_id: int) -> bool
+  eliminar_franja_reunion(franja_id: int) -> bool
+  eliminar_ventana_grupo(ventana_id: int) -> bool
+  es_disponible_docente(usuario_id: int, dia: str, franja_orden: int) -> bool
+  get_config_generacion(config_id: int) -> ConfigGeneracion | None
+  get_franja_reunion(franja_id: int) -> FranjaReunion | None
+  get_limites_docente(usuario_id: int) -> LimitesDocente | None
+  get_ventanas_por_grado(grado: int) -> list[VentanaGrupo]
+  get_ventanas_por_grupo(grupo_id: int) -> list[VentanaGrupo]
+  guardar_disponibilidad_docente(usuario_id: int, slots: list[dict]) -> int
+  limpiar_disponibilidad_docente(usuario_id: int) -> int
+  listar_bloques_anclados(escenario_id: int) -> list[BloqueAnclado]
+  listar_configs_generacion(periodo_id: int | None) -> list[ConfigGeneracion]
+  listar_disponibilidad_docente(usuario_id: int) -> list[DisponibilidadDocente]
+  listar_franjas_reunion() -> list[FranjaReunion]
+  listar_limites_docente() -> list[LimitesDocente]
+  listar_ventanas_grupo() -> list[VentanaGrupo]
+  set_limites_docente(limites: LimitesDocente) -> LimitesDocente
+  set_limites_docente_simple(usuario_id: int, min_horas_dia: int, max_horas_dia: int) -> LimitesDocente
+}
+class "SalaService" as services.sala_service.SalaService {
+  actualizar_sala(sala: Sala) -> Sala
+  asignar_sala_a_grupo(grupo_id: int, sala_id: int | None) -> bool
+  crear_sala(sala: Sala) -> Sala
+  eliminar_sala(sala_id: int) -> bool
+  get_sala(sala_id: int) -> Sala | None
+  listar_salas() -> list[Sala]
+}
+class "UsuarioService" as services.usuario_service.UsuarioService {
+  actualizar(usuario_id: int, dto: ActualizarUsuarioDTO, actualizado_por_id: int | None) -> Usuario
+  cambiar_password(usuario_id: int, password_actual: str, password_nuevo: str) -> None
+  cambiar_rol(usuario_id: int, nuevo_rol: Rol, cambiado_por_id: int | None, actor_rol: str | None) -> Usuario
+  carga_horaria_max(usuario_id: int) -> int | None
+  configurar_carga(usuario_id: int, carga_horaria_max: int | None, horas_extra: int, actualizado_por_id: int | None) -> Usuario
+  crear_usuario(dto: NuevoUsuarioDTO, creado_por_id: int | None, actor_rol: str | None) -> Usuario
+  desactivar(usuario_id: int, desactivado_por_id: int | None, actor_rol: str | None) -> Usuario
+  get_by_id(usuario_id: int) -> Usuario
+  listar_docentes(periodo_id: int | None) -> list[DocenteInfoDTO]
+  listar_filtrado(filtro: FiltroUsuariosDTO) -> list[Usuario]
+  listar_para_ver_como(institucion_id: int | None) -> list[UsuarioResumenDTO]
+  listar_resumenes(filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]
+  puede_gestionar(actor_rol: str | None, target_rol: str) -> bool
+  reactivar(usuario_id: int, reactivado_por_id: int | None, actor_rol: str | None) -> Usuario
+  requisitos_password() -> list[str]
+  resetear_password(usuario_id: int, nueva_password: str, actor_rol: str | None, reset_por_id: int | None) -> str | None
+  resumen_por_rol() -> ResumenUsuariosDTO
+  roles_asignables(actor_rol: str | None) -> set[str]
+}
+class "_Estado" as services.login_throttle._Estado {
+  bloqueado_hasta : float
+  fallos : int
+}
+class "_Leccion" as services.generador_horario_service._Leccion {
+  asignacion_id
+  etiqueta
+  grupo_id
+  n_horas : int
+  tipo_sala_req : NoneType
+  usuario_id
+}
+@enduml

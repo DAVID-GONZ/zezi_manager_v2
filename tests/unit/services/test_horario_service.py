@@ -6,8 +6,9 @@ Cubre las reglas R2–R10 definidas en la spec paso_14b.
 """
 from __future__ import annotations
 
-import pytest
 from datetime import time
+
+import pytest
 
 from src.domain.models.asignacion import Asignacion
 from src.domain.models.infraestructura import (
@@ -19,7 +20,6 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.horario_service import HorarioService
-
 
 # ===========================================================================
 # Fake repos

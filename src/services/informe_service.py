@@ -11,14 +11,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.domain.ports.estadisticos_repo import IEstadisticosRepository
-from src.domain.ports.service_ports import IExporterService
 from src.domain.models.dtos import (
     FormatoInforme,
     InformeAsistenciaDTO,
     InformeNotasDTO,
 )
-
+from src.domain.ports.estadisticos_repo import IEstadisticosRepository
+from src.domain.ports.service_ports import IExporterService
 
 # ── Sanitización de datos para exportación ───────────────────────────────────
 
@@ -294,7 +293,7 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
-            import importlib  # noqa: PLC0415
+            import importlib
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_acumulado(
                 estudiante_id, grupo_id, periodo_id
@@ -351,7 +350,7 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
-            import importlib  # noqa: PLC0415
+            import importlib
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_anual(
                 estudiante_id, grupo_id, anio_id
@@ -593,7 +592,8 @@ def merge_pdfs(pdf_list: list[bytes]) -> bytes:
         return pdf_list[0]
 
     import io
-    from pypdf import PdfWriter, PdfReader  # noqa: PLC0415
+
+    from pypdf import PdfReader, PdfWriter
 
     writer = PdfWriter()
     for pdf_bytes in pdf_list:
@@ -620,7 +620,8 @@ def merge_excels(excel_list: list[tuple[str, bytes]]) -> bytes:
         raise ValueError("No hay archivos Excel para fusionar.")
 
     import io
-    import openpyxl  # noqa: PLC0415
+
+    import openpyxl
 
     wb_dest = openpyxl.Workbook()
     wb_dest.remove(wb_dest.active)  # elimina la hoja vacía por defecto
@@ -639,12 +640,12 @@ def merge_excels(excel_list: list[tuple[str, bytes]]) -> bytes:
 
 
 __all__ = [
-    "InformeService",
-    "InformeNotasDTO",
-    "InformeAsistenciaDTO",
-    "FormatoInforme",
-    "sanitizar_datos_exportacion",
-    "merge_pdfs",
-    "merge_excels",
     "BoletinesGrupoDTO",
+    "FormatoInforme",
+    "InformeAsistenciaDTO",
+    "InformeNotasDTO",
+    "InformeService",
+    "merge_excels",
+    "merge_pdfs",
+    "sanitizar_datos_exportacion",
 ]

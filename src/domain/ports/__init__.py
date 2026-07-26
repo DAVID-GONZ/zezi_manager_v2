@@ -12,7 +12,11 @@ from .evaluacion_repo import IEvaluacionRepository
 from .habilitacion_repo import IHabilitacionRepository
 from .infraestructura_repo import IInfraestructuraRepository
 from .periodo_repo import IPeriodoRepository
-from .service_ports import IAuthenticationService, IExporterService, INotificationService
+from .service_ports import (
+    IAuthenticationService,
+    IExporterService,
+    INotificationService,
+)
 from .usuario_repo import IUsuarioRepository
 
 __all__ = [
@@ -21,17 +25,17 @@ __all__ = [
     "IAsignacionRepository",
     "IAsistenciaRepository",
     "IAuditoriaRepository",
+    "IAuthenticationService",
     "ICierreRepository",
     "IConfiguracionRepository",
     "IConvivenciaRepository",
     "IEstadisticosRepository",
     "IEstudianteRepository",
     "IEvaluacionRepository",
+    "IExporterService",
     "IHabilitacionRepository",
     "IInfraestructuraRepository",
-    "IPeriodoRepository",
-    "IAuthenticationService",
     "INotificationService",
-    "IExporterService",
+    "IPeriodoRepository",
     "IUsuarioRepository",
 ]

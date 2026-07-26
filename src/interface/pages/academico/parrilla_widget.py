@@ -15,12 +15,12 @@ izquierdo, texto legible) y la lógica de clic/edición integrada.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
-from src.interface.design.tokens import Icons
 from src.interface.design.components import empty_state
+from src.interface.design.tokens import Icons
 
 
 def _clave_eje(celda: dict, perspectiva: str):
@@ -293,4 +293,4 @@ def render_tablero_maestro(
                     _render_celda_ocupada(bloques, "Grupo", on_celda_click, puede_editar)
 
 
-__all__ = ["render_parrilla", "render_tablero_maestro", "_opciones_eje"]
+__all__ = ["_opciones_eje", "render_parrilla", "render_tablero_maestro"]

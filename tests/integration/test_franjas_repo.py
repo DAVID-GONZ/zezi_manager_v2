@@ -1,13 +1,11 @@
 """
 Tests de integración — PlantillaFranja + Franja repo (paso_15a).
 """
-import pytest
 
+from src.domain.models.infraestructura import Franja, PlantillaFranja
 from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
     SqliteInfraestructuraRepository,
 )
-from src.domain.models.infraestructura import Franja, PlantillaFranja
-
 
 # ---------------------------------------------------------------------------
 # Helpers

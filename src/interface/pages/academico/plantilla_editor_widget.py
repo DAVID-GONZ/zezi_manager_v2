@@ -16,15 +16,18 @@ los callbacks que la página provee. Sin imports de servicios ni de `src.db`.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
-from src.interface.design.tokens import Icons
 from src.interface.design.components import empty_state
 from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_ghost, btn_icon,
+    btn_ghost,
+    btn_icon,
+    btn_primary,
+    btn_secondary,
 )
+from src.interface.design.tokens import Icons
 
 # Opciones de catálogo (misma fuente que el dominio: TIPOS_FRANJA / JORNADAS_VALIDAS).
 JORNADA_OPTS = {"UNICA": "Única", "AM": "Mañana", "PM": "Tarde"}
@@ -154,13 +157,12 @@ def render_franjas_editor(
     ordenadas = sorted(franjas, key=lambda f: f.orden)
     with ui.element("div").classes("overflow-auto"):
         with ui.element("table").classes("w-full border-collapse text-sm"):
-            with ui.element("thead"):
-                with ui.element("tr"):
-                    for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
-                        with ui.element("th").classes(
-                            "border px-3 py-2 text-left font-semibold bg-surface-alt"
-                        ):
-                            ui.label(str(col))
+            with ui.element("thead"), ui.element("tr"):
+                for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
+                    with ui.element("th").classes(
+                        "border px-3 py-2 text-left font-semibold bg-surface-alt"
+                    ):
+                        ui.label(str(col))
             with ui.element("tbody"):
                 for f in ordenadas:
                     with ui.element("tr"):
@@ -233,8 +235,8 @@ def render_plantilla_preview(plantilla, franjas: list) -> None:
 
 
 __all__ = [
-    "plantilla_form_dialog",
     "franja_form_dialog",
+    "plantilla_form_dialog",
     "render_franjas_editor",
     "render_plantilla_preview",
 ]

@@ -17,13 +17,11 @@ Regla general: los campos de texto obligatorios se normalizan
 
 from __future__ import annotations
 
-import json
 from datetime import time
 from enum import Enum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
 
 # =============================================================================
 # Enumeraciones
@@ -239,7 +237,7 @@ class Grado(BaseModel):
     horas_semanales: int        = Field(default=0, ge=0)
 
     @model_validator(mode="after")
-    def validar_rango_estudiantes(self) -> "Grado":
+    def validar_rango_estudiantes(self) -> Grado:
         """El mínimo de estudiantes no puede superar el máximo del grado."""
         if self.min_estudiantes > self.max_estudiantes:
             raise ValueError(
@@ -739,7 +737,7 @@ class ResultadoGeneracionDTO(BaseModel):
     bloques:          list[BloqueGeneradoDTO] = []
     incidencias:      list[str]               = []  # motivos de lo no colocado
     valido:           bool                    = False  # analizar_lote.todo_ok del lote final
-    metricas:         "MetricasCalidadDTO | None" = None
+    metricas:         MetricasCalidadDTO | None = None
     causas:           dict[str, int]          = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
     relajadas:        list[str]               = Field(default_factory=list)   # restricciones relajadas por infactibilidad
 
@@ -756,7 +754,7 @@ class VentanaGrupo(BaseModel):
     franjas_permitidas: list[int]            # lista de franja_orden permitidos
 
     @model_validator(mode="after")
-    def validar_exclusividad(self) -> "VentanaGrupo":
+    def validar_exclusividad(self) -> VentanaGrupo:
         """La ventana aplica a grupo_id XOR grado: exige exactamente uno de los dos."""
         if self.grupo_id is None and self.grado is None:
             raise ValueError("VentanaGrupo requiere grupo_id o grado.")
@@ -829,7 +827,7 @@ class LimitesDocente(BaseModel):
     max_horas_dia:  int = Field(default=8, ge=1)
 
     @model_validator(mode="after")
-    def validar_rango(self) -> "LimitesDocente":
+    def validar_rango(self) -> LimitesDocente:
         """El mínimo de horas diarias no puede superar el máximo del docente."""
         if self.min_horas_dia > self.max_horas_dia:
             raise ValueError(

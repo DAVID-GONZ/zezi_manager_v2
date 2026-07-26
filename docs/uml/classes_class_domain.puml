@@ -1,0 +1,2127 @@
+@startuml classes_class_domain
+set namespaceSeparator none
+class "AccionCambio" as models.auditoria.AccionCambio {
+  name
+}
+class "Actividad" as models.evaluacion.Actividad {
+  acepta_notas : bool
+  categoria_id : int
+  descripcion : str | None
+  esta_publicada : bool
+  estado
+  fecha : date | None
+  id : int | None
+  nombre : str
+  valor_maximo : float
+  cerrar() -> Actividad
+  limpiar_descripcion(v: str | None) -> str | None
+  parsear_fecha(v: date | str | None) -> date | None
+  publicar() -> Actividad
+  reabrir() -> Actividad
+  validar_id(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_valor_maximo(v: float) -> float
+}
+class "ActividadNivelacion" as models.nivelacion.ActividadNivelacion {
+  asignacion_id : int
+  descripcion : str | None
+  fecha : date | None
+  id : int | None
+  nombre : str
+  periodo_id : int
+  peso : float
+  usuario_id : int | None
+  limpiar_descripcion(v: str | None) -> str | None
+  validar_id_positivo(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_peso(v: float) -> float
+}
+class "ActividadPlan" as models.plan_mejoramiento.ActividadPlan {
+  asignacion_id : int
+  corte_id : int
+  descripcion : str | None
+  fecha : date | None
+  id : int | None
+  nombre : str
+  periodo_id : int
+  peso : float
+  usuario_id : int | None
+  peso_valido(v: float) -> float
+}
+class "ActualizarActividadDTO" as models.evaluacion.ActualizarActividadDTO {
+  descripcion : str | None
+  fecha : date | None
+  nombre : str | None
+  valor_maximo : float | None
+  aplicar_a(actividad: Actividad) -> Actividad
+}
+class "ActualizarAcudienteDTO" as models.acudiente.ActualizarAcudienteDTO {
+  celular : str | None
+  direccion : str | None
+  email : str | None
+  nombre_completo : str | None
+  parentesco : Parentesco | None
+  aplicar_a(acudiente: Acudiente) -> Acudiente
+  validar_nombre(v: str | None) -> str | None
+}
+class "ActualizarCategoriaDTO" as models.evaluacion.ActualizarCategoriaDTO {
+  nombre : str | None
+  peso : float | None
+  aplicar_a(categoria: Categoria) -> Categoria
+  validar_peso(v: float | None) -> float | None
+}
+class "ActualizarConfiguracionAnioDTO" as models.configuracion.ActualizarConfiguracionAnioDTO {
+  anio : int | None
+  fecha_fin_clases : date | None
+  fecha_inicio_clases : date | None
+  institucion_id : int | None
+  nota_maxima_escala : float | None
+  nota_minima_aprobacion : float | None
+  nota_minima_escala : float | None
+  aplicar_a(config: ConfiguracionAnio) -> ConfiguracionAnio
+  validar_nota(v: float | None) -> float | None
+}
+class "ActualizarEstudianteDTO" as models.estudiante.ActualizarEstudianteDTO {
+  apellido : str | None
+  direccion : str | None
+  estado_matricula : EstadoMatricula | None
+  fecha_nacimiento : date | None
+  genero : Genero | None
+  grupo_id : int | None
+  nombre : str | None
+  posee_piar : bool | None
+  aplicar_a(estudiante: Estudiante) -> Estudiante
+  validar_nombre(v: str | None) -> str | None
+}
+class "ActualizarInfoInstitucionalDTO" as models.configuracion.ActualizarInfoInstitucionalDTO {
+  dane_code : str | None
+  direccion : str | None
+  logo_path : str | None
+  municipio : str | None
+  nombre_institucion : str | None
+  rector : str | None
+  resolucion_aprobacion : str | None
+  telefono_institucion : str | None
+  aplicar_a(config: ConfiguracionAnio) -> ConfiguracionAnio
+  validar_nombre(v: str | None) -> str | None
+}
+class "ActualizarNivelDesempenoDTO" as models.configuracion.ActualizarNivelDesempenoDTO {
+  descripcion : str | None
+  nombre : str | None
+  orden : int | None
+  rango_max : float | None
+  rango_min : float | None
+  aplicar_a(nivel: NivelDesempeno) -> NivelDesempeno
+}
+class "ActualizarPIARDTO" as models.piar.ActualizarPIARDTO {
+  ajustes_evaluativos : str | None
+  ajustes_pedagogicos : str | None
+  descripcion_necesidad : str | None
+  fecha_revision : date | None
+  profesionales_apoyo : str | None
+  aplicar_a(piar: PIAR) -> PIAR
+  validar_descripcion(v: str | None) -> str | None
+}
+class "ActualizarPeriodoDTO" as models.periodo.ActualizarPeriodoDTO {
+  activo : bool | None
+  fecha_fin : date | None
+  fecha_inicio : date | None
+  nombre : str | None
+  peso_porcentual : float | None
+  aplicar_a(periodo: Periodo) -> Periodo
+  validar_nombre(v: str | None) -> str | None
+}
+class "ActualizarUsuarioDTO" as models.usuario.ActualizarUsuarioDTO {
+  email : str | None
+  nombre_completo : str | None
+  telefono : str | None
+  aplicar_a(usuario: Usuario) -> Usuario
+  validar_email(v: str | None) -> str | None
+  validar_nombre(v: str | None) -> str | None
+}
+class "Acudiente" as models.acudiente.Acudiente {
+  activo : bool
+  celular : str | None
+  contacto_display : str
+  direccion : str | None
+  documento_display : str
+  email : str | None
+  esta_activo : bool
+  id : int | None
+  nombre_completo : str
+  numero_documento : str
+  parentesco
+  tiene_contacto : bool
+  tipo_documento
+  usuario_id : int | None
+  desactivar() -> Acudiente
+  limpiar_celular(v: str | None) -> str | None
+  limpiar_direccion(v: str | None) -> str | None
+  reactivar() -> Acudiente
+  validar_documento(v: str) -> str
+  validar_email(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+}
+class "AcudienteResumenDTO" as models.acudiente.AcudienteResumenDTO {
+  celular : str | None
+  email : str | None
+  es_principal : bool
+  id : int
+  nombre_completo : str
+  parentesco
+  desde_acudiente(acudiente: Acudiente, es_principal: bool) -> AcudienteResumenDTO
+}
+class "Alerta" as models.alerta.Alerta {
+  descripcion : str
+  dias_pendiente : int | None
+  es_critica : bool
+  esta_pendiente : bool
+  estudiante_id : int
+  fecha_generacion : Optional[datetime]
+  fecha_resolucion : datetime | None
+  id : int | None
+  nivel
+  observacion_resolucion : str | None
+  resuelta : bool
+  tipo_alerta
+  usuario_resolucion_id : int | None
+  coercer_estudiante_id(v)
+  resolver(usuario_id: int, observacion: str | None, fecha: datetime | None) -> Alerta
+  validar_coherencia_resolucion() -> Self
+  validar_descripcion(v: str) -> str
+}
+class "AreaConocimiento" as models.infraestructura.AreaConocimiento {
+  codigo : str | None
+  color : str | None
+  id : int | None
+  nombre : str
+  limpiar_codigo(v: str | None) -> str | None
+  normalizar_color(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+}
+class "Asignacion" as models.asignacion.Asignacion {
+  activo : bool
+  asignatura_id : int
+  esta_activa : bool
+  grupo_id : int
+  id : int | None
+  periodo_id : int
+  usuario_id : int
+  desactivar() -> Asignacion
+  reactivar() -> Asignacion
+  validar_id_positivo(v: int) -> int
+}
+class "AsignacionDocenteInfoDTO" as models.usuario.AsignacionDocenteInfoDTO {
+  activo : bool
+  asignatura_codigo : str | None
+  asignatura_id : int
+  asignatura_nombre : str
+  display : str
+  grupo_codigo : str
+  grupo_id : int
+  grupo_nombre : str | None
+  horario_completo : bool
+  horas_pendientes : int
+  horas_programadas : int
+  horas_teoricas : int
+  id : int
+  periodo_id : int
+  periodo_nombre : str
+}
+class "AsignacionInfo" as models.asignacion.AsignacionInfo {
+  activo : bool
+  asignacion_id : int
+  asignatura_id : int
+  asignatura_nombre : str
+  display_completo : str
+  display_corto : str
+  display_docente_materia : str
+  docente_nombre : str
+  grupo_codigo : str
+  grupo_id : int
+  periodo_id : int
+  periodo_nombre : str
+  periodo_numero : int
+  usuario_id : int
+  no_vacio(v: str) -> str
+}
+class "Asignatura" as models.infraestructura.Asignatura {
+  area_id : int | None
+  bloque_doble : bool
+  codigo : str | None
+  horas_consecutivas : Optional[int]
+  horas_semanales : Optional[int]
+  id : int | None
+  institucion_id : int | None
+  nombre : str
+  tipo_sala_requerido : str | None
+  limpiar_codigo(v: str | None) -> str | None
+  validar_area_id(v: int | None) -> int | None
+  validar_nombre(v: str) -> str
+}
+class "BaseModel" as pydantic.main.BaseModel {
+  model_config : ClassVar[ConfigDict]
+  model_extra : dict[str, Any] | None
+  model_fields_set : set[str]
+  construct(_fields_set: set[str] | None) -> Self
+  copy() -> Self
+  dict() -> Dict[str, Any]
+  from_orm(obj: Any) -> Self
+  json() -> str
+  model_computed_fields() -> dict[str, ComputedFieldInfo]
+  model_construct(_fields_set: set[str] | None) -> Self
+  model_copy() -> Self
+  model_dump() -> dict[str, Any]
+  model_dump_json() -> str
+  model_fields() -> dict[str, FieldInfo]
+  model_json_schema(by_alias: bool, ref_template: str, schema_generator: type[GenerateJsonSchema], mode: JsonSchemaMode) -> dict[str, Any]
+  model_parametrized_name(params: tuple[type[Any], ...]) -> str
+  {abstract}model_post_init() -> None
+  model_rebuild() -> bool | None
+  model_validate(obj: Any) -> Self
+  model_validate_json(json_data: str | bytes | bytearray) -> Self
+  model_validate_strings(obj: Any) -> Self
+  parse_file(path: str | Path) -> Self
+  parse_obj(obj: Any) -> Self
+  parse_raw(b: str | bytes) -> Self
+  schema(by_alias: bool, ref_template: str) -> Dict[str, Any]
+  schema_json() -> str
+  update_forward_refs() -> None
+  validate(value: Any) -> Self
+}
+class "BloqueAnclado" as models.infraestructura.BloqueAnclado {
+  asignacion_id : int
+  dia_semana : str
+  escenario_id : int
+  franja_orden : Optional[int]
+  id : int | None
+  sala_id : int | None
+  validar_dia(v: str) -> str
+}
+class "BloqueGeneradoDTO" as models.infraestructura.BloqueGeneradoDTO {
+  asignacion_id : int
+  dia_semana : str
+  franja_orden : int
+  grupo_id : int
+  hora_fin : str
+  hora_inicio : str
+  sala : str
+  sala_id : int | None
+  usuario_id : int
+}
+class "CalculadorNivelacion" as models.nivelacion.CalculadorNivelacion {
+  nota_definitiva(notas: list[NotaNivelacion], actividades: list[ActividadNivelacion]) -> float | None
+  pesos_completos(actividades: list[ActividadNivelacion], tolerancia: float) -> bool
+  suma_pesos(actividades: list[ActividadNivelacion]) -> float
+}
+class "CalculadorNotas" as models.evaluacion.CalculadorNotas {
+  calcular_definitiva(notas: list[Nota] | dict[int, float], actividades: list[Actividad], categorias: list[Categoria]) -> float
+  calcular_definitiva_con_corte(notas: list[Nota] | dict[int, float], actividades: list[Actividad], categorias: list[Categoria], nota_definitiva_plan: float, categoria_ids_en_corte: set[int]) -> float
+  calcular_promedio_ajustado(notas: list[Nota] | dict[int, float], actividades: list[Actividad], categorias: list[Categoria], hasta_fecha: date | None) -> float
+  peso_total(categorias: list[Categoria]) -> float
+  pesos_validos(categorias: list[Categoria]) -> bool
+}
+class "CalculadorPlan" as models.plan_mejoramiento.CalculadorPlan {
+  nota_al_corte(categorias_con_notas: list[dict]) -> float
+  nota_definitiva_aprobado(peso_registrado: float, nota_minima: float) -> float
+  nota_plan_estudiante(notas: list[NotaActividadPlan], actividades: list[ActividadPlan]) -> float | None
+  nota_umbral(peso_registrado: float, nota_minima: float) -> float
+  peso_registrado(categorias_con_notas: list[dict]) -> float
+  pesos_completos(actividades: list[ActividadPlan], tolerancia: float) -> bool
+  suma_pesos_actividades(actividades: list[ActividadPlan]) -> float
+}
+class "CalificarNotaNivelacionDTO" as models.nivelacion.CalificarNotaNivelacionDTO {
+  usuario_id : int | None
+  valor : float
+  validar_valor(v: float) -> float
+}
+class "CalificarNotaPlanDTO" as models.plan_mejoramiento.CalificarNotaPlanDTO {
+  usuario_id : int | None
+  valor : float
+  valor_valido(v: float) -> float
+}
+class "Categoria" as models.evaluacion.Categoria {
+  anio_id : int | None
+  asignacion_id : int | None
+  categoria_padre_id : int | None
+  es_docente : bool
+  es_institucional : bool
+  id : int | None
+  nombre : str
+  periodo_id : int | None
+  permite_subcategorias : bool
+  peso : float
+  peso_porcentaje : float
+  validar_id_opcional(v: int | None) -> int | None
+  validar_nombre(v: str) -> str
+  validar_peso(v: float) -> float
+}
+class "CerrarPlanEstudianteDTO" as models.plan_mejoramiento.CerrarPlanEstudianteDTO {
+  aprobado : bool
+  corte_id : int
+  estudiante_id : int
+  usuario_cierre_id : int | None
+}
+class "CerrarPlanMejoramientoDTO" as models.habilitacion.CerrarPlanMejoramientoDTO {
+  estado
+  fecha : date | None
+  observacion : str
+  validar_estado_cierre(v: EstadoPlanMejoramiento) -> EstadoPlanMejoramiento
+  validar_observacion(v: str) -> str
+}
+class "CierreAnio" as models.cierre.CierreAnio {
+  anio_id : int
+  asignacion_id : int
+  desempeno_id : int | None
+  estudiante_id : int
+  fecha_cierre : Optional[date]
+  id : int | None
+  mejoro_con_habilitacion : bool | None
+  nota_definitiva_anual : float
+  nota_display : str
+  nota_habilitacion : float | None
+  nota_promedio_periodos : float
+  perdio : bool
+  tiene_habilitacion : bool
+  usuario_cierre_id : int | None
+  validar_coherencia_notas() -> Self
+  validar_fecha(v: date | str) -> date
+  validar_id_positivo(v: int) -> int
+  validar_nota(v: float | None) -> float | None
+}
+class "CierreNivelacion" as models.nivelacion.CierreNivelacion {
+  asignacion_id : int
+  fecha_cierre : Optional[date]
+  id : int | None
+  periodo_id : int
+  usuario_cierre_id : int | None
+  validar_id_positivo(v: int) -> int
+}
+class "CierrePeriodo" as models.cierre.CierrePeriodo {
+  asignacion_id : int
+  desempeno_id : int | None
+  estudiante_id : int
+  fecha_cierre : Optional[date]
+  id : int | None
+  logro_id : int | None
+  nota_definitiva : float
+  nota_display : str
+  periodo_id : int
+  usuario_cierre_id : int | None
+  aprobo(nota_minima: float) -> bool
+  validar_fecha(v: date | str) -> date
+  validar_id_positivo(v: int) -> int
+  validar_nota(v: float) -> float
+}
+class "ConfigGeneracion" as models.infraestructura.ConfigGeneracion {
+  anio_id : Optional[int]
+  created_at : str | None
+  escenario_destino_id : int | None
+  estado : str
+  grupos : Optional[list[int]]
+  id : int | None
+  nombre : str
+  periodo_id : Optional[int]
+  pesos : Optional[PesosGeneracion]
+  plantilla_id : Optional[int]
+  restricciones : Optional[dict]
+  updated_at : str | None
+  puede_transicionar_a(nuevo: str) -> bool
+  validar_estado(v: str) -> str
+  validar_nombre(v: str) -> str
+}
+class "ConfiguracionAlerta" as models.alerta.ConfiguracionAlerta {
+  activa : bool
+  anio_id : int
+  id : int | None
+  notifica_a_alguien : bool
+  notificar_acudiente : bool
+  notificar_director : bool
+  notificar_docente : bool
+  tipo_alerta
+  umbral : float
+  umbral_entero : int
+  validar_umbral(v: float) -> float
+  validar_umbral_segun_tipo() -> Self
+}
+class "ConfiguracionAnio" as models.configuracion.ConfiguracionAnio {
+  activo : bool
+  anio : int
+  anio_display : str
+  aprobacion_en_rango : bool
+  dane_code : str | None
+  direccion : str | None
+  duracion_semanas : int | None
+  fecha_fin_clases : date | None
+  fecha_inicio_clases : date | None
+  id : int | None
+  institucion_id : int | None
+  logo_path : str | None
+  logo_url : str | None
+  municipio : str | None
+  nombre_institucion : str
+  nota_maxima_escala : float
+  nota_minima_aprobacion : float
+  nota_minima_escala : float
+  rango_fechas_display : str
+  rector : str | None
+  resolucion_aprobacion : str | None
+  telefono_institucion : str | None
+  tiene_informacion_institucional : bool
+  activar() -> ConfiguracionAnio
+  desactivar() -> ConfiguracionAnio
+  limpiar_campo_opcional(v: str | None) -> str | None
+  validar_anio(v: int) -> int
+  validar_escala(v: float) -> float
+  validar_escala_coherente() -> Self
+  validar_fechas() -> Self
+  validar_nombre_institucion(v: str) -> str
+  validar_nota_minima(v: float) -> float
+}
+class "ConfiguracionSIEE" as models.evaluacion.ConfiguracionSIEE {
+  anio_id : int
+  id : int | None
+  modo
+  peso_institucional : float | None
+  porcentaje_autonomia_docente : float | None
+  validar_anio_id(v: int) -> int
+  validar_porcentaje(v: float | None) -> float | None
+}
+class "ContextoAcademicoDTO" as models.dtos.ContextoAcademicoDTO {
+  anio_id : int
+  asignacion_id : int | None
+  contexto_completo : bool
+  grupo_id : int | None
+  periodo_id : int
+  tiene_asignacion : bool
+  tiene_grupo : bool
+  usuario_id : int
+  validar_id_requerido(v: int) -> int
+}
+class "ControlDiario" as models.asistencia.ControlDiario {
+  asignacion_id : int
+  es_presencia_efectiva : bool
+  estado
+  estado_descripcion : str
+  estudiante_id : int
+  fecha : Optional[date]
+  fecha_actualizacion : Optional[datetime]
+  grupo_id : int
+  hora_entrada : time | None
+  hora_salida : time | None
+  id : int | None
+  materiales : bool
+  observacion : str | None
+  periodo_id : int
+  requiere_justificacion : bool
+  uniforme : bool
+  usuario_registro_id : int | None
+  limpiar_observacion(v: str | None) -> str | None
+  parsear_hora(v: time | str | None) -> time | None
+  validar_fecha(v: date | str) -> date
+  validar_horas() -> Self
+  validar_id_positivo(v: int) -> int
+}
+class "CortePlan" as models.plan_mejoramiento.CortePlan {
+  asignacion_id : int
+  fecha_ejecucion : Optional[date]
+  id : int | None
+  nota_minima_aprobacion : float
+  nota_umbral : float
+  periodo_id : int
+  peso_registrado : float
+  usuario_id : int | None
+}
+class "CrearAlertaDTO" as models.alerta.CrearAlertaDTO {
+  descripcion : str
+  estudiante_id : int
+  nivel
+  tipo_alerta
+  to_alerta() -> Alerta
+  validar_descripcion(v: str) -> str
+}
+class "CrearCierreAnioDTO" as models.cierre.CrearCierreAnioDTO {
+  anio_id : int
+  asignacion_id : int
+  desempeno_id : int | None
+  estudiante_id : int
+  nota_definitiva_anual : float
+  nota_habilitacion : float | None
+  nota_promedio_periodos : float
+  perdio : bool
+  usuario_cierre_id : int | None
+  to_cierre() -> CierreAnio
+  validar_nota(v: float | None) -> float | None
+}
+class "CrearCierrePeriodoDTO" as models.cierre.CrearCierrePeriodoDTO {
+  asignacion_id : int
+  desempeno_id : int | None
+  estudiante_id : int
+  logro_id : int | None
+  nota_definitiva : float
+  periodo_id : int
+  usuario_cierre_id : int | None
+  to_cierre() -> CierrePeriodo
+  validar_nota(v: float) -> float
+}
+class "CrearEventoSesionDTO" as models.auditoria.CrearEventoSesionDTO {
+  detalles : str | None
+  ip_address : str | None
+  tipo_evento
+  usuario : str
+  usuario_id : int | None
+  to_evento() -> EventoSesion
+}
+class "CrearRegistroCambioDTO" as models.auditoria.CrearRegistroCambioDTO {
+  accion
+  registro_id : int | None
+  tabla : str
+  usuario_id : int | None
+  valor_anterior : dict | None
+  valor_nuevo : dict | None
+  desde_legacy(tabla: str, accion: str, datos_anteriores: dict | None, datos_nuevos: dict | None, id_registro: int | None, usuario_id: int | None, descripcion: str | None) -> CrearRegistroCambioDTO
+  to_registro() -> RegistroCambio
+}
+class "CriterioPromocion" as models.configuracion.CriterioPromocion {
+  anio_id : int
+  id : int | None
+  max_asignaturas_perdidas : Optional[int]
+  nota_minima_anual : float
+  nota_minima_habilitacion : float
+  permite_condicionada : bool
+  puede_habilitar(nota: float) -> bool
+  puede_ser_promovido(asignaturas_perdidas: int) -> bool
+  validar_anio_id(v: int) -> int
+  validar_nota(v: float) -> float
+}
+class "CupoDTO" as models.infraestructura.CupoDTO {
+  disponibles : int | None
+  excedido : bool
+  maximas : int | None
+  usadas : int
+}
+class "DashboardMetricsDTO" as models.dtos.DashboardMetricsDTO {
+  actividades_publicadas : int
+  alertas_pendientes : int
+  estudiantes_en_riesgo : int
+  grupo_id : int
+  pct_en_riesgo : float
+  porcentaje_asistencia : float
+  promedio_general : float
+  total_estudiantes : int
+  validar_no_negativo(v: int) -> int
+  validar_porcentaje(v: float) -> float
+}
+class "DecidirPromocionDTO" as models.cierre.DecidirPromocionDTO {
+  asignaturas_perdidas : Optional[int]
+  estado
+  fecha : date | None
+  observacion : str | None
+  usuario_id : int | None
+  limpiar_observacion(v: str | None) -> str | None
+  validar_estado(v: EstadoPromocion) -> EstadoPromocion
+}
+class "DiaSemana" as models.infraestructura.DiaSemana {
+  name
+}
+class "DisponibilidadDocente" as models.infraestructura.DisponibilidadDocente {
+  dia_semana : str
+  disponible : bool
+  franja_orden : Optional[int]
+  id : int | None
+  usuario_id : Optional[int]
+  validar_dia(v: str) -> str
+}
+class "DocenteInfoDTO" as models.usuario.DocenteInfoDTO {
+  activo : bool
+  asignaturas_asignadas : int
+  bloques_horarios : int
+  email : str | None
+  fecha_creacion : date | None
+  grupos_asignados : int
+  horas_totales : int
+  id : int
+  nombre_completo : str
+  resumen_carga : str
+  telefono : str | None
+  tiene_carga : bool
+  total_asignaciones : int
+  ultima_sesion : datetime | None
+  usuario : str
+}
+class "EjecutarCorteDTO" as models.plan_mejoramiento.EjecutarCorteDTO {
+  asignacion_id : int
+  nota_minima_aprobacion : float
+  periodo_id : int
+  usuario_id : int | None
+}
+class "EscenarioHorario" as models.infraestructura.EscenarioHorario {
+  activo : bool
+  anio_id : int
+  created_at : str | None
+  descripcion : str | None
+  id : int | None
+  nombre : str
+  validar_anio_id(v: int) -> int
+  validar_nombre(v: str) -> str
+}
+class "EstadoActividad" as models.evaluacion.EstadoActividad {
+  name
+}
+class "EstadoAsistencia" as models.asistencia.EstadoAsistencia {
+  afecta_porcentaje : bool
+  descripcion : str
+  es_falta : bool
+  name
+}
+class "EstadoHabilitacion" as models.habilitacion.EstadoHabilitacion {
+  name
+}
+class "EstadoMatricula" as models.estudiante.EstadoMatricula {
+  name
+}
+class "EstadoNotaCorte" as models.plan_mejoramiento.EstadoNotaCorte {
+  name
+}
+class "EstadoPlanMejoramiento" as models.habilitacion.EstadoPlanMejoramiento {
+  name
+}
+class "EstadoPromocion" as models.cierre.EstadoPromocion {
+  name
+}
+class "Estudiante" as models.estudiante.Estudiante {
+  apellido : str
+  direccion : str | None
+  documento_display : str
+  edad : int | None
+  es_activo : bool
+  estado_matricula
+  fecha_ingreso : Optional[date]
+  fecha_nacimiento : date | None
+  genero : Genero | None
+  grupo_id : int | None
+  id : int | None
+  id_publico : str | None
+  institucion_id : int | None
+  nombre : str
+  nombre_completo : str
+  numero_documento : str
+  posee_piar : bool
+  puede_recibir_calificaciones : bool
+  requiere_atencion_diferencial : bool
+  tipo_documento
+  asignar_grupo(grupo_id: int) -> Estudiante
+  reactivar() -> Estudiante
+  retirar(motivo: str | None) -> Estudiante
+  validar_coherencia_documento_edad() -> Self
+  validar_documento(v: str) -> str
+  validar_fecha_nacimiento(v: date | str | None) -> date | None
+  validar_id_publico(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+}
+class "EstudianteAcudiente" as models.acudiente.EstudianteAcudiente {
+  acudiente_id : int
+  es_principal : bool
+  estudiante_id : int
+  validar_id(v: int) -> int
+}
+class "EstudianteResumenDTO" as models.estudiante.EstudianteResumenDTO {
+  documento_display : str
+  estado_matricula
+  genero : Genero | None
+  grupo_id : int | None
+  id : int
+  id_publico : str | None
+  nombre_completo : str
+  posee_piar : bool
+  desde_estudiante(est: Estudiante) -> EstudianteResumenDTO
+}
+class "EventoSesion" as models.auditoria.EventoSesion {
+  detalles : str | None
+  es_acceso_denegado : bool
+  es_exitoso : bool
+  es_fallido : bool
+  fecha_display : str
+  fecha_hora : Optional[datetime]
+  id : int | None
+  ip_address : str | None
+  tipo_evento
+  usuario : str
+  usuario_id : int | None
+  limpiar_detalles(v: str | None) -> str | None
+  limpiar_ip(v: str | None) -> str | None
+  validar_usuario(v: str) -> str
+}
+class "FilaReporteDTO" as models.infraestructura.FilaReporteDTO {
+  indice : int
+  motivo : str | None
+  ok : bool
+  resumen : str
+}
+class "FiltroAlertasDTO" as models.alerta.FiltroAlertasDTO {
+  estudiante_id : int | None
+  nivel : NivelAlerta | None
+  pagina : Optional[int]
+  por_pagina : Optional[int]
+  solo_pendientes : bool
+  tipo_alerta : TipoAlerta | None
+}
+class "FiltroAsignacionesDTO" as models.asignacion.FiltroAsignacionesDTO {
+  asignatura_id : int | None
+  grupo_id : int | None
+  institucion_id : int | None
+  pagina : Optional[int]
+  periodo_id : int | None
+  por_pagina : Optional[int]
+  solo_activas : bool
+  usuario_id : int | None
+}
+class "FiltroAsistenciaDTO" as models.asistencia.FiltroAsistenciaDTO {
+  asignacion_id : int | None
+  estado : EstadoAsistencia | None
+  estudiante_id : int | None
+  fecha_desde : date | None
+  fecha_hasta : date | None
+  grupo_id : int | None
+  pagina : Optional[int]
+  periodo_id : int | None
+  por_pagina : Optional[int]
+}
+class "FiltroAuditoriaDTO" as models.auditoria.FiltroAuditoriaDTO {
+  accion : AccionCambio | None
+  desde : datetime | None
+  hasta : datetime | None
+  pagina : Optional[int]
+  por_pagina : Optional[int]
+  tabla : str | None
+  tipo_evento : TipoEventoSesion | None
+  usuario_id : int | None
+}
+class "FiltroConvivenciaDTO" as models.convivencia.FiltroConvivenciaDTO {
+  estudiante_id : int | None
+  grupo_id : int | None
+  pagina : Optional[int]
+  periodo_id : int | None
+  por_pagina : Optional[int]
+  solo_negativos : bool
+  tipo : TipoRegistro | None
+}
+class "FiltroEstudiantesDTO" as models.estudiante.FiltroEstudiantesDTO {
+  busqueda : str | None
+  estado_matricula : EstadoMatricula | None
+  grupo_id : int | None
+  grupos_ids : list[int] | None
+  institucion_id : int | None
+  pagina : Optional[int]
+  por_pagina : Optional[int]
+  posee_piar : bool | None
+  limpiar_busqueda(v: str | None) -> str | None
+}
+class "FiltroHabilitacionesDTO" as models.habilitacion.FiltroHabilitacionesDTO {
+  asignacion_id : int | None
+  estado : EstadoHabilitacion | None
+  estudiante_id : int | None
+  pagina : Optional[int]
+  periodo_id : int | None
+  por_pagina : Optional[int]
+  tipo : TipoHabilitacion | None
+}
+class "FiltroUsuariosDTO" as models.usuario.FiltroUsuariosDTO {
+  busqueda : str | None
+  institucion_id : int | None
+  pagina : Optional[int]
+  por_pagina : Optional[int]
+  rol : Rol | None
+  solo_activos : bool
+  limpiar_busqueda(v: str | None) -> str | None
+}
+class "FormatoInforme" as models.dtos.FormatoInforme {
+  name
+}
+class "Franja" as models.infraestructura.Franja {
+  es_lectiva : bool
+  etiqueta : str | None
+  hora_fin : str
+  hora_inicio : str
+  id : int | None
+  orden : Optional[int]
+  plantilla_id : int
+  tipo : str
+  limpiar_etiqueta(v: str | None) -> str | None
+  normalizar_hora(v: str) -> str
+  validar_orden_horas() -> Self
+  validar_plantilla_id(v: int) -> int
+  validar_tipo(v: str) -> str
+}
+class "FranjaReunion" as models.infraestructura.FranjaReunion {
+  dia_semana : str
+  docentes : list[int]
+  franja_orden : Optional[int]
+  id : int | None
+  modo : str
+  nombre : str
+  validar_dia(v: str) -> str
+  validar_modo(v: str) -> str
+  validar_nombre(v: str) -> str
+}
+class "Genero" as models.estudiante.Genero {
+  name
+}
+class "Grado" as models.infraestructura.Grado {
+  horas_semanales : Optional[int]
+  id : int | None
+  max_estudiantes : Optional[int]
+  min_estudiantes : Optional[int]
+  nombre : str | None
+  numero : Optional[int]
+  validar_rango_estudiantes() -> Grado
+}
+class "Grupo" as models.infraestructura.Grupo {
+  capacidad_maxima : Optional[int]
+  codigo : str
+  descripcion_completa : str
+  descripcion_corta : str
+  grado : int | None
+  id : int | None
+  institucion_id : int | None
+  jornada
+  nombre : str | None
+  sala_id : int | None
+  cupos_disponibles(matriculados: int) -> int
+  esta_lleno(matriculados: int) -> bool
+  limpiar_nombre(v: str | None) -> str | None
+  validar_codigo(v: str) -> str
+  validar_grado(v: int | None) -> int | None
+}
+class "Habilitacion" as models.habilitacion.Habilitacion {
+  asignacion_id : int
+  esta_pendiente : bool
+  estado
+  estudiante_id : int
+  fecha : date | None
+  fue_realizada : bool
+  id : int | None
+  mejoro_nota : bool | None
+  nota_antes : float | None
+  nota_habilitacion : float | None
+  observacion : str | None
+  periodo_id : int | None
+  tiene_resultado_final : bool
+  tipo
+  usuario_registro_id : int | None
+  aprobar() -> Habilitacion
+  limpiar_observacion(v: str | None) -> str | None
+  registrar_nota(nota: float, fecha: date | None, usuario_id: int | None, observacion: str | None) -> Habilitacion
+  reprobar() -> Habilitacion
+  validar_coherencia() -> Self
+  validar_id_positivo(v: int) -> int
+  validar_nota(v: float | None) -> float | None
+}
+class "HitoPeriodo" as models.periodo.HitoPeriodo {
+  descripcion : str | None
+  dias_restantes : int | None
+  esta_vencido : bool
+  fecha_limite : date | None
+  id : int | None
+  periodo_id : int
+  tipo
+  limpiar_descripcion(v: str | None) -> str | None
+  validar_periodo_id(v: int) -> int
+}
+class "Horario" as models.infraestructura.Horario {
+  asignacion_id : int | None
+  asignatura_id : int
+  dia_semana
+  duracion_minutos : int
+  escenario_id : int
+  franja_display : str
+  grupo_id : int
+  hora_fin : time
+  hora_inicio : time
+  id : int | None
+  periodo_id : int | None
+  sala : str
+  usuario_id : int
+  parsear_hora(v: time | str) -> time
+  validar_escenario_id(v: int) -> int
+  validar_id_positivo(v: int) -> int
+  validar_orden_horas() -> Self
+  validar_sala(v: str) -> str
+}
+class "HorarioEstadisticasDTO" as models.infraestructura.HorarioEstadisticasDTO {
+  docentes_con_horario : int
+  grupos_cubiertos : int
+  materias_cargadas : int
+  total_bloques : int
+}
+class "HorarioInfo" as models.infraestructura.HorarioInfo {
+  asignacion_id : int | None
+  asignatura_id : int
+  asignatura_nombre : str
+  dia_semana
+  display_completo : str
+  display_corto : str
+  docente_nombre : str
+  duracion_minutos : int
+  escenario_id : int
+  franja_display : str
+  grupo_codigo : str
+  grupo_id : int
+  hora_fin : time
+  hora_inicio : time
+  id : int
+  periodo_id : int | None
+  periodo_nombre : str
+  sala : str
+  usuario_id : int
+  limpiar_periodo_nombre(v: str | None) -> str
+  no_vacio(v: str) -> str
+  parsear_hora(v: time | str) -> time
+}
+class "InformacionInstitucionalDTO" as models.configuracion.InformacionInstitucionalDTO {
+  anio : int
+  dane_code : str
+  direccion : str | None
+  logo_path : str | None
+  municipio : str | None
+  nombre_institucion : str
+  nota_minima_aprobacion : float
+  rector : str
+  resolucion_aprobacion : str | None
+  telefono_institucion : str | None
+  desde_configuracion(config: ConfiguracionAnio) -> InformacionInstitucionalDTO
+}
+class "InformeAsistenciaDTO" as models.dtos.InformeAsistenciaDTO {
+  asignacion_id : int
+  fecha_desde : date
+  fecha_hasta : date
+  formato
+  grupo_id : int
+  periodo_id : int
+  validar_id(v: int) -> int
+  validar_rango_fechas(v: date, info) -> date
+}
+class "InformeNotasDTO" as models.dtos.InformeNotasDTO {
+  asignacion_id : int
+  fecha_desde : date
+  fecha_hasta : date
+  formato
+  grupo_id : int
+  incluir_piar : bool
+  periodo_id : int
+  validar_id(v: int) -> int
+  validar_rango_fechas(v: date, info) -> date
+}
+class "Institucion" as models.institucion.Institucion {
+  activa : bool
+  codigo : str | None
+  fecha_creacion : Optional[date]
+  id : int | None
+  nit : str | None
+  nombre : str
+  nombre_display : str
+  limpiar_opcional(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+}
+class "InstitucionResumenDTO" as models.institucion.InstitucionResumenDTO {
+  activa : bool
+  id : int
+  nombre : str
+  desde_institucion(i: Institucion) -> InstitucionResumenDTO
+}
+class "Jornada" as models.infraestructura.Jornada {
+  name
+}
+class "LimitesDocente" as models.infraestructura.LimitesDocente {
+  id : int | None
+  max_horas_dia : Optional[int]
+  min_horas_dia : Optional[int]
+  usuario_id : Optional[int]
+  validar_rango() -> LimitesDocente
+}
+class "Logro" as models.infraestructura.Logro {
+  asignacion_id : int
+  descripcion : str
+  id : int | None
+  orden : Optional[int]
+  periodo_id : int
+  validar_descripcion(v: str) -> str
+  validar_id_positivo(v: int) -> int
+}
+class "MatriculaMasivaDTO" as models.dtos.MatriculaMasivaDTO {
+  filas : Optional[list[dict]]
+  grupo_id : int | None
+  omitir_errores : bool
+  total_filas : int
+  validar_filas(v: list[dict]) -> list[dict]
+}
+class "MatriculaMasivaResultadoDTO" as models.dtos.MatriculaMasivaResultadoDTO {
+  errores : Optional[list[dict]]
+  exitosas : int
+  fallidas : int
+  fue_exitosa : bool
+  tasa_exito : float
+  total_procesadas : int
+  agregar_error(fila: int, dato: str, motivo: str) -> None
+}
+class "MetricasCalidadDTO" as models.infraestructura.MetricasCalidadDTO {
+  costo_final : float
+  costo_inicial : float
+  dias_docente : int
+  huecos_docente : int
+  huecos_grupo : int
+  pasos_mejora : int
+  solapes_distribucion : int
+}
+class "ModoSIEE" as models.evaluacion.ModoSIEE {
+  name
+}
+class "MovimientoEstudiante" as models.estudiante.MovimientoEstudiante {
+  estudiante_id : int
+  fecha_movimiento : datetime | None
+  grupo_destino_id : int | None
+  grupo_origen_id : int | None
+  id : int | None
+  motivo : str | None
+  tipo_movimiento
+  usuario_registro_id : int | None
+  limpiar_motivo(v: str | None) -> str | None
+}
+class "MovimientoEstudianteInfoDTO" as models.estudiante.MovimientoEstudianteInfoDTO {
+  estudiante_id : int
+  fecha_display : str
+  fecha_movimiento : datetime | None
+  grupo_destino_codigo : str | None
+  grupo_origen_codigo : str | None
+  id : int | None
+  motivo : str | None
+  ruta_display : str
+  tipo_movimiento
+  usuario_registro_id : int | None
+}
+class "NivelAlerta" as models.alerta.NivelAlerta {
+  name
+}
+class "NivelDesempeno" as models.configuracion.NivelDesempeno {
+  amplitud : float
+  anio_id : int
+  descripcion : str | None
+  id : int | None
+  nombre : str
+  orden : Optional[int]
+  rango_max : float
+  rango_min : float
+  clasifica(nota: float) -> bool
+  validar_anio_id(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_orden_rangos() -> NivelDesempeno
+  validar_rango(v: float) -> float
+}
+class "Nota" as models.evaluacion.Nota {
+  actividad_id : int
+  es_aprobatoria : bool
+  estudiante_id : int
+  fecha_registro : Optional[datetime]
+  id : int | None
+  usuario_registro_id : int | None
+  valor : float
+  validar_id(v: int) -> int
+  validar_valor(v: float) -> float
+}
+class "NotaActividadPlan" as models.plan_mejoramiento.NotaActividadPlan {
+  actividad_plan_id : int
+  asignacion_id : int
+  estudiante_id : int
+  id : int | None
+  periodo_id : int
+  usuario_id : int | None
+  valor : float | None
+}
+class "NotaComportamiento" as models.convivencia.NotaComportamiento {
+  aprobado : bool
+  desempeno_id : int | None
+  estudiante_id : int
+  grupo_id : int
+  id : int | None
+  observacion : str | None
+  periodo_id : int
+  usuario_id : int | None
+  valor : float
+  limpiar_observacion(v: str | None) -> str | None
+  validar_valor(v: float) -> float
+}
+class "NotaCortePlan" as models.plan_mejoramiento.NotaCortePlan {
+  asignacion_id : int
+  corte_id : int
+  estado
+  estudiante_id : int
+  id : int | None
+  nota_al_corte : float
+  nota_definitiva_plan : float | None
+  periodo_id : int
+  usuario_cierre_id : int | None
+}
+class "NotaNivelacion" as models.nivelacion.NotaNivelacion {
+  actividad_nivelacion_id : int
+  asignacion_id : int
+  calificada : bool
+  estudiante_id : int
+  id : int | None
+  periodo_id : int
+  usuario_id : int | None
+  valor : float | None
+  validar_id_positivo(v: int) -> int
+  validar_valor(v: float | None) -> float | None
+}
+class "NuevaActividadDTO" as models.evaluacion.NuevaActividadDTO {
+  categoria_id : int
+  descripcion : str | None
+  estado
+  fecha : date | None
+  nombre : str
+  valor_maximo : float
+  to_actividad() -> Actividad
+  validar_nombre(v: str) -> str
+  validar_valor(v: float) -> float
+}
+class "NuevaActividadNivelacionDTO" as models.nivelacion.NuevaActividadNivelacionDTO {
+  asignacion_id : int
+  descripcion : str | None
+  fecha : date | None
+  nombre : str
+  periodo_id : int
+  peso : float
+  to_actividad(usuario_id: int | None) -> ActividadNivelacion
+  validar_id_positivo(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_peso(v: float) -> float
+}
+class "NuevaActividadPlanDTO" as models.plan_mejoramiento.NuevaActividadPlanDTO {
+  asignacion_id : int
+  corte_id : int
+  descripcion : str | None
+  fecha : date | None
+  nombre : str
+  periodo_id : int
+  peso : float
+  peso_valido(v: float) -> float
+  to_actividad(usuario_id: int | None) -> ActividadPlan
+}
+class "NuevaAreaDTO" as models.infraestructura.NuevaAreaDTO {
+  codigo : str | None
+  nombre : str
+  to_area() -> AreaConocimiento
+  validar_nombre(v: str) -> str
+}
+class "NuevaAsignacionDTO" as models.asignacion.NuevaAsignacionDTO {
+  asignatura_id : int
+  grupo_id : int
+  periodo_id : int
+  usuario_id : int
+  to_asignacion() -> Asignacion
+  validar_id_positivo(v: int) -> int
+}
+class "NuevaAsignaturaDTO" as models.infraestructura.NuevaAsignaturaDTO {
+  area_id : int | None
+  bloque_doble : bool
+  codigo : str | None
+  horas_consecutivas : Optional[int]
+  horas_semanales : int
+  institucion_id : int | None
+  nombre : str
+  tipo_sala_requerido : str | None
+  to_asignatura() -> Asignatura
+  validar_nombre(v: str) -> str
+}
+class "NuevaCategoriaDTO" as models.evaluacion.NuevaCategoriaDTO {
+  asignacion_id : int
+  categoria_padre_id : int | None
+  nombre : str
+  periodo_id : int
+  peso : float
+  to_categoria() -> Categoria
+  validar_nombre(v: str) -> str
+  validar_peso(v: float) -> float
+}
+class "NuevaCategoriaInstitucionalDTO" as models.evaluacion.NuevaCategoriaInstitucionalDTO {
+  anio_id : int
+  nombre : str
+  permite_subcategorias : bool
+  peso : float
+  to_categoria() -> Categoria
+  validar_anio_id(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_peso(v: float) -> float
+}
+class "NuevaConfigGeneracionDTO" as models.infraestructura.NuevaConfigGeneracionDTO {
+  anio_id : int
+  grupos : Optional[list[int]]
+  nombre : str
+  periodo_id : int
+  pesos : Optional[PesosGeneracion]
+  plantilla_id : int
+  restricciones : Optional[dict]
+  to_config() -> ConfigGeneracion
+}
+class "NuevaConfiguracionAnioDTO" as models.configuracion.NuevaConfiguracionAnioDTO {
+  anio : int
+  fecha_fin_clases : date | None
+  fecha_inicio_clases : date | None
+  institucion_id : int | None
+  nombre_institucion : str
+  nota_maxima_escala : float
+  nota_minima_aprobacion : float
+  nota_minima_escala : float
+  to_configuracion() -> ConfiguracionAnio
+  validar_anio(v: int) -> int
+  validar_escala(v: float) -> float
+  validar_fechas() -> Self
+  validar_nota(v: float) -> float
+}
+class "NuevaConfiguracionSIEEDTO" as models.evaluacion.NuevaConfiguracionSIEEDTO {
+  anio_id : int
+  modo
+  porcentaje_autonomia_docente : float | None
+  to_configuracion_siee() -> ConfiguracionSIEE
+  validar_anio_id(v: int) -> int
+  validar_porcentaje(v: float | None) -> float | None
+}
+class "NuevaDisponibilidadDTO" as models.infraestructura.NuevaDisponibilidadDTO {
+  dia_semana : str
+  disponible : bool
+  franja_orden : int
+  usuario_id : int
+  to_modelo() -> DisponibilidadDocente
+}
+class "NuevaFranjaDTO" as models.infraestructura.NuevaFranjaDTO {
+  etiqueta : str | None
+  hora_fin : str
+  hora_inicio : str
+  orden : int
+  plantilla_id : int
+  tipo : str
+  to_franja() -> Franja
+}
+class "NuevaHabilitacionDTO" as models.habilitacion.NuevaHabilitacionDTO {
+  asignacion_id : int
+  estudiante_id : int
+  fecha : date | None
+  nota_antes : float | None
+  periodo_id : int | None
+  tipo
+  to_habilitacion(usuario_id: int | None) -> Habilitacion
+  validar_nota(v: float | None) -> float | None
+  validar_tipo_periodo() -> Self
+}
+class "NuevaInstitucionDTO" as models.institucion.NuevaInstitucionDTO {
+  codigo : str | None
+  nit : str | None
+  nombre : str
+  limpiar_opcional(v: str | None) -> str | None
+  to_institucion() -> Institucion
+  validar_nombre(v: str) -> str
+}
+class "NuevaNotaComportamientoDTO" as models.convivencia.NuevaNotaComportamientoDTO {
+  estudiante_id : int
+  grupo_id : int
+  observacion : str | None
+  periodo_id : int
+  valor : float
+  to_nota(usuario_id: int | None) -> NotaComportamiento
+  validar_valor(v: float) -> float
+}
+class "NuevaObservacionDTO" as models.convivencia.NuevaObservacionDTO {
+  asignacion_id : int
+  es_publica : bool
+  estudiante_id : int
+  periodo_id : int
+  texto : str
+  to_observacion(usuario_id: int | None) -> ObservacionPeriodo
+  validar_texto(v: str) -> str
+}
+class "NuevaPlantillaFranjaDTO" as models.infraestructura.NuevaPlantillaFranjaDTO {
+  dias_activos : list[str]
+  jornada : str
+  nombre : str
+  to_plantilla() -> PlantillaFranja
+}
+class "NuevaSalaDTO" as models.infraestructura.NuevaSalaDTO {
+  capacidad : int
+  nombre : str
+  tipo : str
+  to_sala() -> Sala
+}
+class "NuevoAcudienteDTO" as models.acudiente.NuevoAcudienteDTO {
+  celular : str | None
+  direccion : str | None
+  email : str | None
+  nombre_completo : str
+  numero_documento : str
+  parentesco
+  tipo_documento
+  to_acudiente() -> Acudiente
+  validar_documento(v: str) -> str
+  validar_email(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+}
+class "NuevoEscenarioDTO" as models.infraestructura.NuevoEscenarioDTO {
+  anio_id : int
+  descripcion : str | None
+  nombre : str
+  to_escenario() -> EscenarioHorario
+  validar_anio_id(v: int) -> int
+  validar_nombre(v: str) -> str
+}
+class "NuevoEstudianteDTO" as models.estudiante.NuevoEstudianteDTO {
+  apellido : str
+  direccion : str | None
+  fecha_nacimiento : date | None
+  genero : Genero | None
+  grupo_id : int | None
+  nombre : str
+  numero_documento : str
+  posee_piar : bool
+  tipo_documento
+  to_estudiante() -> Estudiante
+  validar_documento(v: str) -> str
+  validar_nombre(v: str) -> str
+}
+class "NuevoGrupoDTO" as models.infraestructura.NuevoGrupoDTO {
+  capacidad_maxima : int
+  codigo : str
+  grado : int | None
+  institucion_id : int | None
+  jornada
+  nombre : str | None
+  to_grupo() -> Grupo
+  validar_codigo(v: str) -> str
+}
+class "NuevoHitoPeriodoDTO" as models.periodo.NuevoHitoPeriodoDTO {
+  descripcion : str
+  fecha_limite : date | None
+  periodo_id : int
+  tipo
+  to_hito() -> HitoPeriodo
+  validar_descripcion(v: str) -> str
+  validar_periodo_id(v: int) -> int
+}
+class "NuevoHorarioDTO" as models.infraestructura.NuevoHorarioDTO {
+  asignacion_id : int | None
+  asignatura_id : int
+  dia_semana
+  escenario_id : int
+  grupo_id : int
+  hora_fin : time
+  hora_inicio : time
+  periodo_id : int | None
+  sala : str
+  usuario_id : int
+  parsear_hora(v: time | str) -> time
+  to_horario() -> Horario
+  validar_horas() -> Self
+}
+class "NuevoLogroDTO" as models.infraestructura.NuevoLogroDTO {
+  asignacion_id : int
+  descripcion : str
+  orden : int
+  periodo_id : int
+  to_logro() -> Logro
+  validar_descripcion(v: str) -> str
+}
+class "NuevoNivelDesempenoDTO" as models.configuracion.NuevoNivelDesempenoDTO {
+  anio_id : int
+  descripcion : str | None
+  nombre : str
+  orden : int
+  rango_max : float
+  rango_min : float
+  to_nivel() -> NivelDesempeno
+  validar_nombre(v: str) -> str
+  validar_orden_rangos() -> NuevoNivelDesempenoDTO
+  validar_rango(v: float) -> float
+}
+class "NuevoPIARDTO" as models.piar.NuevoPIARDTO {
+  ajustes_evaluativos : str | None
+  ajustes_pedagogicos : str | None
+  anio_id : int
+  descripcion_necesidad : str
+  estudiante_id : int
+  fecha_revision : date | None
+  profesionales_apoyo : str | None
+  to_piar(usuario_id: int | None) -> PIAR
+  validar_descripcion(v: str) -> str
+}
+class "NuevoPeriodoDTO" as models.periodo.NuevoPeriodoDTO {
+  anio_id : int
+  fecha_fin : date | None
+  fecha_inicio : date | None
+  nombre : str
+  numero : int
+  peso_porcentual : float
+  to_periodo() -> Periodo
+  validar_fechas() -> Self
+  validar_numero(v: int) -> int
+  validar_peso(v: float) -> float
+}
+class "NuevoPlanEstudiosDTO" as models.infraestructura.NuevoPlanEstudiosDTO {
+  asignatura_id : Optional[int]
+  grado : Optional[int]
+  horas_semanales : Optional[int]
+}
+class "NuevoPlanMejoramientoDTO" as models.habilitacion.NuevoPlanMejoramientoDTO {
+  actividades_propuestas : str
+  asignacion_id : int
+  descripcion_dificultad : str
+  estudiante_id : int
+  fecha_seguimiento : date | None
+  periodo_id : int
+  to_plan(usuario_id: int | None) -> PlanMejoramiento
+  validar_texto(v: str) -> str
+}
+class "NuevoRegistroComportamientoDTO" as models.convivencia.NuevoRegistroComportamientoDTO {
+  descripcion : str
+  estudiante_id : int
+  fecha : Optional[date]
+  grupo_id : int
+  periodo_id : int
+  requiere_firma : bool
+  tipo
+  to_registro(usuario_id: int | None) -> RegistroComportamiento
+  validar_descripcion(v: str) -> str
+}
+class "NuevoUsuarioDTO" as models.usuario.NuevoUsuarioDTO {
+  email : str | None
+  institucion_id : int | None
+  nombre_completo : str
+  password : str | None
+  rol
+  telefono : str | None
+  usuario : str
+  to_usuario() -> Usuario
+  validar_email(v: str | None) -> str | None
+  validar_nombre(v: str) -> str
+  validar_usuario(v: str) -> str
+}
+class "ObservacionPeriodo" as models.convivencia.ObservacionPeriodo {
+  asignacion_id : int
+  es_publica : bool
+  estudiante_id : int
+  fecha_registro : Optional[datetime]
+  id : int | None
+  periodo_id : int
+  texto : str
+  usuario_id : int | None
+  hacer_privada() -> ObservacionPeriodo
+  hacer_publica() -> ObservacionPeriodo
+  validar_texto(v: str) -> str
+}
+class "PIAR" as models.piar.PIAR {
+  ajustes_evaluativos : str | None
+  ajustes_pedagogicos : str | None
+  anio_id : int
+  descripcion_necesidad : str
+  dias_para_revision : int | None
+  estudiante_id : int
+  fecha_elaboracion : Optional[date]
+  fecha_revision : date | None
+  id : int | None
+  profesionales_apoyo : str | None
+  revision_vencida : bool
+  tiene_ajustes_evaluativos : bool
+  tiene_ajustes_pedagogicos : bool
+  tiene_revision_programada : bool
+  usuario_elaboracion_id : int | None
+  actualizar_ajustes(ajustes_evaluativos: str | None, ajustes_pedagogicos: str | None, profesionales_apoyo: str | None) -> PIAR
+  limpiar_campo_opcional(v: str | None) -> str | None
+  programar_revision(fecha: date) -> PIAR
+  validar_descripcion(v: str) -> str
+  validar_fecha_elaboracion(v: date | str) -> date
+  validar_fecha_revision(v: date | str | None) -> date | None
+  validar_orden_fechas() -> Self
+}
+class "Parentesco" as models.acudiente.Parentesco {
+  name
+}
+class "Periodo" as models.periodo.Periodo {
+  activo : bool
+  anio_id : int
+  cerrado : bool
+  duracion_dias : int | None
+  en_curso : bool
+  esta_abierto : bool
+  esta_vigente : bool
+  fecha_cierre_real : datetime | None
+  fecha_fin : date | None
+  fecha_inicio : date | None
+  id : int | None
+  nombre : str
+  numero : int
+  peso_porcentual : float
+  activar() -> Periodo
+  cerrar(fecha: datetime | None) -> Periodo
+  desactivar() -> Periodo
+  validar_anio_id(v: int) -> int
+  validar_coherencia_fechas() -> Self
+  validar_nombre(v: str) -> str
+  validar_numero(v: int) -> int
+  validar_peso(v: float) -> float
+}
+class "PesosGeneracion" as models.infraestructura.PesosGeneracion {
+  balance_diario : Optional[float]
+  compactacion : Optional[float]
+  dia_libre : Optional[float]
+  distribucion : Optional[float]
+  franja_preferida : Optional[float]
+  hueco_comun : Optional[float]
+  huecos : Optional[float]
+}
+class "PlanEstudios" as models.infraestructura.PlanEstudios {
+  asignatura_id : Optional[int]
+  grado : Optional[int]
+  horas_semanales : Optional[int]
+  id : int | None
+}
+class "PlanMejoramiento" as models.habilitacion.PlanMejoramiento {
+  actividades_propuestas : str
+  asignacion_id : int
+  descripcion_dificultad : str
+  dias_activo : int
+  esta_activo : bool
+  esta_cerrado : bool
+  estado
+  estudiante_id : int
+  fecha_cierre : date | None
+  fecha_inicio : Optional[date]
+  fecha_seguimiento : date | None
+  id : int | None
+  observacion_cierre : str | None
+  periodo_id : int
+  seguimiento_vencido : bool
+  tiene_seguimiento_programado : bool
+  usuario_id : int | None
+  cerrar(estado: EstadoPlanMejoramiento, observacion: str, fecha: date | None) -> PlanMejoramiento
+  limpiar_observacion_cierre(v: str | None) -> str | None
+  programar_seguimiento(fecha: date) -> PlanMejoramiento
+  validar_coherencia() -> Self
+  validar_id_positivo(v: int) -> int
+  validar_texto_requerido(v: str) -> str
+}
+class "PlantillaFranja" as models.infraestructura.PlantillaFranja {
+  activa : bool
+  created_at : str | None
+  dias_activos : list[str]
+  id : int | None
+  institucion_id : int | None
+  jornada : str
+  nombre : str
+  validar_dias(v: list[str]) -> list[str]
+  validar_jornada(v: str) -> str
+  validar_nombre(v: str) -> str
+}
+class "PromocionAnual" as models.cierre.PromocionAnual {
+  anio_id : int
+  asignaturas_perdidas : Optional[int]
+  es_condicional : bool
+  esta_finalizado : bool
+  esta_pendiente : bool
+  estado
+  estudiante_id : int
+  fecha_decision : date | None
+  fue_promovido : bool
+  fue_reprobado : bool
+  id : int | None
+  observacion : str | None
+  usuario_decision_id : int | None
+  decidir(estado: EstadoPromocion, asignaturas_perdidas: int, observacion: str | None, usuario_id: int | None, fecha: date | None) -> PromocionAnual
+  limpiar_observacion(v: str | None) -> str | None
+  validar_coherencia_estado() -> Self
+  validar_fecha(v: date | str | None) -> date | None
+  validar_id_positivo(v: int) -> int
+}
+class "PuntosExtra" as models.evaluacion.PuntosExtra {
+  asignacion_id : int
+  balance : int
+  estudiante_id : int
+  fecha_actualizacion : Optional[datetime]
+  id : int | None
+  negativos : Optional[int]
+  observacion : str | None
+  periodo_id : int
+  positivos : Optional[int]
+  tiene_impacto : bool
+  tipo
+  limpiar_observacion(v: str | None) -> str | None
+  validar_id(v: int) -> int
+}
+class "RegistrarAsistenciaDTO" as models.asistencia.RegistrarAsistenciaDTO {
+  asignacion_id : int
+  estado
+  estudiante_id : int
+  fecha : Optional[date]
+  grupo_id : int
+  hora_entrada : time | None
+  hora_salida : time | None
+  materiales : bool
+  observacion : str | None
+  periodo_id : int
+  uniforme : bool
+  usuario_registro_id : int | None
+  to_control() -> ControlDiario
+  validar_fecha(v: date | str) -> date
+}
+class "RegistrarAsistenciaMasivaDTO" as models.asistencia.RegistrarAsistenciaMasivaDTO {
+  asignacion_id : int
+  fecha : Optional[date]
+  grupo_id : int
+  periodo_id : int
+  registros : Optional[list[RegistroAsistenciaItemDTO]]
+  total_estudiantes : int
+  usuario_registro_id : int | None
+  to_controles(uniforme_default: bool, materiales_default: bool) -> list[ControlDiario]
+  validar_fecha(v: date | str) -> date
+  validar_registros(v: list) -> list
+}
+class "RegistrarNotaDTO" as models.evaluacion.RegistrarNotaDTO {
+  actividad_id : int
+  estudiante_id : int
+  usuario_registro_id : int | None
+  valor : float
+  to_nota(usuario_registro_id: int | None) -> Nota
+  validar_valor(v: float) -> float
+}
+class "RegistrarNotaHabilitacionDTO" as models.habilitacion.RegistrarNotaHabilitacionDTO {
+  fecha : date | None
+  nota : float
+  observacion : str | None
+  usuario_id : int | None
+  validar_nota(v: float) -> float
+}
+class "RegistrarNotasMasivasDTO" as models.evaluacion.RegistrarNotasMasivasDTO {
+  actividad_id : int
+  notas : Optional[list[RegistrarNotaDTO]]
+  total_notas : int
+  usuario_registro_id : int | None
+  to_notas(usuario_registro_id: int | None) -> list[Nota]
+  validar_id(v: int) -> int
+}
+class "RegistroAsistenciaItemDTO" as models.asistencia.RegistroAsistenciaItemDTO {
+  estado
+  estudiante_id : int
+  observacion : str | None
+  validar_id(v: int) -> int
+}
+class "RegistroCambio" as models.auditoria.RegistroCambio {
+  accion
+  anterior_como_dict : dict | None
+  es_creacion : bool
+  es_eliminacion : bool
+  id : int | None
+  nuevo_como_dict : dict | None
+  registro_id : int | None
+  tabla : str
+  timestamp : Optional[datetime]
+  timestamp_display : str
+  usuario_id : int | None
+  valor_anterior : str | None
+  valor_nuevo : str | None
+  para_actualizacion(tabla: str, datos_anteriores: dict, datos_nuevos: dict, registro_id: int | None, usuario_id: int | None) -> RegistroCambio
+  para_creacion(tabla: str, datos_nuevos: dict, registro_id: int | None, usuario_id: int | None) -> RegistroCambio
+  para_eliminacion(tabla: str, datos_anteriores: dict, registro_id: int | None, usuario_id: int | None) -> RegistroCambio
+  validar_json(v: str | dict | None) -> str | None
+  validar_tabla(v: str) -> str
+}
+class "RegistroComportamiento" as models.convivencia.RegistroComportamiento {
+  acudiente_notificado : bool
+  descripcion : str
+  es_negativo : bool
+  es_positivo : bool
+  estudiante_id : int
+  fecha : Optional[date]
+  grupo_id : int
+  id : int | None
+  pendiente_notificacion : bool
+  periodo_id : int
+  requiere_firma : bool
+  seguimiento : str | None
+  tiene_seguimiento : bool
+  tipo
+  usuario_registro_id : int | None
+  agregar_seguimiento(texto: str) -> RegistroComportamiento
+  limpiar_seguimiento(v: str | None) -> str | None
+  registrar_notificacion() -> RegistroComportamiento
+  validar_descripcion(v: str) -> str
+  validar_fecha(v: date | str) -> date
+  validar_notificacion() -> Self
+}
+class "ReporteLoteDTO" as models.infraestructura.ReporteLoteDTO {
+  filas : list[FilaReporteDTO]
+  invalidas : int
+  todo_ok : bool
+  validas : int
+}
+class "ResolverAlertaDTO" as models.alerta.ResolverAlertaDTO {
+  observacion : str | None
+  usuario_id : int
+  limpiar_observacion(v: str | None) -> str | None
+}
+class "RespuestaOperacionDTO" as models.dtos.RespuestaOperacionDTO {
+  datos : dict | None
+  exito : bool
+  mensaje : str
+  error(mensaje: str, datos: dict | None) -> RespuestaOperacionDTO
+  ok(mensaje: str, datos: dict | None) -> RespuestaOperacionDTO
+}
+class "ResultadoEstudianteDTO" as models.evaluacion.ResultadoEstudianteDTO {
+  definitiva : float
+  estudiante_id : int
+  nombre_completo : str
+  notas : Optional[dict[int, float]]
+  posee_piar : bool
+  promedio_ajustado : float
+}
+class "ResultadoGeneracionDTO" as models.infraestructura.ResultadoGeneracionDTO {
+  bloques : list[BloqueGeneradoDTO]
+  causas : Optional[dict[str, int]]
+  colocados : int
+  escenario_id : int | None
+  incidencias : list[str]
+  metricas : MetricasCalidadDTO | None
+  no_colocados : int
+  relajadas : Optional[list[str]]
+  total_requeridos : int
+  valido : bool
+}
+class "ResultadoLoteDTO" as models.infraestructura.ResultadoLoteDTO {
+  creados : int
+  omitidos : int
+  reporte
+}
+class "ResumenAsistenciaDTO" as models.asistencia.ResumenAsistenciaDTO {
+  en_riesgo_por_faltas : bool
+  estudiante_id : int
+  excusas : int
+  faltas_injustificadas : int
+  faltas_justificadas : int
+  porcentaje_asistencia : float
+  presentes : int
+  resumen_display : str
+  retrasos : int
+  total_clases : int
+  total_faltas : int
+  no_negativo(v: int) -> int
+}
+class "ResumenUsoDTO" as models.auditoria.ResumenUsoDTO {
+  accesos_denegados : int
+  dias : int
+  logins_hoy : int
+  logins_periodo : int
+  sesiones_periodo : int
+  usuarios_activos : int
+}
+class "ResumenUsuariosDTO" as models.usuario.ResumenUsuariosDTO {
+  activos : int
+  administradores : int
+  directores : int
+  por_rol : Optional[dict[str, int]]
+  total : int
+}
+class "Rol" as models.usuario.Rol {
+  name
+}
+class "Sala" as models.infraestructura.Sala {
+  capacidad : Optional[int]
+  id : int | None
+  institucion_id : int | None
+  nombre : str
+  tipo : str
+  validar_nombre(v: str) -> str
+  validar_tipo(v: str) -> str
+}
+class "TipoAlerta" as models.alerta.TipoAlerta {
+  name
+}
+class "TipoDocumento" as models.estudiante.TipoDocumento {
+  name
+}
+class "TipoDocumentoAcudiente" as models.acudiente.TipoDocumentoAcudiente {
+  name
+}
+class "TipoEventoSesion" as models.auditoria.TipoEventoSesion {
+  name
+}
+class "TipoHabilitacion" as models.habilitacion.TipoHabilitacion {
+  name
+}
+class "TipoHito" as models.periodo.TipoHito {
+  name
+}
+class "TipoMovimiento" as models.estudiante.TipoMovimiento {
+  name
+}
+class "TipoPuntosExtra" as models.evaluacion.TipoPuntosExtra {
+  name
+}
+class "TipoRegistro" as models.convivencia.TipoRegistro {
+  name
+}
+class "Usuario" as models.usuario.Usuario {
+  activo : bool
+  carga_horaria_max : int | None
+  carga_maxima_efectiva : int | None
+  debe_cambiar_password : bool
+  email : str | None
+  es_directivo : bool
+  es_docente : bool
+  esta_activo : bool
+  fecha_creacion : Optional[date]
+  horas_extra : int
+  id : int | None
+  institucion_id : int | None
+  nombre_completo : str
+  nombre_display : str
+  password_temporal : str | None
+  puede_gestionar_evaluaciones : bool
+  rol
+  telefono : str | None
+  ultima_sesion : datetime | None
+  usuario : str
+  desactivar() -> Usuario
+  limpiar_telefono(v: str | None) -> str | None
+  reactivar() -> Usuario
+  registrar_sesion(momento: datetime | None) -> Usuario
+  validar_carga_horaria_max(v: int | None) -> int | None
+  validar_email(v: str | None) -> str | None
+  validar_horas_extra(v: int) -> int
+  validar_nombre(v: str) -> str
+  validar_usuario(v: str) -> str
+}
+class "UsuarioResumenDTO" as models.usuario.UsuarioResumenDTO {
+  activo : bool
+  id : int
+  institucion_id : int | None
+  nombre_completo : str
+  rol
+  usuario : str
+  desde_usuario(u: Usuario) -> UsuarioResumenDTO
+}
+class "VentanaGrupo" as models.infraestructura.VentanaGrupo {
+  franjas_permitidas : list[int]
+  grado : int | None
+  grupo_id : int | None
+  id : int | None
+  validar_exclusividad() -> VentanaGrupo
+}
+class "VincularAcudienteDTO" as models.acudiente.VincularAcudienteDTO {
+  acudiente_id : int
+  es_principal : bool
+  estudiante_id : int
+  to_vinculo() -> EstudianteAcudiente
+  validar_id(v: int) -> int
+}
+models.acudiente.ActualizarAcudienteDTO --|> pydantic.main.BaseModel
+models.acudiente.Acudiente --|> pydantic.main.BaseModel
+models.acudiente.AcudienteResumenDTO --|> pydantic.main.BaseModel
+models.acudiente.EstudianteAcudiente --|> pydantic.main.BaseModel
+models.acudiente.NuevoAcudienteDTO --|> pydantic.main.BaseModel
+models.acudiente.VincularAcudienteDTO --|> pydantic.main.BaseModel
+models.alerta.Alerta --|> pydantic.main.BaseModel
+models.alerta.ConfiguracionAlerta --|> pydantic.main.BaseModel
+models.alerta.CrearAlertaDTO --|> pydantic.main.BaseModel
+models.alerta.FiltroAlertasDTO --|> pydantic.main.BaseModel
+models.alerta.ResolverAlertaDTO --|> pydantic.main.BaseModel
+models.asignacion.Asignacion --|> pydantic.main.BaseModel
+models.asignacion.AsignacionInfo --|> pydantic.main.BaseModel
+models.asignacion.FiltroAsignacionesDTO --|> pydantic.main.BaseModel
+models.asignacion.NuevaAsignacionDTO --|> pydantic.main.BaseModel
+models.asistencia.ControlDiario --|> pydantic.main.BaseModel
+models.asistencia.FiltroAsistenciaDTO --|> pydantic.main.BaseModel
+models.asistencia.RegistrarAsistenciaDTO --|> pydantic.main.BaseModel
+models.asistencia.RegistrarAsistenciaMasivaDTO --|> pydantic.main.BaseModel
+models.asistencia.RegistroAsistenciaItemDTO --|> pydantic.main.BaseModel
+models.asistencia.ResumenAsistenciaDTO --|> pydantic.main.BaseModel
+models.auditoria.CrearEventoSesionDTO --|> pydantic.main.BaseModel
+models.auditoria.CrearRegistroCambioDTO --|> pydantic.main.BaseModel
+models.auditoria.EventoSesion --|> pydantic.main.BaseModel
+models.auditoria.FiltroAuditoriaDTO --|> pydantic.main.BaseModel
+models.auditoria.RegistroCambio --|> pydantic.main.BaseModel
+models.auditoria.ResumenUsoDTO --|> pydantic.main.BaseModel
+models.cierre.CierreAnio --|> pydantic.main.BaseModel
+models.cierre.CierrePeriodo --|> pydantic.main.BaseModel
+models.cierre.CrearCierreAnioDTO --|> pydantic.main.BaseModel
+models.cierre.CrearCierrePeriodoDTO --|> pydantic.main.BaseModel
+models.cierre.DecidirPromocionDTO --|> pydantic.main.BaseModel
+models.cierre.PromocionAnual --|> pydantic.main.BaseModel
+models.configuracion.ActualizarConfiguracionAnioDTO --|> pydantic.main.BaseModel
+models.configuracion.ActualizarInfoInstitucionalDTO --|> pydantic.main.BaseModel
+models.configuracion.ActualizarNivelDesempenoDTO --|> pydantic.main.BaseModel
+models.configuracion.ConfiguracionAnio --|> pydantic.main.BaseModel
+models.configuracion.CriterioPromocion --|> pydantic.main.BaseModel
+models.configuracion.InformacionInstitucionalDTO --|> pydantic.main.BaseModel
+models.configuracion.NivelDesempeno --|> pydantic.main.BaseModel
+models.configuracion.NuevaConfiguracionAnioDTO --|> pydantic.main.BaseModel
+models.configuracion.NuevoNivelDesempenoDTO --|> pydantic.main.BaseModel
+models.convivencia.FiltroConvivenciaDTO --|> pydantic.main.BaseModel
+models.convivencia.NotaComportamiento --|> pydantic.main.BaseModel
+models.convivencia.NuevaNotaComportamientoDTO --|> pydantic.main.BaseModel
+models.convivencia.NuevaObservacionDTO --|> pydantic.main.BaseModel
+models.convivencia.NuevoRegistroComportamientoDTO --|> pydantic.main.BaseModel
+models.convivencia.ObservacionPeriodo --|> pydantic.main.BaseModel
+models.convivencia.RegistroComportamiento --|> pydantic.main.BaseModel
+models.dtos.ContextoAcademicoDTO --|> pydantic.main.BaseModel
+models.dtos.DashboardMetricsDTO --|> pydantic.main.BaseModel
+models.dtos.InformeAsistenciaDTO --|> pydantic.main.BaseModel
+models.dtos.InformeNotasDTO --|> pydantic.main.BaseModel
+models.dtos.MatriculaMasivaDTO --|> pydantic.main.BaseModel
+models.dtos.MatriculaMasivaResultadoDTO --|> pydantic.main.BaseModel
+models.dtos.RespuestaOperacionDTO --|> pydantic.main.BaseModel
+models.estudiante.ActualizarEstudianteDTO --|> pydantic.main.BaseModel
+models.estudiante.Estudiante --|> pydantic.main.BaseModel
+models.estudiante.EstudianteResumenDTO --|> pydantic.main.BaseModel
+models.estudiante.FiltroEstudiantesDTO --|> pydantic.main.BaseModel
+models.estudiante.MovimientoEstudiante --|> pydantic.main.BaseModel
+models.estudiante.MovimientoEstudianteInfoDTO --|> pydantic.main.BaseModel
+models.estudiante.NuevoEstudianteDTO --|> pydantic.main.BaseModel
+models.evaluacion.Actividad --|> pydantic.main.BaseModel
+models.evaluacion.ActualizarActividadDTO --|> pydantic.main.BaseModel
+models.evaluacion.ActualizarCategoriaDTO --|> pydantic.main.BaseModel
+models.evaluacion.Categoria --|> pydantic.main.BaseModel
+models.evaluacion.ConfiguracionSIEE --|> pydantic.main.BaseModel
+models.evaluacion.Nota --|> pydantic.main.BaseModel
+models.evaluacion.NuevaActividadDTO --|> pydantic.main.BaseModel
+models.evaluacion.NuevaCategoriaDTO --|> pydantic.main.BaseModel
+models.evaluacion.NuevaCategoriaInstitucionalDTO --|> pydantic.main.BaseModel
+models.evaluacion.NuevaConfiguracionSIEEDTO --|> pydantic.main.BaseModel
+models.evaluacion.PuntosExtra --|> pydantic.main.BaseModel
+models.evaluacion.RegistrarNotaDTO --|> pydantic.main.BaseModel
+models.evaluacion.RegistrarNotasMasivasDTO --|> pydantic.main.BaseModel
+models.evaluacion.ResultadoEstudianteDTO --|> pydantic.main.BaseModel
+models.habilitacion.CerrarPlanMejoramientoDTO --|> pydantic.main.BaseModel
+models.habilitacion.FiltroHabilitacionesDTO --|> pydantic.main.BaseModel
+models.habilitacion.Habilitacion --|> pydantic.main.BaseModel
+models.habilitacion.NuevaHabilitacionDTO --|> pydantic.main.BaseModel
+models.habilitacion.NuevoPlanMejoramientoDTO --|> pydantic.main.BaseModel
+models.habilitacion.PlanMejoramiento --|> pydantic.main.BaseModel
+models.habilitacion.RegistrarNotaHabilitacionDTO --|> pydantic.main.BaseModel
+models.infraestructura.AreaConocimiento --|> pydantic.main.BaseModel
+models.infraestructura.Asignatura --|> pydantic.main.BaseModel
+models.infraestructura.BloqueAnclado --|> pydantic.main.BaseModel
+models.infraestructura.BloqueGeneradoDTO --|> pydantic.main.BaseModel
+models.infraestructura.ConfigGeneracion --|> pydantic.main.BaseModel
+models.infraestructura.CupoDTO --|> pydantic.main.BaseModel
+models.infraestructura.DisponibilidadDocente --|> pydantic.main.BaseModel
+models.infraestructura.EscenarioHorario --|> pydantic.main.BaseModel
+models.infraestructura.FilaReporteDTO --|> pydantic.main.BaseModel
+models.infraestructura.Franja --|> pydantic.main.BaseModel
+models.infraestructura.FranjaReunion --|> pydantic.main.BaseModel
+models.infraestructura.Grado --|> pydantic.main.BaseModel
+models.infraestructura.Grupo --|> pydantic.main.BaseModel
+models.infraestructura.Horario --|> pydantic.main.BaseModel
+models.infraestructura.HorarioEstadisticasDTO --|> pydantic.main.BaseModel
+models.infraestructura.HorarioInfo --|> pydantic.main.BaseModel
+models.infraestructura.LimitesDocente --|> pydantic.main.BaseModel
+models.infraestructura.Logro --|> pydantic.main.BaseModel
+models.infraestructura.MetricasCalidadDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaAreaDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaAsignaturaDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaConfigGeneracionDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaDisponibilidadDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaFranjaDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaPlantillaFranjaDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevaSalaDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevoEscenarioDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevoGrupoDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevoHorarioDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevoLogroDTO --|> pydantic.main.BaseModel
+models.infraestructura.NuevoPlanEstudiosDTO --|> pydantic.main.BaseModel
+models.infraestructura.PesosGeneracion --|> pydantic.main.BaseModel
+models.infraestructura.PlanEstudios --|> pydantic.main.BaseModel
+models.infraestructura.PlantillaFranja --|> pydantic.main.BaseModel
+models.infraestructura.ReporteLoteDTO --|> pydantic.main.BaseModel
+models.infraestructura.ResultadoGeneracionDTO --|> pydantic.main.BaseModel
+models.infraestructura.ResultadoLoteDTO --|> pydantic.main.BaseModel
+models.infraestructura.Sala --|> pydantic.main.BaseModel
+models.infraestructura.VentanaGrupo --|> pydantic.main.BaseModel
+models.institucion.Institucion --|> pydantic.main.BaseModel
+models.institucion.InstitucionResumenDTO --|> pydantic.main.BaseModel
+models.institucion.NuevaInstitucionDTO --|> pydantic.main.BaseModel
+models.nivelacion.ActividadNivelacion --|> pydantic.main.BaseModel
+models.nivelacion.CalificarNotaNivelacionDTO --|> pydantic.main.BaseModel
+models.nivelacion.CierreNivelacion --|> pydantic.main.BaseModel
+models.nivelacion.NotaNivelacion --|> pydantic.main.BaseModel
+models.nivelacion.NuevaActividadNivelacionDTO --|> pydantic.main.BaseModel
+models.periodo.ActualizarPeriodoDTO --|> pydantic.main.BaseModel
+models.periodo.HitoPeriodo --|> pydantic.main.BaseModel
+models.periodo.NuevoHitoPeriodoDTO --|> pydantic.main.BaseModel
+models.periodo.NuevoPeriodoDTO --|> pydantic.main.BaseModel
+models.periodo.Periodo --|> pydantic.main.BaseModel
+models.piar.ActualizarPIARDTO --|> pydantic.main.BaseModel
+models.piar.NuevoPIARDTO --|> pydantic.main.BaseModel
+models.piar.PIAR --|> pydantic.main.BaseModel
+models.plan_mejoramiento.ActividadPlan --|> pydantic.main.BaseModel
+models.plan_mejoramiento.CalificarNotaPlanDTO --|> pydantic.main.BaseModel
+models.plan_mejoramiento.CerrarPlanEstudianteDTO --|> pydantic.main.BaseModel
+models.plan_mejoramiento.CortePlan --|> pydantic.main.BaseModel
+models.plan_mejoramiento.EjecutarCorteDTO --|> pydantic.main.BaseModel
+models.plan_mejoramiento.NotaActividadPlan --|> pydantic.main.BaseModel
+models.plan_mejoramiento.NotaCortePlan --|> pydantic.main.BaseModel
+models.plan_mejoramiento.NuevaActividadPlanDTO --|> pydantic.main.BaseModel
+models.usuario.ActualizarUsuarioDTO --|> pydantic.main.BaseModel
+models.usuario.AsignacionDocenteInfoDTO --|> pydantic.main.BaseModel
+models.usuario.DocenteInfoDTO --|> pydantic.main.BaseModel
+models.usuario.FiltroUsuariosDTO --|> pydantic.main.BaseModel
+models.usuario.NuevoUsuarioDTO --|> pydantic.main.BaseModel
+models.usuario.ResumenUsuariosDTO --|> pydantic.main.BaseModel
+models.usuario.Usuario --|> pydantic.main.BaseModel
+models.usuario.UsuarioResumenDTO --|> pydantic.main.BaseModel
+models.acudiente.Acudiente --> models.acudiente.Parentesco : parentesco
+models.acudiente.AcudienteResumenDTO --> models.acudiente.Parentesco : parentesco
+models.acudiente.NuevoAcudienteDTO --> models.acudiente.Parentesco : parentesco
+models.acudiente.Acudiente --> models.acudiente.TipoDocumentoAcudiente : tipo_documento
+models.acudiente.NuevoAcudienteDTO --> models.acudiente.TipoDocumentoAcudiente : tipo_documento
+models.alerta.Alerta --> models.alerta.NivelAlerta : nivel
+models.alerta.CrearAlertaDTO --> models.alerta.NivelAlerta : nivel
+models.alerta.Alerta --> models.alerta.TipoAlerta : tipo_alerta
+models.alerta.ConfiguracionAlerta --> models.alerta.TipoAlerta : tipo_alerta
+models.alerta.CrearAlertaDTO --> models.alerta.TipoAlerta : tipo_alerta
+models.asistencia.ControlDiario --> models.asistencia.EstadoAsistencia : estado
+models.asistencia.RegistrarAsistenciaDTO --> models.asistencia.EstadoAsistencia : estado
+models.asistencia.RegistroAsistenciaItemDTO --> models.asistencia.EstadoAsistencia : estado
+models.auditoria.CrearRegistroCambioDTO --> models.auditoria.AccionCambio : accion
+models.auditoria.RegistroCambio --> models.auditoria.AccionCambio : accion
+models.auditoria.CrearEventoSesionDTO --> models.auditoria.TipoEventoSesion : tipo_evento
+models.auditoria.EventoSesion --> models.auditoria.TipoEventoSesion : tipo_evento
+models.cierre.DecidirPromocionDTO --> models.cierre.EstadoPromocion : estado
+models.cierre.PromocionAnual --> models.cierre.EstadoPromocion : estado
+models.convivencia.NuevoRegistroComportamientoDTO --> models.convivencia.TipoRegistro : tipo
+models.convivencia.RegistroComportamiento --> models.convivencia.TipoRegistro : tipo
+models.dtos.InformeAsistenciaDTO --> models.dtos.FormatoInforme : formato
+models.dtos.InformeNotasDTO --> models.dtos.FormatoInforme : formato
+models.estudiante.Estudiante --> models.estudiante.EstadoMatricula : estado_matricula
+models.estudiante.EstudianteResumenDTO --> models.estudiante.EstadoMatricula : estado_matricula
+models.estudiante.Estudiante --> models.estudiante.TipoDocumento : tipo_documento
+models.estudiante.NuevoEstudianteDTO --> models.estudiante.TipoDocumento : tipo_documento
+models.estudiante.MovimientoEstudiante --> models.estudiante.TipoMovimiento : tipo_movimiento
+models.estudiante.MovimientoEstudianteInfoDTO --> models.estudiante.TipoMovimiento : tipo_movimiento
+models.evaluacion.Actividad --> models.evaluacion.EstadoActividad : estado
+models.evaluacion.NuevaActividadDTO --> models.evaluacion.EstadoActividad : estado
+models.evaluacion.ConfiguracionSIEE --> models.evaluacion.ModoSIEE : modo
+models.evaluacion.NuevaConfiguracionSIEEDTO --> models.evaluacion.ModoSIEE : modo
+models.evaluacion.PuntosExtra --> models.evaluacion.TipoPuntosExtra : tipo
+models.habilitacion.Habilitacion --> models.habilitacion.EstadoHabilitacion : estado
+models.habilitacion.CerrarPlanMejoramientoDTO --> models.habilitacion.EstadoPlanMejoramiento : estado
+models.habilitacion.PlanMejoramiento --> models.habilitacion.EstadoPlanMejoramiento : estado
+models.habilitacion.Habilitacion --> models.habilitacion.TipoHabilitacion : tipo
+models.habilitacion.NuevaHabilitacionDTO --> models.habilitacion.TipoHabilitacion : tipo
+models.infraestructura.Horario --> models.infraestructura.DiaSemana : dia_semana
+models.infraestructura.HorarioInfo --> models.infraestructura.DiaSemana : dia_semana
+models.infraestructura.NuevoHorarioDTO --> models.infraestructura.DiaSemana : dia_semana
+models.infraestructura.Grupo --> models.infraestructura.Jornada : jornada
+models.infraestructura.NuevoGrupoDTO --> models.infraestructura.Jornada : jornada
+models.infraestructura.ResultadoLoteDTO --> models.infraestructura.ReporteLoteDTO : reporte
+models.periodo.HitoPeriodo --> models.periodo.TipoHito : tipo
+models.periodo.NuevoHitoPeriodoDTO --> models.periodo.TipoHito : tipo
+models.plan_mejoramiento.NotaCortePlan --> models.plan_mejoramiento.EstadoNotaCorte : estado
+models.usuario.NuevoUsuarioDTO --> models.usuario.Rol : rol
+models.usuario.Usuario --> models.usuario.Rol : rol
+models.usuario.UsuarioResumenDTO --> models.usuario.Rol : rol
+@enduml

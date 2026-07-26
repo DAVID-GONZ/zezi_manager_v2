@@ -6,7 +6,6 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.models.estudiante import (
     EstadoMatricula,
     Estudiante,
@@ -19,6 +18,7 @@ from src.domain.models.estudiante import (
     TipoMovimiento,
 )
 from src.domain.models.piar import PIAR
+from src.domain.ports.estudiante_repo import IEstudianteRepository
 
 
 class SqliteEstudianteRepository(IEstudianteRepository):

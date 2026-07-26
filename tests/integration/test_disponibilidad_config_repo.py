@@ -6,16 +6,15 @@ from __future__ import annotations
 
 import pytest
 
+from src.domain.models.infraestructura import (
+    ConfigGeneracion,
+    DisponibilidadDocente,
+    PesosGeneracion,
+)
 from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
     SqliteInfraestructuraRepository,
 )
 from src.services.infraestructura_service import InfraestructuraService
-from src.domain.models.infraestructura import (
-    DisponibilidadDocente,
-    ConfigGeneracion,
-    PesosGeneracion,
-)
-
 
 # =============================================================================
 # Helpers

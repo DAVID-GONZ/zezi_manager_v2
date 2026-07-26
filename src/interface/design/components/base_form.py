@@ -3,7 +3,7 @@ base_form.py — Formulario base reutilizable del design system Andes Minimal.
 """
 from __future__ import annotations
 
-from typing import Callable, Union
+from collections.abc import Callable
 
 from nicegui import ui
 
@@ -20,7 +20,7 @@ def base_form(
     columnas: int = 1,
 ) -> ui.element:
     
-    _valores: dict[str, Union[ui.input, ui.select, ui.textarea, ui.number, ui.checkbox]] = {}
+    _valores: dict[str, ui.input | ui.select | ui.textarea | ui.number | ui.checkbox] = {}
 
     def _recoger_datos() -> dict:
         return {k: w.value for k, w in _valores.items()}

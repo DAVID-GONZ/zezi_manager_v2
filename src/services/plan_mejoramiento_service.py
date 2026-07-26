@@ -1,23 +1,22 @@
 """Servicio de Plan de Mejoramiento."""
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalculadorPlan,
-    CortePlan,
-    CerrarPlanEstudianteDTO,
     CalificarNotaPlanDTO,
+    CerrarPlanEstudianteDTO,
+    CortePlan,
     EjecutarCorteDTO,
     EstadoNotaCorte,
     NotaActividadPlan,
     NotaCortePlan,
     NuevaActividadPlanDTO,
 )
-from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
+from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class PlanMejoramientoService:

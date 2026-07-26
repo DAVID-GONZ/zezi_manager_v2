@@ -7,7 +7,6 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
-from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.models.alerta import (
     Alerta,
     ConfiguracionAlerta,
@@ -15,6 +14,7 @@ from src.domain.models.alerta import (
     NivelAlerta,
     TipoAlerta,
 )
+from src.domain.ports.alerta_repo import IAlertaRepository
 
 
 class SqliteAlertaRepository(IAlertaRepository):

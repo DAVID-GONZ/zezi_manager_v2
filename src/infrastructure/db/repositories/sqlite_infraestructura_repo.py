@@ -10,7 +10,6 @@ import json
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
@@ -35,6 +34,7 @@ from src.domain.models.infraestructura import (
     Sala,
     VentanaGrupo,
 )
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
 class SqliteInfraestructuraRepository(IInfraestructuraRepository):

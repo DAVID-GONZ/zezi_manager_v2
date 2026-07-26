@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Generator
 
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,

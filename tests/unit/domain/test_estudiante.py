@@ -15,16 +15,15 @@ import pytest
 from pydantic import ValidationError
 
 from src.domain.models.estudiante import (
-    Estudiante,
-    EstadoMatricula,
-    Genero,
-    TipoDocumento,
     ActualizarEstudianteDTO,
+    EstadoMatricula,
+    Estudiante,
     EstudianteResumenDTO,
     FiltroEstudiantesDTO,
+    Genero,
     NuevoEstudianteDTO,
+    TipoDocumento,
 )
-
 
 # =============================================================================
 # Fixtures

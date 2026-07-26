@@ -1,15 +1,14 @@
 """Tests unitarios del dominio de nivelación."""
+
 import pytest
+
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
     CalculadorNivelacion,
-    CierreNivelacion,
+    CalificarNotaNivelacionDTO,
     NotaNivelacion,
     NuevaActividadNivelacionDTO,
-    CalificarNotaNivelacionDTO,
 )
-from datetime import date
-
 
 # ── ActividadNivelacion ───────────────────────────────────────────────────────
 

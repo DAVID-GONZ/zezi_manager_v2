@@ -1,0 +1,41 @@
+@startuml Secuencia_Login
+!theme plain
+title Flujo de Login — ZECI Manager v2.0
+
+actor Usuario
+participant "login.py\n(Interface)" as UI
+participant "BcryptAuthService\n(Infrastructure)" as Auth
+participant "ContextInitializer\n(Infrastructure)" as CI
+participant "SessionContext\n(Interface)" as SC
+database "SQLite" as DB
+
+Usuario -> UI : POST usuario + contraseña
+activate UI
+
+UI -> Auth : verificar_password(usuario, contraseña)
+activate Auth
+Auth -> DB : SELECT hash WHERE usuario=?
+DB --> Auth : hash_bcrypt / hash_sha256
+Auth -> Auth : bcrypt.verify() o sha256 fallback
+Auth --> UI : True / False
+deactivate Auth
+
+alt Autenticación exitosa
+    UI -> CI : inicializar(ctx_base)
+    activate CI
+    CI -> DB : ConfiguracionService.get_activa()
+    CI -> DB : PeriodoService.get_activo(anio_id)
+    CI -> DB : AsignacionRepo.listar_por_docente()
+    CI --> UI : ctx con año+periodo+grupo+asignatura
+    deactivate CI
+
+    UI -> SC : ctx.guardar()
+    SC -> SC : app.storage.user.update(...)
+
+    UI --> Usuario : redirect /inicio
+else Fallo de autenticación
+    UI --> Usuario : notify("Credenciales incorrectas")
+end
+
+deactivate UI
+@enduml

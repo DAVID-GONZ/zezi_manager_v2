@@ -15,7 +15,6 @@ from datetime import time
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
-    DiaSemana,
     Franja,
     HorarioInfo,
     PlantillaFranja,
@@ -23,7 +22,6 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.horario_service import HorarioService
-
 
 # ===========================================================================
 # Fakes

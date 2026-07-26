@@ -8,14 +8,13 @@ from __future__ import annotations
 import pytest
 
 from src.domain.models.infraestructura import (
+    TRANSICIONES_CONFIG,
     ConfigGeneracion,
     DisponibilidadDocente,
     NuevaConfigGeneracionDTO,
     NuevaDisponibilidadDTO,
     PesosGeneracion,
-    TRANSICIONES_CONFIG,
 )
-
 
 # =============================================================================
 # PesosGeneracion

@@ -29,7 +29,6 @@ from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
 from src.services.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
 
-
 # =============================================================================
 # Scope desde el contextvar — listados auto-scopeados
 # =============================================================================

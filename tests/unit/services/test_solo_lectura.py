@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.services import solo_lectura
+from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
 from src.services.solo_lectura import (
     OperacionSoloLecturaError,
     activar_solo_lectura,
@@ -21,9 +21,7 @@ from src.services.solo_lectura import (
     requiere_escritura,
     verificar_escritura,
 )
-from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
 from src.services.usuario_service import UsuarioService
-
 from tests.unit.services.test_usuario_service import FakeUsuarioRepo
 
 
@@ -128,8 +126,11 @@ def test_resumen_por_rol_cuenta_y_activos():
 
 def test_resumen_uso_agrega_logins_y_denegados():
     from datetime import datetime
+
     from src.domain.models.auditoria import (
-        EventoSesion, FiltroAuditoriaDTO, TipoEventoSesion,
+        EventoSesion,
+        FiltroAuditoriaDTO,
+        TipoEventoSesion,
     )
     from src.services.auditoria_service import AuditoriaService
 

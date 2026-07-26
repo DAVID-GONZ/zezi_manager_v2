@@ -7,12 +7,14 @@ Ajustes NiceGUI 3.x:
 """
 from __future__ import annotations
 
-from typing import Callable
-
 from nicegui import ui
 
+from src.interface.design.components.buttons import (
+    btn_danger,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.theme import ThemeManager
-from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 
 def page_header(

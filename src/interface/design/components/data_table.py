@@ -11,7 +11,7 @@ Ajustes NiceGUI 3.x:
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 

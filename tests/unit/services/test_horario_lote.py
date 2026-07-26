@@ -6,7 +6,6 @@ Cubre los 6 casos especificados en paso_14f.
 """
 from __future__ import annotations
 
-import pytest
 from datetime import time
 
 from src.domain.models.asignacion import Asignacion
@@ -19,7 +18,6 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.horario_service import HorarioService
-
 
 # ===========================================================================
 # Constantes
@@ -393,7 +391,6 @@ class TestAplicarLote:
 
 def test_ida_vuelta_exportar_y_reanalizar():
     """filas_exportables → analizar_lote sobre escenario vacío → todo ok."""
-    from src.services.horario_service import COLUMNAS_HORARIO, _dia_str, _hora_str
     asig = _asig(asig_id=1, usuario_id=5, grupo_id=10, asignatura_id=20)
 
     class FakeInfraConBloque:

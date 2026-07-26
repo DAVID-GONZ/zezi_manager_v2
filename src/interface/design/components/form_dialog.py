@@ -3,7 +3,7 @@ form_dialog.py — Modal de formulario CRUD del design system Andes Minimal.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
@@ -13,7 +13,7 @@ from src.interface.design.components.base_form import base_form
 def form_dialog(
     titulo: str,
     campos: list[dict],
-    on_submit: Callable[[dict], "bool | None"],
+    on_submit: Callable[[dict], bool | None],
     texto_submit: str = "Guardar",
     on_cancelar: Callable | None = None,
     max_width: str = "max-w-md",

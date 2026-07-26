@@ -17,15 +17,22 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
-from src.interface.design.components import confirm_dialog, empty_state, form_dialog, toast_error, toast_success, toast_warning
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
-    NuevaActividadNivelacionDTO,
     CalificarNotaNivelacionDTO,
+    NuevaActividadNivelacionDTO,
 )
 
 logger = logging.getLogger("EVALUACION.HABILITACIONES")
@@ -126,7 +133,7 @@ def habilitaciones_page() -> None:
             toast_warning("La nivelación ya está cerrada.")
             return
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             try:
                 # NuevaActividadNivelacionDTO valida nombre (no vacío) y peso (0,1].
                 dto = NuevaActividadNivelacionDTO(
@@ -172,7 +179,7 @@ def habilitaciones_page() -> None:
             toast_warning("La nivelación está cerrada.")
             return
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             try:
                 dto = CalificarNotaNivelacionDTO(
                     valor=float(datos.get("nota") or 0),

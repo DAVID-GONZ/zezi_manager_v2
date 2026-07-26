@@ -20,13 +20,19 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    pipeline_nav,
+    status_badge,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import btn_icon, btn_primary, btn_secondary
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_icon
-from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, pipeline_nav, status_badge,
-    toast_error, toast_success, toast_warning,
-)
 
 logger = logging.getLogger("ADMIN.PLAN_ESTUDIOS")
 
@@ -152,7 +158,7 @@ def plan_estudios_page() -> None:
             toast_error("No se pudo guardar el grado")
 
     def _editar_grado(g) -> None:
-        def _ok(datos: dict) -> "bool | None":
+        def _ok(datos: dict) -> bool | None:
             try:
                 Container.plan_estudios_service().guardar_grado(
                     g.numero, str(datos.get("nombre") or "").strip() or None,

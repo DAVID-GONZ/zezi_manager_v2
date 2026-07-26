@@ -145,9 +145,7 @@ def test_tabla_ruta_rol_permitido_o_denegado():
     for ruta, roles in rutas_registradas().items():
         for rol in ROLES_SISTEMA:
             veredicto = _veredicto_para(ruta, rol, autenticado=True)
-            if roles is PUBLICO or roles is AUTENTICADO:
-                esperado = ACCESO_OK
-            elif rol in {r.value for r in roles}:
+            if roles is PUBLICO or roles is AUTENTICADO or rol in {r.value for r in roles}:
                 esperado = ACCESO_OK
             else:
                 esperado = ACCESO_DENEGADO

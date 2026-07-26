@@ -32,10 +32,8 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
-from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # Enumeraciones
@@ -288,7 +286,7 @@ class Actividad(BaseModel):
     # Transiciones de estado
     # ------------------------------------------------------------------
 
-    def publicar(self) -> "Actividad":
+    def publicar(self) -> Actividad:
         """Borrador → Publicada."""
         if self.estado != EstadoActividad.BORRADOR:
             raise ValueError(
@@ -297,7 +295,7 @@ class Actividad(BaseModel):
             )
         return self.model_copy(update={"estado": EstadoActividad.PUBLICADA})
 
-    def cerrar(self) -> "Actividad":
+    def cerrar(self) -> Actividad:
         """Publicada → Cerrada."""
         if self.estado != EstadoActividad.PUBLICADA:
             raise ValueError(
@@ -306,7 +304,7 @@ class Actividad(BaseModel):
             )
         return self.model_copy(update={"estado": EstadoActividad.CERRADA})
 
-    def reabrir(self) -> "Actividad":
+    def reabrir(self) -> Actividad:
         """Cerrada → Publicada (permite volver a registrar notas)."""
         if self.estado != EstadoActividad.CERRADA:
             raise ValueError(
@@ -428,7 +426,7 @@ class CalculadorNotas:
     """
 
     @staticmethod
-    def _to_nota_map(notas: "list[Nota] | dict[int, float]") -> dict[int, float]:
+    def _to_nota_map(notas: list[Nota] | dict[int, float]) -> dict[int, float]:
         """Normaliza notas a dict {actividad_id: valor}, aceptando ambos formatos."""
         if isinstance(notas, dict):
             return notas
@@ -436,7 +434,7 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_definitiva(
-        notas:       "list[Nota] | dict[int, float]",
+        notas:       list[Nota] | dict[int, float],
         actividades: list[Actividad],
         categorias:  list[Categoria],
     ) -> float:
@@ -486,11 +484,11 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_definitiva_con_corte(
-        notas:                    "list[Nota] | dict[int, float]",
+        notas:                    list[Nota] | dict[int, float],
         actividades:              list[Actividad],
         categorias:               list[Categoria],
         nota_definitiva_plan:     float,
-        categoria_ids_en_corte:   "set[int]",
+        categoria_ids_en_corte:   set[int],
     ) -> float:
         """
         Calcula la nota definitiva cuando hay un Plan de Mejoramiento activo.
@@ -542,7 +540,7 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_promedio_ajustado(
-        notas:       "list[Nota] | dict[int, float]",
+        notas:       list[Nota] | dict[int, float],
         actividades: list[Actividad],
         categorias:  list[Categoria],
         hasta_fecha: date | None = None,
@@ -892,7 +890,7 @@ class RegistrarNotasMasivasDTO(BaseModel):
         """Cantidad de notas incluidas en el registro masivo."""
         return len(self.notas)
 
-    def to_notas(self, usuario_registro_id: int | None = None) -> "list[Nota]":
+    def to_notas(self, usuario_registro_id: int | None = None) -> list[Nota]:
         """Convierte la lista de RegistrarNotaDTO a entidades Nota listas para persistir."""
         uid = usuario_registro_id or self.usuario_registro_id
         return [dto.to_nota(usuario_registro_id=uid) for dto in self.notas]

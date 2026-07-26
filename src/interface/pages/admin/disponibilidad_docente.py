@@ -15,14 +15,14 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.components.buttons import btn_primary, btn_ghost
 from src.interface.design.components import (
     empty_state,
     toast_error,
     toast_success,
     toast_warning,
 )
+from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.layout import app_layout
 
 logger = logging.getLogger("ADMIN.DISPONIBILIDAD_DOCENTE")
 
@@ -160,17 +160,16 @@ def disponibilidad_docente_page() -> None:
         with ui.element("div").classes("overflow-x-auto"):
             with ui.element("table").classes("w-full border-collapse text-sm"):
                 # Header
-                with ui.element("thead"):
-                    with ui.element("tr"):
-                        ui.element("th").classes(
-                            "p-2 text-left border font-semibold bg-surface w-24"
-                        ).text = "Franja"
-                        for dia in dias:
-                            th = ui.element("th").classes(
-                                "p-2 text-center border font-semibold bg-surface w-28"
-                            )
-                            with th:
-                                ui.label(dia[:3])
+                with ui.element("thead"), ui.element("tr"):
+                    ui.element("th").classes(
+                        "p-2 text-left border font-semibold bg-surface w-24"
+                    ).text = "Franja"
+                    for dia in dias:
+                        th = ui.element("th").classes(
+                            "p-2 text-center border font-semibold bg-surface w-28"
+                        )
+                        with th:
+                            ui.label(dia[:3])
                 # Body
                 with ui.element("tbody"):
                     for franja in franjas:

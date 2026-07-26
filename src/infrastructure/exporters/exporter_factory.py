@@ -25,8 +25,9 @@ def crear_exporter() -> IExporterService:
     # Catch Exception (no solo ImportError) porque weasyprint puede fallar con OSError
     # al intentar cargar libgobject/libpango en Windows sin las libs nativas instaladas.
     try:
+        import openpyxl
         import weasyprint  # noqa: F401
-        import openpyxl    # noqa: F401
+
         from .pdf_exporter import WeasyPrintExporter
         _log.info("Exportador activo: WeasyPrintExporter (PDF via weasyprint + Excel + CSV)")
         return WeasyPrintExporter()
@@ -36,8 +37,9 @@ def crear_exporter() -> IExporterService:
     # Nivel 1b: PDF via reportlab + Excel + CSV
     # Fallback cuando weasyprint no puede cargar sus librerías nativas.
     try:
+        import openpyxl
         import reportlab  # noqa: F401
-        import openpyxl   # noqa: F401
+
         from .pdf_exporter import WeasyPrintExporter
         _log.info("Exportador activo: WeasyPrintExporter (PDF via reportlab + Excel + CSV)")
         return WeasyPrintExporter()
@@ -47,6 +49,7 @@ def crear_exporter() -> IExporterService:
     # Nivel 2: Excel + CSV (sin PDF)
     try:
         import openpyxl  # noqa: F401
+
         from .openpyxl_exporter import OpenpyxlExporter
         _log.warning(
             "weasyprint no disponible. PDF no funcionará. "

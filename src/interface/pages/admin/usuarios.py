@@ -23,9 +23,6 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.components import (
     badge_estado_general,
     confirm_dialog,
@@ -36,8 +33,11 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
-from src.services.usuario_service import NuevoUsuarioDTO, FiltroUsuariosDTO
+from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.layout import app_layout
+from src.interface.design.tokens import Icons
 from src.services.institucion_service import NuevaInstitucionDTO
+from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
 
 logger = logging.getLogger("ADMIN.USUARIOS")
 
@@ -130,7 +130,7 @@ def usuarios_page() -> None:
             toast_warning("No tienes permisos para crear usuarios")
             return
 
-        def _crear(datos: dict) -> "bool | None":
+        def _crear(datos: dict) -> bool | None:
             # El RBAC real lo aplica el servicio vía actor_rol. La vista solo
             # construye el DTO y propaga el rol del actor.
             rol_str = datos.get("rol", _rol_crear_default)
@@ -230,7 +230,7 @@ def usuarios_page() -> None:
             toast_warning("No tienes permiso para restablecer la contraseña de este usuario")
             return
 
-        def _aplicar(datos: dict) -> "bool | None":
+        def _aplicar(datos: dict) -> bool | None:
             try:
                 nueva = datos.get("password") or ""
                 svc.resetear_password(
@@ -275,7 +275,7 @@ def usuarios_page() -> None:
             rol_actual if rol_actual in opciones_rol else next(iter(opciones_rol))
         )
 
-        def _aplicar(datos: dict) -> "bool | None":
+        def _aplicar(datos: dict) -> bool | None:
             try:
                 nuevo_rol = datos.get("rol", rol_actual)
                 svc.cambiar_rol(
@@ -427,7 +427,7 @@ def usuarios_page() -> None:
             toast_warning("Solo el administrador puede crear instituciones")
             return
 
-        def _crear(datos: dict) -> "bool | None":
+        def _crear(datos: dict) -> bool | None:
             try:
                 dto = NuevaInstitucionDTO(
                     nombre=datos.get("nombre", ""),

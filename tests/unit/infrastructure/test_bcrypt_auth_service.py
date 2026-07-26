@@ -3,13 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
 from src.domain.ports.usuario_repo import IUsuarioRepository
-from src.domain.models.usuario import (
-    AsignacionDocenteInfoDTO, DocenteInfoDTO,
-    FiltroUsuariosDTO, Rol, Usuario, UsuarioResumenDTO,
-)
-
+from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
 
 # ===========================================================================
 # Fake mínimo de IUsuarioRepository para las pruebas de auth
@@ -85,14 +80,14 @@ class TestVerificarPassword:
 
     def test_verifica_hash_sha256_legacy(self):
         import hashlib
-        digest = hashlib.sha256("seedpass".encode()).hexdigest()
+        digest = hashlib.sha256(b"seedpass").hexdigest()
         legacy = f"sha256:{digest}"
         svc = BcryptAuthService(FakeRepoAuth())
         assert svc.verificar_password("seedpass", legacy) is True
 
     def test_falla_sha256_legacy_con_password_incorrecto(self):
         import hashlib
-        digest = hashlib.sha256("seedpass".encode()).hexdigest()
+        digest = hashlib.sha256(b"seedpass").hexdigest()
         legacy = f"sha256:{digest}"
         svc = BcryptAuthService(FakeRepoAuth())
         assert svc.verificar_password("otra", legacy) is False

@@ -6,9 +6,65 @@ Cada test recibe una BD en memoria nueva con datos de seed_test aplicados.
 """
 from __future__ import annotations
 
-import pytest
-from datetime import date, datetime
+from datetime import date
 
+import pytest
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Importaciones de modelos
+# ─────────────────────────────────────────────────────────────────────────────
+from src.domain.models.acudiente import (
+    Acudiente,
+    EstudianteAcudiente,
+    Parentesco,
+    TipoDocumentoAcudiente,
+)
+from src.domain.models.alerta import (
+    Alerta,
+    NivelAlerta,
+    TipoAlerta,
+)
+from src.domain.models.asistencia import ControlDiario, EstadoAsistencia
+from src.domain.models.auditoria import (
+    AccionCambio,
+    EventoSesion,
+    FiltroAuditoriaDTO,
+    RegistroCambio,
+    TipoEventoSesion,
+)
+from src.domain.models.cierre import (
+    CierreAnio,
+    CierrePeriodo,
+    EstadoPromocion,
+    PromocionAnual,
+)
+from src.domain.models.convivencia import (
+    FiltroConvivenciaDTO,
+    NotaComportamiento,
+    ObservacionPeriodo,
+    RegistroComportamiento,
+    TipoRegistro,
+)
+from src.domain.models.evaluacion import (
+    Categoria,
+    Nota,
+    PuntosExtra,
+    TipoPuntosExtra,
+)
+from src.domain.models.habilitacion import (
+    EstadoHabilitacion,
+    EstadoPlanMejoramiento,
+    Habilitacion,
+    PlanMejoramiento,
+    TipoHabilitacion,
+)
+from src.domain.models.infraestructura import (
+    AreaConocimiento,
+    Grupo,
+    Jornada,
+)
+from src.domain.models.periodo import HitoPeriodo, TipoHito
+from src.domain.models.usuario import FiltroUsuariosDTO, Rol, Usuario
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Importaciones de repositorios
@@ -30,23 +86,6 @@ from src.infrastructure.db.repositories import (
     SqlitePeriodoRepository,
     SqliteUsuarioRepository,
 )
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Importaciones de modelos
-# ─────────────────────────────────────────────────────────────────────────────
-from src.domain.models.acudiente import Acudiente, EstudianteAcudiente, Parentesco, TipoDocumentoAcudiente
-from src.domain.models.alerta import Alerta, ConfiguracionAlerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
-from src.domain.models.asignacion import Asignacion, FiltroAsignacionesDTO
-from src.domain.models.asistencia import ControlDiario, EstadoAsistencia
-from src.domain.models.auditoria import AccionCambio, EventoSesion, FiltroAuditoriaDTO, RegistroCambio, TipoEventoSesion
-from src.domain.models.cierre import CierreAnio, CierrePeriodo, EstadoPromocion, PromocionAnual
-from src.domain.models.convivencia import FiltroConvivenciaDTO, NotaComportamiento, ObservacionPeriodo, RegistroComportamiento, TipoRegistro
-from src.domain.models.evaluacion import Actividad, Categoria, EstadoActividad, Nota, PuntosExtra, TipoPuntosExtra
-from src.domain.models.habilitacion import EstadoHabilitacion, EstadoPlanMejoramiento, FiltroHabilitacionesDTO, Habilitacion, PlanMejoramiento, TipoHabilitacion
-from src.domain.models.infraestructura import AreaConocimiento, Asignatura, Grupo, Jornada
-from src.domain.models.periodo import HitoPeriodo, Periodo, TipoHito
-from src.domain.models.usuario import FiltroUsuariosDTO, Rol, Usuario
-
 
 # =============================================================================
 # SqliteUsuarioRepository

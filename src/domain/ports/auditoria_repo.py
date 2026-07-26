@@ -29,7 +29,6 @@ from ..models.auditoria import (
     EventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
-    TipoEventoSesion,
 )
 
 

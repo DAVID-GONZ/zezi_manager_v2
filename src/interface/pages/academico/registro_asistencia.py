@@ -39,12 +39,16 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.components.context_selector import abrir_selector
+from src.interface.design.components import (
+    date_input,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
 from src.interface.design.theme import ThemeManager
-from src.interface.design.components.buttons import btn_primary, btn_ghost
-from src.interface.design.components import date_input, toast_error, toast_success, toast_warning
+from src.interface.design.tokens import Icons
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 

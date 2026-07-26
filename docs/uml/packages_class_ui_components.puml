@@ -1,0 +1,57 @@
+@startuml packages_class_ui_components
+set namespaceSeparator none
+package "design.components" as design.components {
+}
+package "design.components.base_form" as design.components.base_form {
+}
+package "design.components.buttons" as design.components.buttons {
+}
+package "design.components.confirm_dialog" as design.components.confirm_dialog {
+}
+package "design.components.confirmation_card" as design.components.confirmation_card {
+}
+package "design.components.context_bar" as design.components.context_bar {
+}
+package "design.components.context_selector" as design.components.context_selector {
+}
+package "design.components.data_table" as design.components.data_table {
+}
+package "design.components.date_input" as design.components.date_input {
+}
+package "design.components.empty_state" as design.components.empty_state {
+}
+package "design.components.form_dialog" as design.components.form_dialog {
+}
+package "design.components.page_header" as design.components.page_header {
+}
+package "design.components.performance_indicator" as design.components.performance_indicator {
+}
+package "design.components.pipeline" as design.components.pipeline {
+}
+package "design.components.skeleton_loader" as design.components.skeleton_loader {
+}
+package "design.components.stat_card" as design.components.stat_card {
+}
+package "design.components.status_badge" as design.components.status_badge {
+}
+package "design.components.toast" as design.components.toast {
+}
+design.components --> design.components.base_form
+design.components --> design.components.buttons
+design.components --> design.components.confirm_dialog
+design.components --> design.components.confirmation_card
+design.components --> design.components.context_bar
+design.components --> design.components.context_selector
+design.components --> design.components.data_table
+design.components --> design.components.date_input
+design.components --> design.components.empty_state
+design.components --> design.components.form_dialog
+design.components --> design.components.page_header
+design.components --> design.components.performance_indicator
+design.components --> design.components.pipeline
+design.components --> design.components.skeleton_loader
+design.components --> design.components.stat_card
+design.components --> design.components.status_badge
+design.components --> design.components.toast
+design.components.empty_state --> design.components.buttons
+@enduml

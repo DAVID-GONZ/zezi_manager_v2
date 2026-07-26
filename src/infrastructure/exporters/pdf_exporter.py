@@ -8,7 +8,6 @@ from pathlib import Path
 
 from src.domain.ports.service_ports import IExporterService
 
-
 # ── Fallback: HTML → PDF via reportlab ───────────────────────────────────────
 
 class _HTMLTableParser(HTMLParser):
@@ -57,9 +56,7 @@ class _HTMLTableParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._in_h1:
             self.title += data
-        elif self._in_th:
-            self._cell += data
-        elif self._in_td:
+        elif self._in_th or self._in_td:
             self._cell += data
 
 
@@ -76,11 +73,14 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
     import io
     from datetime import date as _date
 
-    from reportlab.lib import colors                                      # noqa: PLC0415
-    from reportlab.lib.pagesizes import A4, landscape                    # noqa: PLC0415
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # noqa: PLC0415
-    from reportlab.lib.units import cm                                    # noqa: PLC0415
-    from reportlab.platypus import (                                      # noqa: PLC0415
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import (
+        ParagraphStyle,
+        getSampleStyleSheet,
+    )
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
         Paragraph,
         SimpleDocTemplate,
         Spacer,
@@ -247,7 +247,7 @@ class WeasyPrintExporter(IExporterService):
     ) -> bytes:
         # Intento 1: weasyprint
         try:
-            import weasyprint  # noqa: PLC0415
+            import weasyprint
             pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
         except Exception:
             # Intento 2: reportlab (sin dependencias nativas)
@@ -270,7 +270,7 @@ class WeasyPrintExporter(IExporterService):
         nombre_hoja: str = "Datos",
         ruta_destino: Path | None = None,
     ) -> bytes:
-        from .openpyxl_exporter import OpenpyxlExporter  # noqa: PLC0415
+        from .openpyxl_exporter import OpenpyxlExporter
         return OpenpyxlExporter().exportar_excel(datos, nombre_hoja, ruta_destino)
 
     def exportar_csv(
@@ -279,7 +279,7 @@ class WeasyPrintExporter(IExporterService):
         ruta_destino: Path | None = None,
         encoding: str = "utf-8-sig",
     ) -> bytes:
-        from .null_exporter import _csv_bytes  # noqa: PLC0415
+        from .null_exporter import _csv_bytes
         contenido = _csv_bytes(datos, encoding)
         if ruta_destino is not None:
             Path(ruta_destino).write_bytes(contenido)

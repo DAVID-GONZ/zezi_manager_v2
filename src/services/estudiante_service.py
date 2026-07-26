@@ -5,24 +5,23 @@ Orquesta los casos de uso del módulo de Estudiantes y PIARs.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.estudiante_repo import IEstudianteRepository
-from src.domain.ports.acudiente_repo import IAcudienteRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.dtos import MatriculaMasivaResultadoDTO
 from src.domain.models.estudiante import (
-    Estudiante,
-    EstadoMatricula,
-    NuevoEstudianteDTO,
     ActualizarEstudianteDTO,
-    FiltroEstudiantesDTO,
+    EstadoMatricula,
+    Estudiante,
     EstudianteResumenDTO,
+    FiltroEstudiantesDTO,
     MovimientoEstudianteInfoDTO,
+    NuevoEstudianteDTO,
     TipoMovimiento,
 )
-from src.domain.models.piar import PIAR, NuevoPIARDTO, ActualizarPIARDTO
-from src.domain.models.dtos import MatriculaMasivaResultadoDTO
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.piar import PIAR, ActualizarPIARDTO, NuevoPIARDTO
+from src.domain.ports.acudiente_repo import IAcudienteRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.estudiante_repo import IEstudianteRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class EstudianteService:

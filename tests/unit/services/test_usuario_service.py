@@ -4,13 +4,16 @@ from __future__ import annotations
 import pytest
 
 from src.domain.models.usuario import (
-    DocenteInfoDTO, FiltroUsuariosDTO, NuevoUsuarioDTO,
-    ActualizarUsuarioDTO, Rol, Usuario, UsuarioResumenDTO,
+    DocenteInfoDTO,
+    FiltroUsuariosDTO,
+    NuevoUsuarioDTO,
+    Rol,
+    Usuario,
+    UsuarioResumenDTO,
 )
-from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.domain.ports.service_ports import IAuthenticationService
+from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.usuario_service import UsuarioService
-
 
 # ===========================================================================
 # Fakes

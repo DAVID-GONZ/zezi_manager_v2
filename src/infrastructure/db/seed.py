@@ -30,9 +30,9 @@ import hashlib
 import logging
 import random
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import Callable
 
 from src.domain.scheduling import colorear_aristas_bipartito
 
@@ -50,7 +50,7 @@ def _default_hasher(password: str) -> str:
     El prefijo 'sha256:' permite que el servicio de auth detecte el algoritmo.
     """
     try:
-        import bcrypt  # noqa: PLC0415
+        import bcrypt
         return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
     except ImportError:
         digest = hashlib.sha256(password.encode()).hexdigest()
@@ -1909,12 +1909,12 @@ def seed_test(
 
 
 __all__ = [
+    "SeedResult",
+    "_default_hasher",
+    "_fast_hasher",
+    "_seed_config_generacion",
     "seed_base",
     "seed_dev",
-    "seed_test",
     "seed_siee",
-    "SeedResult",
-    "_fast_hasher",
-    "_default_hasher",
-    "_seed_config_generacion",
+    "seed_test",
 ]

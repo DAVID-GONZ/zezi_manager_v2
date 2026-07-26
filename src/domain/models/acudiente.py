@@ -29,8 +29,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, field_validator
 
 # =============================================================================
 # Enumeraciones
@@ -171,7 +170,7 @@ class Acudiente(BaseModel):
     # Transiciones de estado
     # ------------------------------------------------------------------
 
-    def desactivar(self) -> "Acudiente":
+    def desactivar(self) -> Acudiente:
         """Retorna una copia con activo=False (soft delete); falla si ya está inactivo."""
         if not self.activo:
             raise ValueError(
@@ -179,7 +178,7 @@ class Acudiente(BaseModel):
             )
         return self.model_copy(update={"activo": False})
 
-    def reactivar(self) -> "Acudiente":
+    def reactivar(self) -> Acudiente:
         """Retorna una copia con activo=True; falla si ya está activo."""
         if self.activo:
             raise ValueError(
@@ -315,7 +314,7 @@ class AcudienteResumenDTO(BaseModel):
         cls,
         acudiente: Acudiente,
         es_principal: bool = False,
-    ) -> "AcudienteResumenDTO":
+    ) -> AcudienteResumenDTO:
         """Construye el resumen desde un Acudiente persistido, marcando si es el principal."""
         if acudiente.id is None:
             raise ValueError("El acudiente no tiene id asignado.")
@@ -334,12 +333,12 @@ class AcudienteResumenDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "TipoDocumentoAcudiente",
-    "Parentesco",
+    "ActualizarAcudienteDTO",
     "Acudiente",
+    "AcudienteResumenDTO",
     "EstudianteAcudiente",
     "NuevoAcudienteDTO",
-    "ActualizarAcudienteDTO",
+    "Parentesco",
+    "TipoDocumentoAcudiente",
     "VincularAcudienteDTO",
-    "AcudienteResumenDTO",
 ]

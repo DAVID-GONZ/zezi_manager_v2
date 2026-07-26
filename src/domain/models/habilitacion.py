@@ -48,7 +48,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -229,7 +228,7 @@ class Habilitacion(BaseModel):
         fecha: date | None = None,
         usuario_id: int | None = None,
         observacion: str | None = None,
-    ) -> "Habilitacion":
+    ) -> Habilitacion:
         """
         Registra la nota obtenida. PENDIENTE → REALIZADA.
 
@@ -255,7 +254,7 @@ class Habilitacion(BaseModel):
             "observacion":         observacion.strip() if observacion else self.observacion,
         })
 
-    def aprobar(self) -> "Habilitacion":
+    def aprobar(self) -> Habilitacion:
         """
         Marca la habilitación como aprobada. REALIZADA → APROBADA.
         La decisión de si la nota es aprobatoria es del servicio.
@@ -263,7 +262,7 @@ class Habilitacion(BaseModel):
         self._validar_transicion(EstadoHabilitacion.APROBADA)
         return self.model_copy(update={"estado": EstadoHabilitacion.APROBADA})
 
-    def reprobar(self) -> "Habilitacion":
+    def reprobar(self) -> Habilitacion:
         """Marca la habilitación como reprobada. REALIZADA → REPROBADA."""
         self._validar_transicion(EstadoHabilitacion.REPROBADA)
         return self.model_copy(update={"estado": EstadoHabilitacion.REPROBADA})
@@ -411,7 +410,7 @@ class PlanMejoramiento(BaseModel):
     # Métodos de dominio
     # ------------------------------------------------------------------
 
-    def programar_seguimiento(self, fecha: date) -> "PlanMejoramiento":
+    def programar_seguimiento(self, fecha: date) -> PlanMejoramiento:
         """Retorna una copia con la fecha de seguimiento establecida."""
         if self.esta_cerrado:
             raise ValueError("No se puede modificar un plan cerrado.")
@@ -427,7 +426,7 @@ class PlanMejoramiento(BaseModel):
         estado: EstadoPlanMejoramiento,
         observacion: str,
         fecha: date | None = None,
-    ) -> "PlanMejoramiento":
+    ) -> PlanMejoramiento:
         """
         Cierra el plan con el estado y observación indicados.
 

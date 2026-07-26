@@ -322,10 +322,10 @@ class Layout:
 # <<< AUTOGEN END
 
 __all__ = [
-    "Colors",
     "AsistenciaColors",
+    "Colors",
     "DesempenoColors",
     "Icons",
-    "Spacing",
     "Layout",
+    "Spacing",
 ]

@@ -1,7 +1,7 @@
 """Tests de plantilla_filas y filas_exportables."""
-import pytest
 from unittest.mock import MagicMock
-from src.services.horario_service import HorarioService, COLUMNAS_HORARIO
+
+from src.services.horario_service import COLUMNAS_HORARIO, HorarioService
 
 
 class FakeAsigInfo:

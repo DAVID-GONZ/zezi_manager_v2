@@ -21,10 +21,6 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_icon, btn_secondary
 from src.interface.design.components import (
     data_table,
     date_range_input,
@@ -33,6 +29,9 @@ from src.interface.design.components import (
     toast_error,
     toast_success,
 )
+from src.interface.design.components.buttons import btn_icon, btn_secondary
+from src.interface.design.layout import app_layout
+from src.interface.design.theme import ThemeManager
 from src.services.auditoria_service import (
     AccionCambio,
     FiltroAuditoriaDTO,
@@ -94,7 +93,7 @@ def auditoria_page() -> None:
     }
 
     # ── Helpers de filtro ──────────────────────────────────────────────────────
-    def _parsear_fecha(valor: str | None, fin_de_dia: bool = False) -> "datetime | None":
+    def _parsear_fecha(valor: str | None, fin_de_dia: bool = False) -> datetime | None:
         if not valor:
             return None
         try:
@@ -243,7 +242,7 @@ def auditoria_page() -> None:
         data_table(columnas, filas, titulo="Sesiones (auditoría)", filas_por_pagina=15)
 
     # ── Filtros comunes (rango de fechas + usuario) ─────────────────────────────
-    def _on_rango_cambio(desde: "str | None", hasta: "str | None") -> None:
+    def _on_rango_cambio(desde: str | None, hasta: str | None) -> None:
         _s["desde"] = desde
         _s["hasta"] = hasta
         _on_filtros_cambio()
@@ -267,7 +266,7 @@ def auditoria_page() -> None:
             ).props("dense outlined").classes("w-32")
             btn_icon("refresh", on_click=_on_filtros_cambio, tooltip="Recargar")
 
-    def _a_int(valor) -> "int | None":
+    def _a_int(valor) -> int | None:
         try:
             v = str(valor).strip()
             return int(v) if v else None

@@ -6,12 +6,16 @@ sin interrumpir con un overlay. Útil para acciones en listas o formularios.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
+from src.interface.design.components.buttons import (
+    btn_danger,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.theme import ThemeManager
-from src.interface.design.components.buttons import btn_primary, btn_secondary, btn_danger
 
 
 def confirmation_card(
@@ -59,27 +63,26 @@ def confirmation_card(
     )
 
     card = ui.card().classes(f"andes-card confirmation-card-{variante}")
-    with card:
-        with ui.row().classes("w-full items-start gap-3"):
-            ThemeManager.icono(icono_nombre, size=24, color=icono_color)
+    with card, ui.row().classes("w-full items-start gap-3"):
+        ThemeManager.icono(icono_nombre, size=24, color=icono_color)
 
-            with ui.column().classes("confirm-card-inner gap-2"):
-                ui.label(titulo).classes("font-h3 confirm-card-title")
-                ui.label(mensaje).classes("confirm-card-body")
+        with ui.column().classes("confirm-card-inner gap-2"):
+            ui.label(titulo).classes("font-h3 confirm-card-title")
+            ui.label(mensaje).classes("confirm-card-body")
 
-                with ui.row().classes("confirm-card-actions items-center gap-2"):
-                    def _cancelar():
-                        if on_cancelar:
-                            on_cancelar()
-                        else:
-                            card.set_visibility(False)
-
-                    btn_secondary(texto_cancelar, on_click=_cancelar)
-
-                    if variante == "danger":
-                        btn_danger(texto_confirmar, on_click=on_confirm)
+            with ui.row().classes("confirm-card-actions items-center gap-2"):
+                def _cancelar():
+                    if on_cancelar:
+                        on_cancelar()
                     else:
-                        btn_primary(texto_confirmar, on_click=on_confirm)
+                        card.set_visibility(False)
+
+                btn_secondary(texto_cancelar, on_click=_cancelar)
+
+                if variante == "danger":
+                    btn_danger(texto_confirmar, on_click=on_confirm)
+                else:
+                    btn_primary(texto_confirmar, on_click=on_confirm)
 
     return card
 

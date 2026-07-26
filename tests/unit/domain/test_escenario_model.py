@@ -6,19 +6,19 @@ Ejecutar:
     pytest tests/unit/domain/test_escenario_model.py -v
 """
 
+from datetime import time
+
 import pytest
 from pydantic import ValidationError
 
 from src.domain.models.infraestructura import (
-    EscenarioHorario,
-    NuevoEscenarioDTO,
-    Horario,
-    NuevoHorarioDTO,
     DiaSemana,
+    EscenarioHorario,
+    Horario,
+    NuevoEscenarioDTO,
+    NuevoHorarioDTO,
 )
-from src.domain.models.usuario import Usuario, Rol
-from datetime import time
-
+from src.domain.models.usuario import Rol, Usuario
 
 # =============================================================================
 # EscenarioHorario

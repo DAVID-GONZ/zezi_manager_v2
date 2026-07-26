@@ -20,7 +20,6 @@ from src.services.generador_horario_service import (
 )
 from src.services.infraestructura_service import InfraestructuraService
 
-
 PLANTILLA_ID = 7
 
 

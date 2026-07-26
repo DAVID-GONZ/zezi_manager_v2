@@ -17,14 +17,19 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    pipeline_nav,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_icon
-from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, pipeline_nav,
-    toast_error, toast_success, toast_warning,
-)
 from src.services.catalogo_academico_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -139,7 +144,7 @@ def asignaturas_page() -> None:
         )
 
     def _editar_area(area: AreaConocimiento) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             # AreaConocimiento valida nombre y normaliza el código.
             try:
                 area_act = AreaConocimiento(
@@ -222,7 +227,7 @@ def asignaturas_page() -> None:
     def _editar_asignatura(asig: Asignatura) -> None:
         areas_dict = {a.id: a.nombre for a in _s["areas"]}
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             try:
                 # Reconstruir vía constructor para re-validar (model_copy no dispara
                 # validadores); conserva horas/tipo_sala/bloque_doble del registro.

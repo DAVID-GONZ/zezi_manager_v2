@@ -3,16 +3,15 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
 from src.domain.models.asistencia import (
-    ControlDiario, EstadoAsistencia,
-    RegistrarAsistenciaDTO, RegistrarAsistenciaMasivaDTO,
+    ControlDiario,
+    EstadoAsistencia,
+    RegistrarAsistenciaDTO,
+    RegistrarAsistenciaMasivaDTO,
     ResumenAsistenciaDTO,
 )
 from src.domain.ports.asistencia_repo import IAsistenciaRepository
 from src.services.asistencia_service import AsistenciaService
-
 
 # ===========================================================================
 # Fake

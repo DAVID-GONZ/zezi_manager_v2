@@ -6,13 +6,13 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.acudiente_repo import IAcudienteRepository
 from src.domain.models.acudiente import (
     Acudiente,
     EstudianteAcudiente,
     Parentesco,
     TipoDocumentoAcudiente,
 )
+from src.domain.ports.acudiente_repo import IAcudienteRepository
 
 
 class SqliteAcudienteRepository(IAcudienteRepository):

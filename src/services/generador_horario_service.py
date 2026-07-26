@@ -62,8 +62,12 @@ class _Leccion:
     """Una unidad de bloque a colocar de una asignación (una hora o macro-bloque)."""
 
     __slots__ = (
-        "asignacion_id", "grupo_id", "usuario_id", "etiqueta",
-        "tipo_sala_req", "n_horas",
+        "asignacion_id",
+        "etiqueta",
+        "grupo_id",
+        "n_horas",
+        "tipo_sala_req",
+        "usuario_id",
     )
 
     def __init__(
@@ -1031,7 +1035,7 @@ class GeneradorHorarioService:
 
 
 __all__ = [
-    "GeneradorHorarioService",
-    "PESOS_PRINCIPALES",
     "PESOS_AVANZADOS",
+    "PESOS_PRINCIPALES",
+    "GeneradorHorarioService",
 ]

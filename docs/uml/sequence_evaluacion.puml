@@ -1,0 +1,50 @@
+@startuml Secuencia_RegistroNota
+!theme plain
+title Registro de Nota — Flujo Clean Architecture
+
+actor Profesor
+participant "planilla_notas.py\n(Interface)" as UI
+participant "EvaluacionService\n(Services)" as Svc
+participant "CalculadorNotas\n(Domain)" as Calc
+participant "IEvaluacionRepo\n(Port)" as Port
+participant "SqliteEvalRepo\n(Infrastructure)" as Repo
+database "SQLite" as DB
+
+Profesor -> UI : ingresa nota (actividad_id, est_id, valor)
+UI -> UI : validar ctx.asignacion_id
+UI -> Svc : registrar_nota(dto, ctx)
+activate Svc
+
+Svc -> Svc : validar valor (0-100)
+Svc -> Port : get_actividad(actividad_id)
+Port -> Repo : SELECT actividades WHERE id=?
+Repo -> DB
+DB --> Repo : actividad
+Repo --> Port
+Port --> Svc : Actividad
+
+Svc -> Port : upsert_nota(RegistrarNotaDTO)
+Port -> Repo
+Repo -> DB : INSERT OR REPLACE notas ...
+DB --> Repo : OK
+
+note right of Svc
+  El servicio NO calcula el promedio.
+  CalculadorNotas solo se invoca
+  cuando la UI necesita mostrar
+  el promedio ajustado.
+end note
+
+Svc -> Svc : _auditar(evento, ctx)
+Svc --> UI : Nota (con id)
+deactivate Svc
+
+UI -> Calc : calcular_promedio_ajustado(notas, actividades, categorias)
+activate Calc
+Calc -> Calc : renormalizar pesos
+Calc --> UI : float (promedio ponderado)
+deactivate Calc
+
+UI --> Profesor : mostrar promedio actualizado
+
+@enduml

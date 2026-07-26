@@ -8,15 +8,10 @@ from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalculadorPlan,
     CalificarNotaPlanDTO,
-    CerrarPlanEstudianteDTO,
-    CortePlan,
-    EjecutarCorteDTO,
     EstadoNotaCorte,
     NotaActividadPlan,
-    NotaCortePlan,
     NuevaActividadPlanDTO,
 )
-
 
 # ===========================================================================
 # Helpers
@@ -222,7 +217,11 @@ class TestCalculadorNotasConCorte:
         assert resultado == pytest.approx(30.0)
 
     def test_suma_correctamente_post_corte(self):
-        from src.domain.models.evaluacion import CalculadorNotas, Categoria, Actividad, Nota
+        from src.domain.models.evaluacion import (
+            Actividad,
+            CalculadorNotas,
+            Categoria,
+        )
         cat1 = Categoria(id=1, nombre="C1", peso=0.4, asignacion_id=1, periodo_id=1)
         cat2 = Categoria(id=2, nombre="C2", peso=0.6, asignacion_id=1, periodo_id=1)
         act1 = Actividad(id=10, nombre="A1", categoria_id=1)

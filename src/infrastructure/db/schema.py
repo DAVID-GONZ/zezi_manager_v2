@@ -18,7 +18,6 @@ Módulos:
   11. Auditoría
 """
 
-import os
 import logging
 from pathlib import Path
 
@@ -1631,7 +1630,7 @@ def init_db(db_path: Path | None = None) -> bool:
 
 def get_db_stats() -> dict:
     """Retorna conteo de filas por tabla y tamaño de la BD."""
-    from .connection import get_connection, DB_PATH
+    from .connection import DB_PATH, get_connection
 
     try:
         with get_connection() as conn:
@@ -1653,4 +1652,4 @@ def get_db_stats() -> dict:
         return {}
 
 
-__all__ = ["init_db", "get_db_stats", "SCHEMA", "INDICES", "TRIGGERS"]
+__all__ = ["INDICES", "SCHEMA", "TRIGGERS", "get_db_stats", "init_db"]

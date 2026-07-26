@@ -7,7 +7,6 @@ Horario y Logro sin revelar el repositorio directamente.
 """
 from __future__ import annotations
 
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
@@ -24,6 +23,7 @@ from src.domain.models.infraestructura import (
     Sala,
     VentanaGrupo,
 )
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
 class InfraestructuraService:

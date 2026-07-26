@@ -12,7 +12,8 @@ Por qué color=None es obligatorio:
 """
 from __future__ import annotations
 
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 from nicegui import ui
 
@@ -110,4 +111,4 @@ def btn_icon(
     return btn
 
 
-__all__ = ["btn_primary", "btn_secondary", "btn_danger", "btn_ghost", "btn_icon"]
+__all__ = ["btn_danger", "btn_ghost", "btn_icon", "btn_primary", "btn_secondary"]

@@ -1,7 +1,8 @@
 """Tests para _html_to_pdf_reportlab v2 — membrete y columnas proporcionales."""
-import pytest
-from src.infrastructure.exporters.pdf_exporter import _html_to_pdf_reportlab, _HTMLTableParser
-
+from src.infrastructure.exporters.pdf_exporter import (
+    _html_to_pdf_reportlab,
+    _HTMLTableParser,
+)
 
 HTML_SIMPLE = """<html><head><meta charset='utf-8'>
 <meta name="report-grupo" content="Grado 601">

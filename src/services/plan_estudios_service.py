@@ -7,14 +7,13 @@ que usan los validadores de PreparacionHorarioService.
 
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from src.domain.models.infraestructura import (
     Grado,
     NuevoPlanEstudiosDTO,
     PlanEstudios,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class PlanEstudiosService:

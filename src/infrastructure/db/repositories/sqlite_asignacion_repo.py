@@ -6,12 +6,12 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.models.asignacion import (
     Asignacion,
     AsignacionInfo,
     FiltroAsignacionesDTO,
 )
+from src.domain.ports.asignacion_repo import IAsignacionRepository
 
 
 class SqliteAsignacionRepository(IAsignacionRepository):

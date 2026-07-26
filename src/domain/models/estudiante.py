@@ -31,7 +31,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -274,7 +273,7 @@ class Estudiante(BaseModel):
     # Método de transición de estado
     # ------------------------------------------------------------------
 
-    def retirar(self, motivo: str | None = None) -> "Estudiante":
+    def retirar(self, motivo: str | None = None) -> Estudiante:
         """
         Retorna una nueva instancia con estado RETIRADO.
         No modifica el objeto actual (inmutabilidad funcional).
@@ -289,7 +288,7 @@ class Estudiante(BaseModel):
             update={"estado_matricula": EstadoMatricula.RETIRADO}
         )
 
-    def reactivar(self) -> "Estudiante":
+    def reactivar(self) -> Estudiante:
         """Retorna una nueva instancia con estado ACTIVO."""
         if self.estado_matricula != EstadoMatricula.RETIRADO:
             raise ValueError(
@@ -300,7 +299,7 @@ class Estudiante(BaseModel):
             update={"estado_matricula": EstadoMatricula.ACTIVO}
         )
 
-    def asignar_grupo(self, grupo_id: int) -> "Estudiante":
+    def asignar_grupo(self, grupo_id: int) -> Estudiante:
         """Retorna una nueva instancia con el grupo actualizado."""
         if grupo_id <= 0:
             raise ValueError("grupo_id debe ser un entero positivo.")
@@ -346,7 +345,7 @@ class NuevoEstudianteDTO(BaseModel):
         if not v:
             raise ValueError("El valor no puede estar vacío.")
         if len(v) > 100:
-            raise ValueError(f"No puede exceder 100 caracteres.")
+            raise ValueError("No puede exceder 100 caracteres.")
         return v.title()
 
     def to_estudiante(self) -> Estudiante:
@@ -442,7 +441,7 @@ class EstudianteResumenDTO(BaseModel):
     posee_piar:       bool
 
     @classmethod
-    def desde_estudiante(cls, est: Estudiante) -> "EstudianteResumenDTO":
+    def desde_estudiante(cls, est: Estudiante) -> EstudianteResumenDTO:
         """Construye el resumen desde un Estudiante persistido; exige que tenga id."""
         if est.id is None:
             raise ValueError("No se puede crear un resumen de un estudiante sin id.")

@@ -6,15 +6,19 @@ from datetime import date
 import pytest
 
 from src.domain.models.habilitacion import (
-    EstadoHabilitacion, EstadoPlanMejoramiento,
-    FiltroHabilitacionesDTO, Habilitacion,
-    NuevaHabilitacionDTO, NuevoPlanMejoramientoDTO,
-    CerrarPlanMejoramientoDTO, PlanMejoramiento,
-    TipoHabilitacion, RegistrarNotaHabilitacionDTO,
+    CerrarPlanMejoramientoDTO,
+    EstadoHabilitacion,
+    EstadoPlanMejoramiento,
+    FiltroHabilitacionesDTO,
+    Habilitacion,
+    NuevaHabilitacionDTO,
+    NuevoPlanMejoramientoDTO,
+    PlanMejoramiento,
+    RegistrarNotaHabilitacionDTO,
+    TipoHabilitacion,
 )
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
 from src.services.habilitacion_service import HabilitacionService
-
 
 # ===========================================================================
 # Fake

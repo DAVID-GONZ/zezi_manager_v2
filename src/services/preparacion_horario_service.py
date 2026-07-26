@@ -46,7 +46,7 @@ class PreparacionHorarioService:
         config_repo:      IConfiguracionRepository,
         periodo_repo:     IPeriodoRepository,
         usuario_repo:     IUsuarioRepository,
-        plan_svc:         "PlanEstudiosService",
+        plan_svc:         PlanEstudiosService,
     ) -> None:
         """Inyecta los repos de infraestructura, asignación, configuración,
         periodo y usuario, más el servicio de plan de estudios."""
@@ -430,4 +430,4 @@ class PreparacionHorarioService:
         )
 
 
-__all__ = ["PuertaDTO", "ReportePreparacionDTO", "PreparacionHorarioService"]
+__all__ = ["PreparacionHorarioService", "PuertaDTO", "ReportePreparacionDTO"]

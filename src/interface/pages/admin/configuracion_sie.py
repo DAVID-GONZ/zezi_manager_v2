@@ -21,20 +21,33 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    badge_estado_general,
+    confirm_dialog,
+    form_dialog,
+    status_badge,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_ghost,
+    btn_icon,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_ghost, btn_icon,
-)
-from src.interface.design.components import badge_estado_general, confirm_dialog, form_dialog, status_badge, toast_error, toast_success, toast_warning
 from src.services.configuracion_service import (
-    NuevaConfiguracionAnioDTO, ActualizarConfiguracionAnioDTO,
-    NivelDesempeno, CriterioPromocion, NuevoNivelDesempenoDTO,
+    ActualizarConfiguracionAnioDTO,
+    CriterioPromocion,
+    NivelDesempeno,
+    NuevaConfiguracionAnioDTO,
+    NuevoNivelDesempenoDTO,
 )
 from src.services.evaluacion_service import (
-    NuevaCategoriaInstitucionalDTO,
     ActualizarCategoriaDTO,
+    NuevaCategoriaInstitucionalDTO,
     NuevaConfiguracionSIEEDTO,
 )
 

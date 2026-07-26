@@ -26,13 +26,13 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons, DesempenoColors, AsistenciaColors
-from src.interface.design.components.buttons import btn_primary, btn_secondary
-from src.services.asignacion_service import FiltroAsignacionesDTO
-from src.interface.design.components.stat_card import stat_card
-from src.services.informe_service import FormatoInforme
 from src.interface.design.components import skeleton_table, toast_error, toast_warning
+from src.interface.design.components.buttons import btn_primary, btn_secondary
+from src.interface.design.components.stat_card import stat_card
+from src.interface.design.layout import app_layout
+from src.interface.design.tokens import AsistenciaColors, DesempenoColors, Icons
+from src.services.asignacion_service import FiltroAsignacionesDTO
+from src.services.informe_service import FormatoInforme
 
 logger = logging.getLogger("ESTADISTICOS")
 

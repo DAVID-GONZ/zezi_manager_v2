@@ -2,20 +2,19 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from src.domain.models.dtos import (
-    FormatoInforme, InformeAsistenciaDTO, InformeNotasDTO,
+    DashboardMetricsDTO,
+    FormatoInforme,
+    InformeAsistenciaDTO,
+    InformeNotasDTO,
 )
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.service_ports import IExporterService
-from src.domain.models.configuracion import NivelDesempeno
-from src.domain.models.dtos import DashboardMetricsDTO
 from src.services.informe_service import InformeService
-
 
 # ===========================================================================
 # Fakes
@@ -199,7 +198,9 @@ class TestExportarEstadistico:
 class _RealXlsxExporter(FakeExporter):
     """Exporter que devuelve un .xlsx válido (para que merge_excels funcione)."""
     def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None) -> bytes:
-        import io, openpyxl
+        import io
+
+        import openpyxl
         wb = openpyxl.Workbook()
         wb.active.append(["col"])
         buf = io.BytesIO()
@@ -214,7 +215,9 @@ class TestGenerarBoletinesGrupo:
         r = svc.generar_boletines_grupo(grupo_id=10, periodo_id=5, formato="excel")
         assert r.contenido is not None
         assert r.errores == []
-        import io, openpyxl
+        import io
+
+        import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(r.contenido))
         assert len(wb.sheetnames) == 2
 

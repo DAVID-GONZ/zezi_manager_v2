@@ -99,10 +99,10 @@ def reset_throttle() -> None:
 
 
 __all__ = [
-    "MAX_INTENTOS",
     "BLOQUEO_SEGUNDOS",
-    "registrar_fallo",
-    "registrar_exito",
+    "MAX_INTENTOS",
     "estado_bloqueo",
+    "registrar_exito",
+    "registrar_fallo",
     "reset_throttle",
 ]

@@ -23,15 +23,21 @@ import sqlite3
 
 import pytest
 
-from src.infrastructure.db.schema import SCHEMA, INDICES, TRIGGERS
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import SqliteInfraestructuraRepository
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import SqliteAsignacionRepository
-from src.infrastructure.db.repositories.sqlite_usuario_repo import SqliteUsuarioRepository
-from src.services.infraestructura_service import InfraestructuraService
-from src.services.usuario_service import UsuarioService
-from src.services.plan_estudios_service import PlanEstudiosService
-from src.services.horario_service import HorarioService
+from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
+    SqliteAsignacionRepository,
+)
+from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
+    SqliteInfraestructuraRepository,
+)
+from src.infrastructure.db.repositories.sqlite_usuario_repo import (
+    SqliteUsuarioRepository,
+)
+from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
 from src.services.generador_horario_service import GeneradorHorarioService
+from src.services.horario_service import HorarioService
+from src.services.infraestructura_service import InfraestructuraService
+from src.services.plan_estudios_service import PlanEstudiosService
+from src.services.usuario_service import UsuarioService
 
 _DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 

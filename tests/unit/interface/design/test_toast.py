@@ -11,10 +11,10 @@ def test_toast_importa():
 
 def test_toast_atajos_importan():
     from src.interface.design.components import (
+        toast_error,
         toast_info,
         toast_success,
         toast_warning,
-        toast_error,
     )
     for fn in (toast_info, toast_success, toast_warning, toast_error):
         assert callable(fn)
@@ -22,8 +22,9 @@ def test_toast_atajos_importan():
 
 def test_toast_success_usa_tipo_positive(monkeypatch):
     """toast_success mapea a type='positive' de Quasar."""
-    from src.interface.design.components.toast import toast_success
     from nicegui import ui
+
+    from src.interface.design.components.toast import toast_success
 
     capturado: dict = {}
 
@@ -41,8 +42,9 @@ def test_toast_success_usa_tipo_positive(monkeypatch):
 
 def test_toast_error_usa_tipo_negative(monkeypatch):
     """toast_error mapea a type='negative' de Quasar."""
-    from src.interface.design.components.toast import toast_error
     from nicegui import ui
+
+    from src.interface.design.components.toast import toast_error
 
     capturado: dict = {}
 
@@ -58,8 +60,9 @@ def test_toast_error_usa_tipo_negative(monkeypatch):
 
 def test_toast_warning_usa_tipo_warning(monkeypatch):
     """toast_warning mapea a type='warning' de Quasar."""
-    from src.interface.design.components.toast import toast_warning
     from nicegui import ui
+
+    from src.interface.design.components.toast import toast_warning
 
     capturado: dict = {}
 
@@ -75,8 +78,9 @@ def test_toast_warning_usa_tipo_warning(monkeypatch):
 
 def test_toast_con_titulo(monkeypatch):
     """El título se antepone al mensaje con salto de línea."""
-    from src.interface.design.components.toast import toast as toast_fn
     from nicegui import ui
+
+    from src.interface.design.components.toast import toast as toast_fn
 
     capturado: dict = {}
 

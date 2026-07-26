@@ -14,7 +14,6 @@ from pydantic import ValidationError
 from src.domain.models.asignacion import (
     Asignacion,
     AsignacionInfo,
-    FiltroAsignacionesDTO,
     NuevaAsignacionDTO,
 )
 from src.domain.models.habilitacion import (
@@ -29,7 +28,6 @@ from src.domain.models.habilitacion import (
     RegistrarNotaHabilitacionDTO,
     TipoHabilitacion,
 )
-
 
 # =============================================================================
 # ASIGNACION

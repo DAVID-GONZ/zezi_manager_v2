@@ -11,25 +11,23 @@ from __future__ import annotations
 
 import pytest
 
-from src.domain.models.usuario import Usuario, Rol, ActualizarUsuarioDTO
-from src.domain.models.estudiante import Estudiante, ActualizarEstudianteDTO
-from src.domain.models.infraestructura import Grupo, Asignatura, Sala, PlantillaFranja
 from src.domain.models.configuracion import ConfiguracionAnio
-
-from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.domain.models.estudiante import ActualizarEstudianteDTO, Estudiante
+from src.domain.models.infraestructura import Asignatura, Grupo, PlantillaFranja, Sala
+from src.domain.models.usuario import ActualizarUsuarioDTO, Rol, Usuario
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
-
-from src.services.usuario_service import UsuarioService
-from src.services.estudiante_service import EstudianteService
-from src.services.infraestructura_service import InfraestructuraService
+from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.configuracion_service import ConfiguracionService
 from src.services.contexto_tenant import (
+    OperacionFueraDeInstitucionError,
     activar_institucion,
     usar_institucion,
-    OperacionFueraDeInstitucionError,
 )
+from src.services.estudiante_service import EstudianteService
+from src.services.infraestructura_service import InfraestructuraService
+from src.services.usuario_service import UsuarioService
 
 INST_A = 1
 INST_B = 2

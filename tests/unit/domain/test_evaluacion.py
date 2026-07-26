@@ -15,9 +15,9 @@ import pytest
 from pydantic import ValidationError
 
 from src.domain.models.evaluacion import (
+    Actividad,
     ActualizarActividadDTO,
     ActualizarCategoriaDTO,
-    Actividad,
     CalculadorNotas,
     Categoria,
     EstadoActividad,
@@ -28,7 +28,6 @@ from src.domain.models.evaluacion import (
     RegistrarNotaDTO,
     TipoPuntosExtra,
 )
-
 
 # =============================================================================
 # Fixtures reutilizables

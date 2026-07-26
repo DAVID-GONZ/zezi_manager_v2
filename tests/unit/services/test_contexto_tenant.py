@@ -10,11 +10,11 @@ from __future__ import annotations
 import pytest
 
 from src.services.contexto_tenant import (
+    OperacionFueraDeInstitucionError,
     activar_institucion,
     institucion_actual,
     usar_institucion,
     verificar_pertenencia,
-    OperacionFueraDeInstitucionError,
 )
 
 
@@ -66,10 +66,9 @@ def test_usar_institucion_anidado():
 
 def test_usar_institucion_restaura_ante_excepcion():
     activar_institucion(9)
-    with pytest.raises(RuntimeError):
-        with usar_institucion(4):
-            assert institucion_actual() == 4
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError), usar_institucion(4):
+        assert institucion_actual() == 4
+        raise RuntimeError("boom")
     assert institucion_actual() == 9
 
 

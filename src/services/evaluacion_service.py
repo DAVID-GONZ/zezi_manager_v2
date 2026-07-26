@@ -6,36 +6,35 @@ Orquesta los casos de uso del módulo de Evaluación
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from dataclasses import dataclass, field
 
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
-from src.domain.ports.asignacion_repo import IAsignacionRepository
-from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
-from src.domain.ports.siee_repo import ISIEERepository
+from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.dtos import ContextoAcademicoDTO
 from src.domain.models.evaluacion import (
     Actividad,
+    ActualizarCategoriaDTO,
     CalculadorNotas,
     Categoria,
     ConfiguracionSIEE,
     EstadoActividad,
     ModoSIEE,
     Nota,
+    NuevaActividadDTO,
     NuevaCategoriaDTO,
     NuevaCategoriaInstitucionalDTO,
     NuevaConfiguracionSIEEDTO,
-    ActualizarCategoriaDTO,
-    NuevaActividadDTO,
     PuntosExtra,
-    TipoPuntosExtra,
     RegistrarNotaDTO,
     RegistrarNotasMasivasDTO,
     ResultadoEstudianteDTO,
+    TipoPuntosExtra,
 )
-from src.domain.models.dtos import ContextoAcademicoDTO
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.ports.asignacion_repo import IAsignacionRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
+from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.domain.ports.siee_repo import ISIEERepository
+from src.services.solo_lectura import requiere_escritura
 
 
 @dataclass

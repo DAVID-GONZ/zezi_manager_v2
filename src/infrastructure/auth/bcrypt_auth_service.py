@@ -3,8 +3,9 @@ BcryptAuthService — implementación bcrypt de IAuthenticationService.
 """
 from __future__ import annotations
 
-import bcrypt
 import hashlib
+
+import bcrypt
 
 from src.domain.models.usuario import Usuario
 from src.domain.ports.service_ports import IAuthenticationService

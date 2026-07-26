@@ -24,15 +24,24 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    form_dialog,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_danger,
+    btn_ghost,
+    btn_icon,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_danger, btn_ghost, btn_secondary, btn_icon,
-)
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
-from src.interface.design.components import confirm_dialog, form_dialog, toast_error, toast_success, toast_warning
 
 logger = logging.getLogger("EVALUACION.CIERRE_PERIODO")
 
@@ -177,7 +186,7 @@ def cierre_periodo_page() -> None:
         )
 
     def _abrir_dialog_reabrir(asig_id: int, nombre: str) -> None:
-        def _submit(datos: dict) -> "bool | None":
+        def _submit(datos: dict) -> bool | None:
             motivo = datos.get("motivo", "").strip()
             if not motivo:
                 toast_warning("El motivo es obligatorio.")

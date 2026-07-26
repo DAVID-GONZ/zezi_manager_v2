@@ -27,9 +27,7 @@ Reglas de negocio:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Self
-
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # Entidad de escritura — lo que persiste
@@ -71,13 +69,13 @@ class Asignacion(BaseModel):
     # Métodos de dominio
     # ------------------------------------------------------------------
 
-    def desactivar(self) -> "Asignacion":
+    def desactivar(self) -> Asignacion:
         """Retorna una copia con activo=False (soft-delete)."""
         if not self.activo:
             raise ValueError("La asignación ya está inactiva.")
         return self.model_copy(update={"activo": False})
 
-    def reactivar(self) -> "Asignacion":
+    def reactivar(self) -> Asignacion:
         """Retorna una copia con activo=True."""
         if self.activo:
             raise ValueError("La asignación ya está activa.")
@@ -199,6 +197,6 @@ class FiltroAsignacionesDTO(BaseModel):
 __all__ = [
     "Asignacion",
     "AsignacionInfo",
-    "NuevaAsignacionDTO",
     "FiltroAsignacionesDTO",
+    "NuevaAsignacionDTO",
 ]

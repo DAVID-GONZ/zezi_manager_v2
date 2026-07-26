@@ -27,6 +27,7 @@ share/python-wheels/
 MANIFEST
 .nicegui/*
 .nicegui
+.python-version
 
 # PyInstaller
 *.manifest
@@ -50,7 +51,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-.nicegui
+/.nicegui
+.nicegui/*
+
 
 # Translations
 *.mo
@@ -118,3 +121,6 @@ CHECKPOINTS.md
 AGENTS.md
 init.py
 spec_author.md
+*.toml
+*.lock
+*.ruff_cache

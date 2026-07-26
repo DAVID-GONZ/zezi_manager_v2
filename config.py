@@ -143,7 +143,7 @@ class Settings(BaseSettings):
         return path
 
     @model_validator(mode="after")
-    def verificar_jwt_seguro(self) -> "Settings":
+    def verificar_jwt_seguro(self) -> Settings:
         """
         Bloquea el arranque si JWT_SECRET o STORAGE_SECRET tienen su valor por
         defecto en producción (seguridad_02 — M1: ambos secretos son
@@ -242,9 +242,9 @@ IS_PRODUCTION: bool = settings.is_production
 
 
 __all__ = [
-    "settings",
     "DATABASE_PATH",
     "DB_CONFIG",
     "IS_PRODUCTION",
     "Settings",
+    "settings",
 ]

@@ -14,14 +14,13 @@ datos_tablero():
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.domain.ports.estadisticos_repo import IEstadisticosRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 
 logger = logging.getLogger("ESTADISTICOS_SERVICE")
 
@@ -567,7 +566,7 @@ class EstadisticosService:
             est_ids_ord = sorted(est_ids, key=lambda eid: promedios_est.get(eid, 0))
 
             heatmap_data = [
-                [col, row, round(nota_map[(est_ids_ord[row], act_ids_ord[col])], 1)]
+                [col, row, round(nota_map[(est_id, act_id)], 1)]
                 for col, act_id in enumerate(act_ids_ord)
                 for row, est_id in enumerate(est_ids_ord)
                 if (est_ids_ord[row], act_ids_ord[col]) in nota_map

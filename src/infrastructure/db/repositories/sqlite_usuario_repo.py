@@ -6,7 +6,6 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.domain.models.usuario import (
     AsignacionDocenteInfoDTO,
     DocenteInfoDTO,
@@ -15,6 +14,7 @@ from src.domain.models.usuario import (
     Usuario,
     UsuarioResumenDTO,
 )
+from src.domain.ports.usuario_repo import IUsuarioRepository
 
 _COLS_USUARIO = (
     "id, usuario, nombre_completo, email, telefono, "

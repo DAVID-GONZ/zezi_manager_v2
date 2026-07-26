@@ -23,8 +23,8 @@ y lo que ya consumían las páginas migradas (`date.fromisoformat`).
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, timedelta
-from typing import Callable
 
 from nicegui import ui
 

@@ -1,0 +1,3 @@
+@startuml classes_class_ui_components
+set namespaceSeparator none
+@enduml

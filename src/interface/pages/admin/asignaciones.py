@@ -23,16 +23,25 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    confirm_dialog,
+    empty_state,
+    form_dialog,
+    pipeline_nav,
+    stat_card,
+    status_badge,
+    toast_error,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import (
+    btn_icon,
+    btn_primary,
+    btn_secondary,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import (
-    btn_primary, btn_secondary, btn_icon,
-)
-from src.interface.design.components import (
-    confirm_dialog, empty_state, form_dialog, pipeline_nav, stat_card, status_badge,
-    toast_error, toast_success, toast_warning,
-)
-from src.services.asignacion_service import NuevaAsignacionDTO, FiltroAsignacionesDTO
+from src.services.asignacion_service import FiltroAsignacionesDTO, NuevaAsignacionDTO
 
 # Flujo de configuración del generador de horarios.
 _PASOS_HORARIO = [
@@ -297,7 +306,7 @@ def asignaciones_page() -> None:
             return
         docentes_opts = {d.id: d.nombre_completo for d in _s["docentes"]}
 
-        def _crear(datos: dict) -> "bool | None":
+        def _crear(datos: dict) -> bool | None:
             if not datos.get("asignatura_id") or not datos.get("usuario_id"):
                 toast_warning("Selecciona materia y docente.")
                 return False

@@ -5,11 +5,9 @@ from typing import Any
 
 import pytest
 
-from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.services.estadisticos_service import EstadisticosService
-
 
 # ===========================================================================
 # Fake

@@ -7,28 +7,26 @@ para calcular definitivas y generar los registros de cierre.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from datetime import date
 
-from src.domain.ports.cierre_repo import ICierreRepository
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
-from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
-from src.domain.ports.alerta_repo import IAlertaRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
-from src.domain.ports.estudiante_repo import IEstudianteRepository
+from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
+from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.cierre import (
     CierreAnio,
     CierrePeriodo,
     DecidirPromocionDTO,
-    EstadoPromocion,
     PromocionAnual,
 )
-from src.domain.models.evaluacion import CalculadorNotas
-from src.domain.models.alerta import Alerta, TipoAlerta, NivelAlerta
 from src.domain.models.dtos import ContextoAcademicoDTO
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.evaluacion import CalculadorNotas
+from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.cierre_repo import ICierreRepository
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.ports.estudiante_repo import IEstudianteRepository
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
+from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class CierreService:
@@ -279,7 +277,6 @@ class CierreService:
                 # Verificar habilitación
                 nota_hab = None
                 nota_definitiva_anual = promedio
-                from src.domain.models.habilitacion import TipoHabilitacion
                 # Buscar en cierres anio si ya existe con habilitación
                 cierre_existente = self._cierre_repo.get_cierre_anio(
                     est.id, asignacion_id, anio_id

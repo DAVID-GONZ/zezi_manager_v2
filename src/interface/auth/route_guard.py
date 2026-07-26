@@ -38,8 +38,8 @@ sin servidor NiceGUI; el wrapper solo traduce su veredicto a navegación/render.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Callable, Iterable
 
 from src.domain.models.usuario import Rol
 
@@ -201,13 +201,13 @@ def rutas_registradas() -> dict[str, RolesRuta]:
 
 
 __all__ = [
-    "PUBLICO",
+    "ACCESO_DENEGADO",
+    "ACCESO_LOGIN",
+    "ACCESO_OK",
     "AUTENTICADO",
+    "PUBLICO",
+    "decidir_acceso",
     "registrar_pagina",
     "roles_de_ruta",
     "rutas_registradas",
-    "decidir_acceso",
-    "ACCESO_OK",
-    "ACCESO_LOGIN",
-    "ACCESO_DENEGADO",
 ]

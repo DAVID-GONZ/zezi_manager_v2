@@ -8,36 +8,34 @@ from __future__ import annotations
 import secrets
 import string
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.usuario_repo import IUsuarioRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
-from src.domain.ports.service_ports import IAuthenticationService
-from src.domain.models.usuario import (
-    DocenteInfoDTO,
-    FiltroUsuariosDTO,
-    NuevoUsuarioDTO,
-    ActualizarUsuarioDTO,
-    Rol,
-    Usuario,
-    UsuarioResumenDTO,
-    ResumenUsuariosDTO,
-)
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
     RegistroCambio,
     TipoEventoSesion,
 )
+from src.domain.models.usuario import (
+    ActualizarUsuarioDTO,
+    DocenteInfoDTO,
+    FiltroUsuariosDTO,
+    NuevoUsuarioDTO,
+    ResumenUsuariosDTO,
+    Rol,
+    Usuario,
+    UsuarioResumenDTO,
+)
+from src.domain.policies.password_policy import (
+    requisitos_password,
+    validar_password,
+)
 from src.domain.policies.rbac_usuarios import (
     puede_gestionar,
     roles_asignables,
 )
-from src.domain.policies.password_policy import (
-    errores_password,
-    requisitos_password,
-    validar_password,
-)
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.service_ports import IAuthenticationService
+from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class UsuarioService:

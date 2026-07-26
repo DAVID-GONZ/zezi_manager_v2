@@ -30,7 +30,6 @@ from src.interface.design.components.buttons import btn_primary
 from src.interface.design.components.status_badge import status_badge
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
 
 logger = logging.getLogger("DIAGNOSTICO")
 
@@ -57,7 +56,11 @@ def _abrir_selector_ver_como(ctx: SessionContext) -> None:
     scope `usuario_service.listar_para_ver_como(institucion_id=...)` (no-op en
     single-tenant). Se excluye al propio admin.
     """
-    from src.interface.design.components import toast_success, toast_warning, toast_error
+    from src.interface.design.components import (
+        toast_error,
+        toast_success,
+        toast_warning,
+    )
 
     # ── Nivel 1: institución activa (multi-tenant-ready) ────────────────────
     institucion_id: int | None = None
@@ -96,7 +99,7 @@ def _abrir_selector_ver_como(ctx: SessionContext) -> None:
         usuario_opciones[u.id] = f"{u.nombre_completo} · {_ROLES_LABEL.get(rol_str, rol_str)}"
         _index[u.id] = (u.nombre_completo, rol_str)
 
-    def _aplicar(datos: dict) -> "bool | None":
+    def _aplicar(datos: dict) -> bool | None:
         uid = datos.get("usuario_id")
         if uid is None:
             toast_warning("Selecciona un usuario")

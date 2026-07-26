@@ -28,13 +28,15 @@ Arquitectura de datos:
 from __future__ import annotations
 
 import logging
+
 from nicegui import ui
+
 from container import Container
 from src.interface.context.session_context import SessionContext
+from src.interface.design.components import skeleton_cards, stat_card
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons, Colors, DesempenoColors
-from src.interface.design.components import skeleton_cards, stat_card, toast_error
+from src.interface.design.tokens import Colors, DesempenoColors, Icons
 
 logger = logging.getLogger("TABLERO_ESTADISTICOS")
 

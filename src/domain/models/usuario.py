@@ -30,10 +30,8 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
-from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # Enumeraciones
@@ -226,7 +224,7 @@ class Usuario(BaseModel):
     # Transiciones de estado
     # ------------------------------------------------------------------
 
-    def desactivar(self) -> "Usuario":
+    def desactivar(self) -> Usuario:
         """Retorna una copia con activo=False (soft delete)."""
         if not self.activo:
             raise ValueError(
@@ -234,7 +232,7 @@ class Usuario(BaseModel):
             )
         return self.model_copy(update={"activo": False})
 
-    def reactivar(self) -> "Usuario":
+    def reactivar(self) -> Usuario:
         """Retorna una copia con activo=True."""
         if self.activo:
             raise ValueError(
@@ -242,7 +240,7 @@ class Usuario(BaseModel):
             )
         return self.model_copy(update={"activo": True})
 
-    def registrar_sesion(self, momento: datetime | None = None) -> "Usuario":
+    def registrar_sesion(self, momento: datetime | None = None) -> Usuario:
         """Retorna una copia con ultima_sesion actualizada."""
         return self.model_copy(
             update={"ultima_sesion": momento or datetime.now()}
@@ -432,7 +430,7 @@ class UsuarioResumenDTO(BaseModel):
     institucion_id:  int | None = None  # multi-tenant (paso_24)
 
     @classmethod
-    def desde_usuario(cls, u: Usuario) -> "UsuarioResumenDTO":
+    def desde_usuario(cls, u: Usuario) -> UsuarioResumenDTO:
         """Construye el resumen desde un Usuario persistido; exige que tenga id."""
         if u.id is None:
             raise ValueError("No se puede crear un resumen de un usuario sin id.")
@@ -492,13 +490,13 @@ class ResumenUsuariosDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
+    "ActualizarUsuarioDTO",
+    "AsignacionDocenteInfoDTO",
+    "DocenteInfoDTO",
+    "FiltroUsuariosDTO",
+    "NuevoUsuarioDTO",
+    "ResumenUsuariosDTO",
     "Rol",
     "Usuario",
-    "DocenteInfoDTO",
-    "AsignacionDocenteInfoDTO",
-    "NuevoUsuarioDTO",
-    "ActualizarUsuarioDTO",
     "UsuarioResumenDTO",
-    "ResumenUsuariosDTO",
-    "FiltroUsuariosDTO",
 ]

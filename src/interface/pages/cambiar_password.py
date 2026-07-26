@@ -27,8 +27,8 @@ import logging
 from nicegui import app, ui
 
 from container import Container
-from src.interface.design.theme import ThemeManager
 from src.interface.design.components.buttons import btn_primary
+from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("CAMBIAR_PASSWORD")
 

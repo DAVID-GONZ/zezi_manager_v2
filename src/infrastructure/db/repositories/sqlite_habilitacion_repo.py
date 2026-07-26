@@ -7,7 +7,6 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import date
 
-from src.domain.ports.habilitacion_repo import IHabilitacionRepository
 from src.domain.models.habilitacion import (
     EstadoHabilitacion,
     EstadoPlanMejoramiento,
@@ -16,6 +15,7 @@ from src.domain.models.habilitacion import (
     PlanMejoramiento,
     TipoHabilitacion,
 )
+from src.domain.ports.habilitacion_repo import IHabilitacionRepository
 
 
 class SqliteHabilitacionRepository(IHabilitacionRepository):

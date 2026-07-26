@@ -8,13 +8,12 @@ Cubre:
 """
 from __future__ import annotations
 
+from src.domain.models.institucion import NuevaInstitucionDTO
+from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
 from src.infrastructure.db.repositories import (
     SqliteInstitucionRepository,
     SqliteUsuarioRepository,
 )
-from src.domain.models.institucion import NuevaInstitucionDTO
-from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
-
 
 # =============================================================================
 # SqliteInstitucionRepository

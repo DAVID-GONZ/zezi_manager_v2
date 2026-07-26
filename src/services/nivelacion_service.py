@@ -6,23 +6,22 @@ Sin SQL. Sin lógica de presentación.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from dataclasses import dataclass, field
 from datetime import date
 
-from src.domain.ports.nivelacion_repo import INivelacionRepository
-from src.domain.ports.cierre_repo import ICierreRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.models.cierre import CierrePeriodo
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
-    CalificarNotaNivelacionDTO,
     CalculadorNivelacion,
+    CalificarNotaNivelacionDTO,
     CierreNivelacion,
     NotaNivelacion,
     NuevaActividadNivelacionDTO,
 )
-from src.domain.models.cierre import CierrePeriodo
+from src.domain.ports.cierre_repo import ICierreRepository
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.ports.nivelacion_repo import INivelacionRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 @dataclass(frozen=True)

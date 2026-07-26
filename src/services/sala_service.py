@@ -8,10 +8,9 @@ idéntica (firmas, tipos de retorno y `@requiere_escritura` intactos).
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import Sala
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class SalaService:
@@ -109,4 +108,4 @@ class SalaService:
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las
 # páginas importan los TIPOS desde su servicio cohesivo, no desde `src.domain`
 # (prohibido en `src/interface/pages` por check_imports / convención §2).
-__all__ = ["SalaService", "Sala"]
+__all__ = ["Sala", "SalaService"]

@@ -6,8 +6,6 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
-from src.domain.policies.audit_chain import calcular_hash, primer_eslabon_roto
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
@@ -15,6 +13,8 @@ from src.domain.models.auditoria import (
     RegistroCambio,
     TipoEventoSesion,
 )
+from src.domain.policies.audit_chain import calcular_hash, primer_eslabon_roto
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 
 # Columnas que existen en las tablas de auditoría pero NO son campos del modelo
 # de dominio. El mapper las descarta antes de construir la entidad Pydantic

@@ -15,7 +15,7 @@ from src.interface.design.theme import ThemeManager
 
 def stat_card(
     titulo: str,
-    valor: str | int | float,
+    valor: str | float,
     icono: str,
     subtitulo: str = "",
     variante: str = "primary",

@@ -2,10 +2,15 @@
 Tests de integración: encadenamiento asignatura → asignación → horario.
 """
 import pytest
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import SqliteInfraestructuraRepository
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import SqliteAsignacionRepository
+
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import NuevoHorarioDTO
+from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
+    SqliteAsignacionRepository,
+)
+from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
+    SqliteInfraestructuraRepository,
+)
 
 
 def test_sin_asignaciones_huerfanas(db_conn, seed_result):

@@ -1,0 +1,411 @@
+@startuml classes_class_ports
+set namespaceSeparator none
+class "IAcudienteRepository" as ports.acudiente_repo.IAcudienteRepository {
+  {abstract}actualizar(acudiente: Acudiente) -> Acudiente
+  {abstract}desactivar(acudiente_id: int) -> bool
+  {abstract}desvincular(estudiante_id: int, acudiente_id: int) -> bool
+  {abstract}establecer_principal(estudiante_id: int, acudiente_id: int) -> None
+  {abstract}existe_documento(numero_documento: str) -> bool
+  {abstract}get_by_documento(numero_documento: str) -> Acudiente | None
+  {abstract}get_by_id(acudiente_id: int) -> Acudiente | None
+  {abstract}get_principal(estudiante_id: int) -> Acudiente | None
+  {abstract}get_vinculo(estudiante_id: int, acudiente_id: int) -> EstudianteAcudiente | None
+  {abstract}guardar(acudiente: Acudiente) -> Acudiente
+  {abstract}listar_estudiantes_de_acudiente(acudiente_id: int) -> list[int]
+  {abstract}listar_por_estudiante(estudiante_id: int, solo_activos: bool) -> list[Acudiente]
+  {abstract}vincular(vinculo: EstudianteAcudiente) -> None
+}
+class "IAlertaRepository" as ports.alerta_repo.IAlertaRepository {
+  {abstract}contar_pendientes(estudiante_id: int | None, nivel: NivelAlerta | None) -> int
+  {abstract}desactivar_configuracion(anio_id: int, tipo_alerta: TipoAlerta) -> bool
+  {abstract}existe_pendiente(estudiante_id: int, tipo_alerta: TipoAlerta) -> bool
+  {abstract}get_alerta(alerta_id: int) -> Alerta | None
+  {abstract}get_configuracion(anio_id: int, tipo_alerta: TipoAlerta) -> ConfiguracionAlerta | None
+  {abstract}guardar_alerta(alerta: Alerta) -> Alerta
+  {abstract}guardar_alertas_masivas(alertas: list[Alerta]) -> int
+  {abstract}guardar_configuracion(config: ConfiguracionAlerta) -> ConfiguracionAlerta
+  {abstract}listar_alertas(filtro: FiltroAlertasDTO) -> list[Alerta]
+  {abstract}listar_configuraciones(anio_id: int, solo_activas: bool) -> list[ConfiguracionAlerta]
+  {abstract}resolver_alerta(alerta_id: int, usuario_id: int, observacion: str | None, fecha: datetime | None) -> bool
+  {abstract}resolver_alertas_de_estudiante(estudiante_id: int, tipo_alerta: TipoAlerta, usuario_id: int, observacion: str | None) -> int
+}
+class "IAsignacionRepository" as ports.asignacion_repo.IAsignacionRepository {
+  {abstract}desactivar(asignacion_id: int) -> bool
+  {abstract}existe(grupo_id: int, asignatura_id: int, usuario_id: int, periodo_id: int) -> bool
+  {abstract}get_by_id(asignacion_id: int) -> Asignacion | None
+  {abstract}get_info(asignacion_id: int) -> AsignacionInfo | None
+  {abstract}guardar(asignacion: Asignacion) -> Asignacion
+  {abstract}listar(filtro: FiltroAsignacionesDTO) -> list[Asignacion]
+  {abstract}listar_info(filtro: FiltroAsignacionesDTO) -> list[AsignacionInfo]
+  {abstract}listar_por_docente(usuario_id: int, periodo_id: int | None, solo_activas: bool, institucion_id: int | None) -> list[AsignacionInfo]
+  {abstract}listar_por_grupo(grupo_id: int, periodo_id: int, solo_activas: bool, institucion_id: int | None) -> list[AsignacionInfo]
+  {abstract}reactivar(asignacion_id: int) -> bool
+  {abstract}reasignar_docente(asignacion_id: int, nuevo_usuario_id: int) -> bool
+}
+class "IAsistenciaRepository" as ports.asistencia_repo.IAsistenciaRepository {
+  {abstract}clases_dictadas_por_asignacion(usuario_id: int, anio: int, mes: int) -> dict[int, int]
+  {abstract}contar_clases_dictadas_docente(usuario_id: int, anio: int, mes: int) -> int
+  {abstract}contar_faltas_injustificadas(estudiante_id: int, periodo_id: int) -> int
+  {abstract}estudiantes_en_riesgo(grupo_id: int, asignacion_id: int, periodo_id: int, umbral_pct: float) -> list[int]
+  {abstract}fechas_con_registro(asignacion_id: int, periodo_id: int) -> list[date]
+  {abstract}get_por_fecha_estudiante(estudiante_id: int, asignacion_id: int, fecha: date) -> ControlDiario | None
+  {abstract}listar_por_asignacion_y_rango(asignacion_id: int, fecha_desde: date, fecha_hasta: date) -> list[ControlDiario]
+  {abstract}listar_por_estudiante_y_periodo(estudiante_id: int, periodo_id: int) -> list[ControlDiario]
+  {abstract}listar_por_grupo_y_fecha(grupo_id: int, asignacion_id: int, fecha: date) -> list[ControlDiario]
+  {abstract}porcentaje_asistencia_grupo(grupo_id: int, asignacion_id: int, periodo_id: int) -> float
+  {abstract}registrar(control: ControlDiario) -> ControlDiario
+  {abstract}registrar_masivo(controles: list[ControlDiario]) -> int
+  {abstract}resumen_por_estudiante(estudiante_id: int, periodo_id: int, asignacion_id: int | None) -> ResumenAsistenciaDTO
+  {abstract}resumen_por_grupo(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[ResumenAsistenciaDTO]
+}
+class "IAuditoriaRepository" as ports.auditoria_repo.IAuditoriaRepository {
+  {abstract}contar_fallos_recientes(usuario: str, ventana_minutos: int) -> int
+  {abstract}get_cambio(cambio_id: int) -> RegistroCambio | None
+  {abstract}get_ultimo_login(usuario_id: int) -> EventoSesion | None
+  {abstract}listar_cambios(filtro: FiltroAuditoriaDTO) -> list[RegistroCambio]
+  {abstract}listar_cambios_por_registro(tabla: str, registro_id: int) -> list[RegistroCambio]
+  {abstract}listar_eventos(filtro: FiltroAuditoriaDTO) -> list[EventoSesion]
+  {abstract}registrar_cambio(registro: RegistroCambio) -> RegistroCambio
+  {abstract}registrar_cambios_masivos(registros: list[RegistroCambio]) -> int
+  {abstract}registrar_evento(evento: EventoSesion) -> EventoSesion
+  verificar_cadena_cambios() -> int | None
+  verificar_cadena_eventos() -> int | None
+}
+class "IAuthenticationService" as ports.service_ports.IAuthenticationService {
+  {abstract}autenticar_usuario(nombre_usuario: str, password_plain: str) -> Usuario
+  {abstract}cambiar_password(usuario_id: int, password_actual: str, password_nueva: str) -> bool
+  {abstract}hashear_password(password_plain: str) -> str
+  {abstract}resetear_password(usuario_id: int, password_nueva: str) -> None
+  {abstract}verificar_password(password_plain: str, password_hash: str) -> bool
+}
+class "ICierreRepository" as ports.cierre_repo.ICierreRepository {
+  {abstract}actualizar_promocion(promocion: PromocionAnual) -> PromocionAnual
+  {abstract}borrar_cierres_periodo(asignacion_id: int, periodo_id: int) -> int
+  {abstract}get_cierre_anio(estudiante_id: int, asignacion_id: int, anio_id: int) -> CierreAnio | None
+  {abstract}get_cierre_periodo(estudiante_id: int, asignacion_id: int, periodo_id: int) -> CierrePeriodo | None
+  {abstract}get_promocion(estudiante_id: int, anio_id: int) -> PromocionAnual | None
+  {abstract}guardar_cierre_anio(cierre: CierreAnio) -> CierreAnio
+  {abstract}guardar_cierre_periodo(cierre: CierrePeriodo) -> CierrePeriodo
+  {abstract}guardar_promocion(promocion: PromocionAnual) -> PromocionAnual
+  {abstract}listar_cierres_anio_por_estudiante(estudiante_id: int, anio_id: int) -> list[CierreAnio]
+  {abstract}listar_cierres_periodo_por_asignaciones(asignacion_ids: list[int], periodo_id: int, nota_maxima: float | None) -> list[CierrePeriodo]
+  {abstract}listar_cierres_periodo_por_estudiante(estudiante_id: int, periodo_id: int | None) -> list[CierrePeriodo]
+  {abstract}listar_promociones(anio_id: int, estado: EstadoPromocion | None) -> list[PromocionAnual]
+}
+class "IConfiguracionRepository" as ports.configuracion_repo.IConfiguracionRepository {
+  {abstract}activar(anio_id: int) -> bool
+  {abstract}actualizar(config: ConfiguracionAnio) -> ConfiguracionAnio
+  {abstract}actualizar_nivel(nivel: NivelDesempeno) -> NivelDesempeno
+  {abstract}clasificar_nota(nota: float, anio_id: int) -> NivelDesempeno | None
+  {abstract}eliminar_nivel(nivel_id: int) -> bool
+  {abstract}get_activa(institucion_id: int | None) -> ConfiguracionAnio | None
+  {abstract}get_by_anio(institucion_id: int | None, anio: int) -> ConfiguracionAnio | None
+  {abstract}get_by_id(anio_id: int) -> ConfiguracionAnio | None
+  {abstract}get_criterios(anio_id: int) -> CriterioPromocion | None
+  {abstract}get_nivel(nivel_id: int) -> NivelDesempeno | None
+  {abstract}get_numero_periodos(anio_id: int) -> int
+  {abstract}guardar(config: ConfiguracionAnio) -> ConfiguracionAnio
+  {abstract}guardar_criterios(criterios: CriterioPromocion) -> CriterioPromocion
+  {abstract}guardar_nivel(nivel: NivelDesempeno) -> NivelDesempeno
+  {abstract}guardar_numero_periodos(anio_id: int, numero_periodos: int, pesos_iguales: bool) -> None
+  {abstract}listar(institucion_id: int | None) -> list[ConfiguracionAnio]
+  {abstract}listar_niveles(anio_id: int) -> list[NivelDesempeno]
+  {abstract}reemplazar_niveles(anio_id: int, niveles: list[NivelDesempeno]) -> list[NivelDesempeno]
+}
+class "IConvivenciaRepository" as ports.convivencia_repo.IConvivenciaRepository {
+  {abstract}actualizar_observacion(observacion: ObservacionPeriodo) -> ObservacionPeriodo
+  {abstract}actualizar_registro(registro: RegistroComportamiento) -> RegistroComportamiento
+  {abstract}contar_registros(filtro: FiltroConvivenciaDTO, institucion_id: int | None) -> int
+  {abstract}eliminar_observacion(observacion_id: int) -> bool
+  {abstract}eliminar_registro(registro_id: int) -> bool
+  {abstract}get_nota(estudiante_id: int, periodo_id: int) -> NotaComportamiento | None
+  {abstract}get_observacion(observacion_id: int) -> ObservacionPeriodo | None
+  {abstract}get_observacion_por_asignacion(estudiante_id: int, asignacion_id: int, periodo_id: int) -> ObservacionPeriodo | None
+  {abstract}get_registro(registro_id: int) -> RegistroComportamiento | None
+  {abstract}guardar_nota(nota: NotaComportamiento) -> NotaComportamiento
+  {abstract}guardar_observacion(observacion: ObservacionPeriodo) -> ObservacionPeriodo
+  {abstract}guardar_registro(registro: RegistroComportamiento) -> RegistroComportamiento
+  {abstract}listar_notas_por_estudiante(estudiante_id: int) -> list[NotaComportamiento]
+  {abstract}listar_notas_por_grupo(grupo_id: int, periodo_id: int) -> list[NotaComportamiento]
+  {abstract}listar_observaciones_por_estudiante(estudiante_id: int, periodo_id: int | None, solo_publicas: bool) -> list[ObservacionPeriodo]
+  {abstract}listar_registros(filtro: FiltroConvivenciaDTO, institucion_id: int | None) -> list[RegistroComportamiento]
+}
+class "IEstadisticosRepository" as ports.estadisticos_repo.IEstadisticosRepository {
+  {abstract}boletin_datos_acumulado(estudiante_id: int, grupo_id: int, hasta_periodo_id: int) -> dict[str, Any]
+  {abstract}boletin_datos_anual(estudiante_id: int, grupo_id: int, anio_id: int) -> dict[str, Any]
+  {abstract}boletin_datos_periodo(estudiante_id: int, grupo_id: int, periodo_id: int) -> dict[str, Any]
+  {abstract}calcular_metricas_dashboard(grupo_id: int, periodo_id: int, nota_minima: float) -> DashboardMetricsDTO
+  {abstract}comparativo_periodos(grupo_id: int, asignacion_id: int, anio_id: int) -> list[dict[str, Any]]
+  {abstract}consolidado_anual_grupo(grupo_id: int, anio_id: int) -> list[dict[str, Any]]
+  {abstract}consolidado_asistencia_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  {abstract}consolidado_notas_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  {abstract}contar_alertas_pendientes(grupo_id: int) -> int
+  {abstract}distribucion_desempenos(grupo_id: int, asignacion_id: int, periodo_id: int, niveles: list[NivelDesempeno]) -> dict[str, int]
+  {abstract}distribucion_estados_asistencia(grupo_id: int, asignacion_id: int, periodo_id: int) -> dict[str, int]
+  {abstract}estudiantes_en_riesgo_academico(grupo_id: int, periodo_id: int, nota_minima: float, min_asignaturas: int) -> list[int]
+  {abstract}porcentaje_asistencia_global(grupo_id: int, periodo_id: int) -> float
+  {abstract}promedio_general_grupo(grupo_id: int, periodo_id: int, nota_minima: float) -> float
+  {abstract}promedio_por_asignacion(grupo_id: int, asignacion_id: int, periodo_id: int) -> float
+  {abstract}promedios_por_area(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  {abstract}ranking_grupo(grupo_id: int, periodo_id: int) -> list[dict[str, Any]]
+  {abstract}tendencia_asistencia(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[dict[str, Any]]
+}
+class "IEstudianteRepository" as ports.estudiante_repo.IEstudianteRepository {
+  {abstract}actualizar(estudiante: Estudiante) -> Estudiante
+  {abstract}actualizar_estado_matricula(estudiante_id: int, estado: str) -> bool
+  {abstract}actualizar_piar(piar: PIAR) -> PIAR
+  {abstract}asignar_grupo(estudiante_id: int, grupo_id: int) -> bool
+  {abstract}contar_por_grupo(grupo_id: int, solo_activos: bool, institucion_id: int | None) -> int
+  {abstract}existe_documento(numero_documento: str, institucion_id: int | None) -> bool
+  {abstract}existe_piar(estudiante_id: int, anio_id: int) -> bool
+  {abstract}get_by_documento(numero_documento: str, institucion_id: int | None) -> Estudiante | None
+  {abstract}get_by_id(estudiante_id: int) -> Estudiante | None
+  {abstract}get_piar(estudiante_id: int, anio_id: int) -> PIAR | None
+  {abstract}get_resumen(estudiante_id: int) -> EstudianteResumenDTO | None
+  {abstract}guardar(estudiante: Estudiante) -> Estudiante
+  {abstract}guardar_piar(piar: PIAR) -> PIAR
+  {abstract}listar_filtrado(filtro: FiltroEstudiantesDTO) -> list[Estudiante]
+  {abstract}listar_historial(estudiante_id: int) -> list[MovimientoEstudianteInfoDTO]
+  {abstract}listar_piars(estudiante_id: int) -> list[PIAR]
+  {abstract}listar_por_grupo(grupo_id: int, solo_activos: bool, institucion_id: int | None) -> list[Estudiante]
+  {abstract}listar_resumenes(filtro: FiltroEstudiantesDTO) -> list[EstudianteResumenDTO]
+  {abstract}registrar_movimiento(estudiante_id: int, grupo_origen_id: int | None, grupo_destino_id: int | None, tipo: TipoMovimiento, motivo: str | None, usuario_registro_id: int | None) -> MovimientoEstudiante
+}
+class "IEvaluacionRepository" as ports.evaluacion_repo.IEvaluacionRepository {
+  {abstract}actualizar_actividad(actividad: Actividad) -> Actividad
+  {abstract}actualizar_categoria(categoria: Categoria) -> Categoria
+  {abstract}actualizar_estado_actividad(act_id: int, estado: EstadoActividad) -> bool
+  {abstract}eliminar_actividad(act_id: int) -> None
+  {abstract}eliminar_categoria(cat_id: int) -> None
+  {abstract}eliminar_nota(estudiante_id: int, actividad_id: int) -> bool
+  {abstract}get_actividad(act_id: int) -> Actividad | None
+  {abstract}get_categoria(cat_id: int) -> Categoria | None
+  {abstract}get_nota(estudiante_id: int, actividad_id: int) -> Nota | None
+  {abstract}get_puntos_extra(estudiante_id: int, asignacion_id: int, periodo_id: int, tipo: TipoPuntosExtra | None) -> PuntosExtra | None
+  {abstract}guardar_actividad(actividad: Actividad) -> Actividad
+  {abstract}guardar_categoria(categoria: Categoria) -> Categoria
+  {abstract}guardar_nota(nota: Nota) -> Nota
+  {abstract}guardar_notas_masivas(notas: list[Nota]) -> int
+  {abstract}guardar_puntos_extra(pe: PuntosExtra) -> PuntosExtra
+  {abstract}listar_actividades(asignacion_id: int, periodo_id: int) -> list[Actividad]
+  {abstract}listar_actividades_por_categoria(cat_id: int) -> list[Actividad]
+  {abstract}listar_actividades_publicadas(asignacion_id: int, periodo_id: int, hasta_fecha: date | None) -> list[Actividad]
+  {abstract}listar_categorias(asignacion_id: int, periodo_id: int) -> list[Categoria]
+  {abstract}listar_notas_por_actividad(actividad_id: int) -> list[Nota]
+  {abstract}listar_notas_por_estudiante(estudiante_id: int, asignacion_id: int, periodo_id: int) -> list[Nota]
+  {abstract}listar_puntos_extra(asignacion_id: int, periodo_id: int) -> list[PuntosExtra]
+  {abstract}listar_resultados_grupo(grupo_id: int, asignacion_id: int, periodo_id: int) -> list[ResultadoEstudianteDTO]
+  {abstract}suma_pesos_otras(asignacion_id: int, periodo_id: int, excluir_cat_id: int | None) -> float
+}
+class "IExporterService" as ports.service_ports.IExporterService {
+  {abstract}exportar_csv(datos: list[dict], ruta_destino: Path | None, encoding: str) -> bytes
+  {abstract}exportar_excel(datos: list[dict], nombre_hoja: str, ruta_destino: Path | None) -> bytes
+  {abstract}exportar_pdf(html_content: str, ruta_destino: Path | None) -> bytes
+}
+class "IHabilitacionRepository" as ports.habilitacion_repo.IHabilitacionRepository {
+  {abstract}actualizar_estado_habilitacion(habilitacion_id: int, estado: EstadoHabilitacion) -> bool
+  {abstract}actualizar_habilitacion(habilitacion: Habilitacion) -> Habilitacion
+  {abstract}actualizar_plan(plan: PlanMejoramiento) -> PlanMejoramiento
+  {abstract}existe_habilitacion(estudiante_id: int, asignacion_id: int, tipo: TipoHabilitacion, periodo_id: int | None) -> bool
+  {abstract}get_habilitacion(habilitacion_id: int) -> Habilitacion | None
+  {abstract}get_plan(plan_id: int) -> PlanMejoramiento | None
+  {abstract}guardar_habilitacion(habilitacion: Habilitacion) -> Habilitacion
+  {abstract}guardar_plan(plan: PlanMejoramiento) -> PlanMejoramiento
+  {abstract}listar_habilitaciones(filtro: FiltroHabilitacionesDTO) -> list[Habilitacion]
+  {abstract}listar_planes_por_estudiante(estudiante_id: int, asignacion_id: int | None, estado: EstadoPlanMejoramiento | None) -> list[PlanMejoramiento]
+  {abstract}listar_planes_por_seguimiento(fecha_limite: date, solo_activos: bool) -> list[PlanMejoramiento]
+  {abstract}listar_por_estudiante(estudiante_id: int, periodo_id: int | None, tipo: TipoHabilitacion | None) -> list[Habilitacion]
+}
+class "IInfraestructuraRepository" as ports.infraestructura_repo.IInfraestructuraRepository {
+  {abstract}activar_escenario(escenario_id: int) -> None
+  {abstract}activar_plantilla_franja(plantilla_id: int) -> None
+  {abstract}actualizar_area(area: AreaConocimiento) -> AreaConocimiento
+  {abstract}actualizar_asignatura(asignatura: Asignatura) -> Asignatura
+  {abstract}actualizar_color_area(area_id: int, color: str | None) -> bool
+  {abstract}actualizar_config_generacion(c: ConfigGeneracion) -> ConfigGeneracion
+  {abstract}actualizar_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  {abstract}actualizar_franja(f: Franja) -> Franja
+  {abstract}actualizar_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  {abstract}actualizar_grupo(grupo: Grupo) -> Grupo
+  {abstract}actualizar_horario(horario: Horario) -> Horario
+  {abstract}actualizar_logro(logro: Logro) -> Logro
+  {abstract}actualizar_plantilla_franja(p: PlantillaFranja) -> PlantillaFranja
+  {abstract}actualizar_sala(sala: Sala) -> Sala
+  {abstract}asignar_sala_a_grupo(grupo_id: int, sala_id: int | None) -> bool
+  {abstract}cambiar_estado_config(config_id: int, nuevo_estado: str) -> ConfigGeneracion
+  {abstract}cargar_disponibilidad_lote(usuario_id: int, slots: list[dict]) -> int
+  {abstract}contar_bloques_asignacion(escenario_id: int, asignacion_id: int) -> int
+  {abstract}contar_bloques_docente(escenario_id: int, usuario_id: int) -> int
+  {abstract}crear_bloque_anclado(b: BloqueAnclado) -> BloqueAnclado
+  {abstract}crear_bloques_masivo(horarios: list) -> int
+  {abstract}crear_config_generacion(c: ConfigGeneracion) -> ConfigGeneracion
+  {abstract}crear_escenario(esc: EscenarioHorario) -> EscenarioHorario
+  {abstract}crear_franja(f: Franja) -> Franja
+  {abstract}crear_franja_reunion(f: FranjaReunion) -> FranjaReunion
+  {abstract}crear_plantilla_franja(p: PlantillaFranja) -> PlantillaFranja
+  {abstract}crear_sala(sala: Sala) -> Sala
+  {abstract}crear_ventana_grupo(v: VentanaGrupo) -> VentanaGrupo
+  {abstract}duplicar_config_generacion(config_id: int) -> ConfigGeneracion
+  {abstract}duplicar_escenario(escenario_id: int, nuevo_nombre: str) -> EscenarioHorario
+  {abstract}eliminar_area(area_id: int) -> bool
+  {abstract}eliminar_asignatura(asignatura_id: int) -> bool
+  {abstract}eliminar_bloque_anclado(bloque_id: int) -> bool
+  {abstract}eliminar_config_generacion(config_id: int) -> bool
+  {abstract}eliminar_escenario(escenario_id: int) -> bool
+  {abstract}eliminar_franja(franja_id: int) -> bool
+  {abstract}eliminar_franja_reunion(franja_id: int) -> bool
+  {abstract}eliminar_grado(numero: int) -> bool
+  {abstract}eliminar_grupo(grupo_id: int) -> bool
+  {abstract}eliminar_horario(horario_id: int) -> bool
+  {abstract}eliminar_horarios_por_asignacion(asignacion_id: int) -> int
+  {abstract}eliminar_logro(logro_id: int) -> bool
+  {abstract}eliminar_plan_estudios(grado: int, asignatura_id: int) -> bool
+  {abstract}eliminar_plantilla_franja(plantilla_id: int) -> bool
+  {abstract}eliminar_sala(sala_id: int) -> bool
+  {abstract}eliminar_ventana_grupo(ventana_id: int) -> bool
+  {abstract}es_disponible(usuario_id: int, dia: str, franja_orden: int) -> bool
+  {abstract}existe_conflicto_horario(usuario_id: int, periodo_id: int, dia_semana: str, hora_inicio: str, hora_fin: str, excluir_horario_id: int | None) -> bool
+  {abstract}existe_cruce(escenario_id: int, dia_semana: str, hora_inicio: str, hora_fin: str) -> bool
+  {abstract}get_area(area_id: int) -> AreaConocimiento | None
+  {abstract}get_asignatura(asignatura_id: int) -> Asignatura | None
+  {abstract}get_config_generacion(config_id: int) -> ConfigGeneracion | None
+  {abstract}get_escenario(escenario_id: int) -> EscenarioHorario | None
+  {abstract}get_escenario_activo(anio_id: int) -> EscenarioHorario | None
+  {abstract}get_estadisticas(periodo_id: int) -> HorarioEstadisticasDTO
+  {abstract}get_franja_reunion(franja_id: int) -> FranjaReunion | None
+  {abstract}get_grupo(grupo_id: int) -> Grupo | None
+  {abstract}get_grupo_por_codigo(codigo: str) -> Grupo | None
+  {abstract}get_horario(horario_id: int) -> Horario | None
+  {abstract}get_info_horario(horario_id: int) -> HorarioInfo | None
+  {abstract}get_limites_docente(usuario_id: int) -> LimitesDocente | None
+  {abstract}get_logro(logro_id: int) -> Logro | None
+  {abstract}get_plan_estudios_por_grado(grado: int) -> list[PlanEstudios]
+  {abstract}get_plantilla_activa(jornada: str, institucion_id: int | None) -> PlantillaFranja | None
+  {abstract}get_plantilla_franja(plantilla_id: int) -> PlantillaFranja | None
+  {abstract}get_sala(sala_id: int) -> Sala | None
+  {abstract}get_ventanas_por_grado(grado: int) -> list[VentanaGrupo]
+  {abstract}get_ventanas_por_grupo(grupo_id: int) -> list[VentanaGrupo]
+  {abstract}guardar_area(area: AreaConocimiento) -> AreaConocimiento
+  {abstract}guardar_asignatura(asignatura: Asignatura) -> Asignatura
+  {abstract}guardar_grupo(grupo: Grupo) -> Grupo
+  {abstract}guardar_horario(horario: Horario) -> Horario
+  {abstract}guardar_logro(logro: Logro) -> Logro
+  {abstract}limpiar_disponibilidad_docente(usuario_id: int) -> int
+  {abstract}listar_areas() -> list[AreaConocimiento]
+  {abstract}listar_asignaturas(area_id: int | None, institucion_id: int | None) -> list[Asignatura]
+  {abstract}listar_bloques_anclados(escenario_id: int) -> list[BloqueAnclado]
+  {abstract}listar_configs_generacion(periodo_id: int | None) -> list[ConfigGeneracion]
+  {abstract}listar_disponibilidad_docente(usuario_id: int) -> list[DisponibilidadDocente]
+  {abstract}listar_escenarios(anio_id: int) -> list[EscenarioHorario]
+  {abstract}listar_franjas(plantilla_id: int) -> list[Franja]
+  {abstract}listar_franjas_reunion() -> list[FranjaReunion]
+  {abstract}listar_grados() -> list[Grado]
+  {abstract}listar_grupos(grado: int | None, institucion_id: int | None) -> list[Grupo]
+  {abstract}listar_horario_docente(usuario_id: int, periodo_id: int) -> list[HorarioInfo]
+  {abstract}listar_horario_escenario(escenario_id: int) -> list[HorarioInfo]
+  {abstract}listar_horario_grupo(grupo_id: int, periodo_id: int) -> list[HorarioInfo]
+  {abstract}listar_horario_grupo_escenario(grupo_id: int, escenario_id: int) -> list[HorarioInfo]
+  {abstract}listar_limites_docente() -> list[LimitesDocente]
+  {abstract}listar_logros(asignacion_id: int, periodo_id: int) -> list[Logro]
+  {abstract}listar_plan_estudios() -> list[PlanEstudios]
+  {abstract}listar_plantillas_franja(institucion_id: int | None) -> list[PlantillaFranja]
+  {abstract}listar_salas(institucion_id: int | None) -> list[Sala]
+  {abstract}listar_ventanas_grupo() -> list[VentanaGrupo]
+  {abstract}reemplazar_disponibilidad_docente(usuario_id: int, slots: list[dict]) -> int
+  {abstract}reemplazar_franjas(plantilla_id: int, franjas: list[Franja]) -> int
+  {abstract}set_horas_plan(grado: int, asignatura_id: int, horas: int) -> PlanEstudios
+  {abstract}set_limites_docente(limites: LimitesDocente) -> LimitesDocente
+  {abstract}upsert_disponibilidad(d: DisponibilidadDocente) -> DisponibilidadDocente
+  {abstract}upsert_grado(grado: Grado) -> Grado
+}
+class "IInstitucionRepository" as ports.institucion_repo.IInstitucionRepository {
+  {abstract}existe_nombre(nombre: str) -> bool
+  {abstract}get_by_id(institucion_id: int) -> Institucion | None
+  {abstract}get_por_defecto() -> Institucion | None
+  {abstract}guardar(institucion: Institucion) -> Institucion
+  {abstract}listar(solo_activas: bool) -> list[Institucion]
+}
+class "INivelacionRepository" as ports.nivelacion_repo.INivelacionRepository {
+  {abstract}actualizar_nota(nota: NotaNivelacion) -> NotaNivelacion
+  {abstract}get_actividad(actividad_id: int) -> ActividadNivelacion | None
+  {abstract}get_cierre(asignacion_id: int, periodo_id: int) -> CierreNivelacion | None
+  {abstract}get_nota(actividad_nivelacion_id: int, estudiante_id: int) -> NotaNivelacion | None
+  {abstract}guardar_actividad(actividad: ActividadNivelacion) -> ActividadNivelacion
+  {abstract}guardar_cierre(cierre: CierreNivelacion) -> CierreNivelacion
+  {abstract}guardar_nota(nota: NotaNivelacion) -> NotaNivelacion
+  {abstract}listar_actividades(asignacion_id: int, periodo_id: int) -> list[ActividadNivelacion]
+  {abstract}listar_notas_por_actividad(actividad_nivelacion_id: int) -> list[NotaNivelacion]
+  {abstract}listar_notas_por_asignacion(asignacion_id: int, periodo_id: int) -> list[NotaNivelacion]
+  {abstract}suma_pesos_actividades(asignacion_id: int, periodo_id: int, excluir_id: int | None) -> float
+}
+class "INotificationService" as ports.service_ports.INotificationService {
+  {abstract}notificar_acudiente(acudiente_id: int, asunto: str, cuerpo: str) -> bool
+  {abstract}notificar_directivos(asunto: str, cuerpo: str) -> int
+  {abstract}notificar_docente(usuario_id: int, asunto: str, cuerpo: str) -> bool
+}
+class "IPeriodoRepository" as ports.periodo_repo.IPeriodoRepository {
+  {abstract}activar(periodo_id: int) -> bool
+  {abstract}actualizar(periodo: Periodo) -> Periodo
+  {abstract}actualizar_hito(hito: HitoPeriodo) -> HitoPeriodo
+  {abstract}cerrar(periodo_id: int) -> bool
+  {abstract}desactivar(periodo_id: int) -> bool
+  {abstract}eliminar_hito(hito_id: int) -> bool
+  {abstract}get_activo(anio_id: int) -> Periodo | None
+  {abstract}get_by_id(periodo_id: int) -> Periodo | None
+  {abstract}get_hito(hito_id: int) -> HitoPeriodo | None
+  {abstract}get_por_numero(anio_id: int, numero: int) -> Periodo | None
+  {abstract}guardar(periodo: Periodo) -> Periodo
+  {abstract}guardar_hito(hito: HitoPeriodo) -> HitoPeriodo
+  {abstract}listar_hitos(periodo_id: int, tipo: TipoHito | None) -> list[HitoPeriodo]
+  {abstract}listar_hitos_proximos(anio_id: int, dias: int) -> list[HitoPeriodo]
+  {abstract}listar_por_anio(anio_id: int, incluir_cerrados: bool) -> list[Periodo]
+  {abstract}suma_pesos_otros(anio_id: int, excluir_periodo_id: int | None) -> float
+}
+class "IPlanMejoramientoRepository" as ports.plan_mejoramiento_repo.IPlanMejoramientoRepository {
+  {abstract}actualizar_nota_corte(nota: NotaCortePlan) -> NotaCortePlan
+  {abstract}get_actividad(actividad_id: int) -> ActividadPlan | None
+  {abstract}get_corte(asignacion_id: int, periodo_id: int) -> CortePlan | None
+  {abstract}get_corte_by_id(corte_id: int) -> CortePlan | None
+  {abstract}get_nota_actividad(actividad_plan_id: int, estudiante_id: int) -> NotaActividadPlan | None
+  {abstract}get_nota_corte(corte_id: int, estudiante_id: int) -> NotaCortePlan | None
+  {abstract}guardar_actividad(actividad: ActividadPlan) -> ActividadPlan
+  {abstract}guardar_corte(corte: CortePlan) -> CortePlan
+  {abstract}guardar_nota_actividad(nota: NotaActividadPlan) -> NotaActividadPlan
+  {abstract}guardar_nota_corte(nota: NotaCortePlan) -> NotaCortePlan
+  {abstract}listar_actividades(corte_id: int) -> list[ActividadPlan]
+  {abstract}listar_notas_actividad(actividad_plan_id: int) -> list[NotaActividadPlan]
+  {abstract}listar_notas_corte(corte_id: int) -> list[NotaCortePlan]
+  {abstract}listar_notas_por_corte_estudiante(corte_id: int, estudiante_id: int) -> list[NotaActividadPlan]
+  {abstract}suma_pesos_actividades(corte_id: int, excluir_id: int | None) -> float
+}
+class "ISIEERepository" as ports.siee_repo.ISIEERepository {
+  {abstract}actualizar_categoria_institucional(cat: Categoria) -> Categoria
+  {abstract}eliminar_categoria_institucional(cat_id: int) -> None
+  {abstract}get_categoria_institucional(cat_id: int) -> Categoria | None
+  {abstract}get_configuracion(anio_id: int) -> ConfiguracionSIEE | None
+  {abstract}guardar_categoria_institucional(cat: Categoria) -> Categoria
+  {abstract}guardar_configuracion(cfg: ConfiguracionSIEE) -> ConfiguracionSIEE
+  {abstract}listar_categorias_institucionales(anio_id: int) -> list[Categoria]
+  {abstract}suma_pesos_institucionales(anio_id: int) -> float
+}
+class "IUsuarioRepository" as ports.usuario_repo.IUsuarioRepository {
+  {abstract}actualizar(usuario: Usuario) -> Usuario
+  {abstract}actualizar_carga(usuario_id: int, carga_horaria_max: int | None, horas_extra: int) -> bool
+  {abstract}actualizar_password_hash(usuario_id: int, nuevo_hash: str) -> bool
+  {abstract}cambiar_rol(usuario_id: int, nuevo_rol: Rol) -> bool
+  {abstract}desactivar(usuario_id: int) -> bool
+  {abstract}existe_usuario(username: str) -> bool
+  {abstract}get_by_email(email: str) -> Usuario | None
+  {abstract}get_by_id(usuario_id: int) -> Usuario | None
+  {abstract}get_by_username(username: str) -> Usuario | None
+  {abstract}get_docente_info(usuario_id: int, periodo_id: int | None) -> DocenteInfoDTO | None
+  {abstract}get_password_hash(usuario_id: int) -> str | None
+  {abstract}guardar(usuario: Usuario) -> Usuario
+  {abstract}listar_asignaciones_docente(usuario_id: int, periodo_id: int | None) -> list[AsignacionDocenteInfoDTO]
+  {abstract}listar_docentes_info(periodo_id: int | None, solo_activos: bool) -> list[DocenteInfoDTO]
+  {abstract}listar_filtrado(filtro: FiltroUsuariosDTO) -> list[Usuario]
+  {abstract}listar_resumenes(filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]
+  {abstract}marcar_debe_cambiar_password(usuario_id: int, valor: bool) -> bool
+  {abstract}reactivar(usuario_id: int) -> bool
+}
+@enduml

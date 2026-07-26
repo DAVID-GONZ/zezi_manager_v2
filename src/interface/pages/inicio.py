@@ -14,14 +14,13 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.tokens import Icons
-from src.interface.design.theme import ThemeManager
+from src.interface.design.components import stat_card
 from src.interface.design.components.status_badge import status_badge
-from src.interface.design.components import stat_card, empty_state
-from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.layout import app_layout
-from src.services.auditoria_service import FiltroAuditoriaDTO
+from src.interface.design.theme import ThemeManager
+from src.interface.design.tokens import Icons
 from src.services.alerta_service import FiltroAlertasDTO
+from src.services.auditoria_service import FiltroAuditoriaDTO
 
 logger = logging.getLogger("INICIO")
 

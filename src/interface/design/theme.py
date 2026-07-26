@@ -78,7 +78,7 @@ class ThemeManager:
         Inyecta el design system en el head de NiceGUI.
         Llamar UNA SOLA VEZ en main.py antes de ui.run().
         """
-        from nicegui import ui, app
+        from nicegui import app, ui
 
         fragments: list[str] = []
         for rel in cls.CSS_LOAD_ORDER:

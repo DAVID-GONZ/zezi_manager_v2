@@ -3,16 +3,22 @@ from __future__ import annotations
 
 import pytest
 
-from src.domain.models.evaluacion import (
-    Actividad, Categoria, EstadoActividad, Nota,
-    NuevaCategoriaDTO, ActualizarCategoriaDTO,
-    NuevaActividadDTO, PuntosExtra,
-    RegistrarNotaDTO, RegistrarNotasMasivasDTO, ResultadoEstudianteDTO,
-)
 from src.domain.models.dtos import ContextoAcademicoDTO
+from src.domain.models.evaluacion import (
+    Actividad,
+    ActualizarCategoriaDTO,
+    Categoria,
+    EstadoActividad,
+    Nota,
+    NuevaActividadDTO,
+    NuevaCategoriaDTO,
+    PuntosExtra,
+    RegistrarNotaDTO,
+    RegistrarNotasMasivasDTO,
+    ResultadoEstudianteDTO,
+)
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.services.evaluacion_service import EvaluacionService
-
 
 # ===========================================================================
 # Fake
@@ -318,7 +324,7 @@ class TestCalculadorNotas:
             asignacion_id=3, periodo_id=5,
         )
 
-    def _make_act(self, act_id: int, cat_id: int) -> "Actividad":
+    def _make_act(self, act_id: int, cat_id: int) -> Actividad:
         return Actividad(
             id=act_id, nombre=f"Act{act_id}", categoria_id=cat_id,
             asignacion_id=3, periodo_id=5, valor_maximo=100.0,

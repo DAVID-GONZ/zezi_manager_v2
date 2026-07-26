@@ -1,20 +1,17 @@
 """Tests unitarios para NullExporter, OpenpyxlExporter y crear_exporter."""
 from __future__ import annotations
 
-import io
 import csv
-import tempfile
-from pathlib import Path
+import io
 
-import pytest
 import openpyxl
+import pytest
 
 from src.domain.ports.service_ports import IExporterService
+from src.infrastructure.exporters.exporter_factory import crear_exporter
 from src.infrastructure.exporters.null_exporter import NullExporter
 from src.infrastructure.exporters.openpyxl_exporter import OpenpyxlExporter
 from src.infrastructure.exporters.pdf_exporter import WeasyPrintExporter
-from src.infrastructure.exporters.exporter_factory import crear_exporter
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

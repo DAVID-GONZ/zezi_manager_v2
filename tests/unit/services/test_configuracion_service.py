@@ -16,7 +16,6 @@ from src.domain.models.configuracion import (
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.services.configuracion_service import ConfiguracionService
 
-
 # ===========================================================================
 # Repositorio falso
 # ===========================================================================

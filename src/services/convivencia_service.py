@@ -5,10 +5,7 @@ Orquesta los casos de uso del módulo de Convivencia.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.convivencia_repo import IConvivenciaRepository
-from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
     FiltroConvivenciaDTO,
     NotaComportamiento,
@@ -19,7 +16,9 @@ from src.domain.models.convivencia import (
     RegistroComportamiento,
     TipoRegistro,
 )
-from src.domain.models.alerta import Alerta, TipoAlerta, NivelAlerta
+from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.convivencia_repo import IConvivenciaRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class ConvivenciaService:

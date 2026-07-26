@@ -1,16 +1,20 @@
 """Tests unitarios de NivelacionService."""
-import pytest
-from unittest.mock import MagicMock
 from datetime import date
+from unittest.mock import MagicMock
 
-from src.services.nivelacion_service import NivelacionService, CalificarNotaNivelacionDTO
+import pytest
+
+from src.domain.models.cierre import CierrePeriodo
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
     CierreNivelacion,
     NotaNivelacion,
     NuevaActividadNivelacionDTO,
 )
-from src.domain.models.cierre import CierrePeriodo
+from src.services.nivelacion_service import (
+    CalificarNotaNivelacionDTO,
+    NivelacionService,
+)
 
 
 def _act(id_, peso, asig=1, per=1):

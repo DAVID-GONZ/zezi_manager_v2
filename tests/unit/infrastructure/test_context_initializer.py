@@ -11,12 +11,10 @@ usan un stub del dataclass para evitarlo).
 """
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, patch
 from dataclasses import dataclass, field
+from unittest.mock import MagicMock, patch
 
 from src.infrastructure.context.context_initializer import ContextInitializer
-
 
 # ── Stub de SessionContext (sin nicegui) ──────────────────────────────────────
 

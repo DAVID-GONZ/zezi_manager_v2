@@ -29,7 +29,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Entidad principal
 # =============================================================================
@@ -200,7 +199,7 @@ class ConfiguracionAnio(BaseModel):
     # Transiciones de estado
     # ------------------------------------------------------------------
 
-    def activar(self) -> "ConfiguracionAnio":
+    def activar(self) -> ConfiguracionAnio:
         """
         Retorna una copia del año marcada como activa.
         El servicio debe verificar que ningún otro año esté activo.
@@ -209,7 +208,7 @@ class ConfiguracionAnio(BaseModel):
             raise ValueError(f"El año {self.anio} ya está activo.")
         return self.model_copy(update={"activo": True})
 
-    def desactivar(self) -> "ConfiguracionAnio":
+    def desactivar(self) -> ConfiguracionAnio:
         """Retorna una copia marcada como inactiva."""
         if not self.activo:
             raise ValueError(f"El año {self.anio} ya está inactivo.")
@@ -350,7 +349,7 @@ class InformacionInstitucionalDTO(BaseModel):
     @classmethod
     def desde_configuracion(
         cls, config: ConfiguracionAnio
-    ) -> "InformacionInstitucionalDTO":
+    ) -> InformacionInstitucionalDTO:
         """
         Construye el DTO desde una ConfiguracionAnio.
         Falla explícitamente si faltan campos obligatorios para boletines.
@@ -438,7 +437,7 @@ class NivelDesempeno(BaseModel):
         return round(v, 2)
 
     @model_validator(mode="after")
-    def validar_orden_rangos(self) -> "NivelDesempeno":
+    def validar_orden_rangos(self) -> NivelDesempeno:
         """El rango mínimo del nivel debe ser estrictamente menor que el máximo."""
         if self.rango_min >= self.rango_max:
             raise ValueError(
@@ -530,10 +529,10 @@ class NuevoNivelDesempenoDTO(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validar_orden_rangos(self) -> "NuevoNivelDesempenoDTO":
+    def validar_orden_rangos(self) -> NuevoNivelDesempenoDTO:
         """El rango mínimo debe ser estrictamente menor que el máximo."""
         if self.rango_min >= self.rango_max:
-            raise ValueError(f"rango_min debe ser menor que rango_max.")
+            raise ValueError("rango_min debe ser menor que rango_max.")
         return self
 
     def to_nivel(self) -> NivelDesempeno:
@@ -559,13 +558,13 @@ class ActualizarNivelDesempenoDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "ConfiguracionAnio",
-    "NivelDesempeno",
-    "CriterioPromocion",
-    "NuevaConfiguracionAnioDTO",
     "ActualizarConfiguracionAnioDTO",
     "ActualizarInfoInstitucionalDTO",
-    "InformacionInstitucionalDTO",
-    "NuevoNivelDesempenoDTO",
     "ActualizarNivelDesempenoDTO",
+    "ConfiguracionAnio",
+    "CriterioPromocion",
+    "InformacionInstitucionalDTO",
+    "NivelDesempeno",
+    "NuevaConfiguracionAnioDTO",
+    "NuevoNivelDesempenoDTO",
 ]

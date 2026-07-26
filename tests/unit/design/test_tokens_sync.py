@@ -70,7 +70,7 @@ def test_css_load_order_archivos_existen() -> None:
             missing.append(rel)
 
     assert not missing, (
-        f"Archivos CSS faltantes en styles/:\n  "
+        "Archivos CSS faltantes en styles/:\n  "
         + "\n  ".join(missing)
     )
 

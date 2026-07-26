@@ -1,8 +1,9 @@
 """Tests unitarios del modelo de dominio Institucion (paso_24)."""
 from __future__ import annotations
 
-import pytest
 from datetime import date
+
+import pytest
 
 from src.domain.models.institucion import (
     Institucion,

@@ -5,11 +5,7 @@ Orquesta los casos de uso del módulo de Asistencia.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.asistencia_repo import IAsistenciaRepository
-from src.domain.ports.alerta_repo import IAlertaRepository
-from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.asistencia import (
     ControlDiario,
     EstadoAsistencia,
@@ -18,7 +14,10 @@ from src.domain.models.asistencia import (
     RegistroAsistenciaItemDTO,
     ResumenAsistenciaDTO,
 )
-from src.domain.models.alerta import Alerta, TipoAlerta, NivelAlerta
+from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.asistencia_repo import IAsistenciaRepository
+from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class AsistenciaService:

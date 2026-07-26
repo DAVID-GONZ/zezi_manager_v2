@@ -15,15 +15,15 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
-    TipoEventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
     ResumenUsoDTO,
+    TipoEventoSesion,
 )
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 
 
 class AuditoriaService:
@@ -151,11 +151,11 @@ class AuditoriaService:
 
 
 __all__ = [
+    "AccionCambio",
     "AuditoriaService",
+    "EventoSesion",
     "FiltroAuditoriaDTO",
     "RegistroCambio",
-    "EventoSesion",
-    "AccionCambio",
-    "TipoEventoSesion",
     "ResumenUsoDTO",
+    "TipoEventoSesion",
 ]

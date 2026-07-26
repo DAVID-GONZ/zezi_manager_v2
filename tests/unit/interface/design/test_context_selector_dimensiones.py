@@ -24,7 +24,6 @@ from src.interface.design.components.context_selector import (
     seleccion_completa,
 )
 
-
 # ── 1. Lógica pura de dimensiones ──────────────────────────────────────────────
 
 def test_periodo_siempre_visible():

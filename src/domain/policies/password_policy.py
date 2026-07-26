@@ -21,7 +21,6 @@ inspeccionan en memoria y devuelven mensajes/errores, nunca el valor.
 """
 from __future__ import annotations
 
-
 # Longitud mínima exigida a una contraseña elegida por el usuario.
 LONGITUD_MINIMA = 8
 
@@ -88,6 +87,6 @@ def requisitos_password() -> list[str]:
 __all__ = [
     "LONGITUD_MINIMA",
     "errores_password",
-    "validar_password",
     "requisitos_password",
+    "validar_password",
 ]

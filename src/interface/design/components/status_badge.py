@@ -75,4 +75,4 @@ def badge_estado_general(activo: bool) -> ui.html:
     return status_badge("Inactivo", variante="neutral")
 
 
-__all__ = ["status_badge", "badge_asistencia", "badge_desempeno", "badge_estado_general"]
+__all__ = ["badge_asistencia", "badge_desempeno", "badge_estado_general", "status_badge"]

@@ -11,6 +11,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from src.domain.ports.service_ports import IExporterService
+
 from .null_exporter import _csv_bytes
 
 _HEADER_FILL = PatternFill(fill_type="solid", fgColor="2B6CB0")

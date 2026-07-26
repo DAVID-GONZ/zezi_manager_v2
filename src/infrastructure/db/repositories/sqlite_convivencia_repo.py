@@ -6,7 +6,6 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.models.convivencia import (
     FiltroConvivenciaDTO,
     NotaComportamiento,
@@ -14,6 +13,7 @@ from src.domain.models.convivencia import (
     RegistroComportamiento,
     TipoRegistro,
 )
+from src.domain.ports.convivencia_repo import IConvivenciaRepository
 
 _TIPOS_NEGATIVOS = ("dificultad", "citacion_acudiente")
 

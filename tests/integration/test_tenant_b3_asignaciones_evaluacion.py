@@ -34,7 +34,6 @@ from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
 from src.services.asignacion_service import AsignacionService
 from src.services.contexto_tenant import usar_institucion
 
-
 # =============================================================================
 # Helpers de montaje (dos instituciones con grupos + asignaciones)
 # =============================================================================
@@ -188,17 +187,17 @@ class TestScopeCierres:
         from src.infrastructure.db.repositories.sqlite_cierre_repo import (
             SqliteCierreRepository,
         )
-        from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
-            SqliteEvaluacionRepository,
-        )
-        from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-            SqlitePeriodoRepository,
-        )
         from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
             SqliteConfiguracionRepository,
         )
         from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
             SqliteEstudianteRepository,
+        )
+        from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
+            SqliteEvaluacionRepository,
+        )
+        from src.infrastructure.db.repositories.sqlite_periodo_repo import (
+            SqlitePeriodoRepository,
         )
         from src.services.cierre_service import CierreService
 

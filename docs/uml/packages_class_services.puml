@@ -1,0 +1,67 @@
+@startuml packages_class_services
+set namespaceSeparator none
+package "services" as services {
+}
+package "services.acudiente_service" as services.acudiente_service {
+}
+package "services.alerta_service" as services.alerta_service {
+}
+package "services.asignacion_service" as services.asignacion_service {
+}
+package "services.asistencia_service" as services.asistencia_service {
+}
+package "services.auditoria_service" as services.auditoria_service {
+}
+package "services.catalogo_academico_service" as services.catalogo_academico_service {
+}
+package "services.cierre_service" as services.cierre_service {
+}
+package "services.configuracion_service" as services.configuracion_service {
+}
+package "services.contexto_tenant" as services.contexto_tenant {
+}
+package "services.convivencia_service" as services.convivencia_service {
+}
+package "services.escenario_horario_service" as services.escenario_horario_service {
+}
+package "services.estadisticos_service" as services.estadisticos_service {
+}
+package "services.estudiante_service" as services.estudiante_service {
+}
+package "services.evaluacion_service" as services.evaluacion_service {
+}
+package "services.franja_service" as services.franja_service {
+}
+package "services.generador_horario_service" as services.generador_horario_service {
+}
+package "services.habilitacion_service" as services.habilitacion_service {
+}
+package "services.horario_service" as services.horario_service {
+}
+package "services.informe_service" as services.informe_service {
+}
+package "services.infraestructura_service" as services.infraestructura_service {
+}
+package "services.institucion_service" as services.institucion_service {
+}
+package "services.login_throttle" as services.login_throttle {
+}
+package "services.nivelacion_service" as services.nivelacion_service {
+}
+package "services.periodo_service" as services.periodo_service {
+}
+package "services.plan_estudios_service" as services.plan_estudios_service {
+}
+package "services.plan_mejoramiento_service" as services.plan_mejoramiento_service {
+}
+package "services.preparacion_horario_service" as services.preparacion_horario_service {
+}
+package "services.restriccion_generacion_service" as services.restriccion_generacion_service {
+}
+package "services.sala_service" as services.sala_service {
+}
+package "services.solo_lectura" as services.solo_lectura {
+}
+package "services.usuario_service" as services.usuario_service {
+}
+@enduml

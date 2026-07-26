@@ -7,12 +7,12 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import date
 
-from src.domain.ports.asistencia_repo import IAsistenciaRepository
 from src.domain.models.asistencia import (
     ControlDiario,
     EstadoAsistencia,
     ResumenAsistenciaDTO,
 )
+from src.domain.ports.asistencia_repo import IAsistenciaRepository
 
 
 class SqliteAsistenciaRepository(IAsistenciaRepository):

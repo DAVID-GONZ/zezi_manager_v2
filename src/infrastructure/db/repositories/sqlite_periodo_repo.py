@@ -6,8 +6,8 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.models.periodo import HitoPeriodo, Periodo, TipoHito
+from src.domain.ports.periodo_repo import IPeriodoRepository
 
 
 class SqlitePeriodoRepository(IPeriodoRepository):

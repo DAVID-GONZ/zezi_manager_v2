@@ -25,9 +25,6 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
-from src.interface.design.components.buttons import btn_primary, btn_icon
 from src.interface.design.components import (
     confirm_dialog,
     empty_state,
@@ -36,6 +33,9 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
+from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.layout import app_layout
+from src.interface.design.tokens import Icons
 from src.services.catalogo_academico_service import Grupo
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -169,7 +169,7 @@ def grupos_page() -> None:
     def _abrir_editar(grupo: Grupo) -> None:
         jornada_val = grupo.jornada.value if hasattr(grupo.jornada, "value") else str(grupo.jornada)
 
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             # La entidad Grupo valida y normaliza; la vista solo mapea el
             # formulario y conserva los valores actuales si vienen vacíos.
             grado = datos.get("grado")
@@ -215,7 +215,7 @@ def grupos_page() -> None:
         )
 
     # ── Acciones CRUD: grados ─────────────────────────────────────────────────
-    def _guardar_grado(datos: dict) -> "bool | None":
+    def _guardar_grado(datos: dict) -> bool | None:
         try:
             Container.plan_estudios_service().guardar_grado(
                 numero          = int(datos.get("numero")),

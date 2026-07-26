@@ -4,11 +4,13 @@ from __future__ import annotations
 import pytest
 
 from src.domain.models.asignacion import (
-    Asignacion, AsignacionInfo, FiltroAsignacionesDTO, NuevaAsignacionDTO,
+    Asignacion,
+    AsignacionInfo,
+    FiltroAsignacionesDTO,
+    NuevaAsignacionDTO,
 )
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.services.asignacion_service import AsignacionService
-
 
 # ===========================================================================
 # Fake

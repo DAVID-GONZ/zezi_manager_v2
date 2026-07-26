@@ -27,7 +27,6 @@ from src.domain.models.infraestructura import (
 )
 from src.services.generador_horario_service import GeneradorHorarioService
 
-
 # ===========================================================================
 # Constantes
 # ===========================================================================

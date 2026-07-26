@@ -8,10 +8,9 @@ IInfraestructuraRepository por inyección; la lógica se movió idéntica.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import EscenarioHorario, HorarioInfo
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class EscenarioHorarioService:

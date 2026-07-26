@@ -5,12 +5,8 @@ Orquesta los casos de uso del módulo de Alertas.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from datetime import datetime
 
-from src.domain.ports.alerta_repo import IAlertaRepository
-from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.models.alerta import (
     Alerta,
     ConfiguracionAlerta,
@@ -18,6 +14,9 @@ from src.domain.models.alerta import (
     NivelAlerta,
     TipoAlerta,
 )
+from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.estadisticos_repo import IEstadisticosRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class AlertaService:

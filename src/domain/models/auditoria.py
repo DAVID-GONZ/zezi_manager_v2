@@ -36,10 +36,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # =============================================================================
 # Enumeraciones
@@ -236,7 +234,7 @@ class RegistroCambio(BaseModel):
         datos_nuevos: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
-    ) -> "RegistroCambio":
+    ) -> RegistroCambio:
         """Construye un registro de creación (sin valor anterior)."""
         return cls(
             usuario_id    = usuario_id,
@@ -255,7 +253,7 @@ class RegistroCambio(BaseModel):
         datos_nuevos: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
-    ) -> "RegistroCambio":
+    ) -> RegistroCambio:
         """Construye un registro de actualización."""
         return cls(
             usuario_id    = usuario_id,
@@ -273,7 +271,7 @@ class RegistroCambio(BaseModel):
         datos_anteriores: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
-    ) -> "RegistroCambio":
+    ) -> RegistroCambio:
         """Construye un registro de eliminación (sin valor nuevo)."""
         return cls(
             usuario_id    = usuario_id,
@@ -330,7 +328,7 @@ class CrearRegistroCambioDTO(BaseModel):
         id_registro: int | None = None,
         usuario_id: int | None = None,
         descripcion: str | None = None,   # ignorado en v2.0
-    ) -> "CrearRegistroCambioDTO":
+    ) -> CrearRegistroCambioDTO:
         """
         Compatibilidad con la firma de `registrar_cambio()` del legacy.
 
@@ -393,12 +391,12 @@ class FiltroAuditoriaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "TipoEventoSesion",
     "AccionCambio",
-    "EventoSesion",
-    "RegistroCambio",
     "CrearEventoSesionDTO",
     "CrearRegistroCambioDTO",
+    "EventoSesion",
     "FiltroAuditoriaDTO",
+    "RegistroCambio",
     "ResumenUsoDTO",
+    "TipoEventoSesion",
 ]

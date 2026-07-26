@@ -6,14 +6,17 @@ from datetime import date
 import pytest
 
 from src.domain.models.convivencia import (
-    FiltroConvivenciaDTO, NotaComportamiento,
-    NuevaNotaComportamientoDTO, NuevaObservacionDTO,
-    NuevoRegistroComportamientoDTO, ObservacionPeriodo,
-    RegistroComportamiento, TipoRegistro,
+    FiltroConvivenciaDTO,
+    NotaComportamiento,
+    NuevaNotaComportamientoDTO,
+    NuevaObservacionDTO,
+    NuevoRegistroComportamientoDTO,
+    ObservacionPeriodo,
+    RegistroComportamiento,
+    TipoRegistro,
 )
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.services.convivencia_service import ConvivenciaService
-
 
 # ===========================================================================
 # Fake

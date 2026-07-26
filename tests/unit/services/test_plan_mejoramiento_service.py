@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.services.plan_mejoramiento_service import PlanMejoramientoService
+from src.domain.models.estudiante import Estudiante
+from src.domain.models.evaluacion import Actividad, Categoria, Nota
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalificarNotaPlanDTO,
@@ -15,12 +16,10 @@ from src.domain.models.plan_mejoramiento import (
     NotaCortePlan,
     NuevaActividadPlanDTO,
 )
-from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
-from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
-from src.domain.models.evaluacion import Actividad, Categoria, Nota, EstadoActividad
-from src.domain.models.estudiante import Estudiante
-
+from src.domain.ports.evaluacion_repo import IEvaluacionRepository
+from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
+from src.services.plan_mejoramiento_service import PlanMejoramientoService
 
 # ---------------------------------------------------------------------------
 # Helpers de construcción

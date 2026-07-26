@@ -8,10 +8,9 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class FranjaService:
@@ -145,4 +144,4 @@ class FranjaService:
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las
 # páginas importan los TIPOS desde su servicio cohesivo, no desde `src.domain`
 # (prohibido en `src/interface/pages` por check_imports / convención §2).
-__all__ = ["FranjaService", "DiaSemana", "Franja", "PlantillaFranja"]
+__all__ = ["DiaSemana", "Franja", "FranjaService", "PlantillaFranja"]

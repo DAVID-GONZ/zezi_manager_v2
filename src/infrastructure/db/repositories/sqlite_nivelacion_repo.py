@@ -6,12 +6,12 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.nivelacion_repo import INivelacionRepository
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
     CierreNivelacion,
     NotaNivelacion,
 )
+from src.domain.ports.nivelacion_repo import INivelacionRepository
 
 
 class SqliteNivelacionRepository(INivelacionRepository):

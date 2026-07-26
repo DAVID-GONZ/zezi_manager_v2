@@ -23,7 +23,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # =============================================================================
 # Formato de exportación
 # =============================================================================
@@ -244,11 +243,11 @@ class RespuestaOperacionDTO(BaseModel):
     datos:    dict | None  = None
 
     @classmethod
-    def ok(cls, mensaje: str = "Operación exitosa", datos: dict | None = None) -> "RespuestaOperacionDTO":
+    def ok(cls, mensaje: str = "Operación exitosa", datos: dict | None = None) -> RespuestaOperacionDTO:
         return cls(exito=True, mensaje=mensaje, datos=datos)
 
     @classmethod
-    def error(cls, mensaje: str, datos: dict | None = None) -> "RespuestaOperacionDTO":
+    def error(cls, mensaje: str, datos: dict | None = None) -> RespuestaOperacionDTO:
         return cls(exito=False, mensaje=mensaje, datos=datos)
 
 
@@ -257,11 +256,11 @@ class RespuestaOperacionDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "FormatoInforme",
     "ContextoAcademicoDTO",
-    "InformeNotasDTO",
-    "InformeAsistenciaDTO",
     "DashboardMetricsDTO",
+    "FormatoInforme",
+    "InformeAsistenciaDTO",
+    "InformeNotasDTO",
     "MatriculaMasivaDTO",
     "MatriculaMasivaResultadoDTO",
     "RespuestaOperacionDTO",

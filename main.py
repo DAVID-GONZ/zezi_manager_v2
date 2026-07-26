@@ -17,7 +17,6 @@ from config import settings
 from container import Container
 
 
-
 def inicializar_base_de_datos() -> bool:
     """
     Crea el schema si no existe y ejecuta el seed correspondiente al entorno:
@@ -26,8 +25,8 @@ def inicializar_base_de_datos() -> bool:
         seed_dev() incluye seed_base() internamente — no se llaman por separado.
       - production/test:  seed_base() solo si la BD es nueva.
     """
-    from src.infrastructure.db.schema import init_db
     from src.infrastructure.db.connection import DB_PATH, get_connection
+    from src.infrastructure.db.schema import init_db
 
     es_nueva = not DB_PATH.exists()
     ok = init_db()
@@ -95,6 +94,7 @@ def registrar_rutas_ui() -> None:
     (layout.py) deriva su visibilidad del mismo registro.
     """
     from nicegui import app, ui
+
     from src.domain.models.usuario import Rol
     from src.interface.auth import AUTENTICADO, PUBLICO, registrar_pagina
     from src.interface.pages.login import login_page
@@ -158,17 +158,21 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/cambiar-password", cambiar_password_page, roles=AUTENTICADO)
 
     # ── Administración ────────────────────────────────────────────────────────
-    from src.interface.pages.admin.usuarios import usuarios_page
-    from src.interface.pages.admin.auditoria import auditoria_page
-    from src.interface.pages.admin.grupos import grupos_page
-    from src.interface.pages.admin.asignaturas import asignaturas_page
-    from src.interface.pages.admin.salas import salas_page
-    from src.interface.pages.admin.plan_estudios import plan_estudios_page
-    from src.interface.pages.admin.disponibilidad_docente import disponibilidad_docente_page
     from src.interface.pages.admin.asignaciones import asignaciones_page
+    from src.interface.pages.admin.asignaturas import asignaturas_page
+    from src.interface.pages.admin.auditoria import auditoria_page
+    from src.interface.pages.admin.configuracion_institucion import (
+        configuracion_institucion_page,
+    )
     from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
-    from src.interface.pages.admin.configuracion_institucion import configuracion_institucion_page
     from src.interface.pages.admin.diagnostico import diagnostico_page
+    from src.interface.pages.admin.disponibilidad_docente import (
+        disponibilidad_docente_page,
+    )
+    from src.interface.pages.admin.grupos import grupos_page
+    from src.interface.pages.admin.plan_estudios import plan_estudios_page
+    from src.interface.pages.admin.salas import salas_page
+    from src.interface.pages.admin.usuarios import usuarios_page
 
     registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
     registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
@@ -193,8 +197,12 @@ def registrar_rutas_ui() -> None:
     # ── Académico ─────────────────────────────────────────────────────────────
     from src.interface.pages.academico.estudiantes import estudiantes_page
     from src.interface.pages.academico.horarios_hub import horarios_hub_page
-    from src.interface.pages.academico.registro_asistencia import registro_asistencia_page
-    from src.interface.pages.academico.tablero_estadisticos import tablero_estadisticos_page
+    from src.interface.pages.academico.registro_asistencia import (
+        registro_asistencia_page,
+    )
+    from src.interface.pages.academico.tablero_estadisticos import (
+        tablero_estadisticos_page,
+    )
 
     registrar_pagina("/estudiantes", estudiantes_page, roles=_AULA)
     registrar_pagina("/asistencia", registro_asistencia_page, roles=_AULA)
@@ -214,12 +222,16 @@ def registrar_rutas_ui() -> None:
     )
 
     # ── Evaluación ────────────────────────────────────────────────────────────
-    from src.interface.pages.evaluacion.configuracion_evaluacion import configuracion_evaluacion_page
-    from src.interface.pages.evaluacion.planilla_notas import planilla_notas_page
-    from src.interface.pages.evaluacion.cierre_periodo import cierre_periodo_page
     from src.interface.pages.evaluacion.cierre_anio import cierre_anio_page
+    from src.interface.pages.evaluacion.cierre_periodo import cierre_periodo_page
+    from src.interface.pages.evaluacion.configuracion_evaluacion import (
+        configuracion_evaluacion_page,
+    )
     from src.interface.pages.evaluacion.habilitaciones import habilitaciones_page
-    from src.interface.pages.evaluacion.planes_mejoramiento import planes_mejoramiento_page
+    from src.interface.pages.evaluacion.planes_mejoramiento import (
+        planes_mejoramiento_page,
+    )
+    from src.interface.pages.evaluacion.planilla_notas import planilla_notas_page
 
     # C reconciliado: /evaluacion/configuracion = solo profesor (config docente).
     registrar_pagina(
@@ -232,19 +244,21 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/evaluacion/cierre-anio", cierre_anio_page, roles=_DIR_COORD)
 
     # ── Convivencia ───────────────────────────────────────────────────────────
-    from src.interface.pages.convivencia.observaciones import observaciones_page
     from src.interface.pages.convivencia.comportamiento import comportamiento_page
     from src.interface.pages.convivencia.notas_convivencia import notas_convivencia_page
+    from src.interface.pages.convivencia.observaciones import observaciones_page
 
     registrar_pagina("/convivencia/observaciones", observaciones_page, roles=_AULA)
     registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)
     registrar_pagina("/convivencia/notas", notas_convivencia_page, roles=_AULA)
 
     # ── Informes ──────────────────────────────────────────────────────────────
-    from src.interface.pages.informes.boletin_periodo import boletin_periodo_page
     from src.interface.pages.informes.boletin_anual import boletin_anual_page
+    from src.interface.pages.informes.boletin_periodo import boletin_periodo_page
+    from src.interface.pages.informes.consolidado_asistencia import (
+        consolidado_asistencia_page,
+    )
     from src.interface.pages.informes.consolidado_notas import consolidado_notas_page
-    from src.interface.pages.informes.consolidado_asistencia import consolidado_asistencia_page
     from src.interface.pages.informes.estadisticos import estadisticos_page
 
     registrar_pagina("/informes/boletin-periodo", boletin_periodo_page, roles=_AULA)

@@ -10,7 +10,6 @@ from nicegui import ui
 
 from src.interface.design.tokens import DesempenoColors
 
-
 _NIVEL_PORCENTAJE = {
     "Bajo":     25,
     "Básico":   50,

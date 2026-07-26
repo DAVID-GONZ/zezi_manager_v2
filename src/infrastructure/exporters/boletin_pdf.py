@@ -20,12 +20,12 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
+    HRFlowable,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    HRFlowable,
 )
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
@@ -564,7 +564,7 @@ def generar_boletin_anual_pdf(datos: dict[str, Any]) -> bytes:
 
 
 __all__ = [
-    "generar_boletin_periodo_pdf",
     "generar_boletin_acumulado_pdf",
     "generar_boletin_anual_pdf",
+    "generar_boletin_periodo_pdf",
 ]

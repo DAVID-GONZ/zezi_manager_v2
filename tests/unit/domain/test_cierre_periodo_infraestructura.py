@@ -11,26 +11,6 @@ from datetime import date, datetime, time, timedelta
 import pytest
 from pydantic import ValidationError
 
-from src.domain.models.periodo import (
-    ActualizarPeriodoDTO,
-    HitoPeriodo,
-    NuevoHitoPeriodoDTO,
-    NuevoPeriodoDTO,
-    Periodo,
-    TipoHito,
-)
-from src.domain.models.infraestructura import (
-    AreaConocimiento,
-    Asignatura,
-    DiaSemana,
-    Grupo,
-    Horario,
-    Jornada,
-    Logro,
-    NuevaAreaDTO,
-    NuevoGrupoDTO,
-    NuevoHorarioDTO,
-)
 from src.domain.models.cierre import (
     CierreAnio,
     CierrePeriodo,
@@ -40,7 +20,25 @@ from src.domain.models.cierre import (
     EstadoPromocion,
     PromocionAnual,
 )
-
+from src.domain.models.infraestructura import (
+    AreaConocimiento,
+    Asignatura,
+    DiaSemana,
+    Grupo,
+    Horario,
+    Jornada,
+    Logro,
+    NuevoGrupoDTO,
+    NuevoHorarioDTO,
+)
+from src.domain.models.periodo import (
+    ActualizarPeriodoDTO,
+    HitoPeriodo,
+    NuevoHitoPeriodoDTO,
+    NuevoPeriodoDTO,
+    Periodo,
+    TipoHito,
+)
 
 # =============================================================================
 # PERIODO

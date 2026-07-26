@@ -14,12 +14,12 @@ Uso:
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from ..theme import ThemeManager
-from .buttons import btn_primary, btn_ghost
+from .buttons import btn_ghost, btn_primary
 
 _VARIANTE_ICONO_COLOR: dict[str, str] = {
     "default": "var(--color-text-secondary)",

@@ -10,9 +10,9 @@ import sqlite3
 from contextlib import contextmanager
 from typing import Any
 
-from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
+from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 
 
 class SqliteEstadisticosRepository(IEstadisticosRepository):

@@ -15,7 +15,7 @@ def test_hashear_y_verificar():
 
 def test_verificar_hash_sha256_legacy():
     # Compatibilidad con hashes del seed.py de desarrollo
-    digest = hashlib.sha256("Admin2025*".encode()).hexdigest()
+    digest = hashlib.sha256(b"Admin2025*").hexdigest()
     hash_legacy = f"sha256:{digest}"
     svc = BcryptAuthService()
     assert svc.verificar_password("Admin2025*", hash_legacy) is True

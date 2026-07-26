@@ -13,12 +13,12 @@ Principios de diseño:
 
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
-import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 logger = logging.getLogger("DB.CONNECTION")
 
@@ -44,7 +44,7 @@ def _resolve_db_path() -> Path:
         return Path(override)
 
     try:
-        from config import DATABASE_PATH  # noqa: PLC0415
+        from config import DATABASE_PATH
         return DATABASE_PATH
     except ImportError:
         # config.py todavía no existe o el proyecto se importa en aislamiento.
@@ -136,7 +136,7 @@ def get_connection(
             timeout=timeout,
         )
 
-        conn.execute(f"PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA foreign_keys=ON;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA cache_size=-64000;")
@@ -184,8 +184,8 @@ def verify_db_integrity(db_path: Path | str | None = None) -> bool:
 
 
 __all__ = [
-    "get_connection",
     "DB_PATH",
-    "verify_db_integrity",
     "_normalize_params",   # usado internamente por queries.py
+    "get_connection",
+    "verify_db_integrity",
 ]

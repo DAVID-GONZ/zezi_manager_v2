@@ -17,13 +17,7 @@ from src.domain.models.alerta import (
     CrearAlertaDTO,
     FiltroAlertasDTO,
     NivelAlerta,
-    ResolverAlertaDTO,
     TipoAlerta,
-)
-from src.domain.models.piar import (
-    ActualizarPIARDTO,
-    NuevoPIARDTO,
-    PIAR,
 )
 from src.domain.models.convivencia import (
     FiltroConvivenciaDTO,
@@ -35,7 +29,11 @@ from src.domain.models.convivencia import (
     RegistroComportamiento,
     TipoRegistro,
 )
-
+from src.domain.models.piar import (
+    PIAR,
+    ActualizarPIARDTO,
+    NuevoPIARDTO,
+)
 
 # =============================================================================
 # ALERTA

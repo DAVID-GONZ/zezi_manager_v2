@@ -1,0 +1,59 @@
+@startuml packages_class_repositories
+set namespaceSeparator none
+package "db.repositories" as db.repositories {
+}
+package "db.repositories.sqlite_acudiente_repo" as db.repositories.sqlite_acudiente_repo {
+}
+package "db.repositories.sqlite_alerta_repo" as db.repositories.sqlite_alerta_repo {
+}
+package "db.repositories.sqlite_asignacion_repo" as db.repositories.sqlite_asignacion_repo {
+}
+package "db.repositories.sqlite_asistencia_repo" as db.repositories.sqlite_asistencia_repo {
+}
+package "db.repositories.sqlite_auditoria_repo" as db.repositories.sqlite_auditoria_repo {
+}
+package "db.repositories.sqlite_cierre_repo" as db.repositories.sqlite_cierre_repo {
+}
+package "db.repositories.sqlite_configuracion_repo" as db.repositories.sqlite_configuracion_repo {
+}
+package "db.repositories.sqlite_convivencia_repo" as db.repositories.sqlite_convivencia_repo {
+}
+package "db.repositories.sqlite_estadisticos_repo" as db.repositories.sqlite_estadisticos_repo {
+}
+package "db.repositories.sqlite_estudiante_repo" as db.repositories.sqlite_estudiante_repo {
+}
+package "db.repositories.sqlite_evaluacion_repo" as db.repositories.sqlite_evaluacion_repo {
+}
+package "db.repositories.sqlite_habilitacion_repo" as db.repositories.sqlite_habilitacion_repo {
+}
+package "db.repositories.sqlite_infraestructura_repo" as db.repositories.sqlite_infraestructura_repo {
+}
+package "db.repositories.sqlite_institucion_repo" as db.repositories.sqlite_institucion_repo {
+}
+package "db.repositories.sqlite_nivelacion_repo" as db.repositories.sqlite_nivelacion_repo {
+}
+package "db.repositories.sqlite_periodo_repo" as db.repositories.sqlite_periodo_repo {
+}
+package "db.repositories.sqlite_plan_mejoramiento_repo" as db.repositories.sqlite_plan_mejoramiento_repo {
+}
+package "db.repositories.sqlite_siee_repo" as db.repositories.sqlite_siee_repo {
+}
+package "db.repositories.sqlite_usuario_repo" as db.repositories.sqlite_usuario_repo {
+}
+db.repositories --> db.repositories.sqlite_acudiente_repo
+db.repositories --> db.repositories.sqlite_alerta_repo
+db.repositories --> db.repositories.sqlite_asignacion_repo
+db.repositories --> db.repositories.sqlite_asistencia_repo
+db.repositories --> db.repositories.sqlite_auditoria_repo
+db.repositories --> db.repositories.sqlite_cierre_repo
+db.repositories --> db.repositories.sqlite_configuracion_repo
+db.repositories --> db.repositories.sqlite_convivencia_repo
+db.repositories --> db.repositories.sqlite_estadisticos_repo
+db.repositories --> db.repositories.sqlite_estudiante_repo
+db.repositories --> db.repositories.sqlite_evaluacion_repo
+db.repositories --> db.repositories.sqlite_habilitacion_repo
+db.repositories --> db.repositories.sqlite_infraestructura_repo
+db.repositories --> db.repositories.sqlite_institucion_repo
+db.repositories --> db.repositories.sqlite_periodo_repo
+db.repositories --> db.repositories.sqlite_usuario_repo
+@enduml

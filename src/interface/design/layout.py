@@ -34,13 +34,14 @@ Uso:
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from .components.buttons import btn_icon, btn_secondary
 from .theme import ThemeManager
 from .tokens import Icons
-from .components.buttons import btn_icon, btn_secondary
 
 if TYPE_CHECKING:
     from src.interface.context.session_context import SessionContext
@@ -288,7 +289,7 @@ def _theme_toggle_btn() -> None:
         )
 
 
-def _user_block_topbar(ctx: "SessionContext | None") -> None:
+def _user_block_topbar(ctx: SessionContext | None) -> None:
     """Bloque de usuario en el topbar."""
     if not ctx:
         return
@@ -304,13 +305,13 @@ def _user_block_topbar(ctx: "SessionContext | None") -> None:
         ).classes("topbar-logout-btn")
 
 
-def _salir_ver_como(ctx: "SessionContext") -> None:
+def _salir_ver_como(ctx: SessionContext) -> None:
     """Handler del botón Salir del banner de impersonación."""
     ctx.salir_ver_como()
     ui.navigate.to("/inicio")
 
 
-def _impersonation_banner(ctx: "SessionContext | None") -> None:
+def _impersonation_banner(ctx: SessionContext | None) -> None:
     """
     Banner persistente mostrado mientras un admin impersona a otro usuario
     en modo solo lectura (paso_21). Incluye botón "Salir".
@@ -336,12 +337,12 @@ def _impersonation_banner(ctx: "SessionContext | None") -> None:
 
 
 def _topbar(
-    ctx: "SessionContext | None",
+    ctx: SessionContext | None,
     *,
     page_titulo: str = "",
     page_subtitulo: str = "",
     page_icono: str = "",
-    page_acciones: "list[dict] | None" = None,
+    page_acciones: list[dict] | None = None,
     logo_url: str | None = None,
     on_context_change=None,
     mostrar_contexto: bool = True,
@@ -497,12 +498,12 @@ def _rail(
 # ── Layout principal ────────────────────────────────────────────────────────────
 def app_layout(
     ctx_or_none=None,
-    contenido_arg: "Callable[[], None] | None" = None,
+    contenido_arg: Callable[[], None] | None = None,
     *,
     page_titulo: str = "",
     page_subtitulo: str = "",
     page_icono: str = "",
-    page_acciones: "list[dict] | None" = None,
+    page_acciones: list[dict] | None = None,
     on_context_change=None,
     mostrar_contexto: bool = True,
     mostrar_grupo: bool = True,
@@ -706,4 +707,4 @@ def app_layout(
                 _contenido()
 
 
-__all__ = ["app_layout", "NAV_ITEMS"]
+__all__ = ["NAV_ITEMS", "app_layout"]

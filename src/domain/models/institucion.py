@@ -27,7 +27,6 @@ from datetime import date
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # =============================================================================
 # Entidad principal
 # =============================================================================
@@ -113,7 +112,7 @@ class InstitucionResumenDTO(BaseModel):
     activa: bool
 
     @classmethod
-    def desde_institucion(cls, i: Institucion) -> "InstitucionResumenDTO":
+    def desde_institucion(cls, i: Institucion) -> InstitucionResumenDTO:
         if i.id is None:
             raise ValueError("No se puede resumir una institución sin id.")
         return cls(id=i.id, nombre=i.nombre, activa=i.activa)
@@ -125,6 +124,6 @@ class InstitucionResumenDTO(BaseModel):
 
 __all__ = [
     "Institucion",
-    "NuevaInstitucionDTO",
     "InstitucionResumenDTO",
+    "NuevaInstitucionDTO",
 ]

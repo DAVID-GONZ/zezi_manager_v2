@@ -26,7 +26,8 @@ from __future__ import annotations
 
 import contextvars
 import functools
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 # Estado privado. Default False → comportamiento normal sin impersonación.
 _solo_lectura: contextvars.ContextVar[bool] = contextvars.ContextVar(
@@ -97,6 +98,6 @@ __all__ = [
     "OperacionSoloLecturaError",
     "activar_solo_lectura",
     "es_solo_lectura",
-    "verificar_escritura",
     "requiere_escritura",
+    "verificar_escritura",
 ]

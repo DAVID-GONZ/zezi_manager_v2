@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
-from typing import Iterator
+from collections.abc import Iterator
 
 # Estado privado. Default None → sin scope (admin / arranque sin sesión).
 _institucion_actual: contextvars.ContextVar[int | None] = contextvars.ContextVar(
@@ -109,9 +109,9 @@ def usar_institucion(institucion_id: int | None) -> Iterator[None]:
 
 
 __all__ = [
+    "OperacionFueraDeInstitucionError",
     "activar_institucion",
     "institucion_actual",
     "usar_institucion",
     "verificar_pertenencia",
-    "OperacionFueraDeInstitucionError",
 ]

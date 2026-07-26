@@ -8,18 +8,16 @@ carga_horaria_max del docente) antes de insertar o actualizar.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
+from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import (
     CupoDTO,
     Horario,
     HorarioInfo,
     NuevoHorarioDTO,
 )
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.asignacion_repo import IAsignacionRepository
-from src.domain.models.asignacion import FiltroAsignacionesDTO
-
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 # ---------------------------------------------------------------------------
 # Constantes y helpers de módulo
@@ -518,7 +516,7 @@ class HorarioService:
         escenario_id: int,
         periodo_id: int,
         filas: list[dict],
-    ) -> "ReporteLoteDTO":
+    ) -> ReporteLoteDTO:
         """Analiza un lote de filas como escenario virtual (sin persistir):
         valida asignación, campos obligatorios, cruces (docente/grupo/sala) y
         topes de materia y docente, y devuelve un reporte fila por fila."""
@@ -634,11 +632,11 @@ class HorarioService:
         periodo_id: int,
         filas: list[dict],
         solo_validas: bool = False,
-    ) -> "ResultadoLoteDTO":
+    ) -> ResultadoLoteDTO:
         """Persiste un lote de bloques: lo analiza y, si es válido (o si
         `solo_validas`), crea de forma masiva solo las filas OK; devuelve el
         conteo de creados/omitidos junto con el reporte."""
-        from src.domain.models.infraestructura import ResultadoLoteDTO, Horario
+        from src.domain.models.infraestructura import Horario, ResultadoLoteDTO
 
         reporte = self.analizar_lote(escenario_id, periodo_id, filas)
 
@@ -678,4 +676,4 @@ class HorarioService:
         return self._infra.get_asignatura(asignatura_id)
 
 
-__all__ = ["HorarioService", "COLUMNAS_HORARIO"]
+__all__ = ["COLUMNAS_HORARIO", "HorarioService"]

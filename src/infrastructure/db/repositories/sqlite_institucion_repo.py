@@ -6,8 +6,8 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.institucion_repo import IInstitucionRepository
 from src.domain.models.institucion import Institucion
+from src.domain.ports.institucion_repo import IInstitucionRepository
 
 _COLS = "id, nombre, nit, codigo, activa, fecha_creacion"
 

@@ -8,10 +8,13 @@ También inserta registros manuales para verificar el comportamiento exacto.
 """
 from __future__ import annotations
 
-import pytest
 from datetime import date
 
-from src.infrastructure.db.repositories.sqlite_asistencia_repo import SqliteAsistenciaRepository
+import pytest
+
+from src.infrastructure.db.repositories.sqlite_asistencia_repo import (
+    SqliteAsistenciaRepository,
+)
 
 
 class TestContarClasesDictadasDocente:

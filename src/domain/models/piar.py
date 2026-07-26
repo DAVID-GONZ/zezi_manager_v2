@@ -23,7 +23,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Entidad
 # =============================================================================
@@ -144,7 +143,7 @@ class PIAR(BaseModel):
     # Métodos de actualización
     # ------------------------------------------------------------------
 
-    def programar_revision(self, fecha: date) -> "PIAR":
+    def programar_revision(self, fecha: date) -> PIAR:
         """Retorna una copia con la fecha de revisión actualizada."""
         if fecha < self.fecha_elaboracion:
             raise ValueError(
@@ -158,7 +157,7 @@ class PIAR(BaseModel):
         ajustes_evaluativos: str | None = None,
         ajustes_pedagogicos: str | None = None,
         profesionales_apoyo: str | None = None,
-    ) -> "PIAR":
+    ) -> PIAR:
         """Retorna una copia con los ajustes actualizados."""
         cambios: dict = {}
         if ajustes_evaluativos is not None:
@@ -231,6 +230,6 @@ class ActualizarPIARDTO(BaseModel):
 
 __all__ = [
     "PIAR",
-    "NuevoPIARDTO",
     "ActualizarPIARDTO",
+    "NuevoPIARDTO",
 ]

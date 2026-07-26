@@ -22,7 +22,7 @@ from typing import Any
 
 import pandas as pd
 
-from .connection import get_connection, _normalize_params
+from .connection import _normalize_params, get_connection
 
 logger = logging.getLogger("DB.QUERIES")
 
@@ -236,4 +236,4 @@ def execute(
         return False
 
 
-__all__ = ["fetch_df", "fetch_one", "fetch_all", "get_scalar", "execute"]
+__all__ = ["execute", "fetch_all", "fetch_df", "fetch_one", "get_scalar"]

@@ -53,4 +53,4 @@ def verificar(password: str, password_hash: str) -> bool:
         return False
 
 
-__all__ = ["hashear", "verificar", "ROUNDS"]
+__all__ = ["ROUNDS", "hashear", "verificar"]

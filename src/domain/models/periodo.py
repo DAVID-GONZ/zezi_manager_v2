@@ -28,8 +28,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
+from pydantic import BaseModel, field_validator, model_validator
 
 # =============================================================================
 # Enumeraciones
@@ -178,7 +177,7 @@ class Periodo(BaseModel):
     # Métodos de dominio
     # ------------------------------------------------------------------
 
-    def cerrar(self, fecha: datetime | None = None) -> "Periodo":
+    def cerrar(self, fecha: datetime | None = None) -> Periodo:
         """
         Retorna una copia del periodo marcada como cerrada.
 
@@ -196,7 +195,7 @@ class Periodo(BaseModel):
             "fecha_cierre_real": fecha or datetime.now(),
         })
 
-    def activar(self) -> "Periodo":
+    def activar(self) -> Periodo:
         """Retorna una copia con activo=True."""
         if self.cerrado:
             raise ValueError(
@@ -208,7 +207,7 @@ class Periodo(BaseModel):
             )
         return self.model_copy(update={"activo": True})
 
-    def desactivar(self) -> "Periodo":
+    def desactivar(self) -> Periodo:
         """Retorna una copia con activo=False."""
         if not self.activo:
             raise ValueError(
@@ -379,10 +378,10 @@ class NuevoHitoPeriodoDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "TipoHito",
-    "Periodo",
-    "HitoPeriodo",
-    "NuevoPeriodoDTO",
     "ActualizarPeriodoDTO",
+    "HitoPeriodo",
     "NuevoHitoPeriodoDTO",
+    "NuevoPeriodoDTO",
+    "Periodo",
+    "TipoHito",
 ]

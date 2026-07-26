@@ -4,11 +4,14 @@ from __future__ import annotations
 import pytest
 
 from src.domain.models.periodo import (
-    HitoPeriodo, NuevoPeriodoDTO, NuevoHitoPeriodoDTO, Periodo, TipoHito,
+    HitoPeriodo,
+    NuevoHitoPeriodoDTO,
+    NuevoPeriodoDTO,
+    Periodo,
+    TipoHito,
 )
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.services.periodo_service import PeriodoService
-
 
 # ===========================================================================
 # Fake

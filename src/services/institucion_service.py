@@ -8,14 +8,13 @@ institución por defecto (#1). No contiene SQL ni lógica de presentación.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.institucion_repo import IInstitucionRepository
 from src.domain.models.institucion import (
     Institucion,
     InstitucionResumenDTO,
     NuevaInstitucionDTO,
 )
+from src.domain.ports.institucion_repo import IInstitucionRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class InstitucionService:
@@ -76,7 +75,7 @@ class InstitucionService:
 
 
 __all__ = [
+    "InstitucionResumenDTO",
     "InstitucionService",
     "NuevaInstitucionDTO",
-    "InstitucionResumenDTO",
 ]

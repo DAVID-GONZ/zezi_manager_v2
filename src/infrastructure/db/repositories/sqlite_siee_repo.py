@@ -6,8 +6,8 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.siee_repo import ISIEERepository
 from src.domain.models.evaluacion import Categoria, ConfiguracionSIEE, ModoSIEE
+from src.domain.ports.siee_repo import ISIEERepository
 
 
 class SqliteSIEERepository(ISIEERepository):

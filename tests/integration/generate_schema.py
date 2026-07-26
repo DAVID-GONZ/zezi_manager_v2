@@ -1,6 +1,7 @@
 import ast
 import os
 
+
 def get_base_names(bases):
     names = []
     for base in bases:

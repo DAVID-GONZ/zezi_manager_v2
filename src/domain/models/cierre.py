@@ -35,7 +35,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -356,7 +355,7 @@ class PromocionAnual(BaseModel):
         observacion: str | None = None,
         usuario_id: int | None = None,
         fecha: date | None = None,
-    ) -> "PromocionAnual":
+    ) -> PromocionAnual:
         """
         Registra la decisión de promoción. PENDIENTE → otro estado.
 
@@ -485,11 +484,11 @@ class DecidirPromocionDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "EstadoPromocion",
-    "CierrePeriodo",
     "CierreAnio",
-    "PromocionAnual",
-    "CrearCierrePeriodoDTO",
+    "CierrePeriodo",
     "CrearCierreAnioDTO",
+    "CrearCierrePeriodoDTO",
     "DecidirPromocionDTO",
+    "EstadoPromocion",
+    "PromocionAnual",
 ]

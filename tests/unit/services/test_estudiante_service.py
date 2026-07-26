@@ -4,13 +4,15 @@ from __future__ import annotations
 import pytest
 
 from src.domain.models.estudiante import (
-    Estudiante, EstadoMatricula, FiltroEstudiantesDTO,
-    EstudianteResumenDTO, NuevoEstudianteDTO,
+    EstadoMatricula,
+    Estudiante,
+    EstudianteResumenDTO,
+    FiltroEstudiantesDTO,
+    NuevoEstudianteDTO,
 )
-from src.domain.models.piar import PIAR, NuevoPIARDTO, ActualizarPIARDTO
+from src.domain.models.piar import PIAR, ActualizarPIARDTO, NuevoPIARDTO
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.services.estudiante_service import EstudianteService
-
 
 # ===========================================================================
 # Fake
@@ -66,6 +68,7 @@ class FakeEstudianteRepo(IEstudianteRepository):
         tipo, motivo=None, usuario_registro_id=None,
     ):
         from datetime import datetime
+
         from src.domain.models.estudiante import MovimientoEstudiante
         mov = MovimientoEstudiante(
             id=self._next_mov,

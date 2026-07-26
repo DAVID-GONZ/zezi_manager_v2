@@ -6,13 +6,13 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
-from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.models.cierre import (
     CierreAnio,
     CierrePeriodo,
     EstadoPromocion,
     PromocionAnual,
 )
+from src.domain.ports.cierre_repo import ICierreRepository
 
 
 class SqliteCierreRepository(ICierreRepository):

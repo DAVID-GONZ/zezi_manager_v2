@@ -13,9 +13,6 @@ from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
-from src.interface.design.components.buttons import btn_primary, btn_icon
 from src.interface.design.components import (
     confirm_dialog,
     empty_state,
@@ -24,6 +21,9 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
+from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.layout import app_layout
+from src.interface.design.theme import ThemeManager
 from src.services.sala_service import Sala
 
 logger = logging.getLogger("ADMIN.SALAS")
@@ -123,7 +123,7 @@ def salas_page() -> None:
         )
 
     def _editar_sala(sala: Sala) -> None:
-        def _guardar(datos: dict) -> "bool | None":
+        def _guardar(datos: dict) -> bool | None:
             # El modelo Sala valida nombre/tipo/capacidad.
             try:
                 sala_act = Sala(

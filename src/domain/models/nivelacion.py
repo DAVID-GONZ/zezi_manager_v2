@@ -17,12 +17,8 @@ No se almacena redundantemente; se computa al consultar.
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-if TYPE_CHECKING:
-    pass
+from pydantic import BaseModel, Field, field_validator
 
 
 class ActividadNivelacion(BaseModel):
@@ -249,9 +245,9 @@ class CalificarNotaNivelacionDTO(BaseModel):
 
 __all__ = [
     "ActividadNivelacion",
-    "NotaNivelacion",
-    "CierreNivelacion",
     "CalculadorNivelacion",
-    "NuevaActividadNivelacionDTO",
     "CalificarNotaNivelacionDTO",
+    "CierreNivelacion",
+    "NotaNivelacion",
+    "NuevaActividadNivelacionDTO",
 ]

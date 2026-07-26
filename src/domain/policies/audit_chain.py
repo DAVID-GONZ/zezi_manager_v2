@@ -33,7 +33,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-
 # Eslabón cero: hash previo del primer registro de una tabla vacía.
 GENESIS = "GENESIS"
 

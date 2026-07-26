@@ -106,7 +106,7 @@ class IAuthenticationService(ABC):
         self,
         nombre_usuario: str,
         password_plain: str,
-    ) -> "Usuario":
+    ) -> Usuario:
         """
         Autentica un usuario por nombre de usuario y contraseña en texto plano.
 
@@ -251,6 +251,6 @@ class IExporterService(ABC):
 
 __all__ = [
     "IAuthenticationService",
-    "INotificationService",
     "IExporterService",
+    "INotificationService",
 ]

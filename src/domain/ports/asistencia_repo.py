@@ -31,7 +31,6 @@ from datetime import date
 
 from ..models.asistencia import (
     ControlDiario,
-    EstadoAsistencia,
     ResumenAsistenciaDTO,
 )
 

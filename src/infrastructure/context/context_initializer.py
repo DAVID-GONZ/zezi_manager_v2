@@ -56,7 +56,7 @@ class ContextInitializer:
     """
 
     @staticmethod
-    def inicializar(ctx: "SessionContext") -> "SessionContext":
+    def inicializar(ctx: SessionContext) -> SessionContext:
         """
         Punto de entrada principal.
 
@@ -115,7 +115,7 @@ class ContextInitializer:
     # ── Resolución por paso ───────────────────────────────────────────────────
 
     @staticmethod
-    def _resolver_anio(ctx: "SessionContext") -> bool:
+    def _resolver_anio(ctx: SessionContext) -> bool:
         """
         Encuentra el año académico activo y lo escribe en ctx.
         Retorna True si lo encontró.
@@ -135,7 +135,7 @@ class ContextInitializer:
             return False
 
     @staticmethod
-    def _resolver_periodo(ctx: "SessionContext") -> bool:
+    def _resolver_periodo(ctx: SessionContext) -> bool:
         """
         Encuentra el periodo activo del año y lo escribe en ctx.
         Si `get_activo()` no encuentra un periodo marcado como activo,
@@ -176,7 +176,7 @@ class ContextInitializer:
             return False
 
     @staticmethod
-    def _resolver_grupo_y_asignatura(ctx: "SessionContext") -> bool:
+    def _resolver_grupo_y_asignatura(ctx: SessionContext) -> bool:
         """
         Para PROFESORES y COORDINADORES:
         Encuentra el primer grupo/asignatura del docente en el periodo activo.
@@ -231,7 +231,7 @@ class ContextInitializer:
             return False
 
     @staticmethod
-    def _resolver_grupo_director(ctx: "SessionContext") -> bool:
+    def _resolver_grupo_director(ctx: SessionContext) -> bool:
         """
         Para DIRECTORES:
         Encuentra el primer grupo activo de la institución, ordenado por
@@ -262,7 +262,7 @@ class ContextInitializer:
     # ── Verificación de validez ───────────────────────────────────────────────
 
     @staticmethod
-    def contexto_es_valido(ctx: "SessionContext") -> bool:
+    def contexto_es_valido(ctx: SessionContext) -> bool:
         """
         Verifica que el contexto guardado sigue siendo válido en la BD.
         Útil para detectar cambios académicos (cierre de periodo, reasignación)
@@ -314,7 +314,7 @@ class ContextInitializer:
             return False
 
     @staticmethod
-    def refrescar_si_invalido(ctx: "SessionContext") -> "SessionContext":
+    def refrescar_si_invalido(ctx: SessionContext) -> SessionContext:
         """
         Si el contexto guardado no es válido, lo limpia y re-inicializa.
         Útil al inicio de cada página protegida para detectar cambios

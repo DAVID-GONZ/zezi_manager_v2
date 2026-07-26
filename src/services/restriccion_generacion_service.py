@@ -9,9 +9,6 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.models.infraestructura import (
     BloqueAnclado,
     ConfigGeneracion,
@@ -20,6 +17,8 @@ from src.domain.models.infraestructura import (
     LimitesDocente,
     VentanaGrupo,
 )
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.solo_lectura import requiere_escritura
 
 
 class RestriccionGeneracionService:

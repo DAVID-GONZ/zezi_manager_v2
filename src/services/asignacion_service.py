@@ -5,15 +5,8 @@ Orquesta los casos de uso del módulo de Asignaciones académicas.
 """
 from __future__ import annotations
 
-from src.services.solo_lectura import requiere_escritura
-
 from dataclasses import dataclass
 
-from src.domain.ports.asignacion_repo import IAsignacionRepository
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
-from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
-from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.domain.models.asignacion import (
     Asignacion,
     AsignacionInfo,
@@ -21,7 +14,12 @@ from src.domain.models.asignacion import (
     NuevaAsignacionDTO,
 )
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
-
+from src.domain.ports.asignacion_repo import IAsignacionRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.services.solo_lectura import requiere_escritura
 
 # =============================================================================
 # DTOs de resultado (consumidos por las vistas — se re-exportan desde aquí)
@@ -501,7 +499,7 @@ class AsignacionService:
 
 __all__ = [
     "AsignacionService",
-    "FiltroAsignacionesDTO",
-    "CupoDocenteDTO",
     "CompletitudGrupoDTO",
+    "CupoDocenteDTO",
+    "FiltroAsignacionesDTO",
 ]

@@ -1,0 +1,17 @@
+@startuml classes_class_auth
+set namespaceSeparator none
+class "BcryptAuthService" as auth.bcrypt_auth_service.BcryptAuthService {
+  ROUNDS : int
+  autenticar_usuario(nombre_usuario: str, password_plain: str) -> Usuario
+  cambiar_password(usuario_id: int, password_actual: str, password_nueva: str) -> bool
+  hashear_password(password_plain: str) -> str
+  resetear_password(usuario_id: int, password_nueva: str) -> None
+  verificar_password(password_plain: str, password_hash: str) -> bool
+}
+class "JWTHandler" as auth.jwt_handler.JWTHandler {
+  algorithm : str
+  crear_token(payload: dict[str, Any]) -> str
+  token_expirado(token: str) -> bool
+  verificar_token(token: str) -> dict[str, Any] | None
+}
+@enduml

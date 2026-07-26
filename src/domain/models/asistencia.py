@@ -42,7 +42,6 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -381,11 +380,11 @@ class FiltroAsistenciaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "EstadoAsistencia",
     "ControlDiario",
-    "ResumenAsistenciaDTO",
-    "RegistroAsistenciaItemDTO",
+    "EstadoAsistencia",
+    "FiltroAsistenciaDTO",
     "RegistrarAsistenciaDTO",
     "RegistrarAsistenciaMasivaDTO",
-    "FiltroAsistenciaDTO",
+    "RegistroAsistenciaItemDTO",
+    "ResumenAsistenciaDTO",
 ]

@@ -1,4 +1,4 @@
-from .null_notification_service import NullNotificationService
 from .log_notification_service import LogNotificationService
+from .null_notification_service import NullNotificationService
 
-__all__ = ["NullNotificationService", "LogNotificationService"]
+__all__ = ["LogNotificationService", "NullNotificationService"]
