@@ -6,6 +6,7 @@ from datetime import date
 import pytest
 
 from src.domain.models.convivencia import (
+    ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     NuevaNotaComportamientoDTO,
@@ -88,7 +89,7 @@ class FakeConvRepo(IConvivenciaRepository):
         return []
 
     def listar_notas_por_grupo(self, grupo_id: int, per_id: int) -> list[NotaComportamiento]:
-        return []
+        return [n for (e, p), n in self._notas.items() if p == per_id and n.grupo_id == grupo_id]
 
     def guardar_nota(self, n: NotaComportamiento) -> NotaComportamiento:
         key = (n.estudiante_id, n.periodo_id)
@@ -252,3 +253,188 @@ class TestEnforcementAutorizacion:
             self._dto_registro(), usuario_id=99, usuario_rol="profesor",
         )
         assert reg.id is not None
+
+
+# ===========================================================================
+# Concepto consolidado (convivencia_05)
+# ===========================================================================
+
+class _FakeNivel:
+    def __init__(self, id, nombre, rmin, rmax, descripcion=None):
+        self.id = id
+        self.nombre = nombre
+        self.rango_min = rmin
+        self.rango_max = rmax
+        self.descripcion = descripcion
+
+
+class _FakeConfigSvc:
+    def __init__(self, niveles):
+        self._niveles = niveles
+    def listar_niveles(self, anio_id):
+        return self._niveles
+
+
+class _FakePeriodoSvc:
+    class _P:
+        anio_id = 2026
+    def get_by_id(self, periodo_id):
+        return self._P()
+
+
+class _FakeEst:
+    def __init__(self, id):
+        self.id = id
+
+
+class _FakeEstSvc:
+    def __init__(self, ests):
+        self._ests = ests
+    def listar_por_grupo(self, grupo_id, solo_activos=True):
+        return self._ests
+
+
+_NIVELES = [
+    _FakeNivel(1, "Bajo", 0, 59.99, "Bajo desempeño"),
+    _FakeNivel(2, "Básico", 60, 69.99, "Básico"),
+    _FakeNivel(3, "Alto", 70, 84.99, "Alto"),
+    _FakeNivel(4, "Superior", 85, 100, "Superior"),
+]
+
+
+def _svc_completo(ests=None):
+    repo = FakeConvRepo()
+    svc = ConvivenciaService(
+        repo=repo,
+        configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+        periodo_svc_provider=lambda: _FakePeriodoSvc(),
+        estudiante_svc_provider=lambda: _FakeEstSvc(ests or []),
+    )
+    return svc, repo
+
+
+class TestConceptoComportamiento:
+    def test_sin_nota_devuelve_dto_vacio(self):
+        svc, _ = _svc_completo()
+        dto = svc.get_concepto_periodo(estudiante_id=1, periodo_id=5)
+        assert isinstance(dto, ConceptoComportamientoDTO)
+        assert dto.valor is None
+        assert dto.aprobado is False
+        assert dto.nivel_nombre is None
+        assert dto.concepto is None
+
+    def test_con_desempeno_id_explicito(self):
+        svc, repo = _svc_completo()
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            valor=65.0, desempeno_id=4, observacion="Excelente actitud",
+        )
+        dto = svc.get_concepto_periodo(1, 5)
+        # desempeno_id=4 (Superior) prevalece sobre el rango que daría "Básico"
+        assert dto.nivel_nombre == "Superior"
+        assert dto.valor == 65.0
+        assert dto.concepto == "Excelente actitud"
+        assert dto.aprobado is True
+
+    def test_sin_desempeno_id_resuelve_por_rango(self):
+        svc, repo = _svc_completo()
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=72.5,
+        )
+        dto = svc.get_concepto_periodo(1, 5)
+        assert dto.nivel_nombre == "Alto"
+        assert dto.aprobado is True
+
+    def test_nota_menor_a_minima_no_aprobado(self):
+        svc, repo = _svc_completo()
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=55.0,
+        )
+        dto = svc.get_concepto_periodo(1, 5, nota_minima=60.0)
+        assert dto.aprobado is False
+        assert dto.nivel_nombre == "Bajo"
+
+    def test_listar_conceptos_grupo_incluye_estudiantes_sin_nota(self):
+        ests = [_FakeEst(1), _FakeEst(2), _FakeEst(3)]
+        svc, repo = _svc_completo(ests=ests)
+        # Solo el estudiante 2 tiene nota.
+        repo._notas[(2, 5)] = NotaComportamiento(
+            estudiante_id=2, grupo_id=10, periodo_id=5, valor=90.0,
+        )
+        conceptos = svc.listar_conceptos_grupo(grupo_id=10, periodo_id=5)
+        assert len(conceptos) == 3
+        by_est = {c.estudiante_id: c for c in conceptos}
+        assert by_est[1].valor is None and by_est[1].aprobado is False
+        assert by_est[2].valor == 90.0 and by_est[2].nivel_nombre == "Superior"
+        assert by_est[3].valor is None
+
+    # -----------------------------------------------------------------
+    # convivencia_06 — Reporte por grupo/periodo
+    # -----------------------------------------------------------------
+
+    def test_reporte_periodo_grupo_combina_notas_y_observaciones(self):
+        ests = [_FakeEst(1), _FakeEst(2), _FakeEst(3)]
+        # Añadimos nombre/apellido dinámicamente sin acoplar el modelo real.
+        for e, nom, ape in [(ests[0], "Ana", "Ruiz"), (ests[1], "Bob", "Diaz"), (ests[2], "Cyd", "Paz")]:
+            e.nombre = nom
+            e.apellido = ape
+        svc, repo = _svc_completo(ests=ests)
+        # Estudiante 1 → nota + 2 observaciones.
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            valor=90.0, observacion="Excelente disciplina",
+        )
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=99, periodo_id=5,
+            texto="Muy participativo",
+        ))
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=100, periodo_id=5,
+            texto="Colabora con compañeros",
+        ))
+        # Estudiante 2 → sin nota, con 1 observación.
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=2, asignacion_id=99, periodo_id=5,
+            texto="Debe entregar tareas a tiempo",
+        ))
+        # Estudiante 3 → sin nota, sin observaciones.
+
+        filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
+        assert len(filas) == 3
+        by_id = {f.estudiante_id: f for f in filas}
+
+        # Estudiante 1: nota + concepto + 2 observaciones
+        assert by_id[1].valor == 90.0
+        assert by_id[1].nivel_nombre == "Superior"
+        assert by_id[1].concepto == "Excelente disciplina"
+        assert set(by_id[1].observaciones) == {
+            "Muy participativo", "Colabora con compañeros",
+        }
+        assert by_id[1].nombre == "Ruiz Ana"
+
+        # Estudiante 2: sin nota, 1 observación
+        assert by_id[2].valor is None
+        assert by_id[2].nivel_nombre is None
+        assert by_id[2].concepto is None
+        assert by_id[2].observaciones == ["Debe entregar tareas a tiempo"]
+
+        # Estudiante 3: sin nota, sin observaciones
+        assert by_id[3].valor is None
+        assert by_id[3].observaciones == []
+
+    def test_reporte_periodo_grupo_sin_provider_lanza(self):
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        with pytest.raises(RuntimeError):
+            svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
+
+    def test_get_concepto_sin_providers_lanza(self):
+        repo = FakeConvRepo()
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0,
+        )
+        svc = ConvivenciaService(repo=repo)
+        with pytest.raises(RuntimeError):
+            svc.get_concepto_periodo(1, 5)
+
+

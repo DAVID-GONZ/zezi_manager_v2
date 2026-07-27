@@ -241,6 +241,11 @@ class NotaComportamiento(BaseModel):
     periodo_id:    int
     valor:         float
     desempeno_id:  int | None   = None
+    # `observacion` es el CONCEPTO NARRATIVO que baja al boletín (Fase 3).
+    # Semánticamente equivale al "concepto de comportamiento" que redacta el
+    # director de grupo. El nombre del campo se conserva por compat con el
+    # repositorio; la vista/DTO consolidado (ConceptoComportamientoDTO) expone
+    # este texto como `concepto`.
     observacion:   str | None   = None
     usuario_id:    int | None   = None
 
@@ -353,6 +358,44 @@ class NuevaNotaComportamientoDTO(BaseModel):
         )
 
 
+class ConceptoComportamientoDTO(BaseModel):
+    """
+    Consolidado cuantitativo + cualitativo del comportamiento de un
+    estudiante en un periodo, listo para el boletín (Fase 3) y para el
+    reporte del director de grupo (convivencia_06).
+
+    Combina la nota (`valor`), el nivel de desempeño resuelto (por
+    `desempeno_id` explícito o por rango sobre `niveles_desempeno` del año)
+    y el concepto narrativo (`concepto`, espejo de `NotaComportamiento.observacion`).
+
+    Cuando el estudiante no tiene nota registrada para el periodo, se emite
+    el DTO con `valor=None`, `aprobado=False` y el resto de campos en None.
+    """
+    estudiante_id:      int
+    periodo_id:         int
+    grupo_id:           int
+    valor:              float | None = None
+    nivel_nombre:       str   | None = None
+    nivel_descripcion:  str   | None = None
+    concepto:           str   | None = None
+    aprobado:           bool         = False
+
+
+class ReporteConvivenciaFilaDTO(BaseModel):
+    """
+    Fila del reporte de convivencia por grupo/periodo (convivencia_06):
+    consolida la nota + concepto del estudiante con la lista de observaciones
+    del periodo. Diseñado para presentación (tabla del director de grupo) y
+    exportación (PDF / Excel) sin exponer entidades del dominio a la vista.
+    """
+    estudiante_id:     int
+    nombre:            str
+    valor:             float | None = None
+    nivel_nombre:      str   | None = None
+    concepto:          str   | None = None
+    observaciones:     list[str]    = Field(default_factory=list)
+
+
 class FiltroConvivenciaDTO(BaseModel):
     """Parámetros para consultar registros de comportamiento."""
     estudiante_id: int | None       = None
@@ -369,6 +412,7 @@ class FiltroConvivenciaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
+    "ConceptoComportamientoDTO",
     "FiltroConvivenciaDTO",
     "NotaComportamiento",
     "NuevaNotaComportamientoDTO",
@@ -376,5 +420,6 @@ __all__ = [
     "NuevoRegistroComportamientoDTO",
     "ObservacionPeriodo",
     "RegistroComportamiento",
+    "ReporteConvivenciaFilaDTO",
     "TipoRegistro",
 ]

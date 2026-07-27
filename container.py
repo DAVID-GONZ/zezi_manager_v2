@@ -395,6 +395,10 @@ class Container:
                 alerta_repo=cls.alerta_repo(),
                 # Provider lazy: enforcement de autorización (convivencia_04b).
                 catalogo_academico_svc_provider=cls.catalogo_academico_service,
+                # Providers lazy: concepto consolidado (convivencia_05).
+                configuracion_svc_provider=cls.configuracion_service,
+                periodo_svc_provider=cls.periodo_service,
+                estudiante_svc_provider=cls.estudiante_service,
             ),
         )
 

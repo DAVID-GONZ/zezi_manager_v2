@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Callable
 
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
+    ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     NuevaNotaComportamientoDTO,
@@ -16,6 +17,7 @@ from src.domain.models.convivencia import (
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
     RegistroComportamiento,
+    ReporteConvivenciaFilaDTO,
     TipoRegistro,
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
@@ -24,6 +26,9 @@ from src.services.solo_lectura import requiere_escritura
 
 if TYPE_CHECKING:
     from src.services.catalogo_academico_service import CatalogoAcademicoService
+    from src.services.configuracion_service import ConfiguracionService
+    from src.services.estudiante_service import EstudianteService
+    from src.services.periodo_service import PeriodoService
 
 
 class ConvivenciaService:
@@ -37,16 +42,29 @@ class ConvivenciaService:
         repo: IConvivenciaRepository,
         alerta_repo: IAlertaRepository | None = None,
         catalogo_academico_svc_provider: Callable[[], "CatalogoAcademicoService"] | None = None,
+        configuracion_svc_provider: Callable[[], "ConfiguracionService"] | None = None,
+        periodo_svc_provider: Callable[[], "PeriodoService"] | None = None,
+        estudiante_svc_provider: Callable[[], "EstudianteService"] | None = None,
     ) -> None:
         """Inyecta el repositorio de convivencia y el de alertas (opcional).
 
         `catalogo_academico_svc_provider` es un proveedor lazy que devuelve el
         `CatalogoAcademicoService`; si es None, el enforcement de autorización
         queda desactivado (compat retro para scripts/seed/tests).
+
+        `configuracion_svc_provider`, `periodo_svc_provider` y
+        `estudiante_svc_provider` son proveedores lazy usados por
+        `get_concepto_periodo` / `listar_conceptos_grupo` para resolver
+        niveles de desempeño (por rango o por id) y el estudiantado del
+        grupo respectivamente. Si son None, los métodos correspondientes
+        lanzan RuntimeError.
         """
         self._repo        = repo
         self._alerta_repo = alerta_repo
         self._catalogo_academico_svc_provider = catalogo_academico_svc_provider
+        self._configuracion_svc_provider = configuracion_svc_provider
+        self._periodo_svc_provider = periodo_svc_provider
+        self._estudiante_svc_provider = estudiante_svc_provider
 
     # ------------------------------------------------------------------
     # Autorización (defensa en profundidad — convivencia_04b)
@@ -314,6 +332,169 @@ class ConvivenciaService:
     ) -> list[NotaComportamiento]:
         """Retorna las notas de comportamiento de todos los estudiantes del grupo."""
         return self._repo.listar_notas_por_grupo(grupo_id, periodo_id)
+
+    # ------------------------------------------------------------------
+    # Concepto consolidado (cuant + cualit)  —  convivencia_05
+    # ------------------------------------------------------------------
+
+    def _resolver_niveles_del_periodo(self, periodo_id: int):
+        """Retorna (anio_id, list[NivelDesempeno]) del año del periodo."""
+        if self._periodo_svc_provider is None or self._configuracion_svc_provider is None:
+            raise RuntimeError(
+                "ConvivenciaService requiere periodo_svc_provider y "
+                "configuracion_svc_provider para consolidar conceptos."
+            )
+        anio_id = self._periodo_svc_provider().get_by_id(periodo_id).anio_id
+        niveles = self._configuracion_svc_provider().listar_niveles(anio_id)
+        return anio_id, niveles
+
+    @staticmethod
+    def _elegir_nivel(nota: NotaComportamiento, niveles: list):
+        """Nivel explícito por desempeno_id si está seteado; si no, por rango."""
+        if nota.desempeno_id is not None:
+            for n in niveles:
+                if n.id == nota.desempeno_id:
+                    return n
+        for n in niveles:
+            if n.rango_min <= nota.valor <= n.rango_max:
+                return n
+        return None
+
+    def get_concepto_periodo(
+        self,
+        estudiante_id: int,
+        periodo_id: int,
+        nota_minima: float = 60.0,
+    ) -> ConceptoComportamientoDTO:
+        """
+        Consolida el comportamiento (cuant + cualit) de un estudiante en un
+        periodo. Si no hay nota registrada, devuelve DTO con `valor=None`.
+        """
+        nota = self._repo.get_nota(estudiante_id, periodo_id)
+        if nota is None:
+            return ConceptoComportamientoDTO(
+                estudiante_id=estudiante_id,
+                periodo_id=periodo_id,
+                grupo_id=0,
+                valor=None,
+                aprobado=False,
+            )
+        _, niveles = self._resolver_niveles_del_periodo(periodo_id)
+        nivel = self._elegir_nivel(nota, niveles)
+        return ConceptoComportamientoDTO(
+            estudiante_id=estudiante_id,
+            periodo_id=periodo_id,
+            grupo_id=nota.grupo_id,
+            valor=nota.valor,
+            nivel_nombre=nivel.nombre if nivel else None,
+            nivel_descripcion=nivel.descripcion if nivel else None,
+            concepto=nota.observacion,
+            aprobado=nota.valor >= nota_minima,
+        )
+
+    def listar_conceptos_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int,
+        nota_minima: float = 60.0,
+    ) -> list[ConceptoComportamientoDTO]:
+        """
+        Devuelve un `ConceptoComportamientoDTO` por cada estudiante del grupo,
+        incluidos los que aún no tienen nota (DTO con valor=None).
+        """
+        if self._estudiante_svc_provider is None:
+            raise RuntimeError(
+                "ConvivenciaService requiere estudiante_svc_provider para "
+                "listar conceptos por grupo."
+            )
+        estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
+        notas = {
+            n.estudiante_id: n
+            for n in self._repo.listar_notas_por_grupo(grupo_id, periodo_id)
+        }
+        # Resolvemos niveles una sola vez si hay al menos una nota.
+        niveles: list = []
+        if notas:
+            _, niveles = self._resolver_niveles_del_periodo(periodo_id)
+
+        resultado: list[ConceptoComportamientoDTO] = []
+        for est in estudiantes:
+            nota = notas.get(est.id)
+            if nota is None:
+                resultado.append(ConceptoComportamientoDTO(
+                    estudiante_id=est.id,
+                    periodo_id=periodo_id,
+                    grupo_id=grupo_id,
+                    valor=None,
+                    aprobado=False,
+                ))
+                continue
+            nivel = self._elegir_nivel(nota, niveles)
+            resultado.append(ConceptoComportamientoDTO(
+                estudiante_id=est.id,
+                periodo_id=periodo_id,
+                grupo_id=grupo_id,
+                valor=nota.valor,
+                nivel_nombre=nivel.nombre if nivel else None,
+                nivel_descripcion=nivel.descripcion if nivel else None,
+                concepto=nota.observacion,
+                aprobado=nota.valor >= nota_minima,
+            ))
+        return resultado
+
+
+    # ------------------------------------------------------------------
+    # Reporte por grupo/periodo (convivencia_06)
+    # ------------------------------------------------------------------
+
+    def reporte_periodo_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int,
+    ) -> list[ReporteConvivenciaFilaDTO]:
+        """
+        Reporte del director de grupo (convivencia_06): por cada estudiante
+        del grupo, combina el concepto consolidado (nota + nivel + concepto
+        narrativo) con la lista de textos de observaciones del periodo.
+
+        Reutiliza `listar_conceptos_grupo` (que ya cubre estudiantes sin
+        nota) y `listar_observaciones_por_estudiante` (por periodo). El
+        nombre del estudiante se resuelve con el `estudiante_svc_provider`.
+
+        Estudiantes sin nota y sin observaciones aparecen igualmente,
+        con `valor=None` y `observaciones=[]`.
+        """
+        if self._estudiante_svc_provider is None:
+            raise RuntimeError(
+                "ConvivenciaService requiere estudiante_svc_provider para "
+                "generar el reporte de periodo por grupo."
+            )
+        estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
+        conceptos_por_est = {
+            c.estudiante_id: c
+            for c in self.listar_conceptos_grupo(grupo_id, periodo_id)
+        }
+
+        filas: list[ReporteConvivenciaFilaDTO] = []
+        for est in estudiantes:
+            est_id = getattr(est, "id", None)
+            if est_id is None:
+                continue
+            concepto = conceptos_por_est.get(est_id)
+            observaciones = self._repo.listar_observaciones_por_estudiante(
+                est_id, periodo_id, False
+            )
+            textos_obs = [o.texto for o in observaciones]
+            nombre = f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip() or str(est_id)
+            filas.append(ReporteConvivenciaFilaDTO(
+                estudiante_id=est_id,
+                nombre=nombre,
+                valor=concepto.valor if concepto else None,
+                nivel_nombre=concepto.nivel_nombre if concepto else None,
+                concepto=concepto.concepto if concepto else None,
+                observaciones=textos_obs,
+            ))
+        return filas
 
 
 __all__ = ["ConvivenciaService", "TipoRegistro"]
