@@ -280,16 +280,16 @@ def planes_mejoramiento_page() -> None:
             return
 
         with ui.element("div").classes("panel-card mt-4"):
-            with ui.row().classes("items-center gap-2 mb-3"):
+            with ui.row().classes("form-row-center u-mb-md"):
                 ThemeManager.icono("assignment_late", size=24)
-                ui.label("Estado del Corte").classes("text-lg font-bold flex-1")
+                ui.label("Estado del Corte").classes("section-title-lg")
                 if corte is None:
                     status_badge("Sin corte", "neutral")
                 else:
-                    ui.badge(
+                    status_badge(
                         f"Corte: {corte.fecha_ejecucion.strftime('%d/%m/%Y')}",
-                        color="positive",
-                    ).classes("text-xs")
+                        variante="success",
+                    )
 
             if corte is None:
                 ui.label(
@@ -309,7 +309,7 @@ def planes_mejoramiento_page() -> None:
                     1 for n in notas
                     if n.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO)
                 )
-                with ui.row().classes("gap-4 flex-wrap text-sm"):
+                with ui.row().classes("form-row-inline text-sm"):
                     ui.label(
                         f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
                     ).classes("text-muted")
@@ -335,7 +335,7 @@ def planes_mejoramiento_page() -> None:
             return
 
         with ui.element("div").classes("panel-card mt-4"):
-            with ui.row().classes("items-center gap-2 mb-3"):
+            with ui.row().classes("form-row-center u-mb-md"):
                 ThemeManager.icono("people", size=24)
                 ui.label("Estudiantes — Resultado del Corte").classes("text-lg font-bold")
 
@@ -358,7 +358,7 @@ def planes_mejoramiento_page() -> None:
                     "grid gap-2 p-2 border-b items-center"
                 ).classes("pm-grid-cols"):
                     ui.label(nombre).classes("text-sm")
-                    ui.label(f"{nc.nota_al_corte:.1f}").classes("text-center text-sm font-mono")
+                    ui.label(f"{nc.nota_al_corte:.1f}").classes("text-center cell-mono")
                     status_badge(lbl, color)
                     # Acciones
                     with ui.row().classes("gap-1 justify-center"):
@@ -396,9 +396,9 @@ def planes_mejoramiento_page() -> None:
             return
 
         with ui.element("div").classes("panel-card mt-4"):
-            with ui.row().classes("items-center gap-2 mb-3"):
+            with ui.row().classes("form-row-center u-mb-md"):
                 ThemeManager.icono("assignment", size=24)
-                ui.label("Actividades del Plan").classes("text-lg font-bold flex-1")
+                ui.label("Actividades del Plan").classes("section-title-lg")
                 # Suma de pesos
                 suma = round(sum(a.peso for a in acts) * 100, 1)
                 status_badge(f"Peso total: {suma:.0f}%", "primary" if suma <= 100 else "error")
@@ -435,7 +435,7 @@ def planes_mejoramiento_page() -> None:
                             if ya_cerrado or not act:
                                 ui.label(
                                     f"{valor_actual:.1f}" if valor_actual is not None else "—"
-                                ).classes("text-center text-sm font-mono")
+                                ).classes("text-center cell-mono")
                             else:
                                 inp = ui.input(
                                     value=str(round(valor_actual, 1)) if valor_actual is not None else "",
@@ -450,8 +450,8 @@ def planes_mejoramiento_page() -> None:
 
             # ── Añadir actividad ───────────────────────────────────────────────
             with ui.element("div").classes("mt-4 pt-4 border-top-soft"):
-                ui.label("Añadir actividad al plan").classes("text-sm font-semibold mb-3")
-                with ui.row().classes("gap-3 items-end flex-wrap"):
+                ui.label("Añadir actividad al plan").classes("section-subtitle-sm u-mb-md")
+                with ui.row().classes("form-row-inline"):
                     ui.input(
                         "Nombre *",
                         placeholder="Ej: Taller de refuerzo",
@@ -486,7 +486,7 @@ def planes_mejoramiento_page() -> None:
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Planes de Mejoramiento").classes("text-xl font-bold flex-1")
+                    ui.label("Planes de Mejoramiento").classes("section-title-xl")
                     btn_ghost(
                         "Configuración",
                         icon="settings",
@@ -495,12 +495,12 @@ def planes_mejoramiento_page() -> None:
 
             # Selectores de contexto
             with ui.element("div").classes("panel-card mt-4"):
-                ui.label("Contexto").classes("text-base font-semibold mb-3")
+                ui.label("Contexto").classes("section-subtitle u-mb-md")
                 periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
                 asigs_opts    = {
                     a.asignacion_id: a.display_corto for a in _s["asignaciones"]
                 }
-                with ui.row().classes("gap-4 items-center flex-wrap"):
+                with ui.row().classes("form-row-center-md"):
                     ui.select(
                         periodos_opts or {"": "Sin periodos"},
                         value=_s["periodo_id"],

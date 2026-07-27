@@ -90,3 +90,18 @@
 .confirmation-card-danger  .confirm-card-title { color: var(--color-error);   }
 .confirmation-card-warning .confirm-card-title { color: var(--color-warning); }
 .confirmation-card-info    .confirm-card-title { color: var(--color-info);    }
+
+/* ── Anchos de custom_dialog ──────────────────────────────── */
+.form-dialog-card-sm { width: 100%; max-width: 24rem; }
+.form-dialog-card-md { width: 100%; max-width: 32rem; }
+.form-dialog-card-lg { width: 100%; max-width: 42rem; }
+.form-dialog-card-xl { width: 100%; max-width: 56rem; }
+
+/* Barra de botones en la parte inferior de un custom_dialog. */
+.form-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  width: 100%;
+}

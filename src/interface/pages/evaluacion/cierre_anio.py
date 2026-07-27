@@ -18,6 +18,7 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
+    status_badge,
     toast_error,
     toast_success,
     toast_warning,
@@ -133,15 +134,15 @@ def cierre_anio_page() -> None:
                 ui.label("Fecha").classes("w-36")
 
             for c in resultado:
-                with ui.element("div").classes("flex items-center gap-3 p-2 border-b"):
-                    ui.label(str(c.estudiante_id)).classes("w-32 font-mono text-sm")
-                    ui.label(str(c.asignacion_id)).classes("w-32 font-mono text-sm")
+                with ui.element("div").classes("divider-row"):
+                    ui.label(str(c.estudiante_id)).classes("w-32 cell-mono")
+                    ui.label(str(c.asignacion_id)).classes("w-32 cell-mono")
                     ui.label(f"{c.nota_definitiva_anual:.1f}").classes(
                         "w-28 text-right font-mono font-semibold text-sm"
                     )
-                    perdio_clase = "badge-error" if c.perdio else "badge-success"
-                    ui.badge("Sí" if c.perdio else "No").classes(
-                        f"w-20 text-center {perdio_clase}"
+                    status_badge(
+                        "Sí" if c.perdio else "No",
+                        variante="error" if c.perdio else "success",
                     )
                     fecha_str = (
                         c.fecha_cierre.strftime("%d/%m/%Y") if c.fecha_cierre else "—"
@@ -153,24 +154,24 @@ def cierre_anio_page() -> None:
         with ui.element("div").classes("page-stack"):
 
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
+                with ui.row().classes("form-row-center u-mb-lg"):
                     ThemeManager.icono(Icons.CLOSE_PERIOD, size=22, color="var(--color-negative)")
                     ui.label("Cierre de Año").classes("text-xl font-bold")
 
                 # Info año activo
                 anio = _s["anio"]
                 if anio:
-                    with ui.row().classes("items-center gap-3 mb-4"):
+                    with ui.row().classes("form-row-center-md u-mb-lg"):
                         ui.label("Año lectivo activo:").classes("text-sm font-semibold")
-                        ui.badge(str(anio.anio)).classes("badge-primary")
+                        status_badge(str(anio.anio), "primary")
                 else:
-                    with ui.element("div").classes("p-3 rounded border border-error bg-error-soft mb-4"):
+                    with ui.element("div").classes("form-box border-error bg-error-soft u-mb-lg"):
                         ui.label("No hay año lectivo activo. Configure uno antes de continuar.").classes(
                             "text-sm text-error"
                         )
 
                 grupos_opts = {g.id: g.codigo for g in _s["grupos"]}
-                with ui.row().classes("gap-4 items-center flex-wrap"):
+                with ui.row().classes("form-row-center-md"):
                     ui.select(
                         grupos_opts or {"": "Sin grupos"},
                         value=None,
@@ -184,7 +185,7 @@ def cierre_anio_page() -> None:
                 with ui.element("div").classes(
                     "p-4 rounded border border-error bg-error-soft"
                 ):
-                    with ui.row().classes("items-center gap-2 mb-2"):
+                    with ui.row().classes("form-row-center u-mb-sm"):
                         ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")
                         ui.label("Precauciones importantes").classes(
                             "font-bold text-error"
@@ -201,7 +202,7 @@ def cierre_anio_page() -> None:
 
             # Botón de cierre
             with ui.element("div").classes("panel-card mt-4"):
-                ui.label("Ejecutar cierre de año").classes("text-base font-semibold mb-2")
+                ui.label("Ejecutar cierre de año").classes("section-subtitle u-mb-sm")
                 btn_danger("Cerrar año lectivo", icon="lock", on_click=_abrir_confirmar_cierre)
 
             # Tabla resultado

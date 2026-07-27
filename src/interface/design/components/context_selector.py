@@ -232,16 +232,12 @@ def abrir_selector(
                     anio_id = cfg.id if cfg and cfg.id else None
 
                 if not anio_id:
-                    ui.label("Sin año académico activo").style(
-                        "color:var(--color-text-secondary);font-size:13px"
-                    )
+                    ui.label("Sin año académico activo").classes("cs-msg-empty")
                     return
 
                 periodos = Container.periodo_service().listar_por_anio(anio_id)
                 if not periodos:
-                    ui.label("Sin periodos configurados").style(
-                        "color:var(--color-text-secondary);font-size:13px"
-                    )
+                    ui.label("Sin periodos configurados").classes("cs-msg-empty")
                     return
 
                 with ui.row().classes("gap-2 flex-wrap"):
@@ -288,14 +284,12 @@ def abrir_selector(
                             with ui.element("div").classes("cs-period-bar-track"):
                                 ui.element("div").classes(
                                     f"cs-period-bar-fill {clase_bar}"
-                                ).style(f"width:{pct:.0f}%")
+                                ).style(f"width:{pct:.0f}%")  # DYNAMIC
                             ui.label(f"{pct:.0f}% · {estado_txt}").classes("cs-period-meta")
 
             except Exception as e:
                 logger.error("Error cargando periodos: %s", e)
-                ui.label("Error al cargar periodos").style(
-                    "color:var(--color-error);font-size:13px"
-                )
+                ui.label("Error al cargar periodos").classes("cs-msg-error")
 
     def _render_grupos(contenedor) -> None:
         contenedor.clear()
@@ -303,9 +297,7 @@ def abrir_selector(
             try:
                 periodo_id = seleccion["periodo_id"]
                 if not periodo_id:
-                    ui.label("Selecciona un periodo primero").style(
-                        "color:var(--color-text-disabled);font-size:13px"
-                    )
+                    ui.label("Selecciona un periodo primero").classes("cs-msg-disabled")
                     return
 
                 if rol == "profesor":
@@ -324,9 +316,7 @@ def abrir_selector(
                     ]
 
                 if not grupos_data:
-                    ui.label("Sin grupos disponibles").style(
-                        "color:var(--color-text-secondary);font-size:13px"
-                    )
+                    ui.label("Sin grupos disponibles").classes("cs-msg-empty")
                     return
 
                 with ui.row().classes("gap-2 flex-wrap"):
@@ -357,9 +347,7 @@ def abrir_selector(
 
             except Exception as e:
                 logger.error("Error cargando grupos: %s", e)
-                ui.label("Error al cargar grupos").style(
-                    "color:var(--color-error);font-size:13px"
-                )
+                ui.label("Error al cargar grupos").classes("cs-msg-error")
 
     def _render_asignaturas(contenedor) -> None:
         contenedor.clear()
@@ -368,9 +356,7 @@ def abrir_selector(
                 periodo_id = seleccion["periodo_id"]
                 grupo_id   = seleccion["grupo_id"]
                 if not periodo_id or not grupo_id:
-                    ui.label("Selecciona periodo y grupo primero").style(
-                        "color:var(--color-text-disabled);font-size:13px"
-                    )
+                    ui.label("Selecciona periodo y grupo primero").classes("cs-msg-disabled")
                     return
 
                 asignaciones = Container.asignacion_repo().listar_por_grupo(
@@ -382,9 +368,7 @@ def abrir_selector(
                     ]
 
                 if not asignaciones:
-                    ui.label("Sin asignaturas asignadas").style(
-                        "color:var(--color-text-secondary);font-size:13px"
-                    )
+                    ui.label("Sin asignaturas asignadas").classes("cs-msg-empty")
                     return
 
                 # Restaurar selección por asignatura_hint (legacy logic)
@@ -436,19 +420,14 @@ def abrir_selector(
 
             except Exception as e:
                 logger.error("Error cargando asignaturas: %s", e)
-                ui.label("Error al cargar asignaturas").style(
-                    "color:var(--color-error);font-size:13px"
-                )
+                ui.label("Error al cargar asignaturas").classes("cs-msg-error")
 
     # ── Construcción del dialog ───────────────────────────────────────────────
 
     with ui.dialog() as dialog:
         dialog.props("persistent")
 
-        with ui.card().style(
-            "width:580px;max-width:95vw;max-height:85vh;"
-            "overflow-y:auto;padding:24px;border-radius:12px"
-        ):
+        with ui.card().classes("cs-dialog-card"):
             # Encabezado
             with ui.row().classes("items-center justify-between mb-5"):
                 with ui.row().classes("items-center gap-2"):

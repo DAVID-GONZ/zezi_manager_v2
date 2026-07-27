@@ -25,6 +25,7 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
+    custom_dialog,
     empty_state,
     form_dialog,
     pipeline_nav,
@@ -370,7 +371,7 @@ def asignaciones_page() -> None:
         except Exception:
             carga, cap = 0, None
 
-        with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-md"):
+        with custom_dialog(max_width="md") as dlg:
             ui.label("Asignar materia al docente").classes("font-h3 form-dialog-title")
             cap_txt = f"{carga}/{cap} h" if cap is not None else f"{carga} h · sin tope"
             ui.label(f"Carga actual del docente: {cap_txt}").classes("text-caption text-secondary")
@@ -406,7 +407,7 @@ def asignaciones_page() -> None:
                     logger.error("Error creando asignación docente: %s", exc)
                     toast_error("No se pudo crear la asignación")
 
-            with ui.row().classes("base-form-footer w-full gap-2 justify-end u-mt-md"):
+            with ui.row().classes("base-form-footer form-row-actions u-mt-md"):
                 btn_secondary("Cancelar", on_click=dlg.close)
                 btn_primary("Asignar", on_click=_crear)
 
@@ -538,7 +539,7 @@ def asignaciones_page() -> None:
         restantes = total_horas - horas_asignadas
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center justify-between flex-wrap gap-2"):
+            with ui.row().classes("form-row-between"):
                 with ui.element("div"):
                     ui.label(f"{grupo.codigo} · {grupo.nombre}").classes("text-subtitle1 font-semibold")
                     grado_txt = f"Grado {grupo.grado}" if grupo.grado is not None else "Sin grado"
@@ -616,7 +617,7 @@ def asignaciones_page() -> None:
         cap = usuario.carga_maxima_efectiva if usuario else None
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center justify-between flex-wrap gap-2"):
+            with ui.row().classes("form-row-between"):
                 with ui.element("div"):
                     ui.label(docente.nombre_completo).classes("text-subtitle1 font-semibold")
                     ui.label(f"{len(asigns)} asignación(es) en el periodo").classes("text-xs text-secondary")
@@ -632,7 +633,7 @@ def asignaciones_page() -> None:
             _barra_progreso(carga, cap, alerta_sobre=True)
 
             # Configuración del tope: máximo base + horas extra
-            with ui.row().classes("items-center gap-3 u-mt-sm flex-wrap"):
+            with ui.row().classes("form-row-center-md u-mt-sm"):
                 inp_max = ui.number(
                     label="Máx. base (h)", value=maxh, min=0, max=60, step=1,
                 ).classes("w-32").props("dense outlined")
@@ -672,7 +673,7 @@ def asignaciones_page() -> None:
                 ui.label("").classes("w-10")
             for a in sorted(asigns, key=lambda x: (grupo_nombre.get(x.grupo_id, ""), x.asignatura_nombre)):
                 with ui.element("div").classes("lista-fila"):
-                    ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes("w-24 font-mono text-sm")
+                    ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes("w-24 cell-mono")
                     ui.label(a.asignatura_nombre).classes("flex-1 text-sm")
                     ui.label(f"{_horas(a.grupo_id, a.asignatura_id)} h").classes("w-16 text-sm text-secondary")
                     with ui.element("div").classes("w-10 text-right"):
@@ -692,7 +693,7 @@ def asignaciones_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             ui.label("Mi carga académica").classes("text-subtitle1 font-semibold u-mb-sm")
-            with ui.row().classes("items-center gap-4 flex-wrap"):
+            with ui.row().classes("form-row-center-md"):
                 stat_card(titulo="Horas/semana", valor=str(total_horas), icono="schedule")
                 stat_card(titulo="Grupos", valor=str(n_grupos), icono="groups")
                 stat_card(titulo="Materias", valor=str(n_materias), icono=Icons.SUBJECTS)
@@ -707,7 +708,7 @@ def asignaciones_page() -> None:
         for a in asigns:
             por_grupo.setdefault(a.grupo_id, []).append(a)
 
-        with ui.element("div").classes("flex flex-wrap gap-3 u-mt-sm"):
+        with ui.element("div").classes("form-row-center-md u-mt-sm"):
             for gid in sorted(por_grupo, key=lambda g: grupo_nombre.get(g, "")):
                 items = sorted(por_grupo[gid], key=lambda x: x.asignatura_nombre)
                 sub = sum(asvc.horas_de_asignacion(gid, a.asignatura_id) for a in items)
@@ -720,7 +721,7 @@ def asignaciones_page() -> None:
                                 ui.label(g.nombre).classes("text-xs text-secondary")
                         status_badge(f"{sub} h", variante="info")
                     for a in items:
-                        with ui.row().classes("items-center justify-between py-1 border-b"):
+                        with ui.row().classes("divider-row form-row-between"):
                             ui.label(a.asignatura_nombre).classes("text-sm")
                             ui.label(
                                 f"{asvc.horas_de_asignacion(gid, a.asignatura_id)} h"
@@ -732,7 +733,7 @@ def asignaciones_page() -> None:
     @ui.refreshable
     def matriz() -> None:
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-4 flex-wrap"):
+            with ui.row().classes("form-row-center-md"):
                 periodo_opts = {p.id: p.nombre for p in _s["periodos"]}
                 if periodo_opts:
                     ui.select(

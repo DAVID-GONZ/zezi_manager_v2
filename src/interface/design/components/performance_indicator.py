@@ -90,14 +90,17 @@ def performance_indicator(
                     valor_texto = f"{valor:.1f}" if valor <= 5.0 else f"{valor:.0f}%"
                     ui.label(valor_texto).classes("perf-value")
                 if mostrar_nivel and nivel_resuelto:
+                    # DYNAMIC: color del nivel calculado por umbral.
                     ui.label(nivel_resuelto).classes("perf-nivel").style(
                         f"color:{barra_color}"
                     )
 
         # Barra de progreso
+        # DYNAMIC: altura de la barra parametrizable por el caller.
         with ui.element("div").classes("perf-bar-track").style(
             f"height:{altura}px"
         ):
+            # DYNAMIC: ancho y color se calculan por valor/umbral en runtime.
             ui.element("div").classes("perf-bar-fill").style(
                 f"width:{pct:.1f}%; background:{barra_color}"
             )

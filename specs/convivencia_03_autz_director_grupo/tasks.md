@@ -11,17 +11,17 @@ Estado actual:
 
 ## Tareas
 
-### T1 — Política / helper de autorización
+### [x] T1 — Política / helper de autorización
 - Crear una función/política reutilizable (ubicación consistente con el proyecto: `domain/policies/` para lógica pura si no requiere BD, o método de servicio si necesita consultar el repo). Firmas objetivo:
   - `es_director_de_grupo(usuario_id, grupo_id) -> bool`
   - `es_director_de_grupo_de_estudiante(usuario_id, estudiante_id, periodo_id?) -> bool` (resuelve el grupo del estudiante y compara).
   - Conveniencia: `puede_gestionar_comportamiento(usuario_rol, usuario_id, grupo_id) -> bool` = director/coordinador **o** director de grupo de ese grupo. (Se usará en convivencia_04.)
 - Los directivos (director/coordinador) siempre pasan; el profesor solo si es director del grupo en cuestión. Documentar la matriz en el docstring.
 
-### T2 — Tests
+### [x] T2 — Tests
 - Tests unitarios de la política: director de grupo del grupo → True; profesor de otro grupo → False; director/coordinador → True; grupo/estudiante inexistente → False (sin excepción). Mockear el repo donde aplique.
 
-### T3 — Verificación
+### [x] T3 — Verificación
 - `python init.py` VERDE (`.venv/Scripts/python.exe`).
 - `progress/impl_convivencia_03.md` + `progress/review_convivencia_03.md`.
 

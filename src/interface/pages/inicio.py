@@ -104,7 +104,7 @@ def _seccion_saludo(ctx: SessionContext, config) -> None:
         "admin":       "Administrador",
     }
 
-    with ui.row().classes("w-full gap-4 items-stretch"):
+    with ui.row().classes("form-row-center-md w-full items-stretch"):
 
         # ── Hero de saludo ────────────────────────────────
         with ui.element("div").classes("greeting-hero flex-1"):
@@ -705,13 +705,13 @@ def _seccion_admin_instituciones(config) -> None:
             uso = None
 
         with ui.element("div").classes("w-full"):
-            with ui.element("div").classes("flex gap-4 p-2 font-semibold text-sm border-b"):
+            with ui.element("div").classes("divider-row-head"):
                 ui.label("Institución").classes("flex-1")
                 ui.label("Sesiones (7d)").classes("w-32 text-right")
                 ui.label("Activos (7d)").classes("w-32 text-right")
             for inst in instituciones:
                 nombre = getattr(inst, "nombre_institucion", None) or "Institución"
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                with ui.element("div").classes("divider-row"):
                     ui.label(str(nombre)).classes("flex-1")
                     ui.label(str(uso.sesiones_periodo) if uso else "—").classes("w-32 text-right")
                     ui.label(str(uso.usuarios_activos) if uso else "—").classes("w-32 text-right")

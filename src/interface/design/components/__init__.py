@@ -2,6 +2,7 @@ from .base_form import base_form
 from .buttons import btn_danger, btn_ghost, btn_icon, btn_primary, btn_secondary
 from .confirm_dialog import confirm_dialog
 from .confirmation_card import confirmation_card
+from .custom_dialog import custom_dialog
 from .context_bar import context_bar
 from .context_selector import abrir_selector, context_chip
 from .data_table import data_table
@@ -30,6 +31,7 @@ __all__ = [
     # Diálogos y confirmaciones
     "confirm_dialog",
     "confirmation_card",
+    "custom_dialog",
     # Cabecera de página
     "page_header",
     # Tarjeta de estadística / KPI

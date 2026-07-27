@@ -543,10 +543,10 @@ def configuracion_sie_page() -> None:
         with ui.element("div").classes("panel-card"):
             ui.label("Año lectivo activo").classes("eyebrow-label mb-2")
             if config:
-                with ui.row().classes("items-center gap-4 mb-3"):
+                with ui.row().classes("form-row-center-md u-mb-md"):
                     ui.label(str(config.anio)).classes("text-4xl font-bold")
                     badge_estado_general(True)
-                with ui.element("div").classes("grid grid-cols-2 gap-3"):
+                with ui.element("div").classes("form-grid-2"):
                     _dato("Inicio clases",
                           config.fecha_inicio_clases.strftime("%d/%m/%Y") if config.fecha_inicio_clases else "—")
                     _dato("Fin clases",
@@ -556,7 +556,7 @@ def configuracion_sie_page() -> None:
                 ui.separator().classes("my-4")
 
             # Crear nuevo año
-            ui.label("Crear nuevo año lectivo").classes("text-sm font-semibold mb-2")
+            ui.label("Crear nuevo año lectivo").classes("section-subtitle-sm u-mb-sm")
             ui.label(
                 "Al crear un nuevo año, este se convierte en el activo."
             ).classes("text-xs text-muted mb-3")
@@ -570,9 +570,9 @@ def configuracion_sie_page() -> None:
     def panel_escala() -> None:
         config = _s["config_activa"]
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-2 mb-4"):
+            with ui.row().classes("form-row-center u-mb-lg"):
                 ThemeManager.icono("straighten", size=24, color="var(--color-primary)")
-                ui.label("Escala de notas").classes("text-lg font-bold flex-1")
+                ui.label("Escala de notas").classes("section-title-lg")
                 if config:
                     btn_secondary("Editar", icon="edit", on_click=_editar_escala)
 
@@ -583,22 +583,22 @@ def configuracion_sie_page() -> None:
             # Validación visual (regla de dominio)
             aprobacion_en_rango = config.aprobacion_en_rango
 
-            with ui.element("div").classes("grid grid-cols-3 gap-4"):
-                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+            with ui.element("div").classes("form-grid-3"):
+                with ui.element("div").classes("stat-tile bg-subtle"):
                     ui.label("Mínima escala").classes("text-xs text-muted mb-1")
                     ui.label(f"{config.nota_minima_escala:.1f}").classes("text-2xl font-bold")
 
-                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+                with ui.element("div").classes("stat-tile bg-subtle"):
                     ui.label("Nota de aprobación").classes("text-xs text-muted mb-1")
                     color_ap = "text-success" if aprobacion_en_rango else "text-error"
                     ui.label(f"{config.nota_minima_aprobacion:.1f}").classes(f"text-2xl font-bold {color_ap}")
 
-                with ui.element("div").classes("flex-col items-center p-3 bg-subtle rounded text-center"):
+                with ui.element("div").classes("stat-tile bg-subtle"):
                     ui.label("Máxima escala").classes("text-xs text-muted mb-1")
                     ui.label(f"{config.nota_maxima_escala:.1f}").classes("text-2xl font-bold")
 
             if not aprobacion_en_rango:
-                with ui.row().classes("items-center gap-2 mt-3 p-2 bg-error-soft rounded text-error text-sm"):
+                with ui.row().classes("alert-row-inline bg-error-soft text-error"):
                     ThemeManager.icono("warning", size=24, color="var(--color-error)")
                     ui.label("La nota de aprobación está fuera del rango de la escala.")
 
@@ -608,9 +608,9 @@ def configuracion_sie_page() -> None:
         anio_id   = _anio_id()
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-2 mb-4"):
+            with ui.row().classes("form-row-center u-mb-lg"):
                 ThemeManager.icono("grade", size=24, color="var(--color-primary)")
-                ui.label("Niveles de desempeño").classes("text-lg font-bold flex-1")
+                ui.label("Niveles de desempeño").classes("section-title-lg")
                 if anio_id:
                     btn_icon("refresh", on_click=lambda: (_cargar_todo(), panel_niveles.refresh()), tooltip="Recargar")
                     btn_ghost("Defaults", icon="restart_alt", on_click=_restablecer_niveles_default)
@@ -621,7 +621,7 @@ def configuracion_sie_page() -> None:
                 return
 
             if not niveles:
-                with ui.element("div").classes("flex items-center gap-3 p-3 bg-info-soft rounded"):
+                with ui.element("div").classes("alert-panel-row bg-info-soft"):
                     ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
                         "No hay niveles definidos. Usa 'Defaults' para cargar los estándar "
@@ -630,20 +630,20 @@ def configuracion_sie_page() -> None:
                 return
 
             with ui.element("div").classes("w-full"):
-                with ui.element("div").classes("flex gap-3 px-2 py-1 font-semibold text-xs text-muted border-b"):
+                with ui.element("div").classes("divider-row-head text-muted"):
                     ui.label("Nombre").classes("w-28")
                     ui.label("Rango").classes("w-32")
                     ui.label("Descripción").classes("flex-1")
                     ui.label("").classes("w-20")
 
                 for nivel in niveles:
-                    with ui.element("div").classes("flex items-center gap-3 px-2 py-2 border-b"):
-                        ui.label(nivel.nombre).classes("w-28 font-medium text-sm")
+                    with ui.element("div").classes("divider-row"):
+                        ui.label(nivel.nombre).classes("w-28 name-cell")
                         ui.label(f"{nivel.rango_min:.1f} – {nivel.rango_max:.1f}").classes(
                             "w-32 text-sm font-mono text-muted"
                         )
                         ui.label(nivel.descripcion or "—").classes("flex-1 text-sm text-muted")
-                        with ui.row().classes("w-20 justify-end gap-1"):
+                        with ui.row().classes("w-20 form-row-actions"):
                             btn_icon("edit",   on_click=lambda n=nivel: _editar_nivel(n),   tooltip="Editar")
                             btn_icon("delete", on_click=lambda n=nivel: _eliminar_nivel(n), tooltip="Eliminar", variante="danger")
 
@@ -653,9 +653,9 @@ def configuracion_sie_page() -> None:
         anio_id   = _anio_id()
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-2 mb-4"):
+            with ui.row().classes("form-row-center u-mb-lg"):
                 ThemeManager.icono("how_to_reg", size=24, color="var(--color-primary)")
-                ui.label("Criterios de promoción").classes("text-lg font-bold flex-1")
+                ui.label("Criterios de promoción").classes("section-title-lg")
                 if anio_id:
                     label_btn = "Editar" if criterios else "Configurar"
                     btn_secondary(label_btn, icon="edit", on_click=_editar_criterios)
@@ -665,14 +665,14 @@ def configuracion_sie_page() -> None:
                 return
 
             if not criterios:
-                with ui.element("div").classes("flex items-center gap-3 p-3 bg-warning-soft rounded border-warning-soft"):
+                with ui.element("div").classes("alert-panel-row bg-warning-soft border-warning-soft"):
                     ThemeManager.icono("warning", size=24, color="var(--color-warning)")
                     ui.label(
                         "No hay criterios de promoción configurados. Haz clic en 'Configurar'."
                     ).classes("text-sm text-warning flex-1")
                 return
 
-            with ui.element("div").classes("grid grid-cols-2 gap-4"):
+            with ui.element("div").classes("form-grid-2"):
                 _dato("Máx. asignaturas perdidas", str(criterios.max_asignaturas_perdidas))
                 _dato("Promoción condicionada", "Sí" if criterios.permite_condicionada else "No")
                 _dato("Nota mínima habilitación", f"{criterios.nota_minima_habilitacion:.1f}")
@@ -687,9 +687,9 @@ def configuracion_sie_page() -> None:
         modo_desc  = _MODO_DESC.get(modo_val, "")
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-3 mb-4"):
+            with ui.row().classes("form-row-center-md u-mb-lg"):
                 ThemeManager.icono("tune", size=24, color="var(--color-primary)")
-                ui.label("Modo SIEE").classes("text-lg font-bold flex-1")
+                ui.label("Modo SIEE").classes("section-title-lg")
                 _variante_modo = {
                     "libre":               "neutral",
                     "institucional_fijo":  "error",
@@ -700,7 +700,7 @@ def configuracion_sie_page() -> None:
                 if anio_id:
                     btn_secondary("Cambiar modo", icon="tune", on_click=_abrir_dialog_modo_siee)
 
-            with ui.element("div").classes("bg-info-soft rounded p-3 mb-3 text-sm text-info"):
+            with ui.element("div").classes("bg-info-soft form-box u-mb-md text-sm text-info"):
                 ui.label(modo_desc)
 
             if modo_val == "mixto_autonomia" and cfg and cfg.porcentaje_autonomia_docente:
@@ -717,11 +717,12 @@ def configuracion_sie_page() -> None:
         suma_inst  = round(sum(c.peso for c in cats_inst) * 100, 1)
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center gap-3 mb-4"):
+            with ui.row().classes("form-row-center-md u-mb-lg"):
                 ThemeManager.icono("category", size=24, color="var(--color-primary)")
-                ui.label("Categorías institucionales").classes("text-lg font-bold flex-1")
-                ui.badge(f"{suma_inst:.0f}%").classes(
-                    "badge-success" if suma_inst <= 100 else "badge-error"
+                ui.label("Categorías institucionales").classes("section-title-lg")
+                status_badge(
+                    f"{suma_inst:.0f}%",
+                    variante="success" if suma_inst <= 100 else "error",
                 )
                 if anio_id:
                     btn_icon("add_circle", on_click=_crear_cat_institucional, tooltip="Agregar categoría institucional")
@@ -736,10 +737,10 @@ def configuracion_sie_page() -> None:
 
             with ui.element("div").classes("w-full divider-y"):
                 for cat in cats_inst:
-                    with ui.row().classes("items-center gap-3 py-2"):
+                    with ui.row().classes("form-row-center-md"):
                         ThemeManager.icono("lock", size=20)
-                        ui.label(cat.nombre).classes("flex-1 text-sm font-medium")
-                        ui.label(f"{cat.peso_porcentaje:.1f}%").classes("text-sm font-mono w-14 text-right")
+                        ui.label(cat.nombre).classes("flex-1 text-cell-md")
+                        ui.label(f"{cat.peso_porcentaje:.1f}%").classes("cell-mono w-14 text-right")
                         if cat.permite_subcategorias:
                             status_badge("sub-cats", variante="info")
                         with ui.row().classes("gap-1"):
@@ -753,7 +754,7 @@ def configuracion_sie_page() -> None:
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono("school", size=22, color="var(--color-primary)")
-                    ui.label("Configuración SIEE").classes("text-xl font-bold flex-1")
+                    ui.label("Configuración SIEE").classes("section-title-xl")
                     btn_ghost("Info. Institucional", icon="business",
                               on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"))
                     btn_icon("refresh", on_click=lambda: (_cargar_todo(),

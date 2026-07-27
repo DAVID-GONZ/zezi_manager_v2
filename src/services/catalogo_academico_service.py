@@ -243,6 +243,46 @@ class CatalogoAcademicoService:
         grupo_act = actual.model_copy(update={"director_grupo_id": usuario_id})
         return self._repo.actualizar_grupo(grupo_act)
 
+    # ── Autorización por objeto: director de grupo (convivencia_03) ─────────────
+
+    def es_director_de_grupo(self, usuario_id: int, grupo_id: int) -> bool:
+        """True si `usuario_id` es el director del grupo `grupo_id`.
+
+        Resolución de datos que consume la política pura
+        `rbac_convivencia.puede_gestionar_comportamiento`. Lee el grupo por id y
+        compara su `director_grupo_id`. Grupo inexistente (o `usuario_id`/
+        `director_grupo_id` None) → False, sin excepción.
+        """
+        if usuario_id is None:
+            return False
+        grupo = self._repo.get_grupo(grupo_id)
+        if grupo is None or grupo.director_grupo_id is None:
+            return False
+        return grupo.director_grupo_id == usuario_id
+
+    def puede_gestionar_comportamiento_en_grupo(
+        self, usuario_rol: object, usuario_id: int, grupo_id: int
+    ) -> bool:
+        """Conveniencia: combina la resolución de datos (¿es director de este
+        grupo?) con la política pura de convivencia.
+
+        directivos (director / coordinador) pasan siempre; profesor solo si
+        dirige el grupo `grupo_id`. admin NO gestiona en nombre propio (auditor
+        técnico); lo hace vía impersonación con el rol efectivo del objetivo.
+        Fuente única de verdad consultable desde servicio y vista (defensa en
+        profundidad).
+
+        Nota: la variante por-estudiante (`es_director_de_grupo_de_estudiante`)
+        se añadirá en convivencia_04, cuando se resuelva el grupo del estudiante
+        desde su servicio; aquí no hay acceso trivial a esa relación.
+        """
+        from src.domain.policies.rbac_convivencia import (
+            puede_gestionar_comportamiento,
+        )
+        return puede_gestionar_comportamiento(
+            usuario_rol, self.es_director_de_grupo(usuario_id, grupo_id)
+        )
+
 
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las
 # páginas importan los TIPOS desde su servicio cohesivo, no desde `src.domain`

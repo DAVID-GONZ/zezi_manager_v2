@@ -33,6 +33,7 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
+    custom_dialog,
     empty_state,
     form_dialog,
     status_badge,
@@ -1078,7 +1079,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         restricciones_ini = restricciones_ini or {}
         min_max_ini = restricciones_ini.get("min_max_diario", {"modo": "preferente", "min": 0, "max": 8})
 
-        with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-lg"):
+        with custom_dialog(max_width="lg") as dlg:
             titulo = "Editar configuración" if es_edicion else "Nueva configuración de generación"
             ui.label(titulo).classes("font-h3 form-dialog-title")
 
@@ -1152,7 +1153,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             ui.label(
                 "Permite limitar cuántas horas puede tener un docente en un solo día."
             ).classes("text-caption text-muted")
-            with ui.row().classes("gap-4 items-end mt-2"):
+            with ui.row().classes("form-row-inline u-mt-sm"):
                 sel_modo_minmax = ui.select(
                     {"preferente": "Preferente (coste blando)", "estricta": "Estricta (dura)"},
                     label="Modo",
@@ -1219,7 +1220,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     logger.error("Error guardando configuración de generación: %s", exc)
                     toast_error("No se pudo guardar la configuración")
 
-            with ui.row().classes("base-form-footer w-full gap-2 justify-end u-mt-md"):
+            with ui.row().classes("base-form-footer form-row-actions u-mt-md"):
                 btn_secondary("Cancelar", on_click=dlg.close)
                 btn_primary("Guardar", on_click=_guardar)
 
@@ -1583,7 +1584,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         with ui.element("div").classes("panel-card u-mt-md"):
             with ui.element("div").classes("gen-section-head"):
-                with ui.row().classes("items-center gap-3 flex-wrap"):
+                with ui.row().classes("form-row-center-md"):
                     ui.label(getattr(config, "nombre", "")).classes("text-subtitle1 font-semibold")
                     status_badge(badge_txt, variante=badge_var)
                 with ui.row().classes("gap-2 flex-wrap"):
@@ -1694,7 +1695,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         "check_circle" if puerta.ok
                         else ("cancel" if puerta.severidad == "dura" else "warning")
                     )
-                    with ui.row().classes("items-start gap-3 py-3 border-b"):
+                    with ui.row().classes("divider-row"):
                         ThemeManager.icono(_icono, size=20, color=_color)  # DYNAMIC: color según estado de la puerta
                         with ui.element("div").classes("flex-1"):
                             with ui.row().classes("items-center gap-2"):
@@ -1765,7 +1766,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 )
             else:
                 for a in asigs:
-                    with ui.row().classes("items-center gap-3 py-2 border-b"):
+                    with ui.row().classes("divider-row"):
                         ThemeManager.icono(Icons.SUBJECTS, size=18)
                         with ui.element("div"):
                             ui.label(a.asignatura_nombre).classes("text-sm font-semibold")
@@ -1787,7 +1788,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     f"Análisis: {reporte.validas} válidas, {reporte.invalidas} con error"
                 ).classes("text-sm text-muted u-mb-xs")
                 with ui.element("div").classes("overflow-auto"):
-                    with ui.element("table").classes("w-full border-collapse text-xs"):
+                    with ui.element("table").classes("table-mini-xs"):
                         with ui.element("thead"):
                             with ui.element("tr"):
                                 for col in ("#", "Estado", "Resumen", "Motivo"):
@@ -1798,16 +1799,16 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         with ui.element("tbody"):
                             for f in reporte.filas:
                                 with ui.element("tr"):
-                                    with ui.element("td").classes("border px-2 py-1"):
+                                    with ui.element("td").classes("form-box-sm"):
                                         ui.label(str(f.indice + 1))
-                                    with ui.element("td").classes("border px-2 py-1"):
+                                    with ui.element("td").classes("form-box-sm"):
                                         status_badge(
                                             "OK" if f.ok else "Error",
                                             variante="success" if f.ok else "danger",
                                         )
-                                    with ui.element("td").classes("border px-2 py-1"):
+                                    with ui.element("td").classes("form-box-sm"):
                                         ui.label(str(f.resumen))
-                                    with ui.element("td").classes("border px-2 py-1"):
+                                    with ui.element("td").classes("form-box-sm"):
                                         ui.label(str(f.motivo or ""))
                 with ui.row().classes("gap-2 u-mt-sm"):
                     if reporte.todo_ok:
@@ -1913,7 +1914,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         editable = puede_escribir and _s["seccion"] == "editar"
 
         with ui.element("div").classes("panel-card"):
-            with ui.row().classes("items-center justify-between flex-wrap gap-2"):
+            with ui.row().classes("form-row-between"):
                 ui.label("Escenarios de horario").classes("text-subtitle1 font-semibold")
                 if editable:
                     btn_secondary("Nuevo escenario", icon="add", on_click=_crear_escenario_dialog)
@@ -1950,7 +1951,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         # Edición solo en la sección "Editar"; "Visualizar" es de solo lectura.
         editable = puede_escribir and _s["seccion"] == "editar"
         with ui.element("div").classes("panel-card u-mt-sm"):
-            with ui.row().classes("items-center justify-between flex-wrap gap-2"):
+            with ui.row().classes("form-row-between"):
                 ui.label("Parrilla").classes("text-subtitle1 font-semibold")
                 with ui.row().classes("items-center gap-2"):
                     _segmento(

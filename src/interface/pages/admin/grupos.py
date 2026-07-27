@@ -29,6 +29,7 @@ from src.interface.design.components import (
     confirm_dialog,
     empty_state,
     form_dialog,
+    status_badge,
     toast_error,
     toast_success,
     toast_warning,
@@ -362,13 +363,13 @@ def grupos_page() -> None:
         with ui.element("div").classes("w-full"):
             for g in grados:
                 en_uso = _contar_grupos_por_grado(g.numero)
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
-                    ui.label(str(g.numero)).classes("font-mono font-bold w-12")
+                with ui.element("div").classes("divider-row"):
+                    ui.label(str(g.numero)).classes("cell-mono-bold w-12")
                     ui.label(g.nombre or "—").classes("w-32 font-medium")
                     ui.label(f"{g.min_estudiantes}–{g.max_estudiantes} estud.").classes("w-32")
                     ui.label(f"{g.horas_semanales} h/sem").classes("w-24")
                     if en_uso:
-                        ui.badge(f"{en_uso} grupo(s)").classes("badge-primary")
+                        status_badge(f"{en_uso} grupo(s)", "primary")
                     with ui.row().classes("gap-2 ml-auto"):
                         btn_icon("edit", on_click=lambda g=g: _abrir_editar_grado(g), tooltip="Editar")
                         btn_icon("delete", on_click=lambda n=g.numero: _eliminar_grado(n), tooltip="Eliminar", variante="danger")
@@ -397,8 +398,8 @@ def grupos_page() -> None:
         with ui.element("div").classes("w-full"):
             for fila in filas:
                 g_obj = next((x for x in grupos if x.id == fila["id"]), None)
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
-                    ui.label(fila["codigo"]).classes("font-mono font-bold w-24")
+                with ui.element("div").classes("divider-row"):
+                    ui.label(fila["codigo"]).classes("cell-mono-bold w-24")
                     ui.label(f"Grado {fila['grado']}").classes("w-20")
                     ui.label(fila["jornada_label"]).classes("w-28")
                     ui.label(f"{fila['capacidad']} estudiantes").classes("w-32")
@@ -434,9 +435,9 @@ def grupos_page() -> None:
 
             # Panel: catálogo de grados
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-3"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ui.label("Grados").classes("text-base font-semibold")
-                    ui.badge(str(len(_s["grados"]))).classes("badge-primary")
+                    status_badge(str(len(_s["grados"])), "primary")
                     btn_icon("add", on_click=_abrir_crear_grado, tooltip="Nuevo grado")
                     btn_icon("refresh", on_click=lambda: (_cargar_grados(), grados_tabla.refresh()), tooltip="Recargar")
                 grados_tabla()
@@ -445,8 +446,8 @@ def grupos_page() -> None:
             with ui.element("div").classes("panel-card mt-4"):
 
                 # Formulario de creación
-                ui.label("Crear nuevo grupo").classes("text-base font-semibold mb-2")
-                with ui.row().classes("gap-3 flex-wrap items-end"):
+                ui.label("Crear nuevo grupo").classes("section-subtitle u-mb-sm")
+                with ui.row().classes("form-row-inline"):
                     cod = ui.input("Código *", placeholder="601").classes("w-28").bind_value(
                         _s, "form_codigo"
                     )
@@ -468,9 +469,9 @@ def grupos_page() -> None:
 
             # Tabla de grupos
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center gap-2 mb-3"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ui.label("Grupos registrados").classes("text-base font-semibold")
-                    ui.badge(str(len(_s["grupos"]))).classes("badge-primary")
+                    status_badge(str(len(_s["grupos"])), "primary")
                     btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
                 tabla()
 

@@ -369,22 +369,22 @@ def usuarios_page() -> None:
             for u in usuarios:
                 rol_str = u.rol.value if hasattr(u.rol, "value") else str(u.rol)
                 gestionable = svc.puede_gestionar(ctx.usuario_rol, rol_str)
-                with ui.element("div").classes("flex items-center gap-4 p-2 border-b"):
+                with ui.element("div").classes("divider-row"):
                     ui.label(u.nombre_completo).classes("flex-1")
-                    ui.label(u.usuario).classes("w-32 font-mono text-sm")
+                    ui.label(u.usuario).classes("w-32 cell-mono")
                     if es_admin:
                         ui.label(
                             instituciones_opts.get(u.institucion_id, "—")
-                        ).classes("w-48 text-sm whitespace-nowrap overflow-hidden")
-                    with ui.element("div").classes("w-28 flex items-center"):
+                        ).classes("name-w48-ellipsis")
+                    with ui.element("div").classes("w-28 form-row-center"):
                         status_badge(
                             _ROLES_OPCIONES.get(rol_str, rol_str),
                             _ROL_CLASES.get(rol_str, "badge-neutral").replace("badge-", ""),
                         )
-                    with ui.element("div").classes("w-20 flex items-center"):
+                    with ui.element("div").classes("w-20 form-row-center"):
                         badge_estado_general(bool(u.activo))
                     if puede_crear:
-                        with ui.row().classes("w-56 gap-1 justify-end no-wrap"):
+                        with ui.row().classes("w-56 form-row-actions no-wrap"):
                             if es_admin and u.id != ctx.usuario_id and u.activo:
                                 btn_icon("visibility", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str, inst=u.institucion_id: _ver_como(uid, nom, r, inst), tooltip="Ver como (solo lectura)")
                             if gestionable and u.activo:
@@ -486,7 +486,7 @@ def usuarios_page() -> None:
                 with ui.row().classes(
                     "gap-4 items-center justify-between flex-wrap mb-4"
                 ):
-                    with ui.row().classes("gap-4 items-center flex-wrap"):
+                    with ui.row().classes("form-row-center-md"):
                         ui.label("Filtros:").classes("text-sm font-semibold")
                         roles_opts = {None: "Todos los roles"}
                         roles_opts.update(_ROLES_OPCIONES)
@@ -517,7 +517,7 @@ def usuarios_page() -> None:
                                 _on_filtros_cambio(),
                             ),
                         )
-                        ui.badge(str(len(_s["usuarios"]))).classes("badge-primary")
+                        status_badge(str(len(_s["usuarios"])), "primary")
                         btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
 
                     if puede_crear:

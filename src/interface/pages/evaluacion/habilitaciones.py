@@ -263,7 +263,7 @@ def habilitaciones_page() -> None:
         suma_pesos  = planilla.suma_pesos
 
         # ── Barra de acciones ────────────────────────────────────────────────
-        with ui.row().classes("items-center gap-3 mb-3 flex-wrap"):
+        with ui.row().classes("form-row-center-md u-mb-md"):
             if cerrado:
                 with ui.row().classes("items-center gap-1"):
                     ThemeManager.icono("lock", size=20, color="var(--color-error)")
@@ -302,13 +302,13 @@ def habilitaciones_page() -> None:
                 "flex gap-1 p-2 font-semibold text-xs border-b bg-subtle rounded-t"
             ):
                 ui.label("Estudiante").classes("w-32 no-shrink")
-                ui.label("Nota período").classes("w-24 text-right no-shrink")
+                ui.label("Nota período").classes("w-24 cell-num-right")
                 for act in actividades:
-                    with ui.element("div").classes("w-28 text-center no-shrink"):
+                    with ui.element("div").classes("w-28 cell-num-center"):
                         ui.label(act.nombre).classes("text-truncate max-w-full")
                         ui.label(f"{act.peso:.0%}").classes("text-faint text-xs")
                 if actividades:
-                    ui.label("Promedio pond.").classes("w-28 text-right no-shrink font-semibold")
+                    ui.label("Promedio pond.").classes("w-28 cell-num-right cell-strong-sm")
 
             # Filas (el servicio ya calculó el promedio ponderado de cada fila)
             for fila in filas:
@@ -319,18 +319,18 @@ def habilitaciones_page() -> None:
                     "flex gap-1 items-center p-2 border-b row-hover"
                 ):
                     # Nombre/ID del estudiante
-                    ui.label(str(est_id)).classes("w-32 no-shrink font-mono text-sm")
+                    ui.label(str(est_id)).classes("w-32 no-shrink cell-mono")
 
                     # Nota del período (en rojo, era bajo desempeño)
                     nota_str = f"{nota_previa:.1f}" if nota_previa is not None else "—"
-                    ui.label(nota_str).classes("w-24 text-right font-mono text-sm text-error no-shrink")
+                    ui.label(nota_str).classes("w-24 cell-num-right cell-mono text-error")
 
                     # Celdas por actividad
                     for act in actividades:
                         nota_obj = fila.notas.get(act.id)
                         valor = nota_obj.valor if nota_obj else None
 
-                        with ui.element("div").classes("w-28 text-center no-shrink"):
+                        with ui.element("div").classes("w-28 cell-num-center"):
                             valor_str = f"{valor:.1f}" if valor is not None else "—"
                             color_cls = (
                                 "text-success" if valor is not None and valor >= 60
@@ -374,7 +374,7 @@ def habilitaciones_page() -> None:
                 # ── Tab 1: Nivelación ─────────────────────────────────────────
                 with ui.tab_panel("nivelacion"):
                     with ui.element("div").classes("panel-card"):
-                        with ui.row().classes("items-center gap-2 mb-4"):
+                        with ui.row().classes("form-row-center u-mb-lg"):
                             ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
                             ui.label("Planilla de Nivelación").classes("text-xl font-bold")
                             ui.label(
@@ -389,7 +389,7 @@ def habilitaciones_page() -> None:
                             for a in _s["asignaciones"]
                         })
 
-                        with ui.row().classes("gap-3 items-end flex-wrap mb-4"):
+                        with ui.row().classes("form-row-inline u-mb-lg"):
                             ui.select(
                                 periodos_opts,
                                 value=None,
@@ -421,7 +421,7 @@ def habilitaciones_page() -> None:
                 # ── Tab 2: Configuración (implementación futura) ──────────────
                 with ui.tab_panel("configuracion"):
                     with ui.element("div").classes("panel-card"):
-                        with ui.row().classes("items-center gap-2 mb-2"):
+                        with ui.row().classes("form-row-center u-mb-sm"):
                             ThemeManager.icono("settings", size=22, color="var(--color-secondary)")
                             ui.label("Configuración de nivelación").classes("text-xl font-bold")
 

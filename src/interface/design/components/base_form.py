@@ -27,15 +27,16 @@ def base_form(
 
     # Se sustituye ui.card() por un contenedor neutro para evitar 
     # la duplicación de sombras y paddings al inyectarse en un dialog.
-    contenedor = ui.element("div").classes("base-form-wrapper w-full")
-    
+    contenedor = ui.element("div").classes("base-form-wrapper")
+
     with contenedor:
         if titulo:
             ui.label(titulo).classes("font-h3 base-form-title")
-            ui.separator().classes("base-form-sep q-mb-md")
+            ui.separator().classes("base-form-sep u-mb-md")
 
+        # DYNAMIC: grid-template-columns depende del parámetro `columnas`.
         with ui.element("div").classes("base-form-grid").style(
-            f"grid-template-columns: repeat({columnas}, 1fr); display: grid; gap: 16px;"
+            f"grid-template-columns: repeat({columnas}, 1fr);"
         ):
             for campo in campos:
                 key         = campo.get("key", "")
@@ -117,7 +118,7 @@ def base_form(
 
                     elif tipo == "readonly":
                         # Se añade la etiqueta descriptiva para no perder contexto
-                        ui.label(label_text).classes("text-xs text-grey-6 q-mb-none")
+                        ui.label(label_text).classes("text-xs base-form-readonly-label")
                         ui.label(str(campo.get("valor", ""))).classes(
                             "readonly-field-value text-sm"
                         )
@@ -135,7 +136,7 @@ def base_form(
                     if isinstance(ref, list):
                         ref.append(widget)
 
-        ui.separator().classes("base-form-sep q-mt-lg q-mb-sm")
+        ui.separator().classes("base-form-sep u-mt-lg u-mb-sm")
 
         with ui.row().classes("base-form-footer w-full gap-2 justify-end"):
             if on_cancelar and texto_cancelar:

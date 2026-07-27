@@ -296,7 +296,7 @@ def cierre_periodo_page() -> None:
 
         # Botón de cierre en bloque
         cerradas = sum(1 for a in asigs if estado.get(a.asignacion_id))
-        with ui.row().classes("items-center justify-between mb-4 flex-wrap gap-2"):
+        with ui.row().classes("form-row-between u-mb-lg"):
             ui.label(
                 f"{len(asigs)} asignaturas · {cerradas} cerradas · "
                 f"{len(asigs) - cerradas} abiertas"
@@ -315,11 +315,11 @@ def cierre_periodo_page() -> None:
             with ui.element("div").classes(
                 "panel-card mb-3" + (" accent-left-success" if cerrado else " accent-left-neutral")
             ):
-                with ui.row().classes("items-start justify-between flex-wrap gap-2"):
+                with ui.row().classes("form-row-between"):
 
                     # Columna izquierda: info
                     with ui.element("div").classes("flex-1 min-w-0"):
-                        with ui.row().classes("items-center gap-2 mb-1"):
+                        with ui.row().classes("form-row-center u-mb-xs"):
                             if cerrado:
                                 ThemeManager.icono("lock", size=18, color="var(--color-success)")
                                 ui.label("CERRADA").classes("text-xs font-bold text-success")
@@ -339,7 +339,7 @@ def cierre_periodo_page() -> None:
                             )
                             usr_str = _nombre_usuario(cierres[0].usuario_cierre_id)
 
-                            with ui.row().classes("gap-4 mt-2 flex-wrap"):
+                            with ui.row().classes("form-row-inline u-mt-sm"):
                                 with ui.element("div").classes("flex-col"):
                                     ui.label("Promedio del grupo").classes("text-xs text-muted")
                                     ui.label(f"{prom:.1f}").classes("text-xl font-bold")
@@ -354,7 +354,7 @@ def cierre_periodo_page() -> None:
                                     ui.label(usr_str).classes("text-sm")
 
                     # Columna derecha: acciones
-                    with ui.element("div").classes("flex gap-2 items-center no-shrink"):
+                    with ui.element("div").classes("form-row-center no-shrink"):
                         if cerrado:
                             btn_secondary(
                                 "Recalcular",
@@ -385,7 +385,7 @@ def cierre_periodo_page() -> None:
 
             # Panel de selección
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-4"):
+                with ui.row().classes("form-row-center u-mb-lg"):
                     ThemeManager.icono(Icons.CLOSE_PERIOD, size=22, color="var(--color-warning)")
                     ui.label("Cierre de Periodo por Asignación").classes("text-xl font-bold")
 
@@ -402,7 +402,7 @@ def cierre_periodo_page() -> None:
                     _recargar_asignaciones()
                     lista_refreshable.refresh()
 
-                with ui.row().classes("gap-4 items-center flex-wrap"):
+                with ui.row().classes("form-row-center-md"):
                     ui.select(
                         periodos_opts or {"": "Sin periodos"},
                         value=_s["periodo_id"],

@@ -187,3 +187,68 @@ class TestNotaComportamiento:
         svc.registrar_nota_comportamiento(dto2)
         nota = svc.get_nota_comportamiento(1, 5)
         assert nota.valor == pytest.approx(85.0)
+
+
+# ===========================================================================
+# Enforcement de autorización (convivencia_04b — defensa en profundidad)
+# ===========================================================================
+
+class _StubCatalogoSvc:
+    """Stub minimal de CatalogoAcademicoService: siempre autoriza/deniega."""
+    def __init__(self, autoriza: bool):
+        self._autoriza = autoriza
+        self.llamadas: list[tuple] = []
+
+    def puede_gestionar_comportamiento_en_grupo(
+        self, usuario_rol, usuario_id, grupo_id
+    ) -> bool:
+        self.llamadas.append((usuario_rol, usuario_id, grupo_id))
+        return self._autoriza
+
+
+class TestEnforcementAutorizacion:
+    def _dto_registro(self) -> NuevoRegistroComportamientoDTO:
+        return NuevoRegistroComportamientoDTO(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.FORTALEZA,
+            descripcion="Buen trabajo",
+            fecha=date.today(),
+        )
+
+    def test_provider_deniega_lanza_permission_error_y_no_persiste(self):
+        repo = FakeConvRepo()
+        stub = _StubCatalogoSvc(autoriza=False)
+        svc = ConvivenciaService(
+            repo=repo,
+            catalogo_academico_svc_provider=lambda: stub,
+        )
+        with pytest.raises(PermissionError):
+            svc.registrar_comportamiento(
+                self._dto_registro(),
+                usuario_id=99,
+                usuario_rol="profesor",
+            )
+        assert repo._regs == {}  # no persistió
+        assert stub.llamadas == [("profesor", 99, 10)]
+
+    def test_provider_autoriza_mutacion_ok(self):
+        repo = FakeConvRepo()
+        stub = _StubCatalogoSvc(autoriza=True)
+        svc = ConvivenciaService(
+            repo=repo,
+            catalogo_academico_svc_provider=lambda: stub,
+        )
+        reg = svc.registrar_comportamiento(
+            self._dto_registro(),
+            usuario_id=99,
+            usuario_rol="profesor",
+        )
+        assert reg.id is not None
+        assert stub.llamadas == [("profesor", 99, 10)]
+
+    def test_sin_provider_es_compat_retro(self):
+        svc, repo = _make_svc()  # sin provider
+        reg = svc.registrar_comportamiento(
+            self._dto_registro(), usuario_id=99, usuario_rol="profesor",
+        )
+        assert reg.id is not None

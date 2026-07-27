@@ -43,6 +43,28 @@ from src.services.convivencia_service import NuevaNotaComportamientoDTO
 
 logger = logging.getLogger("NOTAS_CONVIVENCIA")
 
+# Aviso de autorización por objeto (convivencia_04). Mismo texto que comportamiento.
+_MSG_NO_AUTORIZADO = (
+    "Solo el director de grupo, la coordinación o la dirección pueden "
+    "gestionar el comportamiento de este grupo."
+)
+
+
+def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
+    """Autorización por objeto: ¿puede el usuario gestionar las notas de
+    comportamiento del grupo activo? Delega en CatalogoAcademicoService
+    (directivo siempre; profesor solo si dirige el grupo; admin False). Pasa
+    primitivos; la página no importa dominio. Sin grupo → False."""
+    if not grupo_id:
+        return False
+    try:
+        return Container.catalogo_academico_service().puede_gestionar_comportamiento_en_grupo(
+            ctx.usuario_rol, ctx.usuario_id, int(grupo_id)
+        )
+    except Exception as exc:  # noqa: BLE001 — fail-closed ante error de resolución
+        logger.warning("No se pudo resolver autorización de notas: %s", exc)
+        return False
+
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
@@ -199,7 +221,9 @@ def _guardar_nota(
             "valor":         valor_float,
             "observacion":   observacion if observacion else None,
         })
-        Container.convivencia_service().registrar_nota_comportamiento(dto, ctx.usuario_id)
+        Container.convivencia_service().registrar_nota_comportamiento(
+            dto, ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+        )
         # Limpiar el cambio pendiente
         _s["cambios_pendientes"].pop(estudiante_id, None)
         toast_success("Nota guardada.")
@@ -232,7 +256,9 @@ def _guardar_todo(_s: dict, ctx: SessionContext) -> None:
                 "valor":         float(cambio["valor"]),
                 "observacion":   cambio.get("observacion") or None,
             })
-            Container.convivencia_service().registrar_nota_comportamiento(dto, ctx.usuario_id)
+            Container.convivencia_service().registrar_nota_comportamiento(
+            dto, ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+        )
             _s["cambios_pendientes"].pop(est_id, None)
             exitos += 1
         except Exception as exc:
@@ -282,7 +308,10 @@ def notas_convivencia_page() -> None:
     def _contenido() -> None:
         ctx_actual = SessionContext.desde_storage() or ctx
         filas = _construir_filas(_s)
-        editable = not _s["periodo_cerrado"]
+        autorizado = _autorizado_para_grupo(ctx_actual, _s["grupo_id"])
+        # Solo lectura si el periodo está cerrado O si el usuario no está
+        # autorizado por objeto sobre el grupo activo (convivencia_04).
+        editable = (not _s["periodo_cerrado"]) and autorizado
 
         opciones_periodos = {
             getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
@@ -372,9 +401,15 @@ def notas_convivencia_page() -> None:
                         ThemeManager.icono(Icons.CLOSE_PERIOD, size=16)
                         ui.label("Periodo cerrado — solo lectura.").classes("asis-banner-text")
 
+                # Aviso de autorización por objeto (convivencia_04): solo lectura
+                if _s["grupo_id"] and not autorizado:
+                    with ui.element("div").classes("asis-banner-cerrado"):
+                        ThemeManager.icono("lock", size=16)
+                        ui.label(_MSG_NO_AUTORIZADO).classes("asis-banner-text")
+
                 # Selector de periodo
                 with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("items-center gap-4 flex-wrap"):
+                    with ui.row().classes("panel-toolbar"):
                         ui.select(
                             options=opciones_periodos,
                             label="Periodo",
@@ -382,8 +417,8 @@ def notas_convivencia_page() -> None:
                             on_change=lambda e: on_periodo_change(e.value),
                         ).classes("andes-input input-min-md").props("outlined dense")
 
-                        if not _s["periodo_cerrado"]:
-                            ui.element("div").classes("flex-1")
+                        if not _s["periodo_cerrado"] and autorizado:
+                            ui.element("div").classes("panel-toolbar-spacer")
                             btn_ghost(
                                 "Guardar seleccionado",
                                 on_click=on_guardar_seleccionado,

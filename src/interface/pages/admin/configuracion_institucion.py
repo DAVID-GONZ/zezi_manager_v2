@@ -140,7 +140,7 @@ def configuracion_institucion_page() -> None:
                 placeholder="https://... o ruta local",
             ).classes("col-span-2").bind_value(_s, "logo_path")
 
-        with ui.row().classes("gap-2 mt-6 justify-end"):
+        with ui.row().classes("form-row-actions u-mt-lg"):
             btn_ghost("Recargar datos", on_click=_recargar, icon="refresh")
             btn_primary("Guardar cambios", on_click=_guardar_info, icon="save")
 

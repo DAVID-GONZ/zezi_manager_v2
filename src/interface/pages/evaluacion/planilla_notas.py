@@ -651,7 +651,7 @@ def planilla_notas_page() -> None:
             return
 
         # Enlace a configuración de categorías
-        with ui.row().classes("items-center gap-1 mb-4 text-sm text-muted"):
+        with ui.row().classes("form-row-center u-mb-lg text-sm text-muted"):
             ThemeManager.icono("info_outline", size=16)
             ui.label("Las categorías se configuran en")
             ui.link(
@@ -660,9 +660,9 @@ def planilla_notas_page() -> None:
             ).classes("text-primary font-medium")
 
         # Formulario nueva actividad
-        with ui.element("div").classes("bg-subtle rounded p-4 mb-4"):
-            ui.label("Nueva actividad").classes("text-sm font-semibold mb-3")
-            with ui.row().classes("gap-3 items-end flex-wrap"):
+        with ui.element("div").classes("bg-subtle form-box u-mb-lg"):
+            ui.label("Nueva actividad").classes("section-subtitle-sm u-mb-md")
+            with ui.row().classes("form-row-inline"):
                 ui.input(
                     "Nombre *",
                     placeholder="Ej: Taller 1",
@@ -720,10 +720,10 @@ def planilla_notas_page() -> None:
                     ui.label(f"{act.valor_maximo:.1f}").classes(
                         "w-20 text-right font-mono text-sm"
                     )
-                    with ui.element("div").classes("w-24 flex justify-center"):
+                    with ui.element("div").classes("w-24 cell-num-center"):
                         status_badge(estado_val.capitalize(), badge_tipo)
 
-                    with ui.row().classes("w-28 justify-end gap-1"):
+                    with ui.row().classes("w-28 form-row-actions"):
                         if act.estado == EstadoActividad.BORRADOR:
                             btn_icon(
                                 "publish",
@@ -833,9 +833,9 @@ def planilla_notas_page() -> None:
 
             # Cabecera: título + barra de vista + recarga
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-3 flex-wrap"):
+                with ui.row().classes("form-row-center-md"):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Planilla de Notas").classes("text-xl font-bold flex-1")
+                    ui.label("Planilla de Notas").classes("section-title-xl")
                     barra_vista()
                     btn_icon(
                         "refresh",

@@ -227,3 +227,22 @@
   min-width: 34px !important;
   min-height: 34px !important;
 }
+
+/* ── Bloque de usuario en la topbar (logout + info) ───────── */
+.topbar-user-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.topbar-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.topbar-logo-inst {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}

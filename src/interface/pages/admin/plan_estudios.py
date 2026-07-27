@@ -280,7 +280,7 @@ def plan_estudios_page() -> None:
         objetivo = g.horas_semanales if g else 0
         asignadas = sum(_s["plan_map"].values())
         restantes = objetivo - asignadas
-        with ui.row().classes("items-center gap-2 flex-wrap"):
+        with ui.row().classes("form-row-center"):
             var = ("success" if objetivo and asignadas == objetivo
                    else ("error" if objetivo and asignadas > objetivo else "info"))
             status_badge(f"{asignadas} / {objetivo or '—'} h", variante=var)
@@ -307,7 +307,7 @@ def plan_estudios_page() -> None:
             usados = {g.numero for g in _s["grados"]}
             num_opts = {n: f"{n} — {_NOMBRES_GRADO.get(n, n)}"
                         for n in range(1, 14) if n not in usados}
-            with ui.row().classes("items-end gap-3 flex-wrap"):
+            with ui.row().classes("form-row-inline"):
                 ui.select(num_opts or {None: "Todos creados"}, label="Grado *") \
                     .classes("w-44").props("dense outlined").bind_value(_s, "g_numero")
                 ui.input("Nombre (opcional)").classes("w-40").props("dense outlined") \
@@ -332,7 +332,7 @@ def plan_estudios_page() -> None:
                             ui.label(f"{g.numero} · {g.nombre or _NOMBRES_GRADO.get(g.numero, '')}").classes("w-40 font-medium")
                             ui.label(f"{g.min_estudiantes} – {g.max_estudiantes}").classes("w-40 text-sm")
                             ui.label(f"{g.horas_semanales} h").classes("w-28 text-sm")
-                            with ui.row().classes("flex-1 justify-end gap-1"):
+                            with ui.row().classes("form-row-actions"):
                                 btn_icon("edit", tooltip="Editar", on_click=lambda gg=g: _editar_grado(gg))
                                 btn_icon("delete", variante="danger", tooltip="Eliminar",
                                          on_click=lambda gg=g: _eliminar_grado(gg))
@@ -365,7 +365,7 @@ def plan_estudios_page() -> None:
                 a.id: a.nombre for a in _s["asignaturas"]
                 if a.id not in _s["plan_map"] and (f_area is None or a.area_id == f_area)
             }
-            with ui.row().classes("items-end gap-3 flex-wrap u-mt-sm"):
+            with ui.row().classes("form-row-inline u-mt-sm"):
                 ui.select(
                     area_opts, value=_s["vinc_area_id"], label="Filtrar por área",
                     on_change=lambda e: (_s.__setitem__("vinc_area_id", e.value), vista.refresh()),

@@ -25,6 +25,7 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
+    custom_dialog,
     empty_state,
     form_dialog,
     stat_card,
@@ -472,8 +473,8 @@ def estudiantes_page() -> None:
             )
 
         def _abrir_dialog_csv() -> None:
-            with ui.dialog() as dlg, ui.card().classes("w-full max-w-md"):
-                with ui.row().classes("items-center justify-between w-full u-mb-sm"):
+            with custom_dialog(max_width="md") as dlg:
+                with ui.row().classes("form-row-between u-mb-sm"):
                     ui.label("Carga masiva por CSV").classes("text-h6")
                     btn_icon("close", on_click=dlg.close, variante="ghost")
 
@@ -616,7 +617,7 @@ def estudiantes_page() -> None:
 
             grado_origen = _grupo_grado(grupo_actual_id)
 
-            with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-md"):
+            with custom_dialog(max_width="md") as dlg:
                 ui.label(f"Trasladar — {nombre}").classes("font-h3 form-dialog-title")
                 ui.label(
                     f"Grupo actual: {fila.get('grupo_codigo', '—')}"
@@ -722,7 +723,7 @@ def estudiantes_page() -> None:
                 toast_error("No se pudo cargar el historial.")
                 return
 
-            with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-lg"):
+            with custom_dialog(max_width="lg") as dlg:
                 ui.label(f"Historial — {nombre}").classes("font-h3 form-dialog-title")
 
                 if not movimientos:

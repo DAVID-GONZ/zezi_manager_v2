@@ -346,7 +346,7 @@ def observaciones_page() -> None:
             with ui.element("div").classes("page-stack"):
                 # Barra de filtros y acción
                 with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                    with ui.row().classes("panel-toolbar"):
                         ui.select(
                             options=opciones_est,
                             label="Estudiante",
@@ -361,7 +361,7 @@ def observaciones_page() -> None:
                             on_change=lambda e: on_periodo_change(e.value),
                         ).classes("andes-input input-min-sm").props("outlined dense")
 
-                        ui.element("div").classes("flex-1")
+                        ui.element("div").classes("panel-toolbar-spacer")
                         btn_primary(
                             "Nueva observación",
                             on_click=_abrir_crear_observacion,
@@ -395,12 +395,12 @@ def observaciones_page() -> None:
                         }).classes("w-full")
 
                         # Acciones por fila (bajo la tabla aggrid)
-                        with ui.element("div").classes("flex flex-col gap-1 mt-2"):
+                        with ui.element("div").classes("row-actions"):
                             for fila in filas:
-                                with ui.row().classes("items-center gap-2 py-1"):
-                                    ui.label(fila["estudiante"]).classes("w-40 text-sm font-medium")
-                                    ui.label(fila["texto"]).classes("flex-1 text-sm text-secondary")
-                                    ui.label(fila["visibilidad"]).classes("w-20 text-sm")
+                                with ui.row().classes("row-actions-item"):
+                                    ui.label(fila["estudiante"]).classes("row-actions-name")
+                                    ui.label(fila["texto"]).classes("row-actions-text")
+                                    ui.label(fila["visibilidad"]).classes("row-actions-status")
                                     btn_ghost(
                                         "Hacer privada" if fila["es_publica"] else "Hacer pública",
                                         on_click=lambda f=fila: _toggle_visibilidad(

@@ -179,7 +179,7 @@ def salas_page() -> None:
                     ui.label(s.nombre).classes("flex-1 font-medium")
                     ui.label(_TIPOS_SALA.get(s.tipo, s.tipo)).classes("w-36 text-sm")
                     ui.label(str(s.capacidad)).classes("w-24 text-sm")
-                    with ui.row().classes("w-24 gap-1 justify-end"):
+                    with ui.row().classes("w-24 form-row-actions"):
                         btn_icon(
                             "edit",
                             on_click=lambda sala=s: _editar_sala(sala),
@@ -235,12 +235,12 @@ def salas_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-3"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ThemeManager.icono("meeting_room", size=20, color="var(--color-primary)")
                     ui.label("Salas físicas").classes("text-lg font-bold")
 
-                ui.label("Nueva sala").classes("text-sm font-semibold mb-1")
-                with ui.row().classes("gap-3 items-end flex-wrap"):
+                ui.label("Nueva sala").classes("section-subtitle-sm u-mb-xs")
+                with ui.row().classes("form-row-inline"):
                     ui.input("Nombre *", placeholder="Sala 101").classes("w-48").bind_value(
                         _s, "nombre"
                     )
@@ -256,7 +256,7 @@ def salas_page() -> None:
                 tabla_salas()
 
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-3"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ThemeManager.icono("groups", size=20, color="var(--color-primary)")
                     ui.label("Aula por grupo").classes("text-lg font-bold")
                 ui.label(

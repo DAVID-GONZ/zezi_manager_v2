@@ -22,6 +22,7 @@ from src.interface.design.components import (
     empty_state,
     form_dialog,
     pipeline_nav,
+    status_badge,
     toast_error,
     toast_success,
     toast_warning,
@@ -305,7 +306,7 @@ def asignaturas_page() -> None:
             with ui.element("div").classes("lista-fila"):
                 ui.label(a.nombre).classes("flex-1 font-medium")
                 if a.codigo:
-                    ui.badge(a.codigo).classes("badge-neutral")
+                    status_badge(a.codigo, "neutral")
                 with ui.row().classes("gap-1 ml-auto"):
                     btn_icon("edit", on_click=lambda area=a: _editar_area(area), tooltip="Editar")
                     btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_area(aid, nom), tooltip="Eliminar", variante="danger")
@@ -341,9 +342,9 @@ def asignaturas_page() -> None:
             for a in asigs:
                 with ui.element("div").classes("lista-fila"):
                     ui.label(a.nombre).classes("flex-1")
-                    ui.label(a.codigo or "—").classes("w-24 font-mono text-sm")
+                    ui.label(a.codigo or "—").classes("w-24 cell-mono")
                     ui.label(_nombre_area(a.area_id)).classes("w-44 text-sm")
-                    with ui.row().classes("w-24 gap-1 justify-end"):
+                    with ui.row().classes("w-24 form-row-actions"):
                         btn_icon("edit", on_click=lambda asig=a: _editar_asignatura(asig), tooltip="Editar")
                         btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom), tooltip="Eliminar", variante="danger")
 
@@ -359,12 +360,12 @@ def asignaturas_page() -> None:
 
             # ── Sección: Áreas de conocimiento ───────────────────────────────
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-3"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ThemeManager.icono("category", size=20, color="var(--color-info)")
                     ui.label("Áreas de conocimiento").classes("text-lg font-bold")
 
-                ui.label("Nueva área").classes("text-sm font-semibold mb-1")
-                with ui.row().classes("gap-3 items-end flex-wrap"):
+                ui.label("Nueva área").classes("section-subtitle-sm u-mb-xs")
+                with ui.row().classes("form-row-inline"):
                     ui.input("Nombre *", placeholder="Matemáticas").classes("w-48").bind_value(
                         _s, "area_nombre"
                     )
@@ -378,7 +379,7 @@ def asignaturas_page() -> None:
 
             # ── Sección: Asignaturas ─────────────────────────────────────────
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center gap-2 mb-3 flex-wrap"):
+                with ui.row().classes("form-row-center u-mb-md"):
                     ThemeManager.icono(Icons.GRADES, size=20, color="var(--color-primary)")
                     ui.label("Asignaturas").classes("text-lg font-bold")
                     filtro_area()
@@ -390,12 +391,12 @@ def asignaturas_page() -> None:
                         tabla_asignaturas.refresh(),
                     ), tooltip="Recargar")
 
-                ui.label("Nueva asignatura").classes("text-sm font-semibold mb-1")
+                ui.label("Nueva asignatura").classes("section-subtitle-sm u-mb-xs")
                 ui.label(
                     "Las horas de cada asignatura se definen por grado en «Plan de estudios»."
                 ).classes("text-caption text-secondary mb-1")
                 areas_opts = {a.id: a.nombre for a in _s["areas"]}
-                with ui.row().classes("gap-3 items-end flex-wrap"):
+                with ui.row().classes("form-row-inline"):
                     ui.input("Nombre *", placeholder="Álgebra").classes("w-48").bind_value(
                         _s, "asig_nombre"
                     )

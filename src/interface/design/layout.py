@@ -9,7 +9,7 @@ Rail navigation:
 
 Regla CSS:
   Ningún componente inyecta style="" con valores estáticos.
-  Todo el CSS vive en styles/. Solo se usan .classes("nombre-clase").
+  Todo el CSS vive en styles/. Solo se usan clases del design system.
 
 Ajustes NiceGUI 3.x:
   - Rail es position:fixed → main area requiere margin-left: var(--rail-width)

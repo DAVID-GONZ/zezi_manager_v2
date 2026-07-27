@@ -248,7 +248,7 @@ def auditoria_page() -> None:
         _on_filtros_cambio()
 
     def _render_filtros_comunes() -> None:
-        with ui.row().classes("gap-4 items-end flex-wrap mb-4"):
+        with ui.row().classes("form-row-inline u-mb-lg"):
             date_range_input(
                 desde=_s["desde"],
                 hasta=_s["hasta"],
@@ -278,11 +278,11 @@ def auditoria_page() -> None:
         with ui.element("div").classes("page-stack"):
 
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2 mb-2"):
+                with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("history", size=22, color="var(--color-primary)")
                     ui.label("Registro de auditoría").classes("text-xl font-bold")
                     ui.label("Solo lectura").classes("text-sm text-secondary ml-2")
-                    with ui.row().classes("items-center gap-2 ml-auto"):
+                    with ui.row().classes("form-row-center ml-auto"):
                         btn_secondary(
                             "Verificar integridad",
                             on_click=_verificar_integridad,
@@ -301,7 +301,7 @@ def auditoria_page() -> None:
 
                     # ── Tab Cambios ───────────────────────────────────────────
                     with ui.tab_panel("cambios"):
-                        with ui.row().classes("gap-4 items-center flex-wrap mb-4"):
+                        with ui.row().classes("form-row-center-md u-mb-lg"):
                             ui.label("Filtros:").classes("text-sm font-semibold")
                             ui.input(
                                 label="Tabla",
@@ -326,7 +326,7 @@ def auditoria_page() -> None:
 
                     # ── Tab Sesiones ──────────────────────────────────────────
                     with ui.tab_panel("sesiones"):
-                        with ui.row().classes("gap-4 items-center flex-wrap mb-4"):
+                        with ui.row().classes("form-row-center-md u-mb-lg"):
                             ui.label("Filtros:").classes("text-sm font-semibold")
                             evento_opts = {None: "Todos los eventos"}
                             evento_opts.update(_EVENTOS_OPCIONES)

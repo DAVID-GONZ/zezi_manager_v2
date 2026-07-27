@@ -69,6 +69,28 @@ _CLASE_BADGE: dict[str, str] = {
     "descargo":           "badge-descargo",
 }
 
+# Aviso de autorización por objeto (convivencia_04). Reutilizado por notas_convivencia.
+_MSG_NO_AUTORIZADO = (
+    "Solo el director de grupo, la coordinación o la dirección pueden "
+    "gestionar el comportamiento de este grupo."
+)
+
+
+def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
+    """Autorización por objeto: ¿puede el usuario gestionar el comportamiento
+    del grupo activo? Delega en CatalogoAcademicoService (directivo siempre;
+    profesor solo si dirige el grupo; admin False). Pasa primitivos; la página
+    no importa dominio. Sin grupo → False."""
+    if not grupo_id:
+        return False
+    try:
+        return Container.catalogo_academico_service().puede_gestionar_comportamiento_en_grupo(
+            ctx.usuario_rol, ctx.usuario_id, int(grupo_id)
+        )
+    except Exception as exc:  # noqa: BLE001 — fail-closed ante error de resolución
+        logger.warning("No se pudo resolver autorización de comportamiento: %s", exc)
+        return False
+
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
@@ -287,7 +309,8 @@ def comportamiento_page() -> None:
                 "fecha":          fecha_str,
             })
             Container.convivencia_service().registrar_comportamiento(
-                dto, ctx_actual.usuario_id, _s["anio_id"]
+                dto, ctx_actual.usuario_id, _s["anio_id"],
+                usuario_rol=ctx_actual.usuario_rol,
             )
             toast_success("Registro guardado.")
             _aplicar_filtros(_s)
@@ -353,7 +376,11 @@ def comportamiento_page() -> None:
 
     def _notificar_acudiente(registro_id: int) -> None:
         try:
-            Container.convivencia_service().notificar_acudiente(registro_id)
+            Container.convivencia_service().notificar_acudiente(
+                registro_id,
+                usuario_id=ctx.usuario_id,
+                usuario_rol=ctx.usuario_rol,
+            )
             toast_success("Acudiente marcado como notificado.")
             _aplicar_filtros(_s)
             _contenido.refresh()
@@ -368,7 +395,11 @@ def comportamiento_page() -> None:
                 toast_warning("El seguimiento no puede estar vacío.")
                 return False
             try:
-                Container.convivencia_service().agregar_seguimiento(registro_id, texto)
+                Container.convivencia_service().agregar_seguimiento(
+                    registro_id, texto,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
+                )
                 toast_success("Seguimiento agregado.")
                 _aplicar_filtros(_s)
                 _contenido.refresh()
@@ -396,7 +427,11 @@ def comportamiento_page() -> None:
     def _eliminar_registro(registro_id: int) -> None:
         def _ejecutar() -> None:
             try:
-                Container.convivencia_service().eliminar_registro(registro_id)
+                Container.convivencia_service().eliminar_registro(
+                    registro_id,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
+                )
                 toast_success("Registro eliminado.")
                 _aplicar_filtros(_s)
                 _contenido.refresh()
@@ -417,6 +452,8 @@ def comportamiento_page() -> None:
     def _contenido() -> None:
         ctx_actual = SessionContext.desde_storage() or ctx
         filas = _construir_filas(_s)
+        grupo_activo = _s["filtro_grupo_id"]
+        autorizado = _autorizado_para_grupo(ctx_actual, grupo_activo)
 
         # Opciones para filtros
         opciones_periodos = {
@@ -429,7 +466,7 @@ def comportamiento_page() -> None:
             with ui.element("div").classes("page-stack"):
                 # Filtros
                 with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                    with ui.row().classes("panel-toolbar"):
                         ui.select(
                             options=opciones_periodos,
                             label="Periodo",
@@ -450,11 +487,28 @@ def comportamiento_page() -> None:
                             on_change=lambda e: on_solo_negativos_change(e.value),
                         )
 
-                        ui.element("div").classes("flex-1")
-                        btn_primary(
-                            "Nuevo registro",
-                            on_click=_abrir_crear_registro,
-                            icon=Icons.ADD,
+                        ui.element("div").classes("panel-toolbar-spacer")
+                        if autorizado:
+                            btn_primary(
+                                "Nuevo registro",
+                                on_click=_abrir_crear_registro,
+                                icon=Icons.ADD,
+                            )
+
+                # Aviso de autorización por objeto (convivencia_04)
+                if not grupo_activo:
+                    with ui.element("div").classes("panel-card"):
+                        empty_state(
+                            titulo="Selecciona un grupo",
+                            descripcion="Elige un grupo en el contexto para ver y gestionar el comportamiento.",
+                        )
+                    return
+                if not autorizado:
+                    with ui.element("div").classes("panel-card"):
+                        empty_state(
+                            icono="lock",
+                            titulo="Solo consulta",
+                            descripcion=_MSG_NO_AUTORIZADO,
                         )
 
                 # Tabla de registros
@@ -487,34 +541,35 @@ def comportamiento_page() -> None:
                             "rowSelection":      "single",
                         }).classes("w-full")
 
-                        # Acciones por fila
-                        with ui.element("div").classes("flex flex-col gap-1 mt-2"):
-                            for fila in filas:
-                                with ui.row().classes("items-center gap-2 py-1"):
-                                    ui.label(fila["estudiante"]).classes("w-40 text-sm font-medium")
-                                    ui.label(fila["tipo_display"]).classes(
-                                        f"text-sm {fila['tipo_badge_class']}"
-                                    )
+                        # Acciones por fila — solo si autorizado (convivencia_04)
+                        if autorizado:
+                            with ui.element("div").classes("row-actions"):
+                                for fila in filas:
+                                    with ui.row().classes("row-actions-item"):
+                                        ui.label(fila["estudiante"]).classes("row-actions-name")
+                                        ui.label(fila["tipo_display"]).classes(
+                                            "row-actions-badge " + fila["tipo_badge_class"]
+                                        )
 
-                                    # Notificar acudiente: solo si requiere firma y no notificado
-                                    if fila["pendiente_notificacion"]:
+                                        # Notificar acudiente: solo si requiere firma y no notificado
+                                        if fila["pendiente_notificacion"]:
+                                            btn_ghost(
+                                                "Notificar acudiente",
+                                                on_click=lambda rid=fila["id"]: _notificar_acudiente(rid),
+                                                size="sm",
+                                            )
+
                                         btn_ghost(
-                                            "Notificar acudiente",
-                                            on_click=lambda rid=fila["id"]: _notificar_acudiente(rid),
+                                            "Seguimiento",
+                                            on_click=lambda rid=fila["id"]: _agregar_seguimiento(rid),
                                             size="sm",
                                         )
 
-                                    btn_ghost(
-                                        "Seguimiento",
-                                        on_click=lambda rid=fila["id"]: _agregar_seguimiento(rid),
-                                        size="sm",
-                                    )
-
-                                    btn_danger(
-                                        "Eliminar",
-                                        on_click=lambda rid=fila["id"]: _eliminar_registro(rid),
-                                        size="sm",
-                                    )
+                                        btn_danger(
+                                            "Eliminar",
+                                            on_click=lambda rid=fila["id"]: _eliminar_registro(rid),
+                                            size="sm",
+                                        )
 
         app_layout(
             ctx_actual, contenido_pagina,

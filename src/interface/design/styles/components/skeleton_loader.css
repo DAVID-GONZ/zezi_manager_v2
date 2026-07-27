@@ -81,3 +81,8 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ── Fila header (más marcada) ───────────────────────────── */
+.skeleton-row--header > .skeleton-bar {
+  opacity: 0.85;
+}

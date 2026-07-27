@@ -61,11 +61,13 @@
 }
 
 /* ── Clases para base_form ───────────────────────────────────────────────── */
-.base-form-card   { width: 100%; padding: var(--space-lg); background: var(--color-surface); }
-.base-form-title  { color: var(--color-text-primary); margin-bottom: var(--space-md); }
-.base-form-sep    { margin: var(--space-md) 0; background: var(--color-divider); }
-.base-form-footer { width: 100%; }
-.base-form-grid   { display: grid; gap: var(--space-md); width: 100%; }
+.base-form-wrapper { width: 100%; }
+.base-form-card    { width: 100%; padding: var(--space-lg); background: var(--color-surface); }
+.base-form-title   { color: var(--color-text-primary); margin-bottom: var(--space-md); }
+.base-form-sep     { margin: var(--space-md) 0; background: var(--color-divider); }
+.base-form-footer  { width: 100%; }
+.base-form-grid    { display: grid; gap: var(--space-md); width: 100%; }
+.base-form-readonly-label { font-size: var(--font-size-small); color: var(--color-text-secondary); }
 
 /* base_form — campo readonly */
 .readonly-field-value {
@@ -78,3 +80,51 @@
   display: block;
   width: 100%;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   Utilidades semánticas de layout para páginas (paso convivencia_04c)
+   Sustituyen combinaciones Tailwind atómicas repetidas.
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── Filas horizontales ──────────────────────────────────── */
+.form-row-inline       { display: flex; align-items: flex-end; gap: var(--space-md); flex-wrap: wrap; }
+.form-row-inline-sm    { display: flex; align-items: flex-end; gap: var(--space-sm); flex-wrap: wrap; }
+.form-row-center       { display: flex; align-items: center;   gap: var(--space-sm); flex-wrap: wrap; }
+.form-row-center-md    { display: flex; align-items: center;   gap: var(--space-md); flex-wrap: wrap; }
+.form-row-between      { display: flex; align-items: center;   justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; }
+.form-row-actions      { display: flex; justify-content: flex-end; gap: var(--space-sm); width: 100%; }
+
+/* ── Filas con divisor inferior (tabla ligera) ───────────── */
+.divider-row           { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); border-bottom: 1px solid var(--color-border); }
+.divider-row-head      { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); border-bottom: 1px solid var(--color-border); font-weight: 600; font-size: var(--font-size-small); }
+
+/* ── Encabezados de sección ──────────────────────────────── */
+.section-title-lg      { flex: 1; font-size: var(--font-size-h3); font-weight: 700; color: var(--color-text-primary); }
+.section-title-xl      { flex: 1; font-size: var(--font-size-h2); font-weight: 700; color: var(--color-text-primary); }
+.section-subtitle      { font-size: var(--font-size-body); font-weight: 600; color: var(--color-text-primary); }
+.section-subtitle-sm   { font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-primary); }
+
+/* ── Celdas monospace ────────────────────────────────────── */
+.cell-mono             { font-family: monospace; font-size: var(--font-size-small); }
+.cell-mono-bold        { font-family: monospace; font-size: var(--font-size-small); font-weight: 700; }
+
+/* ── Bordes finos genéricos (reemplaza `border px-N py-N`) ─ */
+.form-box              { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-sm) var(--space-md); }
+.form-box-sm           { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-xs) var(--space-sm); }
+
+/* Stack vertical mínimo — reemplaza `flex flex-col gap-1` en pages. */
+.u-stack-xs { display: flex; flex-direction: column; gap: var(--space-xs); }
+.u-stack-sm { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+/* ── Compuestos frecuentes en pages (paso convivencia_04c ronda 2) ─────────── */
+.stat-tile         { display: flex; flex-direction: column; align-items: center; padding: var(--space-md); border-radius: var(--radius-sm); text-align: center; }
+.alert-row-inline  { display: flex; align-items: center; gap: var(--space-sm); margin-top: var(--space-md); padding: var(--space-sm); border-radius: var(--radius-sm); font-size: var(--font-size-small); }
+.alert-panel-row   { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-sm); }
+.form-row-actions-mt { display: flex; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-md); width: 100%; }
+.table-mini        { width: 100%; border-collapse: collapse; font-size: var(--font-size-small); }
+.table-mini-xs     { width: 100%; border-collapse: collapse; font-size: var(--font-size-label); }
+.text-cell-md      { font-size: var(--font-size-body); font-weight: 500; }
+.cell-strong-sm    { font-size: var(--font-size-small); font-weight: 600; }
+.name-cell         { font-size: var(--font-size-small); font-weight: 500; }
+.progress-bar-track { width: 100%; height: 8px; border-radius: 999px; overflow: hidden; }
+.name-w48-ellipsis  { width: 12rem; font-size: var(--font-size-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

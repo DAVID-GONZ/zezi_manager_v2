@@ -20,7 +20,7 @@ from collections.abc import Callable
 
 from nicegui import ui
 
-from src.interface.design.components import empty_state
+from src.interface.design.components import custom_dialog, empty_state
 from src.interface.design.components.buttons import (
     btn_ghost,
     btn_icon,
@@ -57,7 +57,7 @@ def _input_hora(label: str, value: str):
 
 def plantilla_form_dialog(on_submit: Callable[[dict], None]) -> None:
     """Diálogo de creación de plantilla. `on_submit` recibe {nombre, jornada, dias}."""
-    with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-md"):
+    with custom_dialog(max_width="md") as dlg:
         ui.label("Nueva plantilla").classes("font-h3 form-dialog-title")
 
         in_nombre = ui.input(
@@ -80,7 +80,7 @@ def plantilla_form_dialog(on_submit: Callable[[dict], None]) -> None:
             if on_submit(datos) is not False:
                 dlg.close()
 
-        with ui.row().classes("gap-2 justify-end mt-4"):
+        with ui.row().classes("form-row-actions u-mt-md"):
             btn_ghost("Cancelar", on_click=dlg.close)
             btn_primary("Guardar", on_click=_guardar, icon="save")
 
@@ -102,7 +102,7 @@ def franja_form_dialog(
     ini_tipo = _tipo_str(getattr(franja, "tipo", "lectiva")) if es_edicion else "lectiva"
     ini_etiqueta = (getattr(franja, "etiqueta", "") or "") if es_edicion else ""
 
-    with ui.dialog() as dlg, ui.card().classes("andes-card form-dialog-card max-w-sm"):
+    with custom_dialog(max_width="sm") as dlg:
         ui.label("Editar franja" if es_edicion else "Añadir franja").classes(
             "font-h3 form-dialog-title"
         )
@@ -126,7 +126,7 @@ def franja_form_dialog(
             if on_submit(datos) is not False:
                 dlg.close()
 
-        with ui.row().classes("gap-2 justify-end mt-4"):
+        with ui.row().classes("form-row-actions u-mt-md"):
             btn_ghost("Cancelar", on_click=dlg.close)
             btn_primary("Guardar", on_click=_guardar, icon="save")
 
@@ -156,7 +156,7 @@ def render_franjas_editor(
 
     ordenadas = sorted(franjas, key=lambda f: f.orden)
     with ui.element("div").classes("overflow-auto"):
-        with ui.element("table").classes("w-full border-collapse text-sm"):
+        with ui.element("table").classes("table-mini"):
             with ui.element("thead"), ui.element("tr"):
                 for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
                     with ui.element("th").classes(
@@ -166,17 +166,17 @@ def render_franjas_editor(
             with ui.element("tbody"):
                 for f in ordenadas:
                     with ui.element("tr"):
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             ui.label(str(f.orden))
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             ui.label(str(f.hora_inicio))
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             ui.label(str(f.hora_fin))
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             ui.label(TIPO_FRANJA_OPTS.get(_tipo_str(f.tipo), _tipo_str(f.tipo)))
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             ui.label(str(f.etiqueta or "—"))
-                        with ui.element("td").classes("border px-3 py-2"):
+                        with ui.element("td").classes("form-box"):
                             if puede_editar:
                                 with ui.row().classes("gap-1"):
                                     if on_edit:

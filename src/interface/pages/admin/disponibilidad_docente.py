@@ -158,7 +158,7 @@ def disponibilidad_docente_page() -> None:
         franjas = sorted(_s["franjas"], key=lambda f: f.orden)
 
         with ui.element("div").classes("overflow-x-auto"):
-            with ui.element("table").classes("w-full border-collapse text-sm"):
+            with ui.element("table").classes("table-mini"):
                 # Header
                 with ui.element("thead"), ui.element("tr"):
                     ui.element("th").classes(
@@ -202,13 +202,13 @@ def disponibilidad_docente_page() -> None:
             )
             return
 
-        with ui.row().classes("items-end gap-4 flex-wrap"):
-            with ui.element("div").classes("flex flex-col gap-1"):
+        with ui.row().classes("form-row-inline"):
+            with ui.element("div").classes("u-stack-xs"):
                 ui.label("Mín. horas/día").classes("text-sm font-medium")
                 in_min = ui.number(
                     value=_s["min_horas_dia"], min=0, max=12, step=1
                 ).classes("andes-input w-32").props("outlined")
-            with ui.element("div").classes("flex flex-col gap-1"):
+            with ui.element("div").classes("u-stack-xs"):
                 ui.label("Máx. horas/día").classes("text-sm font-medium")
                 in_max = ui.number(
                     value=_s["max_horas_dia"], min=1, max=12, step=1
@@ -243,7 +243,7 @@ def disponibilidad_docente_page() -> None:
 
             # Panel selector de docente
             with ui.element("div").classes("panel-card"):
-                ui.label("Docente").classes("text-sm font-semibold mb-1")
+                ui.label("Docente").classes("section-subtitle-sm u-mb-xs")
                 docente_opts = {d.id: d.nombre_completo for d in _s["docentes"]}
 
                 def _on_select_docente(e) -> None:
@@ -262,13 +262,13 @@ def disponibilidad_docente_page() -> None:
 
             # Panel rejilla de disponibilidad
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center justify-between mb-3"):
+                with ui.row().classes("form-row-between u-mb-md"):
                     ui.label("Disponibilidad horaria").classes("text-lg font-bold")
                     with ui.row().classes("gap-2"):
-                        with ui.element("div").classes("flex items-center gap-1"):
+                        with ui.element("div").classes("form-row-center"):
                             ui.element("div").classes("slot-legend slot-legend--disponible")
                             ui.label("Disponible").classes("text-xs")
-                        with ui.element("div").classes("flex items-center gap-1"):
+                        with ui.element("div").classes("form-row-center"):
                             ui.element("div").classes("slot-legend slot-legend--no-disponible")
                             ui.label("No disponible").classes("text-xs")
 
@@ -288,7 +288,7 @@ def disponibilidad_docente_page() -> None:
 
             # Panel de límites
             with ui.element("div").classes("panel-card mt-4"):
-                ui.label("Límites de carga diaria").classes("text-lg font-bold mb-3")
+                ui.label("Límites de carga diaria").classes("section-title-lg u-mb-md")
                 _panel_limites()
 
     app_layout(

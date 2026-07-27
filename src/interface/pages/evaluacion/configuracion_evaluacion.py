@@ -352,7 +352,7 @@ def configuracion_evaluacion_page() -> None:
         # En modo INSTITUCIONAL_FIJO: solo mostramos info
         if modo == "institucional_fijo":
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.row().classes("items-center gap-2 text-warning bg-warning-soft rounded p-3"):
+                with ui.row().classes("alert-panel-row text-warning bg-warning-soft"):
                     ThemeManager.icono("info", size=20)
                     ui.label(
                         "El SIEE está en modo Institucional fijo. "
@@ -361,15 +361,15 @@ def configuracion_evaluacion_page() -> None:
             return
 
         with ui.element("div").classes("panel-card mt-4"):
-            with ui.row().classes("items-center gap-2 mb-4"):
+            with ui.row().classes("form-row-center u-mb-lg"):
                 ThemeManager.icono("edit_note", size=24, color="var(--color-primary)")
-                ui.label("Mis categorías").classes("text-lg font-bold flex-1")
+                ui.label("Mis categorías").classes("section-title-lg")
 
             # Selector de contexto
             periodos_opts   = {p.id: p.nombre for p in _s["periodos"]}
             asigs_opts      = {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
 
-            with ui.row().classes("gap-4 items-center flex-wrap mb-4"):
+            with ui.row().classes("form-row-center-md u-mb-lg"):
                 ui.select(
                     periodos_opts or {"": "Sin periodos"},
                     value=_s["periodo_id"],
@@ -401,7 +401,7 @@ def configuracion_evaluacion_page() -> None:
             total_pct  = round(disponible * 100, 1)
 
             with ui.element("div").classes("mb-4"):
-                with ui.row().classes("items-center gap-3 mb-1"):
+                with ui.row().classes("form-row-center-md u-mb-xs"):
                     ui.label("Peso disponible:").classes("text-sm font-semibold")
                     ui.label(f"{total_pct:.1f}%").classes(
                         f"font-bold {'text-success' if disponible > 0.001 else 'text-faint'}"
@@ -409,7 +409,7 @@ def configuracion_evaluacion_page() -> None:
                     ui.label(f"(usado: {usado:.1f}%)").classes("text-sm text-muted")
 
                 # Barra visual
-                with ui.element("div").classes("w-full rounded h-2 bg-surface-alt overflow-hidden"):
+                with ui.element("div").classes("progress-bar-track bg-surface-alt"):
                     ancho_usado = min(100, round(usado))
                     color_bar   = "fill-success" if usado <= 100 else "fill-error"
                     ui.element("div").classes(f"{color_bar} h-full").style(
@@ -421,9 +421,9 @@ def configuracion_evaluacion_page() -> None:
                 cats_inst = _s["cats_inst"]
                 padres_permitidos = {c.id: c.nombre for c in cats_inst if c.permite_subcategorias}
 
-            with ui.element("div").classes("bg-subtle rounded p-3 mb-4"):
-                ui.label("Nueva categoría").classes("text-sm font-semibold mb-2")
-                with ui.row().classes("gap-3 items-end flex-wrap"):
+            with ui.element("div").classes("bg-subtle form-box u-mb-lg"):
+                ui.label("Nueva categoría").classes("section-subtitle-sm u-mb-sm")
+                with ui.row().classes("form-row-inline"):
                     ui.input(
                         "Nombre *",
                         placeholder="Ej: Quizzes",
@@ -470,13 +470,13 @@ def configuracion_evaluacion_page() -> None:
                         cats_inst_map.get(cat.categoria_padre_id, "—")
                         if cat.categoria_padre_id else "—"
                     )
-                    with ui.element("div").classes("flex items-center gap-3 px-2 py-2 border-b"):
+                    with ui.element("div").classes("divider-row"):
                         ui.label(cat.nombre).classes("flex-1 text-sm")
                         ui.label(padre_nombre).classes("w-28 text-xs text-muted")
                         ui.label(f"{cat.peso_porcentaje:.1f}%").classes(
                             "w-20 text-right font-mono text-sm"
                         )
-                        with ui.row().classes("w-20 justify-end gap-1"):
+                        with ui.row().classes("w-20 form-row-actions"):
                             btn_icon(
                                 "edit",
                                 on_click=lambda c=cat: _editar_cat_docente(c),
@@ -498,9 +498,9 @@ def configuracion_evaluacion_page() -> None:
         notas      = _s["notas_corte"]
 
         with ui.element("div").classes("panel-card mt-4"):
-            with ui.row().classes("items-center gap-2 mb-3"):
+            with ui.row().classes("form-row-center u-mb-md"):
                 ThemeManager.icono("assignment_late", size=24, color="var(--color-warning)")
-                ui.label("Corte — Plan de Mejoramiento").classes("text-lg font-bold flex-1")
+                ui.label("Corte — Plan de Mejoramiento").classes("section-title-lg")
 
             if not asig_id or not per_id:
                 ui.label(
@@ -534,7 +534,7 @@ def configuracion_evaluacion_page() -> None:
             with ui.element("div").classes(
                 "p-3 bg-success-soft rounded border border-success mb-3"
             ):
-                with ui.row().classes("items-center gap-2 mb-2"):
+                with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
                     ui.label(
                         f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
@@ -548,7 +548,7 @@ def configuracion_evaluacion_page() -> None:
                     ).classes("text-sm")
 
             # Conteos por estado
-            with ui.row().classes("gap-3 flex-wrap mt-2"):
+            with ui.row().classes("form-row-center u-mt-sm"):
                 with ui.element("div").classes(
                     "flex items-center gap-2 px-3 py-2 rounded bg-subtle"
                 ):
@@ -589,7 +589,7 @@ def configuracion_evaluacion_page() -> None:
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
-                    ui.label("Mis categorías de evaluación").classes("text-xl font-bold flex-1")
+                    ui.label("Mis categorías de evaluación").classes("section-title-xl")
                     btn_ghost(
                         "Ir a Planilla de notas",
                         icon="table_chart",

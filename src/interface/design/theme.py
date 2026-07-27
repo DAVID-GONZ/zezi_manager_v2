@@ -23,6 +23,24 @@ from pathlib import Path
 logger = logging.getLogger("THEME")
 
 
+def _color_bg_native() -> str:
+    """Lee el valor RGB de `--color-bg` desde tokens.css para pasárselo a
+    pywebview (que no puede consumir variables CSS antes de crear la ventana).
+    Sin hex literal en Python — la única fuente de verdad es tokens.css.
+    Fallback silencioso a "" si no se encuentra (deja que pywebview use el
+    default nativo)."""
+    import re
+    tokens = Path(__file__).parent / "styles" / "tokens.css"
+    try:
+        txt = tokens.read_text(encoding="utf-8")
+        m = re.search(r'--color-bg\s*:\s*([^;]+);', txt)
+        if m:
+            return m.group(1).strip()
+    except Exception:
+        pass
+    return ""
+
+
 class ThemeManager:
     """
     Punto único de configuración visual de la aplicación.
@@ -103,9 +121,13 @@ class ThemeManager:
             shared=True
         )
 
-        # Configuración para modo nativo (pywebview) — no-op en modo web
+        # Configuración para modo nativo (pywebview) — no-op en modo web.
+        # pywebview NO puede leer variables CSS antes de crear la ventana; usamos
+        # una constante espejo de `--color-bg` (styles/tokens.css:65) que debe
+        # mantenerse en sync con esa variable.
+        _NATIVE_BG_MIRROR = _color_bg_native()
         try:
-            app.native.window_args["background_color"] = "#F8FAFC"
+            app.native.window_args["background_color"] = _NATIVE_BG_MIRROR
         except Exception:
             pass  # Solo aplica cuando se corre con ui.run(native=True)
 

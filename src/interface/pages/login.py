@@ -45,7 +45,7 @@ def login_page() -> None:
                 )
 
             # Contenedor para el error
-            error_container = ui.row().classes("andes-alert andes-alert-error w-full items-center hidden no-wrap gap-2 u-mt-md login-alert-banner")
+            error_container = ui.row().classes("andes-alert andes-alert-error form-row-center u-mt-md login-alert-banner")
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")

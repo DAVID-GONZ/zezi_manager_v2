@@ -1011,7 +1011,7 @@ def tablero_estadisticos_page() -> None:
             if a.asignacion_id
         }
 
-        with ui.row().classes("gap-3 items-center flex-wrap u-mb-md"):
+        with ui.row().classes("form-row-center-md u-mb-md"):
             ThemeManager.icono("filter_list", size=18, clases="text-secondary")
             ui.select(
                 label   = "Grupo",

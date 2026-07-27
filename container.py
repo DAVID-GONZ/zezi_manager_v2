@@ -393,6 +393,8 @@ class Container:
             lambda: ConvivenciaService(
                 repo=cls.convivencia_repo(),
                 alerta_repo=cls.alerta_repo(),
+                # Provider lazy: enforcement de autorización (convivencia_04b).
+                catalogo_academico_svc_provider=cls.catalogo_academico_service,
             ),
         )
 

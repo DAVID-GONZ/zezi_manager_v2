@@ -5,6 +5,8 @@ Orquesta los casos de uso del módulo de Convivencia.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Callable
+
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
     FiltroConvivenciaDTO,
@@ -20,6 +22,9 @@ from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.services.solo_lectura import requiere_escritura
 
+if TYPE_CHECKING:
+    from src.services.catalogo_academico_service import CatalogoAcademicoService
+
 
 class ConvivenciaService:
     """
@@ -31,10 +36,44 @@ class ConvivenciaService:
         self,
         repo: IConvivenciaRepository,
         alerta_repo: IAlertaRepository | None = None,
+        catalogo_academico_svc_provider: Callable[[], "CatalogoAcademicoService"] | None = None,
     ) -> None:
-        """Inyecta el repositorio de convivencia y el de alertas (opcional)."""
+        """Inyecta el repositorio de convivencia y el de alertas (opcional).
+
+        `catalogo_academico_svc_provider` es un proveedor lazy que devuelve el
+        `CatalogoAcademicoService`; si es None, el enforcement de autorización
+        queda desactivado (compat retro para scripts/seed/tests).
+        """
         self._repo        = repo
         self._alerta_repo = alerta_repo
+        self._catalogo_academico_svc_provider = catalogo_academico_svc_provider
+
+    # ------------------------------------------------------------------
+    # Autorización (defensa en profundidad — convivencia_04b)
+    # ------------------------------------------------------------------
+
+    def _verificar_autorizacion(
+        self,
+        usuario_rol: str | None,
+        usuario_id: int | None,
+        grupo_id: int | None,
+    ) -> None:
+        """Rechaza la mutación si el rol/usuario no puede gestionar el grupo.
+
+        Sin provider inyectado → no-op (compat retro con scripts/tests).
+        """
+        if self._catalogo_academico_svc_provider is None:
+            return
+        if usuario_rol is None or usuario_id is None or grupo_id is None:
+            # Sin información suficiente para autorizar → no bloqueamos (compat).
+            return
+        svc = self._catalogo_academico_svc_provider()
+        if not svc.puede_gestionar_comportamiento_en_grupo(
+            usuario_rol, usuario_id, grupo_id
+        ):
+            raise PermissionError(
+                "No autorizado para gestionar el comportamiento de este grupo."
+            )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -158,6 +197,7 @@ class ConvivenciaService:
         dto: NuevoRegistroComportamientoDTO,
         usuario_id: int | None = None,
         anio_id: int | None = None,
+        usuario_rol: str | None = None,
     ) -> RegistroComportamiento:
         """
         Registra un evento puntual de comportamiento.
@@ -165,6 +205,7 @@ class ConvivenciaService:
         Después de guardar, verifica si se deben generar alertas para
         el estudiante (si hay repositorio de alertas y anio_id disponibles).
         """
+        self._verificar_autorizacion(usuario_rol, usuario_id, dto.grupo_id)
         registro = dto.to_registro(usuario_id=usuario_id)
         registro = self._repo.guardar_registro(registro)
 
@@ -181,7 +222,12 @@ class ConvivenciaService:
 
         return registro
 
-    def notificar_acudiente(self, registro_id: int) -> RegistroComportamiento:
+    def notificar_acudiente(
+        self,
+        registro_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> RegistroComportamiento:
         """
         Marca un registro de comportamiento como notificado al acudiente.
 
@@ -189,6 +235,7 @@ class ConvivenciaService:
         Lanza si el registro no existe o ya fue notificado.
         """
         registro = self._get_registro_o_lanzar(registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
         registro_notificado = registro.registrar_notificacion()
         return self._repo.actualizar_registro(registro_notificado)
 
@@ -197,9 +244,12 @@ class ConvivenciaService:
         self,
         registro_id: int,
         texto: str,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
     ) -> RegistroComportamiento:
         """Agrega o actualiza el texto de seguimiento de un registro."""
         registro = self._get_registro_o_lanzar(registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
         registro_con_seguimiento = registro.agregar_seguimiento(texto)
         return self._repo.actualizar_registro(registro_con_seguimiento)
 
@@ -219,9 +269,15 @@ class ConvivenciaService:
         )
 
     @requiere_escritura
-    def eliminar_registro(self, registro_id: int) -> bool:
+    def eliminar_registro(
+        self,
+        registro_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> bool:
         """Elimina un registro de comportamiento. Retorna True si fue eliminado."""
-        self._get_registro_o_lanzar(registro_id)
+        registro = self._get_registro_o_lanzar(registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
         return self._repo.eliminar_registro(registro_id)
 
     # ------------------------------------------------------------------
@@ -233,11 +289,13 @@ class ConvivenciaService:
         self,
         dto: NuevaNotaComportamientoDTO,
         usuario_id: int | None = None,
+        usuario_rol: str | None = None,
     ) -> NotaComportamiento:
         """
         Registra o actualiza la nota de comportamiento de un estudiante
         en un periodo (upsert: una nota por estudiante/grupo/periodo).
         """
+        self._verificar_autorizacion(usuario_rol, usuario_id, dto.grupo_id)
         nota = dto.to_nota(usuario_id=usuario_id)
         return self._repo.guardar_nota(nota)
 

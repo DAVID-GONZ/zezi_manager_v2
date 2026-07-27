@@ -281,3 +281,18 @@
   opacity: 0.4;
   pointer-events: none;
 }
+
+/* ── Mensajes secundarios dentro del selector ─────────────── */
+.cs-msg-empty    { color: var(--color-text-secondary); font-size: 13px; }
+.cs-msg-disabled { color: var(--color-text-disabled);  font-size: 13px; }
+.cs-msg-error    { color: var(--color-error);          font-size: 13px; }
+
+/* ── Card del diálogo del selector ────────────────────────── */
+.cs-dialog-card {
+  width: 580px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 12px;
+}
