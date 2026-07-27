@@ -232,6 +232,12 @@ SCHEMA: list[str] = [
         capacidad_maxima INTEGER NOT NULL DEFAULT 40 CHECK(capacidad_maxima > 0),
         sala_id          INTEGER,
         institucion_id   INTEGER REFERENCES instituciones(id),
+        -- Director de grupo (convivencia_01): FK al usuario que dirige el grupo.
+        -- Autoridad por objeto, NO un Rol nuevo (un profesor sigue siendo
+        -- profesor pero dirige el grupo X). Nullable: un grupo puede no tener
+        -- director asignado. ON DELETE SET NULL: al borrar el usuario, el grupo
+        -- queda sin director en vez de romper la FK.
+        director_grupo_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
 
         UNIQUE(institucion_id, codigo)
     )
@@ -1249,6 +1255,8 @@ INDICES: list[str] = [
 
     # grupos (multi-tenant — paso_29)
     "CREATE INDEX IF NOT EXISTS idx_grupos_institucion  ON grupos(institucion_id)",
+    # Consultas "grupos que dirijo" (convivencia): filtro por director_grupo_id.
+    "CREATE INDEX IF NOT EXISTS idx_grupos_director      ON grupos(director_grupo_id)",
 
     # estudiantes
     "CREATE INDEX IF NOT EXISTS idx_est_grupo           ON estudiantes(grupo_id)",
@@ -1582,6 +1590,13 @@ def init_db(db_path: Path | None = None) -> bool:
             # (pre-cadena); la verificación arranca desde el primer hash no nulo.
             _asegurar_columna(conn, "auditoria", "hash_cadena", "TEXT")
             _asegurar_columna(conn, "audit_log", "hash_cadena", "TEXT")
+            # Director de grupo (convivencia_01). FK nullable a usuarios; en BDs
+            # preexistentes las filas quedan sin director (NULL). ON DELETE SET
+            # NULL es válido en ADD COLUMN porque el default es NULL.
+            _asegurar_columna(
+                conn, "grupos", "director_grupo_id",
+                "INTEGER REFERENCES usuarios(id) ON DELETE SET NULL",
+            )
 
             # ------------------------------------------------------------------
             # Índices

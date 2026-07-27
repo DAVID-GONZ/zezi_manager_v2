@@ -157,6 +157,9 @@ class Grupo(BaseModel):
     # Multi-tenant (paso_29): institución dueña. None = sin tenant; el servicio
     # y el seed la resuelven a #1.
     institucion_id:   int | None = None
+    # Director de grupo (convivencia_01): FK opcional a usuarios(id). Autoridad
+    # por objeto, no un Rol. None = grupo sin director asignado.
+    director_grupo_id: int | None = None
 
     @field_validator("codigo", mode="before")
     @classmethod

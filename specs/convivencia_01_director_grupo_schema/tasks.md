@@ -16,6 +16,11 @@ Este paso **toca el esquema de BD y el modelo `Grupo`** → requiere **aprobaci�
 
 ## Tareas
 
+- [x] T1 — Esquema
+- [x] T2 — Modelo de dominio
+- [x] T3 — Repositorio + puerto
+- [x] T4 — Verificación
+
 ### T1 — Esquema
 - En `schema.py`, `CREATE TABLE ... grupos`: añadir columna `director_grupo_id INTEGER` con `FOREIGN KEY(director_grupo_id) REFERENCES usuarios(id) ON DELETE SET NULL`. Nullable (un grupo puede no tener director asignado aún).
 - Confirmar idempotencia según el patrón del proyecto (`CREATE TABLE IF NOT EXISTS` como única fuente de verdad; si el proyecto usa migración/rebuild para BDs existentes, seguir ese mismo patrón — revisar cómo se hizo en pasos previos que añadieron columnas).

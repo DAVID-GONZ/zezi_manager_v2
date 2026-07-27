@@ -203,7 +203,7 @@ def generar_dep_graphs() -> None:
     print("\n── Grafos de dependencias (pydeps) ──────────────────────")
     if not HAS_GRAPHVIZ:
         print(f"  {WRN} Graphviz no detectado — se emitirá .dot en lugar de .svg")
-        print(f"     Instala:  choco install graphviz   (o https://graphviz.org/download/)")
+        print("     Instala:  choco install graphviz   (o https://graphviz.org/download/)")
     ok = 0
     for name, config in PYDEPS_TARGETS.items():
         if run_pydeps(name, config):
@@ -219,8 +219,10 @@ def generar_dep_graphs() -> None:
 def generar_er_pydantic() -> None:
     print("\n── Diagrama ER de modelos Pydantic (erdantic) ───────────")
     try:
+        import importlib
+        import sys as _sys
+
         import erdantic
-        import importlib, sys as _sys
         _sys.path.insert(0, str(ROOT))
 
         # Auto-descubrir módulos Pydantic del dominio
@@ -332,7 +334,7 @@ def generar_paquetes_puml() -> None:
     for capa_id, _, color in capas:
         var = capa_id.replace(".", "_")
         lineas.append(f'package "{capa_id}" as {var} {color} {{')
-        lineas.append(f'}}')
+        lineas.append('}')
 
     lineas += [
         "",
@@ -647,12 +649,12 @@ def main() -> int:
     print(f"  Archivos analizados:     {archivos}")
     print(f"  Violaciones detectadas:  {violaciones}")
     print(f"  Diagramas generados en:  {OUTDIR}")
-    print(f"\n  Para renderizar .puml:")
-    print(f"    - VS Code: extensión 'PlantUML' (jebbs.plantuml)")
-    print(f"    - Online:  https://www.plantuml.com/plantuml/uml/")
-    print(f"    - CLI:     java -jar plantuml.jar docs/uml/*.puml")
-    print(f"\n  Para ver grafos .svg:")
-    print(f"    - Cualquier navegador: abrir docs/uml/deps_*.svg")
+    print("\n  Para renderizar .puml:")
+    print("    - VS Code: extensión 'PlantUML' (jebbs.plantuml)")
+    print("    - Online:  https://www.plantuml.com/plantuml/uml/")
+    print("    - CLI:     java -jar plantuml.jar docs/uml/*.puml")
+    print("\n  Para ver grafos .svg:")
+    print("    - Cualquier navegador: abrir docs/uml/deps_*.svg")
 
     return 0 if violaciones == 0 else 1
 

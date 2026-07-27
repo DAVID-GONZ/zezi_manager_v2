@@ -258,4 +258,4 @@ class ConvivenciaService:
         return self._repo.listar_notas_por_grupo(grupo_id, periodo_id)
 
 
-__all__ = ["ConvivenciaService"]
+__all__ = ["ConvivenciaService", "TipoRegistro"]

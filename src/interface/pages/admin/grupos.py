@@ -3,7 +3,7 @@ src/interface/pages/admin/grupos.py
 ====================================
 Página de administración de grupos escolares.
 Ruta: /admin/grupos
-Acceso: admin, director
+Acceso: director, coordinador (acceso pleno; convivencia_02)
 
 Permite listar, crear, editar y eliminar grupos, y administrar el catálogo
 global de grados (numero → nombre, min/max estudiantes, horas) que los grupos
@@ -214,6 +214,44 @@ def grupos_page() -> None:
             columnas     = 2,
         )
 
+    # ── Director de grupo (convivencia_02) ────────────────────────────────────
+    # Sentinel del selector para "sin director" (los ids de usuario son > 0).
+    _SIN_DIRECTOR = 0
+
+    def _candidatos_director(grupo_id: int) -> dict:
+        """Mapa {usuario_id: nombre} de docentes con asignación en el grupo."""
+        try:
+            return Container.catalogo_academico_service().candidatos_director_grupo(
+                grupo_id
+            )
+        except Exception as exc:
+            logger.error("Error al cargar candidatos a director (%s): %s", grupo_id, exc)
+            return {}
+
+    def _cambiar_director(grupo_id: int, valor) -> None:
+        usuario_id = valor if valor else None  # sentinel 0 / None → desasignar
+        try:
+            Container.catalogo_academico_service().asignar_director_grupo(
+                grupo_id, usuario_id
+            )
+            toast_success(
+                "Director de grupo actualizado" if usuario_id
+                else "Director de grupo desasignado"
+            )
+            _cargar_estado()
+            tabla.refresh()
+        except ValueError as exc:
+            # Regla de unicidad / candidato inválido: no se persistió. Se revierte
+            # el selector al estado real refrescando para no dejar un valor fantasma.
+            toast_warning(str(exc))
+            _cargar_estado()
+            tabla.refresh()
+        except Exception as exc:
+            logger.error("Error al asignar director de grupo %s: %s", grupo_id, exc)
+            toast_error("Error al asignar el director de grupo")
+            _cargar_estado()
+            tabla.refresh()
+
     # ── Acciones CRUD: grados ─────────────────────────────────────────────────
     def _guardar_grado(datos: dict) -> bool | None:
         try:
@@ -364,6 +402,28 @@ def grupos_page() -> None:
                     ui.label(f"Grado {fila['grado']}").classes("w-20")
                     ui.label(fila["jornada_label"]).classes("w-28")
                     ui.label(f"{fila['capacidad']} estudiantes").classes("w-32")
+                    # Selector de director de grupo (candidatos = docentes con
+                    # asignación en el grupo; sentinel 0 = "— Sin asignar —").
+                    candidatos = _candidatos_director(fila["id"])
+                    if candidatos:
+                        opciones = {_SIN_DIRECTOR: "— Sin asignar —", **candidatos}
+                        actual = (
+                            g_obj.director_grupo_id
+                            if g_obj and g_obj.director_grupo_id in candidatos
+                            else _SIN_DIRECTOR
+                        )
+                        ui.select(
+                            opciones,
+                            value=actual,
+                            label="Director de grupo",
+                            on_change=lambda e, gid=fila["id"]: _cambiar_director(
+                                gid, e.value
+                            ),
+                        ).classes("w-56")
+                    else:
+                        ui.label("Sin docentes asignados").classes(
+                            "w-56 text-muted text-sm italic"
+                        )
                     with ui.row().classes("gap-2 ml-auto"):
                         btn_icon("edit", on_click=lambda g=g_obj: _abrir_editar(g), tooltip="Editar")
                         btn_icon("delete", on_click=lambda gid=fila["id"], cod=fila["codigo"]: _eliminar_grupo(gid, cod), tooltip="Eliminar", variante="danger")

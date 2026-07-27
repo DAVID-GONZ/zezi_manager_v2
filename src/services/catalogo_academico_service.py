@@ -19,9 +19,19 @@ from src.services.solo_lectura import requiere_escritura
 
 class CatalogoAcademicoService:
 
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
-        """Inyecta el repositorio de infraestructura."""
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        asignacion_svc_provider=None,
+    ) -> None:
+        """Inyecta el repositorio de infraestructura y un provider lazy del
+        servicio de asignaciones (usado solo para director de grupo:
+        candidatos/validación). El provider evita acoplar el composition root a
+        una dependencia circular y deja los tests con repos falsos sin él."""
         self._repo = repo
+        # Provider lazy (callable que retorna AsignacionService) — se resuelve
+        # bajo demanda en los métodos de director de grupo (convivencia_02).
+        self._asignacion_svc_provider = asignacion_svc_provider
 
     # ── Resolución de institución (multi-tenant — paso_29, frente B1) ──────────
 
@@ -171,6 +181,67 @@ class CatalogoAcademicoService:
             self._repo.get_grupo(grupo_id), "El grupo"
         )
         return self._repo.eliminar_grupo(grupo_id)
+
+    # ── Director de grupo (convivencia_02) ──────────────────────────────────────
+
+    def candidatos_director_grupo(self, grupo_id: int) -> dict[int, str]:
+        """Docentes elegibles como director del grupo = docentes con asignación
+        ACTIVA en el grupo, como mapa {usuario_id: nombre} listo para el selector.
+
+        La fuente son las asignaciones (AsignacionInfo) del grupo, resueltas por
+        el servicio de asignaciones inyectado; se deduplica por docente (un
+        docente puede dictar varias materias en el mismo grupo). Sin provider
+        (tests con repos falsos que no lo pasan) → mapa vacío.
+        """
+        if self._asignacion_svc_provider is None:
+            return {}
+        asignacion_svc = self._asignacion_svc_provider()
+        if asignacion_svc is None:
+            return {}
+        infos = asignacion_svc.listar_por_grupo(grupo_id, solo_activas=True)
+        # dict dedup por usuario_id preservando el nombre resuelto por JOIN.
+        return {info.usuario_id: info.docente_nombre for info in infos}
+
+    @requiere_escritura
+    def asignar_director_grupo(
+        self, grupo_id: int, usuario_id: int | None
+    ) -> Grupo:
+        """Asigna (o quita, con `usuario_id=None`) el director de un grupo.
+
+        Verifica el tenant del grupo (autorización a nivel de objeto, paso_36) y,
+        si `usuario_id` no es None, exige que ese docente sea un candidato válido
+        (con asignación activa en el grupo) antes de persistir. La institución del
+        grupo se preserva. Retorna el grupo actualizado.
+        """
+        actual = self._repo.get_grupo(grupo_id)
+        self._verificar_pertenencia_obj(actual, "El grupo")
+        if usuario_id is not None:
+            candidatos = self.candidatos_director_grupo(grupo_id)
+            if usuario_id not in candidatos:
+                raise ValueError(
+                    "El docente seleccionado no tiene una asignación activa en "
+                    "este grupo; no puede ser su director de grupo."
+                )
+            # Unicidad (convivencia_02b): un docente dirige un solo grupo. Si ya
+            # es director_grupo_id de OTRO grupo (id distinto) → bloquear. Cambiar
+            # el director del MISMO grupo (reemplazo) sigue permitido.
+            otro = next(
+                (
+                    g
+                    for g in self.listar_grupos()
+                    if g.director_grupo_id == usuario_id and g.id != grupo_id
+                ),
+                None,
+            )
+            if otro is not None:
+                nombre = candidatos.get(usuario_id, "seleccionado")
+                raise ValueError(
+                    f"El docente {nombre} ya es director del grupo "
+                    f"'{otro.descripcion_corta}'; un docente solo puede dirigir "
+                    "un grupo."
+                )
+        grupo_act = actual.model_copy(update={"director_grupo_id": usuario_id})
+        return self._repo.actualizar_grupo(grupo_act)
 
 
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las

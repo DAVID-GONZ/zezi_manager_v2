@@ -177,7 +177,7 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
     registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
     registrar_pagina("/diagnostico", diagnostico_page, roles=_ADMIN)
-    registrar_pagina("/admin/grupos", grupos_page, roles=_DIRECTOR)
+    registrar_pagina("/admin/grupos", grupos_page, roles=_DIR_COORD)
     registrar_pagina("/admin/asignaturas", asignaturas_page, roles=_DIRECTOR)
     registrar_pagina("/admin/salas", salas_page, roles=_DIRECTOR)
     registrar_pagina("/admin/configuracion", configuracion_sie_page, roles=_DIRECTOR)

@@ -592,8 +592,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             cursor = conn.execute(
                 """
                 INSERT INTO grupos
-                    (codigo, nombre, grado, jornada, capacidad_maxima, institucion_id)
-                VALUES (?,?,?,?,?,?)
+                    (codigo, nombre, grado, jornada, capacidad_maxima,
+                     institucion_id, director_grupo_id)
+                VALUES (?,?,?,?,?,?,?)
                 """,
                 (
                     grupo.codigo,
@@ -602,6 +603,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     grupo.jornada.value if grupo.jornada else None,
                     grupo.capacidad_maxima,
                     grupo.institucion_id,
+                    grupo.director_grupo_id,
                 ),
             )
             if self._conn is None:
@@ -615,7 +617,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 """
                 UPDATE grupos SET
                     codigo = ?, nombre = ?, grado = ?,
-                    jornada = ?, capacidad_maxima = ?
+                    jornada = ?, capacidad_maxima = ?, director_grupo_id = ?
                 WHERE id = ?
                 """,
                 (
@@ -624,6 +626,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     grupo.grado,
                     grupo.jornada.value if grupo.jornada else None,
                     grupo.capacidad_maxima,
+                    grupo.director_grupo_id,
                     grupo.id,
                 ),
             )

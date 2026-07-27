@@ -474,7 +474,12 @@ class Container:
         from src.services.catalogo_academico_service import CatalogoAcademicoService
         return cls._get_or_create(
             "catalogo_academico_service",
-            lambda: CatalogoAcademicoService(repo=cls.infraestructura_repo()),
+            lambda: CatalogoAcademicoService(
+                repo=cls.infraestructura_repo(),
+                # Provider lazy: candidatos/validación del director de grupo
+                # (convivencia_02) sin acoplar el composition root.
+                asignacion_svc_provider=cls.asignacion_service,
+            ),
         )
 
     @classmethod
