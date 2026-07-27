@@ -437,4 +437,90 @@ class TestConceptoComportamiento:
         with pytest.raises(RuntimeError):
             svc.get_concepto_periodo(1, 5)
 
+    # -----------------------------------------------------------------
+    # convivencia_06b — Exportación en el servicio (hexagonal)
+    # -----------------------------------------------------------------
+
+    def test_exportar_reporte_sin_exporter_lanza(self):
+        svc, _ = _svc_completo()
+        with pytest.raises(RuntimeError):
+            svc.exportar_reporte_periodo_grupo(10, 5, "excel")
+
+    def test_exportar_reporte_formato_invalido_lanza(self):
+        class _NullExp:
+            def exportar_excel(self, *a, **kw): return b""
+            def exportar_pdf(self, *a, **kw): return b""
+            def exportar_csv(self, *a, **kw): return b""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(
+            repo=repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvc(),
+            estudiante_svc_provider=lambda: _FakeEstSvc([]),
+            exporter=_NullExp(),
+        )
+        with pytest.raises(ValueError):
+            svc.exportar_reporte_periodo_grupo(10, 5, "csv")
+
+    def test_exportar_reporte_excel_llama_al_exporter(self):
+        """La composición (columnas, aplanado) vive en el servicio; el
+        exporter solo recibe list[dict] con las claves del reporte."""
+        calls: dict = {}
+
+        class _FakeExp:
+            def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None):
+                calls["excel_datos"] = datos
+                calls["excel_hoja"]  = nombre_hoja
+                return b"XLSX-BYTES"
+            def exportar_pdf(self, html, ruta_destino=None):
+                calls["pdf_html"] = html
+                return b"PDF-BYTES"
+            def exportar_csv(self, *a, **kw): return b""
+
+        est = _FakeEst(1); est.nombre = "Ana"; est.apellido = "Ruiz"
+        repo = FakeConvRepo()
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=80.0,
+        )
+        svc = ConvivenciaService(
+            repo=repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvc(),
+            estudiante_svc_provider=lambda: _FakeEstSvc([est]),
+            exporter=_FakeExp(),
+        )
+        bytes_ = svc.exportar_reporte_periodo_grupo(10, 5, "excel", titulo="X")
+        assert bytes_ == b"XLSX-BYTES"
+        assert calls["excel_hoja"] == "X"
+        datos = calls["excel_datos"]
+        assert isinstance(datos, list) and len(datos) == 1
+        assert set(datos[0].keys()) == {"estudiante", "nota", "nivel", "concepto", "observaciones"}
+        assert datos[0]["estudiante"] == "Ruiz Ana"
+        assert datos[0]["nota"] == 80.0
+
+    def test_exportar_reporte_pdf_genera_html_con_columnas(self):
+        class _FakeExp:
+            def __init__(self): self.html = None
+            def exportar_excel(self, *a, **kw): return b""
+            def exportar_pdf(self, html, ruta_destino=None):
+                self.html = html; return b"PDF-BYTES"
+            def exportar_csv(self, *a, **kw): return b""
+
+        est = _FakeEst(1); est.nombre = "Ana"; est.apellido = "Ruiz"
+        repo = FakeConvRepo()
+        exp = _FakeExp()
+        svc = ConvivenciaService(
+            repo=repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvc(),
+            estudiante_svc_provider=lambda: _FakeEstSvc([est]),
+            exporter=exp,
+        )
+        bytes_ = svc.exportar_reporte_periodo_grupo(10, 5, "pdf", titulo="Reporte X")
+        assert bytes_ == b"PDF-BYTES"
+        # HTML compuesto por el servicio contiene columnas del reporte
+        assert "<th>Estudiante</th>" in exp.html
+        assert "<th>Concepto</th>" in exp.html
+        assert "Reporte X" in exp.html
+
 

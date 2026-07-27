@@ -399,6 +399,10 @@ class Container:
                 configuracion_svc_provider=cls.configuracion_service,
                 periodo_svc_provider=cls.periodo_service,
                 estudiante_svc_provider=cls.estudiante_service,
+                # Exporter para el reporte de periodo (convivencia_06b): la
+                # composición del reporte y la generación de bytes viven en
+                # el servicio; la página solo pide bytes y ofrece descarga.
+                exporter=cls.exporter_service(),
             ),
         )
 

@@ -22,6 +22,7 @@ from src.domain.models.convivencia import (
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
+from src.domain.ports.service_ports import IExporterService
 from src.services.solo_lectura import requiere_escritura
 
 if TYPE_CHECKING:
@@ -45,6 +46,7 @@ class ConvivenciaService:
         configuracion_svc_provider: Callable[[], "ConfiguracionService"] | None = None,
         periodo_svc_provider: Callable[[], "PeriodoService"] | None = None,
         estudiante_svc_provider: Callable[[], "EstudianteService"] | None = None,
+        exporter: IExporterService | None = None,
     ) -> None:
         """Inyecta el repositorio de convivencia y el de alertas (opcional).
 
@@ -58,6 +60,10 @@ class ConvivenciaService:
         niveles de desempeño (por rango o por id) y el estudiantado del
         grupo respectivamente. Si son None, los métodos correspondientes
         lanzan RuntimeError.
+
+        `exporter` es la implementación de `IExporterService` (puerto de
+        infraestructura) usada por `exportar_reporte_periodo_grupo`. Si es
+        None, la exportación lanza RuntimeError.
         """
         self._repo        = repo
         self._alerta_repo = alerta_repo
@@ -65,6 +71,7 @@ class ConvivenciaService:
         self._configuracion_svc_provider = configuracion_svc_provider
         self._periodo_svc_provider = periodo_svc_provider
         self._estudiante_svc_provider = estudiante_svc_provider
+        self._exporter    = exporter
 
     # ------------------------------------------------------------------
     # Autorización (defensa en profundidad — convivencia_04b)
@@ -495,6 +502,108 @@ class ConvivenciaService:
                 observaciones=textos_obs,
             ))
         return filas
+
+    # ------------------------------------------------------------------
+    # Exportación del reporte (convivencia_06b)
+    # ------------------------------------------------------------------
+
+    # Definición de columnas del reporte de periodo. Fuente única de verdad:
+    # (clave, encabezado). El servicio decide qué se exporta y en qué orden;
+    # la página no participa en esa decisión.
+    _COLUMNAS_REPORTE_PERIODO: tuple[tuple[str, str], ...] = (
+        ("estudiante",   "Estudiante"),
+        ("nota",         "Nota"),
+        ("nivel",        "Nivel"),
+        ("concepto",     "Concepto"),
+        ("observaciones", "Observaciones"),
+    )
+
+    def _fila_a_dict_exportacion(
+        self, fila: ReporteConvivenciaFilaDTO,
+    ) -> dict:
+        """Aplana un DTO a un dict con las columnas del reporte."""
+        return {
+            "estudiante":   fila.nombre,
+            "nota":         "" if fila.valor is None else fila.valor,
+            "nivel":        fila.nivel_nombre or "",
+            "concepto":     fila.concepto or "",
+            "observaciones": "\n".join(fila.observaciones) if fila.observaciones else "",
+        }
+
+    def _reporte_periodo_a_html(
+        self,
+        filas: list[ReporteConvivenciaFilaDTO],
+        titulo: str,
+    ) -> str:
+        """HTML compacto del reporte para el exporter PDF (puerto HTML → PDF)."""
+        heads_html = "".join(f"<th>{h}</th>" for _, h in self._COLUMNAS_REPORTE_PERIODO)
+        if not filas:
+            cuerpo = "<p>Sin datos.</p>"
+        else:
+            filas_html: list[str] = []
+            for fila in filas:
+                d = self._fila_a_dict_exportacion(fila)
+                cells = "".join(
+                    f"<td>{str(d[k]).replace(chr(10), '<br/>')}</td>"
+                    for k, _ in self._COLUMNAS_REPORTE_PERIODO
+                )
+                filas_html.append(f"<tr>{cells}</tr>")
+            cuerpo = (
+                f"<table><thead><tr>{heads_html}</tr></thead>"
+                f"<tbody>{''.join(filas_html)}</tbody></table>"
+            )
+        return (
+            f"<html><head><meta charset='utf-8'><title>{titulo}</title>"
+            "<style>table{border-collapse:collapse;width:100%;"
+            "font-family:Arial,sans-serif;font-size:11px}"
+            "th,td{border:1px solid #999;padding:4px;vertical-align:top;text-align:left}"
+            "th{background:#eee}</style></head>"
+            f"<body><h2>{titulo}</h2>{cuerpo}</body></html>"
+        )
+
+    def exportar_reporte_periodo_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int,
+        formato: str,
+        titulo: str = "Reporte de convivencia",
+    ) -> bytes:
+        """
+        Genera el reporte de periodo del grupo y lo exporta a `formato`
+        (`"excel"` o `"pdf"`). Retorna bytes listos para descarga.
+
+        Toda la lógica de composición (qué columnas, cómo aplanar los DTOs,
+        cómo construir el HTML para PDF) vive AQUÍ, no en la página. La
+        página solo pide los bytes y ofrece la descarga.
+
+        Args:
+            grupo_id, periodo_id: contexto del reporte.
+            formato: "excel" | "pdf".
+            titulo: encabezado para el PDF y nombre de hoja del Excel.
+
+        Raises:
+            RuntimeError: si no hay exporter inyectado.
+            ValueError:   si `formato` no es soportado.
+        """
+        if self._exporter is None:
+            raise RuntimeError(
+                "ConvivenciaService no tiene exporter inyectado; "
+                "no puede exportar reportes."
+            )
+        formato_norm = (formato or "").strip().lower()
+        if formato_norm not in ("excel", "pdf"):
+            raise ValueError(
+                f"Formato no soportado: {formato!r}. Usa 'excel' o 'pdf'."
+            )
+
+        filas = self.reporte_periodo_grupo(grupo_id, periodo_id)
+
+        if formato_norm == "excel":
+            datos = [self._fila_a_dict_exportacion(f) for f in filas]
+            return self._exporter.exportar_excel(datos, nombre_hoja=titulo[:31])
+
+        html = self._reporte_periodo_a_html(filas, titulo=titulo)
+        return self._exporter.exportar_pdf(html)
 
 
 __all__ = ["ConvivenciaService", "TipoRegistro"]

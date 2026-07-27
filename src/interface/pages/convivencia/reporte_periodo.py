@@ -43,6 +43,18 @@ _MSG_NO_AUTORIZADO = (
     "generar el reporte de convivencia de este grupo."
 )
 
+# Columnas mostradas en la grilla (misma clave que expone el servicio para
+# exportación). La página SOLO decide cómo se ven; la composición de datos
+# y la generación de PDF/Excel viven en `ConvivenciaService`.
+_COL_DEFS = [
+    {"headerName": "Estudiante",   "field": "estudiante",   "flex": 2, "sortable": True, "pinned": "left"},
+    {"headerName": "Nota",         "field": "nota",         "width": 100, "type": "numericColumn"},
+    {"headerName": "Nivel",        "field": "nivel",        "width": 140},
+    {"headerName": "Concepto",     "field": "concepto",     "flex": 2},
+    {"headerName": "# Obs.",       "field": "num_obs",      "width": 90, "type": "numericColumn"},
+    {"headerName": "Observaciones", "field": "observaciones", "flex": 3, "wrapText": True, "autoHeight": True},
+]
+
 
 # ── Autorización ──────────────────────────────────────────────────────────────
 
@@ -116,7 +128,10 @@ def _cargar_reporte(_s: dict) -> None:
         _s["filas"] = []
 
 
-# ── Helpers de presentación / exportación ────────────────────────────────────
+# ── Helpers de presentación ──────────────────────────────────────────────────
+# La página SOLO transforma los DTOs a filas para la grilla NiceGUI y presenta
+# el nombre del grupo/periodo en el título de descarga. TODA la composición
+# del reporte (columnas, aplanado, HTML del PDF) vive en ConvivenciaService.
 
 def _grupo_nombre(_s: dict) -> str:
     for g in _s["grupos"]:
@@ -132,8 +147,9 @@ def _periodo_nombre(_s: dict) -> str:
     return ""
 
 
-def _filas_a_dicts(_s: dict) -> list[dict]:
-    """Aplana los DTOs a primitivos para la grilla y los exportadores."""
+def _filas_grilla(_s: dict) -> list[dict]:
+    """Aplana los DTOs SOLO para la grilla de la página (añade `num_obs`
+    para el contador visible; no participa en la exportación)."""
     out: list[dict] = []
     for f in _s["filas"]:
         out.append({
@@ -147,54 +163,27 @@ def _filas_a_dicts(_s: dict) -> list[dict]:
     return out
 
 
-def _datos_a_html(datos: list[dict], titulo: str) -> str:
-    """HTML mínimo para el exporter de PDF (tabla plana)."""
-    if not datos:
-        cuerpo = "<p>Sin datos.</p>"
-    else:
-        heads = [k for k in datos[0].keys() if k != "num_obs"]
-        thead = "".join(f"<th>{h}</th>" for h in heads)
-        rows = []
-        for r in datos:
-            cells = "".join(
-                f"<td>{str(r.get(h, '')).replace(chr(10), '<br/>')}</td>"
-                for h in heads
-            )
-            rows.append(f"<tr>{cells}</tr>")
-        cuerpo = f"<table><thead><tr>{thead}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
-    return (
-        f"<html><head><meta charset='utf-8'><title>{titulo}</title>"
-        "<style>table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:11px}"
-        "th,td{border:1px solid #999;padding:4px;vertical-align:top;text-align:left}"
-        "th{background:#eee}</style></head>"
-        f"<body><h2>{titulo}</h2>{cuerpo}</body></html>"
-    )
+def _slug_descarga(_s: dict) -> str:
+    grupo   = (_grupo_nombre(_s) or "grupo").replace(" ", "_")
+    periodo = (_periodo_nombre(_s) or f"p{_s['periodo_id']}").replace(" ", "_")
+    return f"reporte_convivencia_{grupo}_{periodo}"
 
 
 def _exportar(_s: dict, formato: str) -> None:
+    """Pide al servicio los bytes del reporte y ofrece la descarga.
+    Sin lógica de composición: eso vive en `ConvivenciaService`."""
     if not _s["filas"]:
         toast_info("No hay datos para exportar.")
         return
-    datos = _filas_a_dicts(_s)
-    # Para exportación quitamos la columna interna num_obs
-    datos_exp = [{k: v for k, v in d.items() if k != "num_obs"} for d in datos]
-    grupo = (_grupo_nombre(_s) or "grupo").replace(" ", "_")
-    periodo = (_periodo_nombre(_s) or f"p{_s['periodo_id']}").replace(" ", "_")
-    base = f"reporte_convivencia_{grupo}_{periodo}"
+    if not _s["grupo_id"] or not _s["periodo_id"]:
+        return
+    titulo = f"Reporte de convivencia — {_grupo_nombre(_s)} · {_periodo_nombre(_s)}"
+    ext = "xlsx" if formato == "excel" else "pdf"
     try:
-        exporter = Container.exporter_service()
-        if formato == "excel":
-            contenido = exporter.exportar_excel(
-                datos_exp, nombre_hoja="Reporte Convivencia"
-            )
-            ui.download(src=contenido, filename=f"{base}.xlsx")
-        else:
-            html = _datos_a_html(
-                datos_exp,
-                titulo=f"Reporte de convivencia — {_grupo_nombre(_s)} · {_periodo_nombre(_s)}",
-            )
-            contenido = exporter.exportar_pdf(html)
-            ui.download(src=contenido, filename=f"{base}.pdf")
+        contenido = Container.convivencia_service().exportar_reporte_periodo_grupo(
+            int(_s["grupo_id"]), int(_s["periodo_id"]), formato, titulo=titulo,
+        )
+        ui.download(src=contenido, filename=f"{_slug_descarga(_s)}.{ext}")
     except NotImplementedError:
         toast_warning("Formato no disponible. Verifica las dependencias instaladas.")
     except Exception as exc:
@@ -291,7 +280,7 @@ def reporte_periodo_page() -> None:
                         )
                     return
 
-                filas_dict = _filas_a_dicts(_s)
+                filas_dict = _filas_grilla(_s)
                 with ui.element("div").classes("panel-card"):
                     if not filas_dict:
                         empty_state(
@@ -299,21 +288,9 @@ def reporte_periodo_page() -> None:
                             descripcion="No hay estudiantes en este grupo.",
                         )
                     else:
-                        col_defs = [
-                            {"headerName": "Estudiante", "field": "estudiante",
-                             "flex": 2, "sortable": True, "pinned": "left"},
-                            {"headerName": "Nota", "field": "nota",
-                             "width": 100, "type": "numericColumn"},
-                            {"headerName": "Nivel", "field": "nivel", "width": 140},
-                            {"headerName": "Concepto", "field": "concepto", "flex": 2},
-                            {"headerName": "# Obs.", "field": "num_obs", "width": 90,
-                             "type": "numericColumn"},
-                            {"headerName": "Observaciones", "field": "observaciones",
-                             "flex": 3, "wrapText": True, "autoHeight": True},
-                        ]
                         with ui.element("div").classes("aggrid-scroll-wrapper"):
                             ui.aggrid({
-                                "columnDefs":    col_defs,
+                                "columnDefs":    _COL_DEFS,
                                 "rowData":       filas_dict,
                                 "defaultColDef": {"resizable": True, "sortable": True},
                             }).classes("w-full")
