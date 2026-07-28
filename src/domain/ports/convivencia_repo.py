@@ -28,9 +28,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from ..models.convivencia import (
+    CategoriaObservacion,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     ObservacionPeriodo,
+    PlantillaObservacion,
     RegistroComportamiento,
 )
 
@@ -191,5 +193,83 @@ class IConvivenciaRepository(ABC):
         Guarda o actualiza la nota de comportamiento (Upsert).
         Si ya existe una nota para ese estudiante y periodo, la reemplaza.
         Retorna la entidad guardada con su id.
+        """
+        ...
+
+    # =========================================================================
+    # Categorías de Observación (convivencia_09)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
+        """
+        Retorna la lista de categorías de observación.
+        Si solo_activas=True (default), excluye las categorías desactivadas.
+        """
+        ...
+
+    @abstractmethod
+    def get_categoria(self, categoria_id: int) -> CategoriaObservacion | None:
+        """Retorna una categoría por su ID, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def guardar_categoria(self, categoria: CategoriaObservacion) -> CategoriaObservacion:
+        """
+        Guarda una nueva categoría de observación.
+        Retorna la entidad con su id asignado.
+        """
+        ...
+
+    @abstractmethod
+    def actualizar_categoria(self, categoria: CategoriaObservacion) -> CategoriaObservacion:
+        """
+        Actualiza nombre, es_comportamental y/o activa de una categoría existente.
+        Requiere que categoria.id no sea None.
+        """
+        ...
+
+    # =========================================================================
+    # Catálogo de plantillas de observación (convivencia_12)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_plantillas(
+        self, categoria_id: int | None = None, solo_activas: bool = True
+    ) -> list[PlantillaObservacion]:
+        """
+        Retorna la lista de plantillas de observación.
+        Si categoria_id no es None, filtra por esa categoría.
+        Si solo_activas=True (default), excluye las plantillas desactivadas.
+        Ordena por uso_count DESC (las más usadas primero).
+        """
+        ...
+
+    @abstractmethod
+    def get_plantilla(self, plantilla_id: int) -> PlantillaObservacion | None:
+        """Retorna una plantilla por su ID, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def guardar_plantilla(self, plantilla: PlantillaObservacion) -> PlantillaObservacion:
+        """
+        Guarda una nueva plantilla de observación.
+        Retorna la entidad con su id asignado.
+        """
+        ...
+
+    @abstractmethod
+    def actualizar_plantilla(self, plantilla: PlantillaObservacion) -> PlantillaObservacion:
+        """
+        Actualiza texto, categoria_id y/o activa de una plantilla existente.
+        Requiere que plantilla.id no sea None.
+        """
+        ...
+
+    @abstractmethod
+    def incrementar_uso_plantilla(self, plantilla_id: int) -> None:
+        """
+        Incrementa en 1 el uso_count de la plantilla indicada.
+        Operación atómica (UPDATE SET uso_count = uso_count + 1).
         """
         ...

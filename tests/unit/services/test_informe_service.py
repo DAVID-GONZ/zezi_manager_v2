@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from src.domain.models.convivencia import NotaComportamiento, ObservacionPeriodo
 from src.domain.models.dtos import (
     DashboardMetricsDTO,
     FormatoInforme,
@@ -19,6 +20,22 @@ from src.services.informe_service import InformeService
 # ===========================================================================
 # Fakes
 # ===========================================================================
+
+class FakeConvivenciaRepo:
+    """Fake minimal de IConvivenciaRepository para tests de convivencia_boletin."""
+
+    def __init__(self, nota=None, observaciones=None):
+        self._nota = nota
+        self._observaciones = observaciones or []
+
+    def get_nota(self, estudiante_id: int, periodo_id: int):
+        return self._nota
+
+    def listar_observaciones_por_estudiante(
+        self, estudiante_id: int, periodo_id: int, solo_publicas: bool = False
+    ):
+        return self._observaciones
+
 
 class FakeEstadRepo(IEstadisticosRepository):
     def calcular_metricas_dashboard(self, g, p, nota_minima=60.0) -> DashboardMetricsDTO:
@@ -230,3 +247,57 @@ class TestGenerarBoletinesGrupo:
         svc = InformeService(FakeEstadRepo(), FakeExporter(), estudiante_repo=_FakeEstRepo([]))
         r = svc.generar_boletines_grupo(grupo_id=10, periodo_id=5, formato="excel")
         assert r.contenido is None
+
+
+# ===========================================================================
+# Group 8 — convivencia_boletin (convivencia_07)
+# ===========================================================================
+
+class TestConvivenciaBoletin:
+    def test_convivencia_boletin_sin_repo(self):
+        """T4a: sin convivencia_repo inyectado → dict con None y []."""
+        svc = InformeService(FakeEstadRepo())
+        resultado = svc.convivencia_boletin(1, 1)
+        assert resultado == {"nota": None, "nota_observacion": None, "observaciones": []}
+
+    def test_convivencia_boletin_con_nota(self):
+        """T4b: repo retorna nota con valor y obs pública → dict correcto."""
+        nota = NotaComportamiento(
+            estudiante_id=1, grupo_id=1, periodo_id=1,
+            valor=85.0, observacion="Excelente comportamiento",
+        )
+        obs = ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=1, periodo_id=1,
+            texto="Participa activamente en clase", es_publica=True,
+        )
+        repo = FakeConvivenciaRepo(nota=nota, observaciones=[obs])
+        svc = InformeService(FakeEstadRepo(), convivencia_repo=repo)
+        resultado = svc.convivencia_boletin(1, 1)
+        assert resultado["nota"] == 85.0
+        assert resultado["nota_observacion"] == "Excelente comportamiento"
+        assert resultado["observaciones"] == ["Participa activamente en clase"]
+
+    def test_convivencia_boletin_sin_nota(self):
+        """T4c: repo retorna None para nota + obs vacía → dict correcto."""
+        repo = FakeConvivenciaRepo(nota=None, observaciones=[])
+        svc = InformeService(FakeEstadRepo(), convivencia_repo=repo)
+        resultado = svc.convivencia_boletin(1, 1)
+        assert resultado == {"nota": None, "nota_observacion": None, "observaciones": []}
+
+    def test_convivencia_boletin_solo_obs(self):
+        """T4d: nota None pero hay 2 obs públicas → lista con 2 textos."""
+        obs1 = ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=1, periodo_id=1,
+            texto="Obs uno", es_publica=True,
+        )
+        obs2 = ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=2, periodo_id=1,
+            texto="Obs dos", es_publica=True,
+        )
+        repo = FakeConvivenciaRepo(nota=None, observaciones=[obs1, obs2])
+        svc = InformeService(FakeEstadRepo(), convivencia_repo=repo)
+        resultado = svc.convivencia_boletin(1, 1)
+        assert resultado["nota"] is None
+        assert resultado["nota_observacion"] is None
+        assert len(resultado["observaciones"]) == 2
+        assert resultado["observaciones"] == ["Obs uno", "Obs dos"]

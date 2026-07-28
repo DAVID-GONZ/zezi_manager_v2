@@ -7,9 +7,11 @@ import sqlite3
 from contextlib import contextmanager
 
 from src.domain.models.convivencia import (
+    CategoriaObservacion,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     ObservacionPeriodo,
+    PlantillaObservacion,
     RegistroComportamiento,
     TipoRegistro,
 )
@@ -98,8 +100,8 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                 """
                 INSERT INTO observaciones_periodo
                     (estudiante_id, asignacion_id, periodo_id, texto,
-                     es_publica, fecha_registro, usuario_id)
-                VALUES (?,?,?,?,?,?,?)
+                     es_publica, fecha_registro, usuario_id, categoria_id, origen)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     observacion.estudiante_id,
@@ -109,6 +111,8 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                     int(observacion.es_publica),
                     observacion.fecha_registro.isoformat(),
                     observacion.usuario_id,
+                    observacion.categoria_id,
+                    observacion.origen,
                 ),
             )
             if self._conn is None:
@@ -120,10 +124,16 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             conn.execute(
                 """
                 UPDATE observaciones_periodo
-                SET texto = ?, es_publica = ?
+                SET texto = ?, es_publica = ?, categoria_id = ?, origen = ?
                 WHERE id = ?
                 """,
-                (observacion.texto, int(observacion.es_publica), observacion.id),
+                (
+                    observacion.texto,
+                    int(observacion.es_publica),
+                    observacion.categoria_id,
+                    observacion.origen,
+                    observacion.id,
+                ),
             )
             if self._conn is None:
                 conn.commit()
@@ -340,6 +350,149 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             if self._conn is None:
                 conn.commit()
             return nota.model_copy(update={"id": cursor.lastrowid})
+
+    # ------------------------------------------------------------------
+    # Categorías de Observación (convivencia_09)
+    # ------------------------------------------------------------------
+
+    def _row_to_categoria(self, row: sqlite3.Row) -> CategoriaObservacion:
+        d = dict(row)
+        d["es_comportamental"] = bool(d["es_comportamental"])
+        d["activa"] = bool(d["activa"])
+        return CategoriaObservacion(**d)
+
+    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
+        sql = "SELECT * FROM categorias_observacion"
+        if solo_activas:
+            sql += " WHERE activa = 1"
+        sql += " ORDER BY nombre"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql).fetchall()
+            return [self._row_to_categoria(r) for r in rows]
+
+    def get_categoria(self, categoria_id: int) -> CategoriaObservacion | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM categorias_observacion WHERE id = ?",
+                (categoria_id,),
+            ).fetchone()
+            return self._row_to_categoria(row) if row else None
+
+    def guardar_categoria(self, categoria: CategoriaObservacion) -> CategoriaObservacion:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO categorias_observacion
+                    (nombre, es_comportamental, activa)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    categoria.nombre,
+                    int(categoria.es_comportamental),
+                    int(categoria.activa),
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return categoria.model_copy(update={"id": cursor.lastrowid})
+
+    def actualizar_categoria(self, categoria: CategoriaObservacion) -> CategoriaObservacion:
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                UPDATE categorias_observacion
+                SET nombre = ?, es_comportamental = ?, activa = ?
+                WHERE id = ?
+                """,
+                (
+                    categoria.nombre,
+                    int(categoria.es_comportamental),
+                    int(categoria.activa),
+                    categoria.id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return categoria
+
+    # ------------------------------------------------------------------
+    # Catálogo de plantillas de observación (convivencia_12)
+    # ------------------------------------------------------------------
+
+    def _row_to_plantilla(self, row: sqlite3.Row) -> PlantillaObservacion:
+        d = dict(row)
+        d["activa"] = bool(d["activa"])
+        return PlantillaObservacion(**d)
+
+    def listar_plantillas(
+        self, categoria_id: int | None = None, solo_activas: bool = True
+    ) -> list[PlantillaObservacion]:
+        sql = "SELECT * FROM plantillas_observacion WHERE 1=1"
+        params: list = []
+        if solo_activas:
+            sql += " AND activa = 1"
+        if categoria_id is not None:
+            sql += " AND categoria_id = ?"
+            params.append(categoria_id)
+        sql += " ORDER BY uso_count DESC"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_plantilla(r) for r in rows]
+
+    def get_plantilla(self, plantilla_id: int) -> PlantillaObservacion | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM plantillas_observacion WHERE id = ?",
+                (plantilla_id,),
+            ).fetchone()
+            return self._row_to_plantilla(row) if row else None
+
+    def guardar_plantilla(self, plantilla: PlantillaObservacion) -> PlantillaObservacion:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO plantillas_observacion
+                    (texto, categoria_id, uso_count, activa)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    plantilla.texto,
+                    plantilla.categoria_id,
+                    plantilla.uso_count,
+                    int(plantilla.activa),
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return plantilla.model_copy(update={"id": cursor.lastrowid})
+
+    def actualizar_plantilla(self, plantilla: PlantillaObservacion) -> PlantillaObservacion:
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                UPDATE plantillas_observacion
+                SET texto = ?, categoria_id = ?, activa = ?
+                WHERE id = ?
+                """,
+                (
+                    plantilla.texto,
+                    plantilla.categoria_id,
+                    int(plantilla.activa),
+                    plantilla.id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return plantilla
+
+    def incrementar_uso_plantilla(self, plantilla_id: int) -> None:
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE plantillas_observacion SET uso_count = uso_count + 1 WHERE id = ?",
+                (plantilla_id,),
+            )
+            if self._conn is None:
+                conn.commit()
 
 
 __all__ = ["SqliteConvivenciaRepository"]

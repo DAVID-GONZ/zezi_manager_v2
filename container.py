@@ -403,6 +403,10 @@ class Container:
                 # composición del reporte y la generación de bytes viven en
                 # el servicio; la página solo pide bytes y ofrece descarga.
                 exporter=cls.exporter_service(),
+                # Provider lazy: autorización por objeto de observaciones
+                # (convivencia_11) — verifica que el profesor sea titular de
+                # la asignación antes de permitir registrar/actualizar.
+                asignacion_svc_provider=cls.asignacion_service,
             ),
         )
 
@@ -432,6 +436,7 @@ class Container:
                 estadisticos_repo=cls.estadisticos_repo(),
                 exporter=cls.exporter_service(),
                 estudiante_repo=cls.estudiante_repo(),
+                convivencia_repo=cls.convivencia_repo(),
             ),
         )
 

@@ -9,13 +9,16 @@ from typing import TYPE_CHECKING, Callable
 
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
+    CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
+    NuevaCategoriaDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
+    PlantillaObservacion,
     RegistroComportamiento,
     ReporteConvivenciaFilaDTO,
     TipoRegistro,
@@ -26,6 +29,7 @@ from src.domain.ports.service_ports import IExporterService
 from src.services.solo_lectura import requiere_escritura
 
 if TYPE_CHECKING:
+    from src.services.asignacion_service import AsignacionService
     from src.services.catalogo_academico_service import CatalogoAcademicoService
     from src.services.configuracion_service import ConfiguracionService
     from src.services.estudiante_service import EstudianteService
@@ -47,6 +51,7 @@ class ConvivenciaService:
         periodo_svc_provider: Callable[[], "PeriodoService"] | None = None,
         estudiante_svc_provider: Callable[[], "EstudianteService"] | None = None,
         exporter: IExporterService | None = None,
+        asignacion_svc_provider: Callable[[], "AsignacionService"] | None = None,
     ) -> None:
         """Inyecta el repositorio de convivencia y el de alertas (opcional).
 
@@ -72,6 +77,7 @@ class ConvivenciaService:
         self._periodo_svc_provider = periodo_svc_provider
         self._estudiante_svc_provider = estudiante_svc_provider
         self._exporter    = exporter
+        self._asignacion_svc_provider = asignacion_svc_provider
 
     # ------------------------------------------------------------------
     # Autorización (defensa en profundidad — convivencia_04b)
@@ -175,20 +181,47 @@ class ConvivenciaService:
         self,
         dto: NuevaObservacionDTO,
         usuario_id: int | None = None,
+        usuario_rol: str | None = None,
     ) -> ObservacionPeriodo:
         """
         Registra una observación narrativa de un estudiante en un periodo.
 
         Si ya existe una observación para esa asignación/periodo/estudiante,
         se actualiza; si no, se crea una nueva.
+
+        Autorización por objeto (convivencia_11):
+        - profesor → solo puede registrar/actualizar observaciones de sus
+          propias asignaciones (asignacion.usuario_id == usuario_id).
+          Si no es titular, lanza PermissionError.
+        - director / coordinador → acceso pleno sin restricción adicional.
         """
+        # Autorización por objeto para profesores
+        if (
+            usuario_rol == "profesor"
+            and usuario_id is not None
+            and self._asignacion_svc_provider is not None
+        ):
+            svc_asig = self._asignacion_svc_provider()
+            try:
+                asig = svc_asig.get_by_id(dto.asignacion_id)
+            except Exception:
+                asig = None
+            if asig is None or asig.usuario_id != usuario_id:
+                raise PermissionError(
+                    "Solo puedes registrar observaciones de tus asignaciones"
+                )
+
         existente = self._repo.get_observacion_por_asignacion(
             dto.estudiante_id, dto.asignacion_id, dto.periodo_id
         )
 
         if existente is not None:
             obs_actualizada = existente.model_copy(
-                update={"texto": dto.texto, "es_publica": dto.es_publica}
+                update={
+                    "texto": dto.texto,
+                    "es_publica": dto.es_publica,
+                    "categoria_id": dto.categoria_id,
+                }
             )
             return self._repo.actualizar_observacion(obs_actualizada)
 
@@ -200,11 +233,39 @@ class ConvivenciaService:
         estudiante_id: int,
         periodo_id: int | None = None,
         solo_publicas: bool = False,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
     ) -> list[ObservacionPeriodo]:
-        """Retorna las observaciones de un estudiante."""
-        return self._repo.listar_observaciones_por_estudiante(
+        """Retorna las observaciones de un estudiante.
+
+        Si `usuario_rol` es "profesor" y hay `asignacion_svc_provider`,
+        filtra para devolver solo las observaciones pertenecientes a las
+        asignaciones del profesor (asignacion_id en sus asignaciones).
+        Directivo/coordinador ve todas.
+        """
+        observaciones = self._repo.listar_observaciones_por_estudiante(
             estudiante_id, periodo_id, solo_publicas
         )
+        if (
+            usuario_rol == "profesor"
+            and usuario_id is not None
+            and self._asignacion_svc_provider is not None
+        ):
+            svc_asig = self._asignacion_svc_provider()
+            try:
+                asignaciones_docente = svc_asig.listar_por_docente(
+                    usuario_id, periodo_id
+                )
+                ids_docente = {
+                    getattr(a, "id", None) for a in asignaciones_docente
+                } - {None}
+            except Exception:
+                ids_docente = set()
+            observaciones = [
+                obs for obs in observaciones
+                if obs.asignacion_id in ids_docente
+            ]
+        return observaciones
 
     @requiere_escritura
     def eliminar_observacion(self, observacion_id: int) -> bool:
@@ -606,4 +667,166 @@ class ConvivenciaService:
         return self._exporter.exportar_pdf(html)
 
 
-__all__ = ["ConvivenciaService", "TipoRegistro"]
+    # ------------------------------------------------------------------
+    # Catálogo de categorías de observación (convivencia_09 / _10)
+    # ------------------------------------------------------------------
+
+    def listar_categorias(
+        self,
+        solo_activas: bool = True,
+    ) -> list[CategoriaObservacion]:
+        """Retorna el catálogo de categorías de observación."""
+        return self._repo.listar_categorias(solo_activas=solo_activas)
+
+    @requiere_escritura
+    def crear_categoria(
+        self,
+        dto: NuevaCategoriaDTO,
+    ) -> CategoriaObservacion:
+        """Crea una nueva categoría de observación."""
+        categoria = CategoriaObservacion(
+            nombre=dto.nombre,
+            es_comportamental=dto.es_comportamental,
+        )
+        return self._repo.guardar_categoria(categoria)
+
+    @requiere_escritura
+    def actualizar_categoria(
+        self,
+        categoria_id: int,
+        dto: NuevaCategoriaDTO,
+    ) -> CategoriaObservacion:
+        """Actualiza el nombre y tipo de una categoría existente."""
+        categoria = self._repo.get_categoria(categoria_id)
+        if categoria is None:
+            raise ValueError(
+                f"Categoría con id {categoria_id} no existe."
+            )
+        actualizada = categoria.model_copy(
+            update={
+                "nombre": dto.nombre,
+                "es_comportamental": dto.es_comportamental,
+            }
+        )
+        return self._repo.actualizar_categoria(actualizada)
+
+    @requiere_escritura
+    def desactivar_categoria(
+        self,
+        categoria_id: int,
+    ) -> CategoriaObservacion:
+        """Desactiva una categoría (activa=False) sin eliminarla."""
+        categoria = self._repo.get_categoria(categoria_id)
+        if categoria is None:
+            raise ValueError(
+                f"Categoría con id {categoria_id} no existe."
+            )
+        desactivada = categoria.model_copy(update={"activa": False})
+        return self._repo.actualizar_categoria(desactivada)
+
+    # ------------------------------------------------------------------
+    # Catálogo de plantillas de observación (convivencia_12)
+    # ------------------------------------------------------------------
+
+    def listar_plantillas(
+        self, categoria_id: int | None = None
+    ) -> list[PlantillaObservacion]:
+        """Retorna las plantillas activas, opcionalmente filtradas por categoría."""
+        return self._repo.listar_plantillas(
+            categoria_id=categoria_id, solo_activas=True
+        )
+
+    @requiere_escritura
+    def registrar_observacion_desde_plantilla(
+        self,
+        dto: NuevaObservacionDTO,
+        plantilla_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> ObservacionPeriodo:
+        """
+        Registra una observación a partir de una plantilla del catálogo.
+
+        Aplica la misma autorización por objeto que `registrar_observacion`
+        (profesores solo en sus asignaciones). Marca el origen como 'plantilla'
+        e incrementa el uso_count de la plantilla utilizada.
+        """
+        # Autorización por objeto para profesores
+        if (
+            usuario_rol == "profesor"
+            and usuario_id is not None
+            and self._asignacion_svc_provider is not None
+        ):
+            svc_asig = self._asignacion_svc_provider()
+            try:
+                asig = svc_asig.get_by_id(dto.asignacion_id)
+            except Exception:
+                asig = None
+            if asig is None or asig.usuario_id != usuario_id:
+                raise PermissionError(
+                    "Solo puedes registrar observaciones de tus asignaciones"
+                )
+
+        # Upsert con origen="plantilla"
+        existente = self._repo.get_observacion_por_asignacion(
+            dto.estudiante_id, dto.asignacion_id, dto.periodo_id
+        )
+        if existente is not None:
+            obs_actualizada = existente.model_copy(
+                update={
+                    "texto":        dto.texto,
+                    "es_publica":   dto.es_publica,
+                    "categoria_id": dto.categoria_id,
+                    "origen":       "plantilla",
+                }
+            )
+            obs = self._repo.actualizar_observacion(obs_actualizada)
+        else:
+            obs = ObservacionPeriodo(
+                **dto.model_dump(),
+                usuario_id=usuario_id,
+                origen="plantilla",
+            )
+            obs = self._repo.guardar_observacion(obs)
+
+        # Incrementar el contador de uso de la plantilla
+        self._repo.incrementar_uso_plantilla(plantilla_id)
+        return obs
+
+    # ------------------------------------------------------------------
+    # Catálogo de retroalimentación (convivencia_13)
+    # ------------------------------------------------------------------
+
+    @requiere_escritura
+    def promover_observacion_a_plantilla(
+        self,
+        observacion_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> PlantillaObservacion:
+        """
+        Crea una nueva PlantillaObservacion a partir del texto y categoria_id
+        de una ObservacionPeriodo existente.
+        RBAC: solo DIRECTOR y COORDINADOR pueden promover.
+        """
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError(
+                "Solo directores y coordinadores pueden promover observaciones a plantillas."
+            )
+        obs = self._get_observacion_o_lanzar(observacion_id)
+        plantilla = PlantillaObservacion(texto=obs.texto, categoria_id=obs.categoria_id)
+        return self._repo.guardar_plantilla(plantilla)
+
+    def listar_plantillas_sugeridas(
+        self,
+        categoria_id: int | None = None,
+        limite: int = 5,
+    ) -> list[PlantillaObservacion]:
+        """
+        Retorna las plantillas activas más usadas, opcionalmente filtradas
+        por categoría. Limitado a `limite` resultados (default 5).
+        """
+        return self._repo.listar_plantillas(categoria_id=categoria_id, solo_activas=True)[:limite]
+
+
+__all__ = ["ConvivenciaService", "NuevaCategoriaDTO", "PlantillaObservacion", "TipoRegistro"]

@@ -867,6 +867,35 @@ SCHEMA: list[str] = [
     # 8. ASISTENCIA Y CONVIVENCIA
     # -------------------------------------------------------------------------
 
+    # Catálogo de categorías de observación (convivencia_09).
+    # Permite clasificar las observaciones de convivencia por tipo:
+    # académico, comportamental, seguimiento, etc.
+    # es_comportamental=1 → la categoría agrupa registros de comportamiento.
+    # Idempotente por nombre (UNIQUE).
+    """
+    CREATE TABLE IF NOT EXISTS categorias_observacion (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre            TEXT    NOT NULL UNIQUE,
+        es_comportamental BOOLEAN NOT NULL DEFAULT 0,
+        activa            BOOLEAN NOT NULL DEFAULT 1
+    )
+    """,
+
+    # Catálogo de plantillas de observación (convivencia_12).
+    # Frases modelo reutilizables para agilizar el registro de observaciones.
+    # Cada plantilla puede estar vinculada a una categoría y lleva un contador
+    # de uso para priorizar las más usadas en el selector de la UI.
+    # uso_count se incrementa cada vez que se usa la plantilla en una observación.
+    """
+    CREATE TABLE IF NOT EXISTS plantillas_observacion (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        texto        TEXT    NOT NULL,
+        categoria_id INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
+        uso_count    INTEGER NOT NULL DEFAULT 0,
+        activa       BOOLEAN NOT NULL DEFAULT 1
+    )
+    """,
+
     """
     CREATE TABLE IF NOT EXISTS control_diario (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -904,6 +933,12 @@ SCHEMA: list[str] = [
         es_publica      BOOLEAN  NOT NULL DEFAULT 1,
         fecha_registro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         usuario_id      INTEGER,
+        -- Clasificación por categoría (convivencia_11): NULL = sin categoría asignada.
+        categoria_id    INTEGER  REFERENCES categorias_observacion(id) ON DELETE SET NULL,
+        -- Origen del texto (convivencia_11/12): 'libre' = ingresado directamente;
+        -- 'plantilla' = generado desde el catálogo de plantillas.
+        origen          TEXT     NOT NULL DEFAULT 'libre'
+                        CHECK(origen IN ('libre', 'plantilla')),
 
         FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)   ON DELETE CASCADE,
         FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
@@ -1342,6 +1377,13 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_ctrl_periodo        ON control_diario(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_estado         ON control_diario(estado)",
 
+    # categorias_observacion (convivencia_09)
+    "CREATE INDEX IF NOT EXISTS ix_categorias_obs_activa ON categorias_observacion(activa)",
+
+    # plantillas_observacion (convivencia_12)
+    "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_categoria ON plantillas_observacion(categoria_id)",
+    "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_activa    ON plantillas_observacion(activa)",
+
     # observaciones_periodo
     "CREATE INDEX IF NOT EXISTS idx_obs_estudiante      ON observaciones_periodo(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_obs_periodo         ON observaciones_periodo(periodo_id)",
@@ -1523,6 +1565,28 @@ TRIGGERS: list[str] = [
 
 
 
+def create_schema(conn) -> None:
+    """
+    Aplica SCHEMA, INDICES y TRIGGERS a una conexión SQLite ya abierta.
+
+    Útil para tests de integración que trabajan con una BD en memoria:
+        conn = sqlite3.connect(':memory:')
+        create_schema(conn)
+
+    No hace commit — la gestión de la transacción es responsabilidad del llamador.
+    """
+    conn.execute("PRAGMA foreign_keys = ON")
+    if not hasattr(conn, "row_factory") or conn.row_factory is None:
+        import sqlite3 as _sqlite3
+        conn.row_factory = _sqlite3.Row
+    for sql in SCHEMA:
+        conn.execute(sql)
+    for sql in INDICES:
+        conn.execute(sql)
+    for sql in TRIGGERS:
+        conn.execute(sql)
+
+
 def _asegurar_columna(conn, tabla: str, columna: str, definicion: str) -> None:
     """
     Añade ``columna`` a ``tabla`` solo si aún no existe (ALTER TABLE idempotente).
@@ -1597,6 +1661,17 @@ def init_db(db_path: Path | None = None) -> bool:
                 conn, "grupos", "director_grupo_id",
                 "INTEGER REFERENCES usuarios(id) ON DELETE SET NULL",
             )
+            # Categoría y origen de la observación (convivencia_11). En BDs
+            # preexistentes las observaciones quedan con categoria_id=NULL
+            # (sin categoría) y origen='libre' (default). Idempotente.
+            _asegurar_columna(
+                conn, "observaciones_periodo", "categoria_id",
+                "INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL",
+            )
+            _asegurar_columna(
+                conn, "observaciones_periodo", "origen",
+                "TEXT NOT NULL DEFAULT 'libre' CHECK(origen IN ('libre','plantilla'))",
+            )
 
             # ------------------------------------------------------------------
             # Índices
@@ -1667,4 +1742,4 @@ def get_db_stats() -> dict:
         return {}
 
 
-__all__ = ["INDICES", "SCHEMA", "TRIGGERS", "get_db_stats", "init_db"]
+__all__ = ["INDICES", "SCHEMA", "TRIGGERS", "create_schema", "get_db_stats", "init_db"]

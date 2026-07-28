@@ -52,6 +52,60 @@ class TipoRegistro(str, Enum):
 
 
 # =============================================================================
+# Catálogo de categorías de observación (convivencia_09)
+# =============================================================================
+
+class CategoriaObservacion(BaseModel):
+    """
+    Categoría para clasificar observaciones y registros de convivencia.
+
+    es_comportamental=True agrupa categorías relacionadas con el comportamiento
+    del estudiante (p.ej. "Comportamiento positivo", "Convivencia y normas").
+    es_comportamental=False agrupa categorías de índole académica o de
+    seguimiento (p.ej. "Académico", "Responsabilidad").
+
+    activa=False oculta la categoría del selector sin eliminar los registros
+    históricos que ya la referencien.
+    """
+    id:                int | None = None
+    nombre:            str
+    es_comportamental: bool       = False
+    activa:            bool       = True
+
+
+class NuevaCategoriaDTO(BaseModel):
+    """DTO para crear una nueva categoría de observación."""
+    nombre:            str
+    es_comportamental: bool = False
+
+
+# =============================================================================
+# Catálogo de plantillas de observación (convivencia_12)
+# =============================================================================
+
+class PlantillaObservacion(BaseModel):
+    """
+    Plantilla de texto reutilizable para agilizar el registro de observaciones.
+
+    `categoria_id` vincula la plantilla a una categoría de observación;
+    None significa que la plantilla aplica a cualquier categoría.
+    `uso_count` se incrementa cada vez que se usa la plantilla.
+    `activa=False` oculta la plantilla del selector sin eliminar el historial.
+    """
+    id:           int | None = None
+    texto:        str
+    categoria_id: int | None = None
+    uso_count:    int        = 0
+    activa:       bool       = True
+
+
+class NuevaPlantillaDTO(BaseModel):
+    """DTO para crear una nueva plantilla de observación."""
+    texto:        str
+    categoria_id: int | None = None
+
+
+# =============================================================================
 # Entidades
 # =============================================================================
 
@@ -70,6 +124,12 @@ class ObservacionPeriodo(BaseModel):
     es_publica:     bool        = True
     fecha_registro: datetime    = Field(default_factory=datetime.now)
     usuario_id:     int | None  = None
+    # Campos añadidos en convivencia_11: clasificación por categoría y origen.
+    # categoria_id=None → observación libre (sin categoría asignada).
+    # origen='libre' → texto ingresado directamente; 'plantilla' → generado
+    # desde una plantilla del catálogo (convivencia_12).
+    categoria_id:   int | None  = None
+    origen:         str         = "libre"
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -288,6 +348,9 @@ class NuevaObservacionDTO(BaseModel):
     asignacion_id: int
     periodo_id:    int
     texto:         str
+    # categoria_id es obligatorio al crear (convivencia_11). Colocado antes
+    # de campos con default para que Pydantic no falle en la validación.
+    categoria_id:  int
     es_publica:    bool = True
 
     @field_validator("texto", mode="before")
@@ -412,13 +475,17 @@ class FiltroConvivenciaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
+    "CategoriaObservacion",
     "ConceptoComportamientoDTO",
     "FiltroConvivenciaDTO",
     "NotaComportamiento",
+    "NuevaCategoriaDTO",
     "NuevaNotaComportamientoDTO",
     "NuevaObservacionDTO",
+    "NuevaPlantillaDTO",
     "NuevoRegistroComportamientoDTO",
     "ObservacionPeriodo",
+    "PlantillaObservacion",
     "RegistroComportamiento",
     "ReporteConvivenciaFilaDTO",
     "TipoRegistro",

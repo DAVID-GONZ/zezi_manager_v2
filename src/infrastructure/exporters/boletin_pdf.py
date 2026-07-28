@@ -374,7 +374,7 @@ def _tabla_anual(
 
 # ── Sección de observaciones y firmas ─────────────────────────────────────────
 
-def _observaciones_y_firmas(page_w: float) -> list:
+def _observaciones_y_firmas(page_w: float, convivencia: dict | None = None) -> list:
     """Bloque inferior: caja de observaciones + líneas de firma."""
     story: list = []
     story.append(Spacer(1, 0.4 * cm))
@@ -385,12 +385,33 @@ def _observaciones_y_firmas(page_w: float) -> list:
     story.append(_p("OBSERVACIONES Y RECOMENDACIONES:", "bold"))
     story.append(Spacer(1, 0.15 * cm))
 
-    # Caja vacía para escribir
-    obs_data = [[""] * 1]
-    obs_tbl = Table(obs_data, colWidths=[page_w], rowHeights=[2.2 * cm])
+    # Construir párrafos de convivencia
+    parrafos: list = []
+    if convivencia:
+        nota = convivencia.get("nota")
+        nota_obs = convivencia.get("nota_observacion")
+        observaciones = convivencia.get("observaciones", [])
+        if nota is not None:
+            parrafos.append(Paragraph(f"Comportamiento: {nota:.1f}", _sty["bold"]))
+        if nota_obs is not None:
+            parrafos.append(Paragraph(nota_obs, _sty["normal"]))
+        for texto in observaciones:
+            parrafos.append(Paragraph(f"• {texto}", _sty["normal"]))
+
+    # Caja de observaciones: con contenido o vacía
+    if parrafos:
+        obs_data = [[parrafos]]
+        obs_tbl = Table(obs_data, colWidths=[page_w], rowHeights=None)
+    else:
+        obs_data = [[""] * 1]
+        obs_tbl = Table(obs_data, colWidths=[page_w], rowHeights=[2.2 * cm])
     obs_tbl.setStyle(TableStyle([
         ("BOX",        (0, 0), (-1, -1), 0.5, _GRIS_LINEA),
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FAFAFA")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
     ]))
     story.append(obs_tbl)
     story.append(Spacer(1, 0.5 * cm))
@@ -462,7 +483,7 @@ def generar_boletin_periodo_pdf(datos: dict[str, Any]) -> bytes:
     else:
         story.append(_p("No hay datos de calificaciones para este periodo.", "normal"))
 
-    story.extend(_observaciones_y_firmas(page_w))
+    story.extend(_observaciones_y_firmas(page_w, datos.get("convivencia")))
 
     doc.build(story)
     return buf.getvalue()
@@ -547,7 +568,7 @@ def _build_boletin_anual_pdf(datos: dict[str, Any], label_definitiva: str = "Def
             _sty["promo"],
         ))
 
-    story.extend(_observaciones_y_firmas(page_w))
+    story.extend(_observaciones_y_firmas(page_w, datos.get("convivencia")))
     doc.build(story)
     return buf.getvalue()
 

@@ -36,7 +36,7 @@ from src.interface.design.components import (
     toast_success,
     toast_warning,
 )
-from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary
+from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary, btn_secondary
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.services.convivencia_service import NuevaObservacionDTO
@@ -53,6 +53,7 @@ def _estado_inicial() -> dict:
         "observaciones":     [],   # list[ObservacionPeriodo]
         "sel_estudiante_id": None,
         "sel_periodo_id":    None,
+        "plantilla_id":      None, # ID de plantilla usada al crear (convivencia_12)
     }
 
 
@@ -106,18 +107,37 @@ def _cargar_observaciones(_s: dict, ctx: SessionContext) -> None:
             estudiante_id=int(est_id),
             periodo_id=int(periodo_id) if periodo_id else None,
             solo_publicas=False,
+            usuario_id=ctx.usuario_id,
+            usuario_rol=ctx.usuario_rol,
         )
-        # Filtrar en cliente si es profesor: solo sus propias privadas + todas las públicas
-        if ctx.usuario_rol == "profesor":
-            observaciones = [
-                obs for obs in observaciones
-                if getattr(obs, "es_publica", True)
-                or getattr(obs, "usuario_id", None) == ctx.usuario_id
-            ]
         _s["observaciones"] = observaciones
     except Exception as exc:
         logger.error("Error cargando observaciones: %s", exc)
         _s["observaciones"] = []
+
+
+def _cargar_categorias() -> dict:
+    """Carga las categorías activas de observación para el selector del formulario."""
+    try:
+        categorias = Container.convivencia_service().listar_categorias(solo_activas=True)
+        return {
+            getattr(c, "id", None): getattr(c, "nombre", "")
+            for c in categorias
+        }
+    except Exception as exc:
+        logger.warning("Error cargando categorías: %s", exc)
+        return {}
+
+
+def _cargar_plantillas(categoria_id: int | None = None, limite: int = 20) -> list:
+    """Carga las plantillas sugeridas (más usadas), opcionalmente filtradas por categoría."""
+    try:
+        return Container.convivencia_service().listar_plantillas_sugeridas(
+            categoria_id=categoria_id, limite=limite
+        )
+    except Exception as exc:
+        logger.warning("Error cargando plantillas: %s", exc)
+        return []
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -154,6 +174,7 @@ def _construir_filas(_s: dict) -> list[dict]:
             "estudiante_id": est_id,
             "asignacion_id": getattr(obs, "asignacion_id", None),
             "periodo_id":    getattr(obs, "periodo_id", None),
+            "categoria_id":  getattr(obs, "categoria_id", None),
             "estudiante":    _nombre_estudiante(_s, est_id),
             "texto":         _texto_truncado(texto),
             "texto_completo": texto,
@@ -208,12 +229,16 @@ def observaciones_page() -> None:
         periodo_id = datos.get("periodo_id")
         texto = str(datos.get("texto", "")).strip()
         es_publica = bool(datos.get("es_publica", True))
+        categoria_id = datos.get("categoria_id")
 
         if not texto:
             toast_warning("El texto de la observación es requerido.")
             return False
         if not est_id or not periodo_id:
             toast_warning("Selecciona un estudiante y periodo.")
+            return False
+        if not categoria_id:
+            toast_warning("Selecciona una categoría para la observación.")
             return False
         if not ctx_actual.asignacion_id:
             toast_warning("Contexto incompleto: falta asignación académica.")
@@ -225,13 +250,25 @@ def observaciones_page() -> None:
                 "asignacion_id": ctx_actual.asignacion_id,
                 "periodo_id":    int(periodo_id),
                 "texto":         texto,
+                "categoria_id":  int(categoria_id),
                 "es_publica":    es_publica,
             })
-            Container.convivencia_service().registrar_observacion(dto, ctx_actual.usuario_id)
+            svc = Container.convivencia_service()
+            plantilla_id = _s.get("plantilla_id")
+            if plantilla_id:
+                svc.registrar_observacion_desde_plantilla(
+                    dto, plantilla_id, ctx_actual.usuario_id, ctx_actual.usuario_rol
+                )
+                _s["plantilla_id"] = None
+            else:
+                svc.registrar_observacion(dto, ctx_actual.usuario_id, ctx_actual.usuario_rol)
             toast_success("Observación guardada.")
             _cargar_observaciones(_s, ctx_actual)
             _contenido.refresh()
             return None
+        except PermissionError as exc:
+            toast_warning(f"Sin permiso: {exc}")
+            return False
         except ValueError as exc:
             toast_warning(f"Error de validación: {exc}")
             return False
@@ -240,7 +277,10 @@ def observaciones_page() -> None:
             toast_error(f"Error: {exc}")
             return False
 
-    def _abrir_crear_observacion() -> None:
+    def _abrir_crear_observacion(
+        texto_prefill: str = "",
+        categoria_id_prefill: int | None = None,
+    ) -> None:
         opciones_est = {
             getattr(e, "id", None): f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
             for e in _s["estudiantes"]
@@ -249,6 +289,7 @@ def observaciones_page() -> None:
             getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
             for p in _s["periodos"]
         }
+        opciones_cat = _cargar_categorias()
         campos = [
             {
                 "key":      "estudiante_id",
@@ -267,10 +308,19 @@ def observaciones_page() -> None:
                 "requerido": True,
             },
             {
+                "key":      "categoria_id",
+                "label":    "Categoría",
+                "tipo":     "select",
+                "opciones": opciones_cat,
+                "valor":    categoria_id_prefill,
+                "requerido": True,
+            },
+            {
                 "key":         "texto",
                 "label":       "Texto de la observación",
                 "tipo":        "textarea",
                 "placeholder": "Máximo 2000 caracteres...",
+                "valor":       texto_prefill,
                 "requerido":   True,
             },
             {
@@ -288,16 +338,70 @@ def observaciones_page() -> None:
             max_width="max-w-lg",
         )
 
+    def _abrir_selector_plantilla() -> None:
+        """Abre el selector de plantillas (form_dialog) para pre-llenar el form de observación."""
+        todas_plantillas = _cargar_plantillas(None)
+        if not todas_plantillas:
+            toast_warning("No hay plantillas disponibles.")
+            return
+
+        opciones_plt = {
+            getattr(p, "id", None): getattr(p, "texto", "")
+            for p in todas_plantillas
+        }
+
+        campos = [
+            {
+                "key":      "plantilla_id",
+                "label":    "Seleccionar plantilla",
+                "tipo":     "select",
+                "opciones": opciones_plt,
+                "requerido": True,
+            },
+        ]
+
+        def _on_submit_plantilla(datos: dict) -> bool | None:
+            plantilla_id = datos.get("plantilla_id")
+            if not plantilla_id:
+                toast_warning("Selecciona una plantilla.")
+                return False
+            plantilla = next(
+                (p for p in todas_plantillas if getattr(p, "id", None) == plantilla_id),
+                None,
+            )
+            if plantilla is None:
+                toast_warning("Plantilla no encontrada.")
+                return False
+            _s["plantilla_id"] = getattr(plantilla, "id", None)
+            _abrir_crear_observacion(
+                texto_prefill=getattr(plantilla, "texto", ""),
+                categoria_id_prefill=getattr(plantilla, "categoria_id", None),
+            )
+            return None
+
+        form_dialog(
+            titulo="Usar plantilla",
+            campos=campos,
+            on_submit=_on_submit_plantilla,
+            texto_submit="Usar plantilla",
+            max_width="max-w-lg",
+        )
+
     def _toggle_visibilidad(obs_id: int, es_publica_actual: bool, fila: dict) -> None:
         """Invierte la visibilidad de una observación (upsert via registrar_observacion)."""
         ctx_actual = SessionContext.desde_storage() or ctx
         asignacion_id = fila.get("asignacion_id") or getattr(ctx_actual, "asignacion_id", None)
+        categoria_id = fila.get("categoria_id")
+        if categoria_id is None:
+            toast_warning("Esta observación no tiene categoría asignada. Edítala primero.")
+            return
         try:
             dto = _nueva_observacion_dto({
                 "estudiante_id": int(fila["estudiante_id"]),
                 "asignacion_id": asignacion_id,
                 "periodo_id":    int(fila["periodo_id"]),
                 "texto":         fila["texto_completo"],
+                "categoria_id":  int(categoria_id),
                 "es_publica":    not es_publica_actual,
             })
             Container.convivencia_service().registrar_observacion(dto, ctx_actual.usuario_id)
@@ -307,6 +411,30 @@ def observaciones_page() -> None:
         except Exception as exc:
             logger.error("Error cambiando visibilidad: %s", exc, exc_info=True)
             toast_error(f"Error: {exc}")
+
+    def _promover_a_plantilla(obs_id: int) -> None:
+        """Promueve una observación a plantilla del catálogo (solo director/coordinador)."""
+        def _ejecutar() -> None:
+            ctx_actual = SessionContext.desde_storage() or ctx
+            try:
+                Container.convivencia_service().promover_observacion_a_plantilla(
+                    obs_id,
+                    usuario_id=ctx_actual.usuario_id,
+                    usuario_rol=ctx_actual.usuario_rol,
+                )
+                toast_success("Observación guardada como plantilla.")
+            except PermissionError as exc:
+                toast_warning(f"Sin permiso: {exc}")
+            except Exception as exc:
+                logger.error("Error promoviendo observación %s: %s", obs_id, exc, exc_info=True)
+                toast_error(f"Error: {exc}")
+
+        confirm_dialog(
+            titulo="Promover a plantilla",
+            mensaje="¿Deseas guardar esta observación como plantilla del catálogo?",
+            on_confirm=_ejecutar,
+            variante="info",
+        )
 
     def _eliminar_observacion(obs_id: int) -> None:
         def _ejecutar() -> None:
@@ -362,6 +490,11 @@ def observaciones_page() -> None:
                         ).classes("andes-input input-min-sm").props("outlined dense")
 
                         ui.element("div").classes("panel-toolbar-spacer")
+                        btn_ghost(
+                            "Usar plantilla",
+                            on_click=_abrir_selector_plantilla,
+                            icon="description",
+                        )
                         btn_primary(
                             "Nueva observación",
                             on_click=_abrir_crear_observacion,
@@ -408,6 +541,13 @@ def observaciones_page() -> None:
                                         ),
                                         size="sm",
                                     )
+                                    if ctx_actual.usuario_rol in ("director", "coordinador"):
+                                        btn_secondary(
+                                            "Promover a plantilla",
+                                            on_click=lambda oid=fila["id"]: _promover_a_plantilla(oid),
+                                            icon="upload",
+                                            size="sm",
+                                        )
                                     btn_danger(
                                         "Eliminar",
                                         on_click=lambda oid=fila["id"]: _eliminar_observacion(oid),

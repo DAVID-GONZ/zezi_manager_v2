@@ -16,6 +16,7 @@ from src.domain.models.dtos import (
     InformeAsistenciaDTO,
     InformeNotasDTO,
 )
+from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.service_ports import IExporterService
 
@@ -94,12 +95,14 @@ class InformeService:
         estadisticos_repo: IEstadisticosRepository,
         exporter: IExporterService | None = None,
         estudiante_repo=None,
+        convivencia_repo: IConvivenciaRepository | None = None,
     ) -> None:
-        """Inyecta el repo de estadísticos y, opcionalmente, el exportador y
-        el repo de estudiantes."""
+        """Inyecta el repo de estadísticos y, opcionalmente, el exportador,
+        el repo de estudiantes y el repo de convivencia."""
         self._estadisticos_repo = estadisticos_repo
         self._exporter          = exporter
         self._estudiante_repo   = estudiante_repo
+        self._convivencia_repo  = convivencia_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -112,6 +115,34 @@ class InformeService:
                 "Proporcione una implementación de IExporterService."
             )
         return self._exporter
+
+    # ------------------------------------------------------------------
+    # Datos de convivencia para boletín
+    # ------------------------------------------------------------------
+
+    def convivencia_boletin(
+        self,
+        estudiante_id: int,
+        periodo_id: int,
+    ) -> dict:
+        """
+        Retorna dict con claves:
+          nota: float | None
+          nota_observacion: str | None  (campo NotaComportamiento.observacion)
+          observaciones: list[str]      (ObservacionPeriodo.texto donde es_publica=True)
+        Si no hay convivencia_repo inyectado → retorna dict con None / [].
+        """
+        if self._convivencia_repo is None:
+            return {"nota": None, "nota_observacion": None, "observaciones": []}
+        nota = self._convivencia_repo.get_nota(estudiante_id, periodo_id)
+        obs = self._convivencia_repo.listar_observaciones_por_estudiante(
+            estudiante_id, periodo_id, solo_publicas=True
+        )
+        return {
+            "nota":             nota.valor if nota else None,
+            "nota_observacion": nota.observacion if nota else None,
+            "observaciones":    [o.texto for o in obs],
+        }
 
     # ------------------------------------------------------------------
     # Informe de notas
@@ -298,6 +329,7 @@ class InformeService:
             datos = self._estadisticos_repo.boletin_datos_acumulado(
                 estudiante_id, grupo_id, periodo_id
             )
+            datos["convivencia"] = self.convivencia_boletin(estudiante_id, periodo_id)
             return _boletin_mod.generar_boletin_acumulado_pdf(datos)
 
         # Excel: tabla plana acumulada con columna por cada periodo anterior + actual
@@ -308,6 +340,9 @@ class InformeService:
         periodos = datos_raw.get("periodos", [])
         label_def = "Definitiva" if datos_raw.get("es_ultimo_periodo") else "Promedio"
         filas: list[dict] = []
+        conv: dict | None = None
+        if self._convivencia_repo is not None:
+            conv = self.convivencia_boletin(estudiante_id, periodo_id)
         for area in datos_raw.get("areas", []):
             for asig in area.get("asignaturas", []):
                 fila: dict = {
@@ -322,6 +357,9 @@ class InformeService:
                 fila["F. Just."]      = asig.get("faltas_justificadas", 0)
                 fila["Retrasos"]      = asig.get("retrasos", 0)
                 fila["Excusas"]       = asig.get("excusas", 0)
+                if conv is not None:
+                    fila["Nota Conv."]    = conv["nota"]
+                    fila["Observaciones"] = " | ".join(conv["observaciones"])
                 filas.append(fila)
         return exporter.exportar_excel(filas, nombre_hoja="Boletín Periodo")
 

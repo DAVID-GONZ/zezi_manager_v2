@@ -75,6 +75,9 @@ NAV_ITEMS: list[dict] = [
             {"label": "Seguimiento",       "icon": "assignment",
              "ruta": "/convivencia/notas",
              "rol":  ["director", "coordinador", "profesor"]},
+            {"label": "Categorías",        "icon": "category",
+             "ruta": "/convivencia/categorias",
+             "rol":  ["director", "coordinador"]},
         ],
     },
     {

@@ -6,13 +6,16 @@ from datetime import date
 import pytest
 
 from src.domain.models.convivencia import (
+    CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
+    NuevaCategoriaDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
+    PlantillaObservacion,
     RegistroComportamiento,
     TipoRegistro,
 )
@@ -28,9 +31,13 @@ class FakeConvRepo(IConvivenciaRepository):
         self._obs: dict[int, ObservacionPeriodo] = {}
         self._regs: dict[int, RegistroComportamiento] = {}
         self._notas: dict[tuple, NotaComportamiento] = {}
+        self._cats: dict[int, CategoriaObservacion] = {}
+        self._plantillas: dict[int, PlantillaObservacion] = {}
         self._next_obs = 1
         self._next_reg = 1
         self._next_nota = 1
+        self._next_cat = 1
+        self._next_plantilla = 1
 
     # Observaciones
     def get_observacion(self, oid: int) -> ObservacionPeriodo | None:
@@ -96,6 +103,55 @@ class FakeConvRepo(IConvivenciaRepository):
         self._notas[key] = n
         return n
 
+    # Categorías
+    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
+        cats = list(self._cats.values())
+        if solo_activas:
+            cats = [c for c in cats if c.activa]
+        return cats
+
+    def get_categoria(self, categoria_id: int) -> CategoriaObservacion | None:
+        return self._cats.get(categoria_id)
+
+    def guardar_categoria(self, cat: CategoriaObservacion) -> CategoriaObservacion:
+        cat = cat.model_copy(update={"id": self._next_cat})
+        self._next_cat += 1
+        self._cats[cat.id] = cat
+        return cat
+
+    def actualizar_categoria(self, cat: CategoriaObservacion) -> CategoriaObservacion:
+        self._cats[cat.id] = cat
+        return cat
+
+    # Plantillas (convivencia_12)
+    def listar_plantillas(self, categoria_id=None, solo_activas=True) -> list[PlantillaObservacion]:
+        result = list(self._plantillas.values())
+        if solo_activas:
+            result = [p for p in result if p.activa]
+        if categoria_id is not None:
+            result = [p for p in result if p.categoria_id == categoria_id]
+        return sorted(result, key=lambda p: p.uso_count, reverse=True)
+
+    def get_plantilla(self, plantilla_id: int) -> PlantillaObservacion | None:
+        return self._plantillas.get(plantilla_id)
+
+    def guardar_plantilla(self, p: PlantillaObservacion) -> PlantillaObservacion:
+        p = p.model_copy(update={"id": self._next_plantilla})
+        self._next_plantilla += 1
+        self._plantillas[p.id] = p
+        return p
+
+    def actualizar_plantilla(self, p: PlantillaObservacion) -> PlantillaObservacion:
+        self._plantillas[p.id] = p
+        return p
+
+    def incrementar_uso_plantilla(self, plantilla_id: int) -> None:
+        if plantilla_id in self._plantillas:
+            p = self._plantillas[plantilla_id]
+            self._plantillas[plantilla_id] = p.model_copy(
+                update={"uso_count": p.uso_count + 1}
+            )
+
 
 # ===========================================================================
 # Helpers
@@ -115,7 +171,7 @@ class TestRegistrarObservacion:
         svc, _ = _make_svc()
         dto = NuevaObservacionDTO(
             estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Buen desempeño", es_publica=True,
+            texto="Buen desempeño", es_publica=True, categoria_id=1,
         )
         obs = svc.registrar_observacion(dto)
         assert obs.id is not None
@@ -124,12 +180,12 @@ class TestRegistrarObservacion:
         svc, _ = _make_svc()
         dto = NuevaObservacionDTO(
             estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto inicial",
+            texto="Texto inicial", categoria_id=1,
         )
         svc.registrar_observacion(dto)
         dto2 = NuevaObservacionDTO(
             estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto actualizado",
+            texto="Texto actualizado", categoria_id=1,
         )
         obs = svc.registrar_observacion(dto2)
         assert obs.texto == "Texto actualizado"
@@ -522,5 +578,329 @@ class TestConceptoComportamiento:
         assert "<th>Estudiante</th>" in exp.html
         assert "<th>Concepto</th>" in exp.html
         assert "Reporte X" in exp.html
+
+
+# ===========================================================================
+# Catálogo de categorías (convivencia_10)
+# ===========================================================================
+
+class TestCategoriasObservacion:
+    def test_listar_categorias_delega_al_repo(self):
+        """listar_categorias llama al repo con solo_activas=True por defecto."""
+        repo = FakeConvRepo()
+        # Precargar dos categorías: una activa y una inactiva.
+        repo.guardar_categoria(
+            CategoriaObservacion(nombre="Académico", activa=True)
+        )
+        repo.guardar_categoria(
+            CategoriaObservacion(nombre="Archivada", activa=False)
+        )
+        svc = ConvivenciaService(repo=repo)
+        resultado = svc.listar_categorias(solo_activas=True)
+        assert len(resultado) == 1
+        assert resultado[0].nombre == "Académico"
+        # Con solo_activas=False deben aparecer ambas
+        todas = svc.listar_categorias(solo_activas=False)
+        assert len(todas) == 2
+
+    def test_crear_categoria_llama_guardar(self):
+        """crear_categoria persiste la categoría y retorna el objeto con id."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        dto = NuevaCategoriaDTO(nombre="Convivencia", es_comportamental=True)
+        cat = svc.crear_categoria(dto)
+        assert cat.id is not None
+        assert cat.nombre == "Convivencia"
+        assert cat.es_comportamental is True
+        assert cat.activa is True
+        # Verificar persistencia en repo
+        assert len(repo._cats) == 1
+
+    def test_desactivar_categoria_pone_activa_false(self):
+        """desactivar_categoria setea activa=False en la categoría."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        # Crear primero una categoría activa
+        dto = NuevaCategoriaDTO(nombre="Normas", es_comportamental=True)
+        cat = svc.crear_categoria(dto)
+        assert cat.activa is True
+        # Desactivar
+        desactivada = svc.desactivar_categoria(cat.id)
+        assert desactivada.activa is False
+        assert desactivada.nombre == "Normas"
+        # El repo también refleja el cambio
+        en_repo = repo.get_categoria(cat.id)
+        assert en_repo.activa is False
+
+
+# ===========================================================================
+# Autorización por objeto: observaciones (convivencia_11)
+# ===========================================================================
+
+class _FakeAsignacionSvc:
+    """Stub de AsignacionService: asignación con usuario_id configurable."""
+    def __init__(self, usuario_id_titular: int):
+        self._usuario_id_titular = usuario_id_titular
+
+    def get_by_id(self, asig_id: int):
+        class _Asig:
+            pass
+        a = _Asig()
+        a.id = asig_id
+        a.usuario_id = self._usuario_id_titular
+        return a
+
+    def listar_por_docente(self, usuario_id, periodo_id=None):
+        return []
+
+
+class TestObservacionAutorizacionPorObjeto:
+    """Autorización por objeto (convivencia_11): profesores solo en sus asignaciones."""
+
+    def test_profesor_no_autorizado_registrar_observacion_ajena(self):
+        """Profesor intenta registrar obs de asignación que no es suya → PermissionError."""
+        repo = FakeConvRepo()
+        # asignacion_id=3 pertenece al titular usuario_id=99, no al profesor 50
+        svc = ConvivenciaService(
+            repo=repo,
+            asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=99),
+        )
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Obs ajena", categoria_id=1,
+        )
+        with pytest.raises(PermissionError, match="Solo puedes registrar"):
+            svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
+        # No debe haber persistido nada
+        assert repo._obs == {}
+
+    def test_profesor_autorizado_registra_su_propia_observacion(self):
+        """Profesor registra obs de su propia asignación → permitido."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(
+            repo=repo,
+            asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=50),
+        )
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Obs propia", categoria_id=1,
+        )
+        obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
+        assert obs.id is not None
+        assert len(repo._obs) == 1
+
+    def test_director_puede_registrar_sin_restriccion_de_asignacion(self):
+        """Director no pasa por la verificación de asignación → acceso pleno."""
+        repo = FakeConvRepo()
+        # Aunque el provider diga que el titular es 99, el director (50) puede pasar
+        svc = ConvivenciaService(
+            repo=repo,
+            asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=99),
+        )
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Obs de director", categoria_id=1,
+        )
+        obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="director")
+        assert obs.id is not None
+
+    def test_sin_asignacion_provider_no_bloquea_a_profesor(self):
+        """Sin asignacion_svc_provider, compat retro: no bloquea aunque sea profesor."""
+        svc, repo = _make_svc()  # sin asignacion_svc_provider
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Obs sin provider", categoria_id=1,
+        )
+        obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
+        assert obs.id is not None
+
+
+# ===========================================================================
+# Catálogo de plantillas (convivencia_12)
+# ===========================================================================
+
+class TestPlantillasObservacion:
+    def test_listar_plantillas_servicio(self):
+        """listar_plantillas delega al repo con solo_activas=True y filtra por categoría."""
+        repo = FakeConvRepo()
+        # Insertar plantillas: una de cat 1, una de cat 2, una inactiva
+        repo.guardar_plantilla(PlantillaObservacion(texto="Texto A", categoria_id=1, activa=True))
+        repo.guardar_plantilla(PlantillaObservacion(texto="Texto B", categoria_id=2, activa=True))
+        repo.guardar_plantilla(PlantillaObservacion(texto="Inactiva", categoria_id=1, activa=False))
+        svc = ConvivenciaService(repo=repo)
+
+        # Sin filtro: devuelve solo las activas
+        todas_activas = svc.listar_plantillas()
+        assert len(todas_activas) == 2
+        textos = {p.texto for p in todas_activas}
+        assert "Texto A" in textos
+        assert "Texto B" in textos
+        assert "Inactiva" not in textos
+
+        # Filtrado por categoria_id=1: solo "Texto A"
+        de_cat1 = svc.listar_plantillas(categoria_id=1)
+        assert len(de_cat1) == 1
+        assert de_cat1[0].texto == "Texto A"
+
+        # Filtrado por categoria_id=2: solo "Texto B"
+        de_cat2 = svc.listar_plantillas(categoria_id=2)
+        assert len(de_cat2) == 1
+        assert de_cat2[0].texto == "Texto B"
+
+    def test_registrar_observacion_desde_plantilla_incrementa_uso(self):
+        """registrar_observacion_desde_plantilla guarda obs con origen='plantilla' e incrementa uso."""
+        repo = FakeConvRepo()
+        # Insertar una plantilla
+        plantilla = repo.guardar_plantilla(
+            PlantillaObservacion(texto="Buen desempeño", categoria_id=1, uso_count=3)
+        )
+        svc = ConvivenciaService(repo=repo)
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto=plantilla.texto, categoria_id=1,
+        )
+        obs = svc.registrar_observacion_desde_plantilla(dto, plantilla.id)
+
+        # La observación debe haberse guardado con origen="plantilla"
+        assert obs.id is not None
+        assert obs.origen == "plantilla"
+
+        # El uso_count debe haber incrementado
+        actualizada = repo.get_plantilla(plantilla.id)
+        assert actualizada.uso_count == 4  # 3 + 1
+
+    def test_registrar_observacion_desde_plantilla_upsert(self):
+        """Si ya existe una observación para asig/periodo/estudiante, la actualiza."""
+        repo = FakeConvRepo()
+        plantilla = repo.guardar_plantilla(
+            PlantillaObservacion(texto="Texto plantilla", categoria_id=1)
+        )
+        svc = ConvivenciaService(repo=repo)
+
+        dto = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Texto original", categoria_id=1,
+        )
+        # Primera vez → crea
+        obs1 = svc.registrar_observacion_desde_plantilla(dto, plantilla.id)
+        assert obs1.origen == "plantilla"
+
+        # Segunda vez → actualiza (misma asig/periodo/estudiante)
+        dto2 = NuevaObservacionDTO(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Texto actualizado", categoria_id=1,
+        )
+        obs2 = svc.registrar_observacion_desde_plantilla(dto2, plantilla.id)
+        assert obs2.texto == "Texto actualizado"
+        assert obs2.origen == "plantilla"
+
+        # Solo debe haber una observación en el repo
+        assert len(repo._obs) == 1
+
+        # Uso incrementado 2 veces
+        assert repo.get_plantilla(plantilla.id).uso_count == 2
+
+
+# ===========================================================================
+# Catálogo de retroalimentación (convivencia_13)
+# ===========================================================================
+
+class TestPromocionPlantillas:
+    """Tests para promover_observacion_a_plantilla y listar_plantillas_sugeridas."""
+
+    def _obs_en_repo(self, repo: FakeConvRepo) -> ObservacionPeriodo:
+        """Inserta una observación de prueba y la retorna con id asignado."""
+        return repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=3,
+                periodo_id=5,
+                texto="Excelente participación",
+                categoria_id=2,
+            )
+        )
+
+    def test_promover_observacion_a_plantilla_crea_plantilla(self):
+        """Director promueve una observación existente → se crea PlantillaObservacion."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_en_repo(repo)
+
+        plantilla = svc.promover_observacion_a_plantilla(
+            obs.id, usuario_id=10, usuario_rol="director"
+        )
+
+        assert isinstance(plantilla, PlantillaObservacion)
+        assert plantilla.id is not None
+        assert plantilla.texto == obs.texto
+        assert plantilla.categoria_id == obs.categoria_id
+        # Verificar que se persistió en el repo
+        assert len(repo._plantillas) == 1
+
+    def test_promover_observacion_coordinador_permitido(self):
+        """Coordinador también tiene permiso para promover."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_en_repo(repo)
+
+        plantilla = svc.promover_observacion_a_plantilla(
+            obs.id, usuario_id=20, usuario_rol="coordinador"
+        )
+        assert plantilla.id is not None
+
+    def test_promover_observacion_profesor_no_autorizado(self):
+        """Profesor intenta promover → PermissionError, no se persiste."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_en_repo(repo)
+
+        with pytest.raises(PermissionError):
+            svc.promover_observacion_a_plantilla(
+                obs.id, usuario_id=50, usuario_rol="profesor"
+            )
+        # Ninguna plantilla debe haberse creado
+        assert len(repo._plantillas) == 0
+
+    def test_promover_observacion_inexistente_lanza(self):
+        """Si la observación no existe → ValueError."""
+        svc, _ = _make_svc()
+        with pytest.raises(ValueError, match="999"):
+            svc.promover_observacion_a_plantilla(
+                999, usuario_id=10, usuario_rol="director"
+            )
+
+    def test_listar_plantillas_sugeridas_limite(self):
+        """listar_plantillas_sugeridas retorna como máximo `limite` elementos."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        # Insertar 8 plantillas con distintos uso_count
+        for i in range(8):
+            repo.guardar_plantilla(
+                PlantillaObservacion(texto=f"Plantilla {i}", categoria_id=1, uso_count=i)
+            )
+
+        # limite=5 (default)
+        sugeridas = svc.listar_plantillas_sugeridas()
+        assert len(sugeridas) == 5
+
+        # Las primeras deben ser las de mayor uso_count
+        usos = [p.uso_count for p in sugeridas]
+        assert usos == sorted(usos, reverse=True)
+
+    def test_listar_plantillas_sugeridas_filtro_categoria(self):
+        """listar_plantillas_sugeridas respeta el filtro de categoria_id."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        repo.guardar_plantilla(PlantillaObservacion(texto="Cat1-A", categoria_id=1, uso_count=10))
+        repo.guardar_plantilla(PlantillaObservacion(texto="Cat1-B", categoria_id=1, uso_count=5))
+        repo.guardar_plantilla(PlantillaObservacion(texto="Cat2-A", categoria_id=2, uso_count=8))
+
+        sugeridas_cat1 = svc.listar_plantillas_sugeridas(categoria_id=1, limite=10)
+        assert len(sugeridas_cat1) == 2
+        assert all(p.categoria_id == 1 for p in sugeridas_cat1)
+
+        sugeridas_cat2 = svc.listar_plantillas_sugeridas(categoria_id=2, limite=10)
+        assert len(sugeridas_cat2) == 1
+        assert sugeridas_cat2[0].texto == "Cat2-A"
 
 

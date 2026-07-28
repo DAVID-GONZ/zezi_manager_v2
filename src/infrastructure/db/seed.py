@@ -179,7 +179,7 @@ _USUARIOS_DEV = [
     ("coordinador", "Coord2025*",    "Jorge Iván Coordinador",  "coordinador@zeci.edu.co", "coordinador"),
     ("rgomez",      "Pass2025*",     "Ricardo Gómez Ríos",      "rgomez@zeci.edu.co",      "profesor"),
     ("cmoreno",     "Pass2025*",     "Claudia Moreno Díaz",     "cmoreno@zeci.edu.co",     "profesor"),
-    ("jvargas",     "   ",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
+    ("jvargas",     "Pass2025*",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
     ("amartinez",   "Pass2025*",     "Ana Martínez Soto",       "amartinez@zeci.edu.co",   "profesor"),
     ("pjimenez",    "Pass2025*",     "Paula Jiménez Lara",      "pjimenez@zeci.edu.co",    "profesor"),
     ("dortiz",      "Pass2025*",     "Diego Ortiz Cano",        "dortiz@zeci.edu.co",      "profesor"),
@@ -221,6 +221,29 @@ _TIPOS_ALERTAS = [
     ("materias_en_riesgo",       2.0,  True,  True,  False),
     ("plan_mejoramiento_vencido",1.0,  True,  True,  False),
     ("habilitacion_pendiente",   1.0,  True,  False, False),
+]
+
+# Categorías de observación por defecto (convivencia_09).
+# Formato: (nombre, es_comportamental)
+_CATEGORIAS_DEFAULT = [
+    ("Académico",                False),
+    ("Convivencia y normas",     True),
+    ("Responsabilidad",          False),
+    ("Participación",            False),
+    ("Comportamiento positivo",  True),
+    ("Comportamiento negativo",  True),
+    ("Seguimiento familiar",     False),
+]
+
+# Plantillas de observación por defecto (convivencia_12).
+# Formato: (texto, nombre_categoria)
+_PLANTILLAS_DEFAULT = [
+    ("Demuestra buen desempeño y compromiso en clase.",        "Comportamiento positivo"),
+    ("Cumple con las normas de convivencia del aula.",          "Convivencia y normas"),
+    ("Entrega oportuna de trabajos y tareas.",                  "Responsabilidad"),
+    ("Participa activamente en las actividades.",               "Participación"),
+    ("Presenta dificultades en el respeto a compañeros.",       "Comportamiento negativo"),
+    ("Incumplimiento reiterado de normas del aula.",            "Convivencia y normas"),
 ]
 
 _CATEGORIAS_EVALUACION = [
@@ -309,6 +332,55 @@ def _documento_ti() -> str:
 # ---------------------------------------------------------------------------
 # Seeders atómicos — no hacen commit, reciben conn
 # ---------------------------------------------------------------------------
+
+def _seed_plantillas(conn: sqlite3.Connection) -> list[int]:
+    """
+    Inserta las plantillas de observación por defecto (convivencia_12).
+    Idempotente por texto: si una plantilla ya existe la reutiliza.
+    Busca el categoria_id por nombre de categoría antes de insertar.
+    Retorna lista de ids creados/existentes.
+    """
+    ids: list[int] = []
+    for texto, cat_nombre in _PLANTILLAS_DEFAULT:
+        row = conn.execute(
+            "SELECT id FROM categorias_observacion WHERE nombre = ?", (cat_nombre,)
+        ).fetchone()
+        cat_id = row[0] if row else None
+        pid = _get_or_insert(
+            conn,
+            "SELECT id FROM plantillas_observacion WHERE texto = ?",
+            (texto,),
+            """
+            INSERT INTO plantillas_observacion (texto, categoria_id, uso_count, activa)
+            VALUES (?, ?, 0, 1)
+            """,
+            (texto, cat_id),
+        )
+        ids.append(pid)
+    return ids
+
+
+def _seed_categorias(conn: sqlite3.Connection) -> list[int]:
+    """
+    Inserta las categorías de observación por defecto (convivencia_09).
+    Idempotente por nombre: si una categoría ya existe la reutiliza.
+    Retorna lista de ids creados/existentes.
+    """
+    ids: list[int] = []
+    for nombre, es_comportamental in _CATEGORIAS_DEFAULT:
+        cid = _get_or_insert(
+            conn,
+            "SELECT id FROM categorias_observacion WHERE nombre = ?",
+            (nombre,),
+            """
+            INSERT INTO categorias_observacion (nombre, es_comportamental, activa)
+            VALUES (?, ?, 1)
+            """,
+            (nombre, int(es_comportamental)),
+        )
+        ids.append(cid)
+    return ids
+
 
 def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
     """Crea o recupera la configuración del año. Retorna anio_id."""
@@ -1573,10 +1645,19 @@ def seed_base(
     # Multi-tenant (paso_24): institución por defecto (#1) + backfill de usuarios.
     _seed_institucion(conn)
 
+    # Categorías de observación por defecto (convivencia_09).
+    categoria_ids = _seed_categorias(conn)
+
+    # Plantillas de observación por defecto (convivencia_12).
+    # Debe correr DESPUÉS de _seed_categorias para que los IDs existan.
+    plantilla_ids = _seed_plantillas(conn)
+
     result.counts = {
-        "niveles_desempeno": len(result.nivel_ids),
-        "areas_conocimiento": len(result.area_ids),
-        "usuarios_base": len(result.usuario_ids),
+        "niveles_desempeno":        len(result.nivel_ids),
+        "areas_conocimiento":       len(result.area_ids),
+        "usuarios_base":            len(result.usuario_ids),
+        "categorias_observacion":   len(categoria_ids),
+        "plantillas_observacion":   len(plantilla_ids),
     }
     result.log_resumen()
     return result
