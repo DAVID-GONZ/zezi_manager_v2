@@ -7,13 +7,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
+from src.domain.models.alerta import Alerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     NuevaCategoriaDTO,
+    NuevaAlertaSeguimientoDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
@@ -21,6 +22,7 @@ from src.domain.models.convivencia import (
     PlantillaObservacion,
     RegistroComportamiento,
     ReporteConvivenciaFilaDTO,
+    Seguimiento360DTO,
     TipoRegistro,
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
@@ -140,10 +142,8 @@ class ConvivenciaService:
             return
 
         cfg = self._alerta_repo.get_configuracion(
-            anio_id, TipoAlerta.PLAN_MEJORAMIENTO_VENCIDO
+            anio_id, TipoAlerta.SEGUIMIENTO_REQUERIDO
         )
-        # Reutilizamos un tipo de alerta apropiado; en ausencia de tipo específico
-        # para comportamiento, se omite la alerta.
         if cfg is None or not cfg.activa:
             return
 
@@ -152,7 +152,7 @@ class ConvivenciaService:
             return
 
         if self._alerta_repo.existe_pendiente(
-            estudiante_id, TipoAlerta.PLAN_MEJORAMIENTO_VENCIDO
+            estudiante_id, TipoAlerta.SEGUIMIENTO_REQUERIDO
         ):
             return
 
@@ -163,11 +163,11 @@ class ConvivenciaService:
         )
         alerta = Alerta(
             estudiante_id=estudiante_id,
-            tipo_alerta=TipoAlerta.PLAN_MEJORAMIENTO_VENCIDO,
+            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
             nivel=nivel,
             descripcion=(
-                f"El estudiante tiene {conteo} registro(s) negativos de comportamiento "
-                f"(umbral configurado: {int(cfg.umbral)})."
+                f"El estudiante tiene {conteo} registro(s) negativo(s) de comportamiento "
+                f"(umbral: {int(cfg.umbral)}). Se recomienda seguimiento."
             ),
         )
         self._alerta_repo.guardar_alerta(alerta)
@@ -828,5 +828,240 @@ class ConvivenciaService:
         """
         return self._repo.listar_plantillas(categoria_id=categoria_id, solo_activas=True)[:limite]
 
+    # ------------------------------------------------------------------
+    # Promoción a comportamiento (convivencia_14)
+    # ------------------------------------------------------------------
 
-__all__ = ["ConvivenciaService", "NuevaCategoriaDTO", "PlantillaObservacion", "TipoRegistro"]
+    @requiere_escritura
+    def promover_a_comportamiento(
+        self,
+        observacion_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> RegistroComportamiento:
+        """
+        Solo para observaciones con categoria.es_comportamental=True.
+        Crea un RegistroComportamiento y enlaza la observación al registro.
+        RBAC: DIRECTOR, COORDINADOR.
+
+        Pasos:
+          1. Verifica RBAC: solo director/coordinador → PermissionError.
+          2. Carga la observación → ValueError si no existe.
+          3. Verifica que la categoría sea comportamental → ValueError si no.
+          4. Crea el RegistroComportamiento (grupo_id resuelto vía
+             asignacion_svc_provider si disponible, o 0 como fallback).
+          5. Persiste el registro y enlaza la observación (FK).
+          6. Retorna el registro creado.
+        """
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError(
+                "Solo directores y coordinadores pueden promover "
+                "observaciones a registros de comportamiento."
+            )
+
+        obs = self._get_observacion_o_lanzar(observacion_id)
+
+        if obs.categoria_id is None:
+            raise ValueError(
+                "La observación no tiene categoría asignada; "
+                "solo se pueden promover observaciones clasificadas."
+            )
+
+        categoria = self._repo.get_categoria(obs.categoria_id)
+        if categoria is None or not categoria.es_comportamental:
+            raise ValueError("La categoría no es comportamental")
+
+        # Resolver grupo_id desde la asignación (mejor esfuerzo)
+        grupo_id: int = 0
+        if self._asignacion_svc_provider is not None:
+            try:
+                svc_asig = self._asignacion_svc_provider()
+                asig = svc_asig.get_by_id(obs.asignacion_id)
+                if asig is not None and hasattr(asig, "grupo_id"):
+                    grupo_id = int(asig.grupo_id)
+            except Exception:
+                pass  # fallback a 0
+
+        registro_nuevo = RegistroComportamiento(
+            estudiante_id=obs.estudiante_id,
+            grupo_id=grupo_id,
+            periodo_id=obs.periodo_id,
+            descripcion=obs.texto,
+            usuario_registro_id=usuario_id,
+            tipo=TipoRegistro.DIFICULTAD,
+        )
+        registro = self._repo.guardar_registro(registro_nuevo)
+
+        obs_actualizada = obs.model_copy(
+            update={"registro_comportamiento_id": registro.id}
+        )
+        self._repo.actualizar_observacion(obs_actualizada)
+
+        return registro
+
+
+    # ------------------------------------------------------------------
+    # Alertas de seguimiento manual (convivencia_16)
+    # ------------------------------------------------------------------
+
+    @requiere_escritura
+    def crear_alerta_seguimiento_manual(
+        self,
+        dto: NuevaAlertaSeguimientoDTO,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> Alerta:
+        """
+        Crea una alerta de seguimiento manual dirigida a un profesor.
+        RBAC: solo DIRECTOR y COORDINADOR pueden crearla.
+        """
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError(
+                "Solo directores y coordinadores pueden crear alertas de seguimiento."
+            )
+        if self._alerta_repo is None:
+            raise RuntimeError(
+                "ConvivenciaService no tiene alerta_repo inyectado; "
+                "no puede crear alertas de seguimiento."
+            )
+        alerta = Alerta(
+            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
+            estudiante_id=dto.estudiante_id,
+            descripcion=dto.descripcion,
+            nivel=dto.nivel,
+            usuario_destino_id=dto.usuario_destino_id,
+        )
+        return self._alerta_repo.guardar_alerta(alerta)
+
+
+    # ------------------------------------------------------------------
+    # Vista 360° del estudiante (convivencia_18)
+    # ------------------------------------------------------------------
+
+    def vista_360(
+        self,
+        estudiante_id: int,
+        periodo_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> Seguimiento360DTO:
+        """
+        Consolida la visión completa de convivencia de un estudiante en un
+        periodo: nota de comportamiento, concepto narrativo, nivel de desempeño,
+        observaciones públicas y alertas activas de seguimiento.
+
+        RBAC:
+          - director / coordinador → acceso pleno.
+          - director_de_grupo / director_grupo → solo si es director del grupo
+            del estudiante (verificado con catalogo_academico_svc_provider cuando
+            está disponible; compat retro cuando no lo está).
+          - cualquier otro rol → PermissionError.
+        """
+        _roles_plenos    = ("director", "coordinador")
+        _roles_dir_grupo = ("director_de_grupo", "director_grupo")
+
+        if usuario_rol not in _roles_plenos:
+            if usuario_rol in _roles_dir_grupo:
+                # Verificar que el usuario es director del grupo del estudiante.
+                if (
+                    self._catalogo_academico_svc_provider is not None
+                    and usuario_id is not None
+                    and self._estudiante_svc_provider is not None
+                ):
+                    try:
+                        est = self._estudiante_svc_provider().get_by_id(estudiante_id)
+                        grupo_id_est = getattr(est, "grupo_id", None)
+                        if grupo_id_est is not None:
+                            autorizado = (
+                                self._catalogo_academico_svc_provider()
+                                .puede_gestionar_comportamiento_en_grupo(
+                                    usuario_rol, usuario_id, grupo_id_est
+                                )
+                            )
+                            if not autorizado:
+                                raise PermissionError(
+                                    "Solo director, coordinador o director de grupo "
+                                    "pueden ver el seguimiento 360°"
+                                )
+                    except PermissionError:
+                        raise
+                    except Exception:
+                        pass  # compat retro: providers disponibles pero falla → permitir
+            else:
+                raise PermissionError(
+                    "Solo director, coordinador o director de grupo "
+                    "pueden ver el seguimiento 360°"
+                )
+
+        # ── Nombre del estudiante ────────────────────────────────────────────
+        nombre = str(estudiante_id)
+        if self._estudiante_svc_provider is not None:
+            try:
+                est = self._estudiante_svc_provider().get_by_id(estudiante_id)
+                nombre = (
+                    f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip()
+                    or nombre
+                )
+            except Exception:
+                pass
+
+        # ── Nota de comportamiento y concepto ───────────────────────────────
+        nota_comportamiento: float | None = None
+        concepto: str | None = None
+        nivel_comportamiento: str | None = None
+        try:
+            concepto_dto = self.get_concepto_periodo(estudiante_id, periodo_id)
+            nota_comportamiento  = concepto_dto.valor
+            concepto             = concepto_dto.concepto
+            nivel_comportamiento = concepto_dto.nivel_nombre
+        except RuntimeError:
+            # Providers de niveles no disponibles; extrae la nota directamente.
+            try:
+                nota = self._repo.get_nota(estudiante_id, periodo_id)
+                if nota is not None:
+                    nota_comportamiento = nota.valor
+                    concepto            = nota.observacion
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # ── Observaciones públicas del periodo ──────────────────────────────
+        textos_obs: list[str] = []
+        try:
+            obs_list = self._repo.listar_observaciones_por_estudiante(
+                estudiante_id, periodo_id, solo_publicas=True
+            )
+            textos_obs = [o.texto for o in obs_list]
+        except Exception:
+            pass
+
+        # ── Alertas activas ─────────────────────────────────────────────────
+        alertas_activas: list[str] = []
+        if self._alerta_repo is not None:
+            try:
+                filtro_alertas = FiltroAlertasDTO(
+                    estudiante_id=estudiante_id,
+                    solo_pendientes=True,
+                )
+                alertas = self._alerta_repo.listar_alertas(filtro_alertas)
+                alertas_activas = [
+                    str(getattr(a, "descripcion", a)) for a in alertas
+                ]
+            except Exception:
+                pass
+
+        return Seguimiento360DTO(
+            estudiante_id=estudiante_id,
+            estudiante_nombre=nombre,
+            periodo_id=periodo_id,
+            nota_comportamiento=nota_comportamiento,
+            concepto=concepto,
+            nivel_comportamiento=nivel_comportamiento,
+            observaciones=textos_obs,
+            alertas_activas=alertas_activas,
+            promedio_notas=None,
+        )
+
+
+__all__ = ["ConvivenciaService", "NuevaCategoriaDTO", "NuevaAlertaSeguimientoDTO", "PlantillaObservacion", "Seguimiento360DTO", "TipoRegistro"]

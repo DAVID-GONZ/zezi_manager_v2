@@ -39,6 +39,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from src.domain.models.alerta import NivelAlerta
+
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -130,6 +132,9 @@ class ObservacionPeriodo(BaseModel):
     # desde una plantilla del catálogo (convivencia_12).
     categoria_id:   int | None  = None
     origen:         str         = "libre"
+    # Añadido en convivencia_14: vínculo al RegistroComportamiento creado al
+    # promover la observación. None = no promovida aún.
+    registro_comportamiento_id: int | None = None
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -470,6 +475,33 @@ class FiltroConvivenciaDTO(BaseModel):
     por_pagina:    int              = Field(default=50, ge=1, le=200)
 
 
+class NuevaAlertaSeguimientoDTO(BaseModel):
+    """DTO para crear una alerta de seguimiento manual (convivencia_16)."""
+    estudiante_id:      int
+    usuario_destino_id: int        # profesor destinatario
+    descripcion:        str
+    nivel:              NivelAlerta = NivelAlerta.ADVERTENCIA
+
+
+class Seguimiento360DTO(BaseModel):
+    """
+    Vista consolidada 360° de un estudiante en un periodo (convivencia_18).
+
+    Agrega nota de comportamiento, concepto narrativo, nivel de desempeño,
+    observaciones públicas del periodo y alertas activas de seguimiento.
+    `promedio_notas` es el promedio académico general; None si no está disponible.
+    """
+    estudiante_id:        int
+    estudiante_nombre:    str
+    periodo_id:           int
+    nota_comportamiento:  float | None = None
+    concepto:             str | None = None
+    nivel_comportamiento: str | None = None
+    observaciones:        list[str] = []
+    alertas_activas:      list[str] = []
+    promedio_notas:       float | None = None
+
+
 # =============================================================================
 # Exports
 # =============================================================================
@@ -480,6 +512,7 @@ __all__ = [
     "FiltroConvivenciaDTO",
     "NotaComportamiento",
     "NuevaCategoriaDTO",
+    "NuevaAlertaSeguimientoDTO",
     "NuevaNotaComportamientoDTO",
     "NuevaObservacionDTO",
     "NuevaPlantillaDTO",
@@ -488,5 +521,6 @@ __all__ = [
     "PlantillaObservacion",
     "RegistroComportamiento",
     "ReporteConvivenciaFilaDTO",
+    "Seguimiento360DTO",
     "TipoRegistro",
 ]

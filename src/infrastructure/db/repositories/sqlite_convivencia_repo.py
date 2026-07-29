@@ -100,8 +100,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                 """
                 INSERT INTO observaciones_periodo
                     (estudiante_id, asignacion_id, periodo_id, texto,
-                     es_publica, fecha_registro, usuario_id, categoria_id, origen)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                     es_publica, fecha_registro, usuario_id, categoria_id, origen,
+                     registro_comportamiento_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     observacion.estudiante_id,
@@ -113,6 +114,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                     observacion.usuario_id,
                     observacion.categoria_id,
                     observacion.origen,
+                    observacion.registro_comportamiento_id,
                 ),
             )
             if self._conn is None:
@@ -124,7 +126,8 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             conn.execute(
                 """
                 UPDATE observaciones_periodo
-                SET texto = ?, es_publica = ?, categoria_id = ?, origen = ?
+                SET texto = ?, es_publica = ?, categoria_id = ?, origen = ?,
+                    registro_comportamiento_id = ?
                 WHERE id = ?
                 """,
                 (
@@ -132,6 +135,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                     int(observacion.es_publica),
                     observacion.categoria_id,
                     observacion.origen,
+                    observacion.registro_comportamiento_id,
                     observacion.id,
                 ),
             )

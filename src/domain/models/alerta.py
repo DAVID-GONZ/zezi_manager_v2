@@ -36,6 +36,7 @@ class TipoAlerta(str, Enum):
     MATERIAS_EN_RIESGO        = "materias_en_riesgo"
     PLAN_MEJORAMIENTO_VENCIDO = "plan_mejoramiento_vencido"
     HABILITACION_PENDIENTE    = "habilitacion_pendiente"
+    SEGUIMIENTO_REQUERIDO     = "seguimiento_requerido"
 
 
 class NivelAlerta(str, Enum):
@@ -131,6 +132,7 @@ class Alerta(BaseModel):
     fecha_resolucion:       datetime | None = None
     usuario_resolucion_id:  int | None      = None
     observacion_resolucion: str | None      = None
+    usuario_destino_id:     int | None      = None
 
     @field_validator("estudiante_id", mode="before")
     @classmethod

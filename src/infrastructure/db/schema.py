@@ -34,9 +34,6 @@ SCHEMA: list[str] = [
     # 1. CONFIGURACIÓN INSTITUCIONAL
     # -------------------------------------------------------------------------
 
-    # Catálogo de instituciones (tenants). Primer ladrillo multi-tenant
-    # (paso_24). La institución #1 (id mínimo) es la institución por defecto,
-    # sembrada desde configuracion.nombre_institucion.
     """
     CREATE TABLE IF NOT EXISTS instituciones (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,13 +45,6 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Multi-tenant (paso_27, frente A): la configuración académica es por
-    # institución. `anio` ya NO es único global; la unicidad es
-    # UNIQUE(institucion_id, anio). institucion_id es nullable a nivel de
-    # schema; el repo y el seed siempre lo asignan a la institución por
-    # defecto (#1). Las tablas hijas
-    # (niveles_desempeno/configuracion_periodos/criterios_promocion)
-    # heredan la institución transitivamente vía anio_id.
     """
     CREATE TABLE IF NOT EXISTS configuracion_anio (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,13 +180,6 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Multi-tenant (paso_29, frente B1): catálogo de asignaturas por
-    # institución. `nombre` y `codigo` ya NO son únicos globales; la unicidad
-    # es UNIQUE(institucion_id, nombre) / UNIQUE(institucion_id, codigo). El
-    # `area_id` sigue siendo catálogo global (FK a areas_conocimiento).
-    # institucion_id es nullable a nivel de schema para soportar el rebuild +
-    # backfill de BDs preexistentes (migración idempotente en init_db); repo,
-    # servicio y seed siempre lo asignan a la institución por defecto (#1).
     """
     CREATE TABLE IF NOT EXISTS asignaturas (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,12 +198,6 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Multi-tenant (paso_29, frente B1): grupos por institución. `codigo` ya
-    # NO es único global; la unicidad es UNIQUE(institucion_id, codigo).
-    # CRÍTICO: grupos(id) es referenciado por estudiantes, asignaciones,
-    # control_diario, historial_estudiantes, etc.; el rebuild de la migración
-    # preserva los ids. institucion_id nullable a nivel de schema (rebuild +
-    # backfill #1).
     """
     CREATE TABLE IF NOT EXISTS grupos (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -243,7 +220,6 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Grados ofrecidos por la institución (mín/máx estudiantes + horas objetivo).
     """
     CREATE TABLE IF NOT EXISTS grados (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,14 +235,6 @@ SCHEMA: list[str] = [
     # 3. USUARIOS Y ACUDIENTES
     # -------------------------------------------------------------------------
 
-    # Multi-tenant (paso_37, frente D): `usuario` vuelve a ser ÚNICO GLOBAL.
-    # El login ambiguo de paso_33 (mismo username en varias instituciones)
-    # filtraba información, así que se revirtió SOLO la unicidad del username:
-    # ahora un username = un usuario = una institución (login simple, sin
-    # selector). El resto del multi-tenant (institucion_id en usuarios y tablas,
-    # scope por institución, config por institución, autorización por objeto)
-    # se mantiene intacto. institucion_id sigue siendo nullable a nivel de
-    # schema; el repo y el seed siempre lo asignan a la institución.
     """
     CREATE TABLE IF NOT EXISTS usuarios (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -319,18 +287,6 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Multi-tenant (paso_30, frente B2): estudiantes por institución.
-    # `numero_documento` ya NO es único global; la unicidad es
-    # UNIQUE(institucion_id, numero_documento) — el mismo documento puede
-    # existir en dos instituciones distintas. `id_publico` SE MANTIENE UNIQUE
-    # global (es un surrogate público, sin colisión de tenant).
-    # institucion_id es nullable a nivel de schema para soportar el rebuild +
-    # backfill de BDs preexistentes (migración idempotente en init_db); repo,
-    # servicio y seed siempre lo asignan a la institución por defecto (#1).
-    # CRÍTICO: estudiantes(id) es referenciado por FK por 19 tablas hijas
-    # (notas, control_diario, cierres, habilitaciones, planes, alertas, piar,
-    # boletines, historial_estudiantes, estudiante_acudiente…); el rebuild de
-    # la migración preserva los ids para no romper esas referencias.
     """
     CREATE TABLE IF NOT EXISTS estudiantes (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -489,12 +445,6 @@ SCHEMA: list[str] = [
     # 5. EVALUACIÓN
     # -------------------------------------------------------------------------
 
-    # Configuración del SIEE por año lectivo.
-    # Define el modo de distribución de categorías de evaluación:
-    #   libre              → cada docente distribuye libremente (legacy)
-    #   institucional_fijo → todas las categorías son fijadas por el admin
-    #   mixto_subcategorias→ admin fija macro-categorías; docente puede sub-categorizar
-    #   mixto_autonomia    → admin fija un porcentaje; docente gestiona el resto
     """
     CREATE TABLE IF NOT EXISTS configuracion_siee (
         id                              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -808,9 +758,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
     # 7c. NIVELACIÓN
-    # -------------------------------------------------------------------------
 
     """
     CREATE TABLE IF NOT EXISTS actividades_nivelacion (
@@ -863,15 +811,8 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
     # 8. ASISTENCIA Y CONVIVENCIA
-    # -------------------------------------------------------------------------
 
-    # Catálogo de categorías de observación (convivencia_09).
-    # Permite clasificar las observaciones de convivencia por tipo:
-    # académico, comportamental, seguimiento, etc.
-    # es_comportamental=1 → la categoría agrupa registros de comportamiento.
-    # Idempotente por nombre (UNIQUE).
     """
     CREATE TABLE IF NOT EXISTS categorias_observacion (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -881,11 +822,16 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # Catálogo de plantillas de observación (convivencia_12).
-    # Frases modelo reutilizables para agilizar el registro de observaciones.
-    # Cada plantilla puede estar vinculada a una categoría y lleva un contador
-    # de uso para priorizar las más usadas en el selector de la UI.
-    # uso_count se incrementa cada vez que se usa la plantilla en una observación.
+    """
+    CREATE TABLE IF NOT EXISTS plantillas_observacion (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        texto        TEXT    NOT NULL,
+        categoria_id INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
+        uso_count    INTEGER NOT NULL DEFAULT 0,
+        activa       BOOLEAN NOT NULL DEFAULT 1
+    )
+    """,
+
     """
     CREATE TABLE IF NOT EXISTS plantillas_observacion (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -939,6 +885,12 @@ SCHEMA: list[str] = [
         -- 'plantilla' = generado desde el catálogo de plantillas.
         origen          TEXT     NOT NULL DEFAULT 'libre'
                         CHECK(origen IN ('libre', 'plantilla')),
+        -- Vínculo al registro de comportamiento creado por promoción (convivencia_14).
+        -- NULL = la observación no ha sido promovida aún.
+        -- ON DELETE SET NULL: si se elimina el registro de comportamiento, la
+        -- observación vuelve a estado "sin promover" en lugar de borrarse.
+        registro_comportamiento_id INTEGER
+                        REFERENCES registro_comportamiento(id) ON DELETE SET NULL,
 
         FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)   ON DELETE CASCADE,
         FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
@@ -991,9 +943,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
-    # 9. ALERTAS
-    # -------------------------------------------------------------------------
+    # 9. ALERTAS 
 
     """
     CREATE TABLE IF NOT EXISTS configuracion_alertas (
@@ -1005,7 +955,8 @@ SCHEMA: list[str] = [
                                     'promedio_bajo',
                                     'materias_en_riesgo',
                                     'plan_mejoramiento_vencido',
-                                    'habilitacion_pendiente'
+                                    'habilitacion_pendiente',
+                                    'seguimiento_requerido'
                                 )),
         umbral                  REAL    NOT NULL,
         activa                  BOOLEAN NOT NULL DEFAULT 1,
@@ -1028,7 +979,8 @@ SCHEMA: list[str] = [
                                     'promedio_bajo',
                                     'materias_en_riesgo',
                                     'plan_mejoramiento_vencido',
-                                    'habilitacion_pendiente'
+                                    'habilitacion_pendiente',
+                                    'seguimiento_requerido'
                                 )),
         nivel                   TEXT     NOT NULL DEFAULT 'advertencia'
                                 CHECK(nivel IN ('info', 'advertencia', 'critica')),
@@ -1038,15 +990,14 @@ SCHEMA: list[str] = [
         fecha_resolucion        DATETIME,
         usuario_resolucion_id   INTEGER,
         observacion_resolucion  TEXT,
+        usuario_destino_id      INTEGER  REFERENCES usuarios(id) ON DELETE SET NULL,
 
         FOREIGN KEY(estudiante_id)          REFERENCES estudiantes(id) ON DELETE CASCADE,
         FOREIGN KEY(usuario_resolucion_id)  REFERENCES usuarios(id)   ON DELETE SET NULL
     )
     """,
 
-    # -------------------------------------------------------------------------
     # 10. INFORMES Y PIAR
-    # -------------------------------------------------------------------------
 
     """
     CREATE TABLE IF NOT EXISTS boletines_emitidos (
@@ -1090,9 +1041,9 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
+   
     # 11. AUDITORÍA
-    # -------------------------------------------------------------------------
+    
 
     """
     CREATE TABLE IF NOT EXISTS auditoria (
@@ -1140,9 +1091,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
     # 12. GENERADOR DE HORARIOS
-    # -------------------------------------------------------------------------
 
     """
     CREATE TABLE IF NOT EXISTS disponibilidad_docente (
@@ -1181,10 +1130,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
     # salas, ventanas_grupo, bloques_anclados, franjas_reunion, limites_docente
-    # (paso_17)
-    # -------------------------------------------------------------------------
 
     """
     CREATE TABLE IF NOT EXISTS salas (
@@ -1249,9 +1195,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # -------------------------------------------------------------------------
     # plan_estudios (paso_19)
-    # -------------------------------------------------------------------------
 
     """
     CREATE TABLE IF NOT EXISTS plan_estudios (
@@ -1274,10 +1218,10 @@ INDICES: list[str] = [
 
     # configuracion_anio
     "CREATE INDEX IF NOT EXISTS idx_config_anio        ON configuracion_anio(anio)",
-    # Multi-tenant (paso_27): scope por institución.
+    # Multi-tenant
     "CREATE INDEX IF NOT EXISTS idx_config_institucion ON configuracion_anio(institucion_id)",
 
-    # usuarios (multi-tenant — paso_24)
+    # usuarios (multi-tenant)
     "CREATE INDEX IF NOT EXISTS idx_usuarios_institucion ON usuarios(institucion_id)",
 
     # niveles_desempeno
@@ -1285,19 +1229,19 @@ INDICES: list[str] = [
 
     # asignaturas
     "CREATE INDEX IF NOT EXISTS idx_asig_area           ON asignaturas(area_id)",
-    # Multi-tenant (paso_29): scope por institución.
+    # Multi-tenant: scope por institución.
     "CREATE INDEX IF NOT EXISTS idx_asig_institucion    ON asignaturas(institucion_id)",
 
-    # grupos (multi-tenant — paso_29)
+    # grupos (multi-tenant)
     "CREATE INDEX IF NOT EXISTS idx_grupos_institucion  ON grupos(institucion_id)",
-    # Consultas "grupos que dirijo" (convivencia): filtro por director_grupo_id.
+    # Consultas: filtro por director_grupo_id.
     "CREATE INDEX IF NOT EXISTS idx_grupos_director      ON grupos(director_grupo_id)",
 
     # estudiantes
     "CREATE INDEX IF NOT EXISTS idx_est_grupo           ON estudiantes(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_est_estado          ON estudiantes(estado_matricula)",
     "CREATE INDEX IF NOT EXISTS idx_est_documento       ON estudiantes(numero_documento)",
-    # estudiantes (multi-tenant — paso_30, frente B2)
+    # estudiantes (multi-tenant): scope por institución)
     "CREATE INDEX IF NOT EXISTS idx_est_institucion     ON estudiantes(institucion_id)",
 
     # acudientes
@@ -1322,7 +1266,7 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_escenarios_anio     ON escenarios_horario(anio_id)",
 
     # plantillas_franja / franjas
-    # Multi-tenant (paso_32): unicidad de plantilla activa por (institucion, jornada),
+    # Multi-tenant: unicidad de plantilla activa por (institucion, jornada),
     # no global — cada institución puede tener su propia plantilla activa por jornada.
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(institucion_id, jornada) WHERE activa = 1",
     "CREATE INDEX IF NOT EXISTS idx_franjas_plantilla ON franjas(plantilla_id)",
@@ -1558,11 +1502,118 @@ TRIGGERS: list[str] = [
     """,
 ]
 
-
 # =============================================================================
 # INICIALIZACIÓN
 # =============================================================================
 
+def _migrar_alertas_check(conn) -> None:
+    """
+    Migración idempotente de las tablas ``alertas`` y ``configuracion_alertas``
+    para ampliar el CHECK de ``tipo_alerta`` con el valor ``seguimiento_requerido``
+    y añadir la columna ``usuario_destino_id`` a ``alertas``.
+
+    Algoritmo:
+      1. Lee el DDL actual de ``alertas`` desde ``sqlite_master``.
+      2. Si ``seguimiento_requerido`` ya aparece en el DDL (o la tabla no existe
+         todavía, p.ej. BD nueva en memoria) → retorna sin hacer nada.
+      3. De lo contrario recrea ambas tablas dentro de una sección con
+         ``PRAGMA foreign_keys = OFF`` para evitar errores de FK temporales.
+
+    Seguro de llamar en cada arranque: la comprobación del DDL garantiza
+    que solo se ejecuta una vez.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name='alertas' AND type='table'"
+    ).fetchone()
+
+    if row is None or "seguimiento_requerido" in row[0]:
+        return
+
+    logger.info("Migrando CHECK de 'alertas' para incluir seguimiento_requerido …")
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        # -- Reconstruir alertas --------------------------------------------------
+        conn.execute("""
+            CREATE TABLE alertas_new (
+                id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
+                estudiante_id           INTEGER  NOT NULL,
+                tipo_alerta             TEXT     NOT NULL
+                                        CHECK(tipo_alerta IN (
+                                            'faltas_injustificadas',
+                                            'promedio_bajo',
+                                            'materias_en_riesgo',
+                                            'plan_mejoramiento_vencido',
+                                            'habilitacion_pendiente',
+                                            'seguimiento_requerido'
+                                        )),
+                nivel                   TEXT     NOT NULL DEFAULT 'advertencia'
+                                        CHECK(nivel IN ('info', 'advertencia', 'critica')),
+                descripcion             TEXT     NOT NULL,
+                fecha_generacion        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                resuelta                BOOLEAN  NOT NULL DEFAULT 0,
+                fecha_resolucion        DATETIME,
+                usuario_resolucion_id   INTEGER,
+                observacion_resolucion  TEXT,
+                usuario_destino_id      INTEGER  REFERENCES usuarios(id) ON DELETE SET NULL,
+
+                FOREIGN KEY(estudiante_id)          REFERENCES estudiantes(id) ON DELETE CASCADE,
+                FOREIGN KEY(usuario_resolucion_id)  REFERENCES usuarios(id)   ON DELETE SET NULL
+            )
+        """)
+        conn.execute("""
+            INSERT INTO alertas_new
+                SELECT id, estudiante_id, tipo_alerta, nivel, descripcion,
+                       fecha_generacion, resuelta, fecha_resolucion,
+                       usuario_resolucion_id, observacion_resolucion,
+                       NULL AS usuario_destino_id
+                FROM alertas
+        """)
+        conn.execute("DROP TABLE alertas")
+        conn.execute("ALTER TABLE alertas_new RENAME TO alertas")
+
+        # -- Reconstruir configuracion_alertas si también le falta el valor ------
+        row2 = conn.execute(
+            "SELECT sql FROM sqlite_master "
+            "WHERE name='configuracion_alertas' AND type='table'"
+        ).fetchone()
+        if row2 and "seguimiento_requerido" not in row2[0]:
+            conn.execute("""
+                CREATE TABLE configuracion_alertas_new (
+                    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+                    anio_id                 INTEGER NOT NULL,
+                    tipo_alerta             TEXT    NOT NULL
+                                            CHECK(tipo_alerta IN (
+                                                'faltas_injustificadas',
+                                                'promedio_bajo',
+                                                'materias_en_riesgo',
+                                                'plan_mejoramiento_vencido',
+                                                'habilitacion_pendiente',
+                                                'seguimiento_requerido'
+                                            )),
+                    umbral                  REAL    NOT NULL,
+                    activa                  BOOLEAN NOT NULL DEFAULT 1,
+                    notificar_docente       BOOLEAN NOT NULL DEFAULT 1,
+                    notificar_director      BOOLEAN NOT NULL DEFAULT 0,
+                    notificar_acudiente     BOOLEAN NOT NULL DEFAULT 0,
+
+                    UNIQUE(anio_id, tipo_alerta),
+                    FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO configuracion_alertas_new
+                    SELECT id, anio_id, tipo_alerta, umbral, activa,
+                           notificar_docente, notificar_director, notificar_acudiente
+                    FROM configuracion_alertas
+            """)
+            conn.execute("DROP TABLE configuracion_alertas")
+            conn.execute(
+                "ALTER TABLE configuracion_alertas_new RENAME TO configuracion_alertas"
+            )
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+    logger.info("Migración _migrar_alertas_check completada")
 
 
 def create_schema(conn) -> None:
@@ -1581,6 +1632,7 @@ def create_schema(conn) -> None:
         conn.row_factory = _sqlite3.Row
     for sql in SCHEMA:
         conn.execute(sql)
+    _migrar_alertas_check(conn)
     for sql in INDICES:
         conn.execute(sql)
     for sql in TRIGGERS:
@@ -1672,6 +1724,24 @@ def init_db(db_path: Path | None = None) -> bool:
                 conn, "observaciones_periodo", "origen",
                 "TEXT NOT NULL DEFAULT 'libre' CHECK(origen IN ('libre','plantilla'))",
             )
+            # Vínculo FK al registro de comportamiento creado por promoción
+            # (convivencia_14). En BDs preexistentes las filas quedan con
+            # registro_comportamiento_id=NULL (no promovidas). ON DELETE SET NULL
+            # es válido en ADD COLUMN porque el default es NULL.
+            _asegurar_columna(
+                conn, "observaciones_periodo", "registro_comportamiento_id",
+                "INTEGER REFERENCES registro_comportamiento(id) ON DELETE SET NULL",
+            )
+            # Destinatario explícito de una alerta de seguimiento (convivencia_15).
+            # En BDs preexistentes las alertas quedan con usuario_destino_id=NULL.
+            # La reconstrucción del CHECK se hace a continuación.
+            _asegurar_columna(
+                conn, "alertas", "usuario_destino_id",
+                "INTEGER REFERENCES usuarios(id) ON DELETE SET NULL",
+            )
+            # Ampliar CHECK de tipo_alerta con 'seguimiento_requerido'
+            # (convivencia_15). Idempotente: solo reconstruye si el valor falta.
+            _migrar_alertas_check(conn)
 
             # ------------------------------------------------------------------
             # Índices
@@ -1742,4 +1812,8 @@ def get_db_stats() -> dict:
         return {}
 
 
-__all__ = ["INDICES", "SCHEMA", "TRIGGERS", "create_schema", "get_db_stats", "init_db"]
+__all__ = [
+    "INDICES", "SCHEMA", "TRIGGERS",
+    "create_schema", "get_db_stats", "init_db",
+    "_migrar_alertas_check",
+]

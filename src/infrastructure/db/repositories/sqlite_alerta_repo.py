@@ -49,6 +49,7 @@ class SqliteAlertaRepository(IAlertaRepository):
         d["tipo_alerta"] = TipoAlerta(d["tipo_alerta"])
         d["nivel"] = NivelAlerta(d["nivel"])
         d["resuelta"] = bool(d["resuelta"])
+        d.setdefault("usuario_destino_id", None)
         return Alerta(**d)
 
     # ------------------------------------------------------------------
@@ -209,8 +210,9 @@ class SqliteAlertaRepository(IAlertaRepository):
                 INSERT INTO alertas
                     (estudiante_id, tipo_alerta, nivel, descripcion,
                      fecha_generacion, resuelta,
-                     fecha_resolucion, usuario_resolucion_id, observacion_resolucion)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                     fecha_resolucion, usuario_resolucion_id, observacion_resolucion,
+                     usuario_destino_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     alerta.estudiante_id,
@@ -222,6 +224,7 @@ class SqliteAlertaRepository(IAlertaRepository):
                     alerta.fecha_resolucion.isoformat() if alerta.fecha_resolucion else None,
                     alerta.usuario_resolucion_id,
                     alerta.observacion_resolucion,
+                    alerta.usuario_destino_id,
                 ),
             )
             if self._conn is None:
@@ -282,6 +285,24 @@ class SqliteAlertaRepository(IAlertaRepository):
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
+
+    def listar_alertas_por_destinatario(
+        self,
+        usuario_destino_id: int,
+        tipo: str | None = None,
+        solo_pendientes: bool = True,
+    ) -> list[Alerta]:
+        sql = "SELECT * FROM alertas WHERE usuario_destino_id = ?"
+        params: list = [usuario_destino_id]
+        if tipo is not None:
+            sql += " AND tipo_alerta = ?"
+            params.append(tipo)
+        if solo_pendientes:
+            sql += " AND resuelta = 0"
+        sql += " ORDER BY fecha_generacion DESC"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_alerta(r) for r in rows]
 
     def resolver_alertas_de_estudiante(
         self,

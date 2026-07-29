@@ -249,12 +249,14 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.convivencia.notas_convivencia import notas_convivencia_page
     from src.interface.pages.convivencia.observaciones import observaciones_page
     from src.interface.pages.convivencia.reporte_periodo import reporte_periodo_page
+    from src.interface.pages.convivencia.seguimiento import seguimiento_page
 
     registrar_pagina("/convivencia/observaciones", observaciones_page, roles=_AULA)
     registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)
     registrar_pagina("/convivencia/notas", notas_convivencia_page, roles=_AULA)
     registrar_pagina("/convivencia/reporte-periodo", reporte_periodo_page, roles=_AULA)
     registrar_pagina("/convivencia/categorias", categorias_page, roles=_DIR_COORD)
+    registrar_pagina("/convivencia/seguimiento", seguimiento_page, roles=_DIR_COORD)
 
     # ── Informes ──────────────────────────────────────────────────────────────
     from src.interface.pages.informes.boletin_anual import boletin_anual_page

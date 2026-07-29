@@ -125,6 +125,18 @@ class AlertaService:
             alerta_id, usuario_id, observacion, datetime.now()
         )
 
+    def listar_alertas_para_usuario(
+        self,
+        usuario_id: int,
+        solo_pendientes: bool = True,
+    ) -> list[Alerta]:
+        """Retorna alertas de seguimiento dirigidas a un usuario específico."""
+        return self._repo.listar_alertas_por_destinatario(
+            usuario_destino_id=usuario_id,
+            tipo="seguimiento_requerido",
+            solo_pendientes=solo_pendientes,
+        )
+
     def resolver_alertas_de_estudiante(
         self,
         estudiante_id: int,

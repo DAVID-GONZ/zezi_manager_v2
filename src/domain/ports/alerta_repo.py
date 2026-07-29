@@ -139,6 +139,20 @@ class IAlertaRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def listar_alertas_por_destinatario(
+        self,
+        usuario_destino_id: int,
+        tipo: str | None = None,
+        solo_pendientes: bool = True,
+    ) -> list[Alerta]:
+        """
+        Retorna alertas dirigidas a un usuario específico (usuario_destino_id),
+        opcionalmente filtradas por tipo y estado de resolución.
+        Ordenadas por fecha_generacion descendente.
+        """
+        ...
+
     # =========================================================================
     # Escritura — alertas
     # =========================================================================

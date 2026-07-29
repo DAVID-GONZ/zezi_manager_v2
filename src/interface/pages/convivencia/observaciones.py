@@ -116,17 +116,26 @@ def _cargar_observaciones(_s: dict, ctx: SessionContext) -> None:
         _s["observaciones"] = []
 
 
-def _cargar_categorias() -> dict:
-    """Carga las categorías activas de observación para el selector del formulario."""
+def _cargar_categorias() -> tuple[dict, dict]:
+    """
+    Carga las categorías activas de observación.
+
+    Retorna dos dicts:
+      - opciones: {id: nombre} para el selector del formulario.
+      - es_comportamental: {id: bool} para decidir si mostrar el botón
+        "Promover a comportamiento" por fila.
+    """
     try:
         categorias = Container.convivencia_service().listar_categorias(solo_activas=True)
-        return {
-            getattr(c, "id", None): getattr(c, "nombre", "")
+        opciones = {getattr(c, "id", None): getattr(c, "nombre", "") for c in categorias}
+        es_comportamental = {
+            getattr(c, "id", None): bool(getattr(c, "es_comportamental", False))
             for c in categorias
         }
+        return opciones, es_comportamental
     except Exception as exc:
         logger.warning("Error cargando categorías: %s", exc)
-        return {}
+        return {}, {}
 
 
 def _cargar_plantillas(categoria_id: int | None = None, limite: int = 20) -> list:
@@ -170,17 +179,18 @@ def _construir_filas(_s: dict) -> list[dict]:
             except Exception:
                 fecha_str = str(fecha)
         filas.append({
-            "id":            obs_id,
-            "estudiante_id": est_id,
-            "asignacion_id": getattr(obs, "asignacion_id", None),
-            "periodo_id":    getattr(obs, "periodo_id", None),
-            "categoria_id":  getattr(obs, "categoria_id", None),
-            "estudiante":    _nombre_estudiante(_s, est_id),
-            "texto":         _texto_truncado(texto),
-            "texto_completo": texto,
-            "visibilidad":   "Pública" if es_publica else "Privada",
-            "es_publica":    es_publica,
-            "fecha":         fecha_str,
+            "id":                        obs_id,
+            "estudiante_id":             est_id,
+            "asignacion_id":             getattr(obs, "asignacion_id", None),
+            "periodo_id":                getattr(obs, "periodo_id", None),
+            "categoria_id":              getattr(obs, "categoria_id", None),
+            "registro_comportamiento_id": getattr(obs, "registro_comportamiento_id", None),
+            "estudiante":                _nombre_estudiante(_s, est_id),
+            "texto":                     _texto_truncado(texto),
+            "texto_completo":            texto,
+            "visibilidad":               "Pública" if es_publica else "Privada",
+            "es_publica":                es_publica,
+            "fecha":                     fecha_str,
         })
     return filas
 
@@ -289,7 +299,7 @@ def observaciones_page() -> None:
             getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
             for p in _s["periodos"]
         }
-        opciones_cat = _cargar_categorias()
+        opciones_cat, _ = _cargar_categorias()
         campos = [
             {
                 "key":      "estudiante_id",
@@ -436,6 +446,37 @@ def observaciones_page() -> None:
             variante="info",
         )
 
+    def _promover_a_comportamiento(obs_id: int) -> None:
+        """Crea un RegistroComportamiento a partir de la observación (solo director/coordinador)."""
+        def _ejecutar() -> None:
+            ctx_actual = SessionContext.desde_storage() or ctx
+            try:
+                Container.convivencia_service().promover_a_comportamiento(
+                    obs_id,
+                    usuario_id=ctx_actual.usuario_id,
+                    usuario_rol=ctx_actual.usuario_rol,
+                )
+                toast_success("Observación promovida a registro de comportamiento.")
+                _cargar_observaciones(_s, ctx_actual)
+                _contenido.refresh()
+            except PermissionError as exc:
+                toast_warning(f"Sin permiso: {exc}")
+            except ValueError as exc:
+                toast_warning(f"No se puede promover: {exc}")
+            except Exception as exc:
+                logger.error("Error promoviendo obs %s a comportamiento: %s", obs_id, exc, exc_info=True)
+                toast_error(f"Error: {exc}")
+
+        confirm_dialog(
+            titulo="Promover a comportamiento",
+            mensaje=(
+                "¿Deseas crear un registro de comportamiento a partir "
+                "de esta observación?"
+            ),
+            on_confirm=_ejecutar,
+            variante="info",
+        )
+
     def _eliminar_observacion(obs_id: int) -> None:
         def _ejecutar() -> None:
             ctx_actual = SessionContext.desde_storage() or ctx
@@ -469,6 +510,8 @@ def observaciones_page() -> None:
             for p in _s["periodos"]
         }
         filas = _construir_filas(_s)
+        # Carga el dict {cat_id: es_comportamental} para el botón por fila
+        _, es_comportamental_map = _cargar_categorias()
 
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):
@@ -548,6 +591,21 @@ def observaciones_page() -> None:
                                             icon="upload",
                                             size="sm",
                                         )
+                                        # Botón "Promover a comportamiento": visible si la categoría
+                                        # es comportamental y la observación aún no fue promovida.
+                                        _cat_id = fila.get("categoria_id")
+                                        _ya_promovida = fila.get("registro_comportamiento_id") is not None
+                                        if (
+                                            _cat_id is not None
+                                            and es_comportamental_map.get(_cat_id, False)
+                                            and not _ya_promovida
+                                        ):
+                                            btn_secondary(
+                                                "Promover a comportamiento",
+                                                on_click=lambda oid=fila["id"]: _promover_a_comportamiento(oid),
+                                                icon="flag",
+                                                size="sm",
+                                            )
                                     btn_danger(
                                         "Eliminar",
                                         on_click=lambda oid=fila["id"]: _eliminar_observacion(oid),

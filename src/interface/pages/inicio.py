@@ -15,6 +15,7 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import stat_card
+from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.components.status_badge import status_badge
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
@@ -501,6 +502,68 @@ def _clase_dias_riesgo(n: int) -> str:
     return "hito-dias-ok"
 
 
+# ── SECCIÓN — PROFESOR: seguimientos pendientes ───────────────────────────────
+
+def _construir_seguimientos_panel(ctx_usuario_id: int, refresh_fn) -> None:
+    """
+    Panel de seguimientos pendientes para el profesor.
+    Muestra alertas de tipo 'seguimiento_requerido' dirigidas al usuario.
+    No renderiza nada si no hay alertas pendientes.
+    """
+    try:
+        alertas = Container.alerta_service().listar_alertas_para_usuario(
+            usuario_id=ctx_usuario_id,
+            solo_pendientes=True,
+        )
+    except Exception as e:
+        logger.warning("Error seguimientos pendientes: %s", e)
+        return
+
+    if not alertas:
+        return
+
+    with ui.element("div").classes("panel-card"):
+        _panel_titulo(
+            Icons.ALERTS,
+            f"Seguimientos pendientes ({len(alertas)})",
+            "var(--color-warning)",
+        )
+
+        _nivel_color = {
+            "critica":     "var(--color-error)",
+            "advertencia": "var(--color-warning)",
+            "info":        "var(--color-info)",
+        }
+        _nivel_icono = {
+            "critica":     "error",
+            "advertencia": "warning",
+            "info":        "info",
+        }
+
+        for alerta in alertas:
+            nivel  = str(getattr(alerta, "nivel", "info")).lower()
+            fecha  = getattr(alerta, "fecha_generacion", None)
+            desc   = getattr(alerta, "descripcion", "")
+            color  = _nivel_color.get(nivel, "var(--color-info)")
+            icono  = _nivel_icono.get(nivel, "info")
+            fecha_txt = (
+                fecha.strftime("%d/%m/%Y") if fecha else "—"
+            )
+            alerta_id = alerta.id
+
+            with ui.element("div").classes("hito-item"):
+                ThemeManager.icono(icono, size=16, color=color)
+                with ui.element("div").classes("hito-text-col flex-1"):
+                    ui.label(desc[:80]).classes("hito-desc")
+                    ui.label(f"{fecha_txt} · nivel: {nivel}").classes("hito-date")
+                btn_secondary(
+                    "Marcar como atendido",
+                    on_click=lambda aid=alerta_id: (
+                        _resolver_seguimiento(aid, ctx_usuario_id, refresh_fn)
+                    ),
+                )
+
+
 # ── SECCIÓN 8 — DIRECTIVO: pendientes institucionales ─────────────────────────
 
 def _seccion_pendientes_institucionales(ctx: SessionContext, config) -> None:
@@ -622,6 +685,15 @@ def _seccion_pendientes_docente(ctx: SessionContext, config) -> None:
         except Exception as e:
             logger.warning("Error pendientes docente: %s", e)
             ui.label("No disponible").classes("unavailable-text")
+
+
+def _resolver_seguimiento(alerta_id: int, usuario_id: int, refresh_fn) -> None:
+    """Resuelve una alerta de seguimiento y refresca el panel."""
+    try:
+        Container.alerta_service().resolver_alerta(alerta_id, usuario_id)
+    except Exception as e:
+        logger.warning("Error al resolver seguimiento %s: %s", alerta_id, e)
+    refresh_fn()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -815,6 +887,16 @@ def inicio_page() -> None:
         else:
             _seccion_pendientes_docente(ctx_fresco, config)
 
+    @ui.refreshable
+    def seguimientos_refreshable() -> None:
+        """Panel de seguimientos pendientes — solo para el rol profesor."""
+        if not es_directivo:
+            ctx_fresco = SessionContext.desde_storage()
+            _construir_seguimientos_panel(
+                ctx_fresco.usuario_id,
+                seguimientos_refreshable.refresh,
+            )
+
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             _seccion_saludo(ctx, config)
@@ -825,6 +907,7 @@ def inicio_page() -> None:
                 with ui.element("div").classes("page-col-main"):
                     _seccion_acciones_rapidas(ctx.usuario_rol)
                     contexto_refreshable()
+                    seguimientos_refreshable()
                     _seccion_actividad_reciente(ctx)
                 with ui.element("div").classes("page-col-side"):
                     _seccion_alertas(ctx)

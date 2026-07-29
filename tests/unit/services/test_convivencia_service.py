@@ -5,18 +5,21 @@ from datetime import date
 
 import pytest
 
+from src.domain.models.alerta import Alerta, ConfiguracionAlerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
     NuevaCategoriaDTO,
+    NuevaAlertaSeguimientoDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
     PlantillaObservacion,
     RegistroComportamiento,
+    Seguimiento360DTO,
     TipoRegistro,
 )
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
@@ -802,6 +805,130 @@ class TestPlantillasObservacion:
 
 
 # ===========================================================================
+# Promoción a comportamiento (convivencia_14)
+# ===========================================================================
+
+class TestPromocionAComportamiento:
+    """Tests para promover_a_comportamiento."""
+
+    def _obs_comportamental(self, repo: FakeConvRepo) -> ObservacionPeriodo:
+        """Crea observación con categoría comportamental en el repo y la retorna."""
+        cat = repo.guardar_categoria(
+            CategoriaObservacion(nombre="Convivencia", es_comportamental=True)
+        )
+        return repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=3,
+                periodo_id=5,
+                texto="Pelea en el recreo",
+                es_publica=True,
+                categoria_id=cat.id,
+            )
+        )
+
+    def _obs_no_comportamental(self, repo: FakeConvRepo) -> ObservacionPeriodo:
+        """Crea observación con categoría NO comportamental en el repo y la retorna."""
+        cat = repo.guardar_categoria(
+            CategoriaObservacion(nombre="Académico", es_comportamental=False)
+        )
+        return repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=3,
+                periodo_id=5,
+                texto="Entregó la tarea tarde",
+                es_publica=True,
+                categoria_id=cat.id,
+            )
+        )
+
+    def test_promover_a_comportamiento_crea_registro(self):
+        """Flujo nominal: director con categoría comportamental → crea RegistroComportamiento."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_comportamental(repo)
+
+        registro = svc.promover_a_comportamiento(
+            obs.id, usuario_id=10, usuario_rol="director"
+        )
+
+        # Debe retornar un RegistroComportamiento con id asignado
+        assert isinstance(registro, RegistroComportamiento)
+        assert registro.id is not None
+        assert registro.estudiante_id == obs.estudiante_id
+        assert registro.periodo_id == obs.periodo_id
+        assert registro.descripcion == obs.texto
+        assert registro.usuario_registro_id == 10
+
+        # La observación debe quedar enlazada al registro
+        obs_actualizada = repo.get_observacion(obs.id)
+        assert obs_actualizada.registro_comportamiento_id == registro.id
+
+        # Solo un registro de comportamiento debe existir
+        assert len(repo._regs) == 1
+
+    def test_promover_a_comportamiento_coordinador_permitido(self):
+        """Coordinador también puede promover."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_comportamental(repo)
+
+        registro = svc.promover_a_comportamiento(
+            obs.id, usuario_id=20, usuario_rol="coordinador"
+        )
+        assert registro.id is not None
+
+    def test_promover_a_comportamiento_categoria_no_comportamental(self):
+        """Categoría no comportamental → ValueError; no se persiste ningún registro."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_no_comportamental(repo)
+
+        with pytest.raises(ValueError, match="comportamental"):
+            svc.promover_a_comportamiento(
+                obs.id, usuario_id=10, usuario_rol="director"
+            )
+        assert repo._regs == {}
+
+    def test_promover_a_comportamiento_profesor_no_autorizado(self):
+        """Profesor intenta promover → PermissionError; no se persiste ningún registro."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = self._obs_comportamental(repo)
+
+        with pytest.raises(PermissionError):
+            svc.promover_a_comportamiento(
+                obs.id, usuario_id=50, usuario_rol="profesor"
+            )
+        assert repo._regs == {}
+
+    def test_promover_a_comportamiento_obs_sin_categoria_lanza(self):
+        """Observación sin categoria_id → ValueError."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        obs = repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1, asignacion_id=3, periodo_id=5,
+                texto="Sin categoría", es_publica=True,
+                categoria_id=None,
+            )
+        )
+        with pytest.raises(ValueError):
+            svc.promover_a_comportamiento(
+                obs.id, usuario_id=10, usuario_rol="director"
+            )
+
+    def test_promover_a_comportamiento_obs_inexistente_lanza(self):
+        """Observación no existe → ValueError."""
+        svc, _ = _make_svc()
+        with pytest.raises(ValueError, match="999"):
+            svc.promover_a_comportamiento(
+                999, usuario_id=10, usuario_rol="director"
+            )
+
+
+# ===========================================================================
 # Catálogo de retroalimentación (convivencia_13)
 # ===========================================================================
 
@@ -902,5 +1029,415 @@ class TestPromocionPlantillas:
         sugeridas_cat2 = svc.listar_plantillas_sugeridas(categoria_id=2, limite=10)
         assert len(sugeridas_cat2) == 1
         assert sugeridas_cat2[0].texto == "Cat2-A"
+
+
+# ===========================================================================
+# FakeAlertaRepo para tests de alertas dentro de ConvivenciaService
+# ===========================================================================
+
+from src.domain.ports.alerta_repo import IAlertaRepository
+
+
+class FakeAlertaRepo(IAlertaRepository):
+    """Implementación mínima de IAlertaRepository para tests de ConvivenciaService."""
+
+    def __init__(self, existe_pendiente: bool = False, cfg: ConfiguracionAlerta | None = None):
+        self._alertas: list[Alerta] = []
+        self._existe_pendiente = existe_pendiente
+        self._cfg = cfg
+        self._next_id = 1
+
+    # Configuración
+    def get_configuracion(self, anio_id: int, tipo_alerta: TipoAlerta) -> ConfiguracionAlerta | None:
+        if self._cfg and self._cfg.tipo_alerta == tipo_alerta:
+            return self._cfg
+        return None
+
+    def listar_configuraciones(self, anio_id: int, solo_activas: bool = True) -> list[ConfiguracionAlerta]:
+        return [self._cfg] if self._cfg else []
+
+    def guardar_configuracion(self, config: ConfiguracionAlerta) -> ConfiguracionAlerta:
+        self._cfg = config
+        return config
+
+    def desactivar_configuracion(self, anio_id: int, tipo_alerta: TipoAlerta) -> bool:
+        return False
+
+    # Alertas
+    def get_alerta(self, alerta_id: int) -> Alerta | None:
+        for a in self._alertas:
+            if a.id == alerta_id:
+                return a
+        return None
+
+    def listar_alertas(self, filtro: FiltroAlertasDTO) -> list[Alerta]:
+        return list(self._alertas)
+
+    def contar_pendientes(self, estudiante_id=None, nivel=None) -> int:
+        return sum(1 for a in self._alertas if not a.resuelta)
+
+    def existe_pendiente(self, estudiante_id: int, tipo_alerta: TipoAlerta) -> bool:
+        return self._existe_pendiente
+
+    def guardar_alerta(self, alerta: Alerta) -> Alerta:
+        alerta = alerta.model_copy(update={"id": self._next_id})
+        self._next_id += 1
+        self._alertas.append(alerta)
+        return alerta
+
+    def guardar_alertas_masivas(self, alertas: list[Alerta]) -> int:
+        for a in alertas:
+            self.guardar_alerta(a)
+        return len(alertas)
+
+    def resolver_alerta(self, alerta_id, usuario_id, observacion=None, fecha=None) -> bool:
+        return False
+
+    def resolver_alertas_de_estudiante(self, estudiante_id, tipo_alerta, usuario_id, observacion=None) -> int:
+        return 0
+
+    def listar_alertas_por_destinatario(
+        self,
+        usuario_destino_id: int,
+        tipo: str | None = None,
+        solo_pendientes: bool = True,
+    ) -> list[Alerta]:
+        resultado = [
+            a for a in self._alertas
+            if a.usuario_destino_id == usuario_destino_id
+            and (tipo is None or a.tipo_alerta.value == tipo)
+            and (not solo_pendientes or not a.resuelta)
+        ]
+        return resultado
+
+
+# ===========================================================================
+# convivencia_16: crear_alerta_seguimiento_manual
+# ===========================================================================
+
+class TestCrearAlertaSeguimientoManual:
+    """Tests para ConvivenciaService.crear_alerta_seguimiento_manual (convivencia_16)."""
+
+    def _make_svc_con_alerta_repo(self) -> tuple[ConvivenciaService, FakeConvRepo, FakeAlertaRepo]:
+        conv_repo = FakeConvRepo()
+        alerta_repo = FakeAlertaRepo()
+        svc = ConvivenciaService(repo=conv_repo, alerta_repo=alerta_repo)
+        return svc, conv_repo, alerta_repo
+
+    def test_crear_alerta_seguimiento_manual_flujo_nominal(self):
+        """Director crea alerta → tipo es SEGUIMIENTO_REQUERIDO, usuario_destino_id correcto."""
+        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        dto = NuevaAlertaSeguimientoDTO(
+            estudiante_id=5,
+            usuario_destino_id=12,
+            descripcion="El estudiante requiere atención urgente.",
+            nivel=NivelAlerta.ADVERTENCIA,
+        )
+        alerta = svc.crear_alerta_seguimiento_manual(
+            dto, usuario_id=1, usuario_rol="director"
+        )
+        assert alerta.id is not None
+        assert alerta.tipo_alerta == TipoAlerta.SEGUIMIENTO_REQUERIDO
+        assert alerta.estudiante_id == 5
+        assert alerta.usuario_destino_id == 12
+        assert alerta.nivel == NivelAlerta.ADVERTENCIA
+        assert len(alerta_repo._alertas) == 1
+
+    def test_crear_alerta_seguimiento_coordinador_permitido(self):
+        """Coordinador también puede crear alertas de seguimiento."""
+        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        dto = NuevaAlertaSeguimientoDTO(
+            estudiante_id=3,
+            usuario_destino_id=7,
+            descripcion="Seguimiento recomendado.",
+        )
+        alerta = svc.crear_alerta_seguimiento_manual(
+            dto, usuario_id=2, usuario_rol="coordinador"
+        )
+        assert alerta.tipo_alerta == TipoAlerta.SEGUIMIENTO_REQUERIDO
+
+    def test_crear_alerta_seguimiento_profesor_no_autorizado(self):
+        """Profesor intenta crear alerta de seguimiento → PermissionError; no persiste."""
+        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        dto = NuevaAlertaSeguimientoDTO(
+            estudiante_id=3,
+            usuario_destino_id=7,
+            descripcion="Intento no autorizado.",
+        )
+        with pytest.raises(PermissionError):
+            svc.crear_alerta_seguimiento_manual(
+                dto, usuario_id=50, usuario_rol="profesor"
+            )
+        assert alerta_repo._alertas == []
+
+    def test_crear_alerta_seguimiento_nivel_critica(self):
+        """Se puede crear alerta con nivel CRITICA."""
+        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        dto = NuevaAlertaSeguimientoDTO(
+            estudiante_id=8,
+            usuario_destino_id=4,
+            descripcion="Situación crítica de convivencia.",
+            nivel=NivelAlerta.CRITICA,
+        )
+        alerta = svc.crear_alerta_seguimiento_manual(
+            dto, usuario_id=1, usuario_rol="director"
+        )
+        assert alerta.nivel == NivelAlerta.CRITICA
+
+
+# ===========================================================================
+# convivencia_17: _verificar_alerta_comportamiento usa SEGUIMIENTO_REQUERIDO
+# ===========================================================================
+
+class TestVerificarAlertaComportamiento:
+    """Tests para _verificar_alerta_comportamiento (convivencia_17)."""
+
+    def _cfg_seguimiento(self, umbral: float = 3.0) -> ConfiguracionAlerta:
+        return ConfiguracionAlerta(
+            anio_id=2026,
+            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
+            umbral=umbral,
+            activa=True,
+        )
+
+    def _dto_negativo(self) -> NuevoRegistroComportamientoDTO:
+        return NuevoRegistroComportamientoDTO(
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Incidente de convivencia",
+        )
+
+    def test_verificar_alerta_usa_tipo_seguimiento(self):
+        """Cuando conteo supera umbral, la alerta guardada usa SEGUIMIENTO_REQUERIDO."""
+        conv_repo = FakeConvRepo()
+        alerta_repo = FakeAlertaRepo(
+            existe_pendiente=False,
+            cfg=self._cfg_seguimiento(umbral=1.0),
+        )
+        svc = ConvivenciaService(repo=conv_repo, alerta_repo=alerta_repo)
+
+        svc.registrar_comportamiento(
+            self._dto_negativo(), usuario_id=1, anio_id=2026, usuario_rol=None
+        )
+
+        assert len(alerta_repo._alertas) == 1
+        assert alerta_repo._alertas[0].tipo_alerta == TipoAlerta.SEGUIMIENTO_REQUERIDO
+
+    def test_verificar_alerta_no_duplica_pendiente(self):
+        """Si ya existe alerta pendiente del tipo SEGUIMIENTO_REQUERIDO → no vuelve a guardar."""
+        conv_repo = FakeConvRepo()
+        alerta_repo = FakeAlertaRepo(
+            existe_pendiente=True,
+            cfg=self._cfg_seguimiento(umbral=1.0),
+        )
+        svc = ConvivenciaService(repo=conv_repo, alerta_repo=alerta_repo)
+
+        svc.registrar_comportamiento(
+            self._dto_negativo(), usuario_id=1, anio_id=2026, usuario_rol=None
+        )
+
+        # No debe haber guardado ninguna alerta nueva
+        assert alerta_repo._alertas == []
+
+    def test_verificar_alerta_nivel_critico_doble_umbral(self):
+        """Cuando conteo >= umbral*2, el nivel de la alerta generada es CRITICA."""
+        conv_repo = FakeConvRepo()
+        # umbral=1 → umbral*2=2; precargamos 2 registros negativos
+        alerta_repo = FakeAlertaRepo(
+            existe_pendiente=False,
+            cfg=self._cfg_seguimiento(umbral=1.0),
+        )
+        svc = ConvivenciaService(repo=conv_repo, alerta_repo=alerta_repo)
+
+        # Registrar 2 incidentes negativos; el 2do (conteo==2 >= umbral*2==2) activa CRITICA
+        svc.registrar_comportamiento(
+            self._dto_negativo(), usuario_id=1, anio_id=2026, usuario_rol=None
+        )
+        # Reiniciar alerta_repo para solo capturar la segunda
+        alerta_repo._alertas.clear()
+        svc.registrar_comportamiento(
+            self._dto_negativo(), usuario_id=1, anio_id=2026, usuario_rol=None
+        )
+
+        assert len(alerta_repo._alertas) == 1
+        assert alerta_repo._alertas[0].nivel == NivelAlerta.CRITICA
+
+
+# ===========================================================================
+# convivencia_18: vista_360
+# ===========================================================================
+
+class _FakeEstWithGrupo:
+    """Estudiante fake con id, nombre, apellido y grupo_id."""
+    def __init__(self, id: int, nombre: str = "Ana", apellido: str = "Ruiz", grupo_id: int = 10):
+        self.id       = id
+        self.nombre   = nombre
+        self.apellido = apellido
+        self.grupo_id = grupo_id
+
+
+class _FakeEstSvcById:
+    """EstudianteService fake con get_by_id."""
+    def __init__(self, estudiante):
+        self._est = estudiante
+
+    def get_by_id(self, estudiante_id: int):
+        return self._est
+
+    def listar_por_grupo(self, grupo_id, solo_activos=True):
+        return [self._est]
+
+
+def _svc_vista_360(
+    conv_repo=None,
+    alerta_repo=None,
+    estudiante=None,
+    catalogo_autoriza: bool | None = None,
+    con_niveles: bool = True,
+):
+    """Factory para tests de vista_360 con dependencias configurables."""
+    conv_repo = conv_repo or FakeConvRepo()
+    est = estudiante or _FakeEstWithGrupo(1)
+    svc_kwargs: dict = dict(
+        repo=conv_repo,
+        alerta_repo=alerta_repo,
+        estudiante_svc_provider=lambda: _FakeEstSvcById(est),
+    )
+    if con_niveles:
+        svc_kwargs["configuracion_svc_provider"] = lambda: _FakeConfigSvc(_NIVELES)
+        svc_kwargs["periodo_svc_provider"]        = lambda: _FakePeriodoSvc()
+    if catalogo_autoriza is not None:
+        stub = _StubCatalogoSvc(autoriza=catalogo_autoriza)
+        svc_kwargs["catalogo_academico_svc_provider"] = lambda: stub
+    return ConvivenciaService(**svc_kwargs), conv_repo
+
+
+class TestVista360:
+    """Tests para ConvivenciaService.vista_360 (convivencia_18)."""
+
+    def test_vista_360_flujo_nominal_director(self):
+        """Director obtiene DTO completo con nota, observaciones y alertas."""
+        conv_repo = FakeConvRepo()
+        alerta_repo = FakeAlertaRepo()
+        # Precargar datos
+        conv_repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            valor=85.0, observacion="Excelente conducta",
+        )
+        conv_repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=3, periodo_id=5,
+            texto="Participativo y respetuoso", es_publica=True,
+        ))
+        alerta_repo.guardar_alerta(Alerta(
+            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
+            estudiante_id=1,
+            descripcion="Requiere seguimiento",
+            nivel=NivelAlerta.ADVERTENCIA,
+        ))
+
+        svc, _ = _svc_vista_360(conv_repo=conv_repo, alerta_repo=alerta_repo)
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=10, usuario_rol="director",
+        )
+
+        assert isinstance(dto, Seguimiento360DTO)
+        assert dto.estudiante_id == 1
+        assert "Ruiz" in dto.estudiante_nombre or "Ana" in dto.estudiante_nombre
+        assert dto.nota_comportamiento == pytest.approx(85.0)
+        assert dto.concepto == "Excelente conducta"
+        assert dto.nivel_comportamiento == "Superior"
+        assert "Participativo y respetuoso" in dto.observaciones
+        assert len(dto.alertas_activas) == 1
+        assert "Requiere seguimiento" in dto.alertas_activas[0]
+
+    def test_vista_360_director_grupo_autorizado(self):
+        """director_de_grupo con autorización de catalogo accede correctamente."""
+        conv_repo = FakeConvRepo()
+        conv_repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0,
+        )
+
+        svc, _ = _svc_vista_360(
+            conv_repo=conv_repo,
+            catalogo_autoriza=True,  # _StubCatalogoSvc(autoriza=True)
+        )
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=99, usuario_rol="director_de_grupo",
+        )
+        assert isinstance(dto, Seguimiento360DTO)
+        assert dto.nota_comportamiento == pytest.approx(70.0)
+
+    def test_vista_360_director_grupo_no_autorizado_lanza(self):
+        """director_de_grupo rechazado por catalogo → PermissionError."""
+        svc, _ = _svc_vista_360(catalogo_autoriza=False)
+        with pytest.raises(PermissionError):
+            svc.vista_360(
+                estudiante_id=1, periodo_id=5,
+                usuario_id=99, usuario_rol="director_de_grupo",
+            )
+
+    def test_vista_360_profesor_no_autorizado(self):
+        """Rol 'profesor' no tiene acceso al seguimiento 360° → PermissionError."""
+        svc, _ = _svc_vista_360()
+        with pytest.raises(PermissionError, match="Solo director"):
+            svc.vista_360(
+                estudiante_id=1, periodo_id=5,
+                usuario_id=50, usuario_rol="profesor",
+            )
+
+    def test_vista_360_sin_datos(self):
+        """Sin nota ni observaciones → DTO con campos None y listas vacías."""
+        svc, _ = _svc_vista_360()
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=10, usuario_rol="director",
+        )
+        assert isinstance(dto, Seguimiento360DTO)
+        assert dto.nota_comportamiento is None
+        assert dto.concepto is None
+        assert dto.nivel_comportamiento is None
+        assert dto.observaciones == []
+        assert dto.alertas_activas == []
+        assert dto.promedio_notas is None
+
+    def test_vista_360_coordinador_permitido(self):
+        """Coordinador también accede sin restricciones adicionales."""
+        svc, _ = _svc_vista_360()
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=20, usuario_rol="coordinador",
+        )
+        assert isinstance(dto, Seguimiento360DTO)
+
+    def test_vista_360_sin_alerta_repo_alertas_vacias(self):
+        """Sin alerta_repo inyectado → alertas_activas=[] silenciosamente."""
+        conv_repo = FakeConvRepo()
+        svc, _ = _svc_vista_360(conv_repo=conv_repo, alerta_repo=None)
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=10, usuario_rol="director",
+        )
+        assert dto.alertas_activas == []
+
+    def test_vista_360_sin_providers_niveles_extrae_nota_directa(self):
+        """Sin providers de niveles, vista_360 extrae nota directamente del repo."""
+        conv_repo = FakeConvRepo()
+        conv_repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            valor=75.0, observacion="Buen comportamiento",
+        )
+        svc, _ = _svc_vista_360(conv_repo=conv_repo, con_niveles=False)
+        dto = svc.vista_360(
+            estudiante_id=1, periodo_id=5,
+            usuario_id=10, usuario_rol="director",
+        )
+        # Sin providers de niveles → nota extraída directo del repo
+        assert dto.nota_comportamiento == pytest.approx(75.0)
+        assert dto.concepto == "Buen comportamiento"
+        assert dto.nivel_comportamiento is None  # sin niveles no se puede resolver
 
 

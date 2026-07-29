@@ -221,6 +221,7 @@ _TIPOS_ALERTAS = [
     ("materias_en_riesgo",       2.0,  True,  True,  False),
     ("plan_mejoramiento_vencido",1.0,  True,  True,  False),
     ("habilitacion_pendiente",   1.0,  True,  False, False),
+    ("seguimiento_requerido",    1.0,  True,  True,  False),
 ]
 
 # Categorías de observación por defecto (convivencia_09).
