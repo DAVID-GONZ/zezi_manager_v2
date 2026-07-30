@@ -104,8 +104,8 @@ def cierre_periodo_page() -> None:
         "anio_id":       None,
         "periodos":      [],
         "grupos":        [],
-        "periodo_id":    ctx.periodo_id,
-        "grupo_id":      ctx.grupo_id,
+        "periodo_id":    None,
+        "grupo_id":      None,
         "asignaciones":  [],
         "estado_cierres": {},   # asignacion_id → list[CierrePeriodo]
     }

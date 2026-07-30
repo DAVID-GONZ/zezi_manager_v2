@@ -76,7 +76,6 @@ class ThemeManager:
         "components/forms.css",
         "components/date_input.css",
         "components/cards.css",
-        "components/chips.css",
         "components/empty_state.css",
         "components/skeleton_loader.css",
         "components/toast.css",

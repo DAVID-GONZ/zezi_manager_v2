@@ -216,6 +216,12 @@
   --color-disabled-bg:   #252840;
   --color-disabled-text: #6E72A0;
 
+  /* Semánticos-light en dark — tintes oscuros en vez de pasteles claros */
+  --color-error-light:   rgba(193,  48,  48, 0.15);
+  --color-warning-light: rgba(200, 132,  28, 0.15);
+  --color-success-light: rgba( 46, 125,  91, 0.15);
+  --color-info-light:    rgba( 75,  80, 192, 0.15);
+
   /* Sombras con tinte índigo */
   --shadow-sm:    0 1px 2px rgba(46, 49, 146, 0.30);
   --shadow-md:    0 4px 8px rgba(15, 16, 25, 0.50), 0 2px 4px rgba(46, 49, 146, 0.20);
@@ -237,6 +243,7 @@
   --color-primary-light: #2E3192;
   --color-primary-hover: #A5A9F5;
   --color-primary-contrast: #0F1019;
+  --color-primary-lighter: rgba(139, 144, 240, 0.15);
 
   /* Topbar — hereda automáticamente vía var(--color-surface) y var(--color-border) */
 }
@@ -261,6 +268,12 @@
     --color-disabled-bg:   #252840;
     --color-disabled-text: #6E72A0;
 
+    /* Semánticos-light en dark — tintes oscuros en vez de pasteles claros */
+    --color-error-light:   rgba(193,  48,  48, 0.15);
+    --color-warning-light: rgba(200, 132,  28, 0.15);
+    --color-success-light: rgba( 46, 125,  91, 0.15);
+    --color-info-light:    rgba( 75,  80, 192, 0.15);
+
     /* Sombras con tinte índigo */
     --shadow-sm:    0 1px 2px rgba(46, 49, 146, 0.30);
     --shadow-md:    0 4px 8px rgba(15, 16, 25, 0.50), 0 2px 4px rgba(46, 49, 146, 0.20);
@@ -282,5 +295,6 @@
     --color-primary-light: #2E3192;
     --color-primary-hover: #A5A9F5;
     --color-primary-contrast: #0F1019;
+    --color-primary-lighter: rgba(139, 144, 240, 0.15);
   }
 }

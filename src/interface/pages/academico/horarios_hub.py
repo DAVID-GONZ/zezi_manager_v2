@@ -248,8 +248,6 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             logger.error("Error cargando docentes: %s", exc)
         if _s["grupos"]:
             _s["grupo_id"] = _s["grupos"][0].id
-        elif hasattr(ctx, "grupo_id") and ctx.grupo_id:
-            _s["grupo_id"] = ctx.grupo_id
 
     # ── Carga contexto generador ──────────────────────────────────────────────
     if not es_profesor:
@@ -275,7 +273,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             gen_error_contexto = "No se pudo cargar el contexto académico."
 
         _s["gen_anio_id"] = ctx.anio_id or gen_anio_id
-        _s["gen_periodo_id"] = ctx.periodo_id or gen_periodo_id
+        _s["gen_periodo_id"] = gen_periodo_id
         _s["gen_error_contexto"] = gen_error_contexto
 
         # Deep-link opcional a una pestaña de la sección Generar (lo usan los

@@ -261,3 +261,19 @@
   margin-top: 8px;
   display: block;
 }
+
+/* ── Alertas inline — texto legible en modo oscuro ──────────── */
+/* Los fondos ya son tintes oscuros (rgba) via tokens dark.
+   Los colores base (#C13030, #C8841C…) son muy oscuros para texto
+   sobre esos tintes — se usan versiones más claras con ratio ≥ 4.5:1. */
+:root[data-theme="dark"] .andes-alert-error   { color: #F07070; border-left-color: #C13030; }
+:root[data-theme="dark"] .andes-alert-warning  { color: #F0A850; border-left-color: #C8841C; }
+:root[data-theme="dark"] .andes-alert-success  { color: #5EC48A; border-left-color: #2E7D5B; }
+:root[data-theme="dark"] .andes-alert-info     { color: #9297D9; border-left-color: #4B50C0; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .andes-alert-error   { color: #F07070; border-left-color: #C13030; }
+  :root:not([data-theme="light"]) .andes-alert-warning  { color: #F0A850; border-left-color: #C8841C; }
+  :root:not([data-theme="light"]) .andes-alert-success  { color: #5EC48A; border-left-color: #2E7D5B; }
+  :root:not([data-theme="light"]) .andes-alert-info     { color: #9297D9; border-left-color: #4B50C0; }
+}

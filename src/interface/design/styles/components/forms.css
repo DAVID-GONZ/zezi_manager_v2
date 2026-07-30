@@ -62,6 +62,71 @@
 /* Estado error (Quasar agrega q-field--error) */
 .andes-input.q-field--error .q-field__control {
   border-color: var(--color-error) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px rgba(193, 48, 48, 0.12) !important;
+}
+
+:root[data-theme="dark"] .andes-input.q-field--error .q-field__control {
+  box-shadow: 0 0 0 3px rgba(193, 48, 48, 0.22) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .andes-input.q-field--error .q-field__control {
+    box-shadow: 0 0 0 3px rgba(193, 48, 48, 0.22) !important;
+  }
+}
+
+/* Estado disabled — campo congelado durante loading */
+.andes-input.q-field--disabled .q-field__control {
+  background: var(--color-surface-alt) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+
+.andes-input.q-field--disabled .q-field__native,
+.andes-input.q-field--disabled .q-field__input,
+.andes-input.q-field--disabled input {
+  color: var(--color-text-disabled) !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+
+.andes-input.q-field--disabled .q-field__control > div {
+  opacity: 1 !important;
+}
+
+/* ── Autofill — neutraliza el fondo blanco del navegador ────────── */
+/* El navegador aplica background propio en :-webkit-autofill que ignora
+   cualquier background CSS. El truco: box-shadow inset de 1000px tapa
+   ese fondo con el color del token. transition 9999s retrasa el fade
+   del navegador indefinidamente, manteniendo el color estable. */
+.andes-input input:-webkit-autofill,
+.andes-input input:-webkit-autofill:hover,
+.andes-input input:-webkit-autofill:focus,
+.andes-input input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  caret-color: var(--color-primary);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Dark mode — inputs del login usan --color-surface (#1A1C2E) */
+:root[data-theme="dark"] .andes-input input:-webkit-autofill,
+:root[data-theme="dark"] .andes-input input:-webkit-autofill:hover,
+:root[data-theme="dark"] .andes-input input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .andes-input input:-webkit-autofill,
+  :root:not([data-theme="light"]) .andes-input input:-webkit-autofill:hover,
+  :root:not([data-theme="light"]) .andes-input input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+    -webkit-text-fill-color: var(--color-text-primary) !important;
+  }
 }
 
 /* ── Neutralizar el modo labeled de Quasar ──────────────────────────

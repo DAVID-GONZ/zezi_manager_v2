@@ -708,10 +708,6 @@ def estadisticos_page() -> None:
     _cargar_grupos(ctx, _s)
     _cargar_periodos(ctx, _s)
 
-    # Pre-seleccionar grupo para profesor (si tiene uno en contexto)
-    if ctx.usuario_rol == "profesor" and ctx.grupo_id:
-        _s["grupo_id"] = ctx.grupo_id
-
     if _s["grupo_id"]:
         _cargar_asignaciones(ctx, _s)
 

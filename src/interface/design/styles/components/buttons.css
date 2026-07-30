@@ -124,3 +124,24 @@
 
 /* Botón de acción flotante sobre celda (posición absoluta top-right) */
 .btn-cell-overlay { position: absolute; top: 0; right: 0; }
+
+/* ── btn-primary — contraste en modo oscuro ───────────────── */
+/* En dark, --color-primary-dark (#2E3192) + --color-primary-contrast (#0F1019)
+   da ratio ~1.8:1 — ilegible. Se cambia al par primary/contrast que da 7:1. */
+:root[data-theme="dark"] .btn-primary {
+  background: var(--color-primary);         /* #8B90F0 — lavanda brillante */
+  color: var(--color-primary-contrast);     /* #0F1019 — ratio 7:1 */
+}
+:root[data-theme="dark"] .btn-primary:hover {
+  background: var(--color-primary-hover);   /* #A5A9F5 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn-primary {
+    background: var(--color-primary);
+    color: var(--color-primary-contrast);
+  }
+  :root:not([data-theme="light"]) .btn-primary:hover {
+    background: var(--color-primary-hover);
+  }
+}

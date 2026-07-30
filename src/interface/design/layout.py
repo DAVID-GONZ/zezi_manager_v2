@@ -610,7 +610,12 @@ def app_layout(
     var pollRailItems = function() {
       setupRailItems();
       pollRailItemsAttempts++;
-      if (document.querySelectorAll('.rail-item[data-flyout]').length === 0 && pollRailItemsAttempts < 50) {
+      var flyoutItems = document.querySelectorAll('.rail-item[data-flyout]');
+      var pendientes = flyoutItems.length === 0 || Array.prototype.some.call(
+        flyoutItems,
+        function(item) { return !item._andesSetup; }
+      );
+      if (pendientes && pollRailItemsAttempts < 50) {
         setTimeout(pollRailItems, 100);
       }
     };

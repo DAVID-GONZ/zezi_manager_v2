@@ -59,7 +59,7 @@ def test_css_load_order_archivos_existen() -> None:
         "components/badges.css",
         "components/forms.css",
         "components/cards.css",
-        "components/chips.css",
+        "components/inline_selectors.css",
         "domain/asistencia.css",
         "domain/desempeno.css",
     ]

@@ -800,7 +800,7 @@ def _render_global_comparativo(_s: dict, nota_minima: float) -> None:
     # ── Bar chart de promedios ────────────────────────────────────────────
     with ui.element("div").classes("panel-card"):
         with ui.element("div").classes("panel-header"):
-            ThemeManager.icono("bar_chart", size=20)
+            ThemeManager.icono(Icons.GRADES, size=20)
             with ui.element("div"):
                 ui.label("Promedio por grupo").classes("panel-title")
                 ui.label("Nota definitiva media de todos los estudiantes").classes("tablero-panel-subtitle")
@@ -1020,7 +1020,7 @@ def tablero_estadisticos_page() -> None:
         }
 
         with ui.row().classes("form-row-center-md u-mb-md"):
-            ThemeManager.icono("filter_list", size=18, clases="text-secondary")
+            ThemeManager.icono(Icons.FILTER, size=20, clases="text-secondary")
             ui.select(
                 label   = "Grupo",
                 options = grupos_opts,

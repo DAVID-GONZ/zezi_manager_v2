@@ -186,8 +186,6 @@ def boletin_periodo_page() -> None:
         return
 
     _s = _estado_inicial()
-    _s["grupo_id"]   = ctx.grupo_id
-    _s["periodo_id"] = ctx.periodo_id
     _cargar_grupos(ctx, _s)
     _cargar_periodos(ctx, _s)
     if _s["grupo_id"]:

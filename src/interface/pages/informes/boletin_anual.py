@@ -168,7 +168,6 @@ def boletin_anual_page() -> None:
         return
 
     _s = _estado_inicial()
-    _s["grupo_id"] = ctx.grupo_id
     _s["anio_id"]  = ctx.anio_id
     _cargar_grupos(ctx, _s)
     if _s["grupo_id"]:

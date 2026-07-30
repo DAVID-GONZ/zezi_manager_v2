@@ -13,15 +13,12 @@ from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("LOGIN")
 
-
-# page-delegate: ruta registrada en main.py vía registrar_pagina (paso_35)
 def login_page() -> None:
-    # Fondo usando la clase del design system
     ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
 
     with ui.element("div").classes("andes-login-bg w-full"):
-        # Reemplazo de ui.card() por ui.element("div") para control CSS absoluto
-        with ui.element("div").classes("andes-login-card"):
+    
+        with ui.element("div").classes("andes-login-card") as login_card_el:
             
             # ── Encabezado ──────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
@@ -33,41 +30,77 @@ def login_page() -> None:
             # ── Formulario ───────────────────────────────────────────────────
             with ui.column().classes("w-full gap-4"):
                 usuario_input = (
-                    ui.input(label="Usuario", placeholder="nombre.apellido")
+                    ui.input(label="Usuario", placeholder="usuario")
                     .classes("w-full andes-input")
-                    .props("outlined") # Eliminado 'dense' para dar mayor altura
+                    .props("outlined") 
                 )
 
                 password_input = (
-                    ui.input(label="Contraseña", password=True, password_toggle_button=True)
+                    ui.input(label="Contraseña", placeholder="Contraseña", password=True)
                     .classes("w-full andes-input")
                     .props("outlined")
                 )
 
+            # ── Toggle de contraseña con ícono del design system ─────────────
+            _pwd_visible = [False]
+
+            def _pwd_icon_html(visible: bool) -> str:
+                icono = "visibility" if visible else "visibility_off"
+                fvs = "font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 20;"
+                style = (
+                    fvs
+                    + "font-size:20px;line-height:1;vertical-align:middle;"
+                    + "user-select:none;color:var(--color-text-secondary);"
+                    + "cursor:pointer;transition:color 0.15s;"
+                )
+                return f'<span class="material-symbols-rounded" style="{style}">{icono}</span>'
+
+            with password_input.add_slot("append"):
+                _pwd_toggle_el = ui.html(_pwd_icon_html(False))
+
+            def _toggle_pwd() -> None:
+                _pwd_visible[0] = not _pwd_visible[0]
+                password_input.props("type=text" if _pwd_visible[0] else "type=password")
+                _pwd_toggle_el.content = _pwd_icon_html(_pwd_visible[0])
+
+            _pwd_toggle_el.on("click", _toggle_pwd)
+
             # Contenedor para el error
-            error_container = ui.row().classes("andes-alert andes-alert-error form-row-center u-mt-md login-alert-banner")
+            error_container = ui.row().classes("andes-alert andes-alert-error form-row-center u-mt-md login-alert-banner hidden")
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")
 
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
-                error_container.classes(add="hidden")
+                error_container.classes(add="hidden", remove="andes-login-alert-in andes-login-error-shake")
                 error_label.set_text("")
-                
+                usuario_input.props(remove="error")
+                password_input.props(remove="error")
+
                 login_btn.disable()
                 login_btn.props("loading")
+                usuario_input.disable()
+                password_input.disable()
+                login_card_el.classes(add="andes-login-loading")
 
                 def on_finish():
                     login_btn.enable()
                     login_btn.props(remove="loading")
+                    usuario_input.enable()
+                    password_input.enable()
+                    login_card_el.classes(remove="andes-login-loading")
 
                 nombre_usuario = usuario_input.value.strip() if usuario_input.value else ""
                 contrasena     = password_input.value if password_input.value else ""
 
                 if not nombre_usuario or not contrasena:
                     error_label.set_text("Completa usuario y contraseña.")
-                    error_container.classes(remove="hidden")
+                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    if not nombre_usuario:
+                        usuario_input.props("error")
+                    if not contrasena:
+                        password_input.props("error")
                     on_finish()
                     return
 
@@ -79,7 +112,8 @@ def login_page() -> None:
                     error_label.set_text(
                         f"Demasiados intentos. Espera {segundos} s e inténtalo de nuevo."
                     )
-                    error_container.classes(remove="hidden")
+                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    usuario_input.props("error")
                     on_finish()
                     return
 
@@ -166,17 +200,21 @@ def login_page() -> None:
                             logger.warning(
                                 "No se pudo registrar login fallido: %s", audit_exc
                             )
+                        usuario_input.props("error")
+                        password_input.props("error")
                         error_label.set_text("Usuario o contraseña incorrectos.")
-                    error_container.classes(remove="hidden")
+                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
                     on_finish()
 
                 except Exception:
                     logger.exception("Error inesperado en login")
                     error_label.set_text("Error del sistema. Intenta de nuevo.")
-                    error_container.classes(remove="hidden")
+                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
                     on_finish()
 
             password_input.on("keydown.enter", lambda _: intentar_login())
+            usuario_input.on("keydown", lambda _: usuario_input.props(remove="error"))
+            password_input.on("keydown", lambda _: password_input.props(remove="error"))
 
             # Botón instanciado mediante la fábrica
             login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full u-mt-lg")

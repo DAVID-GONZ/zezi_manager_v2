@@ -89,7 +89,6 @@ def consolidado_asistencia_page() -> None:
         return
 
     _s = _estado_inicial()
-    _s["grupo_id"] = ctx.grupo_id
     _cargar_listas(ctx, _s)
 
     @ui.refreshable
