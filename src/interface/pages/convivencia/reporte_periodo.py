@@ -34,6 +34,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_primary, btn_secondary
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 
 logger = logging.getLogger("REPORTE_PERIODO_CONVIVENCIA")
@@ -74,45 +75,17 @@ def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
 
 def _estado_inicial() -> dict:
     return {
-        "grupo_id":   None,
-        "periodo_id": None,
-        "grupos":     [],
-        "periodos":   [],
-        "filas":      [],  # list[ReporteConvivenciaFilaDTO]
+        "grupo_id":              None,
+        "periodo_id":            None,
+        "filas":                 [],  # list[ReporteConvivenciaFilaDTO]
+        # sel_* gestionados por el inline selector
+        "sel_periodo_id":        None,
+        "sel_periodo_nombre":    "",
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
     }
-
-
-def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
-    """Dir/coord: todos los grupos. Profesor: solo los que dirige (es
-    director_grupo_id). Admin: sin grupos (auditor técnico)."""
-    try:
-        todos = Container.catalogo_academico_service().listar_grupos()
-    except Exception as exc:
-        logger.error("Error cargando grupos: %s", exc)
-        _s["grupos"] = []
-        return
-    rol = (ctx.usuario_rol or "").lower()
-    if rol in ("director", "coordinador"):
-        _s["grupos"] = todos
-    elif rol == "profesor":
-        _s["grupos"] = [
-            g for g in todos
-            if getattr(g, "director_grupo_id", None) == ctx.usuario_id
-        ]
-    else:
-        _s["grupos"] = []
-
-
-def _cargar_periodos(ctx: SessionContext, _s: dict) -> None:
-    try:
-        config = Container.configuracion_service().get_activa()
-        anio_id = getattr(config, "id", None) if config else None
-        _s["periodos"] = (
-            Container.periodo_service().listar_por_anio(anio_id) if anio_id else []
-        )
-    except Exception as exc:
-        logger.warning("Error cargando periodos: %s", exc)
-        _s["periodos"] = []
 
 
 def _cargar_reporte(_s: dict) -> None:
@@ -134,17 +107,11 @@ def _cargar_reporte(_s: dict) -> None:
 # del reporte (columnas, aplanado, HTML del PDF) vive en ConvivenciaService.
 
 def _grupo_nombre(_s: dict) -> str:
-    for g in _s["grupos"]:
-        if getattr(g, "id", None) == _s["grupo_id"]:
-            return getattr(g, "nombre", None) or getattr(g, "codigo", "") or ""
-    return ""
+    return _s.get("sel_grupo_nombre", "") or ""
 
 
 def _periodo_nombre(_s: dict) -> str:
-    for p in _s["periodos"]:
-        if getattr(p, "id", None) == _s["periodo_id"]:
-            return getattr(p, "nombre", str(p.id))
-    return ""
+    return _s.get("sel_periodo_nombre", "") or ""
 
 
 def _filas_grilla(_s: dict) -> list[dict]:
@@ -201,55 +168,33 @@ def reporte_periodo_page() -> None:
         return
 
     _s = _estado_inicial()
-    _s["grupo_id"]   = ctx.grupo_id
-    _s["periodo_id"] = ctx.periodo_id
-    _cargar_grupos(ctx, _s)
-    _cargar_periodos(ctx, _s)
     _cargar_reporte(_s)
-
-    def on_grupo_change(valor) -> None:
-        _s["grupo_id"] = int(valor) if valor is not None else None
-        _cargar_reporte(_s)
-        _contenido.refresh()
-
-    def on_periodo_change(valor) -> None:
-        _s["periodo_id"] = int(valor) if valor is not None else None
-        _cargar_reporte(_s)
-        _contenido.refresh()
 
     @ui.refreshable
     def _contenido() -> None:
-        ctx_actual = SessionContext.desde_storage() or ctx
-        autorizado = _autorizado_para_grupo(ctx_actual, _s["grupo_id"])
+        def on_sel_change(s: dict) -> None:
+            _s["grupo_id"]           = s["sel_grupo_id"]
+            _s["periodo_id"]         = s["sel_periodo_id"]
+            _s["sel_grupo_nombre"]   = s["sel_grupo_nombre"]
+            _s["sel_periodo_nombre"] = s["sel_periodo_nombre"]
+            _cargar_reporte(_s)
+            _contenido.refresh()
 
-        grupos_opts = {
-            getattr(g, "id", None): (getattr(g, "nombre", None) or getattr(g, "codigo", ""))
-            for g in _s["grupos"]
-        }
-        periodos_opts = {
-            getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
-            for p in _s["periodos"]
-        }
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
+        )
+
+        autorizado = _autorizado_para_grupo(ctx, _s["grupo_id"])
 
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):
-                # Selectores
+                # Exportar
                 with ui.element("div").classes("panel-card"):
                     with ui.row().classes("panel-toolbar"):
-                        ui.select(
-                            options=grupos_opts or {None: "Sin grupos disponibles"},
-                            label="Grupo",
-                            value=_s["grupo_id"],
-                            on_change=lambda e: on_grupo_change(e.value),
-                        ).classes("andes-input input-min-md").props("outlined dense")
-
-                        ui.select(
-                            options=periodos_opts or {None: "Sin periodos"},
-                            label="Periodo",
-                            value=_s["periodo_id"],
-                            on_change=lambda e: on_periodo_change(e.value),
-                        ).classes("andes-input input-min-md").props("outlined dense")
-
                         if autorizado and _s["filas"]:
                             ui.element("div").classes("panel-toolbar-spacer")
                             btn_secondary(
@@ -296,9 +241,8 @@ def reporte_periodo_page() -> None:
                             }).classes("w-full")
 
         app_layout(
-            ctx_actual, contenido_pagina,
+            ctx, contenido_pagina,
             page_titulo="Reporte de convivencia por periodo",
-            mostrar_asignatura=False,
         )
 
     _contenido()

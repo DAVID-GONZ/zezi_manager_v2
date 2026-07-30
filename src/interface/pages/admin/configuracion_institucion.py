@@ -163,7 +163,6 @@ def configuracion_institucion_page() -> None:
         page_titulo    = "Información Institucional",
         page_subtitulo = "Datos básicos y generales de la institución educativa",
         page_icono     = "business",
-        mostrar_contexto = False,
     )
 
 

@@ -430,7 +430,6 @@ def cierre_periodo_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo       = "Evaluación · Cierre de Periodo",
-        mostrar_contexto  = False,  # selectores internos periodo/grupo; no depende del chip (paso_41)
     )
 
 

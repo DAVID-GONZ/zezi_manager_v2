@@ -487,7 +487,6 @@ def habilitaciones_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Evaluación · Nivelación",
-        mostrar_contexto=False,  # selectores internos; no depende del chip (paso_41)
     )
 
 

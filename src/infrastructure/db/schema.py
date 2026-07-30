@@ -833,16 +833,6 @@ SCHEMA: list[str] = [
     """,
 
     """
-    CREATE TABLE IF NOT EXISTS plantillas_observacion (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        texto        TEXT    NOT NULL,
-        categoria_id INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
-        uso_count    INTEGER NOT NULL DEFAULT 0,
-        activa       BOOLEAN NOT NULL DEFAULT 1
-    )
-    """,
-
-    """
     CREATE TABLE IF NOT EXISTS control_diario (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
         estudiante_id       INTEGER NOT NULL,
@@ -1506,116 +1496,6 @@ TRIGGERS: list[str] = [
 # INICIALIZACIÓN
 # =============================================================================
 
-def _migrar_alertas_check(conn) -> None:
-    """
-    Migración idempotente de las tablas ``alertas`` y ``configuracion_alertas``
-    para ampliar el CHECK de ``tipo_alerta`` con el valor ``seguimiento_requerido``
-    y añadir la columna ``usuario_destino_id`` a ``alertas``.
-
-    Algoritmo:
-      1. Lee el DDL actual de ``alertas`` desde ``sqlite_master``.
-      2. Si ``seguimiento_requerido`` ya aparece en el DDL (o la tabla no existe
-         todavía, p.ej. BD nueva en memoria) → retorna sin hacer nada.
-      3. De lo contrario recrea ambas tablas dentro de una sección con
-         ``PRAGMA foreign_keys = OFF`` para evitar errores de FK temporales.
-
-    Seguro de llamar en cada arranque: la comprobación del DDL garantiza
-    que solo se ejecuta una vez.
-    """
-    row = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE name='alertas' AND type='table'"
-    ).fetchone()
-
-    if row is None or "seguimiento_requerido" in row[0]:
-        return
-
-    logger.info("Migrando CHECK de 'alertas' para incluir seguimiento_requerido …")
-    conn.execute("PRAGMA foreign_keys = OFF")
-    try:
-        # -- Reconstruir alertas --------------------------------------------------
-        conn.execute("""
-            CREATE TABLE alertas_new (
-                id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
-                estudiante_id           INTEGER  NOT NULL,
-                tipo_alerta             TEXT     NOT NULL
-                                        CHECK(tipo_alerta IN (
-                                            'faltas_injustificadas',
-                                            'promedio_bajo',
-                                            'materias_en_riesgo',
-                                            'plan_mejoramiento_vencido',
-                                            'habilitacion_pendiente',
-                                            'seguimiento_requerido'
-                                        )),
-                nivel                   TEXT     NOT NULL DEFAULT 'advertencia'
-                                        CHECK(nivel IN ('info', 'advertencia', 'critica')),
-                descripcion             TEXT     NOT NULL,
-                fecha_generacion        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                resuelta                BOOLEAN  NOT NULL DEFAULT 0,
-                fecha_resolucion        DATETIME,
-                usuario_resolucion_id   INTEGER,
-                observacion_resolucion  TEXT,
-                usuario_destino_id      INTEGER  REFERENCES usuarios(id) ON DELETE SET NULL,
-
-                FOREIGN KEY(estudiante_id)          REFERENCES estudiantes(id) ON DELETE CASCADE,
-                FOREIGN KEY(usuario_resolucion_id)  REFERENCES usuarios(id)   ON DELETE SET NULL
-            )
-        """)
-        conn.execute("""
-            INSERT INTO alertas_new
-                SELECT id, estudiante_id, tipo_alerta, nivel, descripcion,
-                       fecha_generacion, resuelta, fecha_resolucion,
-                       usuario_resolucion_id, observacion_resolucion,
-                       NULL AS usuario_destino_id
-                FROM alertas
-        """)
-        conn.execute("DROP TABLE alertas")
-        conn.execute("ALTER TABLE alertas_new RENAME TO alertas")
-
-        # -- Reconstruir configuracion_alertas si también le falta el valor ------
-        row2 = conn.execute(
-            "SELECT sql FROM sqlite_master "
-            "WHERE name='configuracion_alertas' AND type='table'"
-        ).fetchone()
-        if row2 and "seguimiento_requerido" not in row2[0]:
-            conn.execute("""
-                CREATE TABLE configuracion_alertas_new (
-                    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-                    anio_id                 INTEGER NOT NULL,
-                    tipo_alerta             TEXT    NOT NULL
-                                            CHECK(tipo_alerta IN (
-                                                'faltas_injustificadas',
-                                                'promedio_bajo',
-                                                'materias_en_riesgo',
-                                                'plan_mejoramiento_vencido',
-                                                'habilitacion_pendiente',
-                                                'seguimiento_requerido'
-                                            )),
-                    umbral                  REAL    NOT NULL,
-                    activa                  BOOLEAN NOT NULL DEFAULT 1,
-                    notificar_docente       BOOLEAN NOT NULL DEFAULT 1,
-                    notificar_director      BOOLEAN NOT NULL DEFAULT 0,
-                    notificar_acudiente     BOOLEAN NOT NULL DEFAULT 0,
-
-                    UNIQUE(anio_id, tipo_alerta),
-                    FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-                )
-            """)
-            conn.execute("""
-                INSERT INTO configuracion_alertas_new
-                    SELECT id, anio_id, tipo_alerta, umbral, activa,
-                           notificar_docente, notificar_director, notificar_acudiente
-                    FROM configuracion_alertas
-            """)
-            conn.execute("DROP TABLE configuracion_alertas")
-            conn.execute(
-                "ALTER TABLE configuracion_alertas_new RENAME TO configuracion_alertas"
-            )
-    finally:
-        conn.execute("PRAGMA foreign_keys = ON")
-
-    logger.info("Migración _migrar_alertas_check completada")
-
-
 def create_schema(conn) -> None:
     """
     Aplica SCHEMA, INDICES y TRIGGERS a una conexión SQLite ya abierta.
@@ -1632,26 +1512,10 @@ def create_schema(conn) -> None:
         conn.row_factory = _sqlite3.Row
     for sql in SCHEMA:
         conn.execute(sql)
-    _migrar_alertas_check(conn)
     for sql in INDICES:
         conn.execute(sql)
     for sql in TRIGGERS:
         conn.execute(sql)
-
-
-def _asegurar_columna(conn, tabla: str, columna: str, definicion: str) -> None:
-    """
-    Añade ``columna`` a ``tabla`` solo si aún no existe (ALTER TABLE idempotente).
-
-    Lee el esquema actual con ``PRAGMA table_info`` y ejecuta el ``ADD COLUMN``
-    únicamente cuando la columna falta, de modo que es seguro llamarlo en cada
-    arranque sin romper BDs ya migradas ni perder datos.
-    """
-    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
-    if columna in cols:
-        return
-    conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}")
-    logger.info("Columna '%s.%s' añadida (migración idempotente)", tabla, columna)
 
 
 def init_db(db_path: Path | None = None) -> bool:
@@ -1689,59 +1553,6 @@ def init_db(db_path: Path | None = None) -> bool:
                 except Exception as exc:
                     logger.error(f"Error en tabla {i}: {exc}")
                     raise
-
-            # ------------------------------------------------------------------
-            # Migraciones de columnas (idempotentes)
-            # ------------------------------------------------------------------
-            # CREATE TABLE IF NOT EXISTS trae el esquema completo en BDs nuevas,
-            # pero NO añade columnas a tablas preexistentes. Para BDs ya creadas
-            # (desarrollo, demos) añadimos las columnas nuevas con ALTER TABLE
-            # idempotente: solo se ejecuta si la columna falta. No pierde datos.
-            _asegurar_columna(
-                conn, "usuarios", "debe_cambiar_password",
-                "BOOLEAN NOT NULL DEFAULT 0",
-            )
-            # Encadenamiento por hash de la bitácora (seguridad_03, M3). En BDs
-            # preexistentes los registros previos quedan con hash_cadena NULL
-            # (pre-cadena); la verificación arranca desde el primer hash no nulo.
-            _asegurar_columna(conn, "auditoria", "hash_cadena", "TEXT")
-            _asegurar_columna(conn, "audit_log", "hash_cadena", "TEXT")
-            # Director de grupo (convivencia_01). FK nullable a usuarios; en BDs
-            # preexistentes las filas quedan sin director (NULL). ON DELETE SET
-            # NULL es válido en ADD COLUMN porque el default es NULL.
-            _asegurar_columna(
-                conn, "grupos", "director_grupo_id",
-                "INTEGER REFERENCES usuarios(id) ON DELETE SET NULL",
-            )
-            # Categoría y origen de la observación (convivencia_11). En BDs
-            # preexistentes las observaciones quedan con categoria_id=NULL
-            # (sin categoría) y origen='libre' (default). Idempotente.
-            _asegurar_columna(
-                conn, "observaciones_periodo", "categoria_id",
-                "INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL",
-            )
-            _asegurar_columna(
-                conn, "observaciones_periodo", "origen",
-                "TEXT NOT NULL DEFAULT 'libre' CHECK(origen IN ('libre','plantilla'))",
-            )
-            # Vínculo FK al registro de comportamiento creado por promoción
-            # (convivencia_14). En BDs preexistentes las filas quedan con
-            # registro_comportamiento_id=NULL (no promovidas). ON DELETE SET NULL
-            # es válido en ADD COLUMN porque el default es NULL.
-            _asegurar_columna(
-                conn, "observaciones_periodo", "registro_comportamiento_id",
-                "INTEGER REFERENCES registro_comportamiento(id) ON DELETE SET NULL",
-            )
-            # Destinatario explícito de una alerta de seguimiento (convivencia_15).
-            # En BDs preexistentes las alertas quedan con usuario_destino_id=NULL.
-            # La reconstrucción del CHECK se hace a continuación.
-            _asegurar_columna(
-                conn, "alertas", "usuario_destino_id",
-                "INTEGER REFERENCES usuarios(id) ON DELETE SET NULL",
-            )
-            # Ampliar CHECK de tipo_alerta con 'seguimiento_requerido'
-            # (convivencia_15). Idempotente: solo reconstruye si el valor falta.
-            _migrar_alertas_check(conn)
 
             # ------------------------------------------------------------------
             # Índices
@@ -1815,5 +1626,4 @@ def get_db_stats() -> dict:
 __all__ = [
     "INDICES", "SCHEMA", "TRIGGERS",
     "create_schema", "get_db_stats", "init_db",
-    "_migrar_alertas_check",
 ]

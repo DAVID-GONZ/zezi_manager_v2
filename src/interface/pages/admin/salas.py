@@ -271,7 +271,6 @@ def salas_page() -> None:
         page_titulo    = "Gestión de Salas",
         page_subtitulo = "Espacios físicos disponibles para asignación de clases",
         page_icono     = "meeting_room",
-        mostrar_contexto = False,
     )
 
 

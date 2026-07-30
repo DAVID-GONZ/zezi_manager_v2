@@ -785,7 +785,6 @@ def configuracion_sie_page() -> None:
         page_titulo    = "Configuración SIEE",
         page_subtitulo = "Escala, niveles de desempeño, criterios de promoción y categorías institucionales",
         page_icono     = "school",
-        mostrar_contexto = False,
     )
 
 

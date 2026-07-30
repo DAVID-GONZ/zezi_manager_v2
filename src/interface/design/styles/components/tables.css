@@ -194,6 +194,17 @@
     width: 100%;
 }
 
+/* En toolbar los inputs no deben forzar 100% de ancho:
+   se dimensionan por su contenido / la clase input-min-* aplicada. */
+.panel-toolbar .andes-input {
+  width: auto !important;
+  flex: 0 1 auto !important;
+}
+/* El texto interno del select en toolbar tampoco debe estirarse */
+.panel-toolbar .andes-input .q-field__control {
+  width: auto !important;
+}
+
 .panel-toolbar-spacer {
     flex: 1 1 auto;
 }
@@ -251,3 +262,99 @@
    ───────────────────────────────────────────────────────────────── */
 .cell-num-right  { text-align: right;  flex-shrink: 0; }
 .cell-num-center { text-align: center; flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Config-list — lista de items de configuración con acciones inline.
+   Sustituye el patrón aggrid + row-actions en páginas de catálogos
+   pequeños (categorías, plantillas, etc.).
+   ───────────────────────────────────────────────────────────────── */
+.config-list-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) 0 var(--space-sm);
+    border-bottom: 2px solid var(--color-divider);
+    margin-bottom: 2px;
+}
+
+.config-list-header-label {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-secondary);
+    user-select: none;
+}
+
+.config-list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--color-divider);
+    transition: background var(--transition-base);
+    border-radius: var(--radius-sm);
+}
+
+.config-list-row:last-child {
+    border-bottom: none;
+}
+
+.config-list-row:hover {
+    background: var(--color-bg);
+}
+
+.config-col-name {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-col-name-hdr {
+    flex: 1;
+    min-width: 0;
+}
+
+.config-col-badge {
+    width: 9.5rem;
+    flex-shrink: 0;
+}
+
+.config-col-status {
+    width: 6.5rem;
+    flex-shrink: 0;
+}
+
+.config-col-count {
+    width: 4rem;
+    flex-shrink: 0;
+    font-size: var(--font-size-small);
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.config-col-count-hdr {
+    width: 4rem;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.config-col-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    justify-content: flex-end;
+    min-width: 8rem;
+}
+
+.config-col-actions-hdr {
+    min-width: 8rem;
+    flex-shrink: 0;
+    text-align: right;
+}

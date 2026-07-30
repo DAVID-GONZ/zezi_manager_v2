@@ -17,6 +17,7 @@ from src.domain.models.convivencia import (
     NuevaAlertaSeguimientoDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
+    NuevaPlantillaDTO,
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
     PlantillaObservacion,
@@ -724,6 +725,58 @@ class ConvivenciaService:
         desactivada = categoria.model_copy(update={"activa": False})
         return self._repo.actualizar_categoria(desactivada)
 
+    def listar_todas_plantillas(
+        self, categoria_id: int | None = None
+    ) -> list[PlantillaObservacion]:
+        """Retorna TODAS las plantillas (activas e inactivas), opcionalmente filtradas por categoría."""
+        return self._repo.listar_plantillas(categoria_id=categoria_id, solo_activas=False)
+
+    @requiere_escritura
+    def crear_plantilla(
+        self,
+        dto: NuevaPlantillaDTO,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> PlantillaObservacion:
+        """Crea una nueva plantilla de observación. Solo director y coordinador."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden crear plantillas.")
+        plantilla = PlantillaObservacion(texto=dto.texto, categoria_id=dto.categoria_id)
+        return self._repo.guardar_plantilla(plantilla)
+
+    @requiere_escritura
+    def actualizar_plantilla(
+        self,
+        plantilla_id: int,
+        dto: NuevaPlantillaDTO,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> PlantillaObservacion:
+        """Actualiza texto y/o categoría de una plantilla. Solo director y coordinador."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden actualizar plantillas.")
+        plantilla = self._repo.get_plantilla(plantilla_id)
+        if plantilla is None:
+            raise ValueError(f"Plantilla con id {plantilla_id} no existe.")
+        actualizada = plantilla.model_copy(update={"texto": dto.texto, "categoria_id": dto.categoria_id})
+        return self._repo.actualizar_plantilla(actualizada)
+
+    @requiere_escritura
+    def desactivar_plantilla(
+        self,
+        plantilla_id: int,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> None:
+        """Desactiva una plantilla (la oculta del selector). Solo director y coordinador."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden desactivar plantillas.")
+        plantilla = self._repo.get_plantilla(plantilla_id)
+        if plantilla is None:
+            raise ValueError(f"Plantilla con id {plantilla_id} no existe.")
+        desactivada = plantilla.model_copy(update={"activa": False})
+        self._repo.actualizar_plantilla(desactivada)
+
     # ------------------------------------------------------------------
     # Catálogo de plantillas de observación (convivencia_12)
     # ------------------------------------------------------------------
@@ -1064,4 +1117,4 @@ class ConvivenciaService:
         )
 
 
-__all__ = ["ConvivenciaService", "NuevaCategoriaDTO", "NuevaAlertaSeguimientoDTO", "PlantillaObservacion", "Seguimiento360DTO", "TipoRegistro"]
+__all__ = ["ConvivenciaService", "NuevaCategoriaDTO", "NuevaAlertaSeguimientoDTO", "NuevaPlantillaDTO", "PlantillaObservacion", "Seguimiento360DTO", "TipoRegistro"]

@@ -481,7 +481,6 @@ def grupos_page() -> None:
         page_titulo    = "Gestión de Grupos",
         page_subtitulo = "Crea y administra los grupos académicos de la institución",
         page_icono     = Icons.GROUPS,
-        mostrar_contexto = False,
     )
 
 

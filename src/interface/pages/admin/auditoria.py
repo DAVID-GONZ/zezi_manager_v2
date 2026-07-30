@@ -347,7 +347,6 @@ def auditoria_page() -> None:
         page_titulo    = "Auditoría",
         page_subtitulo = "Registro de cambios y eventos de sesión (solo lectura)",
         page_icono     = "history",
-        mostrar_contexto = False,
     )
 
 

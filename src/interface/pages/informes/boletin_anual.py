@@ -284,7 +284,6 @@ def boletin_anual_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Boletines Anuales",
-        mostrar_contexto=False,  # filtros internos año/grupo; no depende del chip (paso_41)
     )
 
 

@@ -212,7 +212,6 @@ def cierre_anio_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Evaluación · Cierre de Año",
-        mostrar_contexto=False,  # selector de grupo interno; no depende del chip (paso_41)
     )
 
 

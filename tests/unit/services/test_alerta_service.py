@@ -63,6 +63,20 @@ class FakeAlertaRepo(IAlertaRepository):
             for a in self._alertas.values()
         )
 
+    def listar_alertas_por_destinatario(
+        self,
+        usuario_destino_id: int,
+        tipo: str | None = None,
+        solo_pendientes: bool = True,
+    ) -> list[Alerta]:
+        result = [
+            a for a in self._alertas.values()
+            if a.usuario_destino_id == usuario_destino_id
+            and (tipo is None or a.tipo_alerta == tipo)
+            and (not solo_pendientes or not a.resuelta)
+        ]
+        return sorted(result, key=lambda a: a.fecha_generacion, reverse=True)
+
     def guardar_alerta(self, a: Alerta) -> Alerta:
         a = a.model_copy(update={"id": self._next_id})
         self._next_id += 1

@@ -38,6 +38,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.services.convivencia_service import NuevaAlertaSeguimientoDTO
@@ -61,47 +62,25 @@ def _estado_inicial() -> dict:
         "estudiantes":       [],   # list[Estudiante]
         "docentes":          [],   # list[DocenteInfo] o similar
         "alertas":           [],   # list[Alerta]
-        "periodos":          [],   # list[Periodo] para selector 360°
+        "periodos":          [],   # list[Periodo] — ya no se carga aquí, conservado por compatibilidad
         "sel_estudiante_id": None,
         "sel_periodo_id":    None,
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
         "resultado_360":     None, # Seguimiento360DTO | None
     }
 
 
 def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
-    """Carga estudiantes del grupo, docentes disponibles y alertas actuales."""
-    # Estudiantes del grupo
-    try:
-        if ctx.grupo_id:
-            _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(ctx.grupo_id)
-        else:
-            _s["estudiantes"] = []
-    except Exception as exc:
-        logger.error("Error cargando estudiantes: %s", exc)
-        _s["estudiantes"] = []
-
-    if _s["estudiantes"] and _s["sel_estudiante_id"] is None:
-        _s["sel_estudiante_id"] = getattr(_s["estudiantes"][0], "id", None)
-
+    """Carga docentes disponibles y alertas actuales."""
     # Docentes disponibles para el selector de destinatario
     try:
         _s["docentes"] = Container.usuario_service().listar_docentes()
     except Exception as exc:
         logger.warning("No se pudieron cargar docentes: %s", exc)
         _s["docentes"] = []
-
-    # Periodos del año activo para el selector 360°
-    try:
-        anio_id = ctx.anio_id
-        if anio_id:
-            _s["periodos"] = Container.periodo_service().listar_por_anio(anio_id)
-        else:
-            _s["periodos"] = []
-        if _s["periodos"] and _s["sel_periodo_id"] is None:
-            _s["sel_periodo_id"] = getattr(_s["periodos"][0], "id", None)
-    except Exception as exc:
-        logger.warning("No se pudieron cargar periodos: %s", exc)
-        _s["periodos"] = []
 
     # Alertas de seguimiento del estudiante seleccionado
     _cargar_alertas(_s)
@@ -185,25 +164,13 @@ def seguimiento_page() -> None:
 
     # ── Handlers ───────────────────────────────────────────────────────────
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _cargar_estado(nuevo_ctx, _s)
-        _contenido.refresh()
-
     def on_estudiante_change(valor) -> None:
         _s["sel_estudiante_id"] = valor
         _s["resultado_360"] = None
         _cargar_alertas(_s)
         _contenido.refresh()
 
-    def _on_periodo_change(valor) -> None:
-        _s["sel_periodo_id"] = valor
-        _s["resultado_360"] = None
-        _contenido.refresh()
-
     def _ver_360() -> None:
-        ctx_actual = SessionContext.desde_storage() or ctx
         est_id = _s["sel_estudiante_id"]
         per_id = _s["sel_periodo_id"]
         if not est_id:
@@ -216,8 +183,8 @@ def seguimiento_page() -> None:
             _s["resultado_360"] = Container.convivencia_service().vista_360(
                 estudiante_id=int(est_id),
                 periodo_id=int(per_id),
-                usuario_id=ctx_actual.usuario_id,
-                usuario_rol=ctx_actual.usuario_rol,
+                usuario_id=ctx.usuario_id,
+                usuario_rol=ctx.usuario_rol,
             )
             _contenido.refresh()
         except PermissionError as exc:
@@ -227,7 +194,6 @@ def seguimiento_page() -> None:
             toast_error(f"Error: {exc}")
 
     def _enviar_alerta(datos: dict) -> bool | None:
-        ctx_actual = SessionContext.desde_storage() or ctx
         est_id      = datos.get("estudiante_id")
         docente_id  = datos.get("usuario_destino_id")
         descripcion = str(datos.get("descripcion", "")).strip()
@@ -253,8 +219,8 @@ def seguimiento_page() -> None:
                 )
                 Container.convivencia_service().crear_alerta_seguimiento_manual(
                     dto,
-                    usuario_id=ctx_actual.usuario_id,
-                    usuario_rol=ctx_actual.usuario_rol,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
                 )
                 toast_success("Alerta de seguimiento enviada.")
                 _cargar_alertas(_s)
@@ -335,7 +301,34 @@ def seguimiento_page() -> None:
 
     @ui.refreshable
     def _contenido() -> None:
-        ctx_actual = SessionContext.desde_storage() or ctx
+        def on_sel_change(s: dict) -> None:
+            _s["sel_periodo_id"]    = s["sel_periodo_id"]
+            _s["sel_grupo_id"]      = s["sel_grupo_id"]
+            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
+            _s["resultado_360"]     = None
+            if s["sel_grupo_id"]:
+                try:
+                    _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(
+                        s["sel_grupo_id"]
+                    )
+                except Exception as exc:
+                    logger.error("Error cargando estudiantes: %s", exc)
+                    _s["estudiantes"] = []
+            else:
+                _s["estudiantes"] = []
+            if _s["estudiantes"] and _s["sel_estudiante_id"] is None:
+                _s["sel_estudiante_id"] = getattr(_s["estudiantes"][0], "id", None)
+            _cargar_alertas(_s)
+            _contenido.refresh()
+
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
+        )
+
         filas = _construir_filas_alertas(_s)
 
         opciones_estudiantes = {
@@ -411,17 +404,6 @@ def seguimiento_page() -> None:
                                 on_change=lambda e: on_estudiante_change(e.value),
                             ).classes("andes-input input-min-sm").props("outlined dense")
 
-                        opciones_periodos = {
-                            getattr(p, "id", None): getattr(p, "nombre", str(p))
-                            for p in _s["periodos"]
-                        }
-                        ui.select(
-                            options=opciones_periodos,
-                            label="Periodo",
-                            value=_s["sel_periodo_id"],
-                            on_change=lambda e: _on_periodo_change(e.value),
-                        ).classes("andes-input input-min-sm").props("outlined dense")
-
                         btn_primary("Ver seguimiento 360°", on_click=_ver_360)
 
                     res = _s.get("resultado_360")
@@ -485,11 +467,8 @@ def seguimiento_page() -> None:
                                             ui.label(alerta_txt)
 
         app_layout(
-            ctx_actual, contenido_pagina,
+            ctx, contenido_pagina,
             page_titulo="Seguimiento",
-            on_context_change=on_context_change,
-            mostrar_contexto=True,
-            mostrar_asignatura=False,
         )
 
     _contenido()

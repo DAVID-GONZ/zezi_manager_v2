@@ -78,6 +78,9 @@ NAV_ITEMS: list[dict] = [
             {"label": "Categorías",        "icon": "category",
              "ruta": "/convivencia/categorias",
              "rol":  ["director", "coordinador"]},
+            {"label": "Plantillas",        "icon": "description",
+             "ruta": "/convivencia/plantillas",
+             "rol":  ["director", "coordinador"]},
             {"label": "Alertas Seguimiento", "icon": "notification_important",
              "ruta": "/convivencia/seguimiento",
              "rol":  ["director", "coordinador"]},
@@ -350,10 +353,6 @@ def _topbar(
     page_icono: str = "",
     page_acciones: list[dict] | None = None,
     logo_url: str | None = None,
-    on_context_change=None,
-    mostrar_contexto: bool = True,
-    mostrar_grupo: bool = True,
-    mostrar_asignatura: bool = True,
 ) -> None:
     """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
     usuario_rol = ctx.usuario_rol if ctx else ""
@@ -377,17 +376,6 @@ def _topbar(
                         ui.label(page_subtitulo).classes("topbar-page-sub")
         else:
             ui.element("div").classes("flex-1")
-
-        # ── Context chip (centro/derecha) ────────────────────────────────────
-        if ctx is not None and mostrar_contexto:
-            from src.interface.design.components.context_selector import context_chip
-            # Dimensiones declaradas POR PÁGINA (no derivadas del rol).
-            context_chip(
-                ctx=ctx,
-                on_change=on_context_change,
-                mostrar_grupo=mostrar_grupo,
-                mostrar_asignatura=mostrar_asignatura,
-            )
 
         # ── Acciones de página ───────────────────────────────────────────────
         if page_acciones:
@@ -510,10 +498,6 @@ def app_layout(
     page_subtitulo: str = "",
     page_icono: str = "",
     page_acciones: list[dict] | None = None,
-    on_context_change=None,
-    mostrar_contexto: bool = True,
-    mostrar_grupo: bool = True,
-    mostrar_asignatura: bool = True,
 ) -> None:
     """
     Layout principal de la aplicación — Rail icon-only 60px (paso_12d).
@@ -528,16 +512,6 @@ def app_layout(
         page_subtitulo:    Subtítulo descriptivo opcional.
         page_icono:        Material Symbol para el topbar.
         page_acciones:     Lista de dicts de acciones para botones en el topbar.
-        on_context_change: Callback al cambiar contexto desde el chip.
-        mostrar_contexto:  Si False, oculta el chip de contexto (selector
-                           año/periodo/grupo) en el topbar. Default True →
-                           ninguna otra página cambia.
-        mostrar_grupo:     Si False, el selector no muestra el paso Grupo
-                           (página de agregados institucionales: solo periodo/año).
-                           Default True. Asignatura implica grupo.
-        mostrar_asignatura: Si False, el selector no muestra el paso Asignatura
-                           (página que solo usa periodo+grupo). Default True.
-                           Lo declara cada PÁGINA según su uso real de contexto.
     """
     _ctx = ctx_or_none
     _contenido = contenido_arg
@@ -632,11 +606,18 @@ def app_layout(
       if (e.key === 'Escape') hideAll();
     });
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupRailItems);
-    } else {
+    var pollRailItemsAttempts = 0;
+    var pollRailItems = function() {
       setupRailItems();
-      setTimeout(setupRailItems, 150);
+      pollRailItemsAttempts++;
+      if (document.querySelectorAll('.rail-item[data-flyout]').length === 0 && pollRailItemsAttempts < 50) {
+        setTimeout(pollRailItems, 100);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', pollRailItems);
+    } else {
+      pollRailItems();
     }
   }
 
@@ -701,10 +682,6 @@ def app_layout(
             page_icono=page_icono,
             page_acciones=page_acciones,
             logo_url=logo_url,
-            on_context_change=on_context_change,
-            mostrar_contexto=mostrar_contexto,
-            mostrar_grupo=mostrar_grupo,
-            mostrar_asignatura=mostrar_asignatura,
         )
 
         # Contenido de la página

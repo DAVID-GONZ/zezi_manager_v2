@@ -302,7 +302,6 @@ def boletin_periodo_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Boletines por Periodo",
-        mostrar_contexto=False,  # filtros internos periodo/grupo; no depende del chip (paso_41)
     )
 
 

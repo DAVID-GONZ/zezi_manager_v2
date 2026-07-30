@@ -536,7 +536,6 @@ def usuarios_page() -> None:
         page_titulo      = "Gestión de Usuarios",
         page_subtitulo   = "Cuentas de usuario y roles del sistema",
         page_icono       = Icons.TEACHERS,
-        mostrar_contexto = False,
     )
 
 

@@ -5,9 +5,8 @@ Planilla de notas y gestión de actividades.
 Ruta:   /evaluacion/planilla
 Acceso: todos los autenticados
 
-El periodo y la asignación activos se leen exclusivamente del context_bar
-(barra de contexto del topbar). Esta página no expone selectores propios
-para esos campos; cualquier cambio de contexto recarga la página.
+El periodo, grupo y asignación se seleccionan mediante pills inline al
+inicio del contenido. La selección es independiente del topbar.
 
 Vistas:
   PLANILLA    — ag-Grid de estudiantes × actividades con edición inline de notas.
@@ -40,6 +39,7 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
@@ -75,11 +75,18 @@ def planilla_notas_page() -> None:
 
     es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVOS
 
-    # ── Estado — solo lo que no viene del context_bar ─────────────────────────
     _s: dict = {
-        "asignacion_id":    ctx.asignacion_id,
-        "periodo_id":       ctx.periodo_id,
-        "grupo_id":         ctx.grupo_id,
+        # Alias — actualizados por on_sel_change desde los pills inline
+        "asignacion_id":         None,
+        "periodo_id":            None,
+        "grupo_id":              None,
+        # Claves del inline selector (escritas por inline_periodo_grupo_asignatura)
+        "sel_periodo_id":        None,
+        "sel_periodo_nombre":    "",
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
         "categorias":       [],
         "actividades":      [],
         "planilla":         [],
@@ -829,6 +836,21 @@ def planilla_notas_page() -> None:
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
+        def on_sel_change(s: dict) -> None:
+            _s["asignacion_id"] = s["sel_asignacion_id"]
+            _s["periodo_id"]    = s["sel_periodo_id"]
+            _s["grupo_id"]      = s["sel_grupo_id"]
+            _cargar_datos()
+            panel_vista.refresh()
+
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id     = ctx.usuario_id,
+            institucion_id = ctx.institucion_id,
+            usuario_rol    = ctx.usuario_rol,
+            preselect_periodo = True,
+        )
+
         with ui.element("div").classes("page-stack"):
 
             # Cabecera: título + barra de vista + recarga
@@ -847,13 +869,9 @@ def planilla_notas_page() -> None:
             with ui.element("div").classes("panel-card mt-4"):
                 panel_vista()
 
-    def on_context_change() -> None:
-        ui.navigate.reload()
-
     app_layout(
         ctx, contenido,
-        page_titulo       = "Evaluación · Planilla de Notas",
-        on_context_change = on_context_change,
+        page_titulo = "Evaluación · Planilla de Notas",
     )
 
 

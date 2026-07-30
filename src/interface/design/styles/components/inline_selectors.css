@@ -1,0 +1,61 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/inline_selectors.css — Pills de selección en cascada
+   inline_periodo_grupo_asignatura / inline_periodo_grupo
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Fila contenedora ────────────────────────────────────────── */
+.inline-sel-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-sm) 0 var(--space-md);
+}
+
+/* ── Pill base ───────────────────────────────────────────────── */
+.inline-sel-pill {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: var(--font-size-small);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: border-color 0.15s, background 0.15s;
+  font-weight: 400;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: none;
+  min-height: 40px;
+}
+
+/* ── Hover ───────────────────────────────────────────────────── */
+.inline-sel-pill:hover:not(:disabled):not([disabled]) {
+  border-color: var(--color-primary-light);
+  background: var(--color-primary-lighter);
+}
+
+/* ── Activo — tiene valor seleccionado ───────────────────────── */
+.inline-sel-pill.sel-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lighter);
+  color: var(--color-primary-dark);
+  font-weight: 500;
+}
+
+.inline-sel-pill.sel-active:hover {
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-lighter);
+}
+
+/* ── Deshabilitado — dimensión sin prerequisito ──────────────── */
+.inline-sel-pill:disabled,
+.inline-sel-pill[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}

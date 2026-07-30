@@ -232,45 +232,36 @@ def categorias_page() -> None:
                             cta_icono="add",
                         )
                     else:
-                        col_defs = [
-                            {"headerName": "Nombre", "field": "nombre", "flex": 2, "sortable": True},
-                            {"headerName": "Tipo",   "field": "tipo",   "width": 160},
-                            {"headerName": "Estado", "field": "estado", "width": 130},
-                        ]
-                        filas_ag = [
-                            {
-                                "id":     getattr(c, "id", None),
-                                "nombre": getattr(c, "nombre", ""),
-                                "tipo":   "Comportamental" if getattr(c, "es_comportamental", False) else "General",
-                                "estado": "Activa" if getattr(c, "activa", True) else "Inactiva",
-                                "activa": getattr(c, "activa", True),
-                            }
-                            for c in categorias
-                        ]
-                        ui.aggrid({
-                            "columnDefs":        col_defs,
-                            "rowData":           filas_ag,
-                            "defaultColDef":     {"resizable": True},
-                            "suppressCellFocus": True,
-                            "rowSelection":      "single",
-                        }).classes("w-full")
+                        # Cabecera de la tabla
+                        with ui.element("div").classes("config-list-header"):
+                            with ui.element("div").classes("config-col-name-hdr"):
+                                ui.label("Nombre").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-badge"):
+                                ui.label("Tipo").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-status"):
+                                ui.label("Estado").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-actions-hdr"):
+                                ui.label("Acciones").classes("config-list-header-label")
 
-                        with ui.element("div").classes("row-actions"):
-                            for cat in categorias:
-                                cat_id = getattr(cat, "id", None)
-                                nombre = getattr(cat, "nombre", "")
-                                es_comportamental = getattr(cat, "es_comportamental", False)
-                                activa = getattr(cat, "activa", True)
-                                with ui.row().classes("row-actions-item"):
-                                    ui.label(nombre).classes("row-actions-name")
+                        # Filas
+                        for cat in categorias:
+                            cat_id = getattr(cat, "id", None)
+                            nombre = getattr(cat, "nombre", "")
+                            es_comportamental = getattr(cat, "es_comportamental", False)
+                            activa = getattr(cat, "activa", True)
+                            with ui.element("div").classes("config-list-row"):
+                                ui.label(nombre).classes("config-col-name")
+                                with ui.element("div").classes("config-col-badge"):
                                     if es_comportamental:
                                         status_badge("Comportamental", variante="info")
                                     else:
                                         status_badge("General", variante="neutral")
+                                with ui.element("div").classes("config-col-status"):
                                     if activa:
                                         status_badge("Activa", variante="success")
                                     else:
                                         status_badge("Inactiva", variante="neutral")
+                                with ui.element("div").classes("config-col-actions"):
                                     btn_icon(
                                         Icons.EDIT,
                                         on_click=lambda c=cat: _abrir_editar_categoria(c),
@@ -287,7 +278,6 @@ def categorias_page() -> None:
             ctx_actual,
             contenido_pagina,
             page_titulo="Categorías de Observación",
-            mostrar_contexto=False,
         )
 
     _contenido()

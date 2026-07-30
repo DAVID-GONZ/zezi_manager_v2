@@ -418,7 +418,6 @@ def asignaturas_page() -> None:
         page_titulo    = "Gestión de Asignaturas",
         page_subtitulo = "Áreas de conocimiento y asignaturas del currículo",
         page_icono     = Icons.SUBJECTS,
-        mostrar_contexto = False,
     )
 
 

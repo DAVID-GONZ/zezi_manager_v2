@@ -412,7 +412,6 @@ def plan_estudios_page() -> None:
         page_titulo    = "Plan de estudios",
         page_subtitulo = "Grados, horas objetivo y asignaturas por grado",
         page_icono     = Icons.SUBJECTS,
-        mostrar_contexto = False,
     )
 
 

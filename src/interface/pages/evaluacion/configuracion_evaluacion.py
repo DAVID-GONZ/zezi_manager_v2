@@ -611,7 +611,6 @@ def configuracion_evaluacion_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo       = "Evaluación · Configuración",
-        mostrar_contexto  = False,  # selectores internos; no depende del chip (paso_41)
     )
 
 

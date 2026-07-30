@@ -221,7 +221,6 @@ def diagnostico_page() -> None:
         page_titulo="Diagnóstico",
         page_subtitulo="Herramientas de plataforma",
         page_icono="monitor_heart",
-        mostrar_contexto=False,
     )
 
 

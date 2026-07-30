@@ -2262,7 +2262,6 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         page_titulo="Horarios",
         page_subtitulo="Gestión unificada de horarios",
         page_icono=Icons.SCHEDULE,
-        mostrar_contexto=False,  # hub sobre contexto activo; no depende del chip (paso_41)
     )
 
 

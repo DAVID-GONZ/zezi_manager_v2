@@ -959,7 +959,6 @@ def estudiantes_page() -> None:
         page_titulo    = "Gestión de Estudiantes",
         page_subtitulo = "Matrícula, estado y PIAR",
         page_icono     = Icons.STUDENTS,
-        mostrar_contexto = False,
     )
 
 

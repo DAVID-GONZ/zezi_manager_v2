@@ -69,15 +69,12 @@ def test_crear_alerta_seguimiento_requerido(conn_con_schema):
 def test_migracion_check_idempotente():
     """
     Llamar create_schema dos veces sobre la misma BD en memoria no debe
-    lanzar ninguna excepción (idempotencia garantizada por IF NOT EXISTS y
-    por la comprobación interna de _migrar_alertas_check).
+    lanzar ninguna excepción (idempotencia garantizada por IF NOT EXISTS).
     """
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     try:
         create_schema(conn)
-        # Segunda llamada: todas las tablas ya existen; la migración detecta
-        # que el DDL ya contiene 'seguimiento_requerido' y retorna sin hacer nada.
         create_schema(conn)
     finally:
         conn.close()

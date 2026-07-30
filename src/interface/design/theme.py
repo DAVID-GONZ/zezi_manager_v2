@@ -82,6 +82,7 @@ class ThemeManager:
         "components/toast.css",
         "components/flujo.css",
         "components/impersonation.css",
+        "components/inline_selectors.css",
         "themes/dark.css",
         "domain/asistencia.css",
         "domain/desempeno.css",

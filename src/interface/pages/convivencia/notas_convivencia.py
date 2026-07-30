@@ -36,6 +36,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.inline_selectors import inline_periodo_grupo
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
@@ -77,17 +78,16 @@ def _estado_inicial() -> dict:
         "notas":             [],    # list[NotaComportamiento]
         "periodo_cerrado":   False,
         "cambios_pendientes": {},   # {estudiante_id: {"valor": float, "observacion": str}}
+        # sel_* gestionados por el inline selector
+        "sel_periodo_id":     None,
+        "sel_periodo_nombre": "",
+        "sel_grupo_id":       None,
+        "sel_grupo_nombre":   "",
     }
 
 
 def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     """Carga periodos, estudiantes y notas del grupo activo."""
-    # Prefiltros del contexto
-    if ctx.grupo_id:
-        _s["grupo_id"] = ctx.grupo_id
-    if ctx.periodo_id:
-        _s["periodo_id"] = ctx.periodo_id
-
     # Periodos del año activo
     try:
         config = Container.configuracion_service().get_activa()
@@ -288,13 +288,6 @@ def notas_convivencia_page() -> None:
 
     # ── Handlers ───────────────────────────────────────────────────────────
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _s["cambios_pendientes"] = {}
-            _cargar_estado(nuevo_ctx, _s)
-        _contenido.refresh()
-
     def on_periodo_change(valor) -> None:
         _s["periodo_id"] = valor
         _s["cambios_pendientes"] = {}
@@ -306,9 +299,32 @@ def notas_convivencia_page() -> None:
 
     @ui.refreshable
     def _contenido() -> None:
-        ctx_actual = SessionContext.desde_storage() or ctx
+        def on_sel_change(s: dict) -> None:
+            _s["grupo_id"]   = s["sel_grupo_id"]
+            _s["periodo_id"] = s["sel_periodo_id"]
+            _s["cambios_pendientes"] = {}
+            _verificar_periodo(_s)
+            try:
+                if _s["grupo_id"]:
+                    _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(
+                        _s["grupo_id"]
+                    )
+                else:
+                    _s["estudiantes"] = []
+            except Exception as exc:
+                logger.warning("Error cargando estudiantes: %s", exc)
+                _s["estudiantes"] = []
+            _cargar_notas(_s)
+            _contenido.refresh()
+
+        inline_periodo_grupo(
+            _s, on_sel_change,
+            institucion_id=ctx.institucion_id,
+            preselect_periodo=True,
+        )
+
         filas = _construir_filas(_s)
-        autorizado = _autorizado_para_grupo(ctx_actual, _s["grupo_id"])
+        autorizado = _autorizado_para_grupo(ctx, _s["grupo_id"])
         # Solo lectura si el periodo está cerrado O si el usuario no está
         # autorizado por objeto sobre el grupo activo (convivencia_04).
         editable = (not _s["periodo_cerrado"]) and autorizado
@@ -381,7 +397,7 @@ def notas_convivencia_page() -> None:
                 cambio = _s["cambios_pendientes"].get(est_id, {})
                 valor = cambio.get("valor", fila.get("nota"))
                 observacion = cambio.get("observacion", fila.get("observacion", ""))
-                _guardar_nota(_s, ctx_actual, est_id, valor, str(observacion))
+                _guardar_nota(_s, ctx, est_id, valor, str(observacion))
                 _contenido.refresh()
 
             if _guardar_seleccionado_timer.active:
@@ -390,7 +406,7 @@ def notas_convivencia_page() -> None:
             _guardar_seleccionado_timer.active = True
 
         def on_guardar_todo() -> None:
-            _guardar_todo(_s, ctx_actual)
+            _guardar_todo(_s, ctx)
             _contenido.refresh()
 
         def contenido_pagina() -> None:
@@ -450,10 +466,8 @@ def notas_convivencia_page() -> None:
                         grid_ref["grid"] = grid
 
         app_layout(
-            ctx_actual, contenido_pagina,
+            ctx, contenido_pagina,
             page_titulo="Notas de convivencia",
-            on_context_change=on_context_change,
-            mostrar_asignatura=False,  # usa periodo+grupo (no asignación)
         )
 
     _contenido()

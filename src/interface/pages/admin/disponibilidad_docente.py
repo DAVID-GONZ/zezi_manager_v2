@@ -297,7 +297,6 @@ def disponibilidad_docente_page() -> None:
         page_titulo="Disponibilidad docente",
         page_subtitulo="Gestión de disponibilidad horaria y límites de carga por docente",
         page_icono="event_available",
-        mostrar_contexto=False,
     )
 
 

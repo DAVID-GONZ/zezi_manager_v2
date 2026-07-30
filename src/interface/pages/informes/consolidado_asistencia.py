@@ -205,7 +205,6 @@ def consolidado_asistencia_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Consolidado de Asistencia",
-        mostrar_contexto=False,  # filtros internos periodo/grupo; no depende del chip (paso_41)
     )
 
 

@@ -860,7 +860,6 @@ def inicio_page() -> None:
             page_titulo="Plataforma",
             page_subtitulo="Auditoría y gestión de cuentas",
             page_icono="shield_person",
-            mostrar_contexto=False,  # dashboard admin de plataforma; sin chip (paso_41)
         )
         return
 
@@ -916,7 +915,6 @@ def inicio_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Dashboard",
-        mostrar_contexto=False,  # dashboard sobre contexto activo; no depende del chip (paso_41)
     )
 
 

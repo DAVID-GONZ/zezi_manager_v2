@@ -34,6 +34,7 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import skeleton_cards, stat_card
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Colors, DesempenoColors, Icons
@@ -922,20 +923,27 @@ def tablero_estadisticos_page() -> None:
 
     # ── Estado mutable ─────────────────────────────────────────────────────
     _s: dict = {
-        # Contexto académico activo
-        "periodo_id":    ctx.periodo_id,
-        "anio_id":       ctx.anio_id,
-        "grupo_id":      ctx.grupo_id,
-        "asignacion_id": ctx.asignacion_id,
+        # Contexto académico activo — alimentado por inline selector
+        "periodo_id":    None,
+        "anio_id":       None,
+        "grupo_id":      None,
+        "asignacion_id": None,
+        # sel_* gestionados por el inline selector
+        "sel_periodo_id":        None,
+        "sel_periodo_nombre":    "",
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
         # Vista institucional
         "global_data":    [],
         "kpi_grupos":     0,
         "kpi_promedio":   0.0,
         "kpi_asistencia": 0.0,
         "kpi_riesgo":     0,
-        # Drill-down (selectores inline)
-        "drill_grupo_id":     ctx.grupo_id,
-        "drill_asig_id":      ctx.asignacion_id,
+        # Drill-down (selectores propios de directivos)
+        "drill_grupo_id":     None,
+        "drill_asig_id":      None,
         "drill_asignaciones": [],
         # skeleton flags
         "cargando_global":    True,
@@ -1066,24 +1074,22 @@ def tablero_estadisticos_page() -> None:
 
     @ui.refreshable
     def profesor_refreshable() -> None:
-        """Tablero por asignación para el rol profesor (contexto completo via chip)."""
-        ctx_actual = SessionContext.desde_storage()
-        if not ctx_actual or not ctx_actual.contexto_completo:
+        """Tablero por asignación para el rol profesor (contexto completo via inline selector)."""
+        if not _s.get("periodo_id") or not _s.get("grupo_id"):
             with ui.element("div").classes("tablero-empty panel-card"):
                 with ui.element("div").classes("tablero-empty-icon"):
                     ThemeManager.icono("analytics", size=48)
                 ui.label("Selecciona un contexto académico").classes("panel-title")
                 ui.label(
-                    "Usa el selector en la barra superior para elegir periodo, "
-                    "grupo y asignatura."
+                    "Usa el selector de periodo, grupo y asignatura."
                 ).classes("tablero-panel-subtitle")
             return
 
         datos = Container.estadisticos_service().datos_tablero(
-            asignacion_id = ctx_actual.asignacion_id,
-            periodo_id    = ctx_actual.periodo_id,
-            grupo_id      = ctx_actual.grupo_id,
-            anio_id       = ctx_actual.anio_id,
+            asignacion_id = _s["asignacion_id"],
+            periodo_id    = _s["periodo_id"],
+            grupo_id      = _s["grupo_id"],
+            anio_id       = _s.get("anio_id"),
         )
 
         if datos.get("vacio") or datos.get("error"):
@@ -1116,27 +1122,36 @@ def tablero_estadisticos_page() -> None:
         _s["drill_asig_id"] = asig_id
         drill_refreshable.refresh()
 
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _s["periodo_id"]    = nuevo_ctx.periodo_id
-            _s["anio_id"]       = nuevo_ctx.anio_id
-            _s["grupo_id"]      = nuevo_ctx.grupo_id
-            _s["asignacion_id"] = nuevo_ctx.asignacion_id
-            if es_directivo:
-                if _s["periodo_id"]:
-                    _cargar_datos_globales(_s)
-                if _s["drill_grupo_id"] and _s["periodo_id"]:
-                    _cargar_drill_asignaciones(_s)
-        if es_directivo:
-            global_refreshable.refresh()
-            drill_refreshable.refresh()
-        else:
-            profesor_refreshable.refresh()
-
     # ── Contenido ────────────────────────────────────────────────────────────
 
     def contenido() -> None:
+        def on_sel_change(s: dict) -> None:
+            _s["periodo_id"]    = s["sel_periodo_id"]
+            _s["grupo_id"]      = s["sel_grupo_id"]
+            _s["asignacion_id"] = s["sel_asignacion_id"]
+            try:
+                cfg = Container.configuracion_service().get_activa()
+                _s["anio_id"] = getattr(cfg, "id", None) if cfg else None
+            except Exception:
+                _s["anio_id"] = None
+            _s["drill_grupo_id"] = None
+            _s["drill_asig_id"]  = None
+            if es_directivo:
+                if _s["periodo_id"]:
+                    _cargar_datos_globales(_s)
+                global_refreshable.refresh()
+                drill_refreshable.refresh()
+            else:
+                profesor_refreshable.refresh()
+
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
+        )
+
         with ui.element("div").classes("page-stack"):
             if es_directivo:
                 # Sección 1: Vista institucional
@@ -1165,8 +1180,7 @@ def tablero_estadisticos_page() -> None:
 
     app_layout(
         ctx, contenido,
-        page_titulo       = "Tablero Estadístico",
-        on_context_change = on_context_change,
+        page_titulo = "Tablero Estadístico",
     )
 
 

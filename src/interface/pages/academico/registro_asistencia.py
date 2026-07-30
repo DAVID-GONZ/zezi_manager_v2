@@ -8,12 +8,6 @@ Regla de capas (estricta):
   Solo usa Container (servicios) e imports de la capa de interfaz.
   Los DTOs y enums de dominio los manejan internamente los servicios.
 
-Integración con context_selector:
-  El context_selector se usa en dos puntos:
-    1. Topbar: a través de app_layout(ctx=..., on_context_change=...)
-       → context_chip se renderiza automáticamente.
-  Ambos puntos comparten el mismo callback on_context_change.
-
 Flujo:
   1. Sin contexto → panel inline muestra CTA "Configurar contexto".
   2. Con contexto → grilla se pre-carga con la fecha de hoy.
@@ -46,6 +40,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.interface.design.tokens import Icons
@@ -88,6 +83,17 @@ def _estado_inicial() -> dict:
         "estudiantes":     [],   # list[Estudiante] ordenados por apellido, nombre
         "periodo_cerrado": False,
         "pendiente":       False,
+        # Alias — actualizados por on_sel_change desde los pills inline
+        "grupo_id":              None,
+        "asignacion_id":         None,
+        "periodo_id":            None,
+        # Claves del inline selector (escritas por inline_periodo_grupo_asignatura)
+        "sel_periodo_id":        None,
+        "sel_periodo_nombre":    "",
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
     }
 
 
@@ -105,7 +111,11 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     Si falta grupo_id, asignacion_id o periodo_id en el contexto,
     deja _s en estado vacío sin lanzar excepción.
     """
-    if not ctx.grupo_id or not ctx.asignacion_id or not ctx.periodo_id:
+    grupo_id      = _s.get("grupo_id")
+    asignacion_id = _s.get("asignacion_id")
+    periodo_id    = _s.get("periodo_id")
+
+    if not grupo_id or not asignacion_id or not periodo_id:
         _s.update(
             estudiantes=[],
             registros={},
@@ -117,22 +127,22 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
 
     # 1. ¿Está el periodo cerrado?
     try:
-        periodo = Container.periodo_service().get_by_id(ctx.periodo_id)
+        periodo = Container.periodo_service().get_by_id(periodo_id)
         _s["periodo_cerrado"] = bool(getattr(periodo, "cerrado", False))
     except Exception as exc:
-        logger.warning("No se pudo verificar cierre del periodo %s: %s", ctx.periodo_id, exc)
+        logger.warning("No se pudo verificar cierre del periodo %s: %s", periodo_id, exc)
         _s["periodo_cerrado"] = False
 
     # 2. Estudiantes del grupo, ordenados por apellido + nombre
     try:
-        estudiantes = Container.estudiante_service().listar_por_grupo(ctx.grupo_id)
+        estudiantes = Container.estudiante_service().listar_por_grupo(grupo_id)
         estudiantes.sort(key=lambda e: (
             getattr(e, "apellido", "") or "",
             getattr(e, "nombre", "")   or "",
         ))
         _s["estudiantes"] = estudiantes
     except Exception as exc:
-        logger.error("Error cargando estudiantes del grupo %s: %s", ctx.grupo_id, exc)
+        logger.error("Error cargando estudiantes del grupo %s: %s", grupo_id, exc)
         _s["estudiantes"] = []
 
     if not _s["estudiantes"]:
@@ -143,14 +153,14 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     existentes: dict[int, dict[str, str]] = {}
     try:
         existentes = Container.asistencia_service().estados_por_grupo_y_fecha(
-            grupo_id      = ctx.grupo_id,
-            asignacion_id = ctx.asignacion_id,
+            grupo_id      = grupo_id,
+            asignacion_id = asignacion_id,
             fecha         = _s["fecha"],
         )
     except Exception as exc:
         logger.warning(
             "Error leyendo asistencia existente (grupo=%s, fecha=%s): %s",
-            ctx.grupo_id, _s["fecha"], exc,
+            grupo_id, _s["fecha"], exc,
         )
 
     # 4. Fusionar
@@ -165,15 +175,15 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     _s["pendiente"] = False
 
                 
-def _s_cerrado_desde_ctx(ctx: SessionContext) -> bool:
+def _s_cerrado(periodo_id: int | None) -> bool:
     """
-    Consulta el estado de cierre del periodo del contexto.
-    Silencia excepciones — el peor caso es mostrar el botón Cambiar innecesariamente.
+    Consulta el estado de cierre del periodo indicado.
+    Retorna False si periodo_id es None o si falla la consulta.
     """
-    if not ctx.periodo_id:
+    if not periodo_id:
         return False
     try:
-        periodo = Container.periodo_service().get_by_id(ctx.periodo_id)
+        periodo = Container.periodo_service().get_by_id(periodo_id)
         return bool(getattr(periodo, "cerrado", False))
     except Exception:
         return False
@@ -346,7 +356,11 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
     con una lista de dicts primitivos. El servicio construye internamente
     los DTOs de dominio — esta función no importa ningún modelo de dominio.
     """
-    if not ctx.grupo_id or not ctx.asignacion_id or not ctx.periodo_id:
+    grupo_id      = _s.get("grupo_id")
+    asignacion_id = _s.get("asignacion_id")
+    periodo_id    = _s.get("periodo_id")
+
+    if not grupo_id or not asignacion_id or not periodo_id:
         toast_warning("Contexto incompleto — configura periodo, grupo y asignatura.")
         return
 
@@ -369,9 +383,9 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
         ]
 
         conteo = Container.asistencia_service().guardar_asistencia_masiva(
-            grupo_id      = ctx.grupo_id,
-            asignacion_id = ctx.asignacion_id,
-            periodo_id    = ctx.periodo_id,
+            grupo_id      = grupo_id,
+            asignacion_id = asignacion_id,
+            periodo_id    = periodo_id,
             fecha         = _s["fecha"],
             lista         = lista,
             usuario_id    = ctx.usuario_id,
@@ -382,7 +396,7 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
         toast_success(f"Asistencia guardada — {conteo} estudiante(s).")
         logger.info(
             "Asistencia guardada: grupo=%s asignacion=%s fecha=%s n=%d usuario=%s",
-            ctx.grupo_id, ctx.asignacion_id, _s["fecha"], conteo, ctx.usuario_id,
+            grupo_id, asignacion_id, _s["fecha"], conteo, ctx.usuario_id,
         )
 
     except ValueError as exc:
@@ -406,15 +420,9 @@ def registro_asistencia_page() -> None:
         grilla vacía hasta que el usuario configure.
 
     Arquitectura de refreshables:
-      ctx_refreshable()    Lee desde_storage() fresco; actualiza el panel
-                           inline con el contexto más reciente.
       stats_refreshable()  Conteos por estado; se refresca en cada cambio.
       grilla_refreshable() Banner + filas; se refresca en cambios de estado,
-                           fecha y contexto.
-
-    on_context_change se inyecta en dos lugares:
-      - app_layout(on_context_change=...) → topbar context_chip
-    Ambos ejecutan el mismo callback, garantizando consistencia.
+                           fecha y selector inline.
     """
     ctx = SessionContext.desde_storage()
     if not ctx:
@@ -427,10 +435,6 @@ def registro_asistencia_page() -> None:
     # ── @ui.refreshable ────────────────────────────────────────────────────
 
     @ui.refreshable
-    def ctx_refreshable() -> None:
-        ctx_actual = SessionContext.desde_storage()
-
-    @ui.refreshable
     def stats_refreshable() -> None:
         _stats_panel(_s)
 
@@ -439,15 +443,6 @@ def registro_asistencia_page() -> None:
         _grilla(_s, on_estado=on_estado, on_obs=on_obs)
 
     # ── Handlers ───────────────────────────────────────────────────────────
-
-    def on_context_change() -> None:
-        """Llamado desde el topbar chip O desde el panel inline."""
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _cargar_estado(nuevo_ctx, _s)
-        ctx_refreshable.refresh()
-        stats_refreshable.refresh()
-        grilla_refreshable.refresh()
 
     def on_fecha_cambio(valor: str) -> None:
         try:
@@ -460,7 +455,7 @@ def registro_asistencia_page() -> None:
             toast_warning("No se puede registrar asistencia para fechas futuras.")
             return
         _s["fecha"] = nueva
-        _cargar_estado(SessionContext.desde_storage() or ctx, _s)
+        _cargar_estado(ctx, _s)
         stats_refreshable.refresh()
         grilla_refreshable.refresh()
 
@@ -482,13 +477,28 @@ def registro_asistencia_page() -> None:
         grilla_refreshable.refresh()
 
     def on_guardar() -> None:
-        _guardar(_s, SessionContext.desde_storage() or ctx)
+        _guardar(_s, ctx)
 
     # ── Contenido ──────────────────────────────────────────────────────────
 
     def contenido() -> None:
+        def on_sel_change(s: dict) -> None:
+            _s["grupo_id"]      = s["sel_grupo_id"]
+            _s["asignacion_id"] = s["sel_asignacion_id"]
+            _s["periodo_id"]    = s["sel_periodo_id"]
+            _cargar_estado(ctx, _s)
+            stats_refreshable.refresh()
+            grilla_refreshable.refresh()
+
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id     = ctx.usuario_id,
+            institucion_id = ctx.institucion_id,
+            usuario_rol    = ctx.usuario_rol,
+            preselect_periodo = True,
+        )
+
         with ui.element("div").classes("asis-page"):
-            ctx_refreshable()       # Panel: periodo · grupo · asignatura [Cambiar]
             _toolbar(               # Fecha + acciones masivas + guardar
                 fecha_valor     = str(_s["fecha"]),
                 readonly        = _s["periodo_cerrado"],
@@ -501,8 +511,7 @@ def registro_asistencia_page() -> None:
 
     app_layout(
         ctx, contenido,
-        page_titulo       = "Asistencia",
-        on_context_change = on_context_change,
+        page_titulo = "Asistencia",
     )
 
 

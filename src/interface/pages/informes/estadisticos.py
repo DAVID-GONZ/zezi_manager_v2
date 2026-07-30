@@ -893,7 +893,6 @@ def estadisticos_page() -> None:
     app_layout(
         ctx, contenido,
         page_titulo="Estadísticos",
-        mostrar_contexto=False,  # filtros internos grupo/periodo/asignatura; no depende del chip (paso_41)
     )
 
 

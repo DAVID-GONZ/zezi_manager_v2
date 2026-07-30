@@ -39,6 +39,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary
+from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
 from src.services.convivencia_service import (
@@ -104,6 +105,13 @@ def _estado_inicial() -> dict:
         "registros":             [],       # list[RegistroComportamiento]
         "estudiantes":           [],       # list[Estudiante]
         "periodos":              [],       # list[Periodo]
+        # sel_* gestionados por el inline selector
+        "sel_periodo_id":        None,
+        "sel_periodo_nombre":    "",
+        "sel_grupo_id":          None,
+        "sel_grupo_nombre":      "",
+        "sel_asignacion_id":     None,
+        "sel_asignacion_nombre": "",
     }
 
 
@@ -126,12 +134,6 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     except Exception as exc:
         logger.warning("Error cargando periodos: %s", exc)
         _s["periodos"] = []
-
-    # Prefiltros del contexto
-    if ctx.grupo_id and _s["filtro_grupo_id"] is None:
-        _s["filtro_grupo_id"] = ctx.grupo_id
-    if ctx.periodo_id and _s["filtro_periodo_id"] is None:
-        _s["filtro_periodo_id"] = ctx.periodo_id
 
     # Estudiantes del grupo para el form de creación
     try:
@@ -231,20 +233,9 @@ def comportamiento_page() -> None:
     es_profesor = ctx.usuario_rol == "profesor"
 
     _s = _estado_inicial()
-    # Para profesores: forzar al grupo del contexto (sus grupos asignados)
-    if es_profesor and ctx.grupo_id:
-        _s["filtro_grupo_id"] = ctx.grupo_id
     _cargar_estado(ctx, _s)
 
     # ── Handlers ───────────────────────────────────────────────────────────
-
-    def on_context_change() -> None:
-        nuevo_ctx = SessionContext.desde_storage()
-        if nuevo_ctx:
-            _s["filtro_grupo_id"] = nuevo_ctx.grupo_id
-            _s["filtro_periodo_id"] = nuevo_ctx.periodo_id
-            _cargar_estado(nuevo_ctx, _s)
-        _contenido.refresh()
 
     def on_grupo_change(valor) -> None:
         _s["filtro_grupo_id"] = valor
@@ -275,7 +266,6 @@ def comportamiento_page() -> None:
         _contenido.refresh()
 
     def _crear_registro(datos: dict) -> bool | None:
-        ctx_actual = SessionContext.desde_storage() or ctx
         est_id = datos.get("estudiante_id")
         tipo_str = datos.get("tipo", "")
         descripcion = str(datos.get("descripcion", "")).strip()
@@ -309,8 +299,8 @@ def comportamiento_page() -> None:
                 "fecha":          fecha_str,
             })
             Container.convivencia_service().registrar_comportamiento(
-                dto, ctx_actual.usuario_id, _s["anio_id"],
-                usuario_rol=ctx_actual.usuario_rol,
+                dto, ctx.usuario_id, _s["anio_id"],
+                usuario_rol=ctx.usuario_rol,
             )
             toast_success("Registro guardado.")
             _aplicar_filtros(_s)
@@ -450,10 +440,34 @@ def comportamiento_page() -> None:
 
     @ui.refreshable
     def _contenido() -> None:
-        ctx_actual = SessionContext.desde_storage() or ctx
+        def on_sel_change(s: dict) -> None:
+            _s["filtro_grupo_id"]   = s["sel_grupo_id"]
+            _s["filtro_periodo_id"] = s["sel_periodo_id"]
+            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
+            if s["sel_grupo_id"]:
+                try:
+                    _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(
+                        s["sel_grupo_id"]
+                    )
+                except Exception as exc:
+                    logger.warning("Error recargando estudiantes: %s", exc)
+                    _s["estudiantes"] = []
+            else:
+                _s["estudiantes"] = []
+            _aplicar_filtros(_s)
+            _contenido.refresh()
+
+        inline_periodo_grupo_asignatura(
+            _s, on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
+        )
+
         filas = _construir_filas(_s)
         grupo_activo = _s["filtro_grupo_id"]
-        autorizado = _autorizado_para_grupo(ctx_actual, grupo_activo)
+        autorizado = _autorizado_para_grupo(ctx, grupo_activo)
 
         # Opciones para filtros
         opciones_periodos = {
@@ -572,10 +586,8 @@ def comportamiento_page() -> None:
                                         )
 
         app_layout(
-            ctx_actual, contenido_pagina,
+            ctx, contenido_pagina,
             page_titulo="Comportamiento",
-            on_context_change=on_context_change,
-            mostrar_asignatura=False,  # usa periodo+grupo (no asignación)
         )
 
     _contenido()

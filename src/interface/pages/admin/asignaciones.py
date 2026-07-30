@@ -693,7 +693,7 @@ def asignaciones_page() -> None:
 
         with ui.element("div").classes("panel-card"):
             ui.label("Mi carga académica").classes("text-subtitle1 font-semibold u-mb-sm")
-            with ui.row().classes("form-row-center-md"):
+            with ui.element("div").classes("stats-grid"):
                 stat_card(titulo="Horas/semana", valor=str(total_horas), icono="schedule")
                 stat_card(titulo="Grupos", valor=str(n_grupos), icono="groups")
                 stat_card(titulo="Materias", valor=str(n_materias), icono=Icons.SUBJECTS)
@@ -807,7 +807,6 @@ def asignaciones_page() -> None:
             else "Asigna docentes a materias por grupo, o materias a cada docente según su carga"
         ),
         page_icono     = "assignment_ind",
-        mostrar_contexto = False,  # selectores internos; no depende del chip (paso_41)
     )
 
 

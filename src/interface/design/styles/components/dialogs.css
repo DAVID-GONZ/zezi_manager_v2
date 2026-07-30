@@ -35,30 +35,107 @@
 /* ── Clases para form_dialog ─────────────────────────────────────────────── */
 .form-dialog-card {
   background: var(--color-surface);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg) !important;
   border: 1px solid var(--color-border);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
-  overflow: hidden; /* Esencial para que el header respete los bordes redondeados */
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0 !important;       /* anula el padding de .andes-card */
+  max-height: 90vh;
 }
+
+/* ── Header ───────────────────────────────────────────────── */
 .form-dialog-header {
-  padding: 18px 24px;
+  padding: 16px 20px;
   background: var(--color-surface-alt);
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
+
+.form-dialog-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.form-dialog-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-dialog-title-block {
+  flex: 1;
+  min-width: 0;
+}
+
 .form-dialog-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: -0.3px;
-  margin: 0;
   line-height: 1.2;
 }
-.form-dialog-body {
-  padding: 24px;
-  background: var(--color-surface);
+
+.form-dialog-subtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
 }
+
+.form-dialog-close-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+.form-dialog-close-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+/* ── Body (scrollable) ────────────────────────────────────── */
+.form-dialog-body {
+  padding: var(--space-md) 24px;
+  background: var(--color-surface);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Variantes de acento — borde superior de color ───────── */
+.form-dialog-card.variant-danger  .form-dialog-header { border-top: 3px solid var(--color-error);   }
+.form-dialog-card.variant-warning .form-dialog-header { border-top: 3px solid var(--color-warning); }
+.form-dialog-card.variant-info    .form-dialog-header { border-top: 3px solid var(--color-info);    }
+.form-dialog-card.variant-success .form-dialog-header { border-top: 3px solid var(--color-success); }
+
+.form-dialog-card.variant-danger  .form-dialog-icon { background: var(--color-error-light);   color: var(--color-error);   }
+.form-dialog-card.variant-warning .form-dialog-icon { background: var(--color-warning-light); color: var(--color-warning); }
+.form-dialog-card.variant-info    .form-dialog-icon { background: var(--color-info-light);    color: var(--color-info);    }
+.form-dialog-card.variant-success .form-dialog-icon { background: var(--color-success-light); color: var(--color-success); }
 
 /* ── Clases para confirm_dialog ─────────────────────────────────────────── */
 .confirm-dialog-card  { min-width: 380px; max-width: 480px; }
@@ -91,11 +168,14 @@
 .confirmation-card-warning .confirm-card-title { color: var(--color-warning); }
 .confirmation-card-info    .confirm-card-title { color: var(--color-info);    }
 
-/* ── Anchos de custom_dialog ──────────────────────────────── */
-.form-dialog-card-sm { width: 100%; max-width: 24rem; }
-.form-dialog-card-md { width: 100%; max-width: 32rem; }
-.form-dialog-card-lg { width: 100%; max-width: 42rem; }
-.form-dialog-card-xl { width: 100%; max-width: 56rem; }
+/* ── Anchos de form_dialog / custom_dialog ────────────────────
+   Se usa width explícito (no max-width) para forzar que el wrapper
+   interno de Quasar (q-dialog__inner) expanda el diálogo al tamaño
+   correcto. min() garantiza que no desborde en pantallas pequeñas.   */
+.form-dialog-card-sm { width: min(22rem, calc(100vw - 2rem)); }
+.form-dialog-card-md { width: min(28rem, calc(100vw - 2rem)); }
+.form-dialog-card-lg { width: min(38rem, calc(100vw - 2rem)); }
+.form-dialog-card-xl { width: min(54rem, calc(100vw - 2rem)); }
 
 /* Barra de botones en la parte inferior de un custom_dialog. */
 .form-dialog-actions {

@@ -2,48 +2,137 @@
    components/forms.css — Inputs, formularios y campos
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Inputs ──────────────────────────────────────────────── */
+/* ══ FORMIK-STYLE INPUTS — label estático sobre el campo ════ */
+
+/* Fila de etiqueta estática */
+.form-field-label-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.form-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  letter-spacing: 0.1px;
+  user-select: none;
+}
+.form-field-req {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-error);
+  margin-left: 2px;
+  line-height: 1;
+}
+
+/* ── .andes-input — control base ────────────────────────── */
 .andes-input { width: 100%; }
 
+/* Suprimir animación de borde inferior de Quasar */
+.andes-input .q-field__control::before,
+.andes-input .q-field__control::after { display: none !important; }
+
+/* Sin espacio reservado para mensajes Quasar (usamos hint propio) */
+.andes-input .q-field__bottom { padding: 0 !important; min-height: 0 !important; }
+.andes-input .q-field__messages { min-height: 0 !important; }
+
+/* Ocultar label flotante de Quasar — usamos etiqueta estática propia */
+.andes-input .q-field__label { display: none !important; }
+
+/* Marco del campo — borde directo en el control (sin fieldset) */
 .andes-input .q-field__control {
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-height: 38px !important;
+  height: 38px !important;
+  align-items: center !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--color-surface) !important;
+  border: 1.5px solid var(--color-border) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  overflow: hidden;
 }
 
+/* Estado focus */
 .andes-input.q-field--focused .q-field__control {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-lighter);
-}
-
-.andes-input.q-field--focused .q-field__control:after {
   border-color: var(--color-primary) !important;
-  border-width: 2px;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px var(--color-primary-lighter) !important;
 }
 
-.andes-input.q-field--focused .q-field__label {
-  color: var(--color-primary) !important;
+/* Estado error (Quasar agrega q-field--error) */
+.andes-input.q-field--error .q-field__control {
+  border-color: var(--color-error) !important;
 }
-.andes-input .q-field__native {
+
+/* ── Neutralizar el modo labeled de Quasar ──────────────────────────
+   Cuando el desarrollador pasa `label="..."` a ui.select/ui.input,
+   Quasar activa `.q-field--labeled` y aplica padding-top a
+   `.q-field__native/prefix/suffix` para reservar espacio al label
+   flotante. Nuestro design system usa etiquetas ARRIBA (Formik-style),
+   por lo que ese padding desalinea el valor. Se anula sin importar
+   si el label está presente o no. */
+.andes-input .q-field__control-container {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 38px !important;
+  align-items: center !important;
+}
+
+/* Input / Select / Textarea nativos — sin padding vertical residual */
+.andes-input .q-field__native,
+.andes-input .q-field__input,
+.andes-input .q-field__prefix,
+.andes-input .q-field__suffix {
+  padding: 0 2px !important;
+  font-size: var(--font-size-body) !important;
+  font-family: var(--font-family) !important;
+  color: var(--color-text-primary) !important;
   caret-color: var(--color-primary);
+  min-height: 38px !important;
 }
 
+/* Placeholder */
 .andes-input input::placeholder,
 .andes-input textarea::placeholder,
 .andes-input .q-field__native::placeholder {
   color: var(--color-text-disabled);
   font-weight: 400;
-  letter-spacing: 0.2px;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  opacity: 1;
 }
 
-.andes-input.q-field--labeled:not(.q-field--float) .q-field__native::placeholder,
-.andes-input.q-field--labeled:not(.q-field--float) input::placeholder,
-.andes-input.q-field--labeled:not(.q-field--float) textarea::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
+/* Select: el valor mostrado se centra verticalmente en el control */
+.andes-input.q-select .q-field__native {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Select: icono del dropdown */
+.andes-input .q-select__dropdown-icon {
+  color: var(--color-text-secondary) !important;
+  font-size: 18px !important;
+}
+
+/* Ícono de tooltip en etiquetas de campo */
+.form-field-tooltip-icon {
+  font-size: 14px;
+  color: var(--color-text-disabled);
+  margin-left: 4px;
+  cursor: help;
+  line-height: 1;
+}
+
+/* ── Textarea: altura flexible ───────────────────────────── */
+.andes-input.andes-textarea .q-field__control {
+  height: auto !important;
+  min-height: 90px !important;
+  align-items: flex-start;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+.andes-input.andes-textarea .q-field__native {
+  min-height: 74px !important;
+  padding-top: 0 !important;
+  resize: vertical;
 }
 
 /* ── Formularios ─────────────────────────────────────────── */
@@ -64,9 +153,26 @@
 .base-form-wrapper { width: 100%; }
 .base-form-card    { width: 100%; padding: var(--space-lg); background: var(--color-surface); }
 .base-form-title   { color: var(--color-text-primary); margin-bottom: var(--space-md); }
-.base-form-sep     { margin: var(--space-md) 0; background: var(--color-divider); }
+.base-form-sep     { margin: var(--space-sm) 0 var(--space-md); background: var(--color-divider); }
 .base-form-footer  { width: 100%; }
-.base-form-grid    { display: grid; gap: var(--space-md); width: 100%; }
+.base-form-grid    { display: grid; gap: 12px; width: 100%; }
+
+/* Variantes de columnas del grid (sin estilos inline en base_form.py) */
+.base-form-grid-1col { grid-template-columns: 1fr; }
+.base-form-grid-2col { grid-template-columns: repeat(2, 1fr); }
+.base-form-grid-3col { grid-template-columns: repeat(3, 1fr); }
+.base-form-grid-4col { grid-template-columns: repeat(4, 1fr); }
+
+/* Evita que los hijos del grid desborden su celda */
+.base-form-grid > * { min-width: 0; }
+
+/* Wrapper de cada campo: columna flex 100% ancho, sin colapso */
+.base-form-field-col {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
 .base-form-readonly-label { font-size: var(--font-size-small); color: var(--color-text-secondary); }
 
 /* base_form — campo readonly */
@@ -128,3 +234,40 @@
 .name-cell         { font-size: var(--font-size-small); font-weight: 500; }
 .progress-bar-track { width: 100%; height: 8px; border-radius: 999px; overflow: hidden; }
 .name-w48-ellipsis  { width: 12rem; font-size: var(--font-size-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── base_form v2 — campo: hint / error inline ───────────── */
+.form-field-hint {
+  font-size: var(--font-size-label);
+  color: var(--color-text-secondary);
+  margin-top: 3px;
+  padding: 0 2px;
+  line-height: 1.4;
+}
+
+.form-field-error-msg {
+  font-size: var(--font-size-label);
+  color: var(--color-error);
+  margin-top: 1px;
+  padding: 0 var(--space-xs);
+  line-height: 1.4;
+}
+
+/* ── base_form v2 — sección visual dentro del formulario ─── */
+.form-section-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0 var(--space-xs);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-xs);
+}
+.form-section-header:first-child { padding-top: 0; }
+
+/* ── base_form v2 — campo span (ancho completo en grid) ──── */
+.base-form-field-span { grid-column: 1 / -1; }

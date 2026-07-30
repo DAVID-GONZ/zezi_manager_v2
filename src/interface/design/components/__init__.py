@@ -1,10 +1,9 @@
 from .base_form import base_form
+from .inline_selectors import inline_periodo_grupo, inline_periodo_grupo_asignatura
 from .buttons import btn_danger, btn_ghost, btn_icon, btn_primary, btn_secondary
 from .confirm_dialog import confirm_dialog
 from .confirmation_card import confirmation_card
 from .custom_dialog import custom_dialog
-from .context_bar import context_bar
-from .context_selector import abrir_selector, context_chip
 from .data_table import data_table
 from .date_input import date_input, date_range_input
 from .empty_state import empty_state
@@ -38,9 +37,6 @@ __all__ = [
     "stat_card",
     # Tabla de datos con búsqueda y paginación
     "data_table",
-    # Selector de contexto académico (chip en topbar + dialog)
-    "context_chip",
-    "abrir_selector",
     # Indicador de desempeño
     "performance_indicator",
     # Formulario base reutilizable
@@ -69,4 +65,7 @@ __all__ = [
     # Componentes de fecha (paso_21 T7)
     "date_input",
     "date_range_input",
+    # Selectores inline en cascada (chip_01)
+    "inline_periodo_grupo_asignatura",
+    "inline_periodo_grupo",
 ]
