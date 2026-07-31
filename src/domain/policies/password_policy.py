@@ -144,7 +144,6 @@ def requisitos_password() -> list[str]:
         "Al menos una letra minúscula.",
         "Al menos un número.",
         "Al menos un carácter especial.",
-        "Distinta del nombre de usuario.",
     ]
 
 

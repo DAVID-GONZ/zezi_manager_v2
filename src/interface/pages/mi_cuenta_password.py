@@ -115,7 +115,7 @@ def mi_cuenta_password_page() -> None:
                 confirmar_input.enable()
 
         def _on_nueva_change(e) -> None:
-            val = e.value or ""
+            val = (e.args if isinstance(e.args, str) else nueva_input.value) or ""
             if not val:
                 for s in (seg1, seg2, seg3):
                     s.classes(remove="s-weak s-fair s-strong")
@@ -177,7 +177,7 @@ def mi_cuenta_password_page() -> None:
             strength_label.classes(add=f"l-{nivel}")
             strength_label.set_text(label_txt)
 
-        nueva_input.on("input", _on_nueva_change, throttle=0.3)
+        nueva_input.on("update:model-value", _on_nueva_change)
 
         def intentar_cambio() -> None:
             _limpiar_banners()
