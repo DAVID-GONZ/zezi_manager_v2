@@ -159,27 +159,18 @@ class UsuarioService:
         """
         Genera una contraseña temporal fuerte y aleatoria (A2 — seguridad_01).
 
-        Usa ``secrets`` (CSPRNG): 16 caracteres alfanuméricos. Se entrega al
-        admin una sola vez para que la comunique al usuario; el flag
-        ``debe_cambiar_password`` obliga a cambiarla en el primer acceso.
-
-        Cumple la política de contraseñas (seguridad_02) POR CONSTRUCCIÓN:
-        garantiza al menos una letra y al menos un dígito (no puede salir
-        solo-letras ni solo-dígitos) y longitud 16 (>= 8). Los dos caracteres
-        fijados se insertan en posiciones aleatorias para no ser predecibles.
-
-        NO se loguea ni se persiste en claro: solo viaja como hash (vía
-        IAuthenticationService) y como valor de retorno efímero.
+        Usa ``secrets`` (CSPRNG): 16 caracteres. Cumple la política endurecida
+        POR CONSTRUCCIÓN: mayúscula + minúscula + dígito + especial + longitud 16.
         """
-        alfabeto = string.ascii_letters + string.digits
-        # Garantía por construcción: al menos una letra y al menos un dígito.
+        _ESPECIALES = "!@#$%&*+-_="
+        alfabeto = string.ascii_letters + string.digits + _ESPECIALES
         chars = [
-            secrets.choice(string.ascii_letters),
+            secrets.choice(string.ascii_uppercase),
+            secrets.choice(string.ascii_lowercase),
             secrets.choice(string.digits),
+            secrets.choice(_ESPECIALES),
         ]
-        chars += [secrets.choice(alfabeto) for _ in range(14)]
-        # Barajado criptográfico para que las dos posiciones fijadas no sean
-        # predecibles (no usar random.shuffle: no es CSPRNG).
+        chars += [secrets.choice(alfabeto) for _ in range(12)]
         for i in range(len(chars) - 1, 0, -1):
             j = secrets.randbelow(i + 1)
             chars[i], chars[j] = chars[j], chars[i]
@@ -256,12 +247,10 @@ class UsuarioService:
         # A2 — credencial inicial. Sin contraseña explícita → temporal fuerte
         # aleatoria + cambio forzado (nunca el username, que es predecible).
         if dto.password:
-            # M4: si el admin fija una contraseña explícita, debe cumplir la
-            # política de dominio (>=8, letra+dígito, != username).
             validar_password(dto.password, username=dto.usuario)
             password = dto.password
             temporal: str | None = None
-            debe_cambiar = False
+            debe_cambiar = True
         else:
             password = self._generar_password_temporal()
             temporal = password

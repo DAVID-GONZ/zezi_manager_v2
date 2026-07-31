@@ -1,4 +1,6 @@
-.theme-toggle-btn {
+/* .topbar-toggle-btn — alias histórico; funcionalidad en .theme-toggle-btn */
+.theme-toggle-btn,
+.topbar-toggle-btn {
   width: 34px;
   height: 34px;
   padding: 0;
@@ -17,13 +19,15 @@
   position: relative;
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.topbar-toggle-btn:hover {
   background: var(--color-surface-alt);
   color: var(--color-primary);
   border-color: var(--color-border);
 }
 
-.theme-toggle-btn:focus-visible {
+.theme-toggle-btn:focus-visible,
+.topbar-toggle-btn:focus-visible {
   outline: 2px solid var(--ink-500);
   outline-offset: 2px;
 }

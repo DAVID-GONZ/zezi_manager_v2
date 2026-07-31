@@ -157,6 +157,11 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.cambiar_password import cambiar_password_page
     registrar_pagina("/cambiar-password", cambiar_password_page, roles=AUTENTICADO)
 
+    # ── Cambio voluntario de contraseña (mi cuenta — seguridad_02) ───────────────
+    # Accesible por cualquier autenticado desde el topbar.
+    from src.interface.pages.mi_cuenta_password import mi_cuenta_password_page
+    registrar_pagina("/mi-cuenta/cambiar-password", mi_cuenta_password_page, roles=AUTENTICADO)
+
     # ── Administración ────────────────────────────────────────────────────────
     from src.interface.pages.admin.asignaciones import asignaciones_page
     from src.interface.pages.admin.asignaturas import asignaturas_page

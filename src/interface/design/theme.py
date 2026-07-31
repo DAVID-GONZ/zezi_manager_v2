@@ -74,6 +74,7 @@ class ThemeManager:
         "components/dialogs.css",
         "components/badges.css",
         "components/forms.css",
+        "components/password_change.css",
         "components/date_input.css",
         "components/cards.css",
         "components/empty_state.css",

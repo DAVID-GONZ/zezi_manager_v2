@@ -104,9 +104,9 @@ class TestLoginSimple:
         with usar_institucion(1):
             svc.crear_usuario(
                 NuevoUsuarioDTO(usuario="unico.user", nombre_completo="Único",
-                                password="clave123")
+                                password="MiClave2026!")
             )
-        user = auth.autenticar_usuario("unico.user", "clave123")
+        user = auth.autenticar_usuario("unico.user", "MiClave2026!")
         assert user.usuario == "unico.user"
         # La institución viaja en la entidad: un username = una institución.
         assert user.institucion_id == 1
@@ -121,7 +121,7 @@ class TestLoginSimple:
         with usar_institucion(1):
             svc.crear_usuario(
                 NuevoUsuarioDTO(usuario="passcheck", nombre_completo="Pass",
-                                password="correcta1")
+                                password="Correcta2026!")
             )
         with pytest.raises(ValueError, match="credenciales_invalidas"):
             auth.autenticar_usuario("passcheck", "incorrecta")

@@ -12,17 +12,55 @@ la vista muestra las reglas legibles vía un passthrough del servicio
 (`requisitos_password`) para no acoplarse al dominio.
 
 Reglas:
-  - longitud >= LONGITUD_MINIMA (8),
-  - contiene al menos una letra y al menos un dígito,
-  - distinta del `username` (comparación case-insensitive) cuando se provee.
+  - longitud >= LONGITUD_MINIMA (10),
+  - longitud <= LONGITUD_MAXIMA (128),
+  - al menos una letra mayúscula,
+  - al menos una letra minúscula,
+  - al menos un dígito,
+  - al menos un carácter especial,
+  - distinta del `username` (comparación case-insensitive) cuando se provee,
+  - no pertenece a la lista de contraseñas comunes prohibidas.
 
 NUNCA se loguea ni se persiste la contraseña aquí: estas funciones solo la
 inspeccionan en memoria y devuelven mensajes/errores, nunca el valor.
 """
 from __future__ import annotations
 
-# Longitud mínima exigida a una contraseña elegida por el usuario.
-LONGITUD_MINIMA = 8
+LONGITUD_MINIMA = 10
+LONGITUD_MAXIMA = 128
+
+# Contraseñas triviales que cumplen las reglas de composición pero son
+# predecibles. Comparación case-insensitive.
+_PASSWORDS_PROHIBIDAS: frozenset[str] = frozenset(
+    p.lower()
+    for p in (
+        "Password1!",
+        "Password123!",
+        "Passw0rd!",
+        "Qwerty12345!",
+        "Abc12345678!",
+        "Admin12345!",
+        "Welcome123!",
+        "Letmein123!",
+        "Changeme123!",
+        "Iloveyou123!",
+        "P@ssw0rd123",
+        "Superman123!",
+        "Master12345!",
+        "Trustno1234!",
+        "Dragon12345!",
+        "Shadow12345!",
+        "Michael1234!",
+        "Football123!",
+        "Baseball123!",
+        "Monkey12345!",
+        "Qwerty1234!",
+        "Abcdef12345!",
+        "Zxcvbnm1234!",
+        "Asdfghjkl12!",
+        "1234567890Aa!",
+    )
+)
 
 
 def errores_password(
@@ -32,8 +70,7 @@ def errores_password(
     Devuelve la lista de mensajes de error de la contraseña dada.
 
     Lista vacía significa que la contraseña es válida. El orden es estable
-    (longitud, composición, igualdad-al-username) para que el primer mensaje
-    sea predecible al usarse en `validar_password`.
+    para que el primer mensaje sea predecible al usarse en `validar_password`.
     """
     pwd = password or ""
     errores: list[str] = []
@@ -43,17 +80,40 @@ def errores_password(
             f"La contraseña debe tener al menos {LONGITUD_MINIMA} caracteres."
         )
 
-    tiene_letra = any(c.isalpha() for c in pwd)
-    tiene_digito = any(c.isdigit() for c in pwd)
-    if not (tiene_letra and tiene_digito):
+    if len(pwd) > LONGITUD_MAXIMA:
         errores.append(
-            "La contraseña debe incluir al menos una letra y al menos un número."
+            f"La contraseña no debe exceder {LONGITUD_MAXIMA} caracteres."
+        )
+
+    if not any(c.isupper() for c in pwd):
+        errores.append(
+            "La contraseña debe incluir al menos una letra mayúscula."
+        )
+
+    if not any(c.islower() for c in pwd):
+        errores.append(
+            "La contraseña debe incluir al menos una letra minúscula."
+        )
+
+    if not any(c.isdigit() for c in pwd):
+        errores.append(
+            "La contraseña debe incluir al menos un número."
+        )
+
+    if not any(not c.isalnum() for c in pwd):
+        errores.append(
+            "La contraseña debe incluir al menos un carácter especial."
         )
 
     if username is not None and pwd.strip().lower() == username.strip().lower() \
             and pwd != "":
         errores.append(
             "La contraseña no puede ser igual al nombre de usuario."
+        )
+
+    if pwd.lower() in _PASSWORDS_PROHIBIDAS:
+        errores.append(
+            "Esa contraseña es demasiado común. Elige una más original."
         )
 
     return errores
@@ -79,12 +139,17 @@ def requisitos_password() -> list[str]:
     """
     return [
         f"Al menos {LONGITUD_MINIMA} caracteres.",
-        "Al menos una letra y un número.",
+        f"Máximo {LONGITUD_MAXIMA} caracteres.",
+        "Al menos una letra mayúscula.",
+        "Al menos una letra minúscula.",
+        "Al menos un número.",
+        "Al menos un carácter especial.",
         "Distinta del nombre de usuario.",
     ]
 
 
 __all__ = [
+    "LONGITUD_MAXIMA",
     "LONGITUD_MINIMA",
     "errores_password",
     "requisitos_password",

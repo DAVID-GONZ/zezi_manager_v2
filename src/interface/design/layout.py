@@ -308,6 +308,11 @@ def _user_block_topbar(ctx: SessionContext | None) -> None:
             ui.label(ctx.usuario_nombre or "Usuario").classes("topbar-user-name")
             ui.label(ctx.usuario_rol or "").classes("topbar-user-role")
         btn_icon(
+            "key",
+            on_click=lambda: ui.navigate.to("/mi-cuenta/cambiar-password"),
+            tooltip="Cambiar contraseña",
+        )
+        btn_icon(
             Icons.LOGOUT,
             on_click=lambda: ui.navigate.to("/logout"),
             tooltip="Cerrar sesión",
