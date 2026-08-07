@@ -1,0 +1,207 @@
+"""
+src/interface/pages/admin/catalogo_instituciones.py
+======================================================
+Página de catálogo de instituciones (tenants).
+Ruta: /admin/instituciones
+Acceso: admin
+
+Permite al admin, en un solo flujo, crear una institución nueva con su
+usuario director (mejora_09a). El tenant queda aprovisionado (catálogos +
+preferencias sembrados) y marcado como pendiente de configuración inicial
+— el wizard que consume ese flag se construye en mejora_09b.
+
+La página NO edita identidad completa ni preferencias (eso es del director,
+en el wizard/hub de 09b/09c); aquí solo datos básicos + director.
+"""
+from __future__ import annotations
+
+import logging
+
+from nicegui import ui
+
+from container import Container
+from src.interface.context.session_context import SessionContext
+from src.interface.design.components import (
+    custom_dialog,
+    empty_state,
+    form_dialog,
+    status_badge,
+    toast_success,
+    toast_warning,
+)
+from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.layout import app_layout
+from src.services.aprovisionamiento_institucion_service import (
+    NuevaInstitucionConDirectorDTO,
+)
+
+logger = logging.getLogger("ADMIN.CATALOGO_INSTITUCIONES")
+
+
+# page-delegate: ruta y guard de rol registrados en main.py
+def catalogo_instituciones_page() -> None:
+    ctx = SessionContext.desde_storage()
+    if not ctx:
+        ui.navigate.to("/login")
+        return
+
+    logger.info("Catálogo instituciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
+
+    # ── Estado mutable ────────────────────────────────────────────────────────
+    _s: dict = {"instituciones": []}
+
+    # ── Carga de datos ────────────────────────────────────────────────────────
+    def _cargar_estado() -> None:
+        try:
+            _s["instituciones"] = Container.institucion_service().listar_entidades()
+        except Exception as exc:
+            logger.error("Error al cargar instituciones: %s", exc)
+            _s["instituciones"] = []
+
+    _cargar_estado()
+
+    # ── Acciones ──────────────────────────────────────────────────────────────
+    def _mostrar_credenciales(nombre_institucion: str, usuario: str, password: str | None) -> None:
+        with custom_dialog(max_width="sm") as dlg:
+            ui.label("Institución creada").classes("font-h3 form-dialog-title")
+            ui.label(
+                f"'{nombre_institucion}' quedó aprovisionada. Comunica estas "
+                "credenciales al director — la contraseña temporal solo se "
+                "muestra una vez."
+            ).classes("text-sm text-muted mb-4")
+
+            with ui.element("div").classes("panel-card"):
+                ui.label("Usuario").classes("eyebrow-label")
+                ui.label(usuario).classes("cell-mono-bold u-mb-sm")
+                if password:
+                    ui.label("Contraseña temporal").classes("eyebrow-label")
+                    ui.label(password).classes("cell-mono-bold")
+
+            with ui.row().classes("form-dialog-actions"):
+                if password:
+                    btn_ghost(
+                        "Copiar",
+                        on_click=lambda: (
+                            ui.run_javascript(
+                                f"navigator.clipboard.writeText({password!r})"
+                            ),
+                            toast_success("Contraseña copiada"),
+                        ),
+                        icon="content_copy",
+                    )
+                btn_primary("Entendido", on_click=dlg.close)
+        dlg.open()
+
+    def _abrir_crear_institucion() -> None:
+        def _crear(datos: dict) -> bool | None:
+            try:
+                dto = NuevaInstitucionConDirectorDTO(
+                    nombre=datos.get("nombre", ""),
+                    nombre_oficial=datos.get("nombre_oficial") or None,
+                    codigo_dane=datos.get("codigo_dane") or None,
+                    municipio=datos.get("municipio") or None,
+                    director_usuario=datos.get("director_usuario", ""),
+                    director_nombre_completo=datos.get("director_nombre_completo", ""),
+                    director_email=datos.get("director_email") or None,
+                )
+                resultado = Container.aprovisionamiento_service().crear_institucion_con_director(
+                    dto, actor_rol=ctx.usuario_rol,
+                )
+                toast_success(f"Institución '{resultado.institucion.nombre}' creada")
+                _cargar_estado()
+                lista_instituciones.refresh()
+                _mostrar_credenciales(
+                    resultado.institucion.nombre,
+                    resultado.director_usuario,
+                    resultado.password_temporal,
+                )
+            except ValueError as exc:
+                toast_warning(str(exc))
+                return False
+            except Exception as exc:
+                logger.error("Error al crear institución con director: %s", exc)
+                toast_warning("Error al crear la institución")
+                return False
+
+        form_dialog(
+            titulo    = "Crear institución",
+            subtitulo = "Datos básicos de la institución y su usuario director",
+            campos    = [
+                {"key": "nombre",         "label": "Nombre *", "tipo": "text",
+                 "requerido": True, "placeholder": "Colegio San José"},
+                {"key": "nombre_oficial", "label": "Nombre oficial", "tipo": "text",
+                 "placeholder": "Institución Educativa San José"},
+                {"key": "codigo_dane",    "label": "Código DANE", "tipo": "text",
+                 "placeholder": "111001000000"},
+                {"key": "municipio",      "label": "Municipio", "tipo": "text",
+                 "placeholder": "Ciudad, Departamento"},
+                {"key": "director_usuario",         "label": "Usuario del director *", "tipo": "text",
+                 "requerido": True, "placeholder": "director.sanjose"},
+                {"key": "director_nombre_completo", "label": "Nombre completo del director *", "tipo": "text",
+                 "requerido": True, "placeholder": "María Elena Directora"},
+                {"key": "director_email",           "label": "Email del director", "tipo": "email",
+                 "placeholder": "director@sanjose.edu.co"},
+            ],
+            on_submit    = _crear,
+            texto_submit = "Crear institución",
+            max_width    = "max-w-lg",
+            columnas     = 2,
+            icono        = "apartment",
+        )
+
+    # ── Sección refreshable ───────────────────────────────────────────────────
+    @ui.refreshable
+    def lista_instituciones() -> None:
+        instituciones = _s["instituciones"]
+        if not instituciones:
+            empty_state(
+                icono="apartment",
+                titulo="Aún no hay instituciones registradas",
+                descripcion="Crea la primera institución para gestionar la plataforma.",
+            )
+            return
+
+        with ui.element("div").classes("w-full"):
+            with ui.element("div").classes(
+                "flex items-center gap-4 p-2 font-semibold text-sm border-b"
+            ):
+                ui.label("Institución").classes("flex-1")
+                ui.label("Municipio").classes("w-48")
+                ui.label("Estado").classes("w-48")
+
+            for inst in instituciones:
+                with ui.element("div").classes("divider-row"):
+                    ui.label(inst.nombre).classes("flex-1")
+                    ui.label(inst.municipio or "—").classes("w-48 name-w48-ellipsis")
+                    with ui.element("div").classes("w-48"):
+                        if inst.configuracion_inicial_completa:
+                            status_badge("Configurada", "success")
+                        else:
+                            status_badge("Pendiente de configuración", "warning")
+
+    # ── Contenido principal ───────────────────────────────────────────────────
+    def contenido() -> None:
+        with ui.element("div").classes("page-stack"):
+            with ui.element("div").classes("panel-card"):
+                with ui.row().classes(
+                    "gap-4 items-center justify-between flex-wrap mb-4"
+                ):
+                    ui.label("Instituciones registradas").classes("text-base font-semibold")
+                    btn_primary(
+                        "Crear institución",
+                        on_click=_abrir_crear_institucion,
+                        icon="add_business",
+                        size="sm",
+                    )
+                lista_instituciones()
+
+    app_layout(
+        ctx,
+        contenido,
+        page_titulo    = "Instituciones",
+        page_subtitulo = "Catálogo de instituciones (tenants) de la plataforma",
+        page_icono     = "apartment",
+    )
+
+
+__all__ = ["catalogo_instituciones_page"]

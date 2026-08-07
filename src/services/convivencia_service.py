@@ -82,6 +82,23 @@ class ConvivenciaService:
         self._exporter    = exporter
         self._asignacion_svc_provider = asignacion_svc_provider
 
+    # ── Resolución de institución (multi-tenant — mejora_07-T3) ─────────────────
+
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """Resuelve tenant: explícito → sesión → id_por_defecto → None."""
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            return None
+
     # ------------------------------------------------------------------
     # Autorización (defensa en profundidad — convivencia_04b)
     # ------------------------------------------------------------------
@@ -676,18 +693,23 @@ class ConvivenciaService:
         self,
         solo_activas: bool = True,
     ) -> list[CategoriaObservacion]:
-        """Retorna el catálogo de categorías de observación."""
-        return self._repo.listar_categorias(solo_activas=solo_activas)
+        """Retorna el catálogo de categorías del tenant activo."""
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_categorias(
+            solo_activas=solo_activas, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def crear_categoria(
         self,
         dto: NuevaCategoriaDTO,
     ) -> CategoriaObservacion:
-        """Crea una nueva categoría de observación."""
+        """Crea una nueva categoría de observación inyectando el tenant."""
+        inst_id = self._resolver_institucion(None)
         categoria = CategoriaObservacion(
             nombre=dto.nombre,
             es_comportamental=dto.es_comportamental,
+            institucion_id=inst_id,
         )
         return self._repo.guardar_categoria(categoria)
 
@@ -729,7 +751,10 @@ class ConvivenciaService:
         self, categoria_id: int | None = None
     ) -> list[PlantillaObservacion]:
         """Retorna TODAS las plantillas (activas e inactivas), opcionalmente filtradas por categoría."""
-        return self._repo.listar_plantillas(categoria_id=categoria_id, solo_activas=False)
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_plantillas(
+            categoria_id=categoria_id, solo_activas=False, institucion_id=institucion_actual()
+        )
 
     @requiere_escritura
     def crear_plantilla(
@@ -741,7 +766,10 @@ class ConvivenciaService:
         """Crea una nueva plantilla de observación. Solo director y coordinador."""
         if usuario_rol not in ("director", "coordinador"):
             raise PermissionError("Solo directores y coordinadores pueden crear plantillas.")
-        plantilla = PlantillaObservacion(texto=dto.texto, categoria_id=dto.categoria_id)
+        inst_id = self._resolver_institucion(None)
+        plantilla = PlantillaObservacion(
+            texto=dto.texto, categoria_id=dto.categoria_id, institucion_id=inst_id
+        )
         return self._repo.guardar_plantilla(plantilla)
 
     @requiere_escritura
@@ -784,9 +812,10 @@ class ConvivenciaService:
     def listar_plantillas(
         self, categoria_id: int | None = None
     ) -> list[PlantillaObservacion]:
-        """Retorna las plantillas activas, opcionalmente filtradas por categoría."""
+        """Retorna las plantillas activas del tenant activo, filtradas por categoría opcional."""
+        from src.services.contexto_tenant import institucion_actual
         return self._repo.listar_plantillas(
-            categoria_id=categoria_id, solo_activas=True
+            categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual()
         )
 
     @requiere_escritura

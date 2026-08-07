@@ -51,10 +51,11 @@ class AreaConocimiento(BaseModel):
     Área del currículo colombiano (Ley 115 de 1994, Art. 23).
     Ejemplos: 'Matemáticas', 'Ciencias Naturales y Educación Ambiental'.
     """
-    id:     int | None  = None
-    nombre: str
-    codigo: str | None  = None
-    color:  str | None  = None      # hex "#RGB" o "#RRGGBB"; None = sin color
+    id:             int | None  = None
+    nombre:         str
+    codigo:         str | None  = None
+    color:          str | None  = None      # hex "#RGB" o "#RRGGBB"; None = sin color
+    institucion_id: int | None  = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -246,6 +247,30 @@ class Grado(BaseModel):
             raise ValueError(
                 f"El mínimo de estudiantes ({self.min_estudiantes}) no puede "
                 f"superar el máximo ({self.max_estudiantes})."
+            )
+        return self
+
+
+class ConfiguracionGradoInstitucion(BaseModel):
+    """
+    Configuración por-institución de un grado (tabla puente — mejora_07-T6).
+    Permite que cada institución ajuste min/max de estudiantes y horas semanales
+    por grado sin modificar la tabla global `grados`.
+    """
+    id:              int | None = None
+    grado_id:        int        = Field(gt=0)
+    institucion_id:  int        = Field(gt=0)
+    min_estudiantes: int        = Field(default=0, ge=0)
+    max_estudiantes: int        = Field(default=40, ge=1)
+    horas_semanales: int        = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validar_rango_estudiantes(self) -> "ConfiguracionGradoInstitucion":
+        """El mínimo de estudiantes no puede superar el máximo."""
+        if self.min_estudiantes > self.max_estudiantes:
+            raise ValueError(
+                f"min_estudiantes ({self.min_estudiantes}) no puede superar "
+                f"max_estudiantes ({self.max_estudiantes})."
             )
         return self
 
@@ -787,12 +812,13 @@ class BloqueAnclado(BaseModel):
 
 class FranjaReunion(BaseModel):
     """Franja reservada para reunión de un conjunto de docentes."""
-    id:           int | None = None
-    nombre:       str
-    docentes:     list[int]      # lista de usuario_id
-    dia_semana:   str
-    franja_orden: int = Field(ge=1)
-    modo:         str = "preferente"  # "estricta" | "preferente"
+    id:             int | None = None
+    nombre:         str
+    docentes:       list[int]      # lista de usuario_id
+    dia_semana:     str
+    franja_orden:   int = Field(ge=1)
+    modo:           str = "preferente"  # "estricta" | "preferente"
+    institucion_id: int | None = None
 
     @field_validator("dia_semana", mode="before")
     @classmethod
@@ -850,6 +876,7 @@ class PlanEstudios(BaseModel):
     grado:           int        = Field(ge=1, le=13)
     asignatura_id:   int        = Field(gt=0)
     horas_semanales: int        = Field(ge=1, le=40)
+    institucion_id:  int | None = None
 
 
 # =============================================================================
@@ -1249,4 +1276,6 @@ __all__ = [
     "PlanEstudios",
     "NuevoPlanEstudiosDTO",
     "Grado",
+    # mejora_07-T6
+    "ConfiguracionGradoInstitucion",
 ]

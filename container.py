@@ -231,6 +231,27 @@ class Container:
         )
 
     @classmethod
+    def aprovisionamiento_service(cls):
+        from src.services.aprovisionamiento_institucion_service import (
+            AprovisionamientoInstitucionService,
+        )
+        return cls._get_or_create(
+            "aprovisionamiento_service",
+            # Reutiliza el repo ya cableado del institucion_service (no
+            # duplica wiring; el aprovisionamiento opera sobre el mismo tenant).
+            lambda: AprovisionamientoInstitucionService(cls.institucion_service()._repo),
+        )
+
+    @classmethod
+    def preferencias_service(cls):
+        from src.infrastructure.db.repositories.sqlite_preferencias_repo import SqlitePreferenciasRepository
+        from src.services.preferencias_institucion_service import PreferenciasInstitucionService
+        return cls._get_or_create(
+            "preferencias_service",
+            lambda: PreferenciasInstitucionService(SqlitePreferenciasRepository()),
+        )
+
+    @classmethod
     def usuario_service(cls):
         from src.services.usuario_service import UsuarioService
         return cls._get_or_create(
@@ -580,7 +601,8 @@ class Container:
         resultados = {}
         metodos = [
             "auth_service", "notification_service", "exporter_service",
-            "configuracion_service", "institucion_service", "usuario_service",
+            "configuracion_service", "institucion_service", "aprovisionamiento_service",
+            "usuario_service",
             "estudiante_service", "periodo_service", "asignacion_service",
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "nivelacion_service", "plan_mejoramiento_service", "convivencia_service", "alerta_service",

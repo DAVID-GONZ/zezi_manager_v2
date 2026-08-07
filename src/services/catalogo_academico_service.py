@@ -75,17 +75,23 @@ class CatalogoAcademicoService:
     # ── Áreas ─────────────────────────────────────────────────────────────────
 
     def listar_areas(self) -> list[AreaConocimiento]:
-        """Lista las áreas de conocimiento (delegado al repositorio)."""
-        return self._repo.listar_areas()
+        """Lista las áreas del tenant activo (o todas si admin/sin sesión)."""
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_areas(institucion_id=institucion_actual())
 
     @requiere_escritura
     def guardar_area(self, area: AreaConocimiento) -> AreaConocimiento:
-        """Crea un área de conocimiento (delegado al repositorio)."""
+        """Crea un área inyectando el tenant resuelto si no está explícito."""
+        inst_id = self._resolver_institucion(area.institucion_id)
+        if inst_id != area.institucion_id:
+            area = area.model_copy(update={"institucion_id": inst_id})
         return self._repo.guardar_area(area)
 
     @requiere_escritura
     def actualizar_area(self, area: AreaConocimiento) -> AreaConocimiento:
-        """Actualiza un área de conocimiento (delegado al repositorio)."""
+        """Actualiza un área verificando pertenencia al tenant."""
+        actual = self._repo.get_area(area.id)
+        self._verificar_pertenencia_obj(actual, "El área")
         return self._repo.actualizar_area(area)
 
     @requiere_escritura

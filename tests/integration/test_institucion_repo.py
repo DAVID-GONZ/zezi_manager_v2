@@ -106,3 +106,64 @@ class TestUsuarioInstitucion:
         assert len(en_otra) == 1
         assert en_otra[0].usuario == "otro_tenant"
 
+
+# =============================================================================
+# sembrar_defaults_tenant (mejora_09a)
+# =============================================================================
+
+class TestSembrarDefaultsTenant:
+
+    def test_siembra_catalogos_y_preferencias_del_tenant_nuevo(self, db_conn):
+        repo = SqliteInstitucionRepository(conn=db_conn)
+        nueva = NuevaInstitucionDTO(nombre="Colegio Nuevo Tenant").to_institucion()
+        creada = repo.guardar(nueva)
+
+        repo.sembrar_defaults_tenant(creada.id)
+
+        areas = db_conn.execute(
+            "SELECT COUNT(*) FROM areas_conocimiento WHERE institucion_id = ?",
+            (creada.id,),
+        ).fetchone()[0]
+        categorias = db_conn.execute(
+            "SELECT COUNT(*) FROM categorias_observacion WHERE institucion_id = ?",
+            (creada.id,),
+        ).fetchone()[0]
+        preferencias = db_conn.execute(
+            "SELECT COUNT(*) FROM preferencias_institucion WHERE institucion_id = ?",
+            (creada.id,),
+        ).fetchone()[0]
+
+        assert areas == 12
+        assert categorias == 4
+        assert preferencias == 8
+
+    def test_sembrar_defaults_tenant_es_idempotente(self, db_conn):
+        repo = SqliteInstitucionRepository(conn=db_conn)
+        nueva = NuevaInstitucionDTO(nombre="Colegio Idempotente").to_institucion()
+        creada = repo.guardar(nueva)
+
+        repo.sembrar_defaults_tenant(creada.id)
+        repo.sembrar_defaults_tenant(creada.id)  # segunda llamada no duplica
+
+        areas = db_conn.execute(
+            "SELECT COUNT(*) FROM areas_conocimiento WHERE institucion_id = ?",
+            (creada.id,),
+        ).fetchone()[0]
+        assert areas == 12
+
+    def test_institucion_nueva_nace_con_flag_false(self, db_conn):
+        repo = SqliteInstitucionRepository(conn=db_conn)
+        nueva = NuevaInstitucionDTO(nombre="Colegio Pendiente").to_institucion()
+        creada = repo.guardar(nueva)
+        assert creada.configuracion_inicial_completa is False
+
+        releida = repo.get_by_id(creada.id)
+        assert releida is not None
+        assert releida.configuracion_inicial_completa is False
+
+    def test_institucion_1_queda_marcada_configurada_por_seed(self, db_conn):
+        repo = SqliteInstitucionRepository(conn=db_conn)
+        inst1 = repo.get_by_id(1)
+        assert inst1 is not None
+        assert inst1.configuracion_inicial_completa is True
+

@@ -166,6 +166,9 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.admin.asignaciones import asignaciones_page
     from src.interface.pages.admin.asignaturas import asignaturas_page
     from src.interface.pages.admin.auditoria import auditoria_page
+    from src.interface.pages.admin.catalogo_instituciones import (
+        catalogo_instituciones_page,
+    )
     from src.interface.pages.admin.configuracion_institucion import (
         configuracion_institucion_page,
     )
@@ -180,6 +183,7 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.admin.usuarios import usuarios_page
 
     registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
+    registrar_pagina("/admin/instituciones", catalogo_instituciones_page, roles=_ADMIN)
     registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
     registrar_pagina("/diagnostico", diagnostico_page, roles=_ADMIN)
     registrar_pagina("/admin/grupos", grupos_page, roles=_DIR_COORD)

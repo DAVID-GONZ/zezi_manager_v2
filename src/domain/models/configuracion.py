@@ -25,7 +25,7 @@ El generador de boletines consume este DTO directamente.
 from __future__ import annotations
 
 from datetime import date
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -377,7 +377,39 @@ class InformacionInstitucionalDTO(BaseModel):
             resolucion_aprobacion  = config.resolucion_aprobacion,
         )
 
-
+    @classmethod
+    def desde_institucion(
+        cls,
+        institucion: "Any",  # Institucion — forward ref para evitar circular import
+        anio: int,
+        nota_minima_aprobacion: float,
+    ) -> "InformacionInstitucionalDTO":
+        """
+        Construye el DTO desde la entidad Institucion (para previews de boletines).
+        Falla si codigo_dane o rector son None, igual que desde_configuracion.
+        """
+        if not getattr(institucion, "codigo_dane", None):
+            raise ValueError(
+                "La institución no tiene código DANE. "
+                "Completa la información institucional antes de generar el preview."
+            )
+        if not getattr(institucion, "rector", None):
+            raise ValueError(
+                "La institución no tiene rector registrado. "
+                "Completa la información institucional antes de generar el preview."
+            )
+        return cls(
+            anio                   = anio,
+            nombre_institucion     = getattr(institucion, "nombre_oficial", None) or institucion.nombre,
+            dane_code              = institucion.codigo_dane,
+            rector                 = institucion.rector,
+            nota_minima_aprobacion = nota_minima_aprobacion,
+            direccion              = getattr(institucion, "direccion", None),
+            municipio              = getattr(institucion, "municipio", None),
+            telefono_institucion   = getattr(institucion, "telefono", None),
+            logo_path              = getattr(institucion, "logo_path", None),
+            resolucion_aprobacion  = getattr(institucion, "resolucion_aprobacion", None),
+        )
 
 
 # =============================================================================

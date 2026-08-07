@@ -201,10 +201,11 @@ class IConvivenciaRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
+    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
         """
         Retorna la lista de categorías de observación.
         Si solo_activas=True (default), excluye las categorías desactivadas.
+        Si institucion_id no es None, filtra por esa institución.
         """
         ...
 
@@ -235,12 +236,13 @@ class IConvivenciaRepository(ABC):
 
     @abstractmethod
     def listar_plantillas(
-        self, categoria_id: int | None = None, solo_activas: bool = True
+        self, categoria_id: int | None = None, solo_activas: bool = True, institucion_id: int | None = None
     ) -> list[PlantillaObservacion]:
         """
         Retorna la lista de plantillas de observación.
         Si categoria_id no es None, filtra por esa categoría.
         Si solo_activas=True (default), excluye las plantillas desactivadas.
+        Si institucion_id no es None, filtra por esa institución.
         Ordena por uso_count DESC (las más usadas primero).
         """
         ...

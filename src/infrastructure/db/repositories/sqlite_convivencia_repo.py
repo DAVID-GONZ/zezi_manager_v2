@@ -365,13 +365,17 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         d["activa"] = bool(d["activa"])
         return CategoriaObservacion(**d)
 
-    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
-        sql = "SELECT * FROM categorias_observacion"
+    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
+        sql = "SELECT * FROM categorias_observacion WHERE 1=1"
+        params: list = []
         if solo_activas:
-            sql += " WHERE activa = 1"
+            sql += " AND activa = 1"
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         sql += " ORDER BY nombre"
         with self._get_conn() as conn:
-            rows = conn.execute(sql).fetchall()
+            rows = conn.execute(sql, params).fetchall()
             return [self._row_to_categoria(r) for r in rows]
 
     def get_categoria(self, categoria_id: int) -> CategoriaObservacion | None:
@@ -387,13 +391,14 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             cursor = conn.execute(
                 """
                 INSERT INTO categorias_observacion
-                    (nombre, es_comportamental, activa)
-                VALUES (?, ?, ?)
+                    (nombre, es_comportamental, activa, institucion_id)
+                VALUES (?, ?, ?, ?)
                 """,
                 (
                     categoria.nombre,
                     int(categoria.es_comportamental),
                     int(categoria.activa),
+                    categoria.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -429,7 +434,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         return PlantillaObservacion(**d)
 
     def listar_plantillas(
-        self, categoria_id: int | None = None, solo_activas: bool = True
+        self, categoria_id: int | None = None, solo_activas: bool = True, institucion_id: int | None = None
     ) -> list[PlantillaObservacion]:
         sql = "SELECT * FROM plantillas_observacion WHERE 1=1"
         params: list = []
@@ -438,6 +443,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         if categoria_id is not None:
             sql += " AND categoria_id = ?"
             params.append(categoria_id)
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
         sql += " ORDER BY uso_count DESC"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
@@ -456,14 +464,15 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             cursor = conn.execute(
                 """
                 INSERT INTO plantillas_observacion
-                    (texto, categoria_id, uso_count, activa)
-                VALUES (?, ?, ?, ?)
+                    (texto, categoria_id, uso_count, activa, institucion_id)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     plantilla.texto,
                     plantilla.categoria_id,
                     plantilla.uso_count,
                     int(plantilla.activa),
+                    plantilla.institucion_id,
                 ),
             )
             if self._conn is None:

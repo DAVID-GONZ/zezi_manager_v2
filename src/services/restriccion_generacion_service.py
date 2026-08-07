@@ -197,8 +197,9 @@ class RestriccionGeneracionService:
     # ── FranjaReunion (paso_17) ───────────────────────────────────────────────
 
     def listar_franjas_reunion(self) -> list[FranjaReunion]:
-        """Lista las franjas de reunión (delegado al repositorio)."""
-        return self._repo.listar_franjas_reunion()
+        """Lista las franjas de reunión del tenant activo."""
+        from src.services.contexto_tenant import institucion_actual
+        return self._repo.listar_franjas_reunion(institucion_id=institucion_actual())
 
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
         """Retorna una franja de reunión por id (delegado al repositorio)."""
@@ -206,7 +207,19 @@ class RestriccionGeneracionService:
 
     @requiere_escritura
     def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
-        """Crea una franja de reunión (delegado al repositorio)."""
+        """Crea una franja de reunión inyectando el tenant si falta."""
+        if f.institucion_id is None:
+            from src.services.contexto_tenant import institucion_actual
+            from src.domain.models.infraestructura import FranjaReunion as _FR
+            inst_id = institucion_actual()
+            if inst_id is None:
+                try:
+                    from container import Container
+                    inst_id = Container.institucion_service().id_por_defecto()
+                except Exception:
+                    pass
+            if inst_id is not None:
+                f = f.model_copy(update={"institucion_id": inst_id})
         return self._repo.crear_franja_reunion(f)
 
     @requiere_escritura

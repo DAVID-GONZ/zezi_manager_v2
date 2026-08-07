@@ -107,7 +107,7 @@ class FakeConvRepo(IConvivenciaRepository):
         return n
 
     # Categorías
-    def listar_categorias(self, solo_activas: bool = True) -> list[CategoriaObservacion]:
+    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
         cats = list(self._cats.values())
         if solo_activas:
             cats = [c for c in cats if c.activa]
@@ -127,7 +127,7 @@ class FakeConvRepo(IConvivenciaRepository):
         return cat
 
     # Plantillas (convivencia_12)
-    def listar_plantillas(self, categoria_id=None, solo_activas=True) -> list[PlantillaObservacion]:
+    def listar_plantillas(self, categoria_id=None, solo_activas=True, institucion_id=None) -> list[PlantillaObservacion]:
         result = list(self._plantillas.values())
         if solo_activas:
             result = [p for p in result if p.activa]

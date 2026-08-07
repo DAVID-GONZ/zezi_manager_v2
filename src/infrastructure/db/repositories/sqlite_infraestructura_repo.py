@@ -15,6 +15,7 @@ from src.domain.models.infraestructura import (
     Asignatura,
     BloqueAnclado,
     ConfigGeneracion,
+    ConfiguracionGradoInstitucion,
     DiaSemana,
     DisponibilidadDocente,
     EscenarioHorario,
@@ -384,18 +385,22 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return AreaConocimiento(**dict(row)) if row else None
 
-    def listar_areas(self) -> list[AreaConocimiento]:
+    def listar_areas(self, institucion_id: int | None = None) -> list[AreaConocimiento]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM areas_conocimiento ORDER BY nombre"
-            ).fetchall()
+            sql = "SELECT * FROM areas_conocimiento WHERE 1=1"
+            params: list = []
+            if institucion_id is not None:
+                sql += " AND institucion_id = ?"
+                params.append(institucion_id)
+            sql += " ORDER BY nombre"
+            rows = conn.execute(sql, params).fetchall()
             return [AreaConocimiento(**dict(r)) for r in rows]
 
     def guardar_area(self, area: AreaConocimiento) -> AreaConocimiento:
         with self._get_conn() as conn:
             cursor = conn.execute(
-                "INSERT INTO areas_conocimiento (nombre, codigo, color) VALUES (?,?,?)",
-                (area.nombre, area.codigo, area.color),
+                "INSERT INTO areas_conocimiento (nombre, codigo, color, institucion_id) VALUES (?,?,?,?)",
+                (area.nombre, area.codigo, area.color, area.institucion_id),
             )
             if self._conn is None:
                 conn.commit()
@@ -1429,11 +1434,15 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d["docentes"] = json.loads(d.pop("docentes_json", "[]"))
         return FranjaReunion(**{k: v for k, v in d.items() if k in FranjaReunion.model_fields})
 
-    def listar_franjas_reunion(self) -> list[FranjaReunion]:
+    def listar_franjas_reunion(self, institucion_id: int | None = None) -> list[FranjaReunion]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM franjas_reunion ORDER BY dia_semana, franja_orden"
-            ).fetchall()
+            sql = "SELECT * FROM franjas_reunion WHERE 1=1"
+            params: list = []
+            if institucion_id is not None:
+                sql += " AND institucion_id = ?"
+                params.append(institucion_id)
+            sql += " ORDER BY dia_semana, franja_orden"
+            rows = conn.execute(sql, params).fetchall()
             return [self._row_to_franja_reunion(r) for r in rows]
 
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
@@ -1446,9 +1455,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         with self._get_conn() as conn:
             cur = conn.execute(
-                """INSERT INTO franjas_reunion (nombre, docentes_json, dia_semana, franja_orden, modo)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (f.nombre, json.dumps(f.docentes), f.dia_semana, f.franja_orden, f.modo),
+                """INSERT INTO franjas_reunion (nombre, docentes_json, dia_semana, franja_orden, modo, institucion_id)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (f.nombre, json.dumps(f.docentes), f.dia_semana, f.franja_orden, f.modo, f.institucion_id),
             )
             if self._conn is None:
                 conn.commit()
@@ -1559,36 +1568,78 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         return PlanEstudios(**{k: v for k, v in d.items() if k in PlanEstudios.model_fields})
 
-    def listar_plan_estudios(self) -> list[PlanEstudios]:
+    def listar_plan_estudios(self, institucion_id: int | None = None) -> list[PlanEstudios]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM plan_estudios ORDER BY grado, asignatura_id"
-            ).fetchall()
+            sql = "SELECT * FROM plan_estudios WHERE 1=1"
+            params: list = []
+            if institucion_id is not None:
+                sql += " AND institucion_id = ?"
+                params.append(institucion_id)
+            sql += " ORDER BY grado, asignatura_id"
+            rows = conn.execute(sql, params).fetchall()
             return [self._row_to_plan_estudios(r) for r in rows]
 
-    def get_plan_estudios_por_grado(self, grado: int) -> list[PlanEstudios]:
+    def get_plan_estudios_por_grado(self, grado: int, institucion_id: int | None = None) -> list[PlanEstudios]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM plan_estudios WHERE grado = ? ORDER BY asignatura_id",
-                (grado,),
-            ).fetchall()
+            sql = "SELECT * FROM plan_estudios WHERE grado = ?"
+            params: list = [grado]
+            if institucion_id is not None:
+                sql += " AND institucion_id = ?"
+                params.append(institucion_id)
+            sql += " ORDER BY asignatura_id"
+            rows = conn.execute(sql, params).fetchall()
             return [self._row_to_plan_estudios(r) for r in rows]
 
-    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios:
+    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None) -> PlanEstudios:
         with self._get_conn() as conn:
-            conn.execute(
-                """INSERT INTO plan_estudios (grado, asignatura_id, horas_semanales)
-                   VALUES (?, ?, ?)
-                   ON CONFLICT(grado, asignatura_id) DO UPDATE SET
-                       horas_semanales = excluded.horas_semanales""",
-                (grado, asignatura_id, horas),
-            )
+            if institucion_id is not None:
+                # ON CONFLICT solo funciona con NOT NULL en la clave compuesta
+                conn.execute(
+                    """INSERT INTO plan_estudios (grado, asignatura_id, horas_semanales, institucion_id)
+                       VALUES (?, ?, ?, ?)
+                       ON CONFLICT(institucion_id, grado, asignatura_id) DO UPDATE SET
+                           horas_semanales = excluded.horas_semanales""",
+                    (grado, asignatura_id, horas, institucion_id),
+                )
+                sel_sql = (
+                    "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
+                )
+                sel_params: list = [grado, asignatura_id, institucion_id]
+            else:
+                # SQLite trata NULLs como distintos en UNIQUE → upsert manual.
+                # Sin contexto de institución: buscar cualquier fila existente
+                # (NULL inst primero, luego la #1, etc.) y actualizarla.
+                existing = conn.execute(
+                    """SELECT id, institucion_id FROM plan_estudios
+                       WHERE grado=? AND asignatura_id=?
+                       ORDER BY institucion_id LIMIT 1""",
+                    (grado, asignatura_id),
+                ).fetchone()
+                if existing:
+                    conn.execute(
+                        "UPDATE plan_estudios SET horas_semanales=? WHERE id=?",
+                        (horas, existing[0]),
+                    )
+                    found_inst_id = existing[1]
+                else:
+                    conn.execute(
+                        "INSERT INTO plan_estudios (grado, asignatura_id, horas_semanales, institucion_id) VALUES (?,?,?,NULL)",
+                        (grado, asignatura_id, horas),
+                    )
+                    found_inst_id = None
+                if found_inst_id is not None:
+                    sel_sql = (
+                        "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
+                    )
+                    sel_params = [grado, asignatura_id, found_inst_id]
+                else:
+                    sel_sql = (
+                        "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id IS NULL"
+                    )
+                    sel_params = [grado, asignatura_id]
             if self._conn is None:
                 conn.commit()
-            row = conn.execute(
-                "SELECT * FROM plan_estudios WHERE grado = ? AND asignatura_id = ?",
-                (grado, asignatura_id),
-            ).fetchone()
+            row = conn.execute(sel_sql, sel_params).fetchone()
             return self._row_to_plan_estudios(row)
 
     def eliminar_plan_estudios(self, grado: int, asignatura_id: int) -> bool:
@@ -1600,6 +1651,42 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             if self._conn is None:
                 conn.commit()
             return cur.rowcount > 0
+
+
+    # =========================================================================
+    # ConfiguracionGradoInstitucion (mejora_07-T6)
+    # =========================================================================
+
+    def _row_to_config_grado(self, row) -> ConfiguracionGradoInstitucion:
+        return ConfiguracionGradoInstitucion(**dict(row))
+
+    def get_config_grado(self, grado_id: int, institucion_id: int) -> ConfiguracionGradoInstitucion | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM configuracion_grado_institucion WHERE grado_id=? AND institucion_id=?",
+                (grado_id, institucion_id),
+            ).fetchone()
+            return self._row_to_config_grado(row) if row else None
+
+    def upsert_config_grado(self, cfg: ConfiguracionGradoInstitucion) -> ConfiguracionGradoInstitucion:
+        with self._get_conn() as conn:
+            conn.execute(
+                """INSERT INTO configuracion_grado_institucion
+                       (grado_id, institucion_id, min_estudiantes, max_estudiantes, horas_semanales)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(grado_id, institucion_id) DO UPDATE SET
+                       min_estudiantes = excluded.min_estudiantes,
+                       max_estudiantes = excluded.max_estudiantes,
+                       horas_semanales = excluded.horas_semanales""",
+                (cfg.grado_id, cfg.institucion_id, cfg.min_estudiantes, cfg.max_estudiantes, cfg.horas_semanales),
+            )
+            if self._conn is None:
+                conn.commit()
+            row = conn.execute(
+                "SELECT * FROM configuracion_grado_institucion WHERE grado_id=? AND institucion_id=?",
+                (cfg.grado_id, cfg.institucion_id),
+            ).fetchone()
+            return self._row_to_config_grado(row)
 
 
 __all__ = ["SqliteInfraestructuraRepository"]

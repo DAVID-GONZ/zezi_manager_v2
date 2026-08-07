@@ -57,6 +57,34 @@ class _Sentinel(Enum):
 PUBLICO = _Sentinel.PUBLICO
 AUTENTICADO = _Sentinel.AUTENTICADO
 
+RUTAS_POR_MODULO: dict[str, list[str]] = {
+    "convivencia": [
+        "/convivencia/observaciones",
+        "/convivencia/comportamiento",
+        "/convivencia/notas",
+        "/convivencia/categorias",
+        "/convivencia/plantillas",
+        "/convivencia/seguimiento",
+    ],
+    "alertas": [],
+}
+
+
+def _modulo_permitido(ruta: str) -> bool:
+    try:
+        from container import Container
+        from src.services.contexto_tenant import institucion_actual
+        inst_id = institucion_actual()
+        if inst_id is None:
+            return True
+        for modulo, rutas in RUTAS_POR_MODULO.items():
+            if ruta in rutas:
+                return Container.preferencias_service().modulo_activo(inst_id, modulo)
+    except Exception:
+        pass
+    return True
+
+
 # Tipo de roles aceptado por registrar_pagina / almacenado en el registro.
 RolesRuta = frozenset[Rol] | _Sentinel
 
@@ -164,6 +192,9 @@ def registrar_pagina(
             toast_error("Acceso no autorizado")
             ui.navigate.to("/inicio")
             return
+        if not _modulo_permitido(ruta):
+            ui.navigate.to("/inicio")
+            return
         # A2 (seguridad_01) — cambio forzado de contraseña: deny-by-default real.
         # Si la sesión está marcada y la ruta no es /cambiar-password ni /logout,
         # se fuerza el cambio antes de servir cualquier otra página.
@@ -206,6 +237,7 @@ __all__ = [
     "ACCESO_OK",
     "AUTENTICADO",
     "PUBLICO",
+    "RUTAS_POR_MODULO",
     "decidir_acceso",
     "registrar_pagina",
     "roles_de_ruta",

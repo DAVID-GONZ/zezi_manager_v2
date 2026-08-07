@@ -44,6 +44,30 @@ class SqliteAcudienteRepository(IAcudienteRepository):
     # Lectura — acudiente
     # ------------------------------------------------------------------
 
+    def listar(self, activos_solo: bool = False, institucion_id: int | None = None) -> list[Acudiente]:
+        sql = "SELECT * FROM acudientes WHERE 1=1"
+        params: list = []
+        if activos_solo:
+            sql += " AND activo = 1"
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
+        sql += " ORDER BY nombre_completo"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_acudiente(r) for r in rows]
+
+    def buscar_por_documento(self, numero: str, institucion_id: int | None = None) -> Acudiente | None:
+        sql = "SELECT * FROM acudientes WHERE numero_documento = ?"
+        params: list = [numero.upper()]
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
+        sql += " LIMIT 1"
+        with self._get_conn() as conn:
+            row = conn.execute(sql, params).fetchone()
+            return self._row_to_acudiente(row) if row else None
+
     def get_by_id(self, acudiente_id: int) -> Acudiente | None:
         with self._get_conn() as conn:
             row = conn.execute(
@@ -118,8 +142,8 @@ class SqliteAcudienteRepository(IAcudienteRepository):
                 """
                 INSERT INTO acudientes
                     (tipo_documento, numero_documento, nombre_completo,
-                     parentesco, celular, email, direccion, activo, usuario_id)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                     parentesco, celular, email, direccion, activo, usuario_id, institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     acudiente.tipo_documento.value,
@@ -131,6 +155,7 @@ class SqliteAcudienteRepository(IAcudienteRepository):
                     acudiente.direccion,
                     int(acudiente.activo),
                     acudiente.usuario_id,
+                    acudiente.institucion_id,
                 ),
             )
             if self._conn is None:

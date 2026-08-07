@@ -34,6 +34,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+from src.domain.catalogos_estandar import (
+    AREAS_ESTANDAR_CO,
+    CATEGORIAS_BASE_CO,
+    PREF_DEFAULTS,
+)
 from src.domain.scheduling import colorear_aristas_bipartito
 
 logger = logging.getLogger("DB.SEED")
@@ -399,6 +404,206 @@ def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
     )
 
 
+def _migrate_instituciones_identidad(conn: sqlite3.Connection) -> None:
+    """
+    Migración idempotente (mejora_06):
+    1. Añade columnas nuevas a instituciones si faltan.
+    2. Backfill desde configuracion_anio activa → instituciones #1.
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(instituciones)").fetchall()}
+    new_cols = [
+        ("nombre_oficial",        "TEXT"),
+        ("codigo_dane",           "TEXT"),
+        ("rector",                "TEXT"),
+        ("direccion",             "TEXT"),
+        ("municipio",             "TEXT"),
+        ("telefono",              "TEXT"),
+        ("logo_path",             "TEXT"),
+        ("logo_url",              "TEXT"),
+        ("resolucion_aprobacion", "TEXT"),
+        ("lema",                  "TEXT"),
+        ("email_institucional",   "TEXT"),
+        ("jornada_principal",     "TEXT"),
+        ("tipo_institucion",      "TEXT"),
+        ("calendario",            "TEXT"),
+    ]
+    for col, typ in new_cols:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE instituciones ADD COLUMN {col} {typ}")
+
+    # Backfill: copiar datos de identidad desde config activa a institución #1
+    inst_row = conn.execute(
+        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
+    ).fetchone()
+    if not inst_row:
+        return
+    inst_id = int(inst_row[0])
+
+    config_row = conn.execute(
+        """
+        SELECT nombre_institucion, dane_code, rector, direccion, municipio,
+               telefono_institucion, logo_path, resolucion_aprobacion
+        FROM configuracion_anio
+        WHERE activo = 1
+        ORDER BY id DESC LIMIT 1
+        """
+    ).fetchone()
+    if not config_row:
+        return
+
+    conn.execute(
+        """
+        UPDATE instituciones SET
+            nombre_oficial        = COALESCE(nombre_oficial,        ?),
+            codigo_dane           = COALESCE(codigo_dane,           ?),
+            rector                = COALESCE(rector,                ?),
+            direccion             = COALESCE(direccion,             ?),
+            municipio             = COALESCE(municipio,             ?),
+            telefono              = COALESCE(telefono,              ?),
+            logo_path             = COALESCE(logo_path,             ?),
+            resolucion_aprobacion = COALESCE(resolucion_aprobacion, ?)
+        WHERE id = ?
+        """,
+        (
+            config_row[0],  # nombre_institucion → nombre_oficial
+            config_row[1],  # dane_code
+            config_row[2],  # rector
+            config_row[3],  # direccion
+            config_row[4],  # municipio
+            config_row[5],  # telefono_institucion → telefono
+            config_row[6],  # logo_path
+            config_row[7],  # resolucion_aprobacion
+            inst_id,
+        ),
+    )
+
+
+def _seed_preferencias_institucion(conn: sqlite3.Connection, institucion_id: int) -> None:
+    for categoria, clave, valor, tipo in PREF_DEFAULTS:
+        conn.execute(
+            "INSERT OR IGNORE INTO preferencias_institucion"
+            "(institucion_id, categoria, clave, valor, tipo_valor) VALUES (?,?,?,?,?)",
+            (institucion_id, categoria, clave, valor, tipo),
+        )
+
+
+def _seed_catalogos_institucion(conn: sqlite3.Connection, institucion_id: int) -> None:
+    """Seed idempotente (mejora_07-T8): siembra áreas y categorías estándar colombianas por institución."""
+    for nombre, codigo in AREAS_ESTANDAR_CO:
+        conn.execute(
+            "INSERT OR IGNORE INTO areas_conocimiento(nombre, codigo, institucion_id) VALUES (?, ?, ?)",
+            (nombre, codigo, institucion_id),
+        )
+    for nombre, es_positivo in CATEGORIAS_BASE_CO:
+        conn.execute(
+            "INSERT OR IGNORE INTO categorias_observacion(nombre, es_comportamental, institucion_id) VALUES (?, ?, ?)",
+            (nombre, 1 if es_positivo else 0, institucion_id),
+        )
+
+
+def _migrate_auditoria_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T7): añade institucion_id a auditoria y audit_log."""
+    for tabla in ("auditoria", "audit_log"):
+        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
+        if "institucion_id" not in existing:
+            conn.execute(
+                f"ALTER TABLE {tabla} ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+            )
+    # Backfill via JOIN con usuarios
+    conn.execute("""
+        UPDATE auditoria SET institucion_id = (
+            SELECT u.institucion_id FROM usuarios u WHERE u.id = auditoria.usuario_id
+        )
+        WHERE institucion_id IS NULL
+    """)
+    conn.execute("""
+        UPDATE audit_log SET institucion_id = (
+            SELECT u.institucion_id FROM usuarios u WHERE u.id = audit_log.usuario_id
+        )
+        WHERE institucion_id IS NULL
+    """)
+
+
+def _seed_config_grado_institucion(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Seed idempotente (mejora_07-T6): copia min/max/horas de grados a configuracion_grado_institucion."""
+    grados = conn.execute("SELECT id, min_estudiantes, max_estudiantes, horas_semanales FROM grados").fetchall()
+    for grado in grados:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO configuracion_grado_institucion
+                (grado_id, institucion_id, min_estudiantes, max_estudiantes, horas_semanales)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (grado[0], inst_id, grado[1], grado[2], grado[3]),
+        )
+
+
+def _migrate_franjas_reunion_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T5): añade institucion_id a franjas_reunion."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(franjas_reunion)").fetchall()}
+    if "institucion_id" not in existing:
+        conn.execute(
+            "ALTER TABLE franjas_reunion ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+        )
+    conn.execute(
+        "UPDATE franjas_reunion SET institucion_id = ? WHERE institucion_id IS NULL",
+        (inst_id,),
+    )
+
+
+def _migrate_acudientes_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T4): añade institucion_id a acudientes."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(acudientes)").fetchall()}
+    if "institucion_id" not in existing:
+        conn.execute(
+            "ALTER TABLE acudientes ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+        )
+    conn.execute(
+        "UPDATE acudientes SET institucion_id = ? WHERE institucion_id IS NULL",
+        (inst_id,),
+    )
+
+
+def _migrate_categorias_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T3): añade institucion_id a categorias_observacion y plantillas_observacion."""
+    for tabla in ("categorias_observacion", "plantillas_observacion"):
+        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
+        if "institucion_id" not in existing:
+            conn.execute(
+                f"ALTER TABLE {tabla} ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+            )
+        conn.execute(
+            f"UPDATE {tabla} SET institucion_id = ? WHERE institucion_id IS NULL",
+            (inst_id,),
+        )
+
+
+def _migrate_plan_estudios_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T2): añade institucion_id a plan_estudios."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(plan_estudios)").fetchall()}
+    if "institucion_id" not in existing:
+        conn.execute(
+            "ALTER TABLE plan_estudios ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+        )
+    conn.execute(
+        "UPDATE plan_estudios SET institucion_id = ? WHERE institucion_id IS NULL",
+        (inst_id,),
+    )
+
+
+def _migrate_areas_conocimiento_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
+    """Migración idempotente (mejora_07-T1): añade institucion_id a areas_conocimiento."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(areas_conocimiento)").fetchall()}
+    if "institucion_id" not in existing:
+        conn.execute(
+            "ALTER TABLE areas_conocimiento ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
+        )
+    conn.execute(
+        "UPDATE areas_conocimiento SET institucion_id = ? WHERE institucion_id IS NULL",
+        (inst_id,),
+    )
+
+
 def _seed_institucion(conn: sqlite3.Connection) -> int:
     """
     Crea (si falta) la institución por defecto (#1) a partir del nombre
@@ -470,6 +675,22 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
     conn.execute(
         "UPDATE plantillas_franja SET institucion_id = ? "
         "WHERE institucion_id IS NULL",
+        (institucion_id,),
+    )
+    _migrate_instituciones_identidad(conn)
+    _migrate_areas_conocimiento_scoping(conn, institucion_id)
+    _migrate_plan_estudios_scoping(conn, institucion_id)
+    _migrate_categorias_scoping(conn, institucion_id)
+    _migrate_acudientes_scoping(conn, institucion_id)
+    _migrate_franjas_reunion_scoping(conn, institucion_id)
+    _migrate_auditoria_scoping(conn, institucion_id)
+    _seed_config_grado_institucion(conn, institucion_id)
+    _seed_catalogos_institucion(conn, institucion_id)
+    _seed_preferencias_institucion(conn, institucion_id)
+    # La institución #1 (demo) ya está configurada: no debe gatillar el
+    # wizard de configuración inicial obligatoria (mejora_09a/09b).
+    conn.execute(
+        "UPDATE instituciones SET configuracion_inicial_completa = 1 WHERE id = ?",
         (institucion_id,),
     )
     return institucion_id

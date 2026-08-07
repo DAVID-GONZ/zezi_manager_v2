@@ -84,8 +84,45 @@ class ConfiguracionService:
             update={"institucion_id": institucion_id}
         )
         config = self._repo.guardar(config)
-        # Registrar configuración de 4 periodos con pesos iguales
-        self._repo.guardar_numero_periodos(config.id, 4, pesos_iguales=True)
+        # Periodos: lee preferencia del tenant, fallback a 4
+        _num_periodos = 4
+        try:
+            from container import Container
+            _num_periodos = int(
+                Container.preferencias_service().get(institucion_id, "numero_periodos_default") or 4
+            )
+        except Exception:
+            pass
+        self._repo.guardar_numero_periodos(config.id, _num_periodos, pesos_iguales=True)
+        # Escala y nota mínima: best-effort desde preferencias
+        try:
+            from container import Container
+            prefs = Container.preferencias_service().get_dto(institucion_id)
+            _upd: dict = {}
+            if config.nota_minima_aprobacion is None:
+                _upd["nota_minima_aprobacion"] = prefs.nota_minima_aprobacion_default
+            if config.nota_minima_escala is None:
+                _upd["nota_minima_escala"] = prefs.nota_minima_escala_default
+            if config.nota_maxima_escala is None:
+                _upd["nota_maxima_escala"] = prefs.nota_maxima_escala_default
+            if _upd:
+                config = self._repo.actualizar(config.model_copy(update=_upd))
+        except Exception:
+            pass
+        # Auto-snapshot (mejora_06): copia identidad vigente de la institución al nuevo año
+        try:
+            from container import Container
+            snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
+            if snap:
+                dto_snap = ActualizarInfoInstitucionalDTO(**{
+                    k: v for k, v in snap.items()
+                    if k in ActualizarInfoInstitucionalDTO.model_fields
+                })
+                config_snap = dto_snap.aplicar_a(config)
+                if config_snap != config:
+                    config = self._repo.actualizar(config_snap)
+        except Exception:
+            pass  # best-effort; el año se creó correctamente
         return config
 
     @requiere_escritura
@@ -297,6 +334,31 @@ class ConfiguracionService:
         """Actualiza campos académicos: nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala, fechas."""
         config = self.get_by_id(anio_id)
         config_actualizada = dto.aplicar_a(config)
+        return self._repo.actualizar(config_actualizada)
+
+    @requiere_escritura
+    def sincronizar_snapshot_desde_institucion(self, anio_id: int) -> ConfiguracionAnio:
+        """
+        Copia la identidad vigente de la institución al snapshot del año indicado (R6).
+        Solo actualiza campos no nulos de la institución.
+        """
+        config = self._repo.get_by_id(anio_id)
+        if config is None:
+            raise ValueError(f"No existe configuración con id {anio_id}.")
+        from src.services.contexto_tenant import verificar_pertenencia
+        verificar_pertenencia(config.institucion_id)
+        try:
+            from container import Container
+            snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
+        except Exception:
+            snap = {}
+        if not snap:
+            return config
+        dto_snap = ActualizarInfoInstitucionalDTO(**{
+            k: v for k, v in snap.items()
+            if k in ActualizarInfoInstitucionalDTO.model_fields
+        })
+        config_actualizada = dto_snap.aplicar_a(config)
         return self._repo.actualizar(config_actualizada)
 
 

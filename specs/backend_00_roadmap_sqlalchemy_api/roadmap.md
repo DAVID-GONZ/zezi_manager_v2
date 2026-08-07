@@ -20,6 +20,67 @@ La estrategia tiene **dos etapas claras** con un fork de por medio:
    - **Versión navegador** (la misma PWA desplegada en la nube).
 8. **App Android** — desarrollo posterior, consume la misma API REST.
 
+### Decisión de stack técnico para la Etapa B (2026-07-27)
+
+Evaluadas las opciones (Vue, React, Svelte, Next.js, Nest.js), se elige:
+
+**Frontend web: Vue 3 + Vite + Composition API**
+- Curva de aprendizaje baja desde Python/NiceGUI (refs reactivos ≈ modelo mental similar).
+- Ecosistema maduro de componentes UI (Naive UI o PrimeVue — evaluar contra tokens Aula Serena).
+- Documentación oficial traducida al español.
+- Complejidad baja para dev solo vs. React (menos decisiones de arquitectura).
+- PWA offline con `vite-plugin-pwa` (Service Worker + precache automático).
+
+**Escritorio: Tauri v2**
+- Usa WebView2 nativo de Windows (ya preinstalado en Windows 10/11).
+- Bundle ~3MB (vs. ~80MB de Electron).
+- Plugin oficial de SQLite para la versión local offline.
+- Mismo código Vue, empaquetado diferente.
+
+**Android: Capacitor (Ionic)**
+- Envuelve la misma PWA Vue en contenedor nativo.
+- Acceso a APIs nativas (notificaciones push, almacenamiento, cámara).
+- SQLite local vía `@capacitor-community/sqlite`.
+- Un solo código fuente → web + Android + iOS.
+
+**Librerías complementarias decididas:**
+- Vue Router (navegación).
+- Pinia (estado global, reemplaza Vuex).
+- VueUse (utilidades reactivas: `useOnline`, `useLocalStorage`, etc.).
+- Axios o fetch nativo para consumir la API REST.
+
+**Descartados y por qué:**
+- **React / Next.js** — Mayor complejidad (hooks, re-renders, JSX) sin beneficio
+  para un dev solo con background Python. Next.js añade SSR innecesario para un
+  dashboard privado detrás de login.
+- **Svelte / SvelteKit** — Sintaxis más simple pero ecosistema de componentes UI
+  inmaduro para apps de gestión (tablas, formularios complejos).
+- **Nest.js** — Es un framework de backend (Node.js). No aplica; ya tenemos FastAPI.
+- **Electron** — Bundle pesado (~80MB), empaqueta Chromium completo. Tauri es superior
+  para este caso.
+- **React Native** — Requiere reescribir UI en componentes nativos. Capacitor reutiliza
+  el mismo código Vue.
+
+### Estructura del fork (un código, tres productos)
+
+```
+zeci-vue/
+├── src/                    ← código Vue compartido
+│   ├── components/         ← design system (consume tokens.json)
+│   ├── views/              ← páginas por módulo
+│   ├── stores/             ← Pinia (estado + cola de sync offline)
+│   ├── api/                ← cliente REST + SSE
+│   └── service-worker.ts   ← PWA offline (vite-plugin-pwa)
+├── src-tauri/              ← config Tauri (escritorio)
+├── capacitor.config.ts     ← config Capacitor (Android)
+└── vite.config.ts          ← build para web
+```
+
+Builds:
+- `npm run build` → web (PWA desplegable).
+- `npm run tauri build` → `.exe` WebView2 (~3MB).
+- `npx cap sync && npx cap build android` → APK.
+
 ### Principios confirmados
 - **Todo en modo desarrollo.** No hay datos de producción. La BD se recrea desde
   `create_all()` + seed. No hay migración de datos en este roadmap.
@@ -176,45 +237,197 @@ Objetivo: tokens y contratos en formato que Vue pueda consumir en la Etapa B.
 
 ---
 
+# TRANSICIÓN — División de repositorios
+
+> Ejecutar **entre la Fase 5 y la Fase 6**. Es el punto natural de corte:
+> `tokens.json` ya existe como contrato compartido, la API está desplegada,
+> y el código Vue necesita su propio ciclo de build.
+
+## Fase 5.5 — División de repos (1–2 días)
+
+- **backend_18b_split_repos** 🕓 — Dividir el monorepo en repositorios independientes:
+
+  | Repo | Contenido | Ciclo de release |
+  |---|---|---|
+  | `zeci-api` | Dominio, servicios, repos SQLAlchemy, API REST, auth JWT, event bus, NiceGUI (uso propio), seeds, tests Python | Deploy al servidor (Railway/VPS) |
+  | `zeci-vue` | Componentes Vue, vistas, stores Pinia, PWA, `src-tauri/`, `capacitor.config.ts` | Build → 3 artefactos (PWA, .exe, APK) |
+  | `zeci-tokens` (opcional) | `tokens.json` + scripts de generación (→ CSS, → TS, → Python) | Paquete consumido por los otros dos |
+
+  - La app NiceGUI se queda en `zeci-api` (producto de uso propio + referencia funcional).
+  - El contrato de la API es el OpenAPI spec generado por FastAPI (`/api/openapi.json`).
+    `zeci-vue` lo consume en desarrollo; no necesita repo separado.
+  - *criterio_done*: cada repo arranca, buildea y corre tests de forma independiente.
+  - *pista*: `git filter-branch` o `git subtree split` para conservar historial,
+    o simplemente copiar y empezar historial limpio (más simple para un dev solo).
+
+---
+
 # ETAPA B — Fork Vue (producto comercial)
 
-> Prerrequisito: Etapa A completa (API desplegada, tiempo real funcionando,
-> design system portable).
+> Prerrequisito: Etapa A completa + repos divididos.
+> Todo el trabajo de la Etapa B ocurre en `zeci-vue`.
+> `zeci-api` solo recibe cambios si la API necesita un endpoint nuevo.
 
-## Fase 6 — Fork y scaffolding Vue (1–2 semanas)
+## Fase 6 — Scaffolding Vue 3 + Vite (1–2 semanas)
 
-- **backend_19_fork_vue** 🕓 — Fork del repositorio. Scaffolding Vue 3 + Vite +
-  TypeScript. Consumo de `tokens.json` para generar variables CSS/tokens TS.
-  - *criterio_done*: proyecto Vue arranca, importa tokens, conecta a la API REST.
-- **backend_20_libreria_componentes** 🕓 — Librería de componentes Vue que implementa
-  los contratos documentados en Fase 5 (mismas variantes, mismos estados).
-  - *criterio_done*: storybook o equivalente con los 18 componentes portados.
+- **backend_19_scaffold** 🕓 — Inicializar `zeci-vue` con `npm create vite@latest`
+  template `vue-ts`. Instalar stack: Vue Router, Pinia, VueUse, Axios.
+  `vite.config.ts` con alias y proxy a la API FastAPI en desarrollo.
+  - *criterio_done*: `npm run dev` arranca; proxy a `/api` conecta con FastAPI.
+- **backend_20_tokens_vue** 🕓 — Pipeline que consume `tokens.json` y genera
+  variables CSS + constantes TypeScript. Tema claro/oscuro automático.
+  - *criterio_done*: tokens Aula Serena disponibles como `var(--ink-700)` en Vue.
+- **backend_21_libreria_componentes** 🕓 — Componentes Vue que implementan los
+  contratos de Fase 5 sobre Naive UI o PrimeVue (evaluar cuál se personaliza
+  mejor con los 187 tokens). Mismas variantes, mismos estados.
+  - *criterio_done*: los 18 componentes portados y visibles en una página de catálogo.
 
-## Fase 7 — Migración de vistas a Vue (4–8 semanas)
+## Fase 7 — Vistas Vue + motor de sincronización offline (4–8 semanas)
 
-- **backend_21_vistas_core** 🕓 — Vistas principales: login, dashboard, navegación,
-  selector de contexto (institución/periodo/grupo).
-- **backend_22_vistas_modulos** 🕓 — Módulos por orden de prioridad: asistencia,
-  evaluación, convivencia, horarios, configuración.
-- **backend_23_offline_sync** 🕓 — PWA con Service Worker. Cache de datos críticos en
-  IndexedDB (asistencia, notas). Sincronización por lotes cuando hay red, usando los
-  endpoints diseñados para lotes offline en Fase 3.
-  - *criterio_done*: profesor registra asistencia sin red; al reconectar se sincroniza.
+- **backend_22_vistas_core** 🕓 — Login (auth JWT), layout principal, navegación
+  modular (menú que refleja módulos activados), selector de contexto
+  (institución/periodo/grupo), dashboard por rol.
+  - *criterio_done*: navegación completa funcionando contra la API REST.
+- **backend_23_vistas_modulos** 🕓 — Módulos por orden de prioridad:
+  1. Asistencia (el más crítico para offline).
+  2. Convivencia (observaciones, comportamiento, seguimiento 360°).
+  3. Evaluación (planilla de notas, cierre de periodo/año).
+  4. Informes (boletines, consolidados).
+  5. Configuración y admin.
+- **backend_24_offline_engine** 🕓 — Motor de sincronización offline compartido
+  por las tres plataformas (PWA, Tauri, Capacitor). Es el corazón de la Etapa B:
 
-## Fase 8 — Empaquetado multiplataforma (1–2 semanas)
+  **Componentes del motor:**
+  1. **Store offline (Pinia + IndexedDB):**
+     - `useOfflineStore()` — cola de operaciones pendientes.
+     - Cada mutación (crear asistencia, registrar observación) se guarda localmente
+       con timestamp + UUID + tenant_id.
+     - IndexedDB vía `idb-keyval` o `Dexie.js`.
+  2. **Detector de conectividad:**
+     - `VueUse.useOnline()` para PWA/navegador.
+     - `@capacitor/network` para Android.
+     - Tauri: `navigator.onLine` + ping periódico al health endpoint.
+  3. **Sync push (subir pendientes):**
+     - Al detectar red: `POST /api/sync/push` con array de operaciones.
+     - Reintentos con backoff exponencial si falla.
+     - Marcar como sincronizado en IndexedDB al recibir 200.
+  4. **Sync pull (bajar cambios):**
+     - `GET /api/sync/pull?since=T` descarga cambios desde última sincronización.
+     - Actualiza IndexedDB local + refresca stores Pinia reactivamente.
+  5. **Resolución de conflictos:**
+     - Asistencia: último timestamp gana (el profesor en el aula prevalece).
+     - Observaciones: aditivas (cada una es un registro nuevo, sin conflicto).
+     - Notas: último timestamp gana + notificación al otro editor.
+     - Conflictos no resolubles: marcar para revisión manual.
 
-- **backend_24_pwa_deploy** 🕓 — PWA desplegada (app web de navegador). La misma PWA
-  que funciona offline.
-  - *criterio_done*: app instalable desde el navegador.
-- **backend_25_webview2_exe** 🕓 — Empaquetado WebView2 para escritorio (Tauri, o
-  electron-lite). Puede apuntar a SQLite local o a la nube.
-  - *criterio_done*: `.exe` que carga la app Vue contra SQLite local.
+  - *criterio_done*: profesor registra asistencia sin red; al reconectar se
+    sincroniza y se refleja en el servidor.
 
-## Fase 9 — App Android (posterior, no estimada)
+  > Este motor se escribe **una vez** en `src/stores/sync/` y lo consumen
+  > las tres plataformas. La única diferencia es el detector de conectividad.
 
-- **backend_26_android** 🕓 — App nativa o híbrida (Capacitor/Kotlin). Consume la
-  API REST + WS. SQLite local para offline + sincronización.
-  - *Desarrollo separado, después de validar la Etapa B en producción.*
+## Fase 8 — PWA: app web instalable + offline (1 semana)
+
+Objetivo: la app Vue funciona como Progressive Web App instalable desde el
+navegador, con soporte offline completo.
+
+- **backend_25_pwa_manifest** 🕓 — Configurar `vite-plugin-pwa`:
+  - `manifest.json`: nombre, iconos (192px, 512px, maskable), colores Aula Serena,
+    `display: standalone`, `start_url: /`, orientación portrait.
+  - Splash screen para instalación en móvil.
+  - *pista*: `npm install vite-plugin-pwa`, configurar en `vite.config.ts`.
+- **backend_26_service_worker** 🕓 — Service Worker con estrategia de cache:
+  - **App shell** (HTML/CSS/JS/fuentes): precache en install, siempre desde cache.
+  - **API requests**: network-first con fallback a cache para GETs.
+    Mutaciones (POST/PUT/DELETE) van a la cola offline del motor (Fase 7).
+  - **Imágenes/assets**: cache-first con expiración.
+  - *pista*: `vite-plugin-pwa` usa Workbox internamente. Configurar `runtimeCaching`
+    con rutas `/api/*`.
+- **backend_27_pwa_deploy** 🕓 — Desplegar la PWA en Vercel, Netlify, o servida
+  por el mismo servidor de la API (FastAPI con `StaticFiles`).
+  - *criterio_done*: app instalable desde Chrome/Edge; funciona offline;
+    Lighthouse PWA audit ≥ 90.
+  - *pista*: Vercel/Netlify gratis para sitios estáticos. Si se sirve desde
+    FastAPI: `app.mount("/", StaticFiles(directory="dist"))`.
+
+## Fase 9 — Tauri: app de escritorio WebView2 (1 semana)
+
+Objetivo: `.exe` ligero (~3MB) para Windows que funciona con SQLite local
+o conectado a la API en la nube.
+
+- **backend_28_tauri_init** 🕓 — Inicializar Tauri v2 en el proyecto Vue:
+  - `npm install @tauri-apps/cli @tauri-apps/api`.
+  - `npx tauri init` → genera `src-tauri/` con `Cargo.toml` y `tauri.conf.json`.
+  - Configurar ventana: título, tamaño mínimo, icono, sin menú de navegador.
+  - *pista*: Tauri v2 requiere Rust instalado (`rustup`). El build descarga
+    dependencias automáticamente.
+- **backend_29_tauri_sqlite** 🕓 — Plugin `tauri-plugin-sql` para SQLite local:
+  - Crear/abrir BD en `%APPDATA%/zeci/data.db`.
+  - Al primer arranque: crear schema + `seed_base` (institución vacía lista
+    para que el usuario configure).
+  - El store Pinia detecta modo local (Tauri) vs. remoto (API) y redirige
+    las queries al plugin SQLite o al endpoint REST según corresponda.
+  - *pista*: `npm install @tauri-apps/plugin-sql`. Acceso via
+    `import Database from '@tauri-apps/plugin-sql'`.
+- **backend_30_tauri_config_dual** 🕓 — Pantalla de configuración al primer
+  arranque: "¿Usar base de datos local o conectarse a un servidor?"
+  - Local: SQLite, todo funciona sin internet.
+  - Remoto: pide URL del servidor + credenciales, usa la API REST.
+  - Guardar preferencia en `tauri-plugin-store` (persiste entre sesiones).
+- **backend_31_tauri_build** 🕓 — Build del instalador Windows:
+  - `npx tauri build` → genera `.exe` y `.msi`.
+  - Firmado de código (opcional para distribución directa, requerido para
+    evitar warnings de SmartScreen).
+  - *criterio_done*: `.exe` de ~3MB que arranca en PC sin Python ni Node,
+    funciona contra SQLite local.
+  - *pista*: para evitar SmartScreen sin firma, distribuir como `.zip`
+    con instrucciones. Firma con certificado de código ~$70/año (SignPath
+    ofrece gratuito para open source).
+
+## Fase 10 — Capacitor: app Android (2–4 semanas, posterior)
+
+Objetivo: app Android nativa que funciona offline con SQLite local y
+sincroniza con la API cuando hay red.
+
+- **backend_32_capacitor_init** 🕓 — Inicializar Capacitor en el proyecto Vue:
+  - `npx cap init "ZECI" "com.zeci.app"`.
+  - `npx cap add android`.
+  - Configurar `capacitor.config.ts`: `webDir: 'dist'`, server URL para dev.
+  - *pista*: necesita Android Studio instalado. `npx cap open android` abre
+    el proyecto.
+- **backend_33_capacitor_plugins** 🕓 — Instalar y configurar plugins nativos:
+  - `@capacitor-community/sqlite` — BD local en el dispositivo.
+  - `@capacitor/network` — detectar online/offline (alimenta el motor de sync).
+  - `@capacitor/push-notifications` — recibir notificaciones push (alertas de
+    seguimiento, cambios de horario).
+  - `@capacitor/splash-screen` — pantalla de carga con logo.
+  - `@capacitor/status-bar` — estilo de barra de estado (colores Aula Serena).
+  - *criterio_done*: `npx cap sync && npx cap run android` abre en emulador
+    con todos los plugins funcionando.
+- **backend_34_android_sqlite_sync** 🕓 — Conectar el motor de sincronización
+  offline (backend_24) con el plugin SQLite de Capacitor:
+  - Al primer arranque: crear schema + `seed_base` en SQLite del dispositivo.
+  - El detector de conectividad usa `@capacitor/network` en lugar de
+    `navigator.onLine`.
+  - Push/pull idéntico al de la PWA pero contra SQLite local como almacenamiento
+    en lugar de IndexedDB.
+  - *criterio_done*: profesor registra asistencia offline en el teléfono;
+    al conectarse a WiFi se sincroniza con el servidor.
+- **backend_35_android_ux** 🕓 — Ajustes de UX específicos de Android:
+  - Navegación por gestos (swipe back).
+  - Teclado numérico para campos de notas.
+  - Notificaciones push cuando llega una alerta de seguimiento.
+  - Ícono adaptativo (foreground + background layers) y splash screen.
+  - Permisos de Android (internet, almacenamiento, notificaciones).
+  - *criterio_done*: la app se siente nativa, no como una web metida en un frame.
+- **backend_36_android_release** 🕓 — Build de release y distribución:
+  - `npx cap build android` → genera APK y AAB (Android App Bundle).
+  - Firma con keystore de producción.
+  - Publicación en Play Store (cuenta de dev $25 una vez) o distribución
+    directa de APK (sideload).
+  - *criterio_done*: APK instalable en un teléfono real; o publicada en Play Store.
+  - *pista*: Play Store exige target API level actualizado, política de privacidad
+    publicada, y clasificación de contenido. Preparar antes de subir.
 
 ---
 
@@ -230,13 +443,16 @@ Objetivo: tokens y contratos en formato que Vue pueda consumir en la Etapa B.
 | 4 — Deploy + tiempo real | 1–2 semanas | 2–3 semanas |
 | 5 — Design system portable | 3–5 días | absorbido en paralelo |
 | **Subtotal Etapa A** | **~5–8 semanas** | **~2.5–4 meses** |
+| **TRANSICIÓN** | | |
+| 5.5 — División de repos | 1–2 días | ~1 semana |
 | **ETAPA B** | | |
-| 6 — Fork + scaffolding Vue | 1–2 semanas | 2–3 semanas |
-| 7 — Vistas + offline | 4–8 semanas | 2–4 meses |
-| 8 — Empaquetado multi | 1–2 semanas | 2–3 semanas |
-| **Subtotal Etapa B** | **~6–12 semanas** | **~3–5 meses** |
-| 9 — Android | por estimar | posterior |
-| **TOTAL (A + B sin Android)** | **~11–20 semanas** | **~6–9 meses** |
+| 6 — Scaffold Vue 3 + Vite | 1–2 semanas | 2–3 semanas |
+| 7 — Vistas + motor offline | 4–8 semanas | 2–4 meses |
+| 8 — PWA (web instalable + offline) | ~1 semana | 1–2 semanas |
+| 9 — Tauri (escritorio WebView2) | ~1 semana | 1–2 semanas |
+| **Subtotal Etapa B web+escritorio** | **~7–12 semanas** | **~3–5 meses** |
+| 10 — Android (Capacitor) | 2–4 semanas | 1–2 meses |
+| **TOTAL (A + B + Android)** | **~14–26 semanas** | **~7–12 meses** |
 
 *Calendario = trabajo enfocado estirado por puertas de aprobación, trabajo en
 paralelo con funcionalidad pendiente, y los imprevistos normales de desarrollo.
@@ -244,26 +460,30 @@ paralelo con funcionalidad pendiente, y los imprevistos normales de desarrollo.
 ## Secuencia visual
 
 ```
-ETAPA A (NiceGUI + backend sólido)
+ETAPA A (monorepo — NiceGUI + backend sólido)
 ══════════════════════════════════════════════════════════════
 
   [F0 App completa] → [F1 Tests] → [F2 SQLAlchemy] → [F3 API] → [F4 Deploy+RT]
                                           ↑
                                     [F5 Design system] (paralelo)
 
-                                          ║ FORK
+                                          ↓
+                              ╔═══════════════════════╗
+                              ║ F5.5 DIVIDIR REPOS    ║
+                              ║ zeci-api / zeci-vue   ║
+                              ╚═══════════════════════╝
                                           ↓
 
-ETAPA B (Vue — producto comercial)
+ETAPA B (zeci-vue — producto comercial, tres plataformas)
 ══════════════════════════════════════════════════════════════
 
-  [F6 Scaffold Vue] → [F7 Vistas + offline] → [F8 WebView2 + PWA]
-                                                        ↓
-                                               Tres productos:
-                                               • App web (navegador)
-                                               • App WebView2 (.exe)
-                                               • PWA offline
-
-                                                        ↓ (posterior)
-                                               [F9 App Android]
+  [F6 Scaffold Vue] → [F7 Vistas + motor offline] ──┬── [F8 PWA]
+                                                     ├── [F9 Tauri .exe]
+                                                     └── [F10 Capacitor Android]
+                                                              ↓
+                                                     Cuatro productos:
+                                                     • PWA instalable (offline)
+                                                     • Web en nube (navegador)
+                                                     • .exe ~3MB (SQLite local)
+                                                     • APK Android (SQLite + sync)
 ```

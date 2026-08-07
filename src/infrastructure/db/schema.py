@@ -41,7 +41,24 @@ SCHEMA: list[str] = [
         nit             TEXT,
         codigo          TEXT,
         activa          BOOLEAN NOT NULL DEFAULT 1,
-        fecha_creacion  DATE    NOT NULL DEFAULT CURRENT_DATE
+        fecha_creacion  DATE    NOT NULL DEFAULT CURRENT_DATE,
+
+        -- Identidad institucional (mejora_06)
+        nombre_oficial         TEXT,
+        codigo_dane            TEXT,
+        rector                 TEXT,
+        direccion              TEXT,
+        municipio              TEXT,
+        telefono               TEXT,
+        logo_path              TEXT,
+        logo_url               TEXT,
+        resolucion_aprobacion  TEXT,
+        lema                   TEXT,
+        email_institucional    TEXT,
+        jornada_principal      TEXT,
+        tipo_institucion       TEXT,
+        calendario             TEXT,
+        configuracion_inicial_completa BOOLEAN NOT NULL DEFAULT 0
     )
     """,
 
@@ -173,10 +190,13 @@ SCHEMA: list[str] = [
 
     """
     CREATE TABLE IF NOT EXISTS areas_conocimiento (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre  TEXT    NOT NULL UNIQUE,
-        codigo  TEXT    UNIQUE,
-        color   TEXT
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre         TEXT    NOT NULL,
+        codigo         TEXT,
+        color          TEXT,
+        institucion_id INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre),
+        UNIQUE(institucion_id, codigo)
     )
     """,
 
@@ -269,7 +289,7 @@ SCHEMA: list[str] = [
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo_documento    TEXT    NOT NULL DEFAULT 'CC'
                           CHECK(tipo_documento IN ('CC', 'CE', 'TI', 'PASAPORTE')),
-        numero_documento  TEXT    NOT NULL UNIQUE,
+        numero_documento  TEXT    NOT NULL,
         nombre_completo   TEXT    NOT NULL,
         parentesco        TEXT    NOT NULL
                           CHECK(parentesco IN ('padre', 'madre', 'abuelo', 'abuela',
@@ -279,10 +299,12 @@ SCHEMA: list[str] = [
         email             TEXT,
         direccion         TEXT,
         activo            BOOLEAN NOT NULL DEFAULT 1,
+        institucion_id    INTEGER REFERENCES instituciones(id),
 
         -- Nullable: solo si tiene acceso al portal de acudientes (v3.0)
         usuario_id        INTEGER UNIQUE,
 
+        UNIQUE(institucion_id, numero_documento),
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
@@ -816,19 +838,22 @@ SCHEMA: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS categorias_observacion (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre            TEXT    NOT NULL UNIQUE,
+        nombre            TEXT    NOT NULL,
         es_comportamental BOOLEAN NOT NULL DEFAULT 0,
-        activa            BOOLEAN NOT NULL DEFAULT 1
+        activa            BOOLEAN NOT NULL DEFAULT 1,
+        institucion_id    INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre)
     )
     """,
 
     """
     CREATE TABLE IF NOT EXISTS plantillas_observacion (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        texto        TEXT    NOT NULL,
-        categoria_id INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
-        uso_count    INTEGER NOT NULL DEFAULT 0,
-        activa       BOOLEAN NOT NULL DEFAULT 1
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        texto          TEXT    NOT NULL,
+        categoria_id   INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
+        uso_count      INTEGER NOT NULL DEFAULT 0,
+        activa         BOOLEAN NOT NULL DEFAULT 1,
+        institucion_id INTEGER REFERENCES instituciones(id)
     )
     """,
 
@@ -1059,6 +1084,10 @@ SCHEMA: list[str] = [
         -- dominio lo descarta (los modelos Pydantic prohíben campos extra).
         hash_cadena TEXT,
 
+        -- Multi-tenant informacional (mejora_07-T7): scope de la institución.
+        -- No participa en el hash SHA-256.
+        institucion_id  INTEGER REFERENCES instituciones(id),
+
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
@@ -1076,6 +1105,10 @@ SCHEMA: list[str] = [
 
         -- Encadenamiento por hash (seguridad_03, M3): ver tabla `auditoria`.
         hash_cadena     TEXT,
+
+        -- Multi-tenant informacional (mejora_07-T7): scope de la institución.
+        -- No participa en el hash SHA-256.
+        institucion_id  INTEGER REFERENCES instituciones(id),
 
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
@@ -1163,14 +1196,15 @@ SCHEMA: list[str] = [
 
     """
     CREATE TABLE IF NOT EXISTS franjas_reunion (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre        TEXT    NOT NULL,
-        docentes_json TEXT    NOT NULL DEFAULT '[]',
-        dia_semana    TEXT    NOT NULL
-                      CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
-        franja_orden  INTEGER NOT NULL CHECK(franja_orden >= 1),
-        modo          TEXT    NOT NULL DEFAULT 'preferente'
-                      CHECK(modo IN ('estricta','preferente'))
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre         TEXT    NOT NULL,
+        docentes_json  TEXT    NOT NULL DEFAULT '[]',
+        dia_semana     TEXT    NOT NULL
+                       CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
+        franja_orden   INTEGER NOT NULL CHECK(franja_orden >= 1),
+        modo           TEXT    NOT NULL DEFAULT 'preferente'
+                       CHECK(modo IN ('estricta','preferente')),
+        institucion_id INTEGER REFERENCES instituciones(id)
     )
     """,
 
@@ -1185,7 +1219,7 @@ SCHEMA: list[str] = [
     )
     """,
 
-    # plan_estudios (paso_19)
+    # plan_estudios (paso_19; mejora_07-T2 añade institucion_id)
 
     """
     CREATE TABLE IF NOT EXISTS plan_estudios (
@@ -1193,8 +1227,37 @@ SCHEMA: list[str] = [
         grado           INTEGER NOT NULL CHECK(grado >= 1 AND grado <= 13),
         asignatura_id   INTEGER NOT NULL,
         horas_semanales INTEGER NOT NULL CHECK(horas_semanales >= 1 AND horas_semanales <= 40),
-        UNIQUE(grado, asignatura_id),
+        institucion_id  INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, grado, asignatura_id),
         FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
+    )
+    """,
+
+    # configuracion_grado_institucion (mejora_07-T6)
+    # Tabla puente: configuración por-institución de un grado global.
+    """
+    CREATE TABLE IF NOT EXISTS configuracion_grado_institucion (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        grado_id         INTEGER NOT NULL REFERENCES grados(id) ON DELETE CASCADE,
+        institucion_id   INTEGER NOT NULL REFERENCES instituciones(id),
+        min_estudiantes  INTEGER NOT NULL DEFAULT 0 CHECK(min_estudiantes >= 0),
+        max_estudiantes  INTEGER NOT NULL DEFAULT 40 CHECK(max_estudiantes >= 1),
+        horas_semanales  INTEGER NOT NULL DEFAULT 0 CHECK(horas_semanales >= 0),
+        UNIQUE(grado_id, institucion_id)
+    )
+    """,
+
+    # preferencias_institucion (mejora_08): preferencias configurables por tenant.
+    """
+    CREATE TABLE IF NOT EXISTS preferencias_institucion (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        institucion_id INTEGER NOT NULL REFERENCES instituciones(id) ON DELETE CASCADE,
+        categoria      TEXT    NOT NULL,
+        clave          TEXT    NOT NULL,
+        valor          TEXT,
+        tipo_valor     TEXT    NOT NULL DEFAULT 'str'
+                       CHECK(tipo_valor IN ('str','int','float','bool','json')),
+        UNIQUE(institucion_id, clave)
     )
     """,
 ]
@@ -1344,9 +1407,11 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_audit_usuario_id    ON auditoria(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_audit_fecha         ON auditoria(fecha_hora)",
     "CREATE INDEX IF NOT EXISTS idx_audit_tipo          ON auditoria(tipo_evento)",
+    "CREATE INDEX IF NOT EXISTS idx_auditoria_institucion ON auditoria(institucion_id)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_usuario    ON audit_log(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_tabla      ON audit_log(tabla)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_timestamp  ON audit_log(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_audit_log_institucion ON audit_log(institucion_id)",
 
     # actividades_nivelacion
     "CREATE INDEX IF NOT EXISTS idx_act_nivel_asig    ON actividades_nivelacion(asignacion_id)",
@@ -1386,6 +1451,12 @@ INDICES: list[str] = [
 
     # plan_estudios (paso_19)
     "CREATE INDEX IF NOT EXISTS idx_plan_estudios_grado  ON plan_estudios(grado)",
+
+    # configuracion_grado_institucion (mejora_07-T6)
+    "CREATE INDEX IF NOT EXISTS idx_cfg_grado_inst ON configuracion_grado_institucion(institucion_id)",
+
+    # preferencias_institucion (mejora_08)
+    "CREATE INDEX IF NOT EXISTS idx_pref_inst ON preferencias_institucion(institucion_id)",
 ]
 
 

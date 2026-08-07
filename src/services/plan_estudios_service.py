@@ -8,6 +8,7 @@ que usan los validadores de PreparacionHorarioService.
 from __future__ import annotations
 
 from src.domain.models.infraestructura import (
+    ConfiguracionGradoInstitucion,
     Grado,
     NuevoPlanEstudiosDTO,
     PlanEstudios,
@@ -29,6 +30,23 @@ class PlanEstudiosService:
         # Provider lazy (callable que retorna AsignacionService) para evitar la
         # dependencia circular plan↔asignacion en el composition root.
         self._asignacion_svc_provider = asignacion_svc_provider
+
+    # ── Resolución de institución (multi-tenant — mejora_07-T2) ────────────────
+
+    @staticmethod
+    def _resolver_institucion(institucion_id: int | None) -> int | None:
+        """Resuelve tenant: explícito → sesión → id_por_defecto → None."""
+        if institucion_id is not None:
+            return institucion_id
+        from src.services.contexto_tenant import institucion_actual
+        scope = institucion_actual()
+        if scope is not None:
+            return scope
+        try:
+            from container import Container
+            return Container.institucion_service().id_por_defecto()
+        except Exception:
+            return None
 
     # ── Grados ofrecidos ───────────────────────────────────────────────
     def listar_grados(self) -> list[Grado]:
@@ -60,12 +78,16 @@ class PlanEstudiosService:
 
     # ── Plan de estudios ───────────────────────────────────────────────
     def listar(self) -> list[PlanEstudios]:
-        """Lista todo el plan de estudios (delegado al repositorio)."""
-        return self._repo.listar_plan_estudios()
+        """Lista todo el plan de estudios del tenant activo."""
+        return self._repo.listar_plan_estudios(
+            institucion_id=self._resolver_institucion(None)
+        )
 
     def por_grado(self, grado: int) -> list[PlanEstudios]:
-        """Lista el plan de estudios de un grado (delegado al repositorio)."""
-        return self._repo.get_plan_estudios_por_grado(grado)
+        """Lista el plan de estudios de un grado del tenant activo."""
+        return self._repo.get_plan_estudios_por_grado(
+            grado, institucion_id=self._resolver_institucion(None)
+        )
 
     def horas_por_grado(self, grado: int) -> int:
         """Total horas semanales declaradas en el plan para ese grado."""
@@ -95,8 +117,9 @@ class PlanEstudiosService:
     @requiere_escritura
     def actualizar(self, dto: NuevoPlanEstudiosDTO) -> PlanEstudios:
         """Fija (upsert) las horas de una asignatura en el plan de un grado."""
+        inst_id = self._resolver_institucion(None)
         return self._repo.set_horas_plan(
-            dto.grado, dto.asignatura_id, dto.horas_semanales
+            dto.grado, dto.asignatura_id, dto.horas_semanales, institucion_id=inst_id
         )
 
     @requiere_escritura
@@ -106,6 +129,20 @@ class PlanEstudiosService:
             grado=grado, asignatura_id=asignatura_id, horas_semanales=horas
         )
         return self.actualizar(dto)
+
+    def get_config_grado(
+        self, grado_num: int, institucion_id: int | None = None
+    ) -> ConfiguracionGradoInstitucion | None:
+        """Retorna la configuración por-institución de un grado, o None si no existe."""
+        inst_id = self._resolver_institucion(institucion_id)
+        if inst_id is None:
+            return None
+        grado = next(
+            (g for g in self._repo.listar_grados() if g.numero == grado_num), None
+        )
+        if grado is None or grado.id is None:
+            return None
+        return self._repo.get_config_grado(grado.id, inst_id)
 
     @requiere_escritura
     def eliminar(

@@ -68,22 +68,28 @@ NAV_ITEMS: list[dict] = [
              "rol":  ["director", "coordinador", "profesor"]},
             {"label": "Observaciones",     "icon": "comment",
              "ruta": "/convivencia/observaciones",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"],
+             "requiere_modulo": "convivencia"},
             {"label": "Comportamiento",    "icon": "rule",
              "ruta": "/convivencia/comportamiento",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"],
+             "requiere_modulo": "convivencia"},
             {"label": "Seguimiento",       "icon": "assignment",
              "ruta": "/convivencia/notas",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "rol":  ["director", "coordinador", "profesor"],
+             "requiere_modulo": "convivencia"},
             {"label": "Categorías",        "icon": "category",
              "ruta": "/convivencia/categorias",
-             "rol":  ["director", "coordinador"]},
+             "rol":  ["director", "coordinador"],
+             "requiere_modulo": "convivencia"},
             {"label": "Plantillas",        "icon": "description",
              "ruta": "/convivencia/plantillas",
-             "rol":  ["director", "coordinador"]},
+             "rol":  ["director", "coordinador"],
+             "requiere_modulo": "convivencia"},
             {"label": "Alertas Seguimiento", "icon": "notification_important",
              "ruta": "/convivencia/seguimiento",
-             "rol":  ["director", "coordinador"]},
+             "rol":  ["director", "coordinador"],
+             "requiere_modulo": "convivencia"},
         ],
     },
     {
@@ -176,6 +182,9 @@ NAV_ITEMS: list[dict] = [
             {"label": "Usuarios",                  "icon": "badge",
              "ruta": "/admin/usuarios",
              "rol":  ["admin", "director"]},
+            {"label": "Instituciones",             "icon": "apartment",
+             "ruta": "/admin/instituciones",
+             "rol":  ["admin"]},
             {"label": "Información Institucional", "icon": "business",
              "ruta": "/admin/configuracion-institucion",
              "rol":  ["director"]},
@@ -225,6 +234,21 @@ def _usuario_puede_ver(item: dict, usuario_rol: str) -> bool:
     # Sin ruta ni hijos: divisor u otro adorno. Usa su lista de rol declarativa.
     roles = item.get("rol", [])
     return "*" in roles or usuario_rol in roles
+
+
+def _modulo_visible(item: dict) -> bool:
+    modulo = item.get("requiere_modulo")
+    if modulo is None:
+        return True
+    try:
+        from container import Container
+        from src.services.contexto_tenant import institucion_actual
+        inst_id = institucion_actual()
+        if inst_id is None:
+            return True
+        return Container.preferencias_service().modulo_activo(inst_id, modulo)
+    except Exception:
+        return True
 
 
 def _get_logo_institucional() -> str | None:
@@ -441,6 +465,8 @@ def _rail(
                 ui.html('<span class="rail-monogram">ZM</span>')
 
         for idx, item in enumerate(NAV_ITEMS):
+            if not _modulo_visible(item):
+                continue
             if "divider" in item:
                 if _usuario_puede_ver(item, usuario_rol):
                     ui.element("div").classes("rail-divider")
@@ -480,6 +506,8 @@ def _rail(
         with flyout_el:
             ui.label(item["label"]).classes("flyout-header")
             for child in item["children"]:
+                if not _modulo_visible(child):
+                    continue
                 if not _usuario_puede_ver(child, usuario_rol):
                     continue
                 is_active   = ruta_activa == child.get("ruta")

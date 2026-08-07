@@ -125,8 +125,8 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 """
                 INSERT INTO auditoria
                     (usuario, usuario_id, tipo_evento, ip_address,
-                     fecha_hora, detalles, hash_cadena)
-                VALUES (?,?,?,?,?,?,?)
+                     fecha_hora, detalles, hash_cadena, institucion_id)
+                VALUES (?,?,?,?,?,?,?,?)
                 """,
                 (
                     evento.usuario,
@@ -136,6 +136,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                     evento.fecha_hora.isoformat(),
                     evento.detalles,
                     hash_cadena,
+                    evento.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -161,6 +162,9 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
         if filtro.hasta is not None:
             sql += " AND fecha_hora <= ?"
             params.append(filtro.hasta.isoformat())
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         sql += " ORDER BY fecha_hora DESC"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
@@ -210,8 +214,9 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 """
                 INSERT INTO audit_log
                     (usuario_id, accion, tabla, registro_id,
-                     valor_anterior, valor_nuevo, timestamp, hash_cadena)
-                VALUES (?,?,?,?,?,?,?,?)
+                     valor_anterior, valor_nuevo, timestamp, hash_cadena,
+                     institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     registro.usuario_id,
@@ -222,6 +227,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                     registro.valor_nuevo,
                     registro.timestamp.isoformat(),
                     hash_cadena,
+                    registro.institucion_id,
                 ),
             )
             if self._conn is None:
@@ -248,14 +254,16 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                     r.valor_nuevo,
                     r.timestamp.isoformat(),
                     hash_cadena,
+                    r.institucion_id,
                 ))
                 hash_previo = hash_cadena
             conn.executemany(
                 """
                 INSERT INTO audit_log
                     (usuario_id, accion, tabla, registro_id,
-                     valor_anterior, valor_nuevo, timestamp, hash_cadena)
-                VALUES (?,?,?,?,?,?,?,?)
+                     valor_anterior, valor_nuevo, timestamp, hash_cadena,
+                     institucion_id)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 params,
             )
@@ -295,6 +303,9 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
         if filtro.hasta is not None:
             sql += " AND timestamp <= ?"
             params.append(filtro.hasta.isoformat())
+        if filtro.institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(filtro.institucion_id)
         sql += " ORDER BY timestamp DESC"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"

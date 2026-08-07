@@ -31,6 +31,7 @@ from ..models.infraestructura import (
     Asignatura,
     BloqueAnclado,
     ConfigGeneracion,
+    ConfiguracionGradoInstitucion,
     DisponibilidadDocente,
     EscenarioHorario,
     Franja,
@@ -206,8 +207,9 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_areas(self) -> list[AreaConocimiento]:
-        """Retorna todas las áreas de conocimiento, ordenadas por nombre."""
+    def listar_areas(self, institucion_id: int | None = None) -> list[AreaConocimiento]:
+        """Retorna todas las áreas de conocimiento, ordenadas por nombre.
+        Si `institucion_id` es None, retorna todas (admin/cross-tenant)."""
         ...
 
     @abstractmethod
@@ -657,7 +659,7 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_franjas_reunion(self) -> list[FranjaReunion]: ...
+    def listar_franjas_reunion(self, institucion_id: int | None = None) -> list[FranjaReunion]: ...
 
     @abstractmethod
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None: ...
@@ -702,16 +704,26 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_plan_estudios(self) -> list[PlanEstudios]: ...
+    def listar_plan_estudios(self, institucion_id: int | None = None) -> list[PlanEstudios]: ...
 
     @abstractmethod
-    def get_plan_estudios_por_grado(self, grado: int) -> list[PlanEstudios]: ...
+    def get_plan_estudios_por_grado(self, grado: int, institucion_id: int | None = None) -> list[PlanEstudios]: ...
 
     @abstractmethod
-    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios: ...
+    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None) -> PlanEstudios: ...
 
     @abstractmethod
     def eliminar_plan_estudios(self, grado: int, asignatura_id: int) -> bool: ...
+
+    # =========================================================================
+    # ConfiguracionGradoInstitucion (mejora_07-T6)
+    # =========================================================================
+
+    @abstractmethod
+    def get_config_grado(self, grado_id: int, institucion_id: int) -> ConfiguracionGradoInstitucion | None: ...
+
+    @abstractmethod
+    def upsert_config_grado(self, cfg: ConfiguracionGradoInstitucion) -> ConfiguracionGradoInstitucion: ...
 
 
 __all__ = ["IInfraestructuraRepository"]

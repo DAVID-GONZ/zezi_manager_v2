@@ -40,6 +40,12 @@ class AuditoriaService:
 
     def registrar_evento(self, evento: EventoSesion) -> EventoSesion:
         """Registra un evento de sesión (delegado al repositorio)."""
+        if evento.institucion_id is None:
+            try:
+                from src.services.contexto_tenant import institucion_actual
+                evento = evento.model_copy(update={"institucion_id": institucion_actual()})
+            except Exception:
+                pass
         return self._repo.registrar_evento(evento)
 
     def listar_cambios(

@@ -78,6 +78,7 @@ class Acudiente(BaseModel):
     direccion:        str | None                = None
     activo:           bool                      = True
     usuario_id:       int | None                = None  # portal v3.0
+    institucion_id:   int | None                = None
 
     @field_validator("numero_documento", mode="before")
     @classmethod

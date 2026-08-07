@@ -43,6 +43,16 @@ class IAcudienteRepository(ABC):
     # =========================================================================
 
     @abstractmethod
+    def listar(self, activos_solo: bool = False, institucion_id: int | None = None) -> list[Acudiente]:
+        """Retorna todos los acudientes, opcionalmente filtrados por institución y estado."""
+        ...
+
+    @abstractmethod
+    def buscar_por_documento(self, numero: str, institucion_id: int | None = None) -> Acudiente | None:
+        """Busca un acudiente por documento dentro del scope de institución."""
+        ...
+
+    @abstractmethod
     def get_by_id(self, acudiente_id: int) -> Acudiente | None:
         """Retorna el acudiente con ese id, o None si no existe."""
         ...

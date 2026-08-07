@@ -52,5 +52,19 @@ class IInstitucionRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def actualizar(self, institucion: Institucion) -> Institucion:
+        """Actualiza los campos de una institución existente. Lanza ValueError si no existe."""
+        ...
+
+    @abstractmethod
+    def sembrar_defaults_tenant(self, institucion_id: int) -> None:
+        """
+        Siembra catálogos estándar (áreas, categorías) + preferencias por
+        defecto para un tenant nuevo (mejora_09a). Idempotente (INSERT OR
+        IGNORE): puede llamarse varias veces sin duplicar datos.
+        """
+        ...
+
 
 __all__ = ["IInstitucionRepository"]

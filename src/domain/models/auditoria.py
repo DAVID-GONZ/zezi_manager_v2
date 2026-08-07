@@ -77,13 +77,14 @@ class EventoSesion(BaseModel):
     El trigger `tg_actualizar_ultima_sesion` de la BD reacciona
     a inserciones con tipo=LOGIN_EXITOSO para actualizar `ultima_sesion`.
     """
-    id:          int | None            = None
-    usuario:     str                   # username (texto, no FK, para preservar tras borrado)
-    usuario_id:  int | None            = None
-    tipo_evento: TipoEventoSesion
-    ip_address:  str | None            = None
-    fecha_hora:  datetime              = Field(default_factory=datetime.now)
-    detalles:    str | None            = None
+    id:             int | None            = None
+    usuario:        str                   # username (texto, no FK, para preservar tras borrado)
+    usuario_id:     int | None            = None
+    tipo_evento:    TipoEventoSesion
+    ip_address:     str | None            = None
+    fecha_hora:     datetime              = Field(default_factory=datetime.now)
+    detalles:       str | None            = None
+    institucion_id: int | None            = None  # multi-tenant informacional (mejora_07-T7)
 
     @field_validator("usuario", mode="before")
     @classmethod
@@ -156,6 +157,7 @@ class RegistroCambio(BaseModel):
     valor_anterior:  str | None      = None  # JSON string
     valor_nuevo:     str | None      = None  # JSON string
     timestamp:       datetime        = Field(default_factory=datetime.now)
+    institucion_id:  int | None      = None  # multi-tenant informacional (mejora_07-T7)
 
     @field_validator("tabla", mode="before")
     @classmethod
@@ -376,14 +378,15 @@ class ResumenUsoDTO(BaseModel):
 
 class FiltroAuditoriaDTO(BaseModel):
     """Parámetros para consultar registros de auditoría."""
-    usuario_id:   int | None                = None
-    tabla:        str | None                = None
-    accion:       AccionCambio | None       = None
-    tipo_evento:  TipoEventoSesion | None   = None
-    desde:        datetime | None           = None
-    hasta:        datetime | None           = None
-    pagina:       int                       = Field(default=1, ge=1)
-    por_pagina:   int                       = Field(default=100, ge=1, le=500)
+    usuario_id:    int | None                = None
+    tabla:         str | None                = None
+    accion:        AccionCambio | None       = None
+    tipo_evento:   TipoEventoSesion | None   = None
+    desde:         datetime | None           = None
+    hasta:         datetime | None           = None
+    institucion_id: int | None              = None
+    pagina:        int                       = Field(default=1, ge=1)
+    por_pagina:    int                       = Field(default=100, ge=1, le=500)
 
 
 # =============================================================================

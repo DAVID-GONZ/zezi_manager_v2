@@ -73,6 +73,7 @@ class CategoriaObservacion(BaseModel):
     nombre:            str
     es_comportamental: bool       = False
     activa:            bool       = True
+    institucion_id:    int | None = None
 
 
 class NuevaCategoriaDTO(BaseModel):
@@ -94,11 +95,12 @@ class PlantillaObservacion(BaseModel):
     `uso_count` se incrementa cada vez que se usa la plantilla.
     `activa=False` oculta la plantilla del selector sin eliminar el historial.
     """
-    id:           int | None = None
-    texto:        str
-    categoria_id: int | None = None
-    uso_count:    int        = 0
-    activa:       bool       = True
+    id:             int | None = None
+    texto:          str
+    categoria_id:   int | None = None
+    uso_count:      int        = 0
+    activa:         bool       = True
+    institucion_id: int | None = None
 
 
 class NuevaPlantillaDTO(BaseModel):

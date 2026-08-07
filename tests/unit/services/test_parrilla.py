@@ -124,7 +124,7 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def listar_bloques_anclados(self, *a): return []
     def crear_bloque_anclado(self, b): return b
     def eliminar_bloque_anclado(self, *a): return False
-    def listar_franjas_reunion(self): return []
+    def listar_franjas_reunion(self, institucion_id=None): return []
     def get_franja_reunion(self, *a): return None
     def crear_franja_reunion(self, f): return f
     def actualizar_franja_reunion(self, f): return f
@@ -135,10 +135,12 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def listar_grados(self): return []
     def upsert_grado(self, g): return g
     def eliminar_grado(self, numero): return False
-    def listar_plan_estudios(self): return []
-    def get_plan_estudios_por_grado(self, grado): return []
-    def set_horas_plan(self, grado, asignatura_id, horas): return None
+    def listar_plan_estudios(self, institucion_id=None): return []
+    def get_plan_estudios_por_grado(self, grado, institucion_id=None): return []
+    def set_horas_plan(self, grado, asignatura_id, horas, institucion_id=None): return None
     def eliminar_plan_estudios(self, grado, asignatura_id): return False
+    def get_config_grado(self, grado_id, institucion_id): return None
+    def upsert_config_grado(self, cfg): return cfg
 
 
 class FakeAsignacionRepo(IAsignacionRepository):
