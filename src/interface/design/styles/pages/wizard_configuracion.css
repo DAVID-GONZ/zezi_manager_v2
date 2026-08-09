@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════════════
+   pages/wizard_configuracion.css
+   Wizard de configuración inicial (mejora_09b) y pantalla de espera.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Wizard card: more width than andes-login-card (max 420px) ── */
+.wizard-wide-card {
+  background: var(--color-surface);
+  border-radius: 20px;
+  padding: 40px;
+  width: 100%;
+  max-width: 660px;
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Waiting / espera page card ──────────────────────────────── */
+.wizard-espera-card {
+  background: var(--color-surface);
+  border-radius: 24px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-lg);
+}
+
+/* ── Espera typography ───────────────────────────────────────── */
+.wizard-espera-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.wizard-espera-desc {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────── */
+:root[data-theme="dark"] .wizard-wide-card,
+:root[data-theme="dark"] .wizard-espera-card {
+  background: var(--color-surface-alt);
+  border-color: rgba(139, 144, 240, 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wizard-wide-card,
+  :root:not([data-theme="light"]) .wizard-espera-card {
+    background: var(--color-surface-alt);
+    border-color: rgba(139, 144, 240, 0.22);
+  }
+}
