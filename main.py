@@ -162,6 +162,15 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.mi_cuenta_password import mi_cuenta_password_page
     registrar_pagina("/mi-cuenta/cambiar-password", mi_cuenta_password_page, roles=AUTENTICADO)
 
+    # ── Wizard de configuración inicial + espera (mejora_09b) ────────────────────
+    # El route_guard fuerza /configuracion-inicial al director de un tenant sin
+    # configurar y /espera-configuracion al resto de usuarios del mismo tenant.
+    # Ambas rutas están en _RUTAS_EXENTAS_CONFIG para evitar redirect-loops.
+    from src.interface.pages.configuracion_inicial import configuracion_inicial_page
+    from src.interface.pages.espera_configuracion import espera_configuracion_page
+    registrar_pagina("/configuracion-inicial", configuracion_inicial_page, roles=_DIRECTOR)
+    registrar_pagina("/espera-configuracion", espera_configuracion_page, roles=AUTENTICADO)
+
     # ── Administración ────────────────────────────────────────────────────────
     from src.interface.pages.admin.asignaciones import asignaciones_page
     from src.interface.pages.admin.asignaturas import asignaturas_page
@@ -169,10 +178,8 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.admin.catalogo_instituciones import (
         catalogo_instituciones_page,
     )
-    from src.interface.pages.admin.configuracion_institucion import (
-        configuracion_institucion_page,
-    )
     from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
+    from src.interface.pages.institucion.hub_institucion import hub_institucion_page
     from src.interface.pages.admin.diagnostico import diagnostico_page
     from src.interface.pages.admin.disponibilidad_docente import (
         disponibilidad_docente_page,
@@ -191,8 +198,8 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/admin/salas", salas_page, roles=_DIRECTOR)
     registrar_pagina("/admin/configuracion", configuracion_sie_page, roles=_DIRECTOR)
     registrar_pagina(
-        "/admin/configuracion-institucion",
-        configuracion_institucion_page,
+        "/institucion/configuracion",
+        hub_institucion_page,
         roles=_DIRECTOR,
     )
     registrar_pagina("/admin/plan-estudios", plan_estudios_page, roles=_DIR_COORD)

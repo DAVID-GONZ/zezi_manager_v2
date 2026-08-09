@@ -71,6 +71,8 @@ class Institucion(BaseModel):
     codigo_dane:            str | None              = None
     rector:                 str | None              = None
     direccion:              str | None              = None
+    pais:                   str | None              = None
+    departamento:           str | None              = None
     municipio:              str | None              = None
     telefono:               str | None              = None
     logo_path:              str | None              = None
@@ -180,6 +182,8 @@ class ActualizarInstitucionDTO(BaseModel):
     codigo_dane:           str | None              = None
     rector:                str | None              = None
     direccion:             str | None              = None
+    pais:                  str | None              = None
+    departamento:          str | None              = None
     municipio:             str | None              = None
     telefono:              str | None              = None
     logo_path:             str | None              = None
@@ -218,17 +222,18 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
     preferencias las completa el director en el wizard de configuración
     inicial (mejora_09b); aquí solo se piden los datos mínimos de arranque.
     """
-    # Institución — datos básicos.
+    # Institución — datos básicos (todos obligatorios en el flujo admin).
     nombre:          str
     nombre_oficial:  str | None = None
-    codigo_dane:     str | None = None
-    municipio:       str | None = None
+    codigo_dane:     str
+    pais:            str         = "Colombia"
+    departamento:    str
+    municipio:       str
 
-    # Director — la contraseña la genera el servicio (temporal, si no se
-    # provee); no se pide aquí.
+    # Director — la contraseña la genera el servicio (temporal).
     director_usuario:         str
     director_nombre_completo: str
-    director_email:           str | None = None
+    director_email:           str
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -240,7 +245,7 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
             raise ValueError(
                 f"El nombre no puede exceder 200 caracteres (tiene {len(v)})."
             )
-        return v
+        return v.title()
 
     @field_validator("nombre_oficial", mode="before")
     @classmethod
@@ -256,23 +261,37 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
 
     @field_validator("codigo_dane", mode="before")
     @classmethod
-    def validar_codigo_dane(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
+    def validar_codigo_dane(cls, v: str) -> str:
         v = str(v).strip()
         if not v:
-            return None
+            raise ValueError("El código DANE es obligatorio.")
         if not v.isdigit() or len(v) != 12:
             raise ValueError("El código DANE debe tener exactamente 12 dígitos numéricos.")
         return v
 
+    @field_validator("pais", mode="before")
+    @classmethod
+    def validar_pais(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El país es obligatorio.")
+        return v.title()
+
+    @field_validator("departamento", mode="before")
+    @classmethod
+    def validar_departamento(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El departamento es obligatorio.")
+        return v
+
     @field_validator("municipio", mode="before")
     @classmethod
-    def limpiar_municipio(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
+    def validar_municipio(cls, v: str) -> str:
         v = str(v).strip()
-        return v if v else None
+        if not v:
+            raise ValueError("El municipio es obligatorio.")
+        return v
 
     @field_validator("director_usuario", mode="before")
     @classmethod
@@ -293,15 +312,17 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
             raise ValueError(
                 "El nombre completo del director debe tener al menos 3 caracteres."
             )
-        return v
+        return v.title()
 
     @field_validator("director_email", mode="before")
     @classmethod
-    def limpiar_director_email(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        v = str(v).strip()
-        return v if v else None
+    def validar_director_email(cls, v: str) -> str:
+        v = str(v).strip().lower()
+        if not v:
+            raise ValueError("El correo electrónico del director es obligatorio.")
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("El correo electrónico no tiene un formato válido.")
+        return v
 
 
 class ResultadoAprovisionamientoDTO(BaseModel):

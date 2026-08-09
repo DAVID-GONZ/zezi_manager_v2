@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 
 from nicegui import ui
+from pydantic import ValidationError
 
 from container import Container
 from src.interface.context.session_context import SessionContext
@@ -31,11 +32,30 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.layout import app_layout
+from src.domain.divipola import DEPARTAMENTOS, municipios_de
 from src.services.aprovisionamiento_institucion_service import (
     NuevaInstitucionConDirectorDTO,
 )
 
 logger = logging.getLogger("ADMIN.CATALOGO_INSTITUCIONES")
+
+_PREFIJO_VALUE_ERROR = "Value error, "
+
+
+def _formatear_errores_validacion(exc: ValidationError) -> str:
+    """
+    Convierte un ValidationError de Pydantic en un mensaje legible para el
+    usuario. Extrae el texto de cada validador (sin el prefijo técnico
+    'Value error, ' ni las URLs de pydantic) y los une deduplicados.
+    """
+    mensajes: list[str] = []
+    for err in exc.errors():
+        msg = str(err.get("msg", "")).strip()
+        if msg.startswith(_PREFIJO_VALUE_ERROR):
+            msg = msg[len(_PREFIJO_VALUE_ERROR):]
+        if msg and msg not in mensajes:
+            mensajes.append(msg)
+    return " ".join(mensajes) or "Revisa los datos del formulario."
 
 
 # page-delegate: ruta y guard de rol registrados en main.py
@@ -97,13 +117,21 @@ def catalogo_instituciones_page() -> None:
             try:
                 dto = NuevaInstitucionConDirectorDTO(
                     nombre=datos.get("nombre", ""),
-                    nombre_oficial=datos.get("nombre_oficial") or None,
-                    codigo_dane=datos.get("codigo_dane") or None,
-                    municipio=datos.get("municipio") or None,
+                    codigo_dane=datos.get("codigo_dane", ""),
+                    pais=datos.get("pais", "Colombia"),
+                    departamento=datos.get("departamento", ""),
+                    municipio=datos.get("municipio", ""),
                     director_usuario=datos.get("director_usuario", ""),
                     director_nombre_completo=datos.get("director_nombre_completo", ""),
-                    director_email=datos.get("director_email") or None,
+                    director_email=datos.get("director_email", ""),
                 )
+            except ValidationError as exc:
+                # ValidationError hereda de ValueError en pydantic v2: hay que
+                # capturarlo aparte para no mostrar el volcado técnico crudo.
+                toast_warning(_formatear_errores_validacion(exc))
+                return False
+
+            try:
                 resultado = Container.aprovisionamiento_service().crear_institucion_con_director(
                     dto, actor_rol=ctx.usuario_rol,
                 )
@@ -125,22 +153,33 @@ def catalogo_instituciones_page() -> None:
 
         form_dialog(
             titulo    = "Crear institución",
-            subtitulo = "Datos básicos de la institución y su usuario director",
+            subtitulo = "Registra la institución y su usuario director",
             campos    = [
-                {"key": "nombre",         "label": "Nombre *", "tipo": "text",
-                 "requerido": True, "placeholder": "Colegio San José"},
-                {"key": "nombre_oficial", "label": "Nombre oficial", "tipo": "text",
-                 "placeholder": "Institución Educativa San José"},
-                {"key": "codigo_dane",    "label": "Código DANE", "tipo": "text",
-                 "placeholder": "111001000000"},
-                {"key": "municipio",      "label": "Municipio", "tipo": "text",
-                 "placeholder": "Ciudad, Departamento"},
-                {"key": "director_usuario",         "label": "Usuario del director *", "tipo": "text",
-                 "requerido": True, "placeholder": "director.sanjose"},
-                {"key": "director_nombre_completo", "label": "Nombre completo del director *", "tipo": "text",
-                 "requerido": True, "placeholder": "María Elena Directora"},
-                {"key": "director_email",           "label": "Email del director", "tipo": "email",
-                 "placeholder": "director@sanjose.edu.co"},
+                {"tipo": "section", "label": "Institución", "icono": "apartment"},
+                {"key": "nombre", "label": "Nombre de la institución", "tipo": "text",
+                 "requerido": True, "minlength": 3, "maxlength": 200,
+                 "normalizar": "titulo"},
+                {"key": "codigo_dane", "label": "Código DANE", "tipo": "text",
+                 "requerido": True, "minlength": 12, "maxlength": 12,
+                 "hint": "12 dígitos numéricos"},
+                {"tipo": "section", "label": "Ubicación", "icono": "location_on"},
+                {"key": "pais", "label": "País", "tipo": "select",
+                 "requerido": True, "opciones": ["Colombia"],
+                 "valor": "Colombia"},
+                {"key": "departamento", "label": "Departamento", "tipo": "select",
+                 "requerido": True, "opciones": DEPARTAMENTOS},
+                {"key": "municipio", "label": "Municipio", "tipo": "select",
+                 "requerido": True,
+                 "opciones_desde": "departamento", "opciones_fn": municipios_de},
+                {"tipo": "section", "label": "Director", "icono": "person"},
+                {"key": "director_nombre_completo", "label": "Nombre completo", "tipo": "text",
+                 "requerido": True, "minlength": 3,
+                 "normalizar": "titulo"},
+                {"key": "director_usuario", "label": "Nombre de usuario", "tipo": "text",
+                 "requerido": True, "minlength": 3,
+                 "normalizar": "minusculas", "hint": "Sin espacios"},
+                {"key": "director_email", "label": "Correo electrónico", "tipo": "email",
+                 "requerido": True, "normalizar": "minusculas"},
             ],
             on_submit    = _crear,
             texto_submit = "Crear institución",
@@ -166,13 +205,16 @@ def catalogo_instituciones_page() -> None:
                 "flex items-center gap-4 p-2 font-semibold text-sm border-b"
             ):
                 ui.label("Institución").classes("flex-1")
-                ui.label("Municipio").classes("w-48")
+                ui.label("Ubicación").classes("w-48")
                 ui.label("Estado").classes("w-48")
 
             for inst in instituciones:
+                ubicacion = ", ".join(
+                    p for p in [inst.municipio, inst.departamento] if p
+                ) or "—"
                 with ui.element("div").classes("divider-row"):
                     ui.label(inst.nombre).classes("flex-1")
-                    ui.label(inst.municipio or "—").classes("w-48 name-w48-ellipsis")
+                    ui.label(ubicacion).classes("w-48 name-w48-ellipsis")
                     with ui.element("div").classes("w-48"):
                         if inst.configuracion_inicial_completa:
                             status_badge("Configurada", "success")

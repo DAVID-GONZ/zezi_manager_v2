@@ -416,6 +416,8 @@ def _migrate_instituciones_identidad(conn: sqlite3.Connection) -> None:
         ("codigo_dane",           "TEXT"),
         ("rector",                "TEXT"),
         ("direccion",             "TEXT"),
+        ("pais",                  "TEXT"),
+        ("departamento",          "TEXT"),
         ("municipio",             "TEXT"),
         ("telefono",              "TEXT"),
         ("logo_path",             "TEXT"),
@@ -633,8 +635,10 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
             else "Institución Educativa"
         )
         conn.execute(
-            "INSERT INTO instituciones (nombre, activa) VALUES (?, 1)",
-            (nombre,),
+            """INSERT INTO instituciones
+                   (nombre, activa, pais, departamento, municipio, codigo_dane)
+               VALUES (?, 1, ?, ?, ?, ?)""",
+            (nombre, "Colombia", "Bogotá D.C.", "Bogotá D.C.", "111001000001"),
         )
         institucion_id = int(
             conn.execute(
@@ -723,8 +727,10 @@ def _seed_segunda_institucion(
     inst2_id = _get_or_insert(
         conn,
         "SELECT id FROM instituciones WHERE nombre = ?", ("Institución de Prueba",),
-        "INSERT INTO instituciones (nombre, activa) VALUES (?, 1)",
-        ("Institución de Prueba",),
+        """INSERT INTO instituciones
+               (nombre, activa, pais, departamento, municipio, codigo_dane)
+           VALUES (?, 1, ?, ?, ?, ?)""",
+        ("Institución de Prueba", "Colombia", "Antioquia", "Medellín", "105001000012"),
     )
 
     # Configuración de año activa propia de la #2 (mismo `anio`, distinto tenant).

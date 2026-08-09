@@ -10,13 +10,13 @@ profundidad: tanto el servicio (enforcement real) como la vista (gating de
 controles) consultan estas funciones para no divergir.
 
 Matriz de asignación de roles (quién puede crear / promover a qué rol):
-  admin    → {admin, director}
+  admin    → {director}  (crea directores vía aprovisionamiento institucional)
   director → {coordinador, profesor}
   otros    → {}  (no gestionan usuarios)
 
 Gestión (reactivar / desactivar / resetear password / cambiar rol) del actor
 sobre un usuario destino, según el rol actual del destino:
-  admin    → puede gestionar a cualquier rol.
+  admin    → puede gestionar solo a director (nivel institucional).
   director → puede gestionar solo a coordinador / profesor.
   otros    → no gestionan a nadie.
 
@@ -28,14 +28,13 @@ from __future__ import annotations
 
 # Matriz de asignación: actor_rol -> conjunto de roles que puede asignar/crear.
 _ASIGNABLES: dict[str, frozenset[str]] = {
-    "admin":    frozenset({"admin", "director"}),
+    "admin":    frozenset({"director"}),
     "director": frozenset({"coordinador", "profesor"}),
 }
 
 # Gestión: actor_rol -> conjunto de roles destino que puede gestionar.
 _GESTIONABLES: dict[str, frozenset[str]] = {
-    "admin":    frozenset({"admin", "director", "coordinador", "profesor",
-                           "estudiante", "apoderado"}),
+    "admin":    frozenset({"director"}),
     "director": frozenset({"coordinador", "profesor"}),
 }
 

@@ -89,6 +89,8 @@ class ThemeManager:
         "domain/disponibilidad.css",
         "domain/horario_parrilla.css",
         "domain/horario_generar.css",
+        # Estilos específicos de página (cargan al final para poder sobrescribir).
+        "pages/wizard_configuracion.css",
     ]
 
     @classmethod

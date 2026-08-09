@@ -20,8 +20,13 @@ from src.services.aprovisionamiento_institucion_service import (
 def _dto(**overrides) -> NuevaInstitucionConDirectorDTO:
     datos = dict(
         nombre="Colegio San José",
+        codigo_dane="111001000001",
+        pais="Colombia",
+        departamento="Cundinamarca",
+        municipio="Bogotá",
         director_usuario="director.sj",
         director_nombre_completo="María Elena Directora",
+        director_email="director@sanjose.edu.co",
     )
     datos.update(overrides)
     return NuevaInstitucionConDirectorDTO(**datos)

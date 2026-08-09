@@ -339,10 +339,10 @@ class TestCambiarRol:
 # ===========================================================================
 
 class TestRbacCrear:
-    def test_admin_puede_crear_admin(self):
+    def test_admin_no_puede_crear_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        u = _crear(svc, _dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
-        assert u.rol == Rol.ADMIN
+        with pytest.raises(ValueError, match="permiso"):
+            svc.crear_usuario(_dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
 
     def test_admin_puede_crear_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
@@ -371,11 +371,11 @@ class TestRbacCrear:
 
 
 class TestRbacCambiarRol:
-    def test_admin_puede_promover_a_admin(self):
+    def test_admin_no_puede_promover_a_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("dir1", Rol.DIRECTOR))
-        r = svc.cambiar_rol(u.id, Rol.ADMIN, actor_rol="admin")
-        assert r.rol == Rol.ADMIN
+        with pytest.raises(ValueError, match="permiso"):
+            svc.cambiar_rol(u.id, Rol.ADMIN, actor_rol="admin")
 
     def test_director_no_puede_cambiar_rol_de_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())

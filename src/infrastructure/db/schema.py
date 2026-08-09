@@ -48,6 +48,8 @@ SCHEMA: list[str] = [
         codigo_dane            TEXT,
         rector                 TEXT,
         direccion              TEXT,
+        pais                   TEXT,
+        departamento           TEXT,
         municipio              TEXT,
         telefono               TEXT,
         logo_path              TEXT,

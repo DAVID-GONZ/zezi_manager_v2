@@ -57,6 +57,75 @@ class _Sentinel(Enum):
 PUBLICO = _Sentinel.PUBLICO
 AUTENTICADO = _Sentinel.AUTENTICADO
 
+# ── Gate de configuración inicial (mejora_09b) ────────────────────────────────
+# Veredictos del gate:
+GATE_OK     = "ok"      # sin bloqueo
+GATE_WIZARD = "wizard"  # director sin configurar → /configuracion-inicial
+GATE_ESPERA = "espera"  # no-director sin configurar → /espera-configuracion
+
+# Rutas exentas: nunca redirigidas por el gate (evita redirect-loops).
+_RUTAS_EXENTAS_CONFIG: frozenset[str] = frozenset({
+    "/configuracion-inicial",
+    "/espera-configuracion",
+    "/logout",
+    "/cambiar-password",
+})
+
+
+def decidir_gate_configuracion(
+    *,
+    rol: str | None,
+    config_completa: bool,
+    ruta: str,
+) -> str:
+    """
+    Decisión pura del gate de configuración inicial (sin NiceGUI).
+
+    Orden de evaluación:
+      admin               → OK (nunca bloqueado; es cross-tenant).
+      tenant configurado  → OK (camino rápido; cero coste en régimen normal).
+      ruta exenta         → OK (evita redirect-loop).
+      director            → WIZARD (debe completar la configuración).
+      cualquier otro rol  → ESPERA (espera a que el director configure).
+    """
+    if rol == "admin":
+        return GATE_OK
+    if config_completa:
+        return GATE_OK
+    if ruta in _RUTAS_EXENTAS_CONFIG:
+        return GATE_OK
+    if rol == "director":
+        return GATE_WIZARD
+    return GATE_ESPERA
+
+
+def _config_inicial_completa(rol: str | None) -> bool:  # noqa: ARG001
+    """
+    Devuelve True si el tenant del usuario ya completó su configuración inicial.
+
+    Camino rápido por sesión (cero BD para tenants ya configurados).
+    Re-chequeo vivo solo si la sesión dice False — desbloquea a los
+    no-directores sin re-login cuando el director termina el wizard.
+    Fail-open ante cualquier excepción.
+    """
+    try:
+        from nicegui import app
+        if bool(app.storage.user.get("institucion_config_completa", True)):
+            return True
+        from container import Container
+        inst_id = app.storage.user.get("institucion_id")
+        if inst_id is None:
+            return True  # sin tenant → no gatear
+        inst = Container.institucion_service().get(inst_id)
+        completa = bool(inst.configuracion_inicial_completa)
+        if completa:
+            # Desbloquea la sesión para que las peticiones siguientes sean rápidas.
+            app.storage.user["institucion_config_completa"] = True
+        return completa
+    except Exception:
+        return True  # fail-open: un bug no debe encerrar al usuario
+
+
 RUTAS_POR_MODULO: dict[str, list[str]] = {
     "convivencia": [
         "/convivencia/observaciones",
@@ -192,12 +261,11 @@ def registrar_pagina(
             toast_error("Acceso no autorizado")
             ui.navigate.to("/inicio")
             return
-        if not _modulo_permitido(ruta):
-            ui.navigate.to("/inicio")
-            return
-        # A2 (seguridad_01) — cambio forzado de contraseña: deny-by-default real.
-        # Si la sesión está marcada y la ruta no es /cambiar-password ni /logout,
-        # se fuerza el cambio antes de servir cualquier otra página.
+
+        # A2 (seguridad_01) — cambio forzado de contraseña: PRIMERO que el gate
+        # de config inicial (un director con clave temporal la cambia antes de
+        # configurar). /cambiar-password está en _RUTAS_EXENTAS_CONFIG, así que
+        # ambos gates coexisten sin loop.
         if (
             autenticado
             and app.storage.user.get("debe_cambiar_password")
@@ -205,6 +273,29 @@ def registrar_pagina(
         ):
             ui.navigate.to("/cambiar-password")
             return
+
+        # Gate de configuración inicial (mejora_09b): un tenant sin configurar
+        # bloquea a sus usuarios hasta que el director complete el wizard.
+        # Se evalúa DESPUÉS del gate de contraseña (un director con clave temporal
+        # la cambia primero) y ANTES del gate de módulos.
+        if autenticado and rol != "admin" and ruta not in _RUTAS_EXENTAS_CONFIG:
+            _cfg_completa = _config_inicial_completa(rol)
+            _veredicto_cfg = decidir_gate_configuracion(
+                rol=rol, config_completa=_cfg_completa, ruta=ruta,
+            )
+            if _veredicto_cfg == GATE_WIZARD:
+                ui.navigate.to("/configuracion-inicial")
+                return
+            if _veredicto_cfg == GATE_ESPERA:
+                ui.navigate.to("/espera-configuracion")
+                return
+
+        # Gate de módulos (después del gate de config: no tiene sentido evaluar
+        # módulos de un tenant aún sin configurar).
+        if not _modulo_permitido(ruta):
+            ui.navigate.to("/inicio")
+            return
+
         # B1 (seguridad_04) — sync central del contexto antes de renderizar.
         # Centraliza la reconstrucción de los ContextVar de servicios
         # (solo_lectura + scope de institución) en el guard, de modo que TODA
@@ -236,9 +327,13 @@ __all__ = [
     "ACCESO_LOGIN",
     "ACCESO_OK",
     "AUTENTICADO",
+    "GATE_ESPERA",
+    "GATE_OK",
+    "GATE_WIZARD",
     "PUBLICO",
     "RUTAS_POR_MODULO",
     "decidir_acceso",
+    "decidir_gate_configuracion",
     "registrar_pagina",
     "roles_de_ruta",
     "rutas_registradas",

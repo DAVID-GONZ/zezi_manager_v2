@@ -11,6 +11,7 @@ from collections.abc import Callable
 from nicegui import ui
 
 from src.interface.design.components.buttons import btn_primary, btn_secondary
+from src.interface.design.components.toast import toast_warning
 
 
 def _label_above(label: str, requerido: bool, tooltip_txt: str = "") -> None:
@@ -54,12 +55,58 @@ def base_form(
         tooltip    str   — tooltip al hacer hover (ícono de ayuda junto a la etiqueta).
         ref        list  — se le hace append del widget creado (para acceso externo).
         icono      str   — material symbol (solo tipo='section').
+        minlength  int   — longitud mínima de texto (validada al enviar).
+        maxlength  int   — longitud máxima de texto (prop HTML en el input).
+        normalizar str   — "titulo" | "minusculas" | "mayusculas" — case aplicado al recoger datos.
+        opciones_desde str — key del campo padre cuyo valor determina las opciones de este select.
+        opciones_fn Callable — f(valor_padre) → list[str]; genera opciones dinámicas.
         min/max/step/format — solo tipo='number'.
     """
     _valores: dict[str, ui.input | ui.select | ui.textarea | ui.number | ui.checkbox] = {}
+    _requeridos: dict[str, str] = {}
+    _normalizacion: dict[str, str] = {}
+    _minlengths: dict[str, tuple[str, int]] = {}
+    _cascadas: list[tuple[str, str, object]] = []
 
     def _recoger_datos() -> dict:
-        return {k: w.value for k, w in _valores.items()}
+        datos: dict = {}
+        for k, w in _valores.items():
+            val = w.value
+            if isinstance(val, str):
+                val = val.strip()
+                modo = _normalizacion.get(k)
+                if modo == "titulo":
+                    val = val.title()
+                elif modo == "minusculas":
+                    val = val.lower()
+                elif modo == "mayusculas":
+                    val = val.upper()
+            datos[k] = val
+        return datos
+
+    def _validar_campos() -> bool:
+        vacios: list[str] = []
+        for key, label in _requeridos.items():
+            widget = _valores.get(key)
+            if widget is None:
+                continue
+            val = widget.value
+            if val is None or (isinstance(val, str) and not val.strip()):
+                vacios.append(label)
+        if vacios:
+            toast_warning(f"Completa los campos obligatorios: {', '.join(vacios)}")
+            return False
+
+        for key, (label, minlen) in _minlengths.items():
+            widget = _valores.get(key)
+            if widget is None:
+                continue
+            val = widget.value
+            if isinstance(val, str) and len(val.strip()) < minlen:
+                toast_warning(f"{label} debe tener al menos {minlen} caracteres")
+                return False
+
+        return True
 
     contenedor = ui.element("div").classes("base-form-wrapper")
 
@@ -81,7 +128,22 @@ def base_form(
                 disabled    = campo.get("disabled", False)
                 span        = campo.get("span", False)
                 tooltip_txt = campo.get("tooltip", "")
-                label_text  = f"{label} *" if requerido else label
+                display_label = label.removesuffix(" *") if requerido else label
+                label_text    = f"{display_label} *" if requerido else label
+                minlength_v      = campo.get("minlength")
+                maxlength_v      = campo.get("maxlength")
+                normalizar_v     = campo.get("normalizar")
+                opciones_desde_v = campo.get("opciones_desde")
+                opciones_fn_v    = campo.get("opciones_fn")
+
+                if requerido and key:
+                    _requeridos[key] = display_label
+                if normalizar_v and key:
+                    _normalizacion[key] = normalizar_v
+                if minlength_v is not None and key:
+                    _minlengths[key] = (display_label, minlength_v)
+                if opciones_desde_v and opciones_fn_v and key:
+                    _cascadas.append((opciones_desde_v, key, opciones_fn_v))
 
                 # ── Sección visual — divider con título ─────────────────
                 if tipo == "section":
@@ -102,7 +164,7 @@ def base_form(
 
                     # ── Select ──────────────────────────────────────────
                     if tipo == "select":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = ui.select(
                             options=opciones,
                             value=campo.get("valor"),
@@ -114,7 +176,7 @@ def base_form(
 
                     # ── Textarea ─────────────────────────────────────────
                     elif tipo == "textarea":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = ui.textarea(
                             placeholder=placeholder,
                             value=campo.get("valor", ""),
@@ -124,7 +186,7 @@ def base_form(
 
                     # ── Password ─────────────────────────────────────────
                     elif tipo == "password":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = ui.input(
                             placeholder=placeholder,
                             value=campo.get("valor", ""),
@@ -136,7 +198,7 @@ def base_form(
 
                     # ── Number ───────────────────────────────────────────
                     elif tipo == "number":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         min_val  = campo.get("min")
                         max_val  = campo.get("max")
                         step_val = campo.get("step")
@@ -164,7 +226,7 @@ def base_form(
 
                     # ── Time ─────────────────────────────────────────────
                     elif tipo == "time":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = (
                             ui.input(value=campo.get("valor", ""))
                             .props("type=time borderless dense")
@@ -175,7 +237,7 @@ def base_form(
 
                     # ── Date ─────────────────────────────────────────────
                     elif tipo == "date":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = (
                             ui.input(value=campo.get("valor", ""))
                             .props("type=date borderless dense")
@@ -186,7 +248,7 @@ def base_form(
 
                     # ── Email ─────────────────────────────────────────────
                     elif tipo == "email":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = (
                             ui.input(
                                 placeholder=placeholder,
@@ -200,7 +262,7 @@ def base_form(
 
                     # ── Color ─────────────────────────────────────────────
                     elif tipo == "color":
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = (
                             ui.color_input(
                                 value=campo.get("valor", ""),
@@ -223,7 +285,7 @@ def base_form(
 
                     # ── Text (default) ───────────────────────────────────
                     else:
-                        _label_above(label, requerido, tooltip_txt)
+                        _label_above(display_label, requerido, tooltip_txt)
                         widget = ui.input(
                             placeholder=placeholder,
                             value=campo.get("valor", ""),
@@ -236,11 +298,25 @@ def base_form(
                         widget.tooltip(tooltip_txt)
 
                     _valores[key] = widget
+                    if maxlength_v is not None and hasattr(widget, "props"):
+                        widget.props(f"maxlength={maxlength_v}")
                     if isinstance(ref, list):
                         ref.append(widget)
 
                     if hint:
                         ui.label(hint).classes("form-field-hint")
+
+        for padre_key, hijo_key, fn in _cascadas:
+            padre = _valores.get(padre_key)
+            hijo = _valores.get(hijo_key)
+            if padre is not None and hijo is not None and isinstance(hijo, ui.select):
+                def _hacer_handler(_h: ui.select, _fn: object):  # noqa: E501
+                    def _handler(e) -> None:
+                        _h.options = _fn(e.value) if e.value else []
+                        _h.value = None
+                        _h.update()
+                    return _handler
+                padre.on_value_change(_hacer_handler(hijo, fn))
 
         ui.separator().classes("base-form-sep u-mt-lg u-mb-sm")
 
@@ -248,9 +324,13 @@ def base_form(
             if on_cancelar and texto_cancelar:
                 btn_secondary(texto_cancelar, on_click=on_cancelar)
 
+            def _on_click_submit() -> None:
+                if _validar_campos():
+                    on_submit(_recoger_datos())
+
             _btn = btn_primary(
                 texto_submit,
-                on_click=lambda: on_submit(_recoger_datos()),
+                on_click=_on_click_submit,
             )
             if _submit_btn_ref is not None:
                 _submit_btn_ref.append(_btn)

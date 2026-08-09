@@ -53,6 +53,8 @@ class AprovisionamientoInstitucionService:
             nombre=dto.nombre,
             nombre_oficial=dto.nombre_oficial,
             codigo_dane=dto.codigo_dane,
+            pais=dto.pais,
+            departamento=dto.departamento,
             municipio=dto.municipio,
             configuracion_inicial_completa=False,
         ))
@@ -77,6 +79,34 @@ class AprovisionamientoInstitucionService:
             director_usuario=director.usuario,
             password_temporal=director.password_temporal,
         )
+
+    def finalizar_configuracion_inicial(
+        self,
+        inst_id: int,
+        color_primario: str | None = None,
+        color_secundario: str | None = None,
+    ) -> None:
+        """
+        Guarda los colores opcionales de apariencia y marca la configuración
+        inicial como completada para la institución indicada.
+
+        Encapsula la orquestación que antes vivía directamente en la página
+        `configuracion_inicial.py`, manteniendo la capa de interfaz libre de
+        coordinación entre servicios.
+        """
+        from container import Container
+        from src.services.preferencias_institucion_service import ActualizarPreferenciaDTO
+
+        svc_prefs = Container.preferencias_service()
+        svc_prefs.set(inst_id, ActualizarPreferenciaDTO(
+            clave="color_primario",
+            valor=color_primario,
+        ))
+        svc_prefs.set(inst_id, ActualizarPreferenciaDTO(
+            clave="color_secundario",
+            valor=color_secundario,
+        ))
+        Container.institucion_service().marcar_configuracion_inicial_completa(inst_id)
 
 
 __all__ = [

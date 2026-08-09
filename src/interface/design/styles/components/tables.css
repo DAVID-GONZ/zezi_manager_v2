@@ -388,3 +388,17 @@
   color: var(--color-text-secondary);
   display: block;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   table-row-actions — contenedor de botones de acción por fila en
+   listas de usuarios. Sustituye el patrón Tailwind inline
+   `w-56 flex items-center justify-end gap-2 flex-wrap`.
+   ───────────────────────────────────────────────────────────────── */
+.table-row-actions {
+  width: 14rem; /* w-56 */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem; /* gap-2 */
+  flex-wrap: wrap;
+}

@@ -13,6 +13,7 @@ from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("LOGIN")
 
+# page-delegate: ruta registrada en main.py vía registrar_pagina (PUBLICO)
 def login_page() -> None:
     ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
 
@@ -152,6 +153,25 @@ def login_page() -> None:
                     )
 
                     ctx = Container.inicializar_contexto(ctx)
+
+                    # mejora_09b — sembrar flag de configuración inicial del tenant.
+                    # admin → True (nunca se le aplica el gate; su inst_id suele ser None).
+                    # resto → valor real del tenant, con fail-open a True ante cualquier error.
+                    _inst_id_login = getattr(user_db, "institucion_id", None)
+                    if rol_str == "admin":
+                        _config_completa = True
+                    else:
+                        try:
+                            if _inst_id_login is None:
+                                _config_completa = True
+                            else:
+                                _inst_obj = Container.institucion_service().get(_inst_id_login)
+                                _config_completa = bool(_inst_obj.configuracion_inicial_completa)
+                        except Exception:
+                            _config_completa = True  # fail-open: no encerrar al usuario
+                    ctx.institucion_config_completa = _config_completa
+                    app.storage.user["institucion_config_completa"] = _config_completa
+
                     ctx.guardar()
 
                     try:
@@ -220,7 +240,7 @@ def login_page() -> None:
             login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full u-mt-lg")
 
             # ── Pie ──────────────────────────────────────────────────────────
-            ui.label("© 2026 Gestor Docente").classes("andes-login-footer w-full")
+            ui.label("© 2026 by LDGV").classes("andes-login-footer w-full")
 
 
 __all__ = ["login_page"]

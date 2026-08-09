@@ -30,6 +30,10 @@ class SessionContext:
     # A2 (seguridad_01): cambio forzado de contraseña. Lo setea login.py desde
     # user_db.debe_cambiar_password; el route_guard fuerza /cambiar-password.
     debe_cambiar_password: bool = False
+    # mejora_09b: flag de configuración inicial de tenant. Default True = fail-open
+    # (no gatear ante errores de lectura). Lo siembra login.py; el route_guard
+    # fuerza /configuracion-inicial (director) o /espera-configuracion (otros).
+    institucion_config_completa: bool = True
     anio_id:         int | None = None
     periodo_id:      int | None = None
     grupo_id:        int | None = None
@@ -81,6 +85,7 @@ class SessionContext:
             usuario_rol       = storage.get("usuario_rol", ""),
             institucion_id    = storage.get("institucion_id"),
             debe_cambiar_password = bool(storage.get("debe_cambiar_password", False)),
+            institucion_config_completa = bool(storage.get("institucion_config_completa", True)),
             anio_id           = storage.get("anio_id"),
             periodo_id        = storage.get("periodo_id"),
             grupo_id          = storage.get("grupo_id"),
@@ -126,6 +131,7 @@ class SessionContext:
             "usuario_rol":       self.usuario_rol,
             "institucion_id":    self.institucion_id,
             "debe_cambiar_password": self.debe_cambiar_password,
+            "institucion_config_completa": self.institucion_config_completa,
             "anio_id":           self.anio_id,
             "periodo_id":        self.periodo_id,
             "grupo_id":          self.grupo_id,

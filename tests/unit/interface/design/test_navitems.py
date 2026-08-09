@@ -35,7 +35,7 @@ RUTAS_REQUERIDAS = {
     "/admin/grupos",
     "/admin/asignaturas",
     "/admin/asignaciones",
-    "/admin/configuracion-institucion",
+    "/institucion/configuracion",
     "/admin/usuarios",
     "/admin/auditoria",
 }
@@ -98,12 +98,12 @@ def test_navitems_admin_es_plataforma():
     ]
     assert "Usuarios" in hijos_admin
     assert "Auditoría" in hijos_admin
-    assert "Información Institucional" not in hijos_admin
+    assert "Configuración institucional" not in hijos_admin
 
 
 def test_navitems_director_hereda_institucional():
-    """director conserva acceso institucional/académico y ve Información
-    Institucional dentro de Administración; NO ve Auditoría (admin exclusivo)."""
+    """director conserva acceso institucional/académico y ve Configuración
+    institucional dentro de Administración; NO ve Auditoría (admin exclusivo)."""
     from src.interface.design.layout import _usuario_puede_ver
 
     visibles = [i for i in NAV_ITEMS if _usuario_puede_ver(i, "director")]
@@ -117,7 +117,7 @@ def test_navitems_director_hereda_institucional():
         c["label"] for c in admin_grupo["children"]
         if _usuario_puede_ver(c, "director")
     ]
-    assert "Información Institucional" in hijos_dir
+    assert "Configuración institucional" in hijos_dir
     assert "Usuarios" in hijos_dir
     assert "Auditoría" not in hijos_dir
 

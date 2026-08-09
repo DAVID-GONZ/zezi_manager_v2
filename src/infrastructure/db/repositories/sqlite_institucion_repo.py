@@ -11,7 +11,8 @@ from src.domain.ports.institucion_repo import IInstitucionRepository
 
 _COLS = (
     "id, nombre, nit, codigo, activa, fecha_creacion, "
-    "nombre_oficial, codigo_dane, rector, direccion, municipio, telefono, "
+    "nombre_oficial, codigo_dane, rector, direccion, "
+    "pais, departamento, municipio, telefono, "
     "logo_path, logo_url, resolucion_aprobacion, lema, email_institucional, "
     "jornada_principal, tipo_institucion, calendario, "
     "configuracion_inicial_completa"
@@ -95,8 +96,9 @@ class SqliteInstitucionRepository(IInstitucionRepository):
                 """
                 INSERT INTO instituciones
                     (nombre, nit, codigo, activa, fecha_creacion,
+                     codigo_dane, pais, departamento, municipio,
                      configuracion_inicial_completa)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     institucion.nombre,
@@ -104,6 +106,10 @@ class SqliteInstitucionRepository(IInstitucionRepository):
                     institucion.codigo,
                     int(institucion.activa),
                     institucion.fecha_creacion.isoformat(),
+                    institucion.codigo_dane,
+                    institucion.pais,
+                    institucion.departamento,
+                    institucion.municipio,
                     int(institucion.configuracion_inicial_completa),
                 ),
             )
@@ -120,7 +126,8 @@ class SqliteInstitucionRepository(IInstitucionRepository):
                 UPDATE instituciones SET
                     nombre=?, nit=?, codigo=?, activa=?,
                     nombre_oficial=?, codigo_dane=?, rector=?,
-                    direccion=?, municipio=?, telefono=?,
+                    direccion=?, pais=?, departamento=?, municipio=?,
+                    telefono=?,
                     logo_path=?, logo_url=?, resolucion_aprobacion=?,
                     lema=?, email_institucional=?,
                     jornada_principal=?, tipo_institucion=?, calendario=?,
@@ -131,7 +138,8 @@ class SqliteInstitucionRepository(IInstitucionRepository):
                     institucion.nombre, institucion.nit, institucion.codigo,
                     int(institucion.activa),
                     institucion.nombre_oficial, institucion.codigo_dane,
-                    institucion.rector, institucion.direccion, institucion.municipio,
+                    institucion.rector, institucion.direccion,
+                    institucion.pais, institucion.departamento, institucion.municipio,
                     institucion.telefono, institucion.logo_path, institucion.logo_url,
                     institucion.resolucion_aprobacion, institucion.lema,
                     institucion.email_institucional,

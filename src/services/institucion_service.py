@@ -103,6 +103,19 @@ class InstitucionService:
         return {k: v for k, v in mapeo.items() if v is not None}
 
     @requiere_escritura
+    def marcar_configuracion_inicial_completa(self, institucion_id: int) -> Institucion:
+        """
+        Marca el tenant como configurado (fin del wizard de mejora_09b).
+        Idempotente: si ya estaba en True, no falla.
+        """
+        inst = self._repo.get_by_id(institucion_id)
+        if inst is None:
+            raise ValueError(f"La institución con id {institucion_id} no existe.")
+        return self._repo.actualizar(
+            inst.model_copy(update={"configuracion_inicial_completa": True})
+        )
+
+    @requiere_escritura
     def crear(self, dto: NuevaInstitucionDTO) -> Institucion:
         """
         Crea una institución nueva.
@@ -120,4 +133,5 @@ __all__ = [
     "InstitucionResumenDTO",
     "InstitucionService",
     "NuevaInstitucionDTO",
+    "Institucion",
 ]

@@ -10,8 +10,8 @@ from src.domain.policies.rbac_usuarios import (
 
 
 class TestRolesAsignables:
-    def test_admin_asigna_admin_y_director(self):
-        assert roles_asignables("admin") == {"admin", "director"}
+    def test_admin_asigna_solo_director(self):
+        assert roles_asignables("admin") == {"director"}
 
     def test_director_asigna_coordinador_y_profesor(self):
         assert roles_asignables("director") == {"coordinador", "profesor"}
@@ -20,24 +20,28 @@ class TestRolesAsignables:
         assert roles_asignables("coordinador") == set()
 
     def test_acepta_enum_rol(self):
-        assert roles_asignables(Rol.ADMIN) == {"admin", "director"}
+        assert roles_asignables(Rol.ADMIN) == {"director"}
 
     def test_actor_none(self):
         assert roles_asignables(None) == set()
 
 
 class TestPuedeAsignarRol:
-    def test_admin_puede_asignar_admin(self):
-        assert puede_asignar_rol("admin", "admin") is True
+    def test_admin_puede_asignar_director(self):
+        assert puede_asignar_rol("admin", "director") is True
+
+    def test_admin_no_puede_asignar_admin(self):
+        assert puede_asignar_rol("admin", "admin") is False
 
     def test_director_no_puede_asignar_admin(self):
         assert puede_asignar_rol("director", "admin") is False
 
 
 class TestPuedeGestionar:
-    def test_admin_gestiona_cualquiera(self):
-        for r in ("admin", "director", "coordinador", "profesor"):
-            assert puede_gestionar("admin", r) is True
+    def test_admin_gestiona_solo_director(self):
+        assert puede_gestionar("admin", "director") is True
+        for r in ("admin", "coordinador", "profesor"):
+            assert puede_gestionar("admin", r) is False
 
     def test_director_gestiona_solo_coordinador_y_profesor(self):
         assert puede_gestionar("director", "coordinador") is True

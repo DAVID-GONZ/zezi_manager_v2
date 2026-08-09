@@ -1,16 +1,21 @@
 """
 src/interface/pages/admin/usuarios.py
 ======================================
-Página de administración de usuarios.
+Página de gestión de usuarios.
 Ruta: /admin/usuarios
 Acceso: admin, director
 
-Permite:
- - Listar usuarios con filtros (rol, solo activos).
- - Crear usuario (admin y director, con roles acotados por RBAC).
- - Reactivar / Desactivar usuario (gated por puede_gestionar).
- - Restablecer contraseña (gated por puede_gestionar).
- - Cambiar rol (roles ofrecidos = roles_asignables del actor).
+Director:
+ - Crea coordinadores y profesores de su institución.
+ - Gestiona (cambiar rol / restablecer contraseña / desactivar / reactivar)
+   a coordinadores y profesores de su institución.
+
+Admin (auditor de plataforma):
+ - Ve la lista completa de usuarios con filtros (para auditoría).
+ - Puede impersonar cualquier usuario activo ("Ver como", solo lectura).
+ - Gestiona solo directores (restablecer contraseña / desactivar / reactivar).
+ - NO crea usuarios desde aquí (los directores se crean vía
+   /admin/instituciones con el flujo de aprovisionamiento).
 
 El RBAC real vive en el servicio; la vista solo consulta la política para
 mostrar u ocultar controles (defensa en profundidad).
@@ -36,7 +41,6 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.layout import app_layout
 from src.interface.design.tokens import Icons
-from src.services.institucion_service import NuevaInstitucionDTO
 from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -58,14 +62,11 @@ def usuarios_page() -> None:
 
     svc = Container.usuario_service()
     es_admin = ctx.usuario_rol == "admin"
-    puede_crear = ctx.usuario_rol in ("admin", "director")
+    puede_crear = ctx.usuario_rol == "director"
 
-    # ── Scope multi-tenant (paso_24 / frente C paso_28) ───────────────────────
-    # - admin: puede filtrar por institución (opciones desde InstitucionService),
-    #   "Todas" por defecto. Su sesión NO impone scope (contextvar None), así que
-    #   el filtro del selector se pasa explícito.
-    # - director: el servicio auto-scopea a SU institución vía el contextvar de
-    #   sesión; la página ya no necesita forzar el institucion_id.
+    # ── Scope multi-tenant ────────────────────────────────────────────────────
+    # - admin: puede filtrar por institución (para auditoría / impersonación).
+    # - director: el servicio auto-scopea a SU institución vía el contextvar.
     instituciones_opts: dict = {None: "Todas las instituciones"}
     if es_admin:
         try:
@@ -73,14 +74,12 @@ def usuarios_page() -> None:
                 instituciones_opts[i.id] = i.nombre
         except Exception as exc:
             logger.error("Error al cargar instituciones: %s", exc)
-    # Roles asignables del actor según la política RBAC del servicio (paso_23):
-    #   admin    → admin, director.
-    #   director → coordinador, profesor.
+
     roles_asignables = svc.roles_asignables(ctx.usuario_rol)
     roles_disponibles_crear = {
         r: _ROLES_OPCIONES.get(r, r) for r in _ROLES_OPCIONES if r in roles_asignables
     }
-    _rol_crear_default = "director" if es_admin else "profesor"
+    _rol_crear_default = "profesor"
 
     logger.info("Usuarios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
@@ -89,18 +88,12 @@ def usuarios_page() -> None:
         "usuarios":          [],
         "filtro_rol":        None,
         "filtro_activos":    True,
-        # admin: institución elegida en el selector (None = todas).
-        # director: se ignora; el scope se fuerza a su institución.
         "filtro_institucion": None,
-        # Catálogo de instituciones (solo admin). Lista de InstitucionResumenDTO.
-        "instituciones":     [],
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            # admin: pasa el filtro del selector (None = todas). director: deja
-            # institucion_id None y el servicio lo auto-scopea a su institución.
             filtro = FiltroUsuariosDTO(
                 rol=_s["filtro_rol"] or None,
                 solo_activos=_s["filtro_activos"],
@@ -111,18 +104,7 @@ def usuarios_page() -> None:
             logger.error("Error al cargar usuarios: %s", exc)
             _s["usuarios"] = []
 
-    def _cargar_instituciones() -> None:
-        if not es_admin:
-            _s["instituciones"] = []
-            return
-        try:
-            _s["instituciones"] = Container.institucion_service().listar()
-        except Exception as exc:
-            logger.error("Error al cargar instituciones: %s", exc)
-            _s["instituciones"] = []
-
     _cargar_estado()
-    _cargar_instituciones()
 
     # ── Acciones ──────────────────────────────────────────────────────────────
     def _abrir_crear_usuario() -> None:
@@ -131,11 +113,7 @@ def usuarios_page() -> None:
             return
 
         def _crear(datos: dict) -> bool | None:
-            # El RBAC real lo aplica el servicio vía actor_rol. La vista solo
-            # construye el DTO y propaga el rol del actor.
             rol_str = datos.get("rol", _rol_crear_default)
-            # Normalización y validación (strip, longitudes, email, rol) las
-            # realiza NuevoUsuarioDTO en sus field_validator.
             try:
                 dto = NuevoUsuarioDTO(
                     usuario=datos.get("usuario", ""),
@@ -161,17 +139,18 @@ def usuarios_page() -> None:
         form_dialog(
             titulo    = "Crear nuevo usuario",
             campos    = [
-                {"key": "nombre_completo", "label": "Nombre completo *",  "tipo": "text",
-                 "requerido": True, "placeholder": "Carlos López García"},
-                {"key": "usuario",         "label": "Nombre de usuario *", "tipo": "text",
-                 "requerido": True, "placeholder": "c.lopez"},
+                {"key": "nombre_completo", "label": "Nombre completo",  "tipo": "text",
+                 "requerido": True, "minlength": 3, "normalizar": "titulo"},
+                {"key": "usuario",         "label": "Nombre de usuario", "tipo": "text",
+                 "requerido": True, "minlength": 3, "normalizar": "minusculas",
+                 "hint": "Sin espacios"},
                 {"key": "password",        "label": "Contraseña inicial",  "tipo": "password",
-                 "placeholder": "dejar vacío = usa username"},
+                 "hint": "Dejar vacío genera una temporal"},
                 {"key": "rol",             "label": "Rol",                 "tipo": "select",
                  "opciones": roles_disponibles_crear,
                  "valor": _rol_crear_default},
                 {"key": "email",           "label": "Email (opcional)",    "tipo": "email",
-                 "placeholder": "usuario@institucion.edu.co"},
+                 "normalizar": "minusculas"},
             ],
             on_submit    = _crear,
             texto_submit = "Crear",
@@ -253,7 +232,7 @@ def usuarios_page() -> None:
             titulo    = f"Restablecer contraseña de '{nombre}'",
             campos    = [
                 {"key": "password", "label": "Nueva contraseña", "tipo": "password",
-                 "placeholder": f"dejar vacío = usa el username ({username})"},
+                 "hint": f"Dejar vacío usa el username ({username})"},
             ],
             on_submit    = _aplicar,
             texto_submit = "Restablecer",
@@ -296,7 +275,7 @@ def usuarios_page() -> None:
         form_dialog(
             titulo    = f"Cambiar rol de '{nombre}'",
             campos    = [
-                {"key": "rol", "label": "Nuevo rol *", "tipo": "select",
+                {"key": "rol", "label": "Nuevo rol", "tipo": "select",
                  "opciones": opciones_rol,
                  "valor": valor_default,
                  "requerido": True},
@@ -310,7 +289,6 @@ def usuarios_page() -> None:
         usuario_id: int, nombre: str, rol: str,
         institucion_id: int | None = None,
     ) -> None:
-        # Solo admin puede impersonar; no puede verse como sí mismo.
         if not es_admin:
             toast_warning("Solo el administrador puede usar 'Ver como'")
             return
@@ -354,6 +332,8 @@ def usuarios_page() -> None:
         }
 
         with ui.element("div").classes("w-full"):
+            row_classes = "flex items-center gap-4"
+
             with ui.element("div").classes(
                 "flex items-center gap-4 p-2 font-semibold text-sm border-b"
             ):
@@ -363,19 +343,18 @@ def usuarios_page() -> None:
                     ui.label("Institución").classes("w-48")
                 ui.label("Rol").classes("w-28")
                 ui.label("Estado").classes("w-20")
-                if puede_crear:
-                    ui.label("Acciones").classes("w-56 text-right")
+                ui.label("Acciones").classes("w-56 text-right")
 
             for u in usuarios:
                 rol_str = u.rol.value if hasattr(u.rol, "value") else str(u.rol)
                 gestionable = svc.puede_gestionar(ctx.usuario_rol, rol_str)
-                with ui.element("div").classes("divider-row"):
+                with ui.element("div").classes(f"{row_classes} py-2 border-b"):
                     ui.label(u.nombre_completo).classes("flex-1")
                     ui.label(u.usuario).classes("w-32 cell-mono")
                     if es_admin:
                         ui.label(
                             instituciones_opts.get(u.institucion_id, "—")
-                        ).classes("name-w48-ellipsis")
+                        ).classes("w-48 text-truncate")
                     with ui.element("div").classes("w-28 form-row-center"):
                         status_badge(
                             _ROLES_OPCIONES.get(rol_str, rol_str),
@@ -383,106 +362,23 @@ def usuarios_page() -> None:
                         )
                     with ui.element("div").classes("w-20 form-row-center"):
                         badge_estado_general(bool(u.activo))
-                    if puede_crear:
-                        with ui.row().classes("w-56 form-row-actions no-wrap"):
-                            if es_admin and u.id != ctx.usuario_id and u.activo:
-                                btn_icon("visibility", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str, inst=u.institucion_id: _ver_como(uid, nom, r, inst), tooltip="Ver como (solo lectura)")
-                            if gestionable and u.activo:
+                    with ui.element("div").classes("table-row-actions"):
+                        if es_admin and u.id != ctx.usuario_id and u.activo:
+                            btn_icon("visibility", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str, inst=u.institucion_id: _ver_como(uid, nom, r, inst), tooltip="Ver como (solo lectura)")
+                        if gestionable and u.activo:
+                            if puede_crear:
                                 btn_icon("manage_accounts", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _cambiar_rol(uid, nom, r), tooltip="Cambiar rol")
-                                btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
-                                btn_icon("person_off", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _desactivar_usuario(uid, nom, r), tooltip="Desactivar", variante="danger")
-                            if gestionable and not u.activo:
-                                btn_icon("restart_alt", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _reactivar_usuario(uid, nom, r), tooltip="Reactivar", variante="primary")
-                                btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
-
-    # ── Instituciones (solo admin) ─────────────────────────────────────────────
-    @ui.refreshable
-    def lista_instituciones() -> None:
-        instituciones = _s["instituciones"]
-        if not instituciones:
-            empty_state(
-                icono="business",
-                titulo="Aún no hay instituciones registradas",
-                descripcion="Crea la primera institución para gestionar la plataforma.",
-            )
-            return
-
-        with ui.element("div").classes("w-full"):
-            with ui.element("div").classes(
-                "flex gap-4 p-2 font-semibold text-sm border-b"
-            ):
-                ui.label("Institución").classes("flex-1")
-                ui.label("Estado").classes("w-24 text-right")
-
-            for inst in instituciones:
-                with ui.element("div").classes(
-                    "flex items-center gap-4 p-2 border-b"
-                ):
-                    ui.label(inst.nombre).classes("flex-1")
-                    with ui.row().classes("w-24 justify-end"):
-                        badge_estado_general(inst.activa)
-
-    def _abrir_crear_institucion() -> None:
-        if not es_admin:
-            toast_warning("Solo el administrador puede crear instituciones")
-            return
-
-        def _crear(datos: dict) -> bool | None:
-            try:
-                dto = NuevaInstitucionDTO(
-                    nombre=datos.get("nombre", ""),
-                    nit=datos.get("nit") or None,
-                    codigo=datos.get("codigo") or None,
-                )
-                Container.institucion_service().crear(dto)
-                toast_success(f"Institución '{dto.nombre}' creada")
-                _cargar_instituciones()
-                lista_instituciones.refresh()
-            except ValueError as exc:
-                toast_warning(str(exc))
-                return False
-            except Exception as exc:
-                logger.error("Error al crear institución: %s", exc)
-                toast_error("Error al crear la institución")
-                return False
-
-        form_dialog(
-            titulo    = "Nueva institución",
-            campos    = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text",
-                 "requerido": True, "placeholder": "Colegio San José"},
-                {"key": "nit",    "label": "NIT (opcional)", "tipo": "text",
-                 "placeholder": "900123456-7"},
-                {"key": "codigo", "label": "Código DANE (opcional)", "tipo": "text",
-                 "placeholder": "111001000000"},
-            ],
-            on_submit    = _crear,
-            texto_submit = "Crear",
-            max_width    = "max-w-md",
-        )
+                            btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
+                            btn_icon("person_off", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _desactivar_usuario(uid, nom, r), tooltip="Desactivar", variante="danger")
+                        if gestionable and not u.activo:
+                            btn_icon("restart_alt", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _reactivar_usuario(uid, nom, r), tooltip="Reactivar", variante="primary")
+                            btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
-            # ── Panel de instituciones (solo admin) ───────────────────────────
-            if es_admin:
-                with ui.element("div").classes("panel-card"):
-                    with ui.row().classes(
-                        "gap-4 items-center justify-between flex-wrap mb-4"
-                    ):
-                        ui.label("Instituciones").classes("text-base font-semibold")
-                        btn_primary(
-                            "Nueva institución",
-                            on_click=_abrir_crear_institucion,
-                            icon="add_business",
-                            size="sm",
-                        )
-                    lista_instituciones()
-
             with ui.element("div").classes("panel-card"):
 
-                # Barra de herramientas: filtros + acción "Nuevo usuario"
                 with ui.row().classes(
                     "gap-4 items-center justify-between flex-wrap mb-4"
                 ):
@@ -530,11 +426,17 @@ def usuarios_page() -> None:
 
                 tabla()
 
+    _subtitulo = (
+        "Usuarios de la plataforma — auditoría e impersonación"
+        if es_admin
+        else "Coordinadores y profesores de tu institución"
+    )
+
     app_layout(
         ctx,
         contenido,
         page_titulo      = "Gestión de Usuarios",
-        page_subtitulo   = "Cuentas de usuario y roles del sistema",
+        page_subtitulo   = _subtitulo,
         page_icono       = Icons.TEACHERS,
     )
 

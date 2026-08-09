@@ -93,4 +93,9 @@ def _inferir_tipo(clave: str) -> TipoValor:
     return TipoValor.FLOAT
 
 
-__all__ = ["PreferenciasInstitucionService", "CLAVES_CONOCIDAS"]
+__all__ = [
+    "ActualizarPreferenciaDTO",
+    "CLAVES_CONOCIDAS",
+    "PreferenciasDTO",
+    "PreferenciasInstitucionService",
+]
