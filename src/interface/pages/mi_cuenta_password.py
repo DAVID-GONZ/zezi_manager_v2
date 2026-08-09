@@ -76,12 +76,12 @@ def mi_cuenta_password_page() -> None:
                     )
 
                 # Banner de error
-                with ui.row().classes("andes-alert andes-alert-error hidden") as error_container:
+                with ui.row().classes("alert alert--error hidden") as error_container:
                     ThemeManager.icono("error", size=18)
                     error_label = ui.label("").classes("flex-1")
 
                 # Banner de éxito
-                with ui.row().classes("andes-alert andes-alert-success hidden") as success_container:
+                with ui.row().classes("alert alert--success hidden") as success_container:
                     ThemeManager.icono("check_circle", size=18)
                     success_label = ui.label("").classes("flex-1")
 

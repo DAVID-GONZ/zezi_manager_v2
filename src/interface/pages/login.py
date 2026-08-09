@@ -67,7 +67,7 @@ def login_page() -> None:
             _pwd_toggle_el.on("click", _toggle_pwd)
 
             # Contenedor para el error
-            error_container = ui.row().classes("andes-alert andes-alert-error form-row-center u-mt-md login-alert-banner hidden")
+            error_container = ui.row().classes("alert alert--error form-row-center u-mt-md login-alert-banner hidden")
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")

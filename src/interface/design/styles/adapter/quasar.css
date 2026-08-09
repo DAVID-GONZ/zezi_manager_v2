@@ -1,0 +1,19 @@
+/* ═══════════════════════════════════════════════════════════════
+   adapter/quasar.css — CAPA ADAPTADOR (NO PORTABLE)
+   ───────────────────────────────────────────────────────────────
+   Reset/overrides del DOM que genera NiceGUI/Quasar (`.nicegui-content`,
+   `.q-*`). NO transfiere a un frontend Vue nativo: allí el markup lo
+   controlas tú y estas reglas dejan de aplicar.
+
+   El grueso del acoplamiento Quasar sigue in-situ por estar interleaved
+   con clases propias portables (el wrapper `.andes-input` y sus internals
+   `.q-field__*`, el `.andes-topbar .q-btn`, etc.). Ver styles/PORTABILITY.md
+   para el inventario completo de la superficie acoplada a reescribir.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Reset del contenedor raíz de NiceGUI (movido desde reset.css) */
+.nicegui-content {
+  padding: 0 !important;
+  width: 100%;
+  overflow-x: hidden;
+}

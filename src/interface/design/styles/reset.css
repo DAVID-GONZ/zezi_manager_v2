@@ -16,11 +16,7 @@ body {
   overflow-x: hidden;
 }
 
-.nicegui-content {
-  padding: 0 !important;
-  width: 100%;
-  overflow-x: hidden;
-}
+/* .nicegui-content movido a adapter/quasar.css (reset del wrapper NiceGUI). */
 
 /* ── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {

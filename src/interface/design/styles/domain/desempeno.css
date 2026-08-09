@@ -112,7 +112,7 @@
 /* ── 3. Encabezado de panel con subtítulo ────────────────────────── */
 
 .tablero-panel-subtitle {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-secondary);
   margin-top: 2px;
   line-height: 1.5;
@@ -124,7 +124,7 @@
 .tablero-act-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
@@ -219,7 +219,7 @@
   text-align: center;
   padding: 48px 32px;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   background: var(--color-surface-alt);
   border-radius: var(--radius-lg);
   border: 1px dashed var(--color-border);
@@ -239,7 +239,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   letter-spacing: 0.2px;
   white-space: nowrap;
@@ -265,18 +265,6 @@
   background: var(--desempeno-superior-bg);
 }
 
-/* ── 8. Separador visual entre secciones del page-stack ─────────── */
-
-.tablero-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-text-disabled);
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--color-divider);
-  width: 100%;
-}
 
 /* ── 9. Indicador de tendencia bajo el KPI (positivo/negativo) ───── */
 
@@ -284,7 +272,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   margin-top: 2px;
 }
@@ -347,7 +335,7 @@ td.tablero-promedio-superior,
   align-items: center;
   gap: 4px;
   border-radius: var(--radius-lg);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--color-error);
 }
@@ -357,7 +345,7 @@ td.tablero-promedio-superior,
   align-items: center;
   gap: 4px;
   border-radius: var(--radius-lg);
-  font-size: 14px;
+  font-size: var(--font-size-body);
   font-weight: 600;
   color: var(--color-success);
 }
@@ -365,7 +353,7 @@ td.tablero-promedio-superior,
 /* ── 13. Texto secundario dentro del estado vacío ────────────────── */
 
 .tablero-empty-hint {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   color: var(--color-text-secondary);
   line-height: 1.6;
   max-width: 400px;

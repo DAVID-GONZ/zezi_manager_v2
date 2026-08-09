@@ -2,36 +2,6 @@
    components/dialogs.css — Diálogos, modales y confirmaciones
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Diálogos / Modales ──────────────────────────────────── */
-.andes-dialog {
-  border-radius: var(--radius-xl) !important;
-  box-shadow: var(--shadow-modal) !important;
-  max-width: 480px;
-  width: 100%;
-}
-
-.andes-dialog-header {
-  padding: var(--space-lg) var(--space-lg) var(--space-md);
-  font-size: var(--font-size-h3);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.andes-dialog-body {
-  padding: 0 var(--space-lg) var(--space-lg);
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-}
-
-.andes-dialog-footer {
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--color-divider);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-sm);
-}
-
 /* ── Clases para form_dialog ─────────────────────────────────────────────── */
 .form-dialog-card {
   background: var(--color-surface);
@@ -80,7 +50,7 @@
 }
 
 .form-dialog-title {
-  font-size: 15px;
+  font-size: var(--font-size-h4);
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: -0.3px;
@@ -88,7 +58,7 @@
 }
 
 .form-dialog-subtitle {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-secondary);
   margin-top: 2px;
   line-height: 1.4;

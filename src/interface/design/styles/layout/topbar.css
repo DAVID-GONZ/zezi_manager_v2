@@ -30,27 +30,6 @@
   min-width: 0;
 }
 
-.topbar-brand-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ink-050);                 /* T1: antes rgba(white,0.15) */
-  flex-shrink: 0;
-}
-
-.topbar-brand-name {
-  font-weight: 700;
-  font-size: var(--font-size-h4);             /* T4: 15px → 0.9375rem */
-  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-
 /* ── Page info ───────────────────────────────────────────── */
 .topbar-page-info {
   display: flex;
@@ -58,12 +37,6 @@
   gap: 6px;
   min-width: 0;
   flex: 1;
-}
-
-.topbar-page-divider {
-  color: var(--color-border);                 /* T1: antes rgba(white,0.3) */
-  font-size: var(--font-size-body);           /* T4: 14px → 0.875rem */
-  flex-shrink: 0;
 }
 
 .topbar-page-title {
@@ -89,13 +62,6 @@
 }
 
 /* ── User block ──────────────────────────────────────────── */
-.topbar-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
 .topbar-user-name {
   font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
   font-weight: 500;
@@ -107,20 +73,6 @@
   font-size: var(--font-size-label);          /* T4: 11px → 0.6875rem */
   color: var(--color-text-secondary);         /* T1: antes rgba(white,0.50) */
   white-space: nowrap;
-}
-
-.topbar-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--ink-100);                 /* T1: antes rgba(white,0.15) */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
-  font-weight: 600;
-  color: var(--ink-700);                      /* T1: antes rgba(white,0.90) */
 }
 
 /* ── Action buttons ──────────────────────────────────────── */
@@ -187,33 +139,9 @@
   color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
 }
 
-/* Context chip — override para topbar claro */
-.andes-topbar .context-chip,
-.andes-topbar [class*="context-chip"] {
-  background: var(--ink-050) !important;      /* T1: índigo muy claro */
-  border: 1px solid var(--ink-100) !important;
-  color: var(--ink-700) !important;
-}
-
-.andes-topbar .context-chip:hover,
-.andes-topbar [class*="context-chip"]:hover {
-  background: var(--ink-100) !important;
-}
-
 /* ══════════════════════════════════════════════════════════════
    TOPBAR — clases heredadas / compatibilidad
    ══════════════════════════════════════════════════════════════ */
-
-/* Título legacy */
-.topbar-title {
-  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
-  font-weight: 600;
-  font-size: var(--font-size-h4);             /* T4: 15px → 0.9375rem */
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* Logout button */
 .topbar-logout-btn {

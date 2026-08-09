@@ -22,7 +22,7 @@
   background: var(--color-warning-light);
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   color: var(--color-warning);
 }
 
@@ -70,7 +70,7 @@
 }
 
 .asis-action-btn {
-  font-size: 12px !important;
+  font-size: var(--font-size-small) !important;
   padding: 4px 10px !important;
   border-radius: var(--radius-sm) !important;
 }
@@ -95,7 +95,7 @@
 .asis-save-btn {
   background: var(--color-primary) !important;
   color: var(--color-primary-contrast) !important;
-  font-size: 13px !important;
+  font-size: var(--font-size-table) !important;
   font-weight: 600 !important;
   padding: 6px 18px !important;
   border-radius: var(--radius-sm) !important;
@@ -201,7 +201,7 @@
   background: var(--color-surface-alt);
   border-bottom: 2px solid var(--color-border);
   min-height: 40px;
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -220,7 +220,7 @@
   flex-shrink: 0;
   justify-content: center;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .asis-cell-nombre {
@@ -239,14 +239,14 @@
 }
 
 .asis-nombre-text {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 500;
   color: var(--color-text-primary);
   line-height: 1.2;
 }
 
 .asis-doc-text {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   color: var(--color-text-secondary);
 }
 
@@ -261,7 +261,7 @@
 .asis-btn-group .asis-btn {
   min-width: 38px;
   height: 28px;
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   border-radius: 6px;
   padding: 0 8px;
@@ -301,7 +301,7 @@
 
 /* ── Input de observación ────────────────────────────────────── */
 .asis-obs-input {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   max-width: 180px;
 }
 
@@ -311,7 +311,7 @@
   align-items: center;
   padding: 3px 10px;
   border-radius: 99px;
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -339,13 +339,13 @@
 }
 
 .asis-empty-text {
-  font-size: 15px;
+  font-size: var(--font-size-h4);
   font-weight: 500;
   color: var(--color-text-secondary);
 }
 
 .asis-empty-hint {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-disabled);
   text-align: center;
   max-width: 320px;
@@ -384,13 +384,13 @@
 }
 
 .asis-ctx-empty-title {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-text-secondary);
 }
 
 .asis-ctx-empty-hint {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-disabled);
 }
 
@@ -398,7 +398,7 @@
   margin-left: auto;
   background: var(--color-primary) !important;
   color: var(--color-primary-contrast) !important;
-  font-size: 12px !important;
+  font-size: var(--font-size-small) !important;
   font-weight: 600 !important;
   padding: 5px 14px !important;
   border-radius: var(--radius-sm) !important;
@@ -445,7 +445,7 @@
 }
 
 .asis-ctx-item-value {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
@@ -456,7 +456,7 @@
 
 .asis-ctx-change-btn {
   margin-left: auto;
-  font-size: 12px !important;
+  font-size: var(--font-size-small) !important;
   font-weight: 500 !important;
   color: var(--color-primary) !important;
   border: 1px solid var(--color-primary) !important;

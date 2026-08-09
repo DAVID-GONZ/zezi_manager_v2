@@ -29,7 +29,7 @@
   background: var(--color-surface-alt);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-text-primary);
   text-align: center;
@@ -53,7 +53,7 @@
   background: var(--color-surface-alt);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 500;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -76,7 +76,7 @@
 }
 
 .parrilla-nolectiva-texto {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-style: italic;
   color: var(--color-text-secondary);
   opacity: 0.7;
@@ -94,7 +94,7 @@
      no como fondo saturado, para que el texto sea siempre legible. */
   border-left: 4px solid transparent;
   background: var(--color-surface);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-primary);
 }
 
@@ -116,7 +116,7 @@
 
 .parrilla-celda-sub {
   display: block;
-  font-size: 11px;
+  font-size: var(--font-size-label);
   opacity: 0.85;
   line-height: 1.2;
 }
@@ -180,7 +180,7 @@
 }
 
 .parrilla-leyenda-label {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-primary);
 }
 
@@ -306,7 +306,7 @@ html[data-theme="dark"] .parrilla-celda-click:hover {
   border-radius: var(--radius-pill, 999px);
   background: var(--color-surface-alt);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
@@ -339,7 +339,7 @@ html[data-theme="dark"] .parrilla-celda-click:hover {
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-md);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -382,13 +382,13 @@ html[data-theme="dark"] .parrilla-segmento { background: var(--color-surface-alt
   background: var(--color-surface-alt);
 }
 .parrilla-metrica-valor {
-  font-size: 20px;
+  font-size: var(--font-size-h2);
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.15;
 }
 .parrilla-metrica-label {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -400,13 +400,13 @@ html[data-theme="dark"] .parrilla-metrica { background: var(--color-surface-alt)
    ═══════════════════════════════════════════════════════════════ */
 .parrilla-chips-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 500;
   color: var(--color-text-secondary);
   margin-bottom: var(--space-xs);
 }
 .parrilla-filtro-label {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   font-weight: 500;
   color: var(--color-text-secondary);
   align-self: center;
@@ -430,7 +430,7 @@ html[data-theme="dark"] .parrilla-metrica { background: var(--color-surface-alt)
   background: var(--color-surface-alt);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-text-primary);
   text-align: center;

@@ -96,12 +96,6 @@
   gap: var(--space-md);
   width: 100%;
 }
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: var(--space-lg);
-  width: 100%;
-}
 /* Alturas estándar para contenedores ECharts */
 .echart-md  { height: 280px; width: 100%; }
 .echart-lg  { height: 340px; width: 100%; }
@@ -177,7 +171,7 @@
 }
 
 /* ag-Grid cell helpers (migración de cellStyle inline) */
-.ag-theme-balham .ag-cell-xs    { font-size: 11px; }
+.ag-theme-balham .ag-cell-xs    { font-size: var(--font-size-label); }
 .ag-theme-balham .ag-cell-info  { color: var(--color-info); }
 .ag-theme-balham .ag-cell-error { color: var(--color-error); }
 
@@ -381,13 +375,6 @@
 
 .cs-period-bar-fill.cs-bar-warn   { background: var(--color-warning); }
 .cs-period-bar-fill.cs-bar-danger { background: var(--color-error); }
-.cs-period-bar-fill.cs-bar-done   { background: var(--color-text-disabled); }
-
-.cs-period-meta {
-  font-size: var(--font-size-label);
-  color: var(--color-text-secondary);
-  display: block;
-}
 
 /* ─────────────────────────────────────────────────────────────────
    table-row-actions — contenedor de botones de acción por fila en

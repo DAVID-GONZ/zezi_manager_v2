@@ -89,6 +89,11 @@ class ThemeManager:
         "domain/disponibilidad.css",
         "domain/horario_parrilla.css",
         "domain/horario_generar.css",
+        # ── Capa ADAPTADOR (no portable) — glue del DOM de NiceGUI/Quasar/ag-Grid.
+        # Carga tras el core para que sus overrides ganen la cascada. Al migrar a
+        # Vue esta capa se reescribe; el resto (core) transfiere. Ver PORTABILITY.md.
+        "adapter/quasar.css",
+        "adapter/aggrid.css",
         # Estilos específicos de página (cargan al final para poder sobrescribir).
         "pages/wizard_configuracion.css",
     ]

@@ -79,7 +79,7 @@ def cambiar_password_page() -> None:
 
             # ── Banner de error ──────────────────────────────────────────────
             error_container = ui.row().classes(
-                "andes-alert andes-alert-error w-full items-center hidden "
+                "alert alert--error w-full items-center hidden "
                 "no-wrap gap-2 u-mt-md login-alert-banner"
             )
             with error_container:

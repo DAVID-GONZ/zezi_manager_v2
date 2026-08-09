@@ -650,7 +650,7 @@ def estudiantes_page() -> None:
                     aviso_box.clear()
                     with aviso_box:
                         if es_cambio:
-                            with ui.element("div").classes("andes-alert andes-alert-warning w-full"):
+                            with ui.element("div").classes("alert alert--warning w-full"):
                                 ui.label(
                                     f"El grupo destino es de OTRO grado "
                                     f"({grado_origen} → {grado_destino}). "

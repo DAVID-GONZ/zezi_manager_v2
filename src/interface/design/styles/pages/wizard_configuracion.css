@@ -43,7 +43,7 @@
 }
 
 .wizard-espera-desc {
-  font-size: 15px;
+  font-size: var(--font-size-h4);
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.5;

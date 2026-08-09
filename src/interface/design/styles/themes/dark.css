@@ -1,25 +1,4 @@
-html[data-theme="dark"] .ag-theme-balham,
-html[data-theme="dark"] .ag-theme-balham .ag-root-wrapper,
-html[data-theme="dark"] .ag-theme-balham .ag-body-viewport {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-html[data-theme="dark"] .ag-theme-balham .ag-header,
-html[data-theme="dark"] .ag-theme-balham .ag-header-cell {
-  background: var(--color-surface-alt);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
-}
-
-html[data-theme="dark"] .ag-theme-balham .ag-row:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-html[data-theme="dark"] .ag-theme-balham .ag-row-selected,
-html[data-theme="dark"] .ag-theme-balham .ag-row-focus {
-  background: rgba(46, 49, 146, 0.14);
-}
+/* Overrides de ag-Grid dark movidos a adapter/aggrid.css (capa no portable). */
 
 html[data-theme="dark"] .rail-flyout-container {
   background: var(--color-surface-alt);

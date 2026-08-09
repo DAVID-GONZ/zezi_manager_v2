@@ -3,42 +3,13 @@
                           skeleton, performance-indicator y estados vacíos
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Page header ─────────────────────────────────────────── */
-.andes-page-header {
-  margin-bottom: var(--space-lg);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-}
-
-.andes-page-header-title {
-  font-size: var(--font-size-h1);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.andes-page-header-subtitle {
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-  margin: 4px 0 0;
-}
-
 /* ── Cards ───────────────────────────────────────────────── */
 .andes-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   box-shadow: var(--shadow-card);
-}
-
-.andes-card-sm {
-  padding: var(--space-md);
 }
 
 /* ── STAT CARDS — diseño métrica profesional ──────────────── */
@@ -104,12 +75,12 @@
 .stat-card-value {
   font-size: 34px;
   letter-spacing: -1px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .stat-card-subtitle {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-secondary);
 }
 
@@ -150,7 +121,7 @@
 /* ── Login (SaaS Moderno) ────────────────────────────────── */
 .andes-login-bg {
   min-height: 100vh;
-  /* Fondo claro con destellos cálidos de la paleta Borgoña */
+  /* Fondo claro con destellos cálidos de la paleta Aula Serena (índigo) */
   background:
     radial-gradient(circle at 0% 0%, var(--color-primary-lighter) 0%, transparent 40%),
     radial-gradient(circle at 100% 100%, var(--color-primary-lighter) 0%, transparent 40%),
@@ -206,14 +177,14 @@
 }
 
 .andes-login-logo-subtitle {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .andes-login-footer {
   color: var(--color-text-disabled);
-  font-size: 12px;
+  font-size: var(--font-size-small);
   text-align: center;
   margin-top: 32px;
   letter-spacing: 0.5px;
@@ -327,24 +298,6 @@
   .andes-login-loading .andes-input .q-field__control { animation: none !important; }
 }
 
-/* ── Loading / Skeleton ──────────────────────────────────── */
-.andes-skeleton {
-  background: linear-gradient(90deg, var(--color-divider) 25%, var(--color-surface-alt) 50%, var(--color-divider) 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
-  border-radius: var(--radius-sm);
-}
-
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 /* ── Clases para performance_indicator ───────────────────────────────────── */
 .perf-root         { width: 100%; }
 .perf-header       { width: 100%; margin-bottom: 4px; }
@@ -378,7 +331,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* ── Greeting hero (Variante Clara con Acento Borgoña) ───────────── */
+/* ── Greeting hero (Variante Clara con Acento Índigo) ───────────── */
 .greeting-hero {
   background: var(--color-surface);
   border-radius: var(--radius-xl);
@@ -411,7 +364,7 @@
 }
 
 .greeting-desc {
-  font-size: 15px;
+  font-size: var(--font-size-h4);
   color: var(--color-text-secondary);
   font-weight: 400;
   margin-bottom: 24px;
@@ -430,7 +383,7 @@
 }
 
 .greeting-user {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-primary-dark);
 }
@@ -442,7 +395,7 @@
   background: var(--color-primary-light);
 }
 .greeting-role {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
@@ -463,7 +416,7 @@
   width: 260px;
   height: 260px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 100%);
+  background: linear-gradient(135deg, var(--color-primary-lighter) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -476,7 +429,7 @@
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--color-primary-lighter) 0%, rgba(253, 248, 249, 0) 70%);
+  background: radial-gradient(circle, var(--color-primary-lighter) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -563,7 +516,7 @@
 }
 
 .panel-title {
-  font-size: 15px;
+  font-size: var(--font-size-h4);
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -608,7 +561,7 @@
   text-align: center;
   padding: 3px 8px;
   border-radius: var(--radius-md);
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -666,7 +619,7 @@
    ═══════════════════════════════════════════════════════ */
 
 .eyebrow-label {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -686,7 +639,7 @@
 }
 
 .period-days {
-  font-size: 12px;
+  font-size: var(--font-size-small);
 }
 
 .period-days-ok {
@@ -702,7 +655,7 @@
 }
 
 .text-xs-meta {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   color: var(--color-text-secondary);
 }
 
@@ -718,13 +671,13 @@
 }
 
 .action-label {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .action-desc {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -744,18 +697,18 @@
 }
 
 .feed-label {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
 .feed-meta {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-secondary);
 }
 
 .feed-time {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   color: var(--color-text-disabled);
   flex-shrink: 0;
 }
@@ -773,7 +726,7 @@
 }
 
 .hito-desc {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   font-weight: 500;
   color: var(--color-text-primary);
   overflow: hidden;
@@ -782,7 +735,7 @@
 }
 
 .hito-date {
-  font-size: 11px;
+  font-size: var(--font-size-label);
   color: var(--color-text-secondary);
 }
 
@@ -791,7 +744,7 @@
    ═══════════════════════════════════════════════════════ */
 
 .empty-state {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-disabled);
   text-align: center;
   padding: 16px 0;
@@ -799,7 +752,7 @@
 }
 
 .empty-state-lg {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   color: var(--color-text-disabled);
   text-align: center;
   padding: 24px 0;
@@ -807,17 +760,17 @@
 }
 
 .text-empty {
-  font-size: 14px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
 }
 
 .text-hint {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-disabled);
 }
 
 .success-empty-text {
-  font-size: 13px;
+  font-size: var(--font-size-table);
   color: var(--color-success);
   font-weight: 500;
   margin-top: 8px;
@@ -825,6 +778,6 @@
 }
 
 .unavailable-text {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-disabled);
 }
