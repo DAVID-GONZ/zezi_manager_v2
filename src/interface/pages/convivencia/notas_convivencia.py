@@ -39,7 +39,7 @@ from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.components.inline_selectors import inline_periodo_grupo
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.convivencia_service import NuevaNotaComportamientoDTO
 
 logger = logging.getLogger("NOTAS_CONVIVENCIA")

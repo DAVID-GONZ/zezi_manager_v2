@@ -30,7 +30,7 @@ from src.interface.design.components import skeleton_table, toast_error, toast_w
 from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.interface.design.components.stat_card import stat_card
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import AsistenciaColors, DesempenoColors, Icons
+from src.interface.design.styles.tokens import AsistenciaColors, DesempenoColors, Icons
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.informe_service import FormatoInforme
 

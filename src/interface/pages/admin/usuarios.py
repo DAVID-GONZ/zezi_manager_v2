@@ -40,7 +40,7 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
 
 logger = logging.getLogger("ADMIN.USUARIOS")

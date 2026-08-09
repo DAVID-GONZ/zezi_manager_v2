@@ -1539,17 +1539,6 @@ TRIGGERS: list[str] = [
         );
     END
     """,
-
-    # NOTA (paso_43): se ELIMINÓ el trigger tg_historial_cambio_grupo.
-    # Antes registraba un TRASLADO sin motivo/usuario en cada UPDATE de grupo_id.
-    # Ahora el SERVICIO (estudiante_service.trasladar / asignar_grupo / actualizar)
-    # es la ÚNICA fuente de verdad del historial: registra el movimiento
-    # explícitamente con tipo/motivo/usuario, evitando filas duplicadas o sin
-    # contexto. El proyecto es pre-producción (paso_34): no hay migraciones, basta
-    # con quitarlo de esta lista para que deje de crearse.
-
-    # Resuelve automáticamente alertas de promedio_bajo cuando se cierra el periodo
-    # con nota aprobatoria
     """
     CREATE TRIGGER IF NOT EXISTS tg_resolver_alerta_aprobacion
     AFTER INSERT ON cierres_periodo

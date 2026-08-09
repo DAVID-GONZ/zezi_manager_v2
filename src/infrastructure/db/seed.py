@@ -34,12 +34,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from src.domain.catalogos_estandar import (
+from src.domain.models.catalogos_estandar import (
     AREAS_ESTANDAR_CO,
     CATEGORIAS_BASE_CO,
     PREF_DEFAULTS,
 )
-from src.domain.scheduling import colorear_aristas_bipartito
+from src.domain.models.scheduling import colorear_aristas_bipartito
 
 logger = logging.getLogger("DB.SEED")
 

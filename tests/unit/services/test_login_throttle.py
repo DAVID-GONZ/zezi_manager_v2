@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.services import login_throttle as throttle
+from src.domain.policies import login_throttle as throttle
 
 
 @pytest.fixture(autouse=True)

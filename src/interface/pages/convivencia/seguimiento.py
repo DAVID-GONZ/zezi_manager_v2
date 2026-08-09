@@ -40,7 +40,7 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.convivencia_service import NuevaAlertaSeguimientoDTO
 
 logger = logging.getLogger("SEGUIMIENTO")
@@ -168,7 +168,10 @@ def seguimiento_page() -> None:
         _s["sel_estudiante_id"] = valor
         _s["resultado_360"] = None
         _cargar_alertas(_s)
-        _contenido.refresh()
+        if _s["sel_estudiante_id"] and _s["sel_periodo_id"]:
+            _ver_360()
+        else:
+            _contenido.refresh()
 
     def _ver_360() -> None:
         est_id = _s["sel_estudiante_id"]
@@ -319,7 +322,10 @@ def seguimiento_page() -> None:
             if _s["estudiantes"] and _s["sel_estudiante_id"] is None:
                 _s["sel_estudiante_id"] = getattr(_s["estudiantes"][0], "id", None)
             _cargar_alertas(_s)
-            _contenido.refresh()
+            if _s["sel_estudiante_id"] and _s["sel_periodo_id"]:
+                _ver_360()
+            else:
+                _contenido.refresh()
 
         inline_periodo_grupo_asignatura(
             _s, on_sel_change,
@@ -339,10 +345,10 @@ def seguimiento_page() -> None:
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):
 
-                # Sección: crear alerta (solo director/coordinador)
+                # Toolbar: selector de estudiante + nueva alerta (solo director/coordinador)
                 if puede_crear:
                     with ui.element("div").classes("panel-card"):
-                        with ui.row().classes("panel-toolbar"):
+                        with ui.element("div").classes("panel-toolbar"):
                             ui.select(
                                 options=opciones_estudiantes,
                                 label="Estudiante",
@@ -366,105 +372,103 @@ def seguimiento_page() -> None:
                             )
                         return
 
-                # Sección: alertas enviadas
-                with ui.element("div").classes("panel-card"):
-                    ui.label("Alertas de seguimiento").classes("panel-title")
-                    if not filas:
-                        empty_state(
-                            titulo="Sin alertas",
-                            descripcion="No hay alertas de seguimiento para este estudiante.",
-                        )
-                    else:
-                        col_defs = [
-                            {"headerName": "Fecha",        "field": "fecha",        "width": 110, "sortable": True},
-                            {"headerName": "Estudiante",   "field": "estudiante",   "flex": 1,  "sortable": True},
-                            {"headerName": "Descripción",  "field": "descripcion",  "flex": 2},
-                            {"headerName": "Nivel",        "field": "nivel_display","width": 120},
-                            {"headerName": "Destinatario", "field": "destinatario", "flex": 1},
-                            {"headerName": "Estado",       "field": "estado",       "width": 110},
-                        ]
-                        ui.aggrid({
-                            "columnDefs":        col_defs,
-                            "rowData":           filas,
-                            "defaultColDef":     {"resizable": True},
-                            "suppressCellFocus": True,
-                            "rowSelection":      "single",
-                        }).classes("w-full")
+                # T3: Two-column layout
+                with ui.element("div").classes("page-body"):
 
-                # Sección: Vista 360° (todos los roles permitidos)
-                with ui.element("div").classes("panel-card"):
-                    ui.label("Vista 360° del estudiante").classes("panel-title")
-                    with ui.row().classes("panel-toolbar"):
-                        # Selector de estudiante visible solo para roles sin panel de alertas arriba
-                        if not puede_crear:
-                            ui.select(
-                                options=opciones_estudiantes,
-                                label="Estudiante",
-                                value=_s["sel_estudiante_id"],
-                                on_change=lambda e: on_estudiante_change(e.value),
-                            ).classes("andes-input input-min-sm").props("outlined dense")
+                    # ── Main column: Alertas ──────────────────────────────
+                    with ui.element("div").classes("page-col-main"):
+                        with ui.element("div").classes("panel-card"):
+                            ui.label("Alertas de seguimiento").classes("panel-title")
+                            if not filas:
+                                empty_state(
+                                    titulo="Sin alertas",
+                                    descripcion="No hay alertas de seguimiento para este estudiante.",
+                                )
+                            else:
+                                # T4: Colored alert cards instead of ag-Grid
+                                for fila in filas:
+                                    nivel_raw = fila["nivel_raw"]
+                                    with ui.element("div").classes(f"alerta-item alerta-{nivel_raw}"):
+                                        ui.label(fila["fecha"]).classes("text-xs-meta")
+                                        ui.label(fila["descripcion"]).classes("alerta-item-text")
+                                        ui.label(fila["destinatario"]).classes("text-xs-meta")
+                                        badge_var = "badge-success" if fila["estado"] == "Resuelta" else "badge-warning"
+                                        ui.label(fila["estado"]).classes(f"badge {badge_var}")
 
-                        btn_primary("Ver seguimiento 360°", on_click=_ver_360)
+                    # ── Side column: Vista 360° ───────────────────────────
+                    with ui.element("div").classes("page-col-side"):
+                        with ui.element("div").classes("panel-card"):
+                            ui.label("Vista 360° del estudiante").classes("panel-title")
+                            with ui.element("div").classes("panel-toolbar"):
+                                # Selector de estudiante visible solo para roles sin panel arriba
+                                if not puede_crear:
+                                    ui.select(
+                                        options=opciones_estudiantes,
+                                        label="Estudiante",
+                                        value=_s["sel_estudiante_id"],
+                                        on_change=lambda e: on_estudiante_change(e.value),
+                                    ).classes("andes-input input-min-sm").props("outlined dense")
 
-                    res = _s.get("resultado_360")
-                    if res is None:
-                        empty_state(
-                            titulo="Sin datos de seguimiento",
-                            descripcion=(
-                                "Selecciona un estudiante y periodo, "
-                                "luego haz clic en 'Ver seguimiento 360°'."
-                            ),
-                        )
-                    else:
-                        _tiene_datos = (
-                            res.nota_comportamiento is not None
-                            or res.promedio_notas is not None
-                            or res.observaciones
-                            or res.alertas_activas
-                        )
-                        if not _tiene_datos:
-                            empty_state(
-                                titulo="Sin datos de seguimiento",
-                                descripcion="No hay datos registrados para este estudiante en el periodo.",
-                            )
-                        else:
-                            # Tarjetas de métricas
-                            with ui.row().classes("gap-4"):
-                                if res.nota_comportamiento is not None:
-                                    stat_card(
-                                        "Nota comportamiento",
-                                        res.nota_comportamiento,
-                                        "grade",
-                                        subtitulo=res.nivel_comportamiento or "",
-                                        variante="primary",
+                                btn_ghost("Actualizar 360°", on_click=_ver_360, icon="refresh")
+
+                            # T5: Improved 360° view
+                            res = _s.get("resultado_360")
+                            if res is None:
+                                empty_state(
+                                    titulo="Sin datos de seguimiento",
+                                    descripcion=(
+                                        "Selecciona un estudiante y periodo "
+                                        "para cargar la vista 360°."
+                                    ),
+                                )
+                            else:
+                                _tiene_datos = (
+                                    res.nota_comportamiento is not None
+                                    or res.promedio_notas is not None
+                                    or res.observaciones
+                                    or res.alertas_activas
+                                )
+                                if not _tiene_datos:
+                                    empty_state(
+                                        titulo="Sin datos de seguimiento",
+                                        descripcion="No hay datos registrados para este estudiante en el periodo.",
                                     )
-                                if res.promedio_notas is not None:
-                                    stat_card(
-                                        "Promedio académico",
-                                        res.promedio_notas,
-                                        "bar_chart",
-                                        variante="info",
-                                    )
-                                if res.concepto:
-                                    with ui.element("div").classes("stat-card-wrapper info"):
-                                        ui.label("Concepto").classes("stat-card-label")
-                                        ui.label(res.concepto).classes("stat-card-value")
+                                else:
+                                    # Stat cards
+                                    with ui.element("div").classes("form-row-inline"):
+                                        if res.nota_comportamiento is not None:
+                                            stat_card(
+                                                "Nota comportamiento",
+                                                res.nota_comportamiento,
+                                                "grade",
+                                                subtitulo=res.nivel_comportamiento or "",
+                                                variante="primary",
+                                            )
+                                        if res.promedio_notas is not None:
+                                            stat_card(
+                                                "Promedio académico",
+                                                res.promedio_notas,
+                                                "bar_chart",
+                                                variante="info",
+                                            )
+                                        if res.concepto:
+                                            with ui.element("div").classes("stat-card-wrapper info"):
+                                                ui.label("Concepto").classes("stat-card-label")
+                                                ui.label(res.concepto).classes("stat-card-value")
 
-                            # Observaciones públicas
-                            if res.observaciones:
-                                ui.label("Observaciones del periodo").classes("panel-title")
-                                with ui.element("ul").classes("pl-4"):
-                                    for obs_txt in res.observaciones:
-                                        with ui.element("li"):
-                                            ui.label(obs_txt)
+                                    # Observaciones as config-list-row
+                                    if res.observaciones:
+                                        ui.label("Observaciones del periodo").classes("panel-title")
+                                        for obs_txt in res.observaciones:
+                                            with ui.element("div").classes("config-list-row"):
+                                                ui.label(obs_txt).classes("config-col-name")
 
-                            # Alertas activas de seguimiento
-                            if res.alertas_activas:
-                                ui.label("Alertas activas").classes("panel-title")
-                                with ui.element("ul").classes("pl-4"):
-                                    for alerta_txt in res.alertas_activas:
-                                        with ui.element("li"):
-                                            ui.label(alerta_txt)
+                                    # Alertas activas as alerta-item cards
+                                    if res.alertas_activas:
+                                        ui.label("Alertas activas").classes("panel-title")
+                                        for alerta_txt in res.alertas_activas:
+                                            with ui.element("div").classes("alerta-item alerta-advertencia"):
+                                                ui.label(alerta_txt).classes("alerta-item-text")
 
         app_layout(
             ctx, contenido_pagina,

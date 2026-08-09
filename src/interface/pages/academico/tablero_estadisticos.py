@@ -37,7 +37,7 @@ from src.interface.design.components import skeleton_cards, stat_card
 from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Colors, DesempenoColors, Icons
+from src.interface.design.styles.tokens import Colors, DesempenoColors, Icons
 
 logger = logging.getLogger("TABLERO_ESTADISTICOS")
 

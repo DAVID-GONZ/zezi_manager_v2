@@ -32,7 +32,7 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.layout import app_layout
-from src.domain.divipola import DEPARTAMENTOS, municipios_de
+from src.domain.models.divipola import DEPARTAMENTOS, municipios_de
 from src.services.aprovisionamiento_institucion_service import (
     NuevaInstitucionConDirectorDTO,
 )

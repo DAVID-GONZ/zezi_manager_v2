@@ -20,7 +20,7 @@ from collections.abc import Callable
 from nicegui import ui
 
 from src.interface.design.components import empty_state
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 
 
 def _clave_eje(celda: dict, perspectiva: str):

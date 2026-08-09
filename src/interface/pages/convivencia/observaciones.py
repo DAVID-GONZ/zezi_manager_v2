@@ -11,8 +11,9 @@ Regla de capas:
 Flujo:
   1. Guard de autenticación → redirige a /login si no hay sesión.
   2. _cargar_estado() obtiene estudiantes del grupo y periodos.
-  3. Selectores de estudiante y periodo filtran las observaciones.
-  4. aggrid muestra observaciones: Estudiante, Texto, Visibilidad, Fecha.
+  3. Selectores de estudiante, periodo y categoría filtran las observaciones.
+  4. config-list muestra observaciones: Estudiante, Categoría, Visibilidad,
+     Texto (truncado con tooltip), Fecha y acciones inline.
   5. Botón "Nueva observación" abre form_dialog con campos primitivos.
   6. Toggle visibilidad: invierte es_publica vía registrar_observacion (upsert).
   7. Eliminar: confirm_dialog antes de llamar al servicio.
@@ -32,6 +33,7 @@ from src.interface.design.components import (
     confirm_dialog,
     empty_state,
     form_dialog,
+    status_badge,
     toast_error,
     toast_success,
     toast_warning,
@@ -39,7 +41,7 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary, btn_secondary
 from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.convivencia_service import NuevaObservacionDTO
 
 logger = logging.getLogger("OBSERVACIONES")
@@ -59,6 +61,7 @@ def _estado_inicial() -> dict:
         "sel_asignacion_id":     None,
         "sel_asignacion_nombre": "",
         "plantilla_id":          None, # ID de plantilla usada al crear (convivencia_12)
+        "sel_categoria_id":      None, # Filtro por categoría (T2)
     }
 
 
@@ -151,9 +154,15 @@ def _texto_truncado(texto: str, max_chars: int = 80) -> str:
     return texto[:max_chars] + "..." if len(texto) > max_chars else texto
 
 
-def _construir_filas(_s: dict) -> list[dict]:
+def _construir_filas(_s: dict, opciones_cat: dict) -> list[dict]:
+    """Construye las filas para la config-list, filtrando por categoría si aplica."""
     filas = []
+    sel_cat = _s.get("sel_categoria_id")
     for obs in _s["observaciones"]:
+        cat_id = getattr(obs, "categoria_id", None)
+        # Filtro por categoría (T2)
+        if sel_cat is not None and cat_id != sel_cat:
+            continue
         obs_id = getattr(obs, "id", None)
         est_id = getattr(obs, "estudiante_id", None)
         texto = getattr(obs, "texto", "")
@@ -170,7 +179,8 @@ def _construir_filas(_s: dict) -> list[dict]:
             "estudiante_id":             est_id,
             "asignacion_id":             getattr(obs, "asignacion_id", None),
             "periodo_id":                getattr(obs, "periodo_id", None),
-            "categoria_id":              getattr(obs, "categoria_id", None),
+            "categoria_id":              cat_id,
+            "categoria_nombre":          opciones_cat.get(cat_id, "Sin categoría"),
             "registro_comportamiento_id": getattr(obs, "registro_comportamiento_id", None),
             "estudiante":                _nombre_estudiante(_s, est_id),
             "texto":                     _texto_truncado(texto),
@@ -264,6 +274,10 @@ def observaciones_page() -> None:
     def on_periodo_change(valor) -> None:
         _s["sel_periodo_id"] = valor
         _cargar_observaciones(_s, ctx)
+        _contenido.refresh()
+
+    def on_categoria_change(valor) -> None:
+        _s["sel_categoria_id"] = valor
         _contenido.refresh()
 
     def _crear_observacion(datos: dict) -> bool | None:
@@ -528,15 +542,54 @@ def observaciones_page() -> None:
             getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
             for p in _s["periodos"]
         }
-        filas = _construir_filas(_s)
-        # Carga el dict {cat_id: es_comportamental} para el botón por fila
-        _, es_comportamental_map = _cargar_categorias()
+        # Carga categorías para badges, filtro y botón "promover"
+        opciones_cat, es_comportamental_map = _cargar_categorias()
+        filas = _construir_filas(_s, opciones_cat)
+
+        # Opciones para el filtro de categoría (T2)
+        filtro_cat_opciones = {None: "Todas", **opciones_cat}
+
+        def _render_fila_acciones(fila: dict, es_comp_map: dict) -> None:
+            btn_ghost(
+                "",
+                on_click=lambda f=fila: _toggle_visibilidad(
+                    f["id"], f["es_publica"], f
+                ),
+                icon="visibility_off" if fila["es_publica"] else "visibility",
+                size="sm",
+            )
+            if ctx.usuario_rol in ("director", "coordinador"):
+                btn_ghost(
+                    "",
+                    on_click=lambda oid=fila["id"]: _promover_a_plantilla(oid),
+                    icon="upload",
+                    size="sm",
+                )
+                _cat_id = fila.get("categoria_id")
+                _ya_promovida = fila.get("registro_comportamiento_id") is not None
+                if (
+                    _cat_id is not None
+                    and es_comp_map.get(_cat_id, False)
+                    and not _ya_promovida
+                ):
+                    btn_ghost(
+                        "",
+                        on_click=lambda oid=fila["id"]: _promover_a_comportamiento(oid),
+                        icon="flag",
+                        size="sm",
+                    )
+            btn_danger(
+                "",
+                on_click=lambda oid=fila["id"]: _eliminar_observacion(oid),
+                icon="delete",
+                size="sm",
+            )
 
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):
                 # Barra de filtros y acción
                 with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("panel-toolbar"):
+                    with ui.element("div").classes("panel-toolbar"):
                         ui.select(
                             options=opciones_est,
                             value=_s["sel_estudiante_id"],
@@ -548,6 +601,12 @@ def observaciones_page() -> None:
                             value=_s["sel_periodo_id"],
                             on_change=lambda e: on_periodo_change(e.value),
                         ).classes("andes-input input-min-sm").props('borderless dense placeholder="Periodo"')
+
+                        ui.select(
+                            options=filtro_cat_opciones,
+                            value=_s["sel_categoria_id"],
+                            on_change=lambda e: on_categoria_change(e.value),
+                        ).classes("andes-input input-min-sm").props('borderless dense placeholder="Categoría"')
 
                         ui.element("div").classes("panel-toolbar-spacer")
                         btn_ghost(
@@ -561,7 +620,7 @@ def observaciones_page() -> None:
                             icon=Icons.ADD,
                         )
 
-                # Tabla de observaciones
+                # Lista de observaciones (config-list)
                 with ui.element("div").classes("panel-card"):
                     if not filas:
                         empty_state(
@@ -573,61 +632,42 @@ def observaciones_page() -> None:
                             cta_icono="add",
                         )
                     else:
-                        col_defs = [
-                            {"headerName": "Estudiante",  "field": "estudiante",  "flex": 1, "sortable": True},
-                            {"headerName": "Texto",       "field": "texto",       "flex": 2},
-                            {"headerName": "Visibilidad", "field": "visibilidad", "width": 120},
-                            {"headerName": "Fecha",       "field": "fecha",       "width": 120, "sortable": True},
-                        ]
-                        ui.aggrid({
-                            "columnDefs":        col_defs,
-                            "rowData":           filas,
-                            "defaultColDef":     {"resizable": True},
-                            "suppressCellFocus": True,
-                            "rowSelection":      "single",
-                        }).classes("w-full")
+                        # Cabecera
+                        with ui.element("div").classes("config-list-header"):
+                            with ui.element("div").classes("config-col-name-hdr"):
+                                ui.label("Estudiante").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-badge"):
+                                ui.label("Categoría").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-status"):
+                                ui.label("Visibilidad").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-name-hdr"):
+                                ui.label("Texto").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-status"):
+                                ui.label("Fecha").classes("config-list-header-label")
+                            with ui.element("div").classes("config-col-actions-hdr"):
+                                ui.label("Acciones").classes("config-list-header-label")
 
-                        # Acciones por fila (bajo la tabla aggrid)
-                        with ui.element("div").classes("row-actions"):
-                            for fila in filas:
-                                with ui.row().classes("row-actions-item"):
-                                    ui.label(fila["estudiante"]).classes("row-actions-name")
-                                    ui.label(fila["texto"]).classes("row-actions-text")
-                                    ui.label(fila["visibilidad"]).classes("row-actions-status")
-                                    btn_ghost(
-                                        "Hacer privada" if fila["es_publica"] else "Hacer pública",
-                                        on_click=lambda f=fila: _toggle_visibilidad(
-                                            f["id"], f["es_publica"], f
-                                        ),
-                                        size="sm",
+                        # Filas
+                        for fila in filas:
+                            with ui.element("div").classes("config-list-row"):
+                                ui.label(fila["estudiante"]).classes("config-col-name")
+                                with ui.element("div").classes("config-col-badge"):
+                                    status_badge(
+                                        fila["categoria_nombre"],
+                                        variante="info",
                                     )
-                                    if ctx.usuario_rol in ("director", "coordinador"):
-                                        btn_secondary(
-                                            "Promover a plantilla",
-                                            on_click=lambda oid=fila["id"]: _promover_a_plantilla(oid),
-                                            icon="upload",
-                                            size="sm",
-                                        )
-                                        # Botón "Promover a comportamiento": visible si la categoría
-                                        # es comportamental y la observación aún no fue promovida.
-                                        _cat_id = fila.get("categoria_id")
-                                        _ya_promovida = fila.get("registro_comportamiento_id") is not None
-                                        if (
-                                            _cat_id is not None
-                                            and es_comportamental_map.get(_cat_id, False)
-                                            and not _ya_promovida
-                                        ):
-                                            btn_secondary(
-                                                "Promover a comportamiento",
-                                                on_click=lambda oid=fila["id"]: _promover_a_comportamiento(oid),
-                                                icon="flag",
-                                                size="sm",
-                                            )
-                                    btn_danger(
-                                        "Eliminar",
-                                        on_click=lambda oid=fila["id"]: _eliminar_observacion(oid),
-                                        size="sm",
-                                    )
+                                with ui.element("div").classes("config-col-status"):
+                                    if fila["es_publica"]:
+                                        status_badge("Pública", variante="success")
+                                    else:
+                                        status_badge("Privada", variante="neutral")
+                                with ui.label(fila["texto"]).classes("config-col-name"):
+                                    if fila["texto_completo"]:
+                                        ui.tooltip(fila["texto_completo"])
+                                with ui.element("div").classes("config-col-status"):
+                                    ui.label(fila["fecha"]).classes("text-xs-meta")
+                                with ui.element("div").classes("config-col-actions"):
+                                    _render_fila_acciones(fila, es_comportamental_map)
 
         app_layout(
             ctx, contenido_pagina,

@@ -42,7 +42,7 @@ from src.interface.design.components.buttons import (
 from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.evaluacion_service import (
     EstadoActividad,
     NuevaActividadDTO,

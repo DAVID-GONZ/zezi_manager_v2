@@ -49,7 +49,7 @@ from src.interface.design.components.buttons import (
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.interface.pages.academico.parrilla_widget import (
     _opciones_eje,
     render_parrilla,

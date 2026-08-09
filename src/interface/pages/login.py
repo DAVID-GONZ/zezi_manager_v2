@@ -107,7 +107,7 @@ def login_page() -> None:
 
                 # A1 — throttle/lockout: si el username está bloqueado por exceso
                 # de fallos, abortar sin tocar el servicio de auth.
-                from src.services import login_throttle
+                from src.domain.policies import login_throttle
                 bloqueado, segundos = login_throttle.estado_bloqueo(nombre_usuario)
                 if bloqueado:
                     error_label.set_text(

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from nicegui import ui
 
-from src.interface.design.tokens import DesempenoColors
+from src.interface.design.styles.tokens import DesempenoColors
 
 _NIVEL_PORCENTAJE = {
     "Bajo":     25,

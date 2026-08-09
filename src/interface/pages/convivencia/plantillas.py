@@ -37,7 +37,7 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_danger, btn_icon, btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.convivencia_service import NuevaPlantillaDTO
 
 logger = logging.getLogger("PLANTILLAS")

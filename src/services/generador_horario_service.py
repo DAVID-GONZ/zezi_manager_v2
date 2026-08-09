@@ -809,7 +809,7 @@ class GeneradorHorarioService:
             activable. Devuelve True si colocó TODAS las lecciones."""
             if not _coloreo_activable():
                 return False
-            from src.domain.scheduling import colorear_aristas_bipartito
+            from src.domain.models.scheduling import colorear_aristas_bipartito
             aristas = [(lec.grupo_id, lec.usuario_id) for lec in lecciones_ordenadas]
             colores = colorear_aristas_bipartito(aristas, n_slots)
             if not all(c is not None for c in colores):

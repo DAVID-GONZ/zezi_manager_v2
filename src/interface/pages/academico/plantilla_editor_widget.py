@@ -27,7 +27,7 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 
 # Opciones de catálogo (misma fuente que el dominio: TIPOS_FRANJA / JORNADAS_VALIDAS).
 JORNADA_OPTS = {"UNICA": "Única", "AM": "Mañana", "PM": "Tarde"}

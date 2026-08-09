@@ -30,7 +30,7 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.tokens import Icons
+from src.interface.design.styles.tokens import Icons
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.informe_service import InformeAsistenciaDTO
 
