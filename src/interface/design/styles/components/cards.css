@@ -134,7 +134,7 @@
 
 .andes-login-card {
   background: var(--color-surface);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   padding: 48px 40px;
   width: 100%;
   max-width: 420px;

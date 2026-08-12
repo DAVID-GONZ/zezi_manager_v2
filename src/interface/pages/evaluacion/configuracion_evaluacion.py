@@ -511,7 +511,7 @@ def configuracion_evaluacion_page() -> None:
             if corte is None:
                 # Sin corte: mostrar botón para ejecutar (solo admin/coord/docente)
                 with ui.element("div").classes(
-                    "flex items-center gap-3 p-3 bg-info-soft rounded border border-info"
+                    "alert-panel-row bg-info-soft border border-info"
                 ):
                     ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
@@ -532,7 +532,7 @@ def configuracion_evaluacion_page() -> None:
             reprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.REPROBADO)
 
             with ui.element("div").classes(
-                "p-3 bg-success-soft rounded border border-success mb-3"
+                "form-box bg-success-soft border border-success mb-3"
             ):
                 with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
@@ -550,24 +550,24 @@ def configuracion_evaluacion_page() -> None:
             # Conteos por estado
             with ui.row().classes("form-row-center u-mt-sm"):
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-subtle"
+                    "form-box-sm flex items-center gap-2 bg-subtle"
                 ):
                     ui.label(f"Total: {len(notas)}").classes("text-sm font-semibold")
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-error-soft"
+                    "form-box-sm flex items-center gap-2 bg-error-soft"
                 ):
                     ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-error")
                 with ui.element("div").classes(
-                    "flex items-center gap-2 px-3 py-2 rounded bg-success-soft"
+                    "form-box-sm flex items-center gap-2 bg-success-soft"
                 ):
                     ui.label(f"Sin plan: {sin_plan}").classes("text-sm font-semibold text-success")
                 if aprobado or reprobado:
                     with ui.element("div").classes(
-                        "flex items-center gap-2 px-3 py-2 rounded bg-info-soft"
+                        "form-box-sm flex items-center gap-2 bg-info-soft"
                     ):
                         ui.label(f"Aprobó plan: {aprobado}").classes("text-sm font-semibold text-info")
                     with ui.element("div").classes(
-                        "flex items-center gap-2 px-3 py-2 rounded bg-warning-soft"
+                        "form-box-sm flex items-center gap-2 bg-warning-soft"
                     ):
                         ui.label(f"Reprobó plan: {reprobado}").classes("text-sm font-semibold text-warning")
 

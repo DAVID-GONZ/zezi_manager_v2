@@ -183,7 +183,7 @@ def cierre_anio_page() -> None:
             # Advertencia prominente
             with ui.element("div").classes("panel-card mt-4"):
                 with ui.element("div").classes(
-                    "p-4 rounded border border-error bg-error-soft"
+                    "form-box border border-error bg-error-soft"
                 ):
                     with ui.row().classes("form-row-center u-mb-sm"):
                         ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")

@@ -299,7 +299,7 @@ def habilitaciones_page() -> None:
         with ui.element("div").classes("w-full overflow-x-auto"):
             # Cabecera
             with ui.element("div").classes(
-                "flex gap-1 p-2 font-semibold text-xs border-b bg-subtle rounded-t"
+                "flex gap-1 p-2 font-semibold text-xs border-b bg-subtle"
             ):
                 ui.label("Estudiante").classes("w-32 no-shrink")
                 ui.label("Nota período").classes("w-24 cell-num-right")
@@ -427,8 +427,8 @@ def habilitaciones_page() -> None:
 
                         # Banner de implementación futura
                         with ui.element("div").classes(
-                            "flex items-start gap-3 p-4 mt-2 rounded-lg border border-dashed "
-                            "border-warning-soft bg-warning-soft"
+                            "alert-panel-row border-dashed border-warning-soft "
+                            "bg-warning-soft mt-2"
                         ):
                             ThemeManager.icono("construction", size=32, color="var(--color-warning)")
                             with ui.element("div"):
@@ -474,8 +474,7 @@ def habilitaciones_page() -> None:
                         ]
                         for icono, titulo, descripcion in funcionalidades:
                             with ui.element("div").classes(
-                                "flex items-start gap-3 p-3 mb-2 rounded border border-soft "
-                                "row-hover"
+                                "form-box flex items-start gap-3 mb-2 row-hover"
                             ):
                                 ThemeManager.icono(icono, size=20, color="var(--color-secondary)")
                                 with ui.element("div"):

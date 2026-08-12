@@ -1295,19 +1295,30 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 error = True
 
             _s["gen_generando"] = False
-            with client:
-                if error:
-                    toast_error("Error al generar el horario")
-                else:
-                    _s["gen_resultado"] = resultado
-                    _s["gen_eje_sel"] = None
-                    _gen_cargar_configs()
-                    _gen_cargar_preview()
-                    if getattr(resultado, "valido", False):
-                        toast_success("Generación completada")
-                    else:
-                        toast_warning("Generación parcial: revisa las incidencias")
-                gen_refreshable.refresh()
+            if client.has_socket_connection and not client.is_deleted:
+                try:
+                    with client:
+                        if error:
+                            toast_error("Error al generar el horario")
+                        else:
+                            _s["gen_resultado"] = resultado
+                            _s["gen_eje_sel"] = None
+                            _gen_cargar_configs()
+                            _gen_cargar_preview()
+                            if getattr(resultado, "valido", False):
+                                toast_success("Generación completada")
+                            else:
+                                toast_warning("Generación parcial: revisa las incidencias")
+                        gen_refreshable.refresh()
+                except Exception as exc:
+                    logger.warning(
+                        "Cliente NiceGUI desconectado o error al actualizar la UI tras generar: %s",
+                        exc,
+                    )
+            else:
+                logger.warning(
+                    "Cliente NiceGUI no disponible tras generar el horario; se omite la actualización de la UI"
+                )
 
         background_tasks.create(_trabajo_coro())
 

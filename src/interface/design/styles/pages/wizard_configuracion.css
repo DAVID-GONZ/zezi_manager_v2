@@ -6,7 +6,7 @@
 /* ── Wizard card: more width than andes-login-card (max 420px) ── */
 .wizard-wide-card {
   background: var(--color-surface);
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   padding: 40px;
   width: 100%;
   max-width: 660px;
@@ -20,7 +20,7 @@
 /* ── Waiting / espera page card ──────────────────────────────── */
 .wizard-espera-card {
   background: var(--color-surface);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   padding: 48px 40px;
   width: 100%;
   max-width: 480px;

@@ -413,8 +413,8 @@ def planilla_notas_page() -> None:
 
         if not periodo_abierto:
             with ui.element("div").classes(
-                "flex items-center gap-2 bg-warning-soft border border-warning-soft "
-                "rounded p-3 mb-3 text-warning"
+                "alert-panel-row bg-warning-soft border border-warning-soft "
+                "mb-3 text-warning"
             ):
                 ThemeManager.icono("lock", size=20)
                 ui.label("Período CERRADO — Modo solo lectura").classes("font-semibold text-sm")
