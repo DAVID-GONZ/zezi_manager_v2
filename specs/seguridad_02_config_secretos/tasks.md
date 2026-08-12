@@ -34,8 +34,8 @@ tests/unit/services/test_usuario_service.py
 tests/unit/test_config_secrets.py             (NUEVO)
 ```
 
-Baseline antes de empezar: `python init.py` → **1233 passed, 1 skipped**
-(usar SIEMPRE `.venv/Scripts/python.exe`; el `python` global 3.9 está roto).
+Baseline antes de empezar: `python init.py` → **Todos los test pasando**
+(usar SIEMPRE `.venv/Scripts/python.exe`).
 
 ---
 

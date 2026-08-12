@@ -22,19 +22,21 @@ Flujo:
 from __future__ import annotations
 
 import logging
+from statistics import mean
 
 from nicegui import ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
+    counter_card,
     empty_state,
     toast_error,
     toast_info,
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_primary, btn_secondary
-from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
+from src.interface.design.components.inline_selectors import inline_periodo_grupo
 from src.interface.design.layout import app_layout
 
 logger = logging.getLogger("REPORTE_PERIODO_CONVIVENCIA")
@@ -77,14 +79,13 @@ def _estado_inicial() -> dict:
     return {
         "grupo_id":              None,
         "periodo_id":            None,
-        "filas":                 [],  # list[ReporteConvivenciaFilaDTO]
+        "filas":                 [],    # list[ReporteConvivenciaFilaDTO]
+        "kpis":                  None,  # dict con el resumen del grupo/periodo
         # sel_* gestionados por el inline selector
         "sel_periodo_id":        None,
         "sel_periodo_nombre":    "",
         "sel_grupo_id":          None,
         "sel_grupo_nombre":      "",
-        "sel_asignacion_id":     None,
-        "sel_asignacion_nombre": "",
     }
 
 
@@ -99,6 +100,33 @@ def _cargar_reporte(_s: dict) -> None:
     except Exception as exc:
         logger.error("Error cargando reporte de convivencia: %s", exc, exc_info=True)
         _s["filas"] = []
+
+
+def _cargar_kpis(_s: dict) -> None:
+    """Agrega el resumen de convivencia del grupo/periodo en `_s["kpis"]`.
+
+    Reutiliza `resumen_convivencia_grupo` (mismo servicio que el hub de
+    Seguimiento). La composición vive en el servicio; aquí solo se agrega
+    para los tiles del tablero."""
+    if not _s["grupo_id"] or not _s["periodo_id"]:
+        _s["kpis"] = None
+        return
+    try:
+        resumen = Container.convivencia_service().resumen_convivencia_grupo(
+            int(_s["grupo_id"]), int(_s["periodo_id"])
+        )
+    except Exception as exc:
+        logger.error("Error cargando KPIs de convivencia: %s", exc, exc_info=True)
+        _s["kpis"] = None
+        return
+    notas = [r.nota for r in resumen if r.nota is not None]
+    _s["kpis"] = {
+        "estudiantes": len(resumen),
+        "con_nota":    len(notas),
+        "promedio":    round(mean(notas), 1) if notas else "—",
+        "con_alerta":  sum(1 for r in resumen if r.supera_umbral),
+        "total_obs":   sum(r.num_observaciones for r in resumen),
+    }
 
 
 # ── Helpers de presentación ──────────────────────────────────────────────────
@@ -169,83 +197,110 @@ def reporte_periodo_page() -> None:
 
     _s = _estado_inicial()
     _cargar_reporte(_s)
+    _cargar_kpis(_s)
 
+    # ── Refreshable del cuerpo (selector FUERA de este refreshable) ──────────
     @ui.refreshable
-    def _contenido() -> None:
+    def cuerpo() -> None:
+        autorizado = _autorizado_para_grupo(ctx, _s["grupo_id"])
+
+        with ui.element("div").classes("page-stack"):
+            # Exportar — solo si hay datos que exportar (evita una card vacía al cargar).
+            if autorizado and _s["filas"]:
+                with ui.element("div").classes("panel-card"):
+                    with ui.row().classes("panel-toolbar"):
+                        ui.element("div").classes("panel-toolbar-spacer")
+                        btn_secondary(
+                            "Exportar Excel",
+                            icon="table_view",
+                            on_click=lambda: _exportar(_s, "excel"),
+                        )
+                        btn_primary(
+                            "Exportar PDF",
+                            icon="picture_as_pdf",
+                            on_click=lambda: _exportar(_s, "pdf"),
+                        )
+
+            # Cuerpo
+            if not _s["grupo_id"] or not _s["periodo_id"]:
+                with ui.element("div").classes("panel-card"):
+                    empty_state(
+                        titulo="Selecciona grupo y periodo",
+                        descripcion="Elige un grupo y un periodo para generar el reporte.",
+                    )
+                return
+
+            if not autorizado:
+                with ui.element("div").classes("panel-card"):
+                    empty_state(
+                        titulo="No autorizado para este grupo",
+                        descripcion=_MSG_NO_AUTORIZADO,
+                    )
+                return
+
+            # Resumen (KPIs) del grupo/periodo — encima de la grilla.
+            kpis = _s.get("kpis")
+            if kpis:
+                with ui.element("div").classes("form-row-inline"):
+                    counter_card(
+                        "Estudiantes", kpis["estudiantes"], "group",
+                        variante="primary",
+                    )
+                    counter_card(
+                        "Con nota", kpis["con_nota"], "grade",
+                        variante="info",
+                    )
+                    counter_card(
+                        "Promedio", kpis["promedio"], "bar_chart",
+                        variante="neutral",
+                    )
+                    counter_card(
+                        "Con alerta", kpis["con_alerta"], "flag",
+                        variante="danger" if kpis["con_alerta"] > 0 else "neutral",
+                        alerta=kpis["con_alerta"] > 0,
+                    )
+                    counter_card(
+                        "Observaciones", kpis["total_obs"], "sticky_note_2",
+                        variante="info",
+                    )
+
+            filas_dict = _filas_grilla(_s)
+            with ui.element("div").classes("panel-card"):
+                if not filas_dict:
+                    empty_state(
+                        titulo="Sin estudiantes",
+                        descripcion="No hay estudiantes en este grupo.",
+                    )
+                else:
+                    with ui.element("div").classes("aggrid-scroll-wrapper"):
+                        ui.aggrid({
+                            "columnDefs":    _COL_DEFS,
+                            "rowData":       filas_dict,
+                            "defaultColDef": {"resizable": True, "sortable": True},
+                        }).classes("w-full")
+
+    # ── Contenido principal (selector FUERA del refreshable) ────────────────
+    def contenido() -> None:
         def on_sel_change(s: dict) -> None:
             _s["grupo_id"]           = s["sel_grupo_id"]
             _s["periodo_id"]         = s["sel_periodo_id"]
-            _s["sel_grupo_nombre"]   = s["sel_grupo_nombre"]
-            _s["sel_periodo_nombre"] = s["sel_periodo_nombre"]
+            _s["sel_grupo_nombre"]   = s.get("sel_grupo_nombre", "")
+            _s["sel_periodo_nombre"] = s.get("sel_periodo_nombre", "")
             _cargar_reporte(_s)
-            _contenido.refresh()
+            _cargar_kpis(_s)
+            cuerpo.refresh()
 
-        inline_periodo_grupo_asignatura(
+        inline_periodo_grupo(
             _s, on_sel_change,
-            usuario_id=ctx.usuario_id,
             institucion_id=ctx.institucion_id,
+            usuario_id=ctx.usuario_id,
             usuario_rol=ctx.usuario_rol,
             preselect_periodo=True,
         )
 
-        autorizado = _autorizado_para_grupo(ctx, _s["grupo_id"])
+        cuerpo()
 
-        def contenido_pagina() -> None:
-            with ui.element("div").classes("page-stack"):
-                # Exportar
-                with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("panel-toolbar"):
-                        if autorizado and _s["filas"]:
-                            ui.element("div").classes("panel-toolbar-spacer")
-                            btn_secondary(
-                                "Exportar Excel",
-                                icon="table_view",
-                                on_click=lambda: _exportar(_s, "excel"),
-                            )
-                            btn_primary(
-                                "Exportar PDF",
-                                icon="picture_as_pdf",
-                                on_click=lambda: _exportar(_s, "pdf"),
-                            )
-
-                # Cuerpo
-                if not _s["grupo_id"] or not _s["periodo_id"]:
-                    with ui.element("div").classes("panel-card"):
-                        empty_state(
-                            titulo="Selecciona grupo y periodo",
-                            descripcion="Elige un grupo y un periodo para generar el reporte.",
-                        )
-                    return
-
-                if not autorizado:
-                    with ui.element("div").classes("panel-card"):
-                        empty_state(
-                            titulo="No autorizado para este grupo",
-                            descripcion=_MSG_NO_AUTORIZADO,
-                        )
-                    return
-
-                filas_dict = _filas_grilla(_s)
-                with ui.element("div").classes("panel-card"):
-                    if not filas_dict:
-                        empty_state(
-                            titulo="Sin estudiantes",
-                            descripcion="No hay estudiantes en este grupo.",
-                        )
-                    else:
-                        with ui.element("div").classes("aggrid-scroll-wrapper"):
-                            ui.aggrid({
-                                "columnDefs":    _COL_DEFS,
-                                "rowData":       filas_dict,
-                                "defaultColDef": {"resizable": True, "sortable": True},
-                            }).classes("w-full")
-
-        app_layout(
-            ctx, contenido_pagina,
-            page_titulo="Reporte de convivencia por periodo",
-        )
-
-    _contenido()
+    app_layout(ctx, contenido, page_titulo="Reporte de convivencia por periodo")
 
 
 __all__ = ["reporte_periodo_page"]

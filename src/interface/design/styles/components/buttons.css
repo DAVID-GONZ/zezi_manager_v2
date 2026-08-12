@@ -16,7 +16,7 @@
   cursor: pointer;
   transition: all var(--transition-base);
   height: var(--btn-height);
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-lg);
   white-space: nowrap;
   outline-offset: 2px;
 }

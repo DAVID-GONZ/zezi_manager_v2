@@ -385,10 +385,12 @@ class TestObservacionPeriodo:
         dto = NuevaObservacionDTO(
             estudiante_id=1, asignacion_id=2, periodo_id=1,
             texto="Muestra liderazgo positivo.",
+            categoria_id=1,  # requerido desde convivencia_11
         )
         obs = dto.to_observacion(usuario_id=7)
         assert isinstance(obs, ObservacionPeriodo)
         assert obs.usuario_id == 7
+        assert obs.categoria_id == 1
 
 
 class TestRegistroComportamiento:

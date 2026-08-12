@@ -97,6 +97,7 @@
   width: 100%;
 }
 /* Alturas estándar para contenedores ECharts */
+.echart-sm  { height: 180px; width: 100%; }
 .echart-md  { height: 280px; width: 100%; }
 .echart-lg  { height: 340px; width: 100%; }
 

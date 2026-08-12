@@ -5,7 +5,7 @@ Fuente: DANE - División Político Administrativa de Colombia.
 Datos: 33 departamentos (incluye Bogotá D.C.), ~1100 municipios.
 
 Uso:
-    from src.domain.models.divipola import DEPARTAMENTOS, municipios_de
+    from src.reference.divipola import DEPARTAMENTOS, municipios_de
 
     opciones_dep = DEPARTAMENTOS           # lista ordenada
     opciones_mun = municipios_de("Antioquia")  # municipios del depto

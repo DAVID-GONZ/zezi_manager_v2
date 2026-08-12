@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════════════════════════
+   components/counter-card.css — Tile contador compacto (convivencia_22)
+   Base + modificadores de variante/alerta. Colores solo vía tokens.
+   ═══════════════════════════════════════════════════════════════ */
+
+.counter-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-left: 3px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.counter-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.counter-card-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.counter-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.counter-card-value {
+  font-size: var(--font-size-h2);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--color-text-primary);
+}
+
+.counter-card-label {
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.counter-card-subtitle {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+/* ── Variantes: acento lateral + fondo del icono (solo tokens) ─────── */
+.counter-card--primary { border-left-color: var(--color-primary); }
+.counter-card--success { border-left-color: var(--color-success); }
+.counter-card--warning { border-left-color: var(--color-warning); }
+.counter-card--danger  { border-left-color: var(--color-error); }
+.counter-card--info    { border-left-color: var(--color-info); }
+
+.counter-card--primary .counter-card-icon { background: var(--color-primary-lighter); }
+.counter-card--success .counter-card-icon { background: var(--color-success-light); }
+.counter-card--warning .counter-card-icon { background: var(--color-warning-light); }
+.counter-card--danger  .counter-card-icon { background: var(--color-error-light); }
+.counter-card--info    .counter-card-icon { background: var(--color-info-light); }
+
+/* ── Estado de alerta — resalta el tile por encima de la variante ──── */
+.counter-card--alert {
+  border-color: var(--color-error);
+  border-left-color: var(--color-error);
+  background: var(--color-error-light);
+}
+
+.counter-card--alert .counter-card-value {
+  color: var(--color-error);
+}

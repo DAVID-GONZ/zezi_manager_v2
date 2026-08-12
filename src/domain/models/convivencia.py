@@ -504,6 +504,39 @@ class Seguimiento360DTO(BaseModel):
     promedio_notas:       float | None = None
 
 
+class PuntoSerieDTO(BaseModel):
+    """
+    Un punto de una serie temporal por periodo (convivencia_21).
+
+    Usado para graficar la evolución de la nota de comportamiento a lo largo
+    de los periodos del año. `valor=None` marca un periodo sin nota registrada
+    (hueco en la serie), preservando el eje de periodos completo.
+    """
+    periodo_id:     int
+    periodo_nombre: str
+    valor:          float | None = None
+
+
+class ResumenConvivenciaDTO(BaseModel):
+    """
+    Resumen agregado de convivencia por estudiante en un grupo/periodo
+    (convivencia_21). Alimenta el maestro-detalle del hub de Seguimiento
+    sin incurrir en el patrón N+1: se compone con un número acotado de
+    consultas por grupo.
+
+    `supera_umbral=True` indica que el número de registros negativos alcanza
+    o supera el umbral de alerta configurado (SEGUIMIENTO_REQUERIDO). Si no
+    hay configuración de alertas disponible, permanece False.
+    """
+    estudiante_id:           int
+    nombre:                  str
+    num_observaciones:       int          = 0
+    num_registros_negativos: int          = 0
+    nota:                    float | None = None
+    nivel_nombre:            str | None   = None
+    supera_umbral:           bool         = False
+
+
 # =============================================================================
 # Exports
 # =============================================================================
@@ -521,8 +554,10 @@ __all__ = [
     "NuevoRegistroComportamientoDTO",
     "ObservacionPeriodo",
     "PlantillaObservacion",
+    "PuntoSerieDTO",
     "RegistroComportamiento",
     "ReporteConvivenciaFilaDTO",
+    "ResumenConvivenciaDTO",
     "Seguimiento360DTO",
     "TipoRegistro",
 ]

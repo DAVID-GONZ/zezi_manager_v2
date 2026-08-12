@@ -1,0 +1,62 @@
+/* ─────────────────────────────────────────────────────────────────
+   convivencia.css — utilidades del hub de Seguimiento (convivencia).
+   Clases estructurales de página; sin colores (se heredan de tokens).
+   ───────────────────────────────────────────────────────────────── */
+
+/* Listado maestro de estudiantes con scroll propio: la lista scrollea
+   dentro del card en vez de estirar y arrastrar toda la página. */
+.seg-master-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Filas de listas del detalle en la columna lateral (estrecha): permite
+   que la columna de acciones envuelva a una nueva línea en lugar de
+   desbordar horizontalmente el card. */
+.seg-detalle-lista .config-list-row {
+  flex-wrap: wrap;
+}
+
+/* Fila de KPIs compactos y de igual tamaño (grupo global / detalle).
+   Grid auto-fit: tiles equitativos que envuelven en varias filas antes que
+   apilarse una por línea. */
+.seg-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--space-sm);
+}
+.seg-kpis > .counter-card {
+  min-width: 0;
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+}
+.seg-kpis .counter-card-icon {
+  width: 28px;
+  height: 28px;
+}
+.seg-kpis .counter-card-value {
+  font-size: var(--font-size-body);
+}
+/* El nombre de la tarjeta puede envolver en varias líneas; nunca desborda. */
+.seg-kpis .counter-card-label {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Variante de rejilla fija a 3 columnas: el resumen global del grupo (6 KPIs)
+   queda en 2 filas de 3 en vez de forzar una sola fila y desbordar los nombres. */
+.seg-kpis-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Barra de secciones (tabs) con botones pequeños en fila (envuelven si no
+   caben). min-width:0 evita que el ancho mínimo del contenido los apile. */
+.seg-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+.seg-tabs > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}

@@ -8,7 +8,7 @@ Regla: los valores deben coincidir EXACTAMENTE con las variables
 CSS definidas en styles/tokens.css. Si cambias un color aquí, cámbialo
 también en :root { ... } de tokens.css.
 
-FUENTE CANÓNICA: tokens.css (mismo directorio) — este archivo es su espejo en Python.
+FUENTE CANÓNICA: styles/tokens.css — este archivo es su espejo en Python.
 El drift se verifica con `python scripts/sync_tokens.py --check`, que resuelve
 las cadenas var(--…) de tokens.css y las compara con estas constantes.
 """

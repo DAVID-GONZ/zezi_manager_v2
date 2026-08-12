@@ -41,7 +41,7 @@ from nicegui import ui
 
 from .components.buttons import btn_icon, btn_secondary
 from .theme import ThemeManager
-from .tokens import Icons
+from .styles.tokens import Icons
 
 if TYPE_CHECKING:
     from src.interface.context.session_context import SessionContext
@@ -66,16 +66,16 @@ NAV_ITEMS: list[dict] = [
             {"label": "Asistencia",        "icon": "fact_check",
              "ruta": "/asistencia",
              "rol":  ["director", "coordinador", "profesor"]},
-            {"label": "Observaciones",     "icon": "comment",
+            {"label": "Observaciones",     "icon": "edit_note",
              "ruta": "/convivencia/observaciones",
              "rol":  ["director", "coordinador", "profesor"],
              "requiere_modulo": "convivencia"},
-            {"label": "Comportamiento",    "icon": "rule",
-             "ruta": "/convivencia/comportamiento",
+            {"label": "Notas de convivencia", "icon": "grade",
+             "ruta": "/convivencia/notas",
              "rol":  ["director", "coordinador", "profesor"],
              "requiere_modulo": "convivencia"},
-            {"label": "Seguimiento",       "icon": "assignment",
-             "ruta": "/convivencia/notas",
+            {"label": "Seguimiento",       "icon": "insights",
+             "ruta": "/convivencia/seguimiento",
              "rol":  ["director", "coordinador", "profesor"],
              "requiere_modulo": "convivencia"},
             {"label": "Categorías",        "icon": "category",
@@ -86,9 +86,9 @@ NAV_ITEMS: list[dict] = [
              "ruta": "/convivencia/plantillas",
              "rol":  ["director", "coordinador"],
              "requiere_modulo": "convivencia"},
-            {"label": "Alertas Seguimiento", "icon": "notification_important",
-             "ruta": "/convivencia/seguimiento",
-             "rol":  ["director", "coordinador"],
+            {"label": "Reporte de periodo", "icon": "summarize",
+             "ruta": "/convivencia/reporte-periodo",
+             "rol":  ["director", "coordinador", "profesor"],
              "requiere_modulo": "convivencia"},
         ],
     },

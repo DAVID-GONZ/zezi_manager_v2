@@ -21,8 +21,10 @@ from src.domain.models.convivencia import (
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
     PlantillaObservacion,
+    PuntoSerieDTO,
     RegistroComportamiento,
     ReporteConvivenciaFilaDTO,
+    ResumenConvivenciaDTO,
     Seguimiento360DTO,
     TipoRegistro,
 )
@@ -275,7 +277,7 @@ class ConvivenciaService:
                     usuario_id, periodo_id
                 )
                 ids_docente = {
-                    getattr(a, "id", None) for a in asignaciones_docente
+                    getattr(a, "asignacion_id", None) for a in asignaciones_docente
                 } - {None}
             except Exception:
                 ids_docente = set()
@@ -528,6 +530,124 @@ class ConvivenciaService:
             ))
         return resultado
 
+
+    # ------------------------------------------------------------------
+    # Agregados para el hub de Seguimiento (convivencia_21)
+    # ------------------------------------------------------------------
+
+    def serie_notas_comportamiento(
+        self,
+        estudiante_id: int,
+        anio_id: int,
+    ) -> list[PuntoSerieDTO]:
+        """
+        Evolución de la nota de comportamiento de un estudiante a lo largo de
+        los periodos del año, como serie ordenada con un punto por periodo.
+
+        Los periodos sin nota registrada aparecen con `valor=None` (huecos),
+        preservando el eje completo de periodos.
+
+        Requiere `periodo_svc_provider`; si es None → RuntimeError.
+        """
+        if self._periodo_svc_provider is None:
+            raise RuntimeError(
+                "ConvivenciaService requiere periodo_svc_provider para "
+                "construir la serie de notas de comportamiento."
+            )
+        periodos = self._periodo_svc_provider().listar_por_anio(anio_id)
+        notas = {
+            n.periodo_id: n
+            for n in self._repo.listar_notas_por_estudiante(estudiante_id)
+        }
+        serie: list[PuntoSerieDTO] = []
+        for periodo in periodos:
+            nota = notas.get(periodo.id)
+            serie.append(PuntoSerieDTO(
+                periodo_id=periodo.id,
+                periodo_nombre=periodo.nombre,
+                valor=nota.valor if nota is not None else None,
+            ))
+        return serie
+
+    def resumen_convivencia_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int,
+    ) -> list[ResumenConvivenciaDTO]:
+        """
+        Resumen agregado por estudiante del grupo en un periodo: número de
+        observaciones, número de registros negativos, nota de comportamiento,
+        nivel de desempeño y si supera el umbral de alerta configurado.
+
+        Se compone con un número acotado de consultas (sin N+1 por estudiante):
+        una para conceptos/notas, una para registros y una para observaciones.
+
+        Requiere `estudiante_svc_provider` (vía `listar_conceptos_grupo`); si es
+        None → RuntimeError.
+        """
+        # Conceptos (nota + nivel) por estudiante — cubre estudiantes sin nota.
+        conceptos = {
+            c.estudiante_id: c
+            for c in self.listar_conceptos_grupo(grupo_id, periodo_id)
+        }
+        estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
+
+        # Registros negativos por estudiante (1 consulta).
+        registros = self._repo.listar_registros(
+            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id)
+        )
+        negativos_por_est: dict[int, int] = {}
+        for reg in registros:
+            if reg.es_negativo:
+                negativos_por_est[reg.estudiante_id] = (
+                    negativos_por_est.get(reg.estudiante_id, 0) + 1
+                )
+
+        # Observaciones por estudiante (1 consulta batch).
+        observaciones = self._repo.listar_observaciones_por_grupo(
+            grupo_id, periodo_id
+        )
+        obs_por_est: dict[int, int] = {}
+        for obs in observaciones:
+            obs_por_est[obs.estudiante_id] = (
+                obs_por_est.get(obs.estudiante_id, 0) + 1
+            )
+
+        # Umbral de alerta (una sola resolución de configuración por grupo).
+        umbral: float | None = None
+        if self._alerta_repo is not None and self._periodo_svc_provider is not None:
+            try:
+                anio_id = self._periodo_svc_provider().get_by_id(periodo_id).anio_id
+                cfg = self._alerta_repo.get_configuracion(
+                    anio_id, TipoAlerta.SEGUIMIENTO_REQUERIDO
+                )
+                if cfg is not None and cfg.activa:
+                    umbral = cfg.umbral
+            except Exception:
+                umbral = None
+
+        resultado: list[ResumenConvivenciaDTO] = []
+        for est in estudiantes:
+            est_id = getattr(est, "id", None)
+            if est_id is None:
+                continue
+            concepto = conceptos.get(est_id)
+            num_neg = negativos_por_est.get(est_id, 0)
+            nombre = (
+                f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip()
+                or str(est_id)
+            )
+            supera = umbral is not None and num_neg >= umbral
+            resultado.append(ResumenConvivenciaDTO(
+                estudiante_id=est_id,
+                nombre=nombre,
+                num_observaciones=obs_por_est.get(est_id, 0),
+                num_registros_negativos=num_neg,
+                nota=concepto.valor if concepto else None,
+                nivel_nombre=concepto.nivel_nombre if concepto else None,
+                supera_umbral=supera,
+            ))
+        return resultado
 
     # ------------------------------------------------------------------
     # Reporte por grupo/periodo (convivencia_06)

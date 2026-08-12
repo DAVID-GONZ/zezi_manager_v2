@@ -34,3 +34,20 @@ html[data-theme="dark"] .ag-theme-balham .ag-row-selected,
 html[data-theme="dark"] .ag-theme-balham .ag-row-focus {
   background: rgba(46, 49, 146, 0.14);
 }
+
+/* ── Wrapper de ag-grid con altura por viewport ─────────────────────
+   El grid de NiceGUI trae altura fija por defecto; para que ocupe un
+   porcentaje mayor del viewport se envuelve en `.aggrid-vh` y se fuerza
+   al grid interno a llenar el wrapper. (Toca `.nicegui-aggrid`, por eso
+   vive en la capa adapter.) */
+.aggrid-vh {
+  width: 100%;
+  /* Llena el alto disponible descontando topbar + chips + toolbar + paddings,
+     para que el grid ocupe la mayor parte del viewport SIN provocar scroll de
+     página. */
+  height: calc(100vh - var(--topbar-height) - 15rem);
+  min-height: 16rem;
+}
+.aggrid-vh .nicegui-aggrid {
+  height: 100%;
+}

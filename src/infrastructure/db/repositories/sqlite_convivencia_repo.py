@@ -94,6 +94,25 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_observacion(r) for r in rows]
 
+    def listar_observaciones_por_grupo(
+        self, grupo_id: int, periodo_id: int | None = None, solo_publicas: bool = False
+    ) -> list[ObservacionPeriodo]:
+        sql = (
+            "SELECT op.* FROM observaciones_periodo op "
+            "JOIN asignaciones a ON a.id = op.asignacion_id "
+            "WHERE a.grupo_id = ?"
+        )
+        params: list = [grupo_id]
+        if periodo_id is not None:
+            sql += " AND op.periodo_id = ?"
+            params.append(periodo_id)
+        if solo_publicas:
+            sql += " AND op.es_publica = 1"
+        sql += " ORDER BY op.estudiante_id, op.periodo_id, op.asignacion_id"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_observacion(r) for r in rows]
+
     def guardar_observacion(self, observacion: ObservacionPeriodo) -> ObservacionPeriodo:
         with self._get_conn() as conn:
             cursor = conn.execute(

@@ -70,6 +70,21 @@ class IConvivenciaRepository(ABC):
         ...
 
     @abstractmethod
+    def listar_observaciones_por_grupo(
+        self, grupo_id: int, periodo_id: int | None = None, solo_publicas: bool = False
+    ) -> list[ObservacionPeriodo]:
+        """
+        Retorna las observaciones de todos los estudiantes de un grupo,
+        resolviendo el grupo vía join a `asignaciones` (por `asignacion_id`).
+
+        Batch para el hub de Seguimiento (convivencia_21): evita el patrón N+1
+        de pedir observaciones estudiante por estudiante.
+        Si se especifica periodo_id, filtra por ese periodo.
+        Si solo_publicas es True, omite las observaciones privadas.
+        """
+        ...
+
+    @abstractmethod
     def guardar_observacion(self, observacion: ObservacionPeriodo) -> ObservacionPeriodo:
         """
         Guarda una nueva observación.

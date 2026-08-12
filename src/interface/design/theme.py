@@ -77,6 +77,7 @@ class ThemeManager:
         "components/password_change.css",
         "components/date_input.css",
         "components/cards.css",
+        "components/counter-card.css",
         "components/empty_state.css",
         "components/skeleton_loader.css",
         "components/toast.css",
@@ -89,6 +90,7 @@ class ThemeManager:
         "domain/disponibilidad.css",
         "domain/horario_parrilla.css",
         "domain/horario_generar.css",
+        "domain/convivencia.css",
         # ── Capa ADAPTADOR (no portable) — glue del DOM de NiceGUI/Quasar/ag-Grid.
         # Carga tras el core para que sus overrides ganen la cascada. Al migrar a
         # Vue esta capa se reescribe; el resto (core) transfiere. Ver PORTABILITY.md.

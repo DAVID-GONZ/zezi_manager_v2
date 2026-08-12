@@ -10,7 +10,7 @@ from .components import (
 )
 from .layout import NAV_ITEMS, app_layout
 from .theme import ThemeManager
-from .tokens import AsistenciaColors, Colors, DesempenoColors, Icons, Layout, Spacing
+from .styles.tokens import AsistenciaColors, Colors, DesempenoColors, Icons, Layout, Spacing
 
 __all__ = [
     # Tokens

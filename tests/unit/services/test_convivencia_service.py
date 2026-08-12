@@ -18,7 +18,9 @@ from src.domain.models.convivencia import (
     NuevoRegistroComportamientoDTO,
     ObservacionPeriodo,
     PlantillaObservacion,
+    PuntoSerieDTO,
     RegistroComportamiento,
+    ResumenConvivenciaDTO,
     Seguimiento360DTO,
     TipoRegistro,
 )
@@ -36,6 +38,9 @@ class FakeConvRepo(IConvivenciaRepository):
         self._notas: dict[tuple, NotaComportamiento] = {}
         self._cats: dict[int, CategoriaObservacion] = {}
         self._plantillas: dict[int, PlantillaObservacion] = {}
+        # Mapa asignacion_id -> grupo_id, emula el join observaciones→asignaciones
+        # que usa listar_observaciones_por_grupo en el repo SQLite.
+        self._asig_grupo: dict[int, int] = {}
         self._next_obs = 1
         self._next_reg = 1
         self._next_nota = 1
@@ -54,6 +59,17 @@ class FakeConvRepo(IConvivenciaRepository):
 
     def listar_observaciones_por_estudiante(self, est_id: int, per_id=None, solo_publicas=False) -> list[ObservacionPeriodo]:
         return [o for o in self._obs.values() if o.estudiante_id == est_id]
+
+    def listar_observaciones_por_grupo(self, grupo_id: int, periodo_id=None, solo_publicas=False) -> list[ObservacionPeriodo]:
+        result = [
+            o for o in self._obs.values()
+            if self._asig_grupo.get(o.asignacion_id) == grupo_id
+        ]
+        if periodo_id is not None:
+            result = [o for o in result if o.periodo_id == periodo_id]
+        if solo_publicas:
+            result = [o for o in result if o.es_publica]
+        return result
 
     def guardar_observacion(self, o: ObservacionPeriodo) -> ObservacionPeriodo:
         o = o.model_copy(update={"id": self._next_obs})
@@ -96,7 +112,7 @@ class FakeConvRepo(IConvivenciaRepository):
         return self._notas.get((est_id, per_id))
 
     def listar_notas_por_estudiante(self, est_id: int) -> list[NotaComportamiento]:
-        return []
+        return [n for (e, p), n in self._notas.items() if e == est_id]
 
     def listar_notas_por_grupo(self, grupo_id: int, per_id: int) -> list[NotaComportamiento]:
         return [n for (e, p), n in self._notas.items() if p == per_id and n.grupo_id == grupo_id]
@@ -1439,5 +1455,182 @@ class TestVista360:
         assert dto.nota_comportamiento == pytest.approx(75.0)
         assert dto.concepto == "Buen comportamiento"
         assert dto.nivel_comportamiento is None  # sin niveles no se puede resolver
+
+
+# ===========================================================================
+# convivencia_21: serie_notas_comportamiento y resumen_convivencia_grupo
+# ===========================================================================
+
+class _FakePeriodo:
+    def __init__(self, id: int, nombre: str, anio_id: int = 2026):
+        self.id      = id
+        self.nombre  = nombre
+        self.anio_id = anio_id
+
+
+class _FakePeriodoSvcConLista:
+    """PeriodoService fake con listar_por_anio y get_by_id."""
+    def __init__(self, periodos: list[_FakePeriodo]):
+        self._periodos = periodos
+
+    def listar_por_anio(self, anio_id: int) -> list[_FakePeriodo]:
+        return [p for p in self._periodos if p.anio_id == anio_id]
+
+    def get_by_id(self, periodo_id: int) -> _FakePeriodo:
+        for p in self._periodos:
+            if p.id == periodo_id:
+                return p
+        raise ValueError(periodo_id)
+
+
+class TestSerieNotasComportamiento:
+    """convivencia_21 — serie_notas_comportamiento."""
+
+    def _periodos(self) -> list[_FakePeriodo]:
+        return [
+            _FakePeriodo(1, "Periodo 1"),
+            _FakePeriodo(2, "Periodo 2"),
+            _FakePeriodo(3, "Periodo 3"),
+        ]
+
+    def test_serie_nominal_con_huecos(self):
+        """Un punto por periodo, en orden; periodos sin nota → valor None."""
+        repo = FakeConvRepo()
+        repo._notas[(1, 1)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=1, valor=80.0,
+        )
+        repo._notas[(1, 3)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=3, valor=90.0,
+        )
+        svc = ConvivenciaService(
+            repo=repo,
+            periodo_svc_provider=lambda: _FakePeriodoSvcConLista(self._periodos()),
+        )
+        serie = svc.serie_notas_comportamiento(estudiante_id=1, anio_id=2026)
+        assert len(serie) == 3
+        assert all(isinstance(p, PuntoSerieDTO) for p in serie)
+        assert [p.periodo_id for p in serie] == [1, 2, 3]
+        assert [p.periodo_nombre for p in serie] == ["Periodo 1", "Periodo 2", "Periodo 3"]
+        assert [p.valor for p in serie] == [80.0, None, 90.0]
+
+    def test_serie_estudiante_sin_nota_todo_none(self):
+        """Estudiante sin ninguna nota → toda la serie con valor None."""
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(
+            repo=repo,
+            periodo_svc_provider=lambda: _FakePeriodoSvcConLista(self._periodos()),
+        )
+        serie = svc.serie_notas_comportamiento(estudiante_id=99, anio_id=2026)
+        assert len(serie) == 3
+        assert all(p.valor is None for p in serie)
+
+    def test_serie_sin_periodo_provider_lanza(self):
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)
+        with pytest.raises(RuntimeError):
+            svc.serie_notas_comportamiento(estudiante_id=1, anio_id=2026)
+
+
+class TestResumenConvivenciaGrupo:
+    """convivencia_21 — resumen_convivencia_grupo."""
+
+    def _cfg_umbral(self, umbral: float = 2.0) -> ConfiguracionAlerta:
+        return ConfiguracionAlerta(
+            anio_id=2026,
+            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
+            umbral=umbral,
+            activa=True,
+        )
+
+    def _ests(self):
+        ests = [_FakeEst(1), _FakeEst(2), _FakeEst(3)]
+        for e, nom, ape in [(ests[0], "Ana", "Ruiz"), (ests[1], "Bob", "Diaz"), (ests[2], "Cyd", "Paz")]:
+            e.nombre = nom
+            e.apellido = ape
+        return ests
+
+    def _svc(self, repo, ests, alerta_repo=None):
+        return ConvivenciaService(
+            repo=repo,
+            alerta_repo=alerta_repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvcConLista(
+                [_FakePeriodo(5, "Periodo 5")]
+            ),
+            estudiante_svc_provider=lambda: _FakeEstSvc(ests),
+        )
+
+    def test_resumen_nominal(self):
+        """Combina nota/nivel, conteo de observaciones y negativos, y umbral."""
+        repo = FakeConvRepo()
+        ests = self._ests()
+        repo._asig_grupo[99] = 10
+        # Estudiante 1: nota Superior, 2 observaciones, 2 registros negativos.
+        repo._notas[(1, 5)] = NotaComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5, valor=90.0,
+        )
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=99, periodo_id=5, texto="Obs A",
+        ))
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=99, periodo_id=5, texto="Obs B",
+        ))
+        for _ in range(2):
+            repo.guardar_registro(RegistroComportamiento(
+                estudiante_id=1, grupo_id=10, periodo_id=5,
+                tipo=TipoRegistro.DIFICULTAD, descripcion="Incidente",
+            ))
+        # Estudiante 2: sin nota, 1 observación, 0 negativos.
+        repo.guardar_observacion(ObservacionPeriodo(
+            estudiante_id=2, asignacion_id=99, periodo_id=5, texto="Obs C",
+        ))
+        # Estudiante 3: sin nada.
+
+        alerta_repo = FakeAlertaRepo(cfg=self._cfg_umbral(umbral=2.0))
+        svc = self._svc(repo, ests, alerta_repo=alerta_repo)
+        resumen = svc.resumen_convivencia_grupo(grupo_id=10, periodo_id=5)
+
+        assert len(resumen) == 3
+        assert all(isinstance(r, ResumenConvivenciaDTO) for r in resumen)
+        by_id = {r.estudiante_id: r for r in resumen}
+
+        assert by_id[1].nombre == "Ruiz Ana"
+        assert by_id[1].nota == 90.0
+        assert by_id[1].nivel_nombre == "Superior"
+        assert by_id[1].num_observaciones == 2
+        assert by_id[1].num_registros_negativos == 2
+        assert by_id[1].supera_umbral is True  # 2 >= umbral 2
+
+        assert by_id[2].nota is None
+        assert by_id[2].nivel_nombre is None
+        assert by_id[2].num_observaciones == 1
+        assert by_id[2].num_registros_negativos == 0
+        assert by_id[2].supera_umbral is False
+
+        assert by_id[3].num_observaciones == 0
+        assert by_id[3].num_registros_negativos == 0
+        assert by_id[3].nota is None
+
+    def test_resumen_grupo_vacio(self):
+        """Grupo sin estudiantes → lista vacía."""
+        repo = FakeConvRepo()
+        svc = self._svc(repo, ests=[], alerta_repo=FakeAlertaRepo(cfg=self._cfg_umbral()))
+        resumen = svc.resumen_convivencia_grupo(grupo_id=10, periodo_id=5)
+        assert resumen == []
+
+    def test_resumen_sin_alerta_repo_supera_umbral_false(self):
+        """Sin alerta_repo, supera_umbral es False aunque haya muchos negativos."""
+        repo = FakeConvRepo()
+        ests = self._ests()
+        for _ in range(5):
+            repo.guardar_registro(RegistroComportamiento(
+                estudiante_id=1, grupo_id=10, periodo_id=5,
+                tipo=TipoRegistro.DIFICULTAD, descripcion="Incidente",
+            ))
+        svc = self._svc(repo, ests, alerta_repo=None)
+        resumen = svc.resumen_convivencia_grupo(grupo_id=10, periodo_id=5)
+        by_id = {r.estudiante_id: r for r in resumen}
+        assert by_id[1].num_registros_negativos == 5
+        assert by_id[1].supera_umbral is False
 
 

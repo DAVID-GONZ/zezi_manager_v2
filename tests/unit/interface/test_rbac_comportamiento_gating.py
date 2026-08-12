@@ -1,17 +1,21 @@
 """Tests para convivencia_04 — gating de autorización por objeto en las
-páginas de Comportamiento y Notas de comportamiento.
+páginas de Observaciones y Notas de convivencia.
 
 Verifican el helper `_autorizado_para_grupo` de ambas páginas: delega en
 CatalogoAcademicoService.puede_gestionar_comportamiento_en_grupo pasando
 primitivos, retorna False sin grupo y es fail-closed ante excepciones.
+
+Nota (convivencia_23/26): la creación de registros de comportamiento se movió
+de `comportamiento.py` (hoy redirect) a `observaciones.py`, que ahora aloja el
+helper de gating; por eso el test se parametriza sobre Observaciones y Notas.
 """
 from types import SimpleNamespace
 
 import pytest
 
-from src.interface.pages.convivencia import comportamiento, notas_convivencia
+from src.interface.pages.convivencia import notas_convivencia, observaciones
 
-PAGINAS = [comportamiento, notas_convivencia]
+PAGINAS = [observaciones, notas_convivencia]
 
 
 def _ctx(rol="profesor", uid=5):

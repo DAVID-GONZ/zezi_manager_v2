@@ -274,7 +274,7 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/convivencia/reporte-periodo", reporte_periodo_page, roles=_AULA)
     registrar_pagina("/convivencia/categorias", categorias_page, roles=_DIR_COORD)
     registrar_pagina("/convivencia/plantillas", plantillas_page, roles=_DIR_COORD)
-    registrar_pagina("/convivencia/seguimiento", seguimiento_page, roles=_DIR_COORD)
+    registrar_pagina("/convivencia/seguimiento", seguimiento_page, roles=_AULA)
 
     # ── Informes ──────────────────────────────────────────────────────────────
     from src.interface.pages.informes.boletin_anual import boletin_anual_page

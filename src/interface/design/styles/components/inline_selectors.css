@@ -9,7 +9,9 @@
   gap: var(--space-sm);
   align-items: center;
   flex-wrap: wrap;
-  padding: var(--space-sm) 0 var(--space-md);
+  /* Sin padding superior: el gap con el topbar lo da el padding del área de
+     contenido. Abajo, separación uniforme respecto al contenedor siguiente. */
+  padding: 0 0 var(--space-lg);
 }
 
 /* ── Pill base ───────────────────────────────────────────────── */

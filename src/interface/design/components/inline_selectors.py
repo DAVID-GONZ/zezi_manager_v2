@@ -297,6 +297,8 @@ def inline_periodo_grupo(
     on_change: Callable,
     institucion_id: int,
     preselect_periodo: bool = True,
+    usuario_id: int | None = None,
+    usuario_rol: str = "directivo",
 ) -> None:
     """
     Renderiza 2 pills en cascada: [Periodo ▾]  [Grupo ▾].
@@ -307,6 +309,8 @@ def inline_periodo_grupo(
                           seleccionados.
         institucion_id:   ID de la institución (para cargar periodos).
         preselect_periodo: Si True, pre-selecciona el primer periodo activo.
+        usuario_id:       ID del usuario. Si usuario_rol == 'profesor', filtra grupos propios.
+        usuario_rol:      Rol del usuario. Default 'directivo' (ve todos los grupos).
     """
     _estado_inicial(s)
     if preselect_periodo:
@@ -351,7 +355,7 @@ def inline_periodo_grupo(
                 if has_p:
                     with ui.menu():
                         for gid, gnombre in _cargar_grupos(
-                            s["sel_periodo_id"], None, "directivo"
+                            s["sel_periodo_id"], usuario_id, usuario_rol
                         ):
                             ui.menu_item(
                                 gnombre,
