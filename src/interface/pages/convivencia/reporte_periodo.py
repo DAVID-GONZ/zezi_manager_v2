@@ -55,7 +55,8 @@ _COL_DEFS = [
     {"headerName": "Nivel",        "field": "nivel",        "width": 140},
     {"headerName": "Concepto",     "field": "concepto",     "flex": 2},
     {"headerName": "# Obs.",       "field": "num_obs",      "width": 90, "type": "numericColumn"},
-    {"headerName": "Observaciones", "field": "observaciones", "flex": 3, "wrapText": True, "autoHeight": True},
+    {"headerName": "Observaciones", "field": "observaciones", "flex": 3,
+     "autoHeight": True, "cellClass": "cell-multiline"},
 ]
 
 
@@ -149,10 +150,12 @@ def _filas_grilla(_s: dict) -> list[dict]:
     for f in _s["filas"]:
         out.append({
             "estudiante":   f.nombre,
-            "nota":         f.valor if f.valor is not None else "",
+            "nota":         f.valor,  # None = celda vacía; "" rompe numericColumn
             "nivel":        f.nivel_nombre or "",
             "concepto":     f.concepto or "",
-            "observaciones": "\n".join(f.observaciones) if f.observaciones else "",
+            "observaciones": "\n".join(
+                f"{i + 1}. {obs}" for i, obs in enumerate(f.observaciones)
+            ) if f.observaciones else "",
             "num_obs":      len(f.observaciones),
         })
     return out
@@ -272,11 +275,13 @@ def reporte_periodo_page() -> None:
                         descripcion="No hay estudiantes en este grupo.",
                     )
                 else:
-                    with ui.element("div").classes("aggrid-scroll-wrapper"):
+                    with ui.element("div").classes("aggrid-vh"):
                         ui.aggrid({
-                            "columnDefs":    _COL_DEFS,
-                            "rowData":       filas_dict,
-                            "defaultColDef": {"resizable": True, "sortable": True},
+                            "columnDefs":        _COL_DEFS,
+                            "rowData":           filas_dict,
+                            "defaultColDef":     {"resizable": True, "sortable": True},
+                            "pagination":        True,
+                            "paginationPageSize": 20,
                         }).classes("w-full")
 
     # ── Contenido principal (selector FUERA del refreshable) ────────────────

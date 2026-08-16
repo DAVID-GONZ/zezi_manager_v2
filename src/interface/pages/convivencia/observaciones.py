@@ -48,10 +48,8 @@ from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
-from src.services.convivencia_service import (
-    NuevaObservacionDTO,
-    NuevoRegistroComportamientoDTO,
-)
+from src.interface.pages.convivencia._shared_observacion_form import abrir_crear_observacion_dialog
+from src.services.convivencia_service import NuevoRegistroComportamientoDTO
 
 logger = logging.getLogger("OBSERVACIONES")
 
@@ -71,7 +69,6 @@ _MSG_NO_AUTORIZADO = (
     "Solo el director de grupo, la coordinación o la dirección pueden "
     "gestionar el comportamiento de este grupo."
 )
-
 
 def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
     """Autorización por objeto: ¿puede el usuario gestionar el comportamiento
@@ -103,6 +100,7 @@ def _estado_inicial() -> dict:
         "sel_asignacion_id":     None,
         "sel_asignacion_nombre": "",
         "plantilla_id":          None,
+        "asignaciones_grupo":    [],
     }
 
 
@@ -118,20 +116,6 @@ def _cargar_periodos(_s: dict) -> None:
     except Exception as exc:
         logger.warning("Error cargando periodos: %s", exc)
         _s["periodos"] = []
-
-
-def _cargar_categorias() -> tuple[dict, dict]:
-    try:
-        cats = Container.convivencia_service().listar_categorias(solo_activas=True)
-        opciones = {getattr(c, "id", None): getattr(c, "nombre", "") for c in cats}
-        es_comp = {
-            getattr(c, "id", None): bool(getattr(c, "es_comportamental", False))
-            for c in cats
-        }
-        return opciones, es_comp
-    except Exception as exc:
-        logger.warning("Error cargando categorias: %s", exc)
-        return {}, {}
 
 
 def _cargar_plantillas(categoria_id: int | None = None, limite: int = 20) -> list:
@@ -186,136 +170,33 @@ def observaciones_page() -> None:
 
     # ── Handlers: observaciones ────────────────────────────────────────────────
 
-    def _crear_observacion(datos: dict) -> bool | None:
-        """Crea una observación por cada estudiante seleccionado en el picker."""
-        periodo_id = datos.get("periodo_id")
-        texto = str(datos.get("texto", "")).strip()
-        es_publica = bool(datos.get("es_publica", True))
-        categoria_id = datos.get("categoria_id")
-
-        if not texto:
-            toast_warning("El texto de la observación es requerido.")
-            return False
-        if not periodo_id:
-            toast_warning("Selecciona un periodo.")
-            return False
-        if not categoria_id:
-            toast_warning("Selecciona una categoría para la observación.")
-            return False
-
-        sel_ids = _s["sel_estudiante_ids"]
-        if not sel_ids:
-            toast_warning("No hay estudiantes seleccionados.")
-            return False
-
-        asignacion_id = _s.get("sel_asignacion_id")
-        if not asignacion_id:
-            toast_warning("Selecciona una asignatura en el contexto.")
-            return False
-
-        exitos = 0
-        errores = 0
-        svc = Container.convivencia_service()
-        plantilla_id = _s.get("plantilla_id")
-
-        for est_id in sel_ids:
-            try:
-                dto = NuevaObservacionDTO(
-                    estudiante_id=int(est_id),
-                    asignacion_id=int(asignacion_id),
-                    periodo_id=int(periodo_id),
-                    texto=texto,
-                    categoria_id=int(categoria_id),
-                    es_publica=es_publica,
-                )
-                if plantilla_id:
-                    svc.registrar_observacion_desde_plantilla(
-                        dto, plantilla_id, ctx.usuario_id, ctx.usuario_rol
-                    )
-                else:
-                    svc.registrar_observacion(dto, ctx.usuario_id, ctx.usuario_rol)
-                exitos += 1
-            except PermissionError as exc:
-                toast_warning(f"Sin permiso ({_nombre_estudiante(_s, est_id)}): {exc}")
-                errores += 1
-            except ValueError as exc:
-                toast_warning(f"Validación: {exc}")
-                errores += 1
-            except Exception as exc:
-                logger.error("Error creando obs est=%s: %s", est_id, exc, exc_info=True)
-                errores += 1
-
-        _s["plantilla_id"] = None
-
-        if exitos > 0:
-            msg = f"Observación guardada ({exitos})." if exitos == 1 else f"Observaciones guardadas ({exitos} de {len(sel_ids)})."
-            toast_success(msg)
-            _refrescar_picker()
-            return None
-
-        toast_error(f"No se pudo guardar ninguna observación ({errores} error(es)).")
-        return False
-
     def _abrir_crear_observacion(
         texto_prefill: str = "",
         categoria_id_prefill: int | None = None,
+        plantilla_id: int | None = None,
     ) -> None:
+        """Abre el diálogo de creación de observación usando el helper compartido."""
         sel_ids = _s["sel_estudiante_ids"]
         if not sel_ids:
             toast_warning("Selecciona al menos un estudiante.")
             return
 
-        opciones_per = {
-            getattr(p, "id", None): getattr(p, "nombre", f"Periodo {getattr(p, 'id', '')}")
-            for p in _s["periodos"]
-        }
-        opciones_cat, _ = _cargar_categorias()
+        periodo_id = _s.get("sel_periodo_id")
+        if not periodo_id:
+            toast_warning("Selecciona un periodo.")
+            return
 
-        if len(sel_ids) == 1:
-            sub = _nombre_estudiante(_s, sel_ids[0])
-        else:
-            sub = f"Se aplicará a {len(sel_ids)} estudiantes seleccionados."
+        asignaciones = _s.get("asignaciones_grupo", [])
 
-        campos = [
-            {
-                "key":       "periodo_id",
-                "label":     "Periodo",
-                "tipo":      "select",
-                "opciones":  opciones_per,
-                "valor":     _s["sel_periodo_id"],
-                "requerido": True,
-            },
-            {
-                "key":       "categoria_id",
-                "label":     "Categoría",
-                "tipo":      "select",
-                "opciones":  opciones_cat,
-                "valor":     categoria_id_prefill,
-                "requerido": True,
-            },
-            {
-                "key":         "texto",
-                "label":       "Texto de la observación",
-                "tipo":        "textarea",
-                "placeholder": "Máximo 2000 caracteres...",
-                "valor":       texto_prefill,
-                "requerido":   True,
-            },
-            {
-                "key":   "es_publica",
-                "label": "¿Pública? (aparece en boletín)",
-                "tipo":  "checkbox",
-                "valor": True,
-            },
-        ]
-
-        form_dialog(
-            titulo="Nueva observación",
-            subtitulo=sub,
-            campos=campos,
-            on_submit=_crear_observacion,
-            texto_submit="Guardar",
-            max_width="max-w-lg",
+        abrir_crear_observacion_dialog(
+            ctx=ctx,
+            estudiante_ids=sel_ids,
+            periodo_id=int(periodo_id),
+            asignaciones=asignaciones,
+            on_success=lambda _ex, _er: _refrescar_picker(),
+            plantilla_id=plantilla_id,
+            texto_prefill=texto_prefill,
+            categoria_id_prefill=categoria_id_prefill,
         )
 
     def _abrir_selector_plantilla() -> None:
@@ -345,10 +226,10 @@ def observaciones_page() -> None:
             if plantilla is None:
                 toast_warning("Plantilla no encontrada.")
                 return False
-            _s["plantilla_id"] = getattr(plantilla, "id", None)
             _abrir_crear_observacion(
                 texto_prefill=getattr(plantilla, "texto", ""),
                 categoria_id_prefill=getattr(plantilla, "categoria_id", None),
+                plantilla_id=getattr(plantilla, "id", None),
             )
             return None
 
@@ -537,11 +418,13 @@ def observaciones_page() -> None:
             else:
                 with ui.element("div").classes("aggrid-vh"):
                     grid = ui.aggrid({
-                        "columnDefs":  col_defs,
-                        "rowData":     grid_rows,
-                        "rowSelection": "multiple",
-                        "defaultColDef": {"resizable": True},
-                        "suppressCellFocus": True,
+                        "columnDefs":          col_defs,
+                        "rowData":             grid_rows,
+                        "rowSelection":        "multiple",
+                        "defaultColDef":       {"resizable": True},
+                        "suppressCellFocus":   True,
+                        "pagination":          True,
+                        "paginationPageSize":  20,
                     }).classes("w-full")
                 _refs["grid"] = grid
 
@@ -568,8 +451,16 @@ def observaciones_page() -> None:
                 except Exception as exc:
                     logger.warning("Error cargando estudiantes: %s", exc)
                     _s["estudiantes"] = []
+                try:
+                    _s["asignaciones_grupo"] = Container.asignacion_service().listar_por_grupo(
+                        s["sel_grupo_id"]
+                    )
+                except Exception as exc:
+                    logger.warning("Error cargando asignaciones: %s", exc)
+                    _s["asignaciones_grupo"] = []
             else:
                 _s["estudiantes"] = []
+                _s["asignaciones_grupo"] = []
             panel_grid.refresh()
 
         inline_periodo_grupo_asignatura(

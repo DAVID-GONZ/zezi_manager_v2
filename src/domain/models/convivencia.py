@@ -53,6 +53,17 @@ class TipoRegistro(str, Enum):
     DESCARGO           = "descargo"
 
 
+# Mapa de valores de TipoRegistro a etiquetas legibles para el boletín (convivencia_29).
+# Fuente única de verdad: evita repetir el dict en observaciones.py y en el servicio.
+TIPO_REGISTRO_DISPLAY: dict[str, str] = {
+    "fortaleza":          "Fortaleza",
+    "dificultad":         "Dificultad",
+    "compromiso":         "Compromiso",
+    "citacion_acudiente": "Citación acudiente",
+    "descargo":           "Descargo",
+}
+
+
 # =============================================================================
 # Catálogo de categorías de observación (convivencia_09)
 # =============================================================================
@@ -559,5 +570,6 @@ __all__ = [
     "ReporteConvivenciaFilaDTO",
     "ResumenConvivenciaDTO",
     "Seguimiento360DTO",
+    "TIPO_REGISTRO_DISPLAY",
     "TipoRegistro",
 ]

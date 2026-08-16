@@ -10,15 +10,18 @@ de presentación ni accede directamente a la BD.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Callable
 
 from src.domain.models.dtos import (
     FormatoInforme,
     InformeAsistenciaDTO,
     InformeNotasDTO,
 )
-from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.service_ports import IExporterService
+
+if TYPE_CHECKING:
+    from src.services.convivencia_service import ConvivenciaService
 
 # ── Sanitización de datos para exportación ───────────────────────────────────
 
@@ -95,14 +98,19 @@ class InformeService:
         estadisticos_repo: IEstadisticosRepository,
         exporter: IExporterService | None = None,
         estudiante_repo=None,
-        convivencia_repo: IConvivenciaRepository | None = None,
+        convivencia_svc_provider: Callable[[], "ConvivenciaService"] | None = None,
     ) -> None:
         """Inyecta el repo de estadísticos y, opcionalmente, el exportador,
-        el repo de estudiantes y el repo de convivencia."""
-        self._estadisticos_repo = estadisticos_repo
-        self._exporter          = exporter
-        self._estudiante_repo   = estudiante_repo
-        self._convivencia_repo  = convivencia_repo
+        el repo de estudiantes y un proveedor lazy de ``ConvivenciaService``.
+
+        ``convivencia_svc_provider`` es un callable que retorna
+        ``ConvivenciaService``; se usa lazy para evitar ciclos de wiring.
+        Si es None, los métodos de convivencia retornan dicts vacíos.
+        """
+        self._estadisticos_repo        = estadisticos_repo
+        self._exporter                 = exporter
+        self._estudiante_repo          = estudiante_repo
+        self._convivencia_svc_provider = convivencia_svc_provider
 
     # ------------------------------------------------------------------
     # Helpers
@@ -117,32 +125,56 @@ class InformeService:
         return self._exporter
 
     # ------------------------------------------------------------------
-    # Datos de convivencia para boletín
+    # Datos de convivencia para boletín (convivencia_32 — thin wrappers)
     # ------------------------------------------------------------------
+
+    def _conv_svc(self):
+        """Retorna el ConvivenciaService lazy, o None si no hay provider."""
+        if self._convivencia_svc_provider is None:
+            return None
+        return self._convivencia_svc_provider()
 
     def convivencia_boletin(
         self,
         estudiante_id: int,
         periodo_id: int,
     ) -> dict:
+        """Thin wrapper — delega en ConvivenciaService.paquete_boletin_periodo.
+
+        Claves del dict retornado:
+          nota:                        float | None
+          nota_observacion:            str   | None
+          observaciones:               list[str]   (textos planos — compat retro PDF)
+          observaciones_por_categoria: list[dict]  (formato rico)
+          registros:                   list[dict]  (política convivencia_29)
+
+        Si no hay provider → retorna dict con None/[].
         """
-        Retorna dict con claves:
-          nota: float | None
-          nota_observacion: str | None  (campo NotaComportamiento.observacion)
-          observaciones: list[str]      (ObservacionPeriodo.texto donde es_publica=True)
-        Si no hay convivencia_repo inyectado → retorna dict con None / [].
+        svc = self._conv_svc()
+        if svc is None:
+            return {
+                "nota": None, "nota_observacion": None,
+                "observaciones": [], "registros": [],
+            }
+        return svc.paquete_boletin_periodo(estudiante_id, periodo_id)
+
+    def convivencia_boletin_anual(
+        self,
+        estudiante_id: int,
+        anio_id: int,
+    ) -> dict:
+        """Thin wrapper — delega en ConvivenciaService.paquete_boletin_anual.
+
+        Si no hay provider → retorna estructura vacía sin lanzar excepción.
         """
-        if self._convivencia_repo is None:
-            return {"nota": None, "nota_observacion": None, "observaciones": []}
-        nota = self._convivencia_repo.get_nota(estudiante_id, periodo_id)
-        obs = self._convivencia_repo.listar_observaciones_por_estudiante(
-            estudiante_id, periodo_id, solo_publicas=True
-        )
-        return {
-            "nota":             nota.valor if nota else None,
-            "nota_observacion": nota.observacion if nota else None,
-            "observaciones":    [o.texto for o in obs],
-        }
+        svc = self._conv_svc()
+        if svc is None:
+            return {
+                "periodos": [], "notas_por_periodo": {},
+                "definitiva": None, "concepto": None,
+                "observaciones_por_categoria": [], "registros": [],
+            }
+        return svc.paquete_boletin_anual(estudiante_id, anio_id)
 
     # ------------------------------------------------------------------
     # Informe de notas
@@ -333,6 +365,7 @@ class InformeService:
             return _boletin_mod.generar_boletin_acumulado_pdf(datos)
 
         # Excel: tabla plana acumulada con columna por cada periodo anterior + actual
+        # (convivencia_31) Las columnas de convivencia se llevan a la hoja "Convivencia".
         exporter = self._get_exporter_o_lanzar()
         datos_raw = self._estadisticos_repo.boletin_datos_acumulado(
             estudiante_id, grupo_id, periodo_id
@@ -340,9 +373,6 @@ class InformeService:
         periodos = datos_raw.get("periodos", [])
         label_def = "Definitiva" if datos_raw.get("es_ultimo_periodo") else "Promedio"
         filas: list[dict] = []
-        conv: dict | None = None
-        if self._convivencia_repo is not None:
-            conv = self.convivencia_boletin(estudiante_id, periodo_id)
         for area in datos_raw.get("areas", []):
             for asig in area.get("asignaturas", []):
                 fila: dict = {
@@ -357,11 +387,13 @@ class InformeService:
                 fila["F. Just."]      = asig.get("faltas_justificadas", 0)
                 fila["Retrasos"]      = asig.get("retrasos", 0)
                 fila["Excusas"]       = asig.get("excusas", 0)
-                if conv is not None:
-                    fila["Nota Conv."]    = conv["nota"]
-                    fila["Observaciones"] = " | ".join(conv["observaciones"])
                 filas.append(fila)
-        return exporter.exportar_excel(filas, nombre_hoja="Boletín Periodo")
+        main_bytes = exporter.exportar_excel(filas, nombre_hoja="Boletín Periodo")
+        if self._conv_svc() is None:
+            return main_bytes  # R5: sin provider no se añade hoja de convivencia
+        conv_filas = self._hoja_convivencia_periodo(estudiante_id, periodo_id)
+        conv_bytes = self._serializar_hoja_matriz(conv_filas, "Convivencia")
+        return merge_excels([("Boletín Periodo", main_bytes), ("Convivencia", conv_bytes)])
 
     # ------------------------------------------------------------------
     # Boletín anual (individual por estudiante)
@@ -393,19 +425,22 @@ class InformeService:
             datos = self._estadisticos_repo.boletin_datos_anual(
                 estudiante_id, grupo_id, anio_id
             )
+            datos["convivencia_anual"] = self.convivencia_boletin_anual(estudiante_id, anio_id)
             return _boletin_mod.generar_boletin_anual_pdf(datos)
 
         # Excel: tabla plana con columna por periodo
+        # (convivencia_31) Las columnas de convivencia se llevan a la hoja "Convivencia".
         exporter = self._get_exporter_o_lanzar()
         datos_raw = self._estadisticos_repo.boletin_datos_anual(
             estudiante_id, grupo_id, anio_id
         )
         periodos = datos_raw.get("periodos", [])
+
         filas: list[dict] = []
         for area in datos_raw.get("areas", []):
             for asig in area.get("asignaturas", []):
                 fila: dict = {
-                    "Área":      area["area_nombre"],
+                    "Área":       area["area_nombre"],
                     "Asignatura": asig["nombre"],
                 }
                 for per in periodos:
@@ -418,7 +453,12 @@ class InformeService:
                 fila["Retrasos"]      = asig.get("retrasos", 0)
                 fila["Excusas"]       = asig.get("excusas", 0)
                 filas.append(fila)
-        return exporter.exportar_excel(filas, nombre_hoja="Boletín Anual")
+        main_bytes = exporter.exportar_excel(filas, nombre_hoja="Boletín Anual")
+        if self._conv_svc() is None:
+            return main_bytes  # R5: sin provider no se añade hoja de convivencia
+        conv_filas = self._hoja_convivencia_anual(estudiante_id, anio_id)
+        conv_bytes = self._serializar_hoja_matriz(conv_filas, "Convivencia")
+        return merge_excels([("Boletín Anual", main_bytes), ("Convivencia", conv_bytes)])
 
     # ------------------------------------------------------------------
     # Boletines masivos por grupo (genera + fusiona, sin merge en la vista)
@@ -475,13 +515,292 @@ class InformeService:
         if fmt == FormatoInforme.PDF:
             contenido_final = merge_pdfs(pdfs) if pdfs else None
         else:
+            # (convivencia_31) Añadir hoja resumen "Convivencia — todos" si hay provider.
+            if hojas and self._conv_svc() is not None:
+                resumen_filas = self._hoja_convivencia_resumen_grupo(
+                    grupo_id, periodo_id, anio_id
+                )
+                resumen_bytes = self._serializar_hoja_matriz(
+                    resumen_filas, "Convivencia — todos"
+                )
+                hojas.append(("Convivencia — todos", resumen_bytes))
             contenido_final = merge_excels(hojas) if hojas else None
 
         return BoletinesGrupoDTO(contenido=contenido_final, errores=errores)
 
     # ------------------------------------------------------------------
-    # Helpers privados
+    # Helpers privados — hojas de convivencia (convivencia_31)
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _serializar_hoja_matriz(filas: list[list], nombre: str) -> bytes:
+        """Serializa una matriz irregular (list[list]) como xlsx de una sola hoja.
+
+        No pasa por el puerto IExporterService; usa openpyxl directamente para
+        soportar estructuras heterogéneas (filas con distinto número de celdas).
+        """
+        import io as _io
+
+        import openpyxl as _xl
+
+        wb = _xl.Workbook()
+        ws = wb.active
+        ws.title = nombre[:31]
+        for fila in filas:
+            ws.append(fila if fila else [""])
+        buf = _io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def _hoja_convivencia_periodo(
+        self, estudiante_id: int, periodo_id: int
+    ) -> list[list]:
+        """Matriz para la hoja 'Convivencia' del boletín de periodo individual."""
+        conv = self.convivencia_boletin(estudiante_id, periodo_id)
+        filas: list[list] = [["CONVIVENCIA"], []]
+        filas.append(["Nota de comportamiento",
+                       conv["nota"] if conv["nota"] is not None else "—"])
+        filas.append(["Concepto", conv.get("nota_observacion") or ""])
+        filas.append([])
+        # Observaciones agrupadas por categoría (disponibles desde convivencia_32;
+        # antes de ese paso la clave puede no estar presente → bloque vacío).
+        for grupo in conv.get("observaciones_por_categoria", []):
+            if not grupo["items"]:
+                continue
+            filas.append([grupo["categoria"]])
+            filas.append(["Fecha", "Autor", "Texto"])
+            for it in grupo["items"]:
+                filas.append([it.get("fecha", ""), it.get("autor", ""), it.get("texto", "")])
+            filas.append([])
+        # Registros de comportamiento (convivencia_29)
+        if conv.get("registros"):
+            filas.append(["Eventos"])
+            filas.append(["Fecha", "Tipo", "Descripción"])
+            for r in conv["registros"]:
+                filas.append([r["fecha"], r["tipo"], r["descripcion"]])
+        return filas
+
+    def _hoja_convivencia_anual(
+        self, estudiante_id: int, anio_id: int
+    ) -> list[list]:
+        """Matriz para la hoja 'Convivencia' del boletín anual individual."""
+        conv = self.convivencia_boletin_anual(estudiante_id, anio_id)
+        filas: list[list] = [["CONVIVENCIA ANUAL"], []]
+        # Tabla resumen por periodo
+        filas.append(["Periodo", "Nota", "Concepto"])
+        notas_por_periodo = conv.get("notas_por_periodo", {})
+        for per in conv.get("periodos", []):
+            nota = notas_por_periodo.get(per["id"])
+            filas.append([per["nombre"], nota if nota is not None else "—", ""])
+        filas.append([
+            "Definitiva",
+            conv["definitiva"] if conv["definitiva"] is not None else "—",
+            conv.get("concepto") or "",
+        ])
+        filas.append([])
+        # Observaciones agrupadas por categoría
+        for grupo in conv.get("observaciones_por_categoria", []):
+            if not grupo["items"]:
+                continue
+            filas.append([grupo["categoria"]])
+            filas.append(["Periodo", "Autor", "Texto"])
+            for it in grupo["items"]:
+                filas.append([
+                    it.get("periodo", ""),
+                    it.get("autor", ""),
+                    it.get("texto", ""),
+                ])
+            filas.append([])
+        # Registros del año (convivencia_29)
+        if conv.get("registros"):
+            filas.append(["Eventos"])
+            filas.append(["Fecha", "Tipo", "Descripción"])
+            for r in conv["registros"]:
+                filas.append([r["fecha"], r["tipo"], r["descripcion"]])
+        return filas
+
+    def _hoja_convivencia_resumen_grupo(
+        self,
+        grupo_id: int,
+        periodo_id: int | None,
+        anio_id: int | None,
+    ) -> list[list]:
+        """Matriz para la hoja 'Convivencia — todos' del libro masivo.
+
+        Modo periodo (periodo_id not None): encabezado Estudiante|Nota|Concepto|
+        #Obs.|#Eventos + pies de obs y registros.
+        Modo anual (anio_id not None): encabezado Estudiante|P1|P2|…|Definitiva|
+        Concepto final|#Obs.|#Eventos.
+
+        Si no hay convivencia_repo o estudiante_repo → fila vacía con aviso.
+        """
+        _svc = self._conv_svc()
+        if _svc is None or self._estudiante_repo is None:
+            return [["Sin datos de convivencia disponibles"]]
+        # Acceso al repo a través del servicio (convivencia_32: ya no hay _convivencia_repo).
+        _repo = _svc._repo
+
+        from src.domain.models.convivencia import (
+            FiltroConvivenciaDTO,
+            TIPO_REGISTRO_DISPLAY,
+        )
+
+        estudiantes = sorted(
+            self._estudiante_repo.listar_por_grupo(grupo_id),
+            key=lambda e: (
+                f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".lower()
+            ),
+        )
+        est_nombre = {
+            e.id: f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
+            for e in estudiantes
+        }
+
+        filas: list[list] = []
+
+        if periodo_id is not None:
+            # ── Modo periodo ───────────────────────────────────────────
+            filas.append([f"CONVIVENCIA — Grupo {grupo_id} — Periodo {periodo_id}"])
+            filas.append([])
+            filas.append(["Estudiante", "Nota", "Concepto", "# Obs. públicas", "# Eventos"])
+
+            # Batch: observaciones públicas del grupo en el periodo
+            try:
+                obs_all = _repo.listar_observaciones_por_grupo(
+                    grupo_id, periodo_id, solo_publicas=True
+                )
+            except Exception:
+                obs_all = []
+            obs_count: dict[int, int] = {}
+            for o in obs_all:
+                obs_count[o.estudiante_id] = obs_count.get(o.estudiante_id, 0) + 1
+
+            # Batch: registros del grupo en el periodo
+            try:
+                regs_all = _repo.listar_registros(
+                    FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id)
+                )
+            except Exception:
+                regs_all = []
+            reg_count: dict[int, int] = {}
+            for r in regs_all:
+                reg_count[r.estudiante_id] = reg_count.get(r.estudiante_id, 0) + 1
+
+            for est in estudiantes:
+                nota_obj = _repo.get_nota(est.id, periodo_id)
+                nota_val = nota_obj.valor if nota_obj is not None else None
+                concepto = (
+                    (nota_obj.observacion if nota_obj is not None else None) or ""
+                )
+                filas.append([
+                    est_nombre.get(est.id, ""),
+                    nota_val if nota_val is not None else "—",
+                    concepto,
+                    obs_count.get(est.id, 0),
+                    reg_count.get(est.id, 0),
+                ])
+
+            # Pie — Observaciones públicas (todas)
+            if obs_all:
+                filas.append([])
+                filas.append(["Observaciones públicas (todas)"])
+                filas.append(["Estudiante", "Categoría", "Fecha", "Autor", "Texto"])
+                for o in sorted(
+                    obs_all,
+                    key=lambda x: (est_nombre.get(x.estudiante_id, ""), str(x.categoria_id or "")),
+                ):
+                    fecha_str = (
+                        str(o.fecha_registro.date())
+                        if hasattr(o.fecha_registro, "date")
+                        else str(o.fecha_registro)
+                    )
+                    filas.append([
+                        est_nombre.get(o.estudiante_id, ""),
+                        str(o.categoria_id or ""),
+                        fecha_str,
+                        "",  # autor: ObservacionPeriodo solo tiene usuario_id (migrar en 32)
+                        o.texto,
+                    ])
+
+            # Pie — Eventos de convivencia
+            if regs_all:
+                filas.append([])
+                filas.append(["Eventos de convivencia"])
+                filas.append(["Estudiante", "Fecha", "Tipo", "Descripción"])
+                for r in sorted(
+                    regs_all,
+                    key=lambda x: (est_nombre.get(x.estudiante_id, ""), str(x.fecha)),
+                ):
+                    filas.append([
+                        est_nombre.get(r.estudiante_id, ""),
+                        str(r.fecha),
+                        TIPO_REGISTRO_DISPLAY.get(r.tipo.value, r.tipo.value),
+                        r.descripcion,
+                    ])
+
+        else:
+            # ── Modo anual ─────────────────────────────────────────────
+            periodos = []
+            if _svc._periodo_svc_provider is not None:
+                try:
+                    periodos = _svc._periodo_svc_provider().listar_por_anio(anio_id)
+                except Exception:
+                    periodos = []
+
+            filas.append([f"CONVIVENCIA — Grupo {grupo_id} — Año {anio_id}"])
+            filas.append([])
+            per_headers = [p.nombre for p in periodos]
+            filas.append(
+                ["Estudiante"] + per_headers + ["Definitiva", "Concepto final",
+                                                "# Obs. públicas", "# Eventos"]
+            )
+
+            for est in estudiantes:
+                notas_est = {
+                    n.periodo_id: n
+                    for n in _repo.listar_notas_por_estudiante(est.id)
+                }
+                notas_vals = [
+                    (notas_est[p.id].valor if p.id in notas_est else None)
+                    for p in periodos
+                ]
+                notas_presentes = [v for v in notas_vals if v is not None]
+                definitiva = (
+                    round(sum(notas_presentes) / len(notas_presentes), 2)
+                    if notas_presentes else None
+                )
+                # Concepto del último periodo con nota
+                concepto_final = ""
+                for p in reversed(periodos):
+                    if p.id in notas_est and notas_est[p.id].observacion:
+                        concepto_final = notas_est[p.id].observacion
+                        break
+
+                # Contar obs y eventos del año
+                obs_cnt = sum(
+                    len(_repo.listar_observaciones_por_estudiante(
+                        est.id, p.id, solo_publicas=True
+                    ))
+                    for p in periodos
+                )
+                reg_cnt = sum(
+                    len(_repo.listar_registros(
+                        FiltroConvivenciaDTO(estudiante_id=est.id, periodo_id=p.id)
+                    ))
+                    for p in periodos
+                )
+
+                fila_vals = [
+                    (v if v is not None else "—") for v in notas_vals
+                ]
+                filas.append(
+                    [est_nombre.get(est.id, "")]
+                    + fila_vals
+                    + [definitiva if definitiva is not None else "—",
+                       concepto_final, obs_cnt, reg_cnt]
+                )
+
+        return filas
 
     # ------------------------------------------------------------------
     # Exportación de estadísticos (encapsula el pipeline de la vista)

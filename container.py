@@ -428,6 +428,8 @@ class Container:
                 # (convivencia_11) — verifica que el profesor sea titular de
                 # la asignación antes de permitir registrar/actualizar.
                 asignacion_svc_provider=cls.asignacion_service,
+                # Provider lazy: política de registros en boletín (convivencia_29).
+                preferencias_svc_provider=cls.preferencias_service,
             ),
         )
 
@@ -457,7 +459,8 @@ class Container:
                 estadisticos_repo=cls.estadisticos_repo(),
                 exporter=cls.exporter_service(),
                 estudiante_repo=cls.estudiante_repo(),
-                convivencia_repo=cls.convivencia_repo(),
+                # Provider lazy: ConvivenciaService orquesta todo (convivencia_32).
+                convivencia_svc_provider=cls.convivencia_service,
             ),
         )
 

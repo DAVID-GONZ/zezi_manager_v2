@@ -51,3 +51,11 @@ html[data-theme="dark"] .ag-theme-balham .ag-row-focus {
 .aggrid-vh .nicegui-aggrid {
   height: 100%;
 }
+
+/* Celda con saltos de línea explícitos (\n en el valor se renderizan como
+   quiebres visuales). Usar con autoHeight:true en la columna ag-Grid. */
+.ag-cell.cell-multiline {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  line-height: 1.5;
+}

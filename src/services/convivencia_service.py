@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from src.services.configuracion_service import ConfiguracionService
     from src.services.estudiante_service import EstudianteService
     from src.services.periodo_service import PeriodoService
+    from src.services.preferencias_institucion_service import PreferenciasInstitucionService
 
 
 class ConvivenciaService:
@@ -57,6 +58,7 @@ class ConvivenciaService:
         estudiante_svc_provider: Callable[[], "EstudianteService"] | None = None,
         exporter: IExporterService | None = None,
         asignacion_svc_provider: Callable[[], "AsignacionService"] | None = None,
+        preferencias_svc_provider: Callable[[], "PreferenciasInstitucionService"] | None = None,
     ) -> None:
         """Inyecta el repositorio de convivencia y el de alertas (opcional).
 
@@ -74,6 +76,11 @@ class ConvivenciaService:
         `exporter` es la implementación de `IExporterService` (puerto de
         infraestructura) usada por `exportar_reporte_periodo_grupo`. Si es
         None, la exportación lanza RuntimeError.
+
+        `preferencias_svc_provider` es un proveedor lazy de
+        `PreferenciasInstitucionService` para leer la política de registros
+        en boletín (convivencia_29). Si es None, `_get_prefs_convivencia`
+        retorna los defaults del DTO (compat retro scripts/tests sin wiring).
         """
         self._repo        = repo
         self._alerta_repo = alerta_repo
@@ -83,6 +90,7 @@ class ConvivenciaService:
         self._estudiante_svc_provider = estudiante_svc_provider
         self._exporter    = exporter
         self._asignacion_svc_provider = asignacion_svc_provider
+        self._preferencias_svc_provider = preferencias_svc_provider
 
     # ── Resolución de institución (multi-tenant — mejora_07-T3) ─────────────────
 
@@ -147,6 +155,267 @@ class ConvivenciaService:
                 f"Observación con id {observacion_id} no existe."
             )
         return obs
+
+    def _get_prefs_convivencia(self):
+        """Retorna las preferencias de convivencia del tenant activo.
+
+        Si `_preferencias_svc_provider` no está disponible o el tenant no
+        se puede resolver, retorna una instancia ``PreferenciasDTO()`` con
+        los defaults conservadores (compat retro scripts/tests sin wiring).
+        """
+        from src.domain.models.preferencia_institucion import PreferenciasDTO
+        if self._preferencias_svc_provider is None:
+            return PreferenciasDTO()
+        try:
+            from src.services.contexto_tenant import institucion_actual
+            inst_id = institucion_actual()
+            if inst_id is None:
+                return PreferenciasDTO()
+            return self._preferencias_svc_provider().get_dto(inst_id)
+        except Exception:
+            return PreferenciasDTO()
+
+    def _registros_informables_periodo(
+        self,
+        estudiante_id: int,
+        periodo_id: int,
+        excluir_ids: set[int] | None = None,
+    ) -> list[dict]:
+        """Registros de comportamiento del estudiante en el periodo que deben
+        aparecer en el boletín, aplicando la política configurada por tenant.
+
+        Returns:
+            Lista de dicts ``{"fecha": str, "tipo": str, "descripcion": str}``
+            ordenada por ``fecha`` ascendente.
+
+        Si `excluir_ids` se proporciona y `registros_boletin_dedup_observaciones`
+        está activo, los registros cuyo ``id`` esté en el conjunto se omiten
+        (ya aparecen como observación pública y duplicarlos no aporta valor).
+        """
+        from src.domain.models.convivencia import TIPO_REGISTRO_DISPLAY
+        prefs = self._get_prefs_convivencia()
+        tipos = set(prefs.registros_boletin_tipos)
+        if not prefs.registros_boletin_incluye_descargo:
+            tipos.discard("descargo")
+        filtro = FiltroConvivenciaDTO(estudiante_id=estudiante_id, periodo_id=periodo_id)
+        regs = self._repo.listar_registros(filtro)
+        excluir = excluir_ids or set()
+        resultado: list[dict] = []
+        for r in regs:
+            if r.tipo.value not in tipos:
+                continue
+            if (
+                r.tipo.value == "dificultad"
+                and prefs.registros_boletin_dificultad_requiere_notificacion
+                and not r.acudiente_notificado
+            ):
+                continue
+            if prefs.registros_boletin_dedup_observaciones and r.id in excluir:
+                continue
+            resultado.append({
+                "fecha":       str(r.fecha),
+                "tipo":        TIPO_REGISTRO_DISPLAY.get(r.tipo.value, r.tipo.value),
+                "descripcion": r.descripcion,
+            })
+        resultado.sort(key=lambda d: d["fecha"])
+        return resultado
+
+    # ------------------------------------------------------------------
+    # Paquetes de convivencia para boletín (convivencia_32)
+    # ------------------------------------------------------------------
+
+    def _agrupar_obs_por_categoria(
+        self, obs: list["ObservacionPeriodo"]
+    ) -> list[dict]:
+        """Agrupa observaciones por categoría con nombre resuelto.
+
+        Orden: activas A-Z → inactivas → "Sin categoría".
+        Items incluyen fecha, autor y texto (para boletín de periodo).
+        """
+        categorias = self._repo.listar_categorias(solo_activas=False)
+        cat_map = {c.id: c for c in categorias if c.id is not None}
+
+        obs_por_cat: dict[int | None, list[dict]] = {}
+        for o in obs:
+            autor: str = getattr(o, "usuario", "") or ""
+            fecha_str = str(o.fecha) if getattr(o, "fecha", None) is not None else ""
+            item = {
+                "fecha": fecha_str,
+                "autor": autor,
+                "texto": o.texto,
+            }
+            obs_por_cat.setdefault(o.categoria_id, []).append(item)
+
+        def _sort_key(cat_id: int | None) -> tuple:
+            if cat_id is None:
+                return (2, "")
+            cat = cat_map.get(cat_id)
+            if cat is None:
+                return (2, "")
+            return (0 if cat.activa else 1, cat.nombre.lower())
+
+        sorted_ids = sorted(obs_por_cat.keys(), key=_sort_key)
+        resultado: list[dict] = []
+        for cat_id in sorted_ids:
+            if cat_id is None:
+                cat_nombre = "Sin categoría"
+            else:
+                cat = cat_map.get(cat_id)
+                cat_nombre = cat.nombre if cat else "Sin categoría"
+            resultado.append({
+                "categoria": cat_nombre,
+                "items":     obs_por_cat[cat_id],
+            })
+        return resultado
+
+    def paquete_boletin_periodo(
+        self, estudiante_id: int, periodo_id: int
+    ) -> dict:
+        """Retorna el paquete de convivencia para el boletín de un periodo.
+
+        Claves:
+          nota:                        float | None
+          nota_observacion:            str   | None
+          observaciones:               list[str]   (textos planos — compat retro PDF)
+          observaciones_por_categoria: list[dict]  (formato rico con fecha/autor/texto)
+          registros:                   list[dict]  (política convivencia_29)
+        """
+        nota = self._repo.get_nota(estudiante_id, periodo_id)
+        obs = self._repo.listar_observaciones_por_estudiante(
+            estudiante_id, periodo_id, solo_publicas=True
+        )
+        excluir_ids: set[int] = {
+            o.registro_comportamiento_id for o in obs
+            if o.registro_comportamiento_id is not None
+        }
+        return {
+            "nota":             nota.valor if nota else None,
+            "nota_observacion": nota.observacion if nota else None,
+            "observaciones":    [o.texto for o in obs],
+            "observaciones_por_categoria": self._agrupar_obs_por_categoria(obs),
+            "registros":        self._registros_informables_periodo(
+                estudiante_id, periodo_id, excluir_ids
+            ),
+        }
+
+    def paquete_boletin_anual(
+        self, estudiante_id: int, anio_id: int
+    ) -> dict:
+        """Retorna el paquete de convivencia para el boletín anual.
+
+        Requiere ``periodo_svc_provider``. Si no está disponible, retorna vacío.
+
+        Claves:
+          periodos:                    list[{"id", "nombre"}]
+          notas_por_periodo:           dict[periodo_id, float | None]
+          definitiva:                  float | None
+          concepto:                    str   | None
+          observaciones_por_categoria: list[dict] (items con "periodo" en vez de "fecha")
+          registros:                   list[dict]  (política convivencia_29, agregado anual)
+        """
+        _empty: dict = {
+            "periodos": [],
+            "notas_por_periodo": {},
+            "definitiva": None,
+            "concepto": None,
+            "observaciones_por_categoria": [],
+            "registros": [],
+        }
+        if self._periodo_svc_provider is None:
+            return _empty
+
+        periodos = self._periodo_svc_provider().listar_por_anio(anio_id)
+        if not periodos:
+            return _empty
+
+        periodo_lista = [{"id": p.id, "nombre": p.nombre} for p in periodos]
+        periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
+
+        # ── Notas por periodo ─────────────────────────────────────────
+        notas_dict = {
+            n.periodo_id: n
+            for n in self._repo.listar_notas_por_estudiante(estudiante_id)
+        }
+        notas_por_periodo: dict[int, float | None] = {}
+        ultimo_con_nota = None
+
+        for p in periodos:
+            nota_obj = notas_dict.get(p.id)
+            if nota_obj is not None:
+                notas_por_periodo[p.id] = nota_obj.valor
+                ultimo_con_nota = nota_obj
+            else:
+                notas_por_periodo[p.id] = None
+
+        notas_presentes = [v for v in notas_por_periodo.values() if v is not None]
+        definitiva = (
+            round(sum(notas_presentes) / len(notas_presentes), 2)
+            if notas_presentes else None
+        )
+        concepto: str | None = None
+        if ultimo_con_nota is not None and ultimo_con_nota.observacion:
+            concepto = ultimo_con_nota.observacion
+
+        # ── Observaciones públicas agrupadas por categoría ─────────
+        categorias = self._repo.listar_categorias(solo_activas=False)
+        cat_map = {c.id: c for c in categorias if c.id is not None}
+
+        obs_por_cat: dict[int | None, list[dict]] = {}
+        excluir_ids_anual: set[int] = set()
+        for p in periodos:
+            obs_list = self._repo.listar_observaciones_por_estudiante(
+                estudiante_id, p.id, solo_publicas=True
+            )
+            for obs in obs_list:
+                cat_id = obs.categoria_id
+                autor: str = getattr(obs, "usuario", "") or ""
+                item = {
+                    "periodo": periodo_nombre_map[p.id],
+                    "autor":   autor,
+                    "texto":   obs.texto,
+                }
+                obs_por_cat.setdefault(cat_id, []).append(item)
+                if obs.registro_comportamiento_id is not None:
+                    excluir_ids_anual.add(obs.registro_comportamiento_id)
+
+        def _cat_sort_key(cat_id: int | None) -> tuple:
+            if cat_id is None:
+                return (2, "")
+            cat = cat_map.get(cat_id)
+            if cat is None:
+                return (2, "")
+            return (0 if cat.activa else 1, cat.nombre.lower())
+
+        sorted_cat_ids = sorted(obs_por_cat.keys(), key=_cat_sort_key)
+        observaciones_por_categoria: list[dict] = []
+        for cat_id in sorted_cat_ids:
+            if cat_id is None:
+                cat_nombre = "Sin categoría"
+            else:
+                cat = cat_map.get(cat_id)
+                cat_nombre = cat.nombre if cat else "Sin categoría"
+            observaciones_por_categoria.append({
+                "categoria": cat_nombre,
+                "items":     obs_por_cat[cat_id],
+            })
+
+        # ── Registros de comportamiento (convivencia_29) ──────────
+        registros_anual: list[dict] = []
+        for p in periodos:
+            regs_p = self._registros_informables_periodo(
+                estudiante_id, p.id, excluir_ids_anual
+            )
+            registros_anual.extend(regs_p)
+        registros_anual.sort(key=lambda d: d["fecha"])
+
+        return {
+            "periodos":                    periodo_lista,
+            "notas_por_periodo":           notas_por_periodo,
+            "definitiva":                  definitiva,
+            "concepto":                    concepto,
+            "observaciones_por_categoria": observaciones_por_categoria,
+            "registros":                   registros_anual,
+        }
 
     def _verificar_alerta_comportamiento(
         self,

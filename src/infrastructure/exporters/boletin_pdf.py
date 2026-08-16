@@ -374,8 +374,20 @@ def _tabla_anual(
 
 # ── Sección de observaciones y firmas ─────────────────────────────────────────
 
-def _observaciones_y_firmas(page_w: float, convivencia: dict | None = None) -> list:
-    """Bloque inferior: caja de observaciones + líneas de firma."""
+def _observaciones_y_firmas(
+    page_w: float,
+    convivencia: dict | None = None,
+    convivencia_anual: dict | None = None,
+) -> list:
+    """Bloque inferior: caja de observaciones + líneas de firma.
+
+    Modos:
+    - ``convivencia_anual`` (prioritario): muestra notas por periodo, definitiva,
+      concepto final y observaciones agrupadas por categoría.  Usado por el boletín anual.
+    - ``convivencia`` (fallback): modo por-periodo original.  Usado por boletín de periodo
+      y boletín acumulado.
+    - Sin datos: renderiza una caja vacía (rectángulo de 2.2 cm de alto).
+    """
     story: list = []
     story.append(Spacer(1, 0.4 * cm))
     story.append(HRFlowable(width=page_w, thickness=0.5, color=_GRIS_LINEA))
@@ -387,7 +399,60 @@ def _observaciones_y_firmas(page_w: float, convivencia: dict | None = None) -> l
 
     # Construir párrafos de convivencia
     parrafos: list = []
-    if convivencia:
+
+    if convivencia_anual is not None:
+        # ── Modo anual ────────────────────────────────────────────────
+        periodos_anual  = convivencia_anual.get("periodos", [])
+        notas_p         = convivencia_anual.get("notas_por_periodo", {})
+        definitiva_anual = convivencia_anual.get("definitiva")
+        concepto_anual  = convivencia_anual.get("concepto")
+        obs_cats        = convivencia_anual.get("observaciones_por_categoria", [])
+
+        if periodos_anual or definitiva_anual is not None:
+            partes: list[str] = []
+            for per in periodos_anual:
+                n = notas_p.get(per["id"])
+                partes.append(f"{per['nombre']}: {n:.1f}" if n is not None else f"{per['nombre']}: —")
+            def_str = f"{definitiva_anual:.1f}" if definitiva_anual is not None else "—"
+            linea_notas = (
+                " · ".join(partes) + f" · Definitiva: {def_str}"
+                if partes else f"Definitiva: {def_str}"
+            )
+            parrafos.append(Paragraph(
+                f"Comportamiento — {linea_notas}", _sty["bold"]
+            ))
+
+        if concepto_anual:
+            parrafos.append(Paragraph(concepto_anual, _sty["normal"]))
+
+        for grupo in obs_cats:
+            cat_nombre = grupo.get("categoria", "")
+            items = grupo.get("items", [])
+            if items:
+                parrafos.append(Paragraph(cat_nombre, _sty["subtitle"]))
+                for item in items:
+                    periodo_str = item.get("periodo", "")
+                    autor       = item.get("autor", "")
+                    texto       = item.get("texto", "")
+                    if autor:
+                        bullet = f"• [{periodo_str}] · {autor}: {texto}"
+                    else:
+                        bullet = f"• [{periodo_str}]: {texto}"
+                    parrafos.append(Paragraph(bullet, _sty["normal"]))
+
+        # ── Eventos de convivencia (convivencia_29) ────────────────────
+        registros_anual = convivencia_anual.get("registros", [])
+        if registros_anual:
+            parrafos.append(Spacer(1, 0.15 * cm))
+            parrafos.append(Paragraph("EVENTOS DE CONVIVENCIA:", _sty["bold"]))
+            for reg in registros_anual:
+                fecha = reg.get("fecha", "")
+                tipo  = reg.get("tipo", "")
+                desc  = reg.get("descripcion", "")
+                parrafos.append(Paragraph(f"- {fecha} · {tipo}: {desc}", _sty["normal"]))
+
+    elif convivencia:
+        # ── Modo por periodo (original) ───────────────────────────────
         nota = convivencia.get("nota")
         nota_obs = convivencia.get("nota_observacion")
         observaciones = convivencia.get("observaciones", [])
@@ -397,6 +462,17 @@ def _observaciones_y_firmas(page_w: float, convivencia: dict | None = None) -> l
             parrafos.append(Paragraph(nota_obs, _sty["normal"]))
         for texto in observaciones:
             parrafos.append(Paragraph(f"• {texto}", _sty["normal"]))
+
+        # ── Eventos de convivencia (convivencia_29) ────────────────────
+        registros_periodo = convivencia.get("registros", [])
+        if registros_periodo:
+            parrafos.append(Spacer(1, 0.15 * cm))
+            parrafos.append(Paragraph("EVENTOS DE CONVIVENCIA:", _sty["bold"]))
+            for reg in registros_periodo:
+                fecha = reg.get("fecha", "")
+                tipo  = reg.get("tipo", "")
+                desc  = reg.get("descripcion", "")
+                parrafos.append(Paragraph(f"- {fecha} · {tipo}: {desc}", _sty["normal"]))
 
     # Caja de observaciones: con contenido o vacía
     if parrafos:
@@ -568,7 +644,11 @@ def _build_boletin_anual_pdf(datos: dict[str, Any], label_definitiva: str = "Def
             _sty["promo"],
         ))
 
-    story.extend(_observaciones_y_firmas(page_w, datos.get("convivencia")))
+    story.extend(_observaciones_y_firmas(
+        page_w,
+        convivencia=datos.get("convivencia"),
+        convivencia_anual=datos.get("convivencia_anual"),
+    ))
     doc.build(story)
     return buf.getvalue()
 

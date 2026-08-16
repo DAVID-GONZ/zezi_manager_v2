@@ -57,6 +57,21 @@ logger = logging.getLogger("EVALUACION.PLANILLA")
 _ROLES_DIRECTIVOS = ("director", "coordinador")
 
 
+def _build_grid_options() -> dict:
+    """Configura el ag-grid para edición por teclado con movimiento de celda."""
+    return {
+        "defaultColDef": {
+            "sortable": True,
+            "resizable": True,
+        },
+        "singleClickEdit": True,
+        "stopEditingWhenCellsLoseFocus": True,
+        "suppressCellFocus": False,
+        "enableCellTextSelection": True,
+        "navigateToNextCell": True,
+    }
+
+
 def _promedio_cat(notas_dict: dict, acts_de_cat: list) -> float | None:
     vals = [notas_dict.get(a.id) for a in acts_de_cat if notas_dict.get(a.id) is not None]
     if not vals:
@@ -556,11 +571,9 @@ def planilla_notas_page() -> None:
             row_data.append(row)
 
         grid = ui.aggrid({
+            **_build_grid_options(),
             "columnDefs":                col_defs,
             "rowData":                   row_data,
-            "defaultColDef":             {"sortable": True, "resizable": True},
-            "singleClickEdit":           True,
-            "stopEditingWhenCellsLoseFocus": True,
         }).classes("w-full h-grid-default")
 
         async def on_cell_edit(e) -> None:

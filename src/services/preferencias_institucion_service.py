@@ -22,6 +22,11 @@ CLAVES_CONOCIDAS: frozenset[str] = frozenset({
     "modulo_alertas_activo",
     "color_primario",
     "color_secundario",
+    # Política de registros en el boletín (convivencia_29)
+    "registros_boletin_tipos",
+    "registros_boletin_dificultad_requiere_notificacion",
+    "registros_boletin_incluye_descargo",
+    "registros_boletin_dedup_observaciones",
 })
 
 _MODULO_A_CLAVE: dict[str, str] = {
@@ -76,7 +81,7 @@ class PreferenciasInstitucionService:
 
 
 def _inferir_categoria(clave: str) -> CategoriaPreferencia:
-    if clave.startswith("modulo_"):
+    if clave.startswith("modulo_") or clave.startswith("registros_boletin_"):
         return CategoriaPreferencia.CONVIVENCIA
     if clave.startswith("color_"):
         return CategoriaPreferencia.APARIENCIA
@@ -84,8 +89,14 @@ def _inferir_categoria(clave: str) -> CategoriaPreferencia:
 
 
 def _inferir_tipo(clave: str) -> TipoValor:
-    if clave.startswith("modulo_"):
+    if clave.startswith("modulo_") or clave in (
+        "registros_boletin_dificultad_requiere_notificacion",
+        "registros_boletin_incluye_descargo",
+        "registros_boletin_dedup_observaciones",
+    ):
         return TipoValor.BOOL
+    if clave == "registros_boletin_tipos":
+        return TipoValor.JSON
     if clave == "numero_periodos_default":
         return TipoValor.INT
     if clave in ("color_primario", "color_secundario"):

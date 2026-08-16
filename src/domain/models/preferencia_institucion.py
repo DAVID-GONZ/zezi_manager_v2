@@ -8,7 +8,7 @@ from __future__ import annotations
 import json as _json
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CategoriaPreferencia(str, Enum):
@@ -59,6 +59,14 @@ class PreferenciasDTO(BaseModel):
     modulo_alertas_activo:          bool       = True
     color_primario:                 str | None = "#2E3192"
     color_secundario:               str | None = "#8B90F0"
+    # Política de registros de comportamiento en el boletín (convivencia_29).
+    # Defaults conservadores aprobados por David 2026-08-12.
+    registros_boletin_tipos: list[str] = Field(
+        default_factory=lambda: ["fortaleza", "compromiso", "citacion_acudiente"]
+    )
+    registros_boletin_dificultad_requiere_notificacion: bool = True
+    registros_boletin_incluye_descargo:                 bool = False
+    registros_boletin_dedup_observaciones:              bool = True
 
 
 class ActualizarPreferenciaDTO(BaseModel):

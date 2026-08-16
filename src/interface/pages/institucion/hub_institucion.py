@@ -60,6 +60,16 @@ _OPCIONES_JORNADA: list[str] = ["AM", "PM", "UNICA"]
 _OPCIONES_TIPO:    list[str] = ["publica", "privada"]
 _OPCIONES_CAL:     list[str] = ["A", "B"]
 
+# Mapa de tipos de registro para el multi-select del boletín (convivencia_29).
+# Espejo de TIPO_REGISTRO_DISPLAY del dominio — sin importar src.domain.models.*.
+_OPCIONES_TIPO_REGISTRO: dict[str, str] = {
+    "fortaleza":          "Fortaleza",
+    "dificultad":         "Dificultad",
+    "compromiso":         "Compromiso",
+    "citacion_acudiente": "Citación acudiente",
+    "descargo":           "Descargo",
+}
+
 
 # ── Estado inicial ────────────────────────────────────────────────────────────
 
@@ -94,6 +104,13 @@ def _estado_inicial() -> dict:
         "apariencia": {
             "color_primario":   None,
             "color_secundario": None,
+        },
+        # Política de registros de convivencia en el boletín (convivencia_29).
+        "convivencia": {
+            "registros_boletin_tipos":                          ["fortaleza", "compromiso", "citacion_acudiente"],
+            "registros_boletin_dificultad_requiere_notificacion": True,
+            "registros_boletin_incluye_descargo":               False,
+            "registros_boletin_dedup_observaciones":            True,
         },
     }
 
@@ -139,6 +156,12 @@ def _cargar_estado(inst_id: int, _s: dict) -> None:
         _s["apariencia"].update({
             "color_primario":   prefs.color_primario,
             "color_secundario": prefs.color_secundario,
+        })
+        _s["convivencia"].update({
+            "registros_boletin_tipos":                          prefs.registros_boletin_tipos,
+            "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
+            "registros_boletin_incluye_descargo":               prefs.registros_boletin_incluye_descargo,
+            "registros_boletin_dedup_observaciones":            prefs.registros_boletin_dedup_observaciones,
         })
     except Exception as exc:
         logger.error("Error cargando preferencias: %s", exc)
@@ -605,6 +628,98 @@ def hub_institucion_page() -> None:  # noqa: C901
             btn_ghost("Recargar", on_click=_recargar_apariencia, icon="refresh")
             btn_primary("Guardar cambios", on_click=_guardar_apariencia, icon="save")
 
+    # ── Sección Convivencia — Eventos en el boletín (convivencia_29) ─────────
+    @ui.refreshable
+    def _panel_convivencia() -> None:
+        import json as _json
+
+        ui.label(
+            "Configura qué eventos de convivencia aparecen en el boletín del estudiante."
+        ).classes("text-muted u-mb-sm")
+
+        with ui.element("div").classes("u-stack-sm"):
+
+            with ui.element("div").classes("base-form-field-col"):
+                ui.label("Tipos de evento incluidos en el boletín").classes("section-subtitle")
+                tipos_select = (
+                    ui.select(
+                        options=_OPCIONES_TIPO_REGISTRO,
+                        multiple=True,
+                        value=_s["convivencia"]["registros_boletin_tipos"],
+                        label="Tipos de evento",
+                    )
+                    .classes("andes-input w-full")
+                    .props("outlined")
+                )
+
+            with ui.element("div").classes("form-box"):
+                dificultad_notif_cb = ui.checkbox(
+                    "Solo incluir dificultades cuando el acudiente ha sido notificado",
+                    value=_s["convivencia"]["registros_boletin_dificultad_requiere_notificacion"],
+                )
+
+            with ui.element("div").classes("form-box"):
+                descargo_cb = ui.checkbox(
+                    "Incluir descargos",
+                    value=_s["convivencia"]["registros_boletin_incluye_descargo"],
+                )
+
+            with ui.element("div").classes("form-box"):
+                dedup_cb = ui.checkbox(
+                    "No duplicar eventos que ya aparecen como observación pública",
+                    value=_s["convivencia"]["registros_boletin_dedup_observaciones"],
+                )
+
+        def _guardar_convivencia() -> None:
+            try:
+                svc = Container.preferencias_service()
+                tipos = list(tipos_select.value) if tipos_select.value else []
+                svc.set(inst_id, ActualizarPreferenciaDTO(
+                    clave="registros_boletin_tipos",
+                    valor=_json.dumps(tipos),
+                ))
+                svc.set(inst_id, ActualizarPreferenciaDTO(
+                    clave="registros_boletin_dificultad_requiere_notificacion",
+                    valor=str(bool(dificultad_notif_cb.value)).lower(),
+                ))
+                svc.set(inst_id, ActualizarPreferenciaDTO(
+                    clave="registros_boletin_incluye_descargo",
+                    valor=str(bool(descargo_cb.value)).lower(),
+                ))
+                svc.set(inst_id, ActualizarPreferenciaDTO(
+                    clave="registros_boletin_dedup_observaciones",
+                    valor=str(bool(dedup_cb.value)).lower(),
+                ))
+                _s["convivencia"].update({
+                    "registros_boletin_tipos":                          tipos,
+                    "registros_boletin_dificultad_requiere_notificacion": bool(dificultad_notif_cb.value),
+                    "registros_boletin_incluye_descargo":               bool(descargo_cb.value),
+                    "registros_boletin_dedup_observaciones":            bool(dedup_cb.value),
+                })
+                toast_success("Configuración de convivencia en boletín actualizada.")
+            except ValueError as exc:
+                toast_warning(str(exc))
+            except Exception as exc:
+                logger.error("Error guardando convivencia: %s", exc, exc_info=True)
+                toast_error("Error al guardar la configuración de convivencia.")
+
+        def _recargar_convivencia() -> None:
+            try:
+                prefs = Container.preferencias_service().get_dto(inst_id)
+                _s["convivencia"].update({
+                    "registros_boletin_tipos":                          prefs.registros_boletin_tipos,
+                    "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
+                    "registros_boletin_incluye_descargo":               prefs.registros_boletin_incluye_descargo,
+                    "registros_boletin_dedup_observaciones":            prefs.registros_boletin_dedup_observaciones,
+                })
+            except Exception as exc:
+                logger.error("Error recargando convivencia: %s", exc)
+            _panel_convivencia.refresh()
+
+        with ui.element("div").classes("form-row-actions u-mt-lg"):
+            btn_ghost("Recargar", on_click=_recargar_convivencia, icon="refresh")
+            btn_primary("Guardar cambios", on_click=_guardar_convivencia, icon="save")
+
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
@@ -615,6 +730,7 @@ def hub_institucion_page() -> None:  # noqa: C901
                     tab_pref = ui.tab("preferencias", label="Preferencias")
                     tab_mod  = ui.tab("modulos",      label="Módulos")
                     tab_ap   = ui.tab("apariencia",   label="Apariencia")
+                    tab_conv = ui.tab("convivencia",  label="Convivencia")
 
                 with ui.tab_panels(tabs, value=tab_id).classes("w-full"):
                     with ui.tab_panel(tab_id):
@@ -625,6 +741,8 @@ def hub_institucion_page() -> None:  # noqa: C901
                         _panel_modulos()
                     with ui.tab_panel(tab_ap):
                         _panel_apariencia()
+                    with ui.tab_panel(tab_conv):
+                        _panel_convivencia()
 
     app_layout(
         ctx,
