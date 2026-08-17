@@ -108,6 +108,8 @@ def _estado_inicial() -> dict:
         "sel_asignacion_nombre":    "",
         "periodo_cerrado":          False,
         "cambios_pendientes":       {},
+        "nota_min_escala":          0.0,
+        "nota_max_escala":          100.0,
     }
 
 
@@ -119,6 +121,8 @@ def _cargar_periodos(_s: dict) -> None:
             _s["periodos"] = Container.periodo_service().listar_por_anio(anio_id)
         else:
             _s["periodos"] = []
+        _s["nota_min_escala"] = getattr(config, "nota_minima_escala", 0.0) if config else 0.0
+        _s["nota_max_escala"] = getattr(config, "nota_maxima_escala", 100.0) if config else 100.0
     except Exception as exc:
         logger.warning("Error cargando periodos: %s", exc)
         _s["periodos"] = []
@@ -316,6 +320,15 @@ def notas_convivencia_page() -> None:
             toast_warning("Selecciona un periodo.")
             return
 
+        nombre = next(
+            (
+                f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
+                for e in _s["estudiantes"]
+                if getattr(e, "id", None) == est_id
+            ),
+            None,
+        )
+
         def _on_exito(exitos: int, errores: int) -> None:
             _cargar_convivencia_estudiante(_s)
             panel_convivencia.refresh()
@@ -326,6 +339,7 @@ def notas_convivencia_page() -> None:
             periodo_id=int(periodo_id),
             asignaciones=_s.get("asignaciones_grupo", []),
             on_success=_on_exito,
+            nombre_unico=nombre,
         )
 
     # -- Refreshable: panel del estudiante seleccionado ------------------------
@@ -478,7 +492,7 @@ def notas_convivencia_page() -> None:
                 "pinned":     "left",
             },
             {
-                "headerName": "Nota (0-100)",
+                "headerName": f"Nota ({_s['nota_min_escala']:g}–{_s['nota_max_escala']:g})",
                 "field":      "nota",
                 "width":      130,
                 "editable":   editable,

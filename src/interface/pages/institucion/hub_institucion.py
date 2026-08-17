@@ -53,6 +53,8 @@ from src.interface.design.layout import app_layout
 from src.services.institucion_service import ActualizarInstitucionDTO
 from src.services.preferencias_institucion_service import ActualizarPreferenciaDTO
 
+from src.domain.modulos import modulos_desactivables as _modulos_desactivables
+
 logger = logging.getLogger("HUB_INSTITUCION")
 
 # Opciones de selects — strings crudos, sin importar enums del dominio (opción B).
@@ -98,8 +100,8 @@ def _estado_inicial() -> dict:
             "numero_periodos_default":        4,
         },
         "modulos": {
-            "modulo_convivencia_activo": True,
-            "modulo_alertas_activo":     True,
+            d.clave_preferencia: True
+            for d in _modulos_desactivables()
         },
         "apariencia": {
             "color_primario":   None,
@@ -149,10 +151,9 @@ def _cargar_estado(inst_id: int, _s: dict) -> None:
             "nota_maxima_escala_default":     prefs.nota_maxima_escala_default,
             "numero_periodos_default":        prefs.numero_periodos_default,
         })
-        _s["modulos"].update({
-            "modulo_convivencia_activo": prefs.modulo_convivencia_activo,
-            "modulo_alertas_activo":     prefs.modulo_alertas_activo,
-        })
+        for d in _modulos_desactivables():
+            clave = d.clave_preferencia
+            _s["modulos"][clave] = getattr(prefs, clave, True)
         _s["apariencia"].update({
             "color_primario":   prefs.color_primario,
             "color_secundario": prefs.color_secundario,
@@ -504,47 +505,35 @@ def hub_institucion_page() -> None:  # noqa: C901
     def _panel_modulos() -> None:
 
         ui.label(
-            "Al desactivar convivencia, sus páginas y su ítem de NAV se ocultan "
+            "Al desactivar un módulo, sus páginas y su ítem de NAV se ocultan "
             "hasta reactivarlo. Los cambios se aplican en la siguiente navegación."
         ).classes("text-muted u-mb-sm")
 
+        desactivables = _modulos_desactivables()
+        toggles: dict[str, ui.switch] = {}
+
         with ui.element("div").classes("u-stack-sm"):
-
-            with ui.element("div").classes("form-row-between form-box"):
-                with ui.element("div").classes("u-stack-xs flex-1"):
-                    ui.label("Módulo de convivencia").classes("section-subtitle")
-                    ui.label(
-                        "Gestión de observaciones, comportamiento y seguimiento."
-                    ).classes("text-muted")
-                conv_toggle = ui.switch(
-                    "", value=_s["modulos"]["modulo_convivencia_activo"]
-                )
-
-            with ui.element("div").classes("form-row-between form-box"):
-                with ui.element("div").classes("u-stack-xs flex-1"):
-                    ui.label("Módulo de alertas").classes("section-subtitle")
-                    ui.label(
-                        "Notificaciones y alertas de asistencia."
-                    ).classes("text-muted")
-                alertas_toggle = ui.switch(
-                    "", value=_s["modulos"]["modulo_alertas_activo"]
-                )
+            for d in desactivables:
+                clave = d.clave_preferencia
+                with ui.element("div").classes("form-row-between form-box"):
+                    with ui.element("div").classes("u-stack-xs flex-1"):
+                        ui.label(f"Módulo de {d.label.lower()}").classes(
+                            "section-subtitle"
+                        )
+                        ui.label(d.descripcion).classes("text-muted")
+                    toggles[clave] = ui.switch(
+                        "", value=_s["modulos"].get(clave, True)
+                    )
 
         def _guardar_modulos() -> None:
             try:
                 svc = Container.preferencias_service()
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="modulo_convivencia_activo",
-                    valor=str(bool(conv_toggle.value)).lower(),
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="modulo_alertas_activo",
-                    valor=str(bool(alertas_toggle.value)).lower(),
-                ))
-                _s["modulos"].update({
-                    "modulo_convivencia_activo": bool(conv_toggle.value),
-                    "modulo_alertas_activo":     bool(alertas_toggle.value),
-                })
+                for clave, toggle in toggles.items():
+                    svc.set(inst_id, ActualizarPreferenciaDTO(
+                        clave=clave,
+                        valor=str(bool(toggle.value)).lower(),
+                    ))
+                    _s["modulos"][clave] = bool(toggle.value)
                 toast_success("Configuración de módulos actualizada correctamente.")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -555,10 +544,9 @@ def hub_institucion_page() -> None:  # noqa: C901
         def _recargar_modulos() -> None:
             try:
                 prefs = Container.preferencias_service().get_dto(inst_id)
-                _s["modulos"].update({
-                    "modulo_convivencia_activo": prefs.modulo_convivencia_activo,
-                    "modulo_alertas_activo":     prefs.modulo_alertas_activo,
-                })
+                for d in desactivables:
+                    clave = d.clave_preferencia
+                    _s["modulos"][clave] = getattr(prefs, clave, True)
             except Exception as exc:
                 logger.error("Error recargando módulos: %s", exc)
             _panel_modulos.refresh()

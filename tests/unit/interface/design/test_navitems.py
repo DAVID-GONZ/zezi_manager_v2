@@ -25,6 +25,7 @@ RUTAS_REQUERIDAS = {
     "/convivencia/observaciones",
     "/convivencia/notas",
     "/convivencia/seguimiento",
+    "/convivencia/configuracion",
     "/convivencia/reporte-periodo",
     "/informes/boletin-periodo",
     "/informes/boletin-anual",
@@ -171,3 +172,52 @@ def test_configuracion_sie_nav_solo_profesor():
     assert _usuario_puede_ver(sie, "director") is False
     assert _usuario_puede_ver(sie, "coordinador") is False
     assert _usuario_puede_ver(sie, "admin") is False
+
+
+# ── inicio_34: invariantes de modulos ────────────────────────────────────────
+
+def test_rutas_de_modulos_estan_registradas():
+    """Toda ruta declarada en MODULOS[*].rutas debe tener registro en el guard.
+    Falla si se anade una ruta al modulo sin registrarla en main.py."""
+    from src.interface.auth import roles_de_ruta
+    from src.domain.modulos import MODULOS
+
+    sin_registro = set()
+    for d in MODULOS.values():
+        for ruta in d.rutas:
+            if roles_de_ruta(ruta) is None:
+                sin_registro.add(ruta)
+
+    assert not sin_registro, (
+        f"Rutas de MODULOS sin registro en el guard: {sin_registro}"
+    )
+
+
+def test_nav_sin_drift_de_modulo():
+    """Toda ruta del NAV que pertenezca a un modulo debe figurar en
+    MODULOS[m].rutas. Atrapa el bug que tenia /convivencia/reporte-periodo
+    ausente en RUTAS_POR_MODULO."""
+    from src.domain.modulos import MODULOS, modulo_de_ruta
+
+    errores = []
+    for ruta in _todas_las_rutas(NAV_ITEMS):
+        m = modulo_de_ruta(ruta)
+        if m is None:
+            continue
+        d = MODULOS[m]
+        if ruta not in d.rutas:
+            errores.append(f"{ruta} -> modulo {m.value} pero no en MODULOS[{m.value}].rutas")
+
+    assert not errores, f"Drift NAV/MODULOS: {errores}"
+
+
+def test_nav_sin_requiere_modulo():
+    """Tras inicio_34 la clave requiere_modulo no debe existir en NAV_ITEMS."""
+    for item in NAV_ITEMS:
+        assert "requiere_modulo" not in item, (
+            f"requiere_modulo encontrado en item raiz: {item.get('label')}"
+        )
+        for child in item.get("children", []):
+            assert "requiere_modulo" not in child, (
+                f"requiere_modulo encontrado en hijo: {child.get('label')}"
+            )

@@ -23,6 +23,18 @@ from .status_badge import (
 )
 from .toast import toast, toast_error, toast_info, toast_success, toast_warning
 
+# Hub / dashboard components (inicio_34 fase 2)
+from .section_panel import section_panel
+from .greeting_hero import greeting_hero
+from .period_status import PeriodData, period_status_card
+from .stats_grid import StatItem, stats_grid
+from .activity_feed import ActivityItem, activity_feed
+from .alerts_panel import AlertItem, alerts_panel
+from .milestones_panel import MilestoneItem, milestones_panel
+from .pending_items import PendingItem, pending_list
+from .followup_panel import FollowupItem, followup_panel
+from .groups_attention import GroupRisk, groups_attention_panel
+
 __all__ = [
     # Badges de estado
     "status_badge",
@@ -73,4 +85,23 @@ __all__ = [
     # Selectores inline en cascada (chip_01)
     "inline_periodo_grupo_asignatura",
     "inline_periodo_grupo",
+    # Hub / dashboard components (inicio_34 fase 2)
+    "section_panel",
+    "greeting_hero",
+    "PeriodData",
+    "period_status_card",
+    "StatItem",
+    "stats_grid",
+    "ActivityItem",
+    "activity_feed",
+    "AlertItem",
+    "alerts_panel",
+    "MilestoneItem",
+    "milestones_panel",
+    "PendingItem",
+    "pending_list",
+    "FollowupItem",
+    "followup_panel",
+    "GroupRisk",
+    "groups_attention_panel",
 ]

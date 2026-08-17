@@ -188,6 +188,10 @@ def observaciones_page() -> None:
 
         asignaciones = _s.get("asignaciones_grupo", [])
 
+        nombre_unico = None
+        if len(sel_ids) == 1:
+            nombre_unico = _nombre_estudiante(_s, sel_ids[0]) or None
+
         abrir_crear_observacion_dialog(
             ctx=ctx,
             estudiante_ids=sel_ids,
@@ -197,6 +201,7 @@ def observaciones_page() -> None:
             plantilla_id=plantilla_id,
             texto_prefill=texto_prefill,
             categoria_id_prefill=categoria_id_prefill,
+            nombre_unico=nombre_unico,
         )
 
     def _abrir_selector_plantilla() -> None:
@@ -474,7 +479,7 @@ def observaciones_page() -> None:
         with ui.element("div").classes("page-stack"):
             panel_grid()
 
-    app_layout(ctx, contenido, page_titulo="Observaciones")
+    app_layout(ctx, contenido, page_titulo="Observador del estudiante")
 
 
 __all__ = ["observaciones_page"]

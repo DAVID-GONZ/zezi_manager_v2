@@ -1152,9 +1152,9 @@ class ConvivenciaService:
         usuario_id: int | None = None,
         usuario_rol: str | None = None,
     ) -> PlantillaObservacion:
-        """Crea una nueva plantilla de observación. Solo director y coordinador."""
-        if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden crear plantillas.")
+        """Crea una nueva plantilla de observación. Director, coordinador y profesor."""
+        if usuario_rol not in ("director", "coordinador", "profesor"):
+            raise PermissionError("Solo directores, coordinadores y profesores pueden crear plantillas.")
         inst_id = self._resolver_institucion(None)
         plantilla = PlantillaObservacion(
             texto=dto.texto, categoria_id=dto.categoria_id, institucion_id=inst_id
@@ -1169,9 +1169,9 @@ class ConvivenciaService:
         usuario_id: int | None = None,
         usuario_rol: str | None = None,
     ) -> PlantillaObservacion:
-        """Actualiza texto y/o categoría de una plantilla. Solo director y coordinador."""
-        if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden actualizar plantillas.")
+        """Actualiza texto y/o categoría de una plantilla. Director, coordinador y profesor."""
+        if usuario_rol not in ("director", "coordinador", "profesor"):
+            raise PermissionError("Solo directores, coordinadores y profesores pueden actualizar plantillas.")
         plantilla = self._repo.get_plantilla(plantilla_id)
         if plantilla is None:
             raise ValueError(f"Plantilla con id {plantilla_id} no existe.")

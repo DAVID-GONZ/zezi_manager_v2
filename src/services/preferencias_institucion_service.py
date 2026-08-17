@@ -29,12 +29,6 @@ CLAVES_CONOCIDAS: frozenset[str] = frozenset({
     "registros_boletin_dedup_observaciones",
 })
 
-_MODULO_A_CLAVE: dict[str, str] = {
-    "convivencia": "modulo_convivencia_activo",
-    "alertas":     "modulo_alertas_activo",
-}
-
-
 class PreferenciasInstitucionService:
 
     def __init__(self, repo: IPreferenciasRepository):
@@ -70,7 +64,8 @@ class PreferenciasInstitucionService:
         return self._repo.set(pref)
 
     def modulo_activo(self, institucion_id: int, nombre_modulo: str) -> bool:
-        clave = _MODULO_A_CLAVE.get(nombre_modulo)
+        from src.domain.modulos import clave_de_modulo
+        clave = clave_de_modulo(nombre_modulo)
         if clave is None:
             return True
         try:

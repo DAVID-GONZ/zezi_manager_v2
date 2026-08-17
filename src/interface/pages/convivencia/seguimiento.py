@@ -922,7 +922,7 @@ def seguimiento_page() -> None:
 
         panel_hub()
 
-    app_layout(ctx, contenido, page_titulo="Seguimiento")
+    app_layout(ctx, contenido, page_titulo="Seguimiento de convivencia")
 
 
 __all__ = ["seguimiento_page"]

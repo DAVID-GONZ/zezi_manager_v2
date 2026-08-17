@@ -42,6 +42,7 @@ def abrir_crear_observacion_dialog(
     plantilla_id: int | None = None,
     texto_prefill: str = "",
     categoria_id_prefill: int | None = None,
+    nombre_unico: str | None = None,
 ) -> None:
     """
     Abre el diálogo de creación de ObservacionPeriodo.
@@ -57,6 +58,8 @@ def abrir_crear_observacion_dialog(
         plantilla_id:         Si se indica, usa registrar_observacion_desde_plantilla.
         texto_prefill:        Texto inicial del campo texto.
         categoria_id_prefill: Categoría pre-seleccionada en el dropdown.
+        nombre_unico:         Nombre legible del estudiante cuando len(estudiante_ids)==1.
+                              Si no se provee y es selección única, se muestra el ID.
     """
     if not estudiante_ids:
         toast_warning("No hay estudiantes destino para la observación.")
@@ -80,7 +83,7 @@ def abrir_crear_observacion_dialog(
         opciones_cat = {}
 
     if len(estudiante_ids) == 1:
-        subtitulo = f"Estudiante #{estudiante_ids[0]}"
+        subtitulo = nombre_unico if nombre_unico else f"Estudiante #{estudiante_ids[0]}"
     else:
         subtitulo = f"Se aplicará a {len(estudiante_ids)} estudiantes seleccionados."
 
@@ -110,7 +113,7 @@ def abrir_crear_observacion_dialog(
         },
         {
             "key":   "es_publica",
-            "label": "¿Pública? (aparece en boletín)",
+            "label": "Incluir en el boletín",
             "tipo":  "checkbox",
             "valor": True,
         },

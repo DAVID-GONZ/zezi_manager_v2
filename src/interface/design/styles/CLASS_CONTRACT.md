@@ -27,8 +27,9 @@
 | **Stat card** | `.stat-card-wrapper` | modificador de color: `.primary\|.success\|.warning\|.error\|.danger\|.info`; hijos: `.stat-card-label`, `.stat-card-value`, `.stat-card-subtitle`, `.stat-card-icon-wrap` |
 | **Panel** | `.panel-card` | hijo: `.panel-title`, `.panel-header` |
 | **Period status** | `.period-status-card` | `.period-bar-track`, `.period-bar-fill` + `.warning\|.danger` |
-| **Greeting hero** | `.greeting-hero` | `.greeting-name`, `.greeting-desc`, `.greeting-meta`, `.greeting-role` |
+| **Greeting hero** | `.greeting-hero` | `.greeting-name`, `.greeting-desc`, `.greeting-meta`, `.greeting-role`; animación: `.greeting-hero-animated` |
 | **Quick action** | `.quick-action-card` | `.quick-action-icon`, `.action-label`, `.action-desc` |
+| **Module hub** | `.module-hub-grid` | hijo: `.module-card`, `.module-card-icon`, `.action-label`, `.action-desc` |
 
 ## Botones
 

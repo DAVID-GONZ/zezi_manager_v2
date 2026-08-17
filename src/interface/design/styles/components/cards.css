@@ -781,3 +781,163 @@
   font-size: var(--font-size-small);
   color: var(--color-text-disabled);
 }
+
+/* ═══════════════════════════════════════════════════════
+   GREETING HERO — Animación de entrada (inicio_34 fase 2)
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes greeting-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.greeting-hero-animated .greeting-name {
+  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.greeting-hero-animated .greeting-desc {
+  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.greeting-hero-animated .greeting-meta {
+  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greeting-hero-animated .greeting-name,
+  .greeting-hero-animated .greeting-desc,
+  .greeting-hero-animated .greeting-meta { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   HUB LANDING — public module launcher (inicio_34 fase 3)
+   ═══════════════════════════════════════════════════════ */
+
+.hub-landing {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, var(--color-primary-lighter) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, var(--color-primary-lighter) 0%, transparent 40%),
+    var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 32px;
+}
+
+.hub-branding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.hub-title {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+
+.hub-subtitle {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+}
+
+.hub-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-divider);
+  font-size: var(--font-size-small);
+}
+
+.hub-session-name {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.hub-session-logout {
+  color: var(--color-text-disabled);
+  text-decoration: none;
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.hub-session-logout:hover {
+  color: var(--color-error);
+}
+
+.hub-footer {
+  text-align: center;
+}
+
+.hub-login-link {
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.hub-login-link:hover {
+  text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODULE HUB GRID — grid de módulos en inicio (inicio_34)
+   ═══════════════════════════════════════════════════════ */
+
+.module-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 720px;
+}
+
+@media (max-width: 640px) {
+  .module-hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.module-card {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-card);
+  min-height: 88px;
+}
+
+.module-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-lighter);
+  transform: translateY(-2px) scale(1.01);
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease;
+  box-shadow: var(--shadow-md);
+}
+
+.module-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

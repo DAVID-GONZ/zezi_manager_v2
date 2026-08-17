@@ -109,10 +109,7 @@ def registrar_rutas_ui() -> None:
 
     # ── Públicas (con lógica propia de redirección por sesión) ────────────────
     def raiz():
-        if app.storage.user.get("autenticado"):
-            ui.navigate.to("/inicio")
-        else:
-            ui.navigate.to("/login")
+        ui.navigate.to("/inicio")
 
     def pagina_login():
         if app.storage.user.get("autenticado"):
@@ -147,9 +144,9 @@ def registrar_rutas_ui() -> None:
         roles=_DIR_COORD,
     )
 
-    # ── Inicio / Dashboard (cualquier autenticado) ────────────────────────────
+    # ── Inicio / Hub de módulos (público — landing page) ────────────────────
     from src.interface.pages.inicio import inicio_page
-    registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
+    registrar_pagina("/inicio", inicio_page, roles=PUBLICO)
 
     # ── Cambio forzado de contraseña (A2 — seguridad_01) ──────────────────────
     # El route_guard fuerza esta ruta cuando la sesión tiene
@@ -262,6 +259,9 @@ def registrar_rutas_ui() -> None:
     # ── Convivencia ───────────────────────────────────────────────────────────
     from src.interface.pages.convivencia.categorias import categorias_page
     from src.interface.pages.convivencia.comportamiento import comportamiento_page
+    from src.interface.pages.convivencia.configuracion_convivencia import (
+        configuracion_convivencia_page,
+    )
     from src.interface.pages.convivencia.notas_convivencia import notas_convivencia_page
     from src.interface.pages.convivencia.observaciones import observaciones_page
     from src.interface.pages.convivencia.plantillas import plantillas_page
@@ -272,8 +272,10 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)
     registrar_pagina("/convivencia/notas", notas_convivencia_page, roles=_AULA)
     registrar_pagina("/convivencia/reporte-periodo", reporte_periodo_page, roles=_AULA)
-    registrar_pagina("/convivencia/categorias", categorias_page, roles=_DIR_COORD)
-    registrar_pagina("/convivencia/plantillas", plantillas_page, roles=_DIR_COORD)
+    registrar_pagina("/convivencia/configuracion", configuracion_convivencia_page, roles=_AULA)
+    # Compatibilidad: redirigen a /convivencia/configuracion
+    registrar_pagina("/convivencia/categorias", categorias_page, roles=_AULA)
+    registrar_pagina("/convivencia/plantillas", plantillas_page, roles=_AULA)
     registrar_pagina("/convivencia/seguimiento", seguimiento_page, roles=_AULA)
 
     # ── Informes ──────────────────────────────────────────────────────────────

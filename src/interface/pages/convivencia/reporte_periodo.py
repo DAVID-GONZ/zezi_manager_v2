@@ -305,7 +305,7 @@ def reporte_periodo_page() -> None:
 
         cuerpo()
 
-    app_layout(ctx, contenido, page_titulo="Reporte de convivencia por periodo")
+    app_layout(ctx, contenido, page_titulo="Reporte de convivencia")
 
 
 __all__ = ["reporte_periodo_page"]

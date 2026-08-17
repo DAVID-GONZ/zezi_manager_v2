@@ -53,7 +53,6 @@ NAV_ITEMS: list[dict] = [
         "label": "Inicio",
         "icon":  "home",
         "ruta":  "/inicio",
-        "rol":   ["*"],
     },
     {
         "label": "Aula",
@@ -61,35 +60,19 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Planilla de Notas", "icon": "table_chart",
-             "ruta": "/evaluacion/planilla",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/evaluacion/planilla"},
             {"label": "Asistencia",        "icon": "fact_check",
-             "ruta": "/asistencia",
-             "rol":  ["director", "coordinador", "profesor"]},
-            {"label": "Observaciones",     "icon": "edit_note",
-             "ruta": "/convivencia/observaciones",
-             "rol":  ["director", "coordinador", "profesor"],
-             "requiere_modulo": "convivencia"},
+             "ruta": "/asistencia"},
+            {"label": "Observador del estudiante", "icon": "edit_note",
+             "ruta": "/convivencia/observaciones"},
             {"label": "Notas de convivencia", "icon": "grade",
-             "ruta": "/convivencia/notas",
-             "rol":  ["director", "coordinador", "profesor"],
-             "requiere_modulo": "convivencia"},
-            {"label": "Seguimiento",       "icon": "insights",
-             "ruta": "/convivencia/seguimiento",
-             "rol":  ["director", "coordinador", "profesor"],
-             "requiere_modulo": "convivencia"},
-            {"label": "Categorías",        "icon": "category",
-             "ruta": "/convivencia/categorias",
-             "rol":  ["director", "coordinador"],
-             "requiere_modulo": "convivencia"},
-            {"label": "Plantillas",        "icon": "description",
-             "ruta": "/convivencia/plantillas",
-             "rol":  ["director", "coordinador"],
-             "requiere_modulo": "convivencia"},
-            {"label": "Reporte de periodo", "icon": "summarize",
-             "ruta": "/convivencia/reporte-periodo",
-             "rol":  ["director", "coordinador", "profesor"],
-             "requiere_modulo": "convivencia"},
+             "ruta": "/convivencia/notas"},
+            {"label": "Seguimiento de convivencia", "icon": "insights",
+             "ruta": "/convivencia/seguimiento"},
+            {"label": "Configuración de convivencia", "icon": "settings",
+             "ruta": "/convivencia/configuracion"},
+            {"label": "Reporte de convivencia", "icon": "summarize",
+             "ruta": "/convivencia/reporte-periodo"},
         ],
     },
     {
@@ -98,29 +81,21 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Estudiantes",   "icon": "person",
-             "ruta": "/estudiantes",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/estudiantes"},
             {"label": "Grupos",        "icon": "group",
-             "ruta": "/admin/grupos",
-             "rol":  ["director"]},
+             "ruta": "/admin/grupos"},
             {"label": "Asignaturas",   "icon": "book",
-             "ruta": "/admin/asignaturas",
-             "rol":  ["director"]},
+             "ruta": "/admin/asignaturas"},
             {"label": "Plan de estudios", "icon": "book",
-             "ruta": "/admin/plan-estudios",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/admin/plan-estudios"},
             {"label": "Asignaciones",  "icon": "assignment_ind",
-             "ruta": "/admin/asignaciones",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/admin/asignaciones"},
             {"label": "Horarios",      "icon": "calendar_today",
-             "ruta": "/horarios",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/horarios"},
             {"label": "Disponibilidad docente", "icon": "event_available",
-             "ruta": "/admin/disponibilidad-docente",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/admin/disponibilidad-docente"},
             {"label": "Salas",         "icon": "meeting_room",
-             "ruta": "/admin/salas",
-             "rol":  ["director"]},
+             "ruta": "/admin/salas"},
         ],
     },
     {
@@ -129,20 +104,15 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Configuración SIE",      "icon": "tune",
-             "ruta": "/evaluacion/configuracion",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/evaluacion/configuracion"},
             {"label": "Habilitaciones",         "icon": "assignment_return",
-             "ruta": "/evaluacion/habilitaciones",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/evaluacion/habilitaciones"},
             {"label": "Planes de Mejoramiento", "icon": "trending_up",
-             "ruta": "/evaluacion/planes",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/evaluacion/planes"},
             {"label": "Cierre de Periodo",      "icon": "lock",
-             "ruta": "/evaluacion/cierre-periodo",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/evaluacion/cierre-periodo"},
             {"label": "Cierre de Año",          "icon": "lock_clock",
-             "ruta": "/evaluacion/cierre-anio",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/evaluacion/cierre-anio"},
         ],
     },
     {
@@ -151,23 +121,17 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["director", "coordinador", "profesor"],
         "children": [
             {"label": "Tablero",                   "icon": "dashboard",
-             "ruta": "/academico/tablero",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/academico/tablero"},
             {"label": "Boletín de Periodo",        "icon": "description",
-             "ruta": "/informes/boletin-periodo",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/informes/boletin-periodo"},
             {"label": "Boletín Anual",             "icon": "description",
-             "ruta": "/informes/boletin-anual",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/informes/boletin-anual"},
             {"label": "Consolidado de Notas",      "icon": "bar_chart",
-             "ruta": "/informes/consolidado-notas",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/informes/consolidado-notas"},
             {"label": "Consolidado de Asistencia", "icon": "event_note",
-             "ruta": "/informes/consolidado-asistencia",
-             "rol":  ["director", "coordinador"]},
+             "ruta": "/informes/consolidado-asistencia"},
             {"label": "Estadísticos",              "icon": "analytics",
-             "ruta": "/informes/estadisticos",
-             "rol":  ["director", "coordinador", "profesor"]},
+             "ruta": "/informes/estadisticos"},
         ],
     },
     {
@@ -180,20 +144,15 @@ NAV_ITEMS: list[dict] = [
         "rol":   ["admin", "director"],
         "children": [
             {"label": "Usuarios",                  "icon": "badge",
-             "ruta": "/admin/usuarios",
-             "rol":  ["admin", "director"]},
+             "ruta": "/admin/usuarios"},
             {"label": "Instituciones",             "icon": "apartment",
-             "ruta": "/admin/instituciones",
-             "rol":  ["admin"]},
+             "ruta": "/admin/instituciones"},
             {"label": "Configuración institucional", "icon": "settings",
-             "ruta": "/institucion/configuracion",
-             "rol":  ["director"]},
+             "ruta": "/institucion/configuracion"},
             {"label": "Auditoría",                 "icon": "history",
-             "ruta": "/admin/auditoria",
-             "rol":  ["admin"]},
+             "ruta": "/admin/auditoria"},
             {"label": "Diagnóstico",               "icon": "monitor_heart",
-             "ruta": "/diagnostico",
-             "rol":  ["admin"]},
+             "ruta": "/diagnostico"},
         ],
     },
 ]
@@ -237,16 +196,20 @@ def _usuario_puede_ver(item: dict, usuario_rol: str) -> bool:
 
 
 def _modulo_visible(item: dict) -> bool:
-    modulo = item.get("requiere_modulo")
-    if modulo is None:
+    ruta = item.get("ruta")
+    if ruta is None:
         return True
     try:
+        from src.domain.modulos import modulo_de_ruta
+        m = modulo_de_ruta(ruta)
+        if m is None:
+            return True
         from container import Container
         from src.services.contexto_tenant import institucion_actual
         inst_id = institucion_actual()
         if inst_id is None:
             return True
-        return Container.preferencias_service().modulo_activo(inst_id, modulo)
+        return Container.preferencias_service().modulo_activo(inst_id, m.value)
     except Exception:
         return True
 

@@ -126,29 +126,18 @@ def _config_inicial_completa(rol: str | None) -> bool:  # noqa: ARG001
         return True  # fail-open: un bug no debe encerrar al usuario
 
 
-RUTAS_POR_MODULO: dict[str, list[str]] = {
-    "convivencia": [
-        "/convivencia/observaciones",
-        "/convivencia/comportamiento",
-        "/convivencia/notas",
-        "/convivencia/categorias",
-        "/convivencia/plantillas",
-        "/convivencia/seguimiento",
-    ],
-    "alertas": [],
-}
-
-
 def _modulo_permitido(ruta: str) -> bool:
     try:
         from container import Container
+        from src.domain.modulos import modulo_de_ruta
         from src.services.contexto_tenant import institucion_actual
+        m = modulo_de_ruta(ruta)
+        if m is None:
+            return True
         inst_id = institucion_actual()
         if inst_id is None:
             return True
-        for modulo, rutas in RUTAS_POR_MODULO.items():
-            if ruta in rutas:
-                return Container.preferencias_service().modulo_activo(inst_id, modulo)
+        return Container.preferencias_service().modulo_activo(inst_id, m.value)
     except Exception:
         pass
     return True
@@ -331,7 +320,6 @@ __all__ = [
     "GATE_OK",
     "GATE_WIZARD",
     "PUBLICO",
-    "RUTAS_POR_MODULO",
     "decidir_acceso",
     "decidir_gate_configuracion",
     "registrar_pagina",
