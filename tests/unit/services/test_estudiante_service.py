@@ -585,7 +585,7 @@ class TestTrasladar:
         with usar_institucion(1):
             est = svc.matricular(NuevoEstudianteDTO(
                 numero_documento="T8", nombre="Ana", apellido="Ocho", grupo_id=10))
-            with pytest.raises(Exception):
+            with pytest.raises(ValueError):
                 svc.trasladar(est.id, 30, motivo="x", actor_rol="director")
 
     def test_notas_siguen_al_estudiante_tras_traslado(self):

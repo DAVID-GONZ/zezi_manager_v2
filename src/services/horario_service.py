@@ -518,7 +518,7 @@ class HorarioService:
         escenario_id: int,
         periodo_id: int,
         filas: list[dict],
-    ) -> ReporteLoteDTO:
+    ) -> ReporteLoteDTO:  # noqa: F821
         """Analiza un lote de filas como escenario virtual (sin persistir):
         valida asignación, campos obligatorios, cruces (docente/grupo/sala) y
         topes de materia y docente, y devuelve un reporte fila por fila."""
@@ -665,7 +665,7 @@ class HorarioService:
         periodo_id: int,
         filas: list[dict],
         solo_validas: bool = False,
-    ) -> ResultadoLoteDTO:
+    ) -> ResultadoLoteDTO:  # noqa: F821
         """Persiste un lote de bloques: lo analiza y, si es válido (o si
         `solo_validas`), crea de forma masiva solo las filas OK; devuelve el
         conteo de creados/omitidos junto con el reporte."""

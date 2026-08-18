@@ -37,9 +37,10 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from typing import TYPE_CHECKING
 
-# `SessionContext` se usa solo en anotaciones de tipo de cadena porque
-# el módulo de infraestructura no debe importar la capa de interfaz.
+if TYPE_CHECKING:
+    from src.interface.context.session_context import SessionContext
 
 logger = logging.getLogger("CONTEXT_INIT")
 

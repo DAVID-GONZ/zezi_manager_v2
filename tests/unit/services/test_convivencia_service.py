@@ -30,6 +30,7 @@ from src.domain.models.convivencia import (
     Seguimiento360DTO,
     TipoRegistro,
 )
+from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.services.convivencia_service import ConvivenciaService
 
@@ -1061,9 +1062,6 @@ class TestPromocionPlantillas:
 # ===========================================================================
 # FakeAlertaRepo para tests de alertas dentro de ConvivenciaService
 # ===========================================================================
-
-from src.domain.ports.alerta_repo import IAlertaRepository
-
 
 class FakeAlertaRepo(IAlertaRepository):
     """Implementación mínima de IAlertaRepository para tests de ConvivenciaService."""

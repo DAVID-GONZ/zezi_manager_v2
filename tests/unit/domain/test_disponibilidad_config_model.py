@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests unitarios — paso_15b
 Modelos: PesosGeneracion, DisponibilidadDocente, ConfigGeneracion,
          NuevaDisponibilidadDTO, NuevaConfigGeneracionDTO.
@@ -6,6 +6,7 @@ Modelos: PesosGeneracion, DisponibilidadDocente, ConfigGeneracion,
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from src.domain.models.infraestructura import (
     TRANSICIONES_CONFIG,
@@ -34,11 +35,11 @@ class TestPesosGeneracion:
         assert p.distribucion == 2.0
 
     def test_valor_inferior_invalido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             PesosGeneracion(huecos=-0.1)
 
     def test_valor_superior_invalido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             PesosGeneracion(distribucion=2.01)
 
     def test_cero_es_valido(self):
@@ -62,15 +63,15 @@ class TestDisponibilidadDocente:
         assert d.franja_orden == 2
 
     def test_dia_invalido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             DisponibilidadDocente(usuario_id=1, dia_semana="Domingo", franja_orden=1)
 
     def test_franja_orden_minimo(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             DisponibilidadDocente(usuario_id=1, dia_semana="Lunes", franja_orden=0)
 
     def test_usuario_id_positivo_requerido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             DisponibilidadDocente(usuario_id=0, dia_semana="Lunes", franja_orden=1)
 
     def test_disponible_false(self):
@@ -107,7 +108,7 @@ class TestConfigGeneracion:
         assert c.pesos.huecos == 1.0
 
     def test_estado_invalido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ConfigGeneracion(
                 nombre="X", periodo_id=1, anio_id=1, plantilla_id=1,
                 estado="invalido"
@@ -140,7 +141,7 @@ class TestConfigGeneracion:
         assert TRANSICIONES_CONFIG["aplicado"] == set()
 
     def test_nombre_vacio_invalido(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ConfigGeneracion(
                 nombre="  ", periodo_id=1, anio_id=1, plantilla_id=1
             )

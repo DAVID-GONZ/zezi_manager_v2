@@ -760,7 +760,7 @@ def asignaciones_page() -> None:
                             "link_off",
                             variante="danger",
                             tooltip="Quitar",
-                            on_click=lambda aid=a.asignacion_id, lbl=f"{a.asignatura_nombre} ({grupo_nombre.get(a.grupo_id, '')})": (
+                            on_click=lambda aid=a.asignacion_id, lbl=f"{a.asignatura_nombre} ({grupo_nombre.get(a.grupo_id, '')})": (  # noqa: B008
                                 _quitar(aid, lbl)
                             ),
                         )

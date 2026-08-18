@@ -486,7 +486,7 @@ class EstadisticosService:
             if niveles:
                 dist_niveles = {n.nombre: 0 for n in niveles}
                 dist_niveles["Sin clasificar"] = 0
-                for est_id, prom in promedios_est.items():
+                for _est_id, prom in promedios_est.items():
                     if prom == 0:
                         continue
                     clasificado = False

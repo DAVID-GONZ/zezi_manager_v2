@@ -251,8 +251,8 @@ def estudiantes_page() -> None:
 
         _s["resultado_masivo"] = resultado
         _cargar_estudiantes()
-        tabla_refreshable.refresh()
-        resultado_refreshable.refresh()
+        tabla_refreshable.refresh()  # noqa: F821
+        resultado_refreshable.refresh()  # noqa: F821
 
         if resultado.fue_exitosa:
             toast_success(f"Carga completada: {resultado.exitosas} estudiantes matriculados.")
