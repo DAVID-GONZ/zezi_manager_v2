@@ -10,6 +10,7 @@ para no romper enlaces existentes a `/convivencia/plantillas`.
 Regla de capas:
   Esta página NO importa ningún símbolo de src.domain.models.*
 """
+
 from __future__ import annotations
 
 from nicegui import ui

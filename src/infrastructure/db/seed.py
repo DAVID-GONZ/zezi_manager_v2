@@ -56,6 +56,7 @@ def _default_hasher(password: str) -> str:
     """
     try:
         import bcrypt
+
         return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
     except ImportError:
         digest = hashlib.sha256(password.encode()).hexdigest()
@@ -75,23 +76,25 @@ def _fast_hasher(password: str) -> str:
 # Resultado estructurado del seed
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SeedResult:
     """
     Contiene todos los IDs creados por el seed.
     Permite que los tests accedan a datos concretos sin hacer queries.
     """
-    anio_id:        int                  = 0
-    periodo_ids:    list[int]            = field(default_factory=list)
-    grupo_ids:      list[int]            = field(default_factory=list)
-    usuario_ids:    dict[str, int]       = field(default_factory=dict)  # usuario → id
-    asignatura_ids: dict[str, int]       = field(default_factory=dict)  # codigo → id
-    area_ids:       dict[str, int]       = field(default_factory=dict)  # nombre → id
-    asignacion_ids: list[int]            = field(default_factory=list)
-    estudiante_ids: list[int]            = field(default_factory=list)
-    acudiente_ids:  list[int]            = field(default_factory=list)
-    nivel_ids:      list[int]            = field(default_factory=list)
-    counts:         dict[str, int]       = field(default_factory=dict)
+
+    anio_id: int = 0
+    periodo_ids: list[int] = field(default_factory=list)
+    grupo_ids: list[int] = field(default_factory=list)
+    usuario_ids: dict[str, int] = field(default_factory=dict)  # usuario → id
+    asignatura_ids: dict[str, int] = field(default_factory=dict)  # codigo → id
+    area_ids: dict[str, int] = field(default_factory=dict)  # nombre → id
+    asignacion_ids: list[int] = field(default_factory=list)
+    estudiante_ids: list[int] = field(default_factory=list)
+    acudiente_ids: list[int] = field(default_factory=list)
+    nivel_ids: list[int] = field(default_factory=list)
+    counts: dict[str, int] = field(default_factory=dict)
 
     def log_resumen(self) -> None:
         logger.info("Resumen del seed:")
@@ -104,157 +107,199 @@ class SeedResult:
 # ---------------------------------------------------------------------------
 
 _NOMBRES_M = [
-    "Santiago", "Sebastián", "Matías", "Nicolás", "Alejandro",
-    "Diego", "Samuel", "Daniel", "Leonardo", "Felipe",
-    "Tomás", "Martín", "Lucas", "Joaquín", "Gabriel",
+    "Santiago",
+    "Sebastián",
+    "Matías",
+    "Nicolás",
+    "Alejandro",
+    "Diego",
+    "Samuel",
+    "Daniel",
+    "Leonardo",
+    "Felipe",
+    "Tomás",
+    "Martín",
+    "Lucas",
+    "Joaquín",
+    "Gabriel",
 ]
 
 _NOMBRES_F = [
-    "Sofía", "Mariana", "Valentina", "Isabella", "Camila",
-    "Valeria", "Daniela", "Victoria", "Martina", "Salomé",
-    "Ximena", "Lucía", "Sara", "Antonella", "Renata",
+    "Sofía",
+    "Mariana",
+    "Valentina",
+    "Isabella",
+    "Camila",
+    "Valeria",
+    "Daniela",
+    "Victoria",
+    "Martina",
+    "Salomé",
+    "Ximena",
+    "Lucía",
+    "Sara",
+    "Antonella",
+    "Renata",
 ]
 
 _APELLIDOS = [
-    "González", "Rodríguez", "Gómez", "Fernández", "López",
-    "Díaz", "Martínez", "Pérez", "García", "Sánchez",
-    "Moreno", "Jiménez", "Ruiz", "Hernández", "Torres",
+    "González",
+    "Rodríguez",
+    "Gómez",
+    "Fernández",
+    "López",
+    "Díaz",
+    "Martínez",
+    "Pérez",
+    "García",
+    "Sánchez",
+    "Moreno",
+    "Jiménez",
+    "Ruiz",
+    "Hernández",
+    "Torres",
 ]
 
 # (nombre, codigo, color_hex)
 _AREAS = [
     ("Ciencias Naturales y Educación Ambiental", "CNAT", "#2E7D32"),
-    ("Ciencias Sociales",                        "CSOC", "#C62828"),
-    ("Educación Artística y Cultural",            "ARTE", "#AD1457"),
-    ("Educación Ética y en Valores Humanos",      "ETIC", "#6A1B9A"),
-    ("Educación Física, Recreación y Deportes",   "EFIS", "#1565C0"),
-    ("Educación Religiosa",                       "RELI", "#4527A0"),
-    ("Humanidades, Lengua Castellana e Idiomas",  "HUMA", "#EF6C00"),
-    ("Matemáticas",                               "MATE", "#00838F"),
-    ("Tecnología e Informática",                  "TINF", "#37474F"),
-    ("Filosofía",                                 "FILO", "#5D4037"),
+    ("Ciencias Sociales", "CSOC", "#C62828"),
+    ("Educación Artística y Cultural", "ARTE", "#AD1457"),
+    ("Educación Ética y en Valores Humanos", "ETIC", "#6A1B9A"),
+    ("Educación Física, Recreación y Deportes", "EFIS", "#1565C0"),
+    ("Educación Religiosa", "RELI", "#4527A0"),
+    ("Humanidades, Lengua Castellana e Idiomas", "HUMA", "#EF6C00"),
+    ("Matemáticas", "MATE", "#00838F"),
+    ("Tecnología e Informática", "TINF", "#37474F"),
+    ("Filosofía", "FILO", "#5D4037"),
 ]
 
 # (nombre, codigo, area_nombre, horas_semanales)
 _ASIGNATURAS = [
-    ("Ciencias Naturales",   "CNT", "Ciencias Naturales y Educación Ambiental", 4),
-    ("Biología",             "BIO", "Ciencias Naturales y Educación Ambiental", 3),
-    ("Química",              "QUI", "Ciencias Naturales y Educación Ambiental", 3),
-    ("Física",               "FIS", "Ciencias Naturales y Educación Ambiental", 3),
-    ("Ciencias Sociales",    "CSO", "Ciencias Sociales",                        4),
-    ("Historia",             "HIS", "Ciencias Sociales",                        2),
-    ("Geografía",            "GEO", "Ciencias Sociales",                        2),
-    ("Artística",            "ART", "Educación Artística y Cultural",            2),
-    ("Ética",                "ETI", "Educación Ética y en Valores Humanos",      1),
-    ("Educación Física",     "EDF", "Educación Física, Recreación y Deportes",  2),
-    ("Religión",             "REL", "Educación Religiosa",                       1),
-    ("Lengua Castellana",    "LEN", "Humanidades, Lengua Castellana e Idiomas", 5),
-    ("Inglés",               "ING", "Humanidades, Lengua Castellana e Idiomas", 3),
-    ("Francés",              "FRA", "Humanidades, Lengua Castellana e Idiomas", 2),
-    ("Matemáticas",          "MAT", "Matemáticas",                              5),
-    ("Estadística",          "EST", "Matemáticas",                              2),
-    ("Tecnología",           "TEC", "Tecnología e Informática",                 2),
-    ("Informática",          "INF", "Tecnología e Informática",                 2),
-    ("Filosofía",            "FIL", "Filosofía",                                1),
+    ("Ciencias Naturales", "CNT", "Ciencias Naturales y Educación Ambiental", 4),
+    ("Biología", "BIO", "Ciencias Naturales y Educación Ambiental", 3),
+    ("Química", "QUI", "Ciencias Naturales y Educación Ambiental", 3),
+    ("Física", "FIS", "Ciencias Naturales y Educación Ambiental", 3),
+    ("Ciencias Sociales", "CSO", "Ciencias Sociales", 4),
+    ("Historia", "HIS", "Ciencias Sociales", 2),
+    ("Geografía", "GEO", "Ciencias Sociales", 2),
+    ("Artística", "ART", "Educación Artística y Cultural", 2),
+    ("Ética", "ETI", "Educación Ética y en Valores Humanos", 1),
+    ("Educación Física", "EDF", "Educación Física, Recreación y Deportes", 2),
+    ("Religión", "REL", "Educación Religiosa", 1),
+    ("Lengua Castellana", "LEN", "Humanidades, Lengua Castellana e Idiomas", 5),
+    ("Inglés", "ING", "Humanidades, Lengua Castellana e Idiomas", 3),
+    ("Francés", "FRA", "Humanidades, Lengua Castellana e Idiomas", 2),
+    ("Matemáticas", "MAT", "Matemáticas", 5),
+    ("Estadística", "EST", "Matemáticas", 2),
+    ("Tecnología", "TEC", "Tecnología e Informática", 2),
+    ("Informática", "INF", "Tecnología e Informática", 2),
+    ("Filosofía", "FIL", "Filosofía", 1),
 ]
 
 # (codigo, nombre, grado, jornada, capacidad)
 _GRUPOS_DEV = [
-    ("601",  "Sexto A",    6,  "UNICA", 40),
-    ("602",  "Sexto B",    6,  "UNICA", 40),
-    ("701",  "Séptimo A",  7,  "UNICA", 40),
-    ("702",  "Séptimo B",  7,  "UNICA", 40),
-    ("801",  "Octavo A",   8,  "UNICA", 40),
-    ("802",  "Octavo B",   8,  "UNICA", 40),
-    ("901",  "Noveno A",   9,  "UNICA", 40),
-    ("902",  "Noveno B",   9,  "UNICA", 40),
-    ("1001", "Décimo A",   10, "UNICA", 40),
-    ("1002", "Décimo B",   10, "UNICA", 40),
-    ("1101", "Once A",     11, "UNICA", 40),
-    ("1102", "Once B",     11, "UNICA", 40),
+    ("601", "Sexto A", 6, "UNICA", 40),
+    ("602", "Sexto B", 6, "UNICA", 40),
+    ("701", "Séptimo A", 7, "UNICA", 40),
+    ("702", "Séptimo B", 7, "UNICA", 40),
+    ("801", "Octavo A", 8, "UNICA", 40),
+    ("802", "Octavo B", 8, "UNICA", 40),
+    ("901", "Noveno A", 9, "UNICA", 40),
+    ("902", "Noveno B", 9, "UNICA", 40),
+    ("1001", "Décimo A", 10, "UNICA", 40),
+    ("1002", "Décimo B", 10, "UNICA", 40),
+    ("1101", "Once A", 11, "UNICA", 40),
+    ("1102", "Once B", 11, "UNICA", 40),
 ]
 
 # (usuario, password, nombre_completo, email, rol)
 _USUARIOS_BASE = [
-    ("admin",       "Admin2025*",    "Carlos Alberto Administrador", "admin@zeci.edu.co",       "admin"),
+    ("admin", "Admin2025*", "Carlos Alberto Administrador", "admin@zeci.edu.co", "admin"),
 ]
 
 _USUARIOS_DEV = [
-    ("director",    "Director2025*", "María Elena Directora",   "director@zeci.edu.co",    "director"),
-    ("coordinador", "Coord2025*",    "Jorge Iván Coordinador",  "coordinador@zeci.edu.co", "coordinador"),
-    ("rgomez",      "Pass2025*",     "Ricardo Gómez Ríos",      "rgomez@zeci.edu.co",      "profesor"),
-    ("cmoreno",     "Pass2025*",     "Claudia Moreno Díaz",     "cmoreno@zeci.edu.co",     "profesor"),
-    ("jvargas",     "Pass2025*",     "Javier Vargas Peña",      "jvargas@zeci.edu.co",     "profesor"),
-    ("amartinez",   "Pass2025*",     "Ana Martínez Soto",       "amartinez@zeci.edu.co",   "profesor"),
-    ("pjimenez",    "Pass2025*",     "Paula Jiménez Lara",      "pjimenez@zeci.edu.co",    "profesor"),
-    ("dortiz",      "Pass2025*",     "Diego Ortiz Cano",        "dortiz@zeci.edu.co",      "profesor"),
-    ("lcastro",     "Pass2025*",     "Laura Castro Mejía",      "lcastro@zeci.edu.co",     "profesor"),
-    ("fherrera",    "Pass2025*",     "Felipe Herrera Gil",      "fherrera@zeci.edu.co",    "profesor"),
-    ("mrojas",      "Pass2025*",     "Marcela Rojas Niño",      "mrojas@zeci.edu.co",      "profesor"),
-    ("gsalazar",    "Pass2025*",     "Gloria Salazar Ruiz",     "gsalazar@zeci.edu.co",    "profesor"),
-    ("hmedina",     "Pass2025*",     "Héctor Medina Pardo",     "hmedina@zeci.edu.co",     "profesor"),
-    ("swhite",      "Pass2025*",     "Sarah White Jones",       "swhite@zeci.edu.co",      "profesor"),
-    ("ablack",      "Pass2025*",     "Andrés Black Mora",       "ablack@zeci.edu.co",      "profesor"),
-    ("nrivera",     "Pass2025*",     "Natalia Rivera Lozano",   "nrivera@zeci.edu.co",     "profesor"),
-    ("ocastano",    "Pass2025*",     "Oscar Castaño Vélez",     "ocastano@zeci.edu.co",    "profesor"),
-    ("vmolina",     "Pass2025*",     "Valentina Molina Cruz",   "vmolina@zeci.edu.co",     "profesor"),
-    ("tbeltran",    "Pass2025*",     "Tomás Beltrán Acosta",    "tbeltran@zeci.edu.co",    "profesor"),
+    ("director", "Director2025*", "María Elena Directora", "director@zeci.edu.co", "director"),
+    (
+        "coordinador",
+        "Coord2025*",
+        "Jorge Iván Coordinador",
+        "coordinador@zeci.edu.co",
+        "coordinador",
+    ),
+    ("rgomez", "Pass2025*", "Ricardo Gómez Ríos", "rgomez@zeci.edu.co", "profesor"),
+    ("cmoreno", "Pass2025*", "Claudia Moreno Díaz", "cmoreno@zeci.edu.co", "profesor"),
+    ("jvargas", "Pass2025*", "Javier Vargas Peña", "jvargas@zeci.edu.co", "profesor"),
+    ("amartinez", "Pass2025*", "Ana Martínez Soto", "amartinez@zeci.edu.co", "profesor"),
+    ("pjimenez", "Pass2025*", "Paula Jiménez Lara", "pjimenez@zeci.edu.co", "profesor"),
+    ("dortiz", "Pass2025*", "Diego Ortiz Cano", "dortiz@zeci.edu.co", "profesor"),
+    ("lcastro", "Pass2025*", "Laura Castro Mejía", "lcastro@zeci.edu.co", "profesor"),
+    ("fherrera", "Pass2025*", "Felipe Herrera Gil", "fherrera@zeci.edu.co", "profesor"),
+    ("mrojas", "Pass2025*", "Marcela Rojas Niño", "mrojas@zeci.edu.co", "profesor"),
+    ("gsalazar", "Pass2025*", "Gloria Salazar Ruiz", "gsalazar@zeci.edu.co", "profesor"),
+    ("hmedina", "Pass2025*", "Héctor Medina Pardo", "hmedina@zeci.edu.co", "profesor"),
+    ("swhite", "Pass2025*", "Sarah White Jones", "swhite@zeci.edu.co", "profesor"),
+    ("ablack", "Pass2025*", "Andrés Black Mora", "ablack@zeci.edu.co", "profesor"),
+    ("nrivera", "Pass2025*", "Natalia Rivera Lozano", "nrivera@zeci.edu.co", "profesor"),
+    ("ocastano", "Pass2025*", "Oscar Castaño Vélez", "ocastano@zeci.edu.co", "profesor"),
+    ("vmolina", "Pass2025*", "Valentina Molina Cruz", "vmolina@zeci.edu.co", "profesor"),
+    ("tbeltran", "Pass2025*", "Tomás Beltrán Acosta", "tbeltran@zeci.edu.co", "profesor"),
 ]
 
 # (profesor_usuario, [codigos_asignatura])
 _ASIGNACIONES_DEV = [
-    ("lopez",      ["BIO", "CNT"]),
-    ("garcia",     ["MAT", "EST"]),
-    ("martin",     ["LEN", "FIL"]),
-    ("rodriguez",  ["ING", "FRA"]),
-    ("gomez",      ["EDF", "ETI"]),
-    ("torres",     ["TEC", "INF", "ART"]),
+    ("lopez", ["BIO", "CNT"]),
+    ("garcia", ["MAT", "EST"]),
+    ("martin", ["LEN", "FIL"]),
+    ("rodriguez", ["ING", "FRA"]),
+    ("gomez", ["EDF", "ETI"]),
+    ("torres", ["TEC", "INF", "ART"]),
 ]
 
 
 # Niveles de desempeño según modelo típico del Decreto 1290
 _NIVELES_DEFAULT = [
-    ("Bajo",     0.0,  59.9, "Desempeño insuficiente. Requiere actividades de recuperación.", 1),
-    ("Básico",   60.0, 69.9, "Desempeño mínimo esperado. Cumple parcialmente los logros.",   2),
-    ("Alto",     70.0, 84.9, "Desempeño superior al básico. Cumple satisfactoriamente.",      3),
-    ("Superior", 85.0, 100.0,"Desempeño sobresaliente. Supera los logros propuestos.",        4),
+    ("Bajo", 0.0, 59.9, "Desempeño insuficiente. Requiere actividades de recuperación.", 1),
+    ("Básico", 60.0, 69.9, "Desempeño mínimo esperado. Cumple parcialmente los logros.", 2),
+    ("Alto", 70.0, 84.9, "Desempeño superior al básico. Cumple satisfactoriamente.", 3),
+    ("Superior", 85.0, 100.0, "Desempeño sobresaliente. Supera los logros propuestos.", 4),
 ]
 
 _TIPOS_ALERTAS = [
-    ("faltas_injustificadas",    3.0,  True,  False, False),
-    ("promedio_bajo",           55.0,  True,  False, False),
-    ("materias_en_riesgo",       2.0,  True,  True,  False),
-    ("plan_mejoramiento_vencido",1.0,  True,  True,  False),
-    ("habilitacion_pendiente",   1.0,  True,  False, False),
-    ("seguimiento_requerido",    1.0,  True,  True,  False),
+    ("faltas_injustificadas", 3.0, True, False, False),
+    ("promedio_bajo", 55.0, True, False, False),
+    ("materias_en_riesgo", 2.0, True, True, False),
+    ("plan_mejoramiento_vencido", 1.0, True, True, False),
+    ("habilitacion_pendiente", 1.0, True, False, False),
+    ("seguimiento_requerido", 1.0, True, True, False),
 ]
 
 # Categorías de observación por defecto (convivencia_09).
 # Formato: (nombre, es_comportamental)
 _CATEGORIAS_DEFAULT = [
-    ("Académico",                False),
-    ("Convivencia y normas",     True),
-    ("Responsabilidad",          False),
-    ("Participación",            False),
-    ("Comportamiento positivo",  True),
-    ("Comportamiento negativo",  True),
-    ("Seguimiento familiar",     False),
+    ("Académico", False),
+    ("Convivencia y normas", True),
+    ("Responsabilidad", False),
+    ("Participación", False),
+    ("Comportamiento positivo", True),
+    ("Comportamiento negativo", True),
+    ("Seguimiento familiar", False),
 ]
 
 # Plantillas de observación por defecto (convivencia_12).
 # Formato: (texto, nombre_categoria)
 _PLANTILLAS_DEFAULT = [
-    ("Demuestra buen desempeño y compromiso en clase.",        "Comportamiento positivo"),
-    ("Cumple con las normas de convivencia del aula.",          "Convivencia y normas"),
-    ("Entrega oportuna de trabajos y tareas.",                  "Responsabilidad"),
-    ("Participa activamente en las actividades.",               "Participación"),
-    ("Presenta dificultades en el respeto a compañeros.",       "Comportamiento negativo"),
-    ("Incumplimiento reiterado de normas del aula.",            "Convivencia y normas"),
+    ("Demuestra buen desempeño y compromiso en clase.", "Comportamiento positivo"),
+    ("Cumple con las normas de convivencia del aula.", "Convivencia y normas"),
+    ("Entrega oportuna de trabajos y tareas.", "Responsabilidad"),
+    ("Participa activamente en las actividades.", "Participación"),
+    ("Presenta dificultades en el respeto a compañeros.", "Comportamiento negativo"),
+    ("Incumplimiento reiterado de normas del aula.", "Convivencia y normas"),
 ]
 
 _CATEGORIAS_EVALUACION = [
-    ("Evaluaciones",  0.40),
-    ("Trabajos",      0.35),
+    ("Evaluaciones", 0.40),
+    ("Trabajos", 0.35),
     ("Participación", 0.25),
 ]
 
@@ -262,22 +307,22 @@ _CATEGORIAS_EVALUACION = [
 # Formato: (nombre, peso, permite_subcategorias)
 # Ser + Saber + Hacer = 1.0
 _CATEGORIAS_INSTITUCIONALES_DEV = [
-    ("Ser",   0.10, False),  # actitudinal — fijo, sin sub-categorías
+    ("Ser", 0.10, False),  # actitudinal — fijo, sin sub-categorías
     ("Saber", 0.40, False),  # cognitivo — fijo
-    ("Hacer", 0.50, True),   # procedimental — docente puede sub-categorizar
+    ("Hacer", 0.50, True),  # procedimental — docente puede sub-categorizar
 ]
 
 _HORARIOS_BASE = [
-    ("Lunes",     "07:00", "07:55"),
-    ("Lunes",     "07:55", "08:50"),
-    ("Martes",    "07:00", "07:55"),
-    ("Martes",    "07:55", "08:50"),
+    ("Lunes", "07:00", "07:55"),
+    ("Lunes", "07:55", "08:50"),
+    ("Martes", "07:00", "07:55"),
+    ("Martes", "07:55", "08:50"),
     ("Miércoles", "07:00", "07:55"),
     ("Miércoles", "07:55", "08:50"),
-    ("Jueves",    "07:00", "07:55"),
-    ("Jueves",    "07:55", "08:50"),
-    ("Viernes",   "07:00", "07:55"),
-    ("Viernes",   "07:55", "08:50"),
+    ("Jueves", "07:00", "07:55"),
+    ("Jueves", "07:55", "08:50"),
+    ("Viernes", "07:00", "07:55"),
+    ("Viernes", "07:55", "08:50"),
 ]
 
 # Días y franjas lectivas para el constructor determinista del horario base
@@ -285,8 +330,12 @@ _HORARIOS_BASE = [
 # (órdenes lectivos 1,2,3,5,6,7 — el 4 es recreo).
 _DIAS_LECTIVOS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 _FRANJAS_LECTIVAS_DEV = [
-    (1, "07:00", "07:55"), (2, "07:55", "08:50"), (3, "08:50", "09:45"),
-    (5, "10:15", "11:10"), (6, "11:10", "12:05"), (7, "12:05", "13:00"),
+    (1, "07:00", "07:55"),
+    (2, "07:55", "08:50"),
+    (3, "08:50", "09:45"),
+    (5, "10:15", "11:10"),
+    (6, "11:10", "12:05"),
+    (7, "12:05", "13:00"),
     (8, "13:00", "13:55"),
 ]
 
@@ -294,6 +343,7 @@ _FRANJAS_LECTIVAS_DEV = [
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
+
 
 def _get_or_insert(
     conn: sqlite3.Connection,
@@ -338,6 +388,7 @@ def _documento_ti() -> str:
 # ---------------------------------------------------------------------------
 # Seeders atómicos — no hacen commit, reciben conn
 # ---------------------------------------------------------------------------
+
 
 def _seed_plantillas(conn: sqlite3.Connection) -> list[int]:
     """
@@ -392,7 +443,8 @@ def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
     """Crea o recupera la configuración del año. Retorna anio_id."""
     return _get_or_insert(
         conn,
-        "SELECT id FROM configuracion_anio WHERE anio = ?", (anio,),
+        "SELECT id FROM configuracion_anio WHERE anio = ?",
+        (anio,),
         """
         INSERT INTO configuracion_anio (
             anio, fecha_inicio_clases, fecha_fin_clases,
@@ -412,31 +464,29 @@ def _migrate_instituciones_identidad(conn: sqlite3.Connection) -> None:
     """
     existing = {row[1] for row in conn.execute("PRAGMA table_info(instituciones)").fetchall()}
     new_cols = [
-        ("nombre_oficial",        "TEXT"),
-        ("codigo_dane",           "TEXT"),
-        ("rector",                "TEXT"),
-        ("direccion",             "TEXT"),
-        ("pais",                  "TEXT"),
-        ("departamento",          "TEXT"),
-        ("municipio",             "TEXT"),
-        ("telefono",              "TEXT"),
-        ("logo_path",             "TEXT"),
-        ("logo_url",              "TEXT"),
+        ("nombre_oficial", "TEXT"),
+        ("codigo_dane", "TEXT"),
+        ("rector", "TEXT"),
+        ("direccion", "TEXT"),
+        ("pais", "TEXT"),
+        ("departamento", "TEXT"),
+        ("municipio", "TEXT"),
+        ("telefono", "TEXT"),
+        ("logo_path", "TEXT"),
+        ("logo_url", "TEXT"),
         ("resolucion_aprobacion", "TEXT"),
-        ("lema",                  "TEXT"),
-        ("email_institucional",   "TEXT"),
-        ("jornada_principal",     "TEXT"),
-        ("tipo_institucion",      "TEXT"),
-        ("calendario",            "TEXT"),
+        ("lema", "TEXT"),
+        ("email_institucional", "TEXT"),
+        ("jornada_principal", "TEXT"),
+        ("tipo_institucion", "TEXT"),
+        ("calendario", "TEXT"),
     ]
     for col, typ in new_cols:
         if col not in existing:
             conn.execute(f"ALTER TABLE instituciones ADD COLUMN {col} {typ}")
 
     # Backfill: copiar datos de identidad desde config activa a institución #1
-    inst_row = conn.execute(
-        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
-    ).fetchone()
+    inst_row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
     if not inst_row:
         return
     inst_id = int(inst_row[0])
@@ -528,7 +578,9 @@ def _migrate_auditoria_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
 
 def _seed_config_grado_institucion(conn: sqlite3.Connection, inst_id: int) -> None:
     """Seed idempotente (mejora_07-T6): copia min/max/horas de grados a configuracion_grado_institucion."""
-    grados = conn.execute("SELECT id, min_estudiantes, max_estudiantes, horas_semanales FROM grados").fetchall()
+    grados = conn.execute(
+        "SELECT id, min_estudiantes, max_estudiantes, horas_semanales FROM grados"
+    ).fetchall()
     for grado in grados:
         conn.execute(
             """
@@ -620,9 +672,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
     DESPUÉS de sembrar los usuarios (para backfillarlos). Retorna el id de
     la institución por defecto.
     """
-    row = conn.execute(
-        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
-    ).fetchone()
+    row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
     if row:
         institucion_id = int(row[0])
     else:
@@ -630,10 +680,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
             "SELECT nombre_institucion FROM configuracion_anio "
             "ORDER BY (activo = 1) DESC, id LIMIT 1"
         ).fetchone()
-        nombre = (
-            nombre_row[0] if nombre_row and nombre_row[0]
-            else "Institución Educativa"
-        )
+        nombre = nombre_row[0] if nombre_row and nombre_row[0] else "Institución Educativa"
         conn.execute(
             """INSERT INTO instituciones
                    (nombre, activa, pais, departamento, municipio, codigo_dane)
@@ -641,9 +688,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
             (nombre, "Colombia", "Bogotá D.C.", "Bogotá D.C.", "111001000001"),
         )
         institucion_id = int(
-            conn.execute(
-                "SELECT id FROM instituciones ORDER BY id LIMIT 1"
-            ).fetchone()[0]
+            conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()[0]
         )
 
     # Backfill: todos los usuarios sin tenant → institución por defecto.
@@ -653,8 +698,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
     )
     # Backfill (paso_27): toda configuración de año sin tenant → #1.
     conn.execute(
-        "UPDATE configuracion_anio SET institucion_id = ? "
-        "WHERE institucion_id IS NULL",
+        "UPDATE configuracion_anio SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     # Backfill (paso_29, frente B1): grupos y asignaturas sin tenant → #1.
@@ -677,8 +721,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
         (institucion_id,),
     )
     conn.execute(
-        "UPDATE plantillas_franja SET institucion_id = ? "
-        "WHERE institucion_id IS NULL",
+        "UPDATE plantillas_franja SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     _migrate_instituciones_identidad(conn)
@@ -726,7 +769,8 @@ def _seed_segunda_institucion(
     """
     inst2_id = _get_or_insert(
         conn,
-        "SELECT id FROM instituciones WHERE nombre = ?", ("Institución de Prueba",),
+        "SELECT id FROM instituciones WHERE nombre = ?",
+        ("Institución de Prueba",),
         """INSERT INTO instituciones
                (nombre, activa, pais, departamento, municipio, codigo_dane)
            VALUES (?, 1, ?, ?, ?, ?)""",
@@ -734,7 +778,7 @@ def _seed_segunda_institucion(
     )
 
     # Configuración de año activa propia de la #2 (mismo `anio`, distinto tenant).
-    anio2_id = _get_or_insert(
+    _get_or_insert(
         conn,
         "SELECT id FROM configuracion_anio WHERE institucion_id = ? AND anio = ?",
         (inst2_id, anio),
@@ -744,8 +788,7 @@ def _seed_segunda_institucion(
             nota_minima_aprobacion, nombre_institucion, activo
         ) VALUES (?, ?, ?, ?, ?, ?, 1)
         """,
-        (anio, inst2_id, f"{anio}-01-20", f"{anio}-12-15",
-         60.0, "Institución de Prueba"),
+        (anio, inst2_id, f"{anio}-01-20", f"{anio}-12-15", 60.0, "Institución de Prueba"),
     )
 
     # Director de la #2 con un username DISTINTO y global-único (paso_37): el
@@ -760,8 +803,13 @@ def _seed_segunda_institucion(
             institucion_id
         ) VALUES (?, ?, ?, ?, 'director', 1, ?)
         """,
-        ("director.prueba", hasher("Prueba2025*"), "Director Institución de Prueba",
-         "director@prueba.edu.co", inst2_id),
+        (
+            "director.prueba",
+            hasher("Prueba2025*"),
+            "Director Institución de Prueba",
+            "director@prueba.edu.co",
+            inst2_id,
+        ),
     )
 
     # Grupo reutilizando un `codigo` de la #1 (601) bajo otro tenant.
@@ -795,8 +843,7 @@ def _seed_segunda_institucion(
 
     # Estudiante reutilizando un `numero_documento` de un estudiante de la #1.
     doc_row = conn.execute(
-        "SELECT numero_documento FROM estudiantes WHERE institucion_id = ? "
-        "ORDER BY id LIMIT 1",
+        "SELECT numero_documento FROM estudiantes WHERE institucion_id = ? ORDER BY id LIMIT 1",
         (1,),
     ).fetchone()
     doc_compartido = doc_row[0] if doc_row else "1000000001"
@@ -810,8 +857,7 @@ def _seed_segunda_institucion(
             nombre, apellido, genero, grupo_id, estado_matricula, institucion_id
         ) VALUES (?, 'TI', ?, ?, ?, 'F', ?, 'activo', ?)
         """,
-        (f"EPRB{inst2_id:02d}001", doc_compartido,
-         "Estudiante", "De Prueba", grupo2_id, inst2_id),
+        (f"EPRB{inst2_id:02d}001", doc_compartido, "Estudiante", "De Prueba", grupo2_id, inst2_id),
     )
 
     return inst2_id
@@ -897,7 +943,8 @@ def _seed_areas(conn: sqlite3.Connection) -> dict[str, int]:
     for nombre, codigo, color in _AREAS:
         aid = _get_or_insert(
             conn,
-            "SELECT id FROM areas_conocimiento WHERE nombre=?", (nombre,),
+            "SELECT id FROM areas_conocimiento WHERE nombre=?",
+            (nombre,),
             "INSERT INTO areas_conocimiento (nombre, codigo, color) VALUES (?, ?, ?)",
             (nombre, codigo, color),
         )
@@ -917,7 +964,8 @@ def _seed_asignaturas(
         area_id = area_map.get(area_nombre)
         sid = _get_or_insert(
             conn,
-            "SELECT id FROM asignaturas WHERE codigo=?", (codigo,),
+            "SELECT id FROM asignaturas WHERE codigo=?",
+            (codigo,),
             "INSERT INTO asignaturas (nombre, codigo, area_id, horas_semanales) VALUES (?,?,?,?)",
             (nombre, codigo, area_id, horas),
         )
@@ -939,7 +987,8 @@ def _seed_usuarios(
     for usuario, password, nombre, email, rol in usuarios:
         uid = _get_or_insert(
             conn,
-            "SELECT id FROM usuarios WHERE usuario=?", (usuario,),
+            "SELECT id FROM usuarios WHERE usuario=?",
+            (usuario,),
             """
             INSERT INTO usuarios (usuario, password_hash, nombre_completo, email, rol, activo)
             VALUES (?, ?, ?, ?, ?, 1)
@@ -995,7 +1044,8 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
     """
     pid = _get_or_insert(
         conn,
-        "SELECT id FROM plantillas_franja WHERE nombre=?", ("Jornada única",),
+        "SELECT id FROM plantillas_franja WHERE nombre=?",
+        ("Jornada única",),
         """
         INSERT INTO plantillas_franja (nombre, jornada, dias_activos, activa)
         VALUES (?, ?, ?, ?)
@@ -1009,23 +1059,21 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
     )
 
     # Si ya tiene franjas, no volver a sembrarlas (idempotencia).
-    ya = conn.execute(
-        "SELECT COUNT(*) FROM franjas WHERE plantilla_id=?", (pid,)
-    ).fetchone()[0]
+    ya = conn.execute("SELECT COUNT(*) FROM franjas WHERE plantilla_id=?", (pid,)).fetchone()[0]
     if ya:
         return pid
 
     # 7 lectivas + 1 recreo = 35 cupos/semana. Deja holgura sobre las 30 h del
     # plan de estudios para que el generador pueda resolver sin saturar grupos.
     franjas = [
-        (pid, 1, "07:00", "07:55", "lectiva",  None),
-        (pid, 2, "07:55", "08:50", "lectiva",  None),
-        (pid, 3, "08:50", "09:45", "lectiva",  None),
+        (pid, 1, "07:00", "07:55", "lectiva", None),
+        (pid, 2, "07:55", "08:50", "lectiva", None),
+        (pid, 3, "08:50", "09:45", "lectiva", None),
         (pid, 4, "09:45", "10:15", "descanso", "Recreo"),
-        (pid, 5, "10:15", "11:10", "lectiva",  None),
-        (pid, 6, "11:10", "12:05", "lectiva",  None),
-        (pid, 7, "12:05", "13:00", "lectiva",  None),
-        (pid, 8, "13:00", "13:55", "lectiva",  None),
+        (pid, 5, "10:15", "11:10", "lectiva", None),
+        (pid, 6, "11:10", "12:05", "lectiva", None),
+        (pid, 7, "12:05", "13:00", "lectiva", None),
+        (pid, 8, "13:00", "13:55", "lectiva", None),
     ]
     conn.executemany(
         """
@@ -1047,7 +1095,8 @@ def _seed_grupos(
     for codigo, nombre, grado, jornada, cap in grupos:
         gid = _get_or_insert(
             conn,
-            "SELECT id FROM grupos WHERE codigo=?", (codigo,),
+            "SELECT id FROM grupos WHERE codigo=?",
+            (codigo,),
             "INSERT INTO grupos (codigo, nombre, grado, jornada, capacidad_maxima) VALUES (?,?,?,?,?)",
             (codigo, nombre, grado, jornada, cap),
         )
@@ -1074,7 +1123,8 @@ def _seed_periodos(
     for numero, nombre, inicio, fin, peso, activo in datos:
         pid = _get_or_insert(
             conn,
-            "SELECT id FROM periodos WHERE anio_id=? AND numero=?", (anio_id, numero),
+            "SELECT id FROM periodos WHERE anio_id=? AND numero=?",
+            (anio_id, numero),
             """
             INSERT INTO periodos
                 (anio_id, numero, nombre, fecha_inicio, fecha_fin,
@@ -1165,8 +1215,17 @@ def _seed_horarios(
                          periodo_id, escenario_id, dia_semana, hora_inicio, hora_fin, sala)
                     VALUES (?,?,?,?,?,?,?,?,?,'Aula')
                     """,
-                    (grupo_id, asignatura_id, usuario_id, asig_id,
-                     periodo_id, escenario_id, dia, hora_i, hora_f),
+                    (
+                        grupo_id,
+                        asignatura_id,
+                        usuario_id,
+                        asig_id,
+                        periodo_id,
+                        escenario_id,
+                        dia,
+                        hora_i,
+                        hora_f,
+                    ),
                 )
                 count += 1
     return count
@@ -1201,19 +1260,18 @@ def _seed_asignaciones_desde_plan(
 
     ids: list[int] = []
     for periodo_id in periodo_ids:
-        carga: dict[int, int] = {t: 0 for t in teachers}
+        carga: dict[int, int] = dict.fromkeys(teachers, 0)
         materias_de: dict[int, set] = defaultdict(set)  # teacher -> {asignatura_id}
         # Slots a cubrir, agrupados por asignatura (para continuidad de docente).
         por_asig: dict[int, list[tuple[int, int]]] = defaultdict(list)  # aid -> [(grupo_id, horas)]
         for g in grupos:
-            for (aid, horas) in plan_por_grado.get(g["grado"], []):
+            for aid, horas in plan_por_grado.get(g["grado"], []):
                 por_asig[aid].append((g["id"], horas))
 
         for aid, slots in por_asig.items():
-            for (gid, horas) in slots:
+            for gid, horas in slots:
                 # Preferir un docente que ya dicte esa asignatura y tenga cupo.
-                cand = [t for t in teachers
-                        if carga[t] + horas <= cap[t] and aid in materias_de[t]]
+                cand = [t for t in teachers if carga[t] + horas <= cap[t] and aid in materias_de[t]]
                 if not cand:
                     cand = [t for t in teachers if carga[t] + horas <= cap[t]]
                 if not cand:
@@ -1282,9 +1340,7 @@ def _seed_horarios_completo(
 
     # 4. Slots disponibles (30 = 5 días × 6 franjas lectivas)
     slots = [
-        (dia, orden, hi, hf)
-        for dia in _DIAS_LECTIVOS
-        for (orden, hi, hf) in _FRANJAS_LECTIVAS_DEV
+        (dia, orden, hi, hf) for dia in _DIAS_LECTIVOS for (orden, hi, hf) in _FRANJAS_LECTIVAS_DEV
     ]
 
     n = len(lecciones)
@@ -1323,7 +1379,7 @@ def _seed_horarios_completo(
     # 7. Insertar las lecciones colocadas
     count = 0
     for (asig_id, grupo_id, usuario_id, asignatura_id), slot in zip(
-        lecciones, asignacion_slot
+        lecciones, asignacion_slot, strict=False
     ):
         dia, _orden, hi, hf = slot
         conn.execute(
@@ -1333,15 +1389,12 @@ def _seed_horarios_completo(
                  periodo_id, escenario_id, dia_semana, hora_inicio, hora_fin, sala)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Aula')
             """,
-            (grupo_id, asignatura_id, usuario_id, asig_id,
-             periodo_id, escenario_id, dia, hi, hf),
+            (grupo_id, asignatura_id, usuario_id, asig_id, periodo_id, escenario_id, dia, hi, hf),
         )
         count += 1
 
     # 8. Verificación final
-    assert count == len(lecciones), (
-        f"insertadas={count} != lecciones={len(lecciones)}"
-    )
+    assert count == len(lecciones), f"insertadas={count} != lecciones={len(lecciones)}"
     return count
 
 
@@ -1360,15 +1413,14 @@ def _seed_estudiantes(
     # estudiantes directamente con tenant. En seed_dev, _seed_estudiantes corre
     # DESPUÉS de _seed_institucion, así que ya existe #1; el backfill de
     # _seed_institucion cubre cualquier fila NULL residual (idempotente).
-    row = conn.execute(
-        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
-    ).fetchone()
+    row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
     institucion_default = int(row[0]) if row else None
     por_grupo = max(1, total // len(grupo_map))
     for idx_g, (codigo_grupo, grupo_id) in enumerate(grupo_map.items()):
         for i in range(por_grupo):
             nombre, apellido, genero = (
-                rng.choice(_NOMBRES_M) if (g := rng.choice(("M", "F"))) == "M"
+                rng.choice(_NOMBRES_M)
+                if (g := rng.choice(("M", "F"))) == "M"
                 else rng.choice(_NOMBRES_F),
                 f"{rng.choice(_APELLIDOS)} {rng.choice(_APELLIDOS)}",
                 g,
@@ -1382,7 +1434,8 @@ def _seed_estudiantes(
             )
             eid = _get_or_insert(
                 conn,
-                "SELECT id FROM estudiantes WHERE id_publico=?", (id_publico,),
+                "SELECT id FROM estudiantes WHERE id_publico=?",
+                (id_publico,),
                 """
                 INSERT INTO estudiantes (
                     id_publico, tipo_documento, numero_documento,
@@ -1391,8 +1444,16 @@ def _seed_estudiantes(
                     institucion_id
                 ) VALUES (?, 'TI', ?, ?, ?, ?, ?, ?, 'activo', ?)
                 """,
-                (id_publico, numero_doc, nombre, apellido, genero,
-                 grupo_id, fecha_nac.isoformat(), institucion_default),
+                (
+                    id_publico,
+                    numero_doc,
+                    nombre,
+                    apellido,
+                    genero,
+                    grupo_id,
+                    fecha_nac.isoformat(),
+                    institucion_default,
+                ),
             )
             ids.append(eid)
     return ids
@@ -1419,17 +1480,15 @@ def _seed_acudientes(
             continue
 
         parentesco = parentescos[i % 2]
-        nombre = (
-            rng.choice(_NOMBRES_M) if parentesco == "padre"
-            else rng.choice(_NOMBRES_F)
-        )
+        nombre = rng.choice(_NOMBRES_M) if parentesco == "padre" else rng.choice(_NOMBRES_F)
         apellido = f"{rng.choice(_APELLIDOS)} {rng.choice(_APELLIDOS)}"
         numero_doc = str(rng.randint(10_000_000, 99_999_999))
         celular = f"3{rng.randint(100_000_000, 199_999_999)}"
 
         acud_id = _get_or_insert(
             conn,
-            "SELECT id FROM acudientes WHERE numero_documento=?", (numero_doc,),
+            "SELECT id FROM acudientes WHERE numero_documento=?",
+            (numero_doc,),
             """
             INSERT INTO acudientes
                 (tipo_documento, numero_documento, nombre_completo,
@@ -1503,8 +1562,12 @@ def _seed_categorias_actividades(
                             (nombre, descripcion, fecha, valor_maximo, estado, categoria_id)
                         VALUES (?, ?, ?, 100.0, 'publicada', ?)
                         """,
-                        (act_nombre, f"Actividad {num} de {cat_nombre}",
-                         fecha_act.isoformat(), cat_id),
+                        (
+                            act_nombre,
+                            f"Actividad {num} de {cat_nombre}",
+                            fecha_act.isoformat(),
+                            cat_id,
+                        ),
                     )
                     act_id = conn.execute(
                         "SELECT id FROM actividades WHERE nombre=? AND categoria_id=?",
@@ -1566,16 +1629,15 @@ def _seed_asistencias(
     grupo_id_por_est = {
         row[0]: row[1]
         for row in conn.execute(
-            "SELECT id, grupo_id FROM estudiantes WHERE id IN (%s)"
-            % ",".join("?" * len(estudiante_ids)),
+            "SELECT id, grupo_id FROM estudiantes WHERE id IN ({})".format(
+                ",".join("?" * len(estudiante_ids))
+            ),
             estudiante_ids,
         ).fetchall()
     }
     asig_por_grupo: dict[int, int] = {}
     for asig_id in asignacion_ids[:10]:
-        row = conn.execute(
-            "SELECT grupo_id FROM asignaciones WHERE id=?", (asig_id,)
-        ).fetchone()
+        row = conn.execute("SELECT grupo_id FROM asignaciones WHERE id=?", (asig_id,)).fetchone()
         if row:
             asig_por_grupo.setdefault(row[0], asig_id)
 
@@ -1623,8 +1685,7 @@ def _seed_asistencias(
                     fecha, estado, uniforme, materiales, usuario_registro_id
                 ) VALUES (?, ?, ?, ?, ?, ?, 1, 1, ?)
                 """,
-                (est_id, grupo_id, asig_id, periodo_id,
-                 fecha.isoformat(), estado, usuario_id),
+                (est_id, grupo_id, asig_id, periodo_id, fecha.isoformat(), estado, usuario_id),
             )
             count += 1
     return count
@@ -1672,6 +1733,7 @@ def _seed_observaciones(
 # ---------------------------------------------------------------------------
 # Seeder SIEE
 # ---------------------------------------------------------------------------
+
 
 def _seed_configuracion_siee(
     conn: sqlite3.Connection,
@@ -1747,6 +1809,7 @@ def _seed_configuracion_siee(
 # Seeder config_generacion (paso_15b)
 # ---------------------------------------------------------------------------
 
+
 def _seed_config_generacion(
     conn: sqlite3.Connection,
     periodo_id: int,
@@ -1759,6 +1822,7 @@ def _seed_config_generacion(
     Retorna el id creado o existente.
     """
     import json as _json
+
     existing = conn.execute(
         "SELECT id FROM config_generacion WHERE nombre = ?", ("Config inicial",)
     ).fetchone()
@@ -1793,12 +1857,31 @@ def _seed_config_generacion(
 # los 30 cupos lectivos de la plantilla "Jornada única": 6 franjas × 5 días).
 # (codigo_asignatura, horas_semanales)
 _PLAN_BASICA = [  # grados 6–9
-    ("MAT", 5), ("LEN", 5), ("CNT", 4), ("CSO", 4), ("ING", 3),
-    ("EDF", 2), ("ART", 2), ("TEC", 2), ("ETI", 1), ("REL", 1), ("INF", 1),
+    ("MAT", 5),
+    ("LEN", 5),
+    ("CNT", 4),
+    ("CSO", 4),
+    ("ING", 3),
+    ("EDF", 2),
+    ("ART", 2),
+    ("TEC", 2),
+    ("ETI", 1),
+    ("REL", 1),
+    ("INF", 1),
 ]
-_PLAN_MEDIA = [   # grados 10–11
-    ("MAT", 4), ("LEN", 4), ("BIO", 2), ("QUI", 3), ("FIS", 3), ("CSO", 3),
-    ("FIL", 2), ("ING", 3), ("EDF", 2), ("TEC", 1), ("ETI", 1), ("REL", 1),
+_PLAN_MEDIA = [  # grados 10–11
+    ("MAT", 4),
+    ("LEN", 4),
+    ("BIO", 2),
+    ("QUI", 3),
+    ("FIS", 3),
+    ("CSO", 3),
+    ("FIL", 2),
+    ("ING", 3),
+    ("EDF", 2),
+    ("TEC", 1),
+    ("ETI", 1),
+    ("REL", 1),
     ("EST", 1),
 ]
 
@@ -1843,6 +1926,7 @@ def _seed_plan_estudios(
 # API pública
 # ---------------------------------------------------------------------------
 
+
 def seed_base(
     conn: sqlite3.Connection,
     anio: int | None = None,
@@ -1859,6 +1943,7 @@ def seed_base(
       - Usuario admin
     """
     from datetime import datetime
+
     anio = anio or datetime.now().year
     result = SeedResult()
 
@@ -1881,11 +1966,11 @@ def seed_base(
     plantilla_ids = _seed_plantillas(conn)
 
     result.counts = {
-        "niveles_desempeno":        len(result.nivel_ids),
-        "areas_conocimiento":       len(result.area_ids),
-        "usuarios_base":            len(result.usuario_ids),
-        "categorias_observacion":   len(categoria_ids),
-        "plantillas_observacion":   len(plantilla_ids),
+        "niveles_desempeno": len(result.nivel_ids),
+        "areas_conocimiento": len(result.area_ids),
+        "usuarios_base": len(result.usuario_ids),
+        "categorias_observacion": len(categoria_ids),
+        "plantillas_observacion": len(plantilla_ids),
     }
     result.log_resumen()
     return result
@@ -1957,8 +2042,12 @@ def seed_dev(
 
     # Grados ofrecidos (6–11): rango de estudiantes (norma) + 30 h objetivo.
     _GRADOS_DEV = [
-        (6, "Sexto"), (7, "Séptimo"), (8, "Octavo"),
-        (9, "Noveno"), (10, "Décimo"), (11, "Once"),
+        (6, "Sexto"),
+        (7, "Séptimo"),
+        (8, "Octavo"),
+        (9, "Noveno"),
+        (10, "Décimo"),
+        (11, "Once"),
     ]
     for numero, nombre in _GRADOS_DEV:
         conn.execute(
@@ -1981,9 +2070,7 @@ def seed_dev(
 
     esc_map = _seed_escenarios(conn, result.anio_id)
     escenario_activo_id = esc_map["Horario base"]
-    horarios_count = _seed_horarios_completo(
-        conn, result.periodo_ids[0], escenario_activo_id
-    )
+    horarios_count = _seed_horarios_completo(conn, result.periodo_ids[0], escenario_activo_id)
 
     dev_plantilla_id = _seed_plantilla_franjas(conn)
     _seed_config_generacion(
@@ -1993,9 +2080,7 @@ def seed_dev(
         plantilla_id=dev_plantilla_id,
     )
 
-    result.estudiante_ids = _seed_estudiantes(
-        conn, grupo_map, total_estudiantes, rng
-    )
+    result.estudiante_ids = _seed_estudiantes(conn, grupo_map, total_estudiantes, rng)
 
     result.acudiente_ids = _seed_acudientes(conn, result.estudiante_ids, rng)
 
@@ -2004,9 +2089,7 @@ def seed_dev(
     )
 
     prof_id = result.usuario_ids.get("rgomez", 1)
-    n_notas = _seed_notas(
-        conn, actividad_ids, result.estudiante_ids, prof_id, rng
-    )
+    n_notas = _seed_notas(conn, actividad_ids, result.estudiante_ids, prof_id, rng)
 
     n_asist = _seed_asistencias(
         conn,
@@ -2048,13 +2131,9 @@ def seed_dev(
             "INSERT OR IGNORE INTO salas (nombre, tipo, capacidad) VALUES (?, 'aula', 40)",
             (f"Aula {codigo}",),
         )
-        srow = conn.execute(
-            "SELECT id FROM salas WHERE nombre = ?", (f"Aula {codigo}",)
-        ).fetchone()
+        srow = conn.execute("SELECT id FROM salas WHERE nombre = ?", (f"Aula {codigo}",)).fetchone()
         if srow:
-            conn.execute(
-                "UPDATE grupos SET sala_id = ? WHERE id = ?", (srow[0], gid)
-            )
+            conn.execute("UPDATE grupos SET sala_id = ? WHERE id = ?", (srow[0], gid))
 
     # Nota: NO se siembran límites diarios por docente por defecto. Imponer un
     # tope/mínimo diario a todos desactiva el coloreo óptimo (König) y obliga al
@@ -2071,28 +2150,26 @@ def seed_dev(
     # compartidos con la #1 para probar a mano el aislamiento. El director usa un
     # username distinto (`director.prueba`) por la unicidad global. Corre DESPUÉS
     # de establecer la #1 y sus estudiantes (de los que reutiliza un documento).
-    _seed_segunda_institucion(
-        conn, anio or __import__("datetime").datetime.now().year, hasher
-    )
+    _seed_segunda_institucion(conn, anio or __import__("datetime").datetime.now().year, hasher)
 
-    result.counts.update({
-        "usuarios_total":     len(result.usuario_ids),
-        "grupos":             len(result.grupo_ids),
-        "asignaturas":        len(result.asignatura_ids),
-        "periodos":           len(result.periodo_ids),
-        "asignaciones":       len(result.asignacion_ids),
-        "horarios":           horarios_count,
-        "estudiantes":        len(result.estudiante_ids),
-        "acudientes":         len(result.acudiente_ids),
-        "categorias":         n_cats,
-        "actividades":        n_acts,
-        "notas":              n_notas,
-        "asistencias":        n_asist,
-        "observaciones":      n_obs,
-        "instituciones":      conn.execute(
-            "SELECT COUNT(*) FROM instituciones"
-        ).fetchone()[0],
-    })
+    result.counts.update(
+        {
+            "usuarios_total": len(result.usuario_ids),
+            "grupos": len(result.grupo_ids),
+            "asignaturas": len(result.asignatura_ids),
+            "periodos": len(result.periodo_ids),
+            "asignaciones": len(result.asignacion_ids),
+            "horarios": horarios_count,
+            "estudiantes": len(result.estudiante_ids),
+            "acudientes": len(result.acudiente_ids),
+            "categorias": n_cats,
+            "actividades": n_acts,
+            "notas": n_notas,
+            "asistencias": n_asist,
+            "observaciones": n_obs,
+            "instituciones": conn.execute("SELECT COUNT(*) FROM instituciones").fetchone()[0],
+        }
+    )
     result.log_resumen()
     return result
 
@@ -2123,9 +2200,9 @@ def seed_test(
     result.area_ids = _seed_areas(conn)
 
     usuarios_test = [
-        ("admin_test",   "pass", "Admin Test",    "admin@test.co",   "admin"),
-        ("prof_test",    "pass", "Profesor Test", "prof@test.co",    "profesor"),
-        ("director_test","pass", "Director Test", "dir@test.co",     "director"),
+        ("admin_test", "pass", "Admin Test", "admin@test.co", "admin"),
+        ("prof_test", "pass", "Profesor Test", "prof@test.co", "profesor"),
+        ("director_test", "pass", "Director Test", "dir@test.co", "director"),
     ]
     result.usuario_ids = _seed_usuarios(conn, usuarios_test, hasher)
 
@@ -2138,7 +2215,9 @@ def seed_test(
         [("Matemáticas Test", "MAT_T", "Matemáticas", 4)],
     )
     _seed_plan_estudios(
-        conn, result.asignatura_ids, [6],
+        conn,
+        result.asignatura_ids,
+        [6],
         [("Matemáticas Test", "MAT_T", "Matemáticas", 4)],
     )
 
@@ -2162,12 +2241,13 @@ def seed_test(
 
     # 3 estudiantes con datos fijos y predecibles
     est_ids = []
-    for i, (nombre, apellido) in enumerate([
-        ("Ana", "García"), ("Luis", "López"), ("María", "Pérez")
-    ]):
+    for i, (nombre, apellido) in enumerate(
+        [("Ana", "García"), ("Luis", "López"), ("María", "Pérez")]
+    ):
         eid = _get_or_insert(
             conn,
-            "SELECT id FROM estudiantes WHERE id_publico=?", (f"TEST{i:03d}",),
+            "SELECT id FROM estudiantes WHERE id_publico=?",
+            (f"TEST{i:03d}",),
             """
             INSERT INTO estudiantes (
                 id_publico, tipo_documento, numero_documento,
@@ -2175,13 +2255,12 @@ def seed_test(
                 fecha_nacimiento, estado_matricula
             ) VALUES (?, 'TI', ?, ?, ?, 'F', ?, '2010-06-15', 'activo')
             """,
-            (f"TEST{i:03d}", f"100000000{i}", nombre, apellido,
-             list(grupo_map.values())[0]),
+            (f"TEST{i:03d}", f"100000000{i}", nombre, apellido, next(iter(grupo_map.values()))),
         )
         est_ids.append(eid)
     result.estudiante_ids = est_ids
 
-    n_cats, n_acts, actividad_ids = _seed_categorias_actividades(
+    _n_cats, n_acts, actividad_ids = _seed_categorias_actividades(
         conn, result.asignacion_ids, result.periodo_ids
     )
     prof_id = result.usuario_ids["prof_test"]
@@ -2206,13 +2285,13 @@ def seed_test(
     _seed_institucion(conn)
 
     result.counts = {
-        "usuarios":    len(result.usuario_ids),
-        "grupos":      1,
-        "periodos":    len(result.periodo_ids),
-        "asignaciones":len(result.asignacion_ids),
+        "usuarios": len(result.usuario_ids),
+        "grupos": 1,
+        "periodos": len(result.periodo_ids),
+        "asignaciones": len(result.asignacion_ids),
         "estudiantes": len(est_ids),
         "actividades": n_acts,
-        "notas":       n_notas,
+        "notas": n_notas,
     }
     return result
 

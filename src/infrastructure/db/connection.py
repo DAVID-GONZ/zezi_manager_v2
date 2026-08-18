@@ -27,6 +27,7 @@ logger = logging.getLogger("DB.CONNECTION")
 # Resolución de la ruta de la base de datos
 # ---------------------------------------------------------------------------
 
+
 def _resolve_db_path() -> Path:
     """
     Determina la ruta de la BD en tiempo de ejecución.
@@ -45,6 +46,7 @@ def _resolve_db_path() -> Path:
 
     try:
         from config import DATABASE_PATH
+
         return DATABASE_PATH
     except ImportError:
         # config.py todavía no existe o el proyecto se importa en aislamiento.
@@ -60,6 +62,7 @@ DB_PATH: Path = _resolve_db_path()
 # ---------------------------------------------------------------------------
 # Normalización de parámetros (compatibilidad con numpy/pandas)
 # ---------------------------------------------------------------------------
+
 
 def _normalize_param(value: object) -> object:
     """
@@ -87,6 +90,7 @@ def _normalize_params(params: tuple | list | None) -> tuple:
 # ---------------------------------------------------------------------------
 # Context manager de conexión
 # ---------------------------------------------------------------------------
+
 
 @contextmanager
 def get_connection(
@@ -120,8 +124,10 @@ def get_connection(
         >>> with get_connection(":memory:") as conn:
         ...     conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
     """
-    path = Path(db_path) if db_path and str(db_path) != ":memory:" else (
-        Path(":memory:") if db_path == ":memory:" else DB_PATH
+    path = (
+        Path(db_path)
+        if db_path and str(db_path) != ":memory:"
+        else (Path(":memory:") if db_path == ":memory:" else DB_PATH)
     )
 
     # Crear directorio de datos si no existe (solo para ficheros reales)
@@ -132,7 +138,7 @@ def get_connection(
     try:
         conn = sqlite3.connect(
             str(path),
-            check_same_thread=False,   # NiceGUI usa múltiples hilos
+            check_same_thread=False,  # NiceGUI usa múltiples hilos
             timeout=timeout,
         )
 
@@ -162,6 +168,7 @@ def get_connection(
 # Utilidades
 # ---------------------------------------------------------------------------
 
+
 def verify_db_integrity(db_path: Path | str | None = None) -> bool:
     """
     Ejecuta PRAGMA integrity_check sobre la BD.
@@ -185,7 +192,7 @@ def verify_db_integrity(db_path: Path | str | None = None) -> bool:
 
 __all__ = [
     "DB_PATH",
-    "_normalize_params",   # usado internamente por queries.py
+    "_normalize_params",  # usado internamente por queries.py
     "get_connection",
     "verify_db_integrity",
 ]

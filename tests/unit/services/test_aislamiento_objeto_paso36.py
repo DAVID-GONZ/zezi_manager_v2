@@ -202,9 +202,8 @@ class TestUsuarioAislamiento:
 
     def test_director_no_lee_usuario_de_otra_institucion(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.get_by_id(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.get_by_id(20)
 
     def test_director_lee_usuario_propio(self):
         svc, _ = self._svc()
@@ -213,15 +212,13 @@ class TestUsuarioAislamiento:
 
     def test_director_no_actualiza_usuario_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.actualizar(20, ActualizarUsuarioDTO(nombre_completo="Hack"))
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.actualizar(20, ActualizarUsuarioDTO(nombre_completo="Hack"))
 
     def test_director_no_desactiva_usuario_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.desactivar(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.desactivar(20)
 
     def test_admin_scope_none_opera_con_ambos(self):
         svc, _ = self._svc()
@@ -243,9 +240,8 @@ class TestEstudianteAislamiento:
 
     def test_director_no_lee_estudiante_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.get_by_id(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.get_by_id(20)
 
     def test_director_actualiza_estudiante_propio(self):
         svc, _ = self._svc()
@@ -255,9 +251,8 @@ class TestEstudianteAislamiento:
 
     def test_director_no_actualiza_estudiante_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.actualizar(20, ActualizarEstudianteDTO(nombre="Hack"))
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.actualizar(20, ActualizarEstudianteDTO(nombre="Hack"))
 
     def test_admin_opera_con_ambos(self):
         svc, _ = self._svc()
@@ -290,9 +285,8 @@ class TestInfraAislamiento:
 
     def test_director_no_elimina_grupo_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.eliminar_grupo(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.eliminar_grupo(20)
 
     def test_director_elimina_grupo_propio(self):
         svc, _ = self._svc()
@@ -301,9 +295,8 @@ class TestInfraAislamiento:
 
     def test_director_no_actualiza_grupo_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.actualizar_grupo(_grupo(20, INST_B))
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.actualizar_grupo(_grupo(20, INST_B))
 
     def test_actualizar_grupo_no_permite_mover_institucion(self):
         # institucion_id forjado a A para un grupo que es de B → debe leerse
@@ -326,21 +319,18 @@ class TestInfraAislamiento:
 
     def test_director_no_elimina_asignatura_ajena(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.eliminar_asignatura(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.eliminar_asignatura(20)
 
     def test_director_no_elimina_sala_ajena(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.eliminar_sala(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.eliminar_sala(20)
 
     def test_director_no_elimina_plantilla_ajena(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.eliminar_plantilla(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.eliminar_plantilla(20)
 
     def test_admin_elimina_de_ambas(self):
         svc, _ = self._svc()
@@ -362,9 +352,8 @@ class TestConfiguracionAislamiento:
 
     def test_director_no_activa_anio_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.activar_anio(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.activar_anio(20)
 
     def test_director_activa_anio_propio(self):
         svc, repo = self._svc()
@@ -374,9 +363,8 @@ class TestConfiguracionAislamiento:
 
     def test_director_no_lee_anio_ajeno(self):
         svc, _ = self._svc()
-        with usar_institucion(INST_A):
-            with pytest.raises(OperacionFueraDeInstitucionError):
-                svc.get_by_id(20)
+        with usar_institucion(INST_A), pytest.raises(OperacionFueraDeInstitucionError):
+            svc.get_by_id(20)
 
     def test_admin_opera_con_ambos(self):
         svc, _ = self._svc()

@@ -18,15 +18,16 @@ API verificada con NiceGUI 3.6.1:
     - actions pasan por **kwargs pero requieren handlers JavaScript en NiceGUI 3.x;
       por ello solo se soporta close_button como acción desde Python.
 """
+
 from __future__ import annotations
 
 from nicegui import ui
 
 _TIPO_CONFIG: dict[str, dict] = {
-    "info":    {"color": "info",     "icon": "info"},
+    "info": {"color": "info", "icon": "info"},
     "success": {"color": "positive", "icon": "check_circle"},
-    "warning": {"color": "warning",  "icon": "warning"},
-    "error":   {"color": "negative", "icon": "error"},
+    "warning": {"color": "warning", "icon": "warning"},
+    "error": {"color": "negative", "icon": "error"},
 }
 
 
@@ -52,9 +53,9 @@ def toast(
 
     kwargs: dict = {
         "position": "bottom-right",
-        "timeout":  duracion_ms,
-        "icon":     cfg["icon"],
-        "classes":  f"andes-toast andes-toast--{tipo}",
+        "timeout": duracion_ms,
+        "icon": cfg["icon"],
+        "classes": f"andes-toast andes-toast--{tipo}",
     }
 
     if duracion_ms == 0:

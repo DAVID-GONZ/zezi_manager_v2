@@ -12,6 +12,8 @@
   padding-top: var(--topbar-height);
   min-height: 100vh;
   box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
 }
 
 /* ── Área de contenido ───────────────────────────────────── */
@@ -24,7 +26,6 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  width: 100%;
 }
 
 .andes-content * {

@@ -472,7 +472,7 @@ class TestSqliteEvaluacionRepository:
         assert acts, "No hay actividades en seed"
         act_id = acts[0].id
         nota = Nota(estudiante_id=eid, actividad_id=act_id, valor=85.0)
-        guardada = repo.guardar_nota(nota)
+        repo.guardar_nota(nota)
         recuperada = repo.get_nota(eid, act_id)
         assert recuperada is not None
         assert recuperada.valor == 85.0
@@ -539,7 +539,7 @@ class TestSqliteAsistenciaRepository:
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         ctrl = self._make_control(eid, gid, aid, pid)
-        guardado = repo.registrar(ctrl)
+        repo.registrar(ctrl)
         recuperado = repo.get_por_fecha_estudiante(eid, aid, date(2025, 3, 10))
         assert recuperado is not None
         assert recuperado.estado == EstadoAsistencia.PRESENTE
@@ -751,7 +751,7 @@ class TestSqliteConvivenciaRepository:
         nota = NotaComportamiento(
             estudiante_id=eid, grupo_id=gid, periodo_id=pid, valor=88.0
         )
-        guardada = repo.guardar_nota(nota)
+        repo.guardar_nota(nota)
         recuperada = repo.get_nota(eid, pid)
         assert recuperada is not None
         assert recuperada.valor == 88.0
@@ -1173,11 +1173,8 @@ class TestSqliteEstadisticosRepository:
 
 if __name__ == "__main__":
     import sys
-    
-    print("\n" + "="*80)
-    print(" INICIANDO PRUEBAS DE INTEGRACION: REPOSITORIOS SQLITE ".center(80))
-    print("="*80 + "\n")
-    
-    # Ejecuta pytest sobre este mismo archivo para mostrar los resultados 
+
+
+    # Ejecuta pytest sobre este mismo archivo para mostrar los resultados
     # de consola de forma detallada y amigable.
     sys.exit(pytest.main(["-v", "-s", "--tb=short", __file__]))

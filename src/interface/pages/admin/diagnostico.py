@@ -17,6 +17,7 @@ Regla de capas:
 Refreshables:
   ninguno — la página es estática (snapshot del Container + diálogo modal).
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,10 +37,10 @@ logger = logging.getLogger("DIAGNOSTICO")
 
 # ── "Ver como" — etiquetas de rol (reubicado desde inicio.py) ─────────────────
 _ROLES_LABEL = {
-    "admin":       "Administradores",
-    "director":    "Directores",
+    "admin": "Administradores",
+    "director": "Directores",
     "coordinador": "Coordinadores",
-    "profesor":    "Profesores",
+    "profesor": "Profesores",
 }
 
 
@@ -80,9 +81,7 @@ def _abrir_selector_ver_como(ctx: SessionContext) -> None:
 
     # ── Nivel 2: usuarios filtrados por la institución elegida ──────────────
     try:
-        usuarios = Container.usuario_service().listar_para_ver_como(
-            institucion_id=institucion_id
-        )
+        usuarios = Container.usuario_service().listar_para_ver_como(institucion_id=institucion_id)
     except Exception as e:
         logger.warning("Error al listar usuarios para 'Ver como': %s", e)
         usuarios = []
@@ -121,11 +120,20 @@ def _abrir_selector_ver_como(ctx: SessionContext) -> None:
     form_dialog(
         titulo="Ver como…",
         campos=[
-            {"key": "institucion_id", "label": "Institución",
-             "tipo": "select", "opciones": institucion_opciones,
-             "valor": institucion_preseleccionada},
-            {"key": "usuario_id", "label": "Usuario a impersonar (solo lectura) *",
-             "tipo": "select", "opciones": usuario_opciones, "requerido": True},
+            {
+                "key": "institucion_id",
+                "label": "Institución",
+                "tipo": "select",
+                "opciones": institucion_opciones,
+                "valor": institucion_preseleccionada,
+            },
+            {
+                "key": "usuario_id",
+                "label": "Usuario a impersonar (solo lectura) *",
+                "tipo": "select",
+                "opciones": usuario_opciones,
+                "requerido": True,
+            },
         ],
         on_submit=_aplicar,
         texto_submit="Ver como",
@@ -134,6 +142,7 @@ def _abrir_selector_ver_como(ctx: SessionContext) -> None:
 
 
 # ── Secciones de UI ───────────────────────────────────────────────────────────
+
 
 def _seccion_ver_como(ctx: SessionContext) -> None:
     """Lanzador del selector 'Ver como' (impersonación solo lectura)."""
@@ -179,13 +188,9 @@ def _seccion_container(resultado: dict) -> None:
             es_ok = estado == "OK"
             with ui.element("div").classes("hito-item"):
                 if es_ok:
-                    ThemeManager.icono(
-                        "check_circle", size=18, color="var(--color-success)"
-                    )
+                    ThemeManager.icono("check_circle", size=18, color="var(--color-success)")
                 else:
-                    ThemeManager.icono(
-                        "error", size=18, color="var(--color-error)"
-                    )
+                    ThemeManager.icono("error", size=18, color="var(--color-error)")
                 with ui.element("div").classes("hito-text-col"):
                     ui.label(nombre).classes("hito-desc")
                     if not es_ok:
@@ -194,6 +199,7 @@ def _seccion_container(resultado: dict) -> None:
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35/paso_38).
 def diagnostico_page() -> None:

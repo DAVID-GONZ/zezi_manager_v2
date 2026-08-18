@@ -45,6 +45,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Raíz del proyecto (directorio que contiene este archivo)
 _PROJECT_ROOT = Path(__file__).parent
 
+# Marca compartida por los valores por defecto de JWT_SECRET y STORAGE_SECRET.
+# Su presencia en un secreto significa que nadie lo ha cambiado todavía.
+_CENTINELA_INSEGURO = "cambia-"
+
 
 class Settings(BaseSettings):
     """
@@ -58,7 +62,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore",           # ignorar vars de entorno no declaradas
+        extra="ignore",  # ignorar vars de entorno no declaradas
     )
 
     # ------------------------------------------------------------------
@@ -101,9 +105,9 @@ class Settings(BaseSettings):
     )
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = Field(
-        default=480,   # 8 horas — jornada escolar completa
+        default=480,  # 8 horas — jornada escolar completa
         gt=0,
-        le=1440,       # máximo 24 horas
+        le=1440,  # máximo 24 horas
     )
 
     # ------------------------------------------------------------------
@@ -111,13 +115,13 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     HOST: str = "127.0.0.1"
     PORT: int = Field(default=8080, gt=0, le=65535)
-    RELOAD: bool = False           # True solo en desarrollo con hot-reload
+    RELOAD: bool = False  # True solo en desarrollo con hot-reload
 
     # ------------------------------------------------------------------
     # Logging
     # ------------------------------------------------------------------
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    LOG_FILE: Path | None = None   # None → solo consola; Path → también archivo
+    LOG_FILE: Path | None = None  # None → solo consola; Path → también archivo
 
     # ------------------------------------------------------------------
     # Validadores
@@ -143,6 +147,17 @@ class Settings(BaseSettings):
         return path
 
     @model_validator(mode="after")
+    def verificar_binding_produccion(self) -> Settings:
+        """Bloquea el arranque si HOST no es loopback en producción (seguridad_web_01 — R2)."""
+        if self.APP_ENV == "production" and self.HOST not in {"127.0.0.1", "localhost"}:
+            raise ValueError(
+                f"HOST debe ser loopback en producción; el TLS lo termina el proxy. "
+                f"Valor actual: '{self.HOST}'. "
+                "Define HOST=127.0.0.1 en el archivo .env antes de desplegar."
+            )
+        return self
+
+    @model_validator(mode="after")
     def verificar_jwt_seguro(self) -> Settings:
         """
         Bloquea el arranque si JWT_SECRET o STORAGE_SECRET tienen su valor por
@@ -154,9 +169,9 @@ class Settings(BaseSettings):
         no debe llegar a servir requests.
         """
         inseguros: list[str] = []
-        if "cambia-esta-clave" in self.JWT_SECRET:
+        if _CENTINELA_INSEGURO in self.JWT_SECRET:
             inseguros.append("JWT_SECRET")
-        if "cambia-est" in self.STORAGE_SECRET:
+        if _CENTINELA_INSEGURO in self.STORAGE_SECRET:
             inseguros.append("STORAGE_SECRET")
 
         if inseguros:
@@ -170,12 +185,47 @@ class Settings(BaseSettings):
                 )
             else:
                 import logging as _log
+
                 _log.getLogger("CONFIG").warning(
-                    "%s usa(n) el valor por defecto. "
-                    "Cambiarlo(s) antes de pasar a producción.",
+                    "%s usa(n) el valor por defecto. Cambiarlo(s) antes de pasar a producción.",
                     nombres,
                 )
+
+        # Los dos secretos deben ser independientes: comprometer la firma de
+        # sesión no debe comprometer la de los tokens JWT (ni al revés).
+        if self.JWT_SECRET == self.STORAGE_SECRET:
+            if self.APP_ENV == "production":
+                raise ValueError(
+                    "JWT_SECRET y STORAGE_SECRET no pueden ser iguales. "
+                    "Comprometer uno comprometería también el otro. "
+                    "Genera dos valores independientes de al menos 32 "
+                    "caracteres de entropía antes de desplegar."
+                )
+            else:
+                import logging as _log
+
+                _log.getLogger("CONFIG").warning(
+                    "JWT_SECRET y STORAGE_SECRET son iguales. "
+                    "Deben ser independientes antes de pasar a producción.",
+                )
         return self
+
+    # ------------------------------------------------------------------
+    # Representación segura (R4 — nunca loguear secretos en claro)
+    # ------------------------------------------------------------------
+
+    _SENSIBLES: tuple[str, ...] = ("JWT_SECRET", "STORAGE_SECRET")
+
+    def __repr__(self) -> str:
+        d = self.model_dump()
+        for k in self._SENSIBLES:
+            if d.get(k):
+                d[k] = "***"
+        return f"Settings({d})"
+
+    # Pydantic define `__str__` por separado de `__repr__`; sin este alias
+    # `str(settings)` y cualquier f-string filtrarían los secretos en claro.
+    __str__ = __repr__
 
     # ------------------------------------------------------------------
     # Propiedades derivadas
@@ -200,10 +250,10 @@ class Settings(BaseSettings):
         Centraliza los pragmas en un solo lugar.
         """
         return {
-            "journal_mode":     self.DB_JOURNAL_MODE,
-            "timeout":          self.DB_TIMEOUT,
-            "foreign_keys":     True,
-            "check_same_thread": False,   # NiceGUI usa múltiples hilos
+            "journal_mode": self.DB_JOURNAL_MODE,
+            "timeout": self.DB_TIMEOUT,
+            "foreign_keys": True,
+            "check_same_thread": False,  # NiceGUI usa múltiples hilos
         }
 
     def configure_logging(self) -> None:
@@ -237,7 +287,7 @@ settings = Settings()
 # Los módulos internos (connection.py, etc.) importan directamente estas vars.
 # ---------------------------------------------------------------------------
 DATABASE_PATH: Path = settings.DATABASE_PATH
-DB_CONFIG: dict    = settings.db_config
+DB_CONFIG: dict = settings.db_config
 IS_PRODUCTION: bool = settings.is_production
 
 

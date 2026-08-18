@@ -22,7 +22,6 @@ from ..models.evaluacion import Categoria, ConfiguracionSIEE
 
 
 class ISIEERepository(ABC):
-
     # =========================================================================
     # Configuración SIEE
     # =========================================================================

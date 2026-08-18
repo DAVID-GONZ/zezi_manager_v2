@@ -1,4 +1,5 @@
 """Puerto (interfaz) para el repositorio de Plan de Mejoramiento."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

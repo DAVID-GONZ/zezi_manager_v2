@@ -9,6 +9,7 @@ Ajustes NiceGUI 3.x:
   - El evento 'row-click' de NiceGUI pasa e.args como [evt, row, index];
     la fila se obtiene en e.args[1].
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -56,7 +57,6 @@ def data_table(
         de NiceGUI/Quasar directamente sobre el objeto tabla retornado.
     """
     with ui.column().classes("gap-3 data-table-root"):
-
         # Cabecera: título + buscador
         if titulo or buscable:
             with ui.row().classes("items-center justify-between data-table-root"):
@@ -68,7 +68,7 @@ def data_table(
                 if buscable:
                     search = (
                         ui.input(placeholder="Buscar…")
-                        .props('dense outlined clearable')
+                        .props("dense outlined clearable")
                         .classes("andes-input data-table-search")
                     )
                 else:
@@ -77,11 +77,11 @@ def data_table(
             search = None
 
         # Construcción de la tabla
-        table_kwargs: dict = dict(
-            columns=columnas,
-            rows=filas,
-            row_key="id" if any(c.get("field") == "id" for c in columnas) else columnas[0]["field"],
-        )
+        table_kwargs: dict = {
+            "columns": columnas,
+            "rows": filas,
+            "row_key": "id" if any(c.get("field") == "id" for c in columnas) else columnas[0]["field"],
+        }
         if paginado:
             table_kwargs["pagination"] = filas_por_pagina
 

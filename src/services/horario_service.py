@@ -6,6 +6,7 @@ Servicio de dominio para la gestión de bloques horarios.
 Valida cruces (docente, grupo, sala) y topes (horas_semanales,
 carga_horaria_max del docente) antes de insertar o actualizar.
 """
+
 from __future__ import annotations
 
 from src.domain.models.asignacion import FiltroAsignacionesDTO
@@ -24,8 +25,14 @@ from src.services.solo_lectura import requiere_escritura
 # ---------------------------------------------------------------------------
 
 COLUMNAS_HORARIO = [
-    "asignacion_id", "grupo", "asignatura", "docente",
-    "dia_semana", "hora_inicio", "hora_fin", "sala",
+    "asignacion_id",
+    "grupo",
+    "asignatura",
+    "docente",
+    "dia_semana",
+    "hora_inicio",
+    "hora_fin",
+    "sala",
 ]
 
 
@@ -168,9 +175,7 @@ class HorarioService:
     # Consultas de bloques por periodo (mejora_05 — dueño canónico R3)     #
     # ------------------------------------------------------------------ #
 
-    def listar_horario_grupo(
-        self, grupo_id: int, periodo_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo(self, grupo_id: int, periodo_id: int) -> list[HorarioInfo]:
         """Lista el horario de un grupo en un periodo (delegado al repositorio)."""
         return self._infra.listar_horario_grupo(grupo_id, periodo_id)
 
@@ -178,9 +183,7 @@ class HorarioService:
     # Consultas de cupo                                                    #
     # ------------------------------------------------------------------ #
 
-    def disponibilidad_asignacion(
-        self, escenario_id: int, asignacion_id: int
-    ) -> CupoDTO:
+    def disponibilidad_asignacion(self, escenario_id: int, asignacion_id: int) -> CupoDTO:
         """Cupo de bloques de una asignación: usados vs. horas de la asignatura."""
         asig = self._resolver_asignacion(asignacion_id)
         asignatura = self._get_asignatura(asig.asignatura_id)
@@ -190,9 +193,7 @@ class HorarioService:
             maximas=getattr(asignatura, "horas_semanales", None),
         )
 
-    def disponibilidad_docente(
-        self, escenario_id: int, usuario_id: int
-    ) -> CupoDTO:
+    def disponibilidad_docente(self, escenario_id: int, usuario_id: int) -> CupoDTO:
         """Cupo de bloques de un docente: usados vs. su carga horaria máxima."""
         usadas = self._infra.contar_bloques_docente(escenario_id, usuario_id)
         max_horas = self._usuario.carga_horaria_max(usuario_id)
@@ -223,7 +224,9 @@ class HorarioService:
         return [
             {
                 "asignacion_id": getattr(b, "asignacion_id", "") or "",
-                "grupo": getattr(b, "grupo_codigo", None) or getattr(b, "grupo_nombre", None) or str(b.grupo_id),
+                "grupo": getattr(b, "grupo_codigo", None)
+                or getattr(b, "grupo_nombre", None)
+                or str(b.grupo_id),
                 "asignatura": b.asignatura_nombre,
                 "docente": b.docente_nombre,
                 "dia_semana": _dia_str(b.dia_semana),
@@ -298,29 +301,32 @@ class HorarioService:
             dias_presentes.add(dia)
             pares_horas.add((hi, hf))
             area_id, area_color, area_nombre = _resolver_area(b.asignatura_id)
-            celdas.append({
-                "id":                getattr(b, "id", None),
-                "asignacion_id":     getattr(b, "asignacion_id", None),
-                "grupo_id":          b.grupo_id,
-                "grupo_codigo":      getattr(b, "grupo_codigo", None) or str(b.grupo_id),
-                "asignatura_id":     b.asignatura_id,
-                "asignatura_nombre": b.asignatura_nombre,
-                "area_id":           area_id,
-                "area_color":        area_color,
-                "area_nombre":       area_nombre,
-                "usuario_id":        b.usuario_id,
-                "docente_nombre":    b.docente_nombre,
-                "dia_semana":        dia,
-                "hora_inicio":       hi,
-                "hora_fin":          hf,
-                "sala":              getattr(b, "sala", "Aula") or "Aula",
-            })
+            celdas.append(
+                {
+                    "id": getattr(b, "id", None),
+                    "asignacion_id": getattr(b, "asignacion_id", None),
+                    "grupo_id": b.grupo_id,
+                    "grupo_codigo": getattr(b, "grupo_codigo", None) or str(b.grupo_id),
+                    "asignatura_id": b.asignatura_id,
+                    "asignatura_nombre": b.asignatura_nombre,
+                    "area_id": area_id,
+                    "area_color": area_color,
+                    "area_nombre": area_nombre,
+                    "usuario_id": b.usuario_id,
+                    "docente_nombre": b.docente_nombre,
+                    "dia_semana": dia,
+                    "hora_inicio": hi,
+                    "hora_fin": hf,
+                    "sala": getattr(b, "sala", "Aula") or "Aula",
+                }
+            )
 
         # --- Franjas: desde la plantilla activa "UNICA", o derivadas de bloques ---
         # Multi-tenant (paso_32, T5): `self._infra` es el repo (sin scope). La
         # parrilla es de un grupo/escenario ya scopeado, así que la rejilla de
         # franjas debe venir de la plantilla activa de la MISMA institución.
         from src.services.contexto_tenant import institucion_actual
+
         franjas: list[dict] = []
         plantilla = None
         try:
@@ -336,24 +342,28 @@ class HorarioService:
             except Exception:
                 franjas_plantilla = []
             for fr in franjas_plantilla:
-                franjas.append({
-                    "orden":       fr.orden,
-                    "etiqueta":    fr.etiqueta or f"{fr.hora_inicio}–{fr.hora_fin}",
-                    "hora_inicio": fr.hora_inicio,
-                    "hora_fin":    fr.hora_fin,
-                    "lectiva":     fr.es_lectiva,
-                })
+                franjas.append(
+                    {
+                        "orden": fr.orden,
+                        "etiqueta": fr.etiqueta or f"{fr.hora_inicio}–{fr.hora_fin}",
+                        "hora_inicio": fr.hora_inicio,
+                        "hora_fin": fr.hora_fin,
+                        "lectiva": fr.es_lectiva,
+                    }
+                )
 
         if not franjas:
             # Derivar de las parejas distintas (hora_inicio, hora_fin) de los bloques
             for orden, (hi, hf) in enumerate(sorted(pares_horas), start=1):
-                franjas.append({
-                    "orden":       orden,
-                    "etiqueta":    f"{hi}–{hf}",
-                    "hora_inicio": hi,
-                    "hora_fin":    hf,
-                    "lectiva":     True,
-                })
+                franjas.append(
+                    {
+                        "orden": orden,
+                        "etiqueta": f"{hi}–{hf}",
+                        "hora_inicio": hi,
+                        "hora_fin": hf,
+                        "lectiva": True,
+                    }
+                )
 
         # --- Días: de la plantilla si existe, si no los presentes en bloques ---
         if plantilla is not None and getattr(plantilla, "dias_activos", None):
@@ -394,9 +404,7 @@ class HorarioService:
             (f for f in franjas if f["lectiva"]),
             key=lambda f: f["orden"],
         )
-        hi_a_idx = {
-            f["hora_inicio"]: idx for idx, f in enumerate(franjas_lectivas)
-        }
+        hi_a_idx = {f["hora_inicio"]: idx for idx, f in enumerate(franjas_lectivas)}
         n_franjas_lectivas = len(franjas_lectivas)
 
         # Huecos por grupo: ventanas vacías intra-día usando idx compacto.
@@ -405,9 +413,7 @@ class HorarioService:
             idx = hi_a_idx.get(c["hora_inicio"])
             if idx is None:
                 continue
-            idx_grupo_dia.setdefault(
-                (c["grupo_id"], c["dia_semana"]), []
-            ).append(idx)
+            idx_grupo_dia.setdefault((c["grupo_id"], c["dia_semana"]), []).append(idx)
 
         huecos_grupo = 0
         for indices in idx_grupo_dia.values():
@@ -418,9 +424,7 @@ class HorarioService:
                 huecos_grupo += hueco
 
         capacidad = len(grupos) * n_franjas_lectivas * len(dias)
-        ocupacion_pct = (
-            round(len(celdas) / capacidad * 100) if capacidad else 0
-        )
+        ocupacion_pct = round(len(celdas) / capacidad * 100) if capacidad else 0
 
         return {
             "total_bloques": len(celdas),
@@ -476,21 +480,21 @@ class HorarioService:
     ) -> None:
         kwargs = {"excluir_horario_id": excluir_id} if excluir_id else {}
         if self._infra.existe_cruce(
-            escenario_id, dia, hora_inicio, hora_fin,
-            usuario_id=asig.usuario_id, **kwargs
+            escenario_id, dia, hora_inicio, hora_fin, usuario_id=asig.usuario_id, **kwargs
         ):
             raise ValueError("El docente ya tiene un bloque en ese horario.")
         if self._infra.existe_cruce(
-            escenario_id, dia, hora_inicio, hora_fin,
-            grupo_id=asig.grupo_id, **kwargs
+            escenario_id, dia, hora_inicio, hora_fin, grupo_id=asig.grupo_id, **kwargs
         ):
             raise ValueError("El grupo ya tiene un bloque en ese horario.")
-        if sala and sala != "Aula":
-            if self._infra.existe_cruce(
-                escenario_id, dia, hora_inicio, hora_fin,
-                sala=sala, **kwargs
-            ):
-                raise ValueError(f"La sala '{sala}' ya está ocupada en ese horario.")
+        if (
+            sala
+            and sala != "Aula"
+            and self._infra.existe_cruce(
+                escenario_id, dia, hora_inicio, hora_fin, sala=sala, **kwargs
+            )
+        ):
+            raise ValueError(f"La sala '{sala}' ya está ocupada en ese horario.")
 
     def _validar_topes(self, escenario_id: int, asig) -> None:
         asignatura = self._get_asignatura(asig.asignatura_id)
@@ -499,16 +503,14 @@ class HorarioService:
             usadas = self._infra.contar_bloques_asignacion(escenario_id, asig.id)
             if usadas + 1 > horas_max:
                 raise ValueError(
-                    f"La materia ya tiene {usadas} bloque(s) asignado(s); "
-                    f"límite: {horas_max}."
+                    f"La materia ya tiene {usadas} bloque(s) asignado(s); límite: {horas_max}."
                 )
         max_docente = self._usuario.carga_horaria_max(asig.usuario_id)
         if max_docente is not None:
             usadas_doc = self._infra.contar_bloques_docente(escenario_id, asig.usuario_id)
             if usadas_doc + 1 > max_docente:
                 raise ValueError(
-                    f"El docente superaría su carga máxima de {max_docente} "
-                    f"bloques/semana."
+                    f"El docente superaría su carga máxima de {max_docente} bloques/semana."
                 )
 
     def analizar_lote(
@@ -532,13 +534,18 @@ class HorarioService:
                 dia = _dia_str(b.dia_semana)
                 hi = _hora_str(b.hora_inicio)
                 hf = _hora_str(b.hora_fin)
-                virtual.append({
-                    "usuario_id": b.usuario_id, "grupo_id": b.grupo_id,
-                    "sala": getattr(b, "sala", "Aula"),
-                    "dia": dia, "hora_inicio": hi, "hora_fin": hf,
-                    "asignacion_id": getattr(b, "asignacion_id", None),
-                    "es_lote": False,
-                })
+                virtual.append(
+                    {
+                        "usuario_id": b.usuario_id,
+                        "grupo_id": b.grupo_id,
+                        "sala": getattr(b, "sala", "Aula"),
+                        "dia": dia,
+                        "hora_inicio": hi,
+                        "hora_fin": hf,
+                        "asignacion_id": getattr(b, "asignacion_id", None),
+                        "es_lote": False,
+                    }
+                )
         except Exception:
             pass
 
@@ -557,11 +564,14 @@ class HorarioService:
 
             asig = self._asig.get_by_id(asig_id) if asig_id else None
             if asig is None or getattr(asig, "activo", True) is False:
-                resultado.append(FilaReporteDTO(
-                    indice=i, ok=False,
-                    motivo="Asignación no válida o inactiva.",
-                    resumen=str(fila),
-                ))
+                resultado.append(
+                    FilaReporteDTO(
+                        indice=i,
+                        ok=False,
+                        motivo="Asignación no válida o inactiva.",
+                        resumen=str(fila),
+                    )
+                )
                 continue
 
             dia = str(fila.get("dia_semana") or fila.get("dia") or "").strip()
@@ -570,11 +580,14 @@ class HorarioService:
             sala = str(fila.get("sala") or "Aula").strip() or "Aula"
 
             if not dia or not hora_inicio or not hora_fin:
-                resultado.append(FilaReporteDTO(
-                    indice=i, ok=False,
-                    motivo="Campos obligatorios faltantes (dia_semana, hora_inicio, hora_fin).",
-                    resumen=str(fila),
-                ))
+                resultado.append(
+                    FilaReporteDTO(
+                        indice=i,
+                        ok=False,
+                        motivo="Campos obligatorios faltantes (dia_semana, hora_inicio, hora_fin).",
+                        resumen=str(fila),
+                    )
+                )
                 continue
 
             # Cruces contra virtual
@@ -584,11 +597,17 @@ class HorarioService:
                 if not _solapan(hora_inicio, hora_fin, v["hora_inicio"], v["hora_fin"]):
                     continue
                 if v["usuario_id"] == asig.usuario_id:
-                    ok = False; motivo = "Cruce: el docente ya tiene bloque en ese horario."; break
+                    ok = False
+                    motivo = "Cruce: el docente ya tiene bloque en ese horario."
+                    break
                 if v["grupo_id"] == asig.grupo_id:
-                    ok = False; motivo = "Cruce: el grupo ya tiene bloque en ese horario."; break
+                    ok = False
+                    motivo = "Cruce: el grupo ya tiene bloque en ese horario."
+                    break
                 if sala != "Aula" and v.get("sala") == sala:
-                    ok = False; motivo = f"Cruce: sala '{sala}' ya ocupada en ese horario."; break
+                    ok = False
+                    motivo = f"Cruce: sala '{sala}' ya ocupada en ese horario."
+                    break
 
             # Tope materia
             if ok:
@@ -596,7 +615,9 @@ class HorarioService:
                 horas_max = self._horas_max_materia(asig, asignatura)
                 if horas_max is not None:
                     usadas_bd = self._infra.contar_bloques_asignacion(escenario_id, asig.id)
-                    usadas_lote = sum(1 for v in virtual if v.get("asignacion_id") == asig.id and v.get("es_lote"))
+                    usadas_lote = sum(
+                        1 for v in virtual if v.get("asignacion_id") == asig.id and v.get("es_lote")
+                    )
                     if usadas_bd + usadas_lote + 1 > horas_max:
                         ok = False
                         motivo = f"Tope materia: {usadas_bd + usadas_lote}/{horas_max} bloques."
@@ -605,8 +626,14 @@ class HorarioService:
             if ok:
                 max_doc = self._usuario.carga_horaria_max(asig.usuario_id)
                 if max_doc is not None:
-                    usadas_doc_bd = self._infra.contar_bloques_docente(escenario_id, asig.usuario_id)
-                    usadas_doc_lote = sum(1 for v in virtual if v.get("usuario_id") == asig.usuario_id and v.get("es_lote"))
+                    usadas_doc_bd = self._infra.contar_bloques_docente(
+                        escenario_id, asig.usuario_id
+                    )
+                    usadas_doc_lote = sum(
+                        1
+                        for v in virtual
+                        if v.get("usuario_id") == asig.usuario_id and v.get("es_lote")
+                    )
                     if usadas_doc_bd + usadas_doc_lote + 1 > max_doc:
                         ok = False
                         motivo = f"Tope docente: superaría {max_doc} bloques/semana."
@@ -616,12 +643,18 @@ class HorarioService:
             resultado.append(FilaReporteDTO(indice=i, ok=ok, motivo=motivo, resumen=resumen))
 
             if ok:
-                virtual.append({
-                    "usuario_id": asig.usuario_id, "grupo_id": asig.grupo_id,
-                    "sala": sala, "dia": dia,
-                    "hora_inicio": hora_inicio, "hora_fin": hora_fin,
-                    "asignacion_id": asig.id, "es_lote": True,
-                })
+                virtual.append(
+                    {
+                        "usuario_id": asig.usuario_id,
+                        "grupo_id": asig.grupo_id,
+                        "sala": sala,
+                        "dia": dia,
+                        "hora_inicio": hora_inicio,
+                        "hora_fin": hora_fin,
+                        "asignacion_id": asig.id,
+                        "es_lote": True,
+                    }
+                )
 
         return ReporteLoteDTO(filas=resultado)
 
@@ -655,18 +688,20 @@ class HorarioService:
             hora_inicio = str(fila_dict.get("hora_inicio") or "")
             hora_fin = str(fila_dict.get("hora_fin") or "")
             sala = str(fila_dict.get("sala") or "Aula") or "Aula"
-            horarios_nuevos.append(Horario(
-                escenario_id=escenario_id,
-                asignacion_id=asig_id,
-                grupo_id=asig.grupo_id,
-                asignatura_id=asig.asignatura_id,
-                usuario_id=asig.usuario_id,
-                dia_semana=dia,
-                hora_inicio=hora_inicio,
-                hora_fin=hora_fin,
-                sala=sala,
-                periodo_id=None,
-            ))
+            horarios_nuevos.append(
+                Horario(
+                    escenario_id=escenario_id,
+                    asignacion_id=asig_id,
+                    grupo_id=asig.grupo_id,
+                    asignatura_id=asig.asignatura_id,
+                    usuario_id=asig.usuario_id,
+                    dia_semana=dia,
+                    hora_inicio=hora_inicio,
+                    hora_fin=hora_fin,
+                    sala=sala,
+                    periodo_id=None,
+                )
+            )
 
         creados = self._infra.crear_bloques_masivo(horarios_nuevos)
         omitidos = len(filas) - creados

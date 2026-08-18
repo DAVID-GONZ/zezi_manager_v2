@@ -13,8 +13,10 @@ Flujo:
   3. "Generar" → construye InformeAsistenciaDTO → informe_service.generar_asistencia().
   4. ui.download() con los bytes retornados.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 from datetime import date
 
@@ -39,17 +41,18 @@ logger = logging.getLogger("CONSOLIDADO_ASISTENCIA")
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "grupo_id":      None,
+        "grupo_id": None,
         "asignacion_id": None,
-        "periodo_id":    None,
-        "fecha_desde":   None,
-        "fecha_hasta":   None,
-        "formato":       "excel",
-        "grupos":        [],
-        "asignaciones":  [],
-        "periodos":      [],
+        "periodo_id": None,
+        "fecha_desde": None,
+        "fecha_hasta": None,
+        "formato": "excel",
+        "grupos": [],
+        "asignaciones": [],
+        "periodos": [],
     }
 
 
@@ -81,6 +84,7 @@ def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def consolidado_asistencia_page() -> None:
     ctx = SessionContext.desde_storage()
@@ -105,10 +109,7 @@ def consolidado_asistencia_page() -> None:
                     on_change=lambda e: on_grupo_change(e.value),
                 ).classes("w-full")
 
-                asig_opts = {
-                    a.asignacion_id: a.asignatura_nombre
-                    for a in _s["asignaciones"]
-                }
+                asig_opts = {a.asignacion_id: a.asignatura_nombre for a in _s["asignaciones"]}
                 ui.select(
                     label="Asignación",
                     options=asig_opts,
@@ -160,10 +161,8 @@ def consolidado_asistencia_page() -> None:
         filtros_refreshable.refresh()
 
     def on_fecha(valor: str, campo: str) -> None:
-        try:
+        with contextlib.suppress(ValueError):
             _s[campo] = date.fromisoformat(valor) if valor else None
-        except ValueError:
-            pass
 
     def on_generar() -> None:
         if not _s["grupo_id"]:
@@ -202,7 +201,8 @@ def consolidado_asistencia_page() -> None:
             filtros_refreshable()
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Consolidado de Asistencia",
     )
 

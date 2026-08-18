@@ -6,6 +6,7 @@ Ajuste NiceGUI 3.x:
   - El patrón lambda: (dialog.close(), on_confirm()) crea una tupla en Python,
     lo que provoca que ambas expresiones se evalúen en orden. Es válido y legible.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -41,18 +42,18 @@ def confirm_dialog(
         texto_cancelar:   Etiqueta del botón de cancelación.
     """
     _ICONO_MAP = {
-        "danger":  "warning",
+        "danger": "warning",
         "warning": "warning",
-        "info":    "info",
+        "info": "info",
     }
     _COLOR_MAP = {
-        "danger":  "var(--color-error)",
+        "danger": "var(--color-error)",
         "warning": "var(--color-warning)",
-        "info":    "var(--color-info)",
+        "info": "var(--color-info)",
     }
 
     icono_nombre = _ICONO_MAP.get(variante, "help")
-    icono_color  = _COLOR_MAP.get(variante, "var(--color-primary)")
+    icono_color = _COLOR_MAP.get(variante, "var(--color-primary)")
 
     with ui.dialog() as dialog, ui.card().classes("andes-card confirm-dialog-card"):
         # Cabecera: icono + título

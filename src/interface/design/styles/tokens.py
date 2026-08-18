@@ -12,6 +12,7 @@ FUENTE CANÓNICA: styles/tokens.css — este archivo es su espejo en Python.
 El drift se verifica con `python scripts/sync_tokens.py --check`, que resuelve
 las cadenas var(--…) de tokens.css y las compara con estas constantes.
 """
+
 from __future__ import annotations
 
 
@@ -20,67 +21,67 @@ class Colors:
     Paleta Aula Serena: tinta académica + ocre + neutros cálidos."""
 
     # Primario — Índigo académico (ink-700)
-    PRIMARY          = "#2E3192"
-    PRIMARY_DARK     = "#1A1B6E"
-    PRIMARY_DARKER   = "#1A1B6E"
-    PRIMARY_LIGHT    = "#4B50C0"
-    PRIMARY_LIGHTER  = "#E8E9F8"
-    PRIMARY_HOVER    = "#1A1B6E"
+    PRIMARY = "#2E3192"
+    PRIMARY_DARK = "#1A1B6E"
+    PRIMARY_DARKER = "#1A1B6E"
+    PRIMARY_LIGHT = "#4B50C0"
+    PRIMARY_LIGHTER = "#E8E9F8"
+    PRIMARY_HOVER = "#1A1B6E"
     PRIMARY_DISABLED = "#9297D9"
     PRIMARY_CONTRAST = "#FFFFFF"
 
     # Secundario — Grafito neutro
-    SECONDARY        = "#6B6B6B"
-    SECONDARY_DARK   = "#3D3D3D"
-    SECONDARY_LIGHT  = "#F2F2EC"
+    SECONDARY = "#6B6B6B"
+    SECONDARY_DARK = "#3D3D3D"
+    SECONDARY_LIGHT = "#F2F2EC"
 
     # Semánticos desaturados
-    ERROR            = "#C13030"
-    ERROR_LIGHT      = "#FBEAEA"
-    ERROR_DARK       = "#9D2525"
-    WARNING          = "#C8841C"
-    WARNING_LIGHT    = "#FBF3E2"
-    SUCCESS          = "#2E7D5B"
-    SUCCESS_LIGHT    = "#EAF4EE"
-    INFO             = "#4B50C0"
-    INFO_LIGHT       = "#E8E9F8"
+    ERROR = "#C13030"
+    ERROR_LIGHT = "#FBEAEA"
+    ERROR_DARK = "#9D2525"
+    WARNING = "#C8841C"
+    WARNING_LIGHT = "#FBF3E2"
+    SUCCESS = "#2E7D5B"
+    SUCCESS_LIGHT = "#EAF4EE"
+    INFO = "#4B50C0"
+    INFO_LIGHT = "#E8E9F8"
 
     # Neutros cálidos (paper/graphite)
-    BG               = "#FAFAF7"
-    SURFACE          = "#FFFFFF"
-    SURFACE_ALT      = "#F2F2EC"
-    DIVIDER          = "rgba(0, 0, 0, 0.08)"
-    BORDER           = "#E5E5DE"
-    TEXT_PRIMARY     = "#1A1A1A"
-    TEXT_SECONDARY   = "#6B6B6B"
-    TEXT_DISABLED    = "#9D9D9D"
-    TEXT_INVERSE     = "#FFFFFF"
-    DISABLED_BG      = "#E5E5DE"
-    DISABLED_TEXT    = "#6B6B6B"
+    BG = "#FAFAF7"
+    SURFACE = "#FFFFFF"
+    SURFACE_ALT = "#F2F2EC"
+    DIVIDER = "rgba(0, 0, 0, 0.08)"
+    BORDER = "#E5E5DE"
+    TEXT_PRIMARY = "#1A1A1A"
+    TEXT_SECONDARY = "#6B6B6B"
+    TEXT_DISABLED = "#9D9D9D"
+    TEXT_INVERSE = "#FFFFFF"
+    DISABLED_BG = "#E5E5DE"
+    DISABLED_TEXT = "#6B6B6B"
 
     # Navegación — Sidebar claro, topbar claro (paso_13a)
-    SIDEBAR_BG        = "#FAFAF7"   # paper-050
-    SIDEBAR_TEXT      = "#3D3D3D"   # graphite-700
-    SIDEBAR_HOVER     = "#E8E9F8"   # ink-100
-    SIDEBAR_ACTIVE    = "#2E3192"   # ink-700
-    SIDEBAR_ACTIVE_BG = "#2E3192"   # ink-700
-    TOPBAR_BG         = "#FFFFFF"   # color-surface — topbar claro
-    TOPBAR_BORDER     = "#E5E5DE"   # color-border
+    SIDEBAR_BG = "#FAFAF7"  # paper-050
+    SIDEBAR_TEXT = "#3D3D3D"  # graphite-700
+    SIDEBAR_HOVER = "#E8E9F8"  # ink-100
+    SIDEBAR_ACTIVE = "#2E3192"  # ink-700
+    SIDEBAR_ACTIVE_BG = "#2E3192"  # ink-700
+    TOPBAR_BG = "#FFFFFF"  # color-surface — topbar claro
+    TOPBAR_BORDER = "#E5E5DE"  # color-border
 
 
 class AsistenciaColors:
     """Colores para los estados de asistencia. Paleta Aula Serena."""
 
-    PRESENTE     = "#2E7D5B"
-    PRESENTE_BG  = "#EAF4EE"
-    FJ           = "#C8841C"
-    FJ_BG        = "#FBF3E2"
-    FI           = "#C13030"
-    FI_BG        = "#FBEAEA"
-    RETRASO      = "#6D4E9C"
-    RETRASO_BG   = "#F0EAFA"
-    EXCUSA       = "#4B50C0"
-    EXCUSA_BG    = "#E8E9F8"
+    PRESENTE = "#2E7D5B"
+    PRESENTE_BG = "#EAF4EE"
+    FJ = "#C8841C"
+    FJ_BG = "#FBF3E2"
+    FI = "#C13030"
+    FI_BG = "#FBEAEA"
+    RETRASO = "#6D4E9C"
+    RETRASO_BG = "#F0EAFA"
+    EXCUSA = "#4B50C0"
+    EXCUSA_BG = "#E8E9F8"
 
     @classmethod
     def para_estado(cls, estado: str) -> tuple[str, str]:
@@ -95,11 +96,11 @@ class AsistenciaColors:
             Fallback a (TEXT_SECONDARY, BG) si el estado no se reconoce.
         """
         mapa: dict[str, tuple[str, str]] = {
-            "P":  (cls.PRESENTE, cls.PRESENTE_BG),
-            "FJ": (cls.FJ,       cls.FJ_BG),
-            "FI": (cls.FI,       cls.FI_BG),
-            "R":  (cls.RETRASO,  cls.RETRASO_BG),
-            "E":  (cls.EXCUSA,   cls.EXCUSA_BG),
+            "P": (cls.PRESENTE, cls.PRESENTE_BG),
+            "FJ": (cls.FJ, cls.FJ_BG),
+            "FI": (cls.FI, cls.FI_BG),
+            "R": (cls.RETRASO, cls.RETRASO_BG),
+            "E": (cls.EXCUSA, cls.EXCUSA_BG),
         }
         return mapa.get(estado, (Colors.TEXT_SECONDARY, Colors.BG))
 
@@ -118,14 +119,14 @@ class AsistenciaColors:
 class DesempenoColors:
     """Colores para los niveles de desempeño académico. Paleta Aula Serena."""
 
-    BAJO         = "#B4322E"
-    BAJO_BG      = "#FAE7E6"
-    BASICO       = "#B8763A"
-    BASICO_BG    = "#F7ECDD"
-    ALTO         = "#4B50C0"
-    ALTO_BG      = "#E8E9F8"
-    SUPERIOR     = "#2E7D5B"
-    SUPERIOR_BG  = "#EAF4EE"
+    BAJO = "#B4322E"
+    BAJO_BG = "#FAE7E6"
+    BASICO = "#B8763A"
+    BASICO_BG = "#F7ECDD"
+    ALTO = "#4B50C0"
+    ALTO_BG = "#E8E9F8"
+    SUPERIOR = "#2E7D5B"
+    SUPERIOR_BG = "#EAF4EE"
 
     @classmethod
     def para_nivel(cls, nivel: str) -> tuple[str, str]:
@@ -139,9 +140,9 @@ class DesempenoColors:
             Tupla (color_texto, color_fondo) en formato hex.
         """
         mapa: dict[str, tuple[str, str]] = {
-            "Bajo":     (cls.BAJO,     cls.BAJO_BG),
-            "Básico":   (cls.BASICO,   cls.BASICO_BG),
-            "Alto":     (cls.ALTO,     cls.ALTO_BG),
+            "Bajo": (cls.BAJO, cls.BAJO_BG),
+            "Básico": (cls.BASICO, cls.BASICO_BG),
+            "Alto": (cls.ALTO, cls.ALTO_BG),
             "Superior": (cls.SUPERIOR, cls.SUPERIOR_BG),
         }
         return mapa.get(nivel, (Colors.TEXT_SECONDARY, Colors.BG))
@@ -157,6 +158,7 @@ class DesempenoColors:
         reglas de negocio educativas.
         """
         from src.domain.models.evaluacion import nivel_desempeno
+
         nivel = nivel_desempeno(nota)
         return cls.para_nivel(nivel)
 
@@ -167,9 +169,9 @@ class DesempenoColors:
         Ej: "badge badge-bajo", "badge badge-superior"
         """
         mapa = {
-            "Bajo":     "badge badge-bajo",
-            "Básico":   "badge badge-basico",
-            "Alto":     "badge badge-alto",
+            "Bajo": "badge badge-bajo",
+            "Básico": "badge badge-basico",
+            "Alto": "badge badge-alto",
             "Superior": "badge badge-superior",
         }
         return mapa.get(nivel, "badge badge-neutral")
@@ -182,67 +184,70 @@ class Icons:
     """
 
     # Navegación principal
-    DASHBOARD    = "space_dashboard"
-    GRADES       = "bar_chart"
-    ATTENDANCE   = "fact_check"
-    STUDENTS     = "school"
-    TEACHERS     = "badge"
-    SCHEDULE     = "calendar_today"
-    REPORTS      = "summarize"
-    SETTINGS     = "settings"
-    CONFIG       = "tune"
-    ALERTS       = "notifications"
-    GROUPS       = "group"
-    SUBJECTS     = "book"
-    PERIODS      = "date_range"
-    BEHAVIOR     = "psychology"
-    PIAR         = "accessible"
-    GUARDIAN     = "family_restroom"
+    DASHBOARD = "space_dashboard"
+    GRADES = "bar_chart"
+    ATTENDANCE = "fact_check"
+    STUDENTS = "school"
+    TEACHERS = "badge"
+    SCHEDULE = "calendar_today"
+    REPORTS = "summarize"
+    SETTINGS = "settings"
+    CONFIG = "tune"
+    ALERTS = "notifications"
+    GROUPS = "group"
+    SUBJECTS = "book"
+    PERIODS = "date_range"
+    BEHAVIOR = "psychology"
+    PIAR = "accessible"
+    GUARDIAN = "family_restroom"
 
     # Acciones CRUD
-    EXPORT       = "download"
-    ADD          = "add"
-    EDIT         = "edit"
-    DELETE       = "delete"
-    SEARCH       = "search"
-    FILTER       = "filter_list"
-    SAVE         = "save"
-    CANCEL       = "close"
-    AUTO_MODE    = "auto_mode"
+    EXPORT = "download"
+    ADD = "add"
+    EDIT = "edit"
+    DELETE = "delete"
+    SEARCH = "search"
+    FILTER = "filter_list"
+    SAVE = "save"
+    CANCEL = "close"
+    AUTO_MODE = "auto_mode"
 
     # Estado / feedback
-    CHECK        = "check_circle"
-    WARNING      = "warning"
-    ERROR        = "error"
-    INFO         = "info"
+    CHECK = "check_circle"
+    WARNING = "warning"
+    ERROR = "error"
+    INFO = "info"
 
     # Navegación UI
-    BACK         = "arrow_back"
-    MENU         = "menu"
-    LOGOUT       = "logout"
-    PROFILE      = "account_circle"
+    BACK = "arrow_back"
+    MENU = "menu"
+    LOGOUT = "logout"
+    PROFILE = "account_circle"
     CLOSE_PERIOD = "lock"
-    REFRESH      = "refresh"
-    EXPAND       = "expand_more"
-    COLLAPSE     = "expand_less"
+    REFRESH = "refresh"
+    EXPAND = "expand_more"
+    COLLAPSE = "expand_less"
 
 
 class Spacing:
     """Valores de espaciado — deben coincidir con --space-* en styles.css."""
-    XS  = "4px"
-    SM  = "8px"
-    MD  = "16px"
-    LG  = "28px"
-    XL  = "40px"
+
+    XS = "4px"
+    SM = "8px"
+    MD = "16px"
+    LG = "28px"
+    XL = "40px"
     XXL = "56px"
 
 
 class Layout:
     """Dimensiones de layout — deben coincidir con las variables CSS de layout."""
-    SIDEBAR_WIDTH     = 220   # px  (--sidebar-width)
-    SIDEBAR_COLLAPSED = 58    # px  (--sidebar-collapsed)
-    TOPBAR_HEIGHT     = 60    # px  (--topbar-height)
-    CONTENT_PADDING   = 24    # px  (--content-padding)
+
+    SIDEBAR_WIDTH = 220  # px  (--sidebar-width)
+    SIDEBAR_COLLAPSED = 58  # px  (--sidebar-collapsed)
+    TOPBAR_HEIGHT = 60  # px  (--topbar-height)
+    CONTENT_PADDING = 24  # px  (--content-padding)
+
 
 __all__ = [
     "AsistenciaColors",

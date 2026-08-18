@@ -46,7 +46,6 @@ from ..models.piar import PIAR
 
 
 class IEstudianteRepository(ABC):
-
     # =========================================================================
     # Lectura — estudiantes
     # =========================================================================
@@ -72,9 +71,7 @@ class IEstudianteRepository(ABC):
         ...
 
     @abstractmethod
-    def existe_documento(
-        self, numero_documento: str, institucion_id: int | None = None
-    ) -> bool:
+    def existe_documento(self, numero_documento: str, institucion_id: int | None = None) -> bool:
         """
         True si ya existe un estudiante con ese número de documento.
         Más eficiente que get_by_documento cuando solo se necesita
@@ -216,9 +213,7 @@ class IEstudianteRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_historial(
-        self, estudiante_id: int
-    ) -> list[MovimientoEstudianteInfoDTO]:
+    def listar_historial(self, estudiante_id: int) -> list[MovimientoEstudianteInfoDTO]:
         """
         Retorna el historial de movimientos de un estudiante, más reciente
         primero, con los códigos de grupo origen/destino resueltos (join a

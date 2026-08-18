@@ -244,8 +244,12 @@ class Container:
 
     @classmethod
     def preferencias_service(cls):
-        from src.infrastructure.db.repositories.sqlite_preferencias_repo import SqlitePreferenciasRepository
-        from src.services.preferencias_institucion_service import PreferenciasInstitucionService
+        from src.infrastructure.db.repositories.sqlite_preferencias_repo import (
+            SqlitePreferenciasRepository,
+        )
+        from src.services.preferencias_institucion_service import (
+            PreferenciasInstitucionService,
+        )
         return cls._get_or_create(
             "preferencias_service",
             lambda: PreferenciasInstitucionService(SqlitePreferenciasRepository()),
@@ -331,6 +335,62 @@ class Container:
             lambda: AlertaService(
                 repo=cls.alerta_repo(),
                 estadisticos_repo=cls.estadisticos_repo(),
+            ),
+        )
+
+    @classmethod
+    def _portal_provider_factories(cls) -> dict[str, Any]:
+        """Registro declarativo de pilotos del portal: módulo → fábrica.
+
+        Sumar un módulo al portal es añadir una entrada aquí y nada más;
+        `portal_provider`, `portal_providers` y el resumen global lo recogen
+        solos. El orden de las claves es el orden de presentación.
+        """
+
+        def _convivencia():
+            from src.services.portal.convivencia_provider import ConvivenciaProvider
+
+            return ConvivenciaProvider(alerta_svc_provider=cls.alerta_service)
+
+        def _evaluacion():
+            from src.services.portal.evaluacion_provider import EvaluacionProvider
+
+            return EvaluacionProvider(
+                habilitacion_svc_provider=cls.habilitacion_service
+            )
+
+        return {
+            "convivencia": _convivencia,
+            "evaluacion": _evaluacion,
+        }
+
+    @classmethod
+    def portal_provider(cls, modulo: str):
+        """Retorna el PortalProvider para un módulo, o None si no hay piloto."""
+        fabrica = cls._portal_provider_factories().get(modulo)
+        if fabrica is None:
+            return None
+        return cls._get_or_create(f"portal_provider_{modulo}", fabrica)
+
+    @classmethod
+    def portal_providers(cls) -> list:
+        """Todos los PortalProvider con piloto activo, en orden de registro."""
+        return [
+            proveedor
+            for proveedor in (
+                cls.portal_provider(modulo)
+                for modulo in cls._portal_provider_factories()
+            )
+            if proveedor is not None
+        ]
+
+    @classmethod
+    def portal_resumen_service(cls):
+        from src.services.portal_resumen_service import PortalResumenService
+        return cls._get_or_create(
+            "portal_resumen_service",
+            lambda: PortalResumenService(
+                providers_provider=cls.portal_providers,
             ),
         )
 

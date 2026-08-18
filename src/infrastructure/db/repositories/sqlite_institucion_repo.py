@@ -1,6 +1,7 @@
 """
 SqliteInstitucionRepository — implementación SQLite de IInstitucionRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -20,7 +21,6 @@ _COLS = (
 
 
 class SqliteInstitucionRepository(IInstitucionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -30,18 +30,24 @@ class SqliteInstitucionRepository(IInstitucionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
     def _row_to_institucion(self, row: sqlite3.Row) -> Institucion:
-        from src.domain.models.institucion import JornadaPrincipal, TipoInstitucion, Calendario
+        from src.domain.models.institucion import (
+            Calendario,
+            JornadaPrincipal,
+            TipoInstitucion,
+        )
+
         d = dict(row)
         d["activa"] = bool(d["activa"])
         d["configuracion_inicial_completa"] = bool(d.get("configuracion_inicial_completa", 0))
         for field, enum_cls in [
             ("jornada_principal", JornadaPrincipal),
-            ("tipo_institucion",  TipoInstitucion),
-            ("calendario",        Calendario),
+            ("tipo_institucion", TipoInstitucion),
+            ("calendario", Calendario),
         ]:
             if d.get(field):
                 try:
@@ -81,9 +87,7 @@ class SqliteInstitucionRepository(IInstitucionRepository):
 
     def get_por_defecto(self) -> Institucion | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                f"SELECT {_COLS} FROM instituciones ORDER BY id LIMIT 1"
-            ).fetchone()
+            row = conn.execute(f"SELECT {_COLS} FROM instituciones ORDER BY id LIMIT 1").fetchone()
             return self._row_to_institucion(row) if row else None
 
     # ------------------------------------------------------------------
@@ -135,13 +139,22 @@ class SqliteInstitucionRepository(IInstitucionRepository):
                 WHERE id=?
                 """,
                 (
-                    institucion.nombre, institucion.nit, institucion.codigo,
+                    institucion.nombre,
+                    institucion.nit,
+                    institucion.codigo,
                     int(institucion.activa),
-                    institucion.nombre_oficial, institucion.codigo_dane,
-                    institucion.rector, institucion.direccion,
-                    institucion.pais, institucion.departamento, institucion.municipio,
-                    institucion.telefono, institucion.logo_path, institucion.logo_url,
-                    institucion.resolucion_aprobacion, institucion.lema,
+                    institucion.nombre_oficial,
+                    institucion.codigo_dane,
+                    institucion.rector,
+                    institucion.direccion,
+                    institucion.pais,
+                    institucion.departamento,
+                    institucion.municipio,
+                    institucion.telefono,
+                    institucion.logo_path,
+                    institucion.logo_url,
+                    institucion.resolucion_aprobacion,
+                    institucion.lema,
                     institucion.email_institucional,
                     institucion.jornada_principal.value if institucion.jornada_principal else None,
                     institucion.tipo_institucion.value if institucion.tipo_institucion else None,
@@ -165,6 +178,7 @@ class SqliteInstitucionRepository(IInstitucionRepository):
             _seed_catalogos_institucion,
             _seed_preferencias_institucion,
         )
+
         with self._get_conn() as conn:
             _seed_catalogos_institucion(conn, institucion_id)
             _seed_preferencias_institucion(conn, institucion_id)

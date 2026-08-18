@@ -1,6 +1,7 @@
 """
 SqliteCierreRepository — implementación SQLite de ICierreRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -16,7 +17,6 @@ from src.domain.ports.cierre_repo import ICierreRepository
 
 
 class SqliteCierreRepository(ICierreRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -26,6 +26,7 @@ class SqliteCierreRepository(ICierreRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -213,9 +214,7 @@ class SqliteCierreRepository(ICierreRepository):
     # Promoción Anual
     # ------------------------------------------------------------------
 
-    def get_promocion(
-        self, estudiante_id: int, anio_id: int
-    ) -> PromocionAnual | None:
+    def get_promocion(self, estudiante_id: int, anio_id: int) -> PromocionAnual | None:
         with self._get_conn() as conn:
             row = conn.execute(
                 """

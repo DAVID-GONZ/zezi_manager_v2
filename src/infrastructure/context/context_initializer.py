@@ -32,6 +32,7 @@ Uso en login.py:
     ctx.guardar()
     ui.navigate.to("/inicio")
 """
+
 from __future__ import annotations
 
 import logging
@@ -122,11 +123,12 @@ class ContextInitializer:
         """
         try:
             from container import Container
+
             config = Container.configuracion_service().get_activa()
             if not config or not config.id:
                 return False
 
-            ctx.anio_id     = config.id
+            ctx.anio_id = config.id
             ctx.anio_nombre = str(config.anio)
             return True
 
@@ -147,6 +149,7 @@ class ContextInitializer:
 
         try:
             from container import Container
+
             svc = Container.periodo_service()
 
             # Intento principal: periodo marcado como activo
@@ -167,7 +170,7 @@ class ContextInitializer:
             if not periodo or not periodo.id:
                 return False
 
-            ctx.periodo_id     = periodo.id
+            ctx.periodo_id = periodo.id
             ctx.periodo_nombre = periodo.nombre
             return True
 
@@ -220,9 +223,9 @@ class ContextInitializer:
             )
 
             primera = asignaciones[0]
-            ctx.grupo_id          = primera.grupo_id
-            ctx.grupo_nombre      = primera.grupo_codigo
-            ctx.asignacion_id     = primera.asignacion_id
+            ctx.grupo_id = primera.grupo_id
+            ctx.grupo_nombre = primera.grupo_codigo
+            ctx.asignacion_id = primera.asignacion_id
             ctx.asignacion_nombre = primera.asignatura_nombre
             return True
 
@@ -250,7 +253,7 @@ class ContextInitializer:
             grupos.sort(key=lambda g: g.codigo or "")
             primero = grupos[0]
 
-            ctx.grupo_id     = primero.id
+            ctx.grupo_id = primero.id
             ctx.grupo_nombre = primero.codigo
             # Sin asignacion_id ni asignacion_nombre para directores
             return True
@@ -280,7 +283,7 @@ class ContextInitializer:
 
             # Verificar que el año sigue activo
             config = Container.configuracion_service().get_by_id(ctx.anio_id)
-            if not config or not getattr(config, "activo", True) is True:
+            if not config or getattr(config, "activo", True) is not True:
                 return False
 
             # Verificar que el periodo sigue existiendo.
@@ -333,13 +336,13 @@ class ContextInitializer:
                 ctx.usuario_nombre,
             )
             # Limpiar IDs y nombres para forzar re-resolución limpia
-            ctx.anio_id           = None
-            ctx.periodo_id        = None
-            ctx.grupo_id          = None
-            ctx.asignacion_id     = None
-            ctx.anio_nombre       = ""
-            ctx.periodo_nombre    = ""
-            ctx.grupo_nombre      = ""
+            ctx.anio_id = None
+            ctx.periodo_id = None
+            ctx.grupo_id = None
+            ctx.asignacion_id = None
+            ctx.anio_nombre = ""
+            ctx.periodo_nombre = ""
+            ctx.grupo_nombre = ""
             ctx.asignacion_nombre = ""
 
             ctx = ContextInitializer.inicializar(ctx)

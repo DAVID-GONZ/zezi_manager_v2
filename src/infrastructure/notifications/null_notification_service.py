@@ -1,6 +1,7 @@
 """
 NullNotificationService — implementación placeholder de INotificationService.
 """
+
 from __future__ import annotations
 
 import logging

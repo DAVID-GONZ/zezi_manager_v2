@@ -13,6 +13,7 @@ Uso:
     # Mientras carga un formulario:
     skeleton_form(fields=5)
 """
+
 from __future__ import annotations
 
 from nicegui import ui

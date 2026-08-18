@@ -15,14 +15,12 @@ from unittest.mock import MagicMock, patch
 
 from src.interface.design.components.inline_selectors import (
     _estado_inicial,
-    _on_asignacion_cambio,
     _on_grupo_cambio,
     _on_periodo_cambio,
     _preseleccionar_periodo,
     _seleccion_completa_2d,
     _seleccion_completa_3d,
 )
-
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 

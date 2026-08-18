@@ -62,8 +62,7 @@ def fetch_df(
             logger.debug("fetch_df: %d filas", len(df))
             return df
     except Exception as exc:
-        logger.error("Error en fetch_df | query=%s | params=%s | error=%s",
-                     query, params, exc)
+        logger.error("Error en fetch_df | query=%s | params=%s | error=%s", query, params, exc)
         return pd.DataFrame() if return_empty_on_error else None
 
 
@@ -97,8 +96,7 @@ def fetch_one(
             logger.debug("fetch_one: %d columnas", len(result))
             return result
     except Exception as exc:
-        logger.error("Error en fetch_one | query=%s | params=%s | error=%s",
-                     query, params, exc)
+        logger.error("Error en fetch_one | query=%s | params=%s | error=%s", query, params, exc)
         return None
 
 
@@ -135,8 +133,7 @@ def fetch_all(
             logger.debug("fetch_all: %d filas", len(result))
             return result
     except Exception as exc:
-        logger.error("Error en fetch_all | query=%s | params=%s | error=%s",
-                     query, params, exc)
+        logger.error("Error en fetch_all | query=%s | params=%s | error=%s", query, params, exc)
         return []
 
 
@@ -175,8 +172,7 @@ def get_scalar(
             logger.debug("get_scalar: %s", row[0])
             return row[0]
     except Exception as exc:
-        logger.error("Error en get_scalar | query=%s | params=%s | error=%s",
-                     query, params, exc)
+        logger.error("Error en get_scalar | query=%s | params=%s | error=%s", query, params, exc)
         return default
 
 
@@ -215,22 +211,23 @@ def execute(
     params = params or ()
     try:
         with get_connection() as conn:
-            cursor = conn.execute(query, _normalize_params(params)
-                                  if not isinstance(params, dict) else params)
+            cursor = conn.execute(
+                query, _normalize_params(params) if not isinstance(params, dict) else params
+            )
             conn.commit()
-            logger.debug("execute: %d fila(s) afectada(s), lastrowid=%s",
-                         cursor.rowcount, cursor.lastrowid)
+            logger.debug(
+                "execute: %d fila(s) afectada(s), lastrowid=%s", cursor.rowcount, cursor.lastrowid
+            )
             if return_metadata:
                 return {
-                    "success":   True,
+                    "success": True,
                     "lastrowid": cursor.lastrowid,
-                    "rowcount":  cursor.rowcount,
+                    "rowcount": cursor.rowcount,
                 }
             return True
 
     except Exception as exc:
-        logger.error("Error en execute | query=%s | params=%s | error=%s",
-                     query, params, exc)
+        logger.error("Error en execute | query=%s | params=%s | error=%s", query, params, exc)
         if return_metadata:
             return {"success": False, "lastrowid": None, "rowcount": 0}
         return False

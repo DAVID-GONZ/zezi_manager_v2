@@ -4,6 +4,7 @@ EvaluacionService
 Orquesta los casos de uso del módulo de Evaluación
 (categorías, actividades, notas y puntos extra).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -40,10 +41,11 @@ from src.services.solo_lectura import requiere_escritura
 @dataclass
 class PlanillaCompletaDTO:
     """Agregado de la planilla de notas para la vista (una sola llamada)."""
+
     actividades: list = field(default_factory=list)
     categorias: list = field(default_factory=list)
-    planilla: list = field(default_factory=list)            # ResultadoEstudianteDTO
-    puntos_extra: dict = field(default_factory=dict)         # {estudiante_id: PuntosExtra}
+    planilla: list = field(default_factory=list)  # ResultadoEstudianteDTO
+    puntos_extra: dict = field(default_factory=dict)  # {estudiante_id: PuntosExtra}
 
 
 class EvaluacionService:
@@ -62,11 +64,11 @@ class EvaluacionService:
     ) -> None:
         """Inyecta el repo de evaluación y los repos opcionales de asignación,
         periodo, auditoría y SIEE."""
-        self._repo            = repo
+        self._repo = repo
         self._asignacion_repo = asignacion_repo
-        self._periodo_repo    = periodo_repo
-        self._auditoria       = auditoria
-        self._siee_repo       = siee_repo
+        self._periodo_repo = periodo_repo
+        self._auditoria = auditoria
+        self._siee_repo = siee_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -84,9 +86,7 @@ class EvaluacionService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -199,23 +199,25 @@ class EvaluacionService:
                         "no es una categoría institucional."
                     )
                 if not padre.permite_subcategorias:
-                    raise ValueError(
-                        f"La categoría '{padre.nombre}' no permite sub-categorías."
-                    )
+                    raise ValueError(f"La categoría '{padre.nombre}' no permite sub-categorías.")
 
         # Guard de peso disponible
         disponible = self.peso_autonomia_disponible(dto.asignacion_id, dto.periodo_id, anio_id)
         if dto.peso > disponible + 0.001:
             raise ValueError(
-                f"El peso solicitado ({dto.peso*100:.1f}%) supera el disponible "
-                f"({disponible*100:.1f}%)."
+                f"El peso solicitado ({dto.peso * 100:.1f}%) supera el disponible "
+                f"({disponible * 100:.1f}%)."
             )
 
         categoria = dto.to_categoria()
         categoria = self._repo.guardar_categoria(categoria)
         self._auditar(
-            AccionCambio.CREATE, "categorias", categoria.id,
-            None, categoria.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "categorias",
+            categoria.id,
+            None,
+            categoria.model_dump(mode="json"),
+            usuario_id,
         )
         return categoria
 
@@ -232,21 +234,26 @@ class EvaluacionService:
 
         if dto.peso is not None and dto.peso != categoria.peso:
             suma_sin_esta = self._repo.suma_pesos_otras(
-                categoria.asignacion_id, categoria.periodo_id,
+                categoria.asignacion_id,
+                categoria.periodo_id,
                 excluir_cat_id=cat_id,
             )
             if suma_sin_esta + dto.peso > 1.001:
                 raise ValueError(
                     f"La suma de pesos superaría el 100% con el nuevo peso "
-                    f"({dto.peso*100:.1f}%). Disponible: {(1.0 - suma_sin_esta)*100:.1f}%."
+                    f"({dto.peso * 100:.1f}%). Disponible: {(1.0 - suma_sin_esta) * 100:.1f}%."
                 )
 
         datos_ant = categoria.model_dump(mode="json")
         categoria_actualizada = dto.aplicar_a(categoria)
         self._repo.actualizar_categoria(categoria_actualizada)
         self._auditar(
-            AccionCambio.UPDATE, "categorias", cat_id,
-            datos_ant, categoria_actualizada.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "categorias",
+            cat_id,
+            datos_ant,
+            categoria_actualizada.model_dump(mode="json"),
+            usuario_id,
         )
         return categoria_actualizada
 
@@ -265,8 +272,12 @@ class EvaluacionService:
         datos_ant = categoria.model_dump(mode="json")
         self._repo.eliminar_categoria(cat_id)
         self._auditar(
-            AccionCambio.DELETE, "categorias", cat_id,
-            datos_ant, None, usuario_id,
+            AccionCambio.DELETE,
+            "categorias",
+            cat_id,
+            datos_ant,
+            None,
+            usuario_id,
         )
 
     def listar_categorias(
@@ -291,8 +302,12 @@ class EvaluacionService:
         actividad = dto.to_actividad()
         actividad = self._repo.guardar_actividad(actividad)
         self._auditar(
-            AccionCambio.CREATE, "actividades", actividad.id,
-            None, actividad.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "actividades",
+            actividad.id,
+            None,
+            actividad.model_dump(mode="json"),
+            usuario_id,
         )
         return actividad
 
@@ -306,7 +321,9 @@ class EvaluacionService:
         actividad_publicada = actividad.publicar()  # lanza si no está en borrador
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.PUBLICADA)
         self._auditar(
-            AccionCambio.UPDATE, "actividades", act_id,
+            AccionCambio.UPDATE,
+            "actividades",
+            act_id,
             actividad.model_dump(mode="json"),
             actividad_publicada.model_dump(mode="json"),
             usuario_id,
@@ -324,7 +341,9 @@ class EvaluacionService:
         actividad_cerrada = actividad.cerrar()  # lanza si no está publicada
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.CERRADA)
         self._auditar(
-            AccionCambio.UPDATE, "actividades", act_id,
+            AccionCambio.UPDATE,
+            "actividades",
+            act_id,
             actividad.model_dump(mode="json"),
             actividad_cerrada.model_dump(mode="json"),
             usuario_id,
@@ -342,7 +361,9 @@ class EvaluacionService:
         actividad_reabierta = actividad.reabrir()  # lanza si no está cerrada
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.PUBLICADA)
         self._auditar(
-            AccionCambio.UPDATE, "actividades", act_id,
+            AccionCambio.UPDATE,
+            "actividades",
+            act_id,
             actividad.model_dump(mode="json"),
             actividad_reabierta.model_dump(mode="json"),
             usuario_id,
@@ -363,14 +384,17 @@ class EvaluacionService:
         actividad = self._get_actividad_o_lanzar(act_id)
         if actividad.estado == EstadoActividad.CERRADA:
             raise ValueError(
-                f"No se puede eliminar la actividad '{actividad.nombre}' "
-                "porque está cerrada."
+                f"No se puede eliminar la actividad '{actividad.nombre}' porque está cerrada."
             )
         datos_ant = actividad.model_dump(mode="json")
         self._repo.eliminar_actividad(act_id)
         self._auditar(
-            AccionCambio.DELETE, "actividades", act_id,
-            datos_ant, None, usuario_id,
+            AccionCambio.DELETE,
+            "actividades",
+            act_id,
+            datos_ant,
+            None,
+            usuario_id,
         )
 
     def listar_actividades(
@@ -479,9 +503,7 @@ class EvaluacionService:
         categorias = self._repo.listar_categorias(asignacion_id, periodo_id)
         actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
 
-        resultados = self._repo.listar_resultados_grupo(
-            grupo_id, asignacion_id, periodo_id
-        )
+        resultados = self._repo.listar_resultados_grupo(grupo_id, asignacion_id, periodo_id)
         for resultado in resultados:
             resultado.definitiva = CalculadorNotas.calcular_definitiva(
                 resultado.notas, actividades, categorias
@@ -544,8 +566,12 @@ class EvaluacionService:
         cfg = dto.to_configuracion_siee()
         cfg = self._siee_repo.guardar_configuracion(cfg)
         self._auditar(
-            AccionCambio.UPDATE, "configuracion_siee", cfg.id,
-            None, cfg.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "configuracion_siee",
+            cfg.id,
+            None,
+            cfg.model_dump(mode="json"),
+            usuario_id,
         )
         return cfg
 
@@ -574,15 +600,19 @@ class EvaluacionService:
         if suma + dto.peso > 1.001:
             raise ValueError(
                 f"La suma de pesos institucionales superaría el 100% "
-                f"(actual: {suma*100:.1f}%, nueva: {dto.peso*100:.1f}%). "
-                f"Disponible: {(1.0 - suma)*100:.1f}%."
+                f"(actual: {suma * 100:.1f}%, nueva: {dto.peso * 100:.1f}%). "
+                f"Disponible: {(1.0 - suma) * 100:.1f}%."
             )
 
         categoria = dto.to_categoria()
         categoria = self._siee_repo.guardar_categoria_institucional(categoria)
         self._auditar(
-            AccionCambio.CREATE, "categorias", categoria.id,
-            None, categoria.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "categorias",
+            categoria.id,
+            None,
+            categoria.model_dump(mode="json"),
+            usuario_id,
         )
         return categoria
 
@@ -611,17 +641,21 @@ class EvaluacionService:
             suma_sin_esta = round(suma_todas - cat.peso, 4)
             if suma_sin_esta + dto.peso > 1.001:
                 raise ValueError(
-                    f"El nuevo peso ({dto.peso*100:.1f}%) superaría el 100% "
+                    f"El nuevo peso ({dto.peso * 100:.1f}%) superaría el 100% "
                     f"del total institucional. "
-                    f"Disponible: {(1.0 - suma_sin_esta)*100:.1f}%."
+                    f"Disponible: {(1.0 - suma_sin_esta) * 100:.1f}%."
                 )
 
         datos_ant = cat.model_dump(mode="json")
         cat_actualizada = dto.aplicar_a(cat)
         self._siee_repo.actualizar_categoria_institucional(cat_actualizada)
         self._auditar(
-            AccionCambio.UPDATE, "categorias", cat_id,
-            datos_ant, cat_actualizada.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "categorias",
+            cat_id,
+            datos_ant,
+            cat_actualizada.model_dump(mode="json"),
+            usuario_id,
         )
         return cat_actualizada
 
@@ -644,24 +678,28 @@ class EvaluacionService:
         datos_ant = cat.model_dump(mode="json")
         self._siee_repo.eliminar_categoria_institucional(cat_id)
         self._auditar(
-            AccionCambio.DELETE, "categorias", cat_id,
-            datos_ant, None, usuario_id,
+            AccionCambio.DELETE,
+            "categorias",
+            cat_id,
+            datos_ant,
+            None,
+            usuario_id,
         )
 
 
 __all__ = [
-    "EvaluacionService",
+    "ActualizarCategoriaDTO",
     # DTOs / enums re-exportados para la capa de interfaz
     "ContextoAcademicoDTO",
     "EstadoActividad",
-    "NuevaCategoriaDTO",
-    "ActualizarCategoriaDTO",
-    "NuevaActividadDTO",
-    "RegistrarNotaDTO",
-    "NuevaConfiguracionSIEEDTO",
-    "NuevaCategoriaInstitucionalDTO",
+    "EvaluacionService",
     "ModoSIEE",
-    "PuntosExtra",
-    "TipoPuntosExtra",
+    "NuevaActividadDTO",
+    "NuevaCategoriaDTO",
+    "NuevaCategoriaInstitucionalDTO",
+    "NuevaConfiguracionSIEEDTO",
     "PlanillaCompletaDTO",
+    "PuntosExtra",
+    "RegistrarNotaDTO",
+    "TipoPuntosExtra",
 ]

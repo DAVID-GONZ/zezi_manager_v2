@@ -1,4 +1,5 @@
 """Implementación SQLite de IPreferenciasRepository."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -13,7 +14,6 @@ from src.domain.ports.preferencias_repo import IPreferenciasRepository
 
 
 class SqlitePreferenciasRepository(IPreferenciasRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -23,6 +23,7 @@ class SqlitePreferenciasRepository(IPreferenciasRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -68,9 +69,7 @@ class SqlitePreferenciasRepository(IPreferenciasRepository):
                 conn.commit()
             return pref.model_copy(update={"id": cursor.lastrowid})
 
-    def seed_defaults(
-        self, institucion_id: int, defaults: list[PreferenciaInstitucion]
-    ) -> None:
+    def seed_defaults(self, institucion_id: int, defaults: list[PreferenciaInstitucion]) -> None:
         with self._get_conn() as conn:
             for p in defaults:
                 conn.execute(

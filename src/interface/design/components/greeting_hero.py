@@ -1,27 +1,43 @@
 """
-greeting_hero.py — Hero de saludo con nombre, rol y mensaje descriptivo.
+greeting_hero.py — Hero de bienvenida animado y transitorio.
 
-Componente de presentación puro: recibe datos como strings,
-no llama servicios ni Container.
+Entra desde arriba con stagger en sus hijos, muestra una barra de cuenta
+regresiva y desaparece ~4 s después colapsando el espacio que ocupaba,
+de modo que el contenido inferior asciende suavemente sin salto.
+
+Componente de presentación puro: recibe strings, no llama servicios.
+
+El hero es una superficie de tinta invariante por tema (ver el bloque
+GREETING HERO en styles/components/cards.css): sus iconos usan
+--color-on-filled, no --color-primary-contrast, que se invierte en dark.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 
 from nicegui import ui
 
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 
 
 def _saludo_temporal() -> str:
-    """Decide 'Buenos días / Buenas tardes / Buenas noches' según la hora."""
     hora = datetime.now().hour
     if 5 <= hora < 12:
         return "Buenos días"
-    elif 12 <= hora < 20:
+    if 12 <= hora < 20:
         return "Buenas tardes"
     return "Buenas noches"
+
+
+def _icono_temporal() -> str:
+    hora = datetime.now().hour
+    if 5 <= hora < 12:
+        return "wb_sunny"
+    if 12 <= hora < 19:
+        return "partly_cloudy_day"
+    return "bedtime"
 
 
 def greeting_hero(
@@ -33,30 +49,48 @@ def greeting_hero(
     rol_label: str | None = None,
     animacion: bool = True,
 ) -> None:
-    """Hero de saludo del dashboard.
+    """Hero de bienvenida con entrada animada y auto-dismiss.
 
     Args:
-        nombre:          Nombre corto (primer nombre) para el saludo.
-        rol:             Rol del usuario (clave interna, ej: 'profesor').
-        mensaje:         Descripción debajo del saludo.
-        nombre_completo: Nombre completo para la cápsula de metadata.
-        rol_label:       Etiqueta legible del rol (ej: 'Docente').
-        animacion:       Si True, añade clase .greeting-hero-animated con fade-up.
+        nombre:          Primer nombre del usuario (para el saludo).
+        rol:             Clave interna del rol ('profesor', 'director'…).
+        mensaje:         Texto descriptivo debajo del nombre.
+        nombre_completo: Nombre completo mostrado en el badge de identidad.
+        rol_label:       Etiqueta legible del rol ('Docente', 'Director'…).
+        animacion:       False desactiva todas las animaciones (tests/a11y).
     """
-    clases = "greeting-hero w-full"
+    saludo = _saludo_temporal()
+    icono = _icono_temporal()
+    etiqueta = rol_label or rol.replace("_", " ").capitalize()
+    display_nombre = nombre_completo or nombre
+
+    clases = "greeting-hero"
     if animacion:
-        clases += " greeting-hero-animated"
+        clases += " greeting-hero--animated"
 
     with ui.element("div").classes(clases):
-        ui.label(f"{_saludo_temporal()}, {nombre}").classes("greeting-name")
-        ui.label(mensaje).classes("greeting-desc")
-        with ui.element("div").classes("greeting-meta"):
-            ThemeManager.icono(Icons.PROFILE, size=16, color="var(--color-primary)")
-            ui.label(nombre_completo or nombre).classes("greeting-user")
-            ui.element("span").classes("greeting-dot")
-            ui.label(
-                rol_label or rol.capitalize()
-            ).classes("greeting-role")
+        # ── Contenido ─────────────────────────────────────────────────
+        with ui.element("div").classes("greeting-hero-inner"):
+            # Columna izquierda: saludo + nombre + mensaje
+            with ui.element("div").classes("greeting-hero-left"):
+                with ui.element("div").classes("greeting-time-row"):
+                    with ui.element("div").classes("greeting-time-icon"):
+                        ThemeManager.icono(icono, size=20, color="var(--color-on-filled)")
+                    ui.label(saludo).classes("greeting-saludo")
+                ui.label(display_nombre).classes("greeting-name")
+                ui.label(mensaje).classes("greeting-desc")
+
+            # Columna derecha: badge de rol
+            with ui.element("div").classes("greeting-hero-right"):
+                with ui.element("div").classes("greeting-badge"):
+                    ThemeManager.icono(
+                        Icons.PROFILE, size=16, color="var(--color-on-filled)"
+                    )
+                    ui.label(etiqueta).classes("greeting-role")
+
+        # ── Barra de cuenta regresiva ──────────────────────────────────
+        with ui.element("div").classes("greeting-progress-track"):
+            ui.element("div").classes("greeting-progress-bar")
 
 
-__all__ = ["greeting_hero", "_saludo_temporal"]
+__all__ = ["_saludo_temporal", "greeting_hero"]

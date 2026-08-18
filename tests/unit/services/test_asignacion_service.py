@@ -201,7 +201,7 @@ def _svc_completo(caps=None, plan_map=None):
 
 class TestAsignarDocenteAMateria:
     def test_crea_si_no_hay_activa(self):
-        svc, repo = _svc_completo()
+        svc, _repo = _svc_completo()
         a = svc.asignar_docente_a_materia(10, 20, 5, nuevo_usuario_id=1)
         assert a is not None and a.usuario_id == 1 and a.activo
 

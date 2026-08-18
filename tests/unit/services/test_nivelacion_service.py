@@ -92,7 +92,7 @@ class TestCalificarNota:
 
         svc = _make_svc(repo=repo)
         dto = CalificarNotaNivelacionDTO(valor=75.0)
-        result = svc.calificar_nota(1, 10, dto)
+        svc.calificar_nota(1, 10, dto)
 
         repo.actualizar_nota.assert_called_once()
 

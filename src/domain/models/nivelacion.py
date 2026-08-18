@@ -14,6 +14,7 @@ Arquitectura:
 La nota definitiva de nivelación por estudiante = Σ(NotaNivelacion.valor × ActividadNivelacion.peso).
 No se almacena redundantemente; se computa al consultar.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -30,14 +31,15 @@ class ActividadNivelacion(BaseModel):
     La suma de pesos de todas las actividades de una asignacion+periodo debe ser 1.0
     para poder cerrar la nivelación. El servicio valida esto.
     """
-    id:            int | None = None
+
+    id: int | None = None
     asignacion_id: int
-    periodo_id:    int
-    nombre:        str
-    descripcion:   str | None = None
-    peso:          float          # (0, 1.0]
-    fecha:         date | None = None
-    usuario_id:    int | None = None
+    periodo_id: int
+    nombre: str
+    descripcion: str | None = None
+    peso: float  # (0, 1.0]
+    fecha: date | None = None
+    usuario_id: int | None = None
 
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
@@ -52,9 +54,7 @@ class ActividadNivelacion(BaseModel):
     def validar_peso(cls, v: float) -> float:
         """El peso de la actividad debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
-            raise ValueError(
-                f"El peso debe estar en el rango (0, 1.0] (recibido: {v})."
-            )
+            raise ValueError(f"El peso debe estar en el rango (0, 1.0] (recibido: {v}).")
         return round(v, 4)
 
     @field_validator("nombre", mode="before")
@@ -85,16 +85,16 @@ class NotaNivelacion(BaseModel):
 
     valor=None → pendiente de calificación.
     """
-    id:                      int | None   = None
-    actividad_nivelacion_id: int
-    estudiante_id:           int
-    asignacion_id:           int          # desnormalizado para queries
-    periodo_id:              int          # desnormalizado para queries
-    valor:                   float | None = None
-    usuario_id:              int | None   = None
 
-    @field_validator("actividad_nivelacion_id", "estudiante_id",
-                     "asignacion_id", "periodo_id")
+    id: int | None = None
+    actividad_nivelacion_id: int
+    estudiante_id: int
+    asignacion_id: int  # desnormalizado para queries
+    periodo_id: int  # desnormalizado para queries
+    valor: float | None = None
+    usuario_id: int | None = None
+
+    @field_validator("actividad_nivelacion_id", "estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
         """Las FK de la nota (actividad, estudiante, asignación, periodo) deben ser positivas."""
@@ -124,10 +124,11 @@ class CierreNivelacion(BaseModel):
     Su existencia implica que la nivelación está cerrada (read-only).
     La nota definitiva por estudiante se calcula sobre las NotaNivelacion persistidas.
     """
-    id:               int | None = None
-    asignacion_id:    int
-    periodo_id:       int
-    fecha_cierre:     date = Field(default_factory=date.today)
+
+    id: int | None = None
+    asignacion_id: int
+    periodo_id: int
+    fecha_cierre: date = Field(default_factory=date.today)
     usuario_cierre_id: int | None = None
 
     @field_validator("asignacion_id", "periodo_id")
@@ -162,8 +163,8 @@ class CalculadorNivelacion:
         for nota in notas:
             act = act_map.get(nota.actividad_nivelacion_id)
             if act is None or nota.valor is None:
-                return None   # incompleto
-            total      += nota.valor * act.peso
+                return None  # incompleto
+            total += nota.valor * act.peso
             total_peso += act.peso
         if total_peso == 0:
             return None
@@ -187,14 +188,16 @@ class CalculadorNivelacion:
 # DTOs
 # =============================================================================
 
+
 class NuevaActividadNivelacionDTO(BaseModel):
     """Datos para crear una actividad de nivelación."""
+
     asignacion_id: int
-    periodo_id:    int
-    nombre:        str
-    descripcion:   str | None = None
-    peso:          float
-    fecha:         date | None = None
+    periodo_id: int
+    nombre: str
+    descripcion: str | None = None
+    peso: float
+    fecha: date | None = None
 
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
@@ -231,7 +234,8 @@ class NuevaActividadNivelacionDTO(BaseModel):
 
 class CalificarNotaNivelacionDTO(BaseModel):
     """Datos para calificar (upsert) una nota de nivelación."""
-    valor:      float
+
+    valor: float
     usuario_id: int | None = None
 
     @field_validator("valor")

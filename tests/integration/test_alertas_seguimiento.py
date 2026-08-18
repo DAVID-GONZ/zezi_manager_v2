@@ -18,7 +18,6 @@ from src.infrastructure.db.repositories.sqlite_alerta_repo import SqliteAlertaRe
 from src.infrastructure.db.schema import create_schema
 from src.infrastructure.db.seed import seed_test
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

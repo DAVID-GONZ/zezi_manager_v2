@@ -13,6 +13,7 @@ Secciones:
   5 — Modo SIEE (ModoSIEE + porcentaje_autonomia_docente)
   6 — Categorías institucionales (CRUD de Categoria institucional)
 """
+
 from __future__ import annotations
 
 import logging
@@ -54,10 +55,10 @@ from src.services.evaluacion_service import (
 logger = logging.getLogger("ADMIN.CONFIG_SIEE")
 
 _MODO_LABELS: dict[str, str] = {
-    "libre":               "Libre",
-    "institucional_fijo":  "Institucional fijo",
+    "libre": "Libre",
+    "institucional_fijo": "Institucional fijo",
     "mixto_subcategorias": "Mixto — sub-categorías",
-    "mixto_autonomia":     "Mixto — autonomía docente",
+    "mixto_autonomia": "Mixto — autonomía docente",
 }
 
 _MODO_DESC: dict[str, str] = {
@@ -79,11 +80,11 @@ def configuracion_sie_page() -> None:
 
     _s: dict = {
         "config_activa": None,
-        "nuevo_anio":    2026,
-        "niveles":       [],
-        "criterios":     None,
-        "siee_cfg":      None,
-        "cats_inst":     [],
+        "nuevo_anio": 2026,
+        "niveles": [],
+        "criterios": None,
+        "siee_cfg": None,
+        "cats_inst": [],
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ def configuracion_sie_page() -> None:
 
         try:
             svc = Container.evaluacion_service()
-            _s["siee_cfg"]  = svc.get_configuracion_siee(anio_id)
+            _s["siee_cfg"] = svc.get_configuracion_siee(anio_id)
             _s["cats_inst"] = svc.listar_categorias_institucionales(anio_id)
         except Exception as exc:
             logger.error("Error SIEE: %s", exc)
@@ -155,13 +156,11 @@ def configuracion_sie_page() -> None:
         def _guardar(datos: dict) -> None:
             try:
                 dto = ActualizarConfiguracionAnioDTO(
-                    nota_minima_escala     = datos["nota_minima_escala"],
-                    nota_maxima_escala     = datos["nota_maxima_escala"],
-                    nota_minima_aprobacion = datos["nota_minima_aprobacion"],
+                    nota_minima_escala=datos["nota_minima_escala"],
+                    nota_maxima_escala=datos["nota_maxima_escala"],
+                    nota_minima_aprobacion=datos["nota_minima_aprobacion"],
                 )
-                Container.configuracion_service().actualizar_configuracion_academica(
-                    config.id, dto
-                )
+                Container.configuracion_service().actualizar_configuracion_academica(config.id, dto)
                 toast_success("Escala de notas actualizada")
                 _cargar_todo()
                 panel_escala.refresh()
@@ -173,32 +172,38 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al guardar la escala")
 
         form_dialog(
-            titulo = "Escala de notas",
-            campos = [
+            titulo="Escala de notas",
+            campos=[
                 {
                     "key": "nota_minima_escala",
                     "label": "Nota mínima de la escala *",
                     "tipo": "number",
                     "valor": config.nota_minima_escala,
-                    "min": 0, "max": 100, "step": 0.5,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.5,
                 },
                 {
                     "key": "nota_maxima_escala",
                     "label": "Nota máxima de la escala *",
                     "tipo": "number",
                     "valor": config.nota_maxima_escala,
-                    "min": 0, "max": 100, "step": 0.5,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.5,
                 },
                 {
                     "key": "nota_minima_aprobacion",
                     "label": "Nota de aprobación *",
                     "tipo": "number",
                     "valor": config.nota_minima_aprobacion,
-                    "min": 0, "max": 100, "step": 0.5,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.5,
                 },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     # ── Acciones — niveles de desempeño ──────────────────────────────────────
@@ -210,10 +215,18 @@ def configuracion_sie_page() -> None:
         def _ejecutar() -> None:
             try:
                 defaults = [
-                    NuevoNivelDesempenoDTO(anio_id=anio_id, nombre="Bajo",     rango_min=0.0,  rango_max=59.9, orden=0),
-                    NuevoNivelDesempenoDTO(anio_id=anio_id, nombre="Básico",   rango_min=60.0, rango_max=69.9, orden=1),
-                    NuevoNivelDesempenoDTO(anio_id=anio_id, nombre="Alto",     rango_min=70.0, rango_max=84.9, orden=2),
-                    NuevoNivelDesempenoDTO(anio_id=anio_id, nombre="Superior", rango_min=85.0, rango_max=100.0, orden=3),
+                    NuevoNivelDesempenoDTO(
+                        anio_id=anio_id, nombre="Bajo", rango_min=0.0, rango_max=59.9, orden=0
+                    ),
+                    NuevoNivelDesempenoDTO(
+                        anio_id=anio_id, nombre="Básico", rango_min=60.0, rango_max=69.9, orden=1
+                    ),
+                    NuevoNivelDesempenoDTO(
+                        anio_id=anio_id, nombre="Alto", rango_min=70.0, rango_max=84.9, orden=2
+                    ),
+                    NuevoNivelDesempenoDTO(
+                        anio_id=anio_id, nombre="Superior", rango_min=85.0, rango_max=100.0, orden=3
+                    ),
                 ]
                 Container.configuracion_service().configurar_niveles(anio_id, defaults)
                 toast_success("Niveles restablecidos")
@@ -224,10 +237,10 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al restablecer niveles")
 
         confirm_dialog(
-            titulo          = "Restablecer niveles por defecto",
-            mensaje         = "Se reemplazarán todos los niveles actuales con los valores estándar (Bajo, Básico, Alto, Superior). ¿Continuar?",
-            on_confirm      = _ejecutar,
-            texto_confirmar = "Restablecer",
+            titulo="Restablecer niveles por defecto",
+            mensaje="Se reemplazarán todos los niveles actuales con los valores estándar (Bajo, Básico, Alto, Superior). ¿Continuar?",
+            on_confirm=_ejecutar,
+            texto_confirmar="Restablecer",
         )
 
     def _agregar_nivel() -> None:
@@ -238,11 +251,11 @@ def configuracion_sie_page() -> None:
         def _guardar(datos: dict) -> None:
             try:
                 nuevo = NuevoNivelDesempenoDTO(
-                    anio_id     = anio_id,
-                    nombre      = datos.get("nombre", ""),
-                    rango_min   = datos["rango_min"],
-                    rango_max   = datos["rango_max"],
-                    descripcion = datos.get("descripcion") or None,
+                    anio_id=anio_id,
+                    nombre=datos.get("nombre", ""),
+                    rango_min=datos["rango_min"],
+                    rango_max=datos["rango_max"],
+                    descripcion=datos.get("descripcion") or None,
                 )
                 Container.configuracion_service().agregar_nivel(anio_id, nuevo)
                 toast_success(f"Nivel '{nuevo.nombre}' agregado")
@@ -255,15 +268,42 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al agregar nivel")
 
         form_dialog(
-            titulo = "Nuevo nivel de desempeño",
-            campos = [
-                {"key": "nombre",      "label": "Nombre *",         "tipo": "text",   "requerido": True, "placeholder": "Ej: Alto"},
-                {"key": "rango_min",   "label": "Rango mínimo *",   "tipo": "number", "min": 0, "max": 100, "step": 0.1, "valor": 0.0},
-                {"key": "rango_max",   "label": "Rango máximo *",   "tipo": "number", "min": 0, "max": 100, "step": 0.1, "valor": 100.0},
-                {"key": "descripcion", "label": "Descripción",      "tipo": "text",   "placeholder": "Opcional"},
+            titulo="Nuevo nivel de desempeño",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "requerido": True,
+                    "placeholder": "Ej: Alto",
+                },
+                {
+                    "key": "rango_min",
+                    "label": "Rango mínimo *",
+                    "tipo": "number",
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                    "valor": 0.0,
+                },
+                {
+                    "key": "rango_max",
+                    "label": "Rango máximo *",
+                    "tipo": "number",
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                    "valor": 100.0,
+                },
+                {
+                    "key": "descripcion",
+                    "label": "Descripción",
+                    "tipo": "text",
+                    "placeholder": "Opcional",
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     def _editar_nivel(nivel: NivelDesempeno) -> None:
@@ -292,15 +332,42 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al actualizar nivel")
 
         form_dialog(
-            titulo = "Editar nivel de desempeño",
-            campos = [
-                {"key": "nombre",      "label": "Nombre *",       "tipo": "text",   "valor": nivel.nombre, "requerido": True},
-                {"key": "rango_min",   "label": "Rango mínimo *", "tipo": "number", "valor": nivel.rango_min, "min": 0, "max": 100, "step": 0.1},
-                {"key": "rango_max",   "label": "Rango máximo *", "tipo": "number", "valor": nivel.rango_max, "min": 0, "max": 100, "step": 0.1},
-                {"key": "descripcion", "label": "Descripción",    "tipo": "text",   "valor": nivel.descripcion or ""},
+            titulo="Editar nivel de desempeño",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": nivel.nombre,
+                    "requerido": True,
+                },
+                {
+                    "key": "rango_min",
+                    "label": "Rango mínimo *",
+                    "tipo": "number",
+                    "valor": nivel.rango_min,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                },
+                {
+                    "key": "rango_max",
+                    "label": "Rango máximo *",
+                    "tipo": "number",
+                    "valor": nivel.rango_max,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                },
+                {
+                    "key": "descripcion",
+                    "label": "Descripción",
+                    "tipo": "text",
+                    "valor": nivel.descripcion or "",
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     def _eliminar_nivel(nivel: NivelDesempeno) -> None:
@@ -321,11 +388,11 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al eliminar nivel")
 
         confirm_dialog(
-            titulo          = "Eliminar nivel",
-            mensaje         = f"¿Eliminar el nivel '{nivel.nombre}'? Esta acción es irreversible.",
-            on_confirm      = _ejecutar,
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar nivel",
+            mensaje=f"¿Eliminar el nivel '{nivel.nombre}'? Esta acción es irreversible.",
+            on_confirm=_ejecutar,
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     # ── Acciones — criterios de promoción ─────────────────────────────────────
@@ -338,11 +405,11 @@ def configuracion_sie_page() -> None:
         def _guardar(datos: dict) -> None:
             try:
                 nuevo = CriterioPromocion(
-                    anio_id                  = anio_id,
-                    max_asignaturas_perdidas  = datos.get("max_asignaturas_perdidas", 2),
-                    permite_condicionada      = datos.get("permite_condicionada", True),
-                    nota_minima_habilitacion  = datos["nota_minima_habilitacion"],
-                    nota_minima_anual         = datos["nota_minima_anual"],
+                    anio_id=anio_id,
+                    max_asignaturas_perdidas=datos.get("max_asignaturas_perdidas", 2),
+                    permite_condicionada=datos.get("permite_condicionada", True),
+                    nota_minima_habilitacion=datos["nota_minima_habilitacion"],
+                    nota_minima_anual=datos["nota_minima_anual"],
                 )
                 Container.configuracion_service().guardar_criterios(nuevo)
                 toast_success("Criterios de promoción guardados")
@@ -355,12 +422,15 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al guardar criterios")
 
         form_dialog(
-            titulo = "Criterios de promoción",
-            campos = [
+            titulo="Criterios de promoción",
+            campos=[
                 {
                     "key": "max_asignaturas_perdidas",
                     "label": "Máx. asignaturas perdidas para promoción *",
-                    "tipo": "number", "min": 0, "max": 10, "step": 1,
+                    "tipo": "number",
+                    "min": 0,
+                    "max": 10,
+                    "step": 1,
                     "valor": criterios.max_asignaturas_perdidas if criterios else 2,
                 },
                 {
@@ -372,25 +442,31 @@ def configuracion_sie_page() -> None:
                 {
                     "key": "nota_minima_habilitacion",
                     "label": "Nota mínima para habilitación *",
-                    "tipo": "number", "min": 0, "max": 100, "step": 0.5,
+                    "tipo": "number",
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.5,
                     "valor": criterios.nota_minima_habilitacion if criterios else 60.0,
                 },
                 {
                     "key": "nota_minima_anual",
                     "label": "Nota mínima anual requerida *",
-                    "tipo": "number", "min": 0, "max": 100, "step": 0.5,
+                    "tipo": "number",
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.5,
                     "valor": criterios.nota_minima_anual if criterios else 60.0,
                 },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-lg",
+            on_submit=_guardar,
+            max_width="max-w-lg",
         )
 
     # ── Acciones — modo SIEE ──────────────────────────────────────────────────
     def _abrir_dialog_modo_siee() -> None:
-        cfg    = _s["siee_cfg"]
+        cfg = _s["siee_cfg"]
         modo_v = cfg.modo.value if cfg else "libre"
-        pct_v  = round((cfg.porcentaje_autonomia_docente or 0) * 100, 1) if cfg else 0.0
+        pct_v = round((cfg.porcentaje_autonomia_docente or 0) * 100, 1) if cfg else 0.0
 
         def _guardar(datos: dict) -> None:
             anio_id = _anio_id()
@@ -398,12 +474,12 @@ def configuracion_sie_page() -> None:
                 return
             # % autonomía (1-99) → fracción (0-1): conversión de unidad en la frontera.
             pct_raw = datos.get("porcentaje_autonomia")
-            pct     = pct_raw / 100.0 if pct_raw else None
+            pct = pct_raw / 100.0 if pct_raw else None
             try:
                 dto = NuevaConfiguracionSIEEDTO(
-                    anio_id                      = anio_id,
-                    modo                         = datos.get("modo", "libre"),
-                    porcentaje_autonomia_docente = pct,
+                    anio_id=anio_id,
+                    modo=datos.get("modo", "libre"),
+                    porcentaje_autonomia_docente=pct,
                 )
                 Container.evaluacion_service().guardar_configuracion_siee(dto, ctx.usuario_id)
                 toast_success("Configuración SIEE guardada")
@@ -417,24 +493,29 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al guardar la configuración SIEE")
 
         form_dialog(
-            titulo = "Configurar modo SIEE",
-            campos = [
+            titulo="Configurar modo SIEE",
+            campos=[
                 {
-                    "key": "modo", "label": "Modo de distribución",
-                    "tipo": "select", "valor": modo_v,
-                    "opciones": {k: v for k, v in _MODO_LABELS.items()},
+                    "key": "modo",
+                    "label": "Modo de distribución",
+                    "tipo": "select",
+                    "valor": modo_v,
+                    "opciones": dict(_MODO_LABELS.items()),
                     "requerido": True,
                 },
                 {
                     "key": "porcentaje_autonomia",
                     "label": "% autonomía docente (solo modo mixto-autonomía)",
-                    "tipo": "number", "valor": pct_v,
-                    "min": 1, "max": 99, "step": 1,
+                    "tipo": "number",
+                    "valor": pct_v,
+                    "min": 1,
+                    "max": 99,
+                    "step": 1,
                     "placeholder": "Ej: 30 (para 30%)",
                 },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-lg",
+            on_submit=_guardar,
+            max_width="max-w-lg",
         )
 
     # ── Acciones — categorías institucionales ─────────────────────────────────
@@ -468,14 +549,33 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al crear la categoría")
 
         form_dialog(
-            titulo = "Nueva categoría institucional",
-            campos = [
-                {"key": "nombre",  "label": "Nombre *", "tipo": "text", "requerido": True, "placeholder": "Ej: Saber"},
-                {"key": "peso",    "label": "Porcentaje (1–100) *", "tipo": "number", "min": 1, "max": 100, "step": 1, "valor": 10},
-                {"key": "permite_subcategorias", "label": "Permite sub-categorías docente", "tipo": "checkbox", "valor": False},
+            titulo="Nueva categoría institucional",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "requerido": True,
+                    "placeholder": "Ej: Saber",
+                },
+                {
+                    "key": "peso",
+                    "label": "Porcentaje (1–100) *",
+                    "tipo": "number",
+                    "min": 1,
+                    "max": 100,
+                    "step": 1,
+                    "valor": 10,
+                },
+                {
+                    "key": "permite_subcategorias",
+                    "label": "Permite sub-categorías docente",
+                    "tipo": "checkbox",
+                    "valor": False,
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     def _editar_cat_institucional(cat) -> None:
@@ -483,13 +583,13 @@ def configuracion_sie_page() -> None:
 
         def _guardar(datos: dict) -> None:
             nuevo_nombre = str(datos.get("nombre", "")).strip() or None
-            peso_v       = datos.get("peso")
+            peso_v = datos.get("peso")
             if not nuevo_nombre:
                 toast_warning("El nombre es obligatorio")
                 return
             try:
                 nuevo_peso = float(peso_v) / 100.0 if peso_v is not None else None
-                dto        = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
+                dto = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
                 Container.evaluacion_service().actualizar_categoria_institucional(
                     cat.id, dto, anio_id, usuario_id=ctx.usuario_id
                 )
@@ -503,13 +603,27 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al actualizar")
 
         form_dialog(
-            titulo = "Editar categoría institucional",
-            campos = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text", "valor": cat.nombre, "requerido": True},
-                {"key": "peso",   "label": "Porcentaje (1–100) *", "tipo": "number", "valor": round(cat.peso * 100, 1), "min": 1, "max": 100, "step": 1},
+            titulo="Editar categoría institucional",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": cat.nombre,
+                    "requerido": True,
+                },
+                {
+                    "key": "peso",
+                    "label": "Porcentaje (1–100) *",
+                    "tipo": "number",
+                    "valor": round(cat.peso * 100, 1),
+                    "min": 1,
+                    "max": 100,
+                    "step": 1,
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     def _eliminar_cat_institucional(cat) -> None:
@@ -528,11 +642,11 @@ def configuracion_sie_page() -> None:
                 toast_error("Error al eliminar")
 
         confirm_dialog(
-            titulo          = "Eliminar categoría institucional",
-            mensaje         = f"¿Eliminar '{cat.nombre}'? Esta acción es irreversible.",
-            on_confirm      = _ejecutar,
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar categoría institucional",
+            mensaje=f"¿Eliminar '{cat.nombre}'? Esta acción es irreversible.",
+            on_confirm=_ejecutar,
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -547,22 +661,34 @@ def configuracion_sie_page() -> None:
                     ui.label(str(config.anio)).classes("text-4xl font-bold")
                     badge_estado_general(True)
                 with ui.element("div").classes("form-grid-2"):
-                    _dato("Inicio clases",
-                          config.fecha_inicio_clases.strftime("%d/%m/%Y") if config.fecha_inicio_clases else "—")
-                    _dato("Fin clases",
-                          config.fecha_fin_clases.strftime("%d/%m/%Y") if config.fecha_fin_clases else "—")
+                    _dato(
+                        "Inicio clases",
+                        config.fecha_inicio_clases.strftime("%d/%m/%Y")
+                        if config.fecha_inicio_clases
+                        else "—",
+                    )
+                    _dato(
+                        "Fin clases",
+                        config.fecha_fin_clases.strftime("%d/%m/%Y")
+                        if config.fecha_fin_clases
+                        else "—",
+                    )
                     if config.duracion_semanas:
                         _dato("Duración", f"{config.duracion_semanas} semanas")
                 ui.separator().classes("my-4")
 
             # Crear nuevo año
             ui.label("Crear nuevo año lectivo").classes("section-subtitle-sm u-mb-sm")
-            ui.label(
-                "Al crear un nuevo año, este se convierte en el activo."
-            ).classes("text-xs text-muted mb-3")
+            ui.label("Al crear un nuevo año, este se convierte en el activo.").classes(
+                "text-xs text-muted mb-3"
+            )
             with ui.row().classes("gap-3 items-end"):
                 ui.number(
-                    "Año *", value=_s["nuevo_anio"], min=2000, max=2100, step=1,
+                    "Año *",
+                    value=_s["nuevo_anio"],
+                    min=2000,
+                    max=2100,
+                    step=1,
                 ).classes("w-32").bind_value(_s, "nuevo_anio")
                 btn_primary("Crear año", on_click=_crear_anio, icon="add_circle")
 
@@ -591,7 +717,9 @@ def configuracion_sie_page() -> None:
                 with ui.element("div").classes("stat-tile bg-subtle"):
                     ui.label("Nota de aprobación").classes("text-xs text-muted mb-1")
                     color_ap = "text-success" if aprobacion_en_rango else "text-error"
-                    ui.label(f"{config.nota_minima_aprobacion:.1f}").classes(f"text-2xl font-bold {color_ap}")
+                    ui.label(f"{config.nota_minima_aprobacion:.1f}").classes(
+                        f"text-2xl font-bold {color_ap}"
+                    )
 
                 with ui.element("div").classes("stat-tile bg-subtle"):
                     ui.label("Máxima escala").classes("text-xs text-muted mb-1")
@@ -604,15 +732,19 @@ def configuracion_sie_page() -> None:
 
     @ui.refreshable
     def panel_niveles() -> None:
-        niveles   = _s["niveles"]
-        anio_id   = _anio_id()
+        niveles = _s["niveles"]
+        anio_id = _anio_id()
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center u-mb-lg"):
                 ThemeManager.icono("grade", size=24, color="var(--color-primary)")
                 ui.label("Niveles de desempeño").classes("section-title-lg")
                 if anio_id:
-                    btn_icon("refresh", on_click=lambda: (_cargar_todo(), panel_niveles.refresh()), tooltip="Recargar")
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (_cargar_todo(), panel_niveles.refresh()),
+                        tooltip="Recargar",
+                    )
                     btn_ghost("Defaults", icon="restart_alt", on_click=_restablecer_niveles_default)
                     btn_primary("Agregar nivel", icon="add", on_click=_agregar_nivel)
 
@@ -644,13 +776,20 @@ def configuracion_sie_page() -> None:
                         )
                         ui.label(nivel.descripcion or "—").classes("flex-1 text-sm text-muted")
                         with ui.row().classes("w-20 form-row-actions"):
-                            btn_icon("edit",   on_click=lambda n=nivel: _editar_nivel(n),   tooltip="Editar")
-                            btn_icon("delete", on_click=lambda n=nivel: _eliminar_nivel(n), tooltip="Eliminar", variante="danger")
+                            btn_icon(
+                                "edit", on_click=lambda n=nivel: _editar_nivel(n), tooltip="Editar"
+                            )
+                            btn_icon(
+                                "delete",
+                                on_click=lambda n=nivel: _eliminar_nivel(n),
+                                tooltip="Eliminar",
+                                variante="danger",
+                            )
 
     @ui.refreshable
     def panel_criterios() -> None:
         criterios = _s["criterios"]
-        anio_id   = _anio_id()
+        anio_id = _anio_id()
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center u-mb-lg"):
@@ -665,7 +804,9 @@ def configuracion_sie_page() -> None:
                 return
 
             if not criterios:
-                with ui.element("div").classes("alert-panel-row bg-warning-soft border-warning-soft"):
+                with ui.element("div").classes(
+                    "alert-panel-row bg-warning-soft border-warning-soft"
+                ):
                     ThemeManager.icono("warning", size=24, color="var(--color-warning)")
                     ui.label(
                         "No hay criterios de promoción configurados. Haz clic en 'Configurar'."
@@ -680,21 +821,21 @@ def configuracion_sie_page() -> None:
 
     @ui.refreshable
     def panel_modo_siee() -> None:
-        cfg        = _s["siee_cfg"]
-        anio_id    = _anio_id()
-        modo_val   = cfg.modo.value if cfg else "libre"
+        cfg = _s["siee_cfg"]
+        anio_id = _anio_id()
+        modo_val = cfg.modo.value if cfg else "libre"
         modo_label = _MODO_LABELS.get(modo_val, modo_val)
-        modo_desc  = _MODO_DESC.get(modo_val, "")
+        modo_desc = _MODO_DESC.get(modo_val, "")
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center-md u-mb-lg"):
                 ThemeManager.icono("tune", size=24, color="var(--color-primary)")
                 ui.label("Modo SIEE").classes("section-title-lg")
                 _variante_modo = {
-                    "libre":               "neutral",
-                    "institucional_fijo":  "error",
+                    "libre": "neutral",
+                    "institucional_fijo": "error",
                     "mixto_subcategorias": "info",
-                    "mixto_autonomia":     "warning",
+                    "mixto_autonomia": "warning",
                 }.get(modo_val, "neutral")
                 status_badge(modo_label, variante=_variante_modo)
                 if anio_id:
@@ -705,16 +846,16 @@ def configuracion_sie_page() -> None:
 
             if modo_val == "mixto_autonomia" and cfg and cfg.porcentaje_autonomia_docente:
                 pct_inst = round((1.0 - cfg.porcentaje_autonomia_docente) * 100, 1)
-                pct_doc  = round(cfg.porcentaje_autonomia_docente * 100, 1)
+                pct_doc = round(cfg.porcentaje_autonomia_docente * 100, 1)
                 with ui.row().classes("gap-4 text-sm"):
                     ui.label(f"Institucional: {pct_inst}%").classes("font-medium")
                     ui.label(f"Autonomía docente: {pct_doc}%").classes("font-medium text-primary")
 
     @ui.refreshable
     def panel_cats_inst() -> None:
-        cats_inst  = _s["cats_inst"]
-        anio_id    = _anio_id()
-        suma_inst  = round(sum(c.peso for c in cats_inst) * 100, 1)
+        cats_inst = _s["cats_inst"]
+        anio_id = _anio_id()
+        suma_inst = round(sum(c.peso for c in cats_inst) * 100, 1)
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center-md u-mb-lg"):
@@ -725,14 +866,20 @@ def configuracion_sie_page() -> None:
                     variante="success" if suma_inst <= 100 else "error",
                 )
                 if anio_id:
-                    btn_icon("add_circle", on_click=_crear_cat_institucional, tooltip="Agregar categoría institucional")
+                    btn_icon(
+                        "add_circle",
+                        on_click=_crear_cat_institucional,
+                        tooltip="Agregar categoría institucional",
+                    )
 
             if not anio_id:
                 ui.label("Sin año activo.").classes("text-empty text-sm")
                 return
 
             if not cats_inst:
-                ui.label("No hay categorías institucionales definidas.").classes("text-empty text-sm")
+                ui.label("No hay categorías institucionales definidas.").classes(
+                    "text-empty text-sm"
+                )
                 return
 
             with ui.element("div").classes("w-full divider-y"):
@@ -744,8 +891,17 @@ def configuracion_sie_page() -> None:
                         if cat.permite_subcategorias:
                             status_badge("sub-cats", variante="info")
                         with ui.row().classes("gap-1"):
-                            btn_icon("edit",   on_click=lambda c=cat: _editar_cat_institucional(c), tooltip="Editar")
-                            btn_icon("delete", on_click=lambda c=cat: _eliminar_cat_institucional(c), tooltip="Eliminar", variante="danger")
+                            btn_icon(
+                                "edit",
+                                on_click=lambda c=cat: _editar_cat_institucional(c),
+                                tooltip="Editar",
+                            )
+                            btn_icon(
+                                "delete",
+                                on_click=lambda c=cat: _eliminar_cat_institucional(c),
+                                tooltip="Eliminar",
+                                variante="danger",
+                            )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -755,13 +911,24 @@ def configuracion_sie_page() -> None:
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono("school", size=22, color="var(--color-primary)")
                     ui.label("Configuración SIEE").classes("section-title-xl")
-                    btn_ghost("Info. Institucional", icon="business",
-                              on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"))
-                    btn_icon("refresh", on_click=lambda: (_cargar_todo(),
-                             panel_anio.refresh(), panel_escala.refresh(),
-                             panel_niveles.refresh(), panel_criterios.refresh(),
-                             panel_modo_siee.refresh(), panel_cats_inst.refresh()),
-                             tooltip="Recargar todo")
+                    btn_ghost(
+                        "Info. Institucional",
+                        icon="business",
+                        on_click=lambda: ui.navigate.to("/admin/configuracion-institucion"),
+                    )
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (
+                            _cargar_todo(),
+                            panel_anio.refresh(),
+                            panel_escala.refresh(),
+                            panel_niveles.refresh(),
+                            panel_criterios.refresh(),
+                            panel_modo_siee.refresh(),
+                            panel_cats_inst.refresh(),
+                        ),
+                        tooltip="Recargar todo",
+                    )
 
             panel_anio()
 
@@ -782,9 +949,9 @@ def configuracion_sie_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Configuración SIEE",
-        page_subtitulo = "Escala, niveles de desempeño, criterios de promoción y categorías institucionales",
-        page_icono     = "school",
+        page_titulo="Configuración SIEE",
+        page_subtitulo="Escala, niveles de desempeño, criterios de promoción y categorías institucionales",
+        page_icono="school",
     )
 
 

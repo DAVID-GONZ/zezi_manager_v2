@@ -15,6 +15,7 @@ Regla de capas:
   No importa nada de src.domain.models.* directamente.
   Los DTOs se acceden a través del módulo de servicios.
 """
+
 from __future__ import annotations
 
 import logging
@@ -70,8 +71,7 @@ def abrir_crear_observacion_dialog(
 
     # Opciones de asignatura: {asignacion_id: nombre_asignatura}
     opciones_asig = {
-        getattr(a, "asignacion_id", None): getattr(a, "asignatura_nombre", "")
-        for a in asignaciones
+        getattr(a, "asignacion_id", None): getattr(a, "asignatura_nombre", "") for a in asignaciones
     }
 
     # Opciones de categoría: {id: nombre}
@@ -89,46 +89,46 @@ def abrir_crear_observacion_dialog(
 
     campos = [
         {
-            "key":       "asignacion_id",
-            "label":     "Asignatura",
-            "tipo":      "select",
-            "opciones":  opciones_asig,
+            "key": "asignacion_id",
+            "label": "Asignatura",
+            "tipo": "select",
+            "opciones": opciones_asig,
             "requerido": True,
         },
         {
-            "key":       "categoria_id",
-            "label":     "Categoría",
-            "tipo":      "select",
-            "opciones":  opciones_cat,
-            "valor":     categoria_id_prefill,
+            "key": "categoria_id",
+            "label": "Categoría",
+            "tipo": "select",
+            "opciones": opciones_cat,
+            "valor": categoria_id_prefill,
             "requerido": True,
         },
         {
-            "key":         "texto",
-            "label":       "Texto de la observación",
-            "tipo":        "textarea",
+            "key": "texto",
+            "label": "Texto de la observación",
+            "tipo": "textarea",
             "placeholder": "Máximo 2000 caracteres...",
-            "valor":       texto_prefill,
-            "requerido":   True,
+            "valor": texto_prefill,
+            "requerido": True,
         },
         {
-            "key":   "es_publica",
+            "key": "es_publica",
             "label": "Incluir en el boletín",
-            "tipo":  "checkbox",
+            "tipo": "checkbox",
             "valor": True,
         },
     ]
 
     # Captura por valor para que la closure no comparta estado entre aperturas
-    _plantilla_id     = plantilla_id
-    _estudiante_ids   = list(estudiante_ids)
-    _periodo_id       = periodo_id
+    _plantilla_id = plantilla_id
+    _estudiante_ids = list(estudiante_ids)
+    _periodo_id = periodo_id
 
     def _on_submit(datos: dict) -> bool | None:
         asignacion_id = datos.get("asignacion_id")
-        categoria_id  = datos.get("categoria_id")
-        texto         = str(datos.get("texto", "")).strip()
-        es_publica    = bool(datos.get("es_publica", True))
+        categoria_id = datos.get("categoria_id")
+        texto = str(datos.get("texto", "")).strip()
+        es_publica = bool(datos.get("es_publica", True))
 
         if not texto:
             toast_warning("El texto de la observación es requerido.")
@@ -140,9 +140,9 @@ def abrir_crear_observacion_dialog(
             toast_warning("Selecciona una asignatura.")
             return False
 
-        exitos  = 0
+        exitos = 0
         errores = 0
-        svc     = Container.convivencia_service()
+        svc = Container.convivencia_service()
 
         for est_id in _estudiante_ids:
             try:

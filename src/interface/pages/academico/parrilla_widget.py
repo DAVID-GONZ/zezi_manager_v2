@@ -13,6 +13,7 @@ Dos renderizadores:
 Ambos comparten el diseño de celda (acento de color por área en el borde
 izquierdo, texto legible) y la lógica de clic/edición integrada.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -85,9 +86,9 @@ def _render_celda_ocupada(
         elif perspectiva == "Docente":
             ui.label(primero["grupo_codigo"]).classes("parrilla-celda-sub")
         else:
-            ui.label(
-                f"{primero['grupo_codigo']} · {primero['docente_nombre']}"
-            ).classes("parrilla-celda-sub")
+            ui.label(f"{primero['grupo_codigo']} · {primero['docente_nombre']}").classes(
+                "parrilla-celda-sub"
+            )
 
     if clicable:
         ctx = {"tipo": "ocupada", "celda": primero}
@@ -178,39 +179,51 @@ def render_parrilla(
             continue
         idx.setdefault((c["dia_semana"], c["hora_inicio"]), []).append(c)
 
-    with ui.element("div").classes("parrilla-scroll"):
-        with ui.element("div").classes("parrilla-grid").style(
+    with (
+        ui.element("div").classes("parrilla-scroll"), ui.element("div")
+        .classes("parrilla-grid")
+        .style(
             # DYNAMIC: nº de columnas depende de los días visibles
             f"grid-template-columns: 160px repeat({len(dias)}, minmax(120px, 1fr))"
-        ):
-            with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):
-                ui.label("Hora")
+        )
+    ):
+        with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):
+            ui.label("Hora")
+        for dia in dias:
+            with ui.element("div").classes("parrilla-encabezado"):
+                ui.label(str(dia))
+
+        for fr in datos["franjas"]:
+            lectiva = fr.get("lectiva", True)
+            label_cls = "parrilla-franja-label" + (
+                "" if lectiva else " parrilla-franja-nolectiva"
+            )
+            etiqueta = fr.get("etiqueta") or f"{fr['hora_inicio']}–{fr['hora_fin']}"
+            with ui.element("div").classes(label_cls):
+                ui.label(str(etiqueta))
+
             for dia in dias:
-                with ui.element("div").classes("parrilla-encabezado"):
-                    ui.label(str(dia))
-
-            for fr in datos["franjas"]:
-                lectiva = fr.get("lectiva", True)
-                label_cls = "parrilla-franja-label" + ("" if lectiva else " parrilla-franja-nolectiva")
-                etiqueta = fr.get("etiqueta") or f"{fr['hora_inicio']}–{fr['hora_fin']}"
-                with ui.element("div").classes(label_cls):
-                    ui.label(str(etiqueta))
-
-                for dia in dias:
-                    if not lectiva:
-                        with ui.element("div").classes("parrilla-celda parrilla-hueco parrilla-nolectiva-celda"):
-                            ui.label(fr.get("etiqueta") or "Descanso").classes("parrilla-nolectiva-texto")
-                        continue
-
-                    bloques = idx.get((dia, fr["hora_inicio"]), [])
-                    if not bloques:
-                        _render_celda_vacia(
-                            dia, fr["hora_inicio"], grupo_vacia,
-                            on_celda_click, puede_editar,
+                if not lectiva:
+                    with ui.element("div").classes(
+                        "parrilla-celda parrilla-hueco parrilla-nolectiva-celda"
+                    ):
+                        ui.label(fr.get("etiqueta") or "Descanso").classes(
+                            "parrilla-nolectiva-texto"
                         )
-                        continue
+                    continue
 
-                    _render_celda_ocupada(bloques, perspectiva, on_celda_click, puede_editar)
+                bloques = idx.get((dia, fr["hora_inicio"]), [])
+                if not bloques:
+                    _render_celda_vacia(
+                        dia,
+                        fr["hora_inicio"],
+                        grupo_vacia,
+                        on_celda_click,
+                        puede_editar,
+                    )
+                    continue
+
+                _render_celda_ocupada(bloques, perspectiva, on_celda_click, puede_editar)
 
 
 def render_tablero_maestro(
@@ -257,40 +270,52 @@ def render_tablero_maestro(
 
     grupo_ids = list(grupos.keys())
 
-    with ui.element("div").classes("parrilla-scroll"):
-        with ui.element("div").classes("tablero-maestro").style(
+    with (
+        ui.element("div").classes("parrilla-scroll"), ui.element("div")
+        .classes("tablero-maestro")
+        .style(
             # DYNAMIC: nº de columnas depende de los grupos presentes
             f"grid-template-columns: 160px repeat({len(grupo_ids)}, minmax(140px, 1fr))"
-        ):
-            with ui.element("div").classes("tablero-grupo-cabecera parrilla-esquina"):
-                ui.label("Hora")
+        )
+    ):
+        with ui.element("div").classes("tablero-grupo-cabecera parrilla-esquina"):
+            ui.label("Hora")
+        for gid in grupo_ids:
+            with ui.element("div").classes("tablero-grupo-cabecera"):
+                ui.label(str(grupos[gid]))
+
+        for fr in datos["franjas"]:
+            lectiva = fr.get("lectiva", True)
+            label_cls = "parrilla-franja-label" + (
+                "" if lectiva else " parrilla-franja-nolectiva"
+            )
+            etiqueta = fr.get("etiqueta") or f"{fr['hora_inicio']}–{fr['hora_fin']}"
+            with ui.element("div").classes(label_cls):
+                ui.label(str(etiqueta))
+
             for gid in grupo_ids:
-                with ui.element("div").classes("tablero-grupo-cabecera"):
-                    ui.label(str(grupos[gid]))
-
-            for fr in datos["franjas"]:
-                lectiva = fr.get("lectiva", True)
-                label_cls = "parrilla-franja-label" + ("" if lectiva else " parrilla-franja-nolectiva")
-                etiqueta = fr.get("etiqueta") or f"{fr['hora_inicio']}–{fr['hora_fin']}"
-                with ui.element("div").classes(label_cls):
-                    ui.label(str(etiqueta))
-
-                for gid in grupo_ids:
-                    if not lectiva:
-                        with ui.element("div").classes("parrilla-celda parrilla-hueco parrilla-nolectiva-celda"):
-                            ui.label(fr.get("etiqueta") or "Descanso").classes("parrilla-nolectiva-texto")
-                        continue
-
-                    bloques = idx.get((gid, dia, fr["hora_inicio"]), [])
-                    if not bloques:
-                        _render_celda_vacia(
-                            dia, fr["hora_inicio"], gid,
-                            on_celda_click, puede_editar,
+                if not lectiva:
+                    with ui.element("div").classes(
+                        "parrilla-celda parrilla-hueco parrilla-nolectiva-celda"
+                    ):
+                        ui.label(fr.get("etiqueta") or "Descanso").classes(
+                            "parrilla-nolectiva-texto"
                         )
-                        continue
+                    continue
 
-                    # En el tablero maestro el subtítulo útil es el docente.
-                    _render_celda_ocupada(bloques, "Grupo", on_celda_click, puede_editar)
+                bloques = idx.get((gid, dia, fr["hora_inicio"]), [])
+                if not bloques:
+                    _render_celda_vacia(
+                        dia,
+                        fr["hora_inicio"],
+                        gid,
+                        on_celda_click,
+                        puede_editar,
+                    )
+                    continue
+
+                # En el tablero maestro el subtítulo útil es el docente.
+                _render_celda_ocupada(bloques, "Grupo", on_celda_click, puede_editar)
 
 
 __all__ = ["_opciones_eje", "render_parrilla", "render_tablero_maestro"]

@@ -4,6 +4,7 @@ confirmation_card.py — Tarjeta de confirmación inline del design system Andes
 Alternativa al diálogo modal: muestra la confirmación dentro del flujo de página,
 sin interrumpir con un overlay. Útil para acciones en listas o formularios.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -54,13 +55,11 @@ def confirmation_card(
         # Para ocultar: card.set_visibility(False)
     """
     _ICONO_MAP = {
-        "danger":  ("var(--color-error)",   "warning"),
+        "danger": ("var(--color-error)", "warning"),
         "warning": ("var(--color-warning)", "warning"),
-        "info":    ("var(--color-info)",    "info"),
+        "info": ("var(--color-info)", "info"),
     }
-    icono_color, icono_nombre = _ICONO_MAP.get(
-        variante, ("var(--color-warning)", "warning")
-    )
+    icono_color, icono_nombre = _ICONO_MAP.get(variante, ("var(--color-warning)", "warning"))
 
     card = ui.card().classes(f"andes-card confirmation-card-{variante}")
     with card, ui.row().classes("w-full items-start gap-3"):
@@ -71,6 +70,7 @@ def confirmation_card(
             ui.label(mensaje).classes("confirm-card-body")
 
             with ui.row().classes("confirm-card-actions items-center gap-2"):
+
                 def _cancelar():
                     if on_cancelar:
                         on_cancelar()

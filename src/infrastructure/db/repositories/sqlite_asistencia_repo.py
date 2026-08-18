@@ -1,6 +1,7 @@
 """
 SqliteAsistenciaRepository — implementación SQLite de IAsistenciaRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -16,7 +17,6 @@ from src.domain.ports.asistencia_repo import IAsistenciaRepository
 
 
 class SqliteAsistenciaRepository(IAsistenciaRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -26,6 +26,7 @@ class SqliteAsistenciaRepository(IAsistenciaRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -349,7 +350,6 @@ class SqliteAsistenciaRepository(IAsistenciaRepository):
             ).fetchall()
             return [r["estudiante_id"] for r in rows]
 
-
     def contar_clases_dictadas_docente(self, usuario_id: int, anio: int, mes: int) -> int:
         with self._get_conn() as conn:
             row = conn.execute(
@@ -368,7 +368,9 @@ class SqliteAsistenciaRepository(IAsistenciaRepository):
             ).fetchone()
             return int(row[0])
 
-    def clases_dictadas_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+    def clases_dictadas_por_asignacion(
+        self, usuario_id: int, anio: int, mes: int
+    ) -> dict[int, int]:
         with self._get_conn() as conn:
             rows = conn.execute(
                 """

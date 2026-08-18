@@ -1,6 +1,7 @@
 """
 SqliteEstudianteRepository — implementación SQLite de IEstudianteRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -22,7 +23,6 @@ from src.domain.ports.estudiante_repo import IEstudianteRepository
 
 
 class SqliteEstudianteRepository(IEstudianteRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -32,6 +32,7 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -88,9 +89,7 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             row = conn.execute(sql, params).fetchone()
             return self._row_to_estudiante(row) if row else None
 
-    def existe_documento(
-        self, numero_documento: str, institucion_id: int | None = None
-    ) -> bool:
+    def existe_documento(self, numero_documento: str, institucion_id: int | None = None) -> bool:
         sql = "SELECT 1 FROM estudiantes WHERE numero_documento = ?"
         params: list = [numero_documento.upper()]
         if institucion_id is not None:
@@ -243,7 +242,8 @@ class SqliteEstudianteRepository(IEstudianteRepository):
                     estudiante.grupo_id,
                     int(estudiante.posee_piar),
                     estudiante.fecha_nacimiento.isoformat()
-                    if estudiante.fecha_nacimiento else None,
+                    if estudiante.fecha_nacimiento
+                    else None,
                     estudiante.direccion,
                     estudiante.fecha_ingreso.isoformat(),
                     estudiante.estado_matricula.value,
@@ -273,7 +273,8 @@ class SqliteEstudianteRepository(IEstudianteRepository):
                     estudiante.grupo_id,
                     int(estudiante.posee_piar),
                     estudiante.fecha_nacimiento.isoformat()
-                    if estudiante.fecha_nacimiento else None,
+                    if estudiante.fecha_nacimiento
+                    else None,
                     estudiante.direccion,
                     estudiante.estado_matricula.value,
                     estudiante.id,
@@ -351,9 +352,7 @@ class SqliteEstudianteRepository(IEstudianteRepository):
                 usuario_registro_id=usuario_registro_id,
             )
 
-    def listar_historial(
-        self, estudiante_id: int
-    ) -> list[MovimientoEstudianteInfoDTO]:
+    def listar_historial(self, estudiante_id: int) -> list[MovimientoEstudianteInfoDTO]:
         sql = """
             SELECT  h.id,
                     h.estudiante_id,
@@ -376,6 +375,7 @@ class SqliteEstudianteRepository(IEstudianteRepository):
     @staticmethod
     def _parse_fecha(valor):
         from datetime import datetime
+
         if valor is None:
             return None
         if isinstance(valor, datetime):

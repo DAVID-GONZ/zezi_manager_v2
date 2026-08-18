@@ -19,6 +19,7 @@ Flujo:
   5. Autorizado → tabla por estudiante (nota, nivel, concepto, #obs).
   6. Botones "Exportar PDF" / "Exportar Excel" via `Container.exporter_service()`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -50,17 +51,29 @@ _MSG_NO_AUTORIZADO = (
 # exportación). La página SOLO decide cómo se ven; la composición de datos
 # y la generación de PDF/Excel viven en `ConvivenciaService`.
 _COL_DEFS = [
-    {"headerName": "Estudiante",   "field": "estudiante",   "flex": 2, "sortable": True, "pinned": "left"},
-    {"headerName": "Nota",         "field": "nota",         "width": 100, "type": "numericColumn"},
-    {"headerName": "Nivel",        "field": "nivel",        "width": 140},
-    {"headerName": "Concepto",     "field": "concepto",     "flex": 2},
-    {"headerName": "# Obs.",       "field": "num_obs",      "width": 90, "type": "numericColumn"},
-    {"headerName": "Observaciones", "field": "observaciones", "flex": 3,
-     "autoHeight": True, "cellClass": "cell-multiline"},
+    {
+        "headerName": "Estudiante",
+        "field": "estudiante",
+        "flex": 2,
+        "sortable": True,
+        "pinned": "left",
+    },
+    {"headerName": "Nota", "field": "nota", "width": 100, "type": "numericColumn"},
+    {"headerName": "Nivel", "field": "nivel", "width": 140},
+    {"headerName": "Concepto", "field": "concepto", "flex": 2},
+    {"headerName": "# Obs.", "field": "num_obs", "width": 90, "type": "numericColumn"},
+    {
+        "headerName": "Observaciones",
+        "field": "observaciones",
+        "flex": 3,
+        "autoHeight": True,
+        "cellClass": "cell-multiline",
+    },
 ]
 
 
 # ── Autorización ──────────────────────────────────────────────────────────────
+
 
 def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
     if not grupo_id:
@@ -69,24 +82,25 @@ def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
         return Container.catalogo_academico_service().puede_gestionar_comportamiento_en_grupo(
             ctx.usuario_rol, ctx.usuario_id, int(grupo_id)
         )
-    except Exception as exc:  # noqa: BLE001 — fail-closed
+    except Exception as exc:
         logger.warning("No se pudo resolver autorización de reporte: %s", exc)
         return False
 
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "grupo_id":              None,
-        "periodo_id":            None,
-        "filas":                 [],    # list[ReporteConvivenciaFilaDTO]
-        "kpis":                  None,  # dict con el resumen del grupo/periodo
+        "grupo_id": None,
+        "periodo_id": None,
+        "filas": [],  # list[ReporteConvivenciaFilaDTO]
+        "kpis": None,  # dict con el resumen del grupo/periodo
         # sel_* gestionados por el inline selector
-        "sel_periodo_id":        None,
-        "sel_periodo_nombre":    "",
-        "sel_grupo_id":          None,
-        "sel_grupo_nombre":      "",
+        "sel_periodo_id": None,
+        "sel_periodo_nombre": "",
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
     }
 
 
@@ -123,10 +137,10 @@ def _cargar_kpis(_s: dict) -> None:
     notas = [r.nota for r in resumen if r.nota is not None]
     _s["kpis"] = {
         "estudiantes": len(resumen),
-        "con_nota":    len(notas),
-        "promedio":    round(mean(notas), 1) if notas else "—",
-        "con_alerta":  sum(1 for r in resumen if r.supera_umbral),
-        "total_obs":   sum(r.num_observaciones for r in resumen),
+        "con_nota": len(notas),
+        "promedio": round(mean(notas), 1) if notas else "—",
+        "con_alerta": sum(1 for r in resumen if r.supera_umbral),
+        "total_obs": sum(r.num_observaciones for r in resumen),
     }
 
 
@@ -134,6 +148,7 @@ def _cargar_kpis(_s: dict) -> None:
 # La página SOLO transforma los DTOs a filas para la grilla NiceGUI y presenta
 # el nombre del grupo/periodo en el título de descarga. TODA la composición
 # del reporte (columnas, aplanado, HTML del PDF) vive en ConvivenciaService.
+
 
 def _grupo_nombre(_s: dict) -> str:
     return _s.get("sel_grupo_nombre", "") or ""
@@ -148,21 +163,25 @@ def _filas_grilla(_s: dict) -> list[dict]:
     para el contador visible; no participa en la exportación)."""
     out: list[dict] = []
     for f in _s["filas"]:
-        out.append({
-            "estudiante":   f.nombre,
-            "nota":         f.valor,  # None = celda vacía; "" rompe numericColumn
-            "nivel":        f.nivel_nombre or "",
-            "concepto":     f.concepto or "",
-            "observaciones": "\n".join(
-                f"{i + 1}. {obs}" for i, obs in enumerate(f.observaciones)
-            ) if f.observaciones else "",
-            "num_obs":      len(f.observaciones),
-        })
+        out.append(
+            {
+                "estudiante": f.nombre,
+                "nota": f.valor,  # None = celda vacía; "" rompe numericColumn
+                "nivel": f.nivel_nombre or "",
+                "concepto": f.concepto or "",
+                "observaciones": "\n".join(
+                    f"{i + 1}. {obs}" for i, obs in enumerate(f.observaciones)
+                )
+                if f.observaciones
+                else "",
+                "num_obs": len(f.observaciones),
+            }
+        )
     return out
 
 
 def _slug_descarga(_s: dict) -> str:
-    grupo   = (_grupo_nombre(_s) or "grupo").replace(" ", "_")
+    grupo = (_grupo_nombre(_s) or "grupo").replace(" ", "_")
     periodo = (_periodo_nombre(_s) or f"p{_s['periodo_id']}").replace(" ", "_")
     return f"reporte_convivencia_{grupo}_{periodo}"
 
@@ -179,7 +198,10 @@ def _exportar(_s: dict, formato: str) -> None:
     ext = "xlsx" if formato == "excel" else "pdf"
     try:
         contenido = Container.convivencia_service().exportar_reporte_periodo_grupo(
-            int(_s["grupo_id"]), int(_s["periodo_id"]), formato, titulo=titulo,
+            int(_s["grupo_id"]),
+            int(_s["periodo_id"]),
+            formato,
+            titulo=titulo,
         )
         ui.download(src=contenido, filename=f"{_slug_descarga(_s)}.{ext}")
     except NotImplementedError:
@@ -190,6 +212,7 @@ def _exportar(_s: dict, formato: str) -> None:
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard de rol registrados en main.py.
 def reporte_periodo_page() -> None:
@@ -246,24 +269,34 @@ def reporte_periodo_page() -> None:
             if kpis:
                 with ui.element("div").classes("form-row-inline"):
                     counter_card(
-                        "Estudiantes", kpis["estudiantes"], "group",
+                        "Estudiantes",
+                        kpis["estudiantes"],
+                        "group",
                         variante="primary",
                     )
                     counter_card(
-                        "Con nota", kpis["con_nota"], "grade",
+                        "Con nota",
+                        kpis["con_nota"],
+                        "grade",
                         variante="info",
                     )
                     counter_card(
-                        "Promedio", kpis["promedio"], "bar_chart",
+                        "Promedio",
+                        kpis["promedio"],
+                        "bar_chart",
                         variante="neutral",
                     )
                     counter_card(
-                        "Con alerta", kpis["con_alerta"], "flag",
+                        "Con alerta",
+                        kpis["con_alerta"],
+                        "flag",
                         variante="danger" if kpis["con_alerta"] > 0 else "neutral",
                         alerta=kpis["con_alerta"] > 0,
                     )
                     counter_card(
-                        "Observaciones", kpis["total_obs"], "sticky_note_2",
+                        "Observaciones",
+                        kpis["total_obs"],
+                        "sticky_note_2",
                         variante="info",
                     )
 
@@ -276,27 +309,30 @@ def reporte_periodo_page() -> None:
                     )
                 else:
                     with ui.element("div").classes("aggrid-vh"):
-                        ui.aggrid({
-                            "columnDefs":        _COL_DEFS,
-                            "rowData":           filas_dict,
-                            "defaultColDef":     {"resizable": True, "sortable": True},
-                            "pagination":        True,
-                            "paginationPageSize": 20,
-                        }).classes("w-full")
+                        ui.aggrid(
+                            {
+                                "columnDefs": _COL_DEFS,
+                                "rowData": filas_dict,
+                                "defaultColDef": {"resizable": True, "sortable": True},
+                                "pagination": True,
+                                "paginationPageSize": 20,
+                            }
+                        ).classes("w-full")
 
     # ── Contenido principal (selector FUERA del refreshable) ────────────────
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["grupo_id"]           = s["sel_grupo_id"]
-            _s["periodo_id"]         = s["sel_periodo_id"]
-            _s["sel_grupo_nombre"]   = s.get("sel_grupo_nombre", "")
+            _s["grupo_id"] = s["sel_grupo_id"]
+            _s["periodo_id"] = s["sel_periodo_id"]
+            _s["sel_grupo_nombre"] = s.get("sel_grupo_nombre", "")
             _s["sel_periodo_nombre"] = s.get("sel_periodo_nombre", "")
             _cargar_reporte(_s)
             _cargar_kpis(_s)
             cuerpo.refresh()
 
         inline_periodo_grupo(
-            _s, on_sel_change,
+            _s,
+            on_sel_change,
             institucion_id=ctx.institucion_id,
             usuario_id=ctx.usuario_id,
             usuario_rol=ctx.usuario_rol,

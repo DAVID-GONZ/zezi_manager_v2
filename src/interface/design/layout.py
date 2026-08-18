@@ -32,6 +32,7 @@ Uso:
             page_icono="home",
         )
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -40,8 +41,8 @@ from typing import TYPE_CHECKING
 from nicegui import ui
 
 from .components.buttons import btn_icon, btn_secondary
-from .theme import ThemeManager
 from .styles.tokens import Icons
+from .theme import ThemeManager
 
 if TYPE_CHECKING:
     from src.interface.context.session_context import SessionContext
@@ -51,108 +52,121 @@ if TYPE_CHECKING:
 NAV_ITEMS: list[dict] = [
     {
         "label": "Inicio",
-        "icon":  "home",
-        "ruta":  "/inicio",
+        "icon": "home",
+        "ruta": "/inicio",
     },
     {
         "label": "Aula",
-        "icon":  "co_present",
-        "rol":   ["director", "coordinador", "profesor"],
+        "icon": "co_present",
+        "rol": ["director", "coordinador", "profesor"],
         "children": [
-            {"label": "Planilla de Notas", "icon": "table_chart",
-             "ruta": "/evaluacion/planilla"},
-            {"label": "Asistencia",        "icon": "fact_check",
-             "ruta": "/asistencia"},
-            {"label": "Observador del estudiante", "icon": "edit_note",
-             "ruta": "/convivencia/observaciones"},
-            {"label": "Notas de convivencia", "icon": "grade",
-             "ruta": "/convivencia/notas"},
-            {"label": "Seguimiento de convivencia", "icon": "insights",
-             "ruta": "/convivencia/seguimiento"},
-            {"label": "Configuración de convivencia", "icon": "settings",
-             "ruta": "/convivencia/configuracion"},
-            {"label": "Reporte de convivencia", "icon": "summarize",
-             "ruta": "/convivencia/reporte-periodo"},
+            {"label": "Planilla de Notas", "icon": "table_chart", "ruta": "/evaluacion/planilla"},
+            {"label": "Asistencia", "icon": "fact_check", "ruta": "/asistencia"},
+            {
+                "label": "Observador del estudiante",
+                "icon": "edit_note",
+                "ruta": "/convivencia/observaciones",
+            },
+            {"label": "Notas de convivencia", "icon": "grade", "ruta": "/convivencia/notas"},
+            {
+                "label": "Seguimiento de convivencia",
+                "icon": "insights",
+                "ruta": "/convivencia/seguimiento",
+            },
+            {
+                "label": "Configuración de convivencia",
+                "icon": "settings",
+                "ruta": "/convivencia/configuracion",
+            },
+            {
+                "label": "Reporte de convivencia",
+                "icon": "summarize",
+                "ruta": "/convivencia/reporte-periodo",
+            },
         ],
     },
     {
         "label": "Académico",
-        "icon":  "school",
-        "rol":   ["director", "coordinador", "profesor"],
+        "icon": "school",
+        "rol": ["director", "coordinador", "profesor"],
         "children": [
-            {"label": "Estudiantes",   "icon": "person",
-             "ruta": "/estudiantes"},
-            {"label": "Grupos",        "icon": "group",
-             "ruta": "/admin/grupos"},
-            {"label": "Asignaturas",   "icon": "book",
-             "ruta": "/admin/asignaturas"},
-            {"label": "Plan de estudios", "icon": "book",
-             "ruta": "/admin/plan-estudios"},
-            {"label": "Asignaciones",  "icon": "assignment_ind",
-             "ruta": "/admin/asignaciones"},
-            {"label": "Horarios",      "icon": "calendar_today",
-             "ruta": "/horarios"},
-            {"label": "Disponibilidad docente", "icon": "event_available",
-             "ruta": "/admin/disponibilidad-docente"},
-            {"label": "Salas",         "icon": "meeting_room",
-             "ruta": "/admin/salas"},
+            {"label": "Estudiantes", "icon": "person", "ruta": "/estudiantes"},
+            {"label": "Grupos", "icon": "group", "ruta": "/admin/grupos"},
+            {"label": "Asignaturas", "icon": "book", "ruta": "/admin/asignaturas"},
+            {"label": "Plan de estudios", "icon": "book", "ruta": "/admin/plan-estudios"},
+            {"label": "Asignaciones", "icon": "assignment_ind", "ruta": "/admin/asignaciones"},
+            {"label": "Horarios", "icon": "calendar_today", "ruta": "/horarios"},
+            {
+                "label": "Disponibilidad docente",
+                "icon": "event_available",
+                "ruta": "/admin/disponibilidad-docente",
+            },
+            {"label": "Salas", "icon": "meeting_room", "ruta": "/admin/salas"},
         ],
     },
     {
         "label": "Evaluación",
-        "icon":  "grading",
-        "rol":   ["director", "coordinador", "profesor"],
+        "icon": "grading",
+        "rol": ["director", "coordinador", "profesor"],
         "children": [
-            {"label": "Configuración SIE",      "icon": "tune",
-             "ruta": "/evaluacion/configuracion"},
-            {"label": "Habilitaciones",         "icon": "assignment_return",
-             "ruta": "/evaluacion/habilitaciones"},
-            {"label": "Planes de Mejoramiento", "icon": "trending_up",
-             "ruta": "/evaluacion/planes"},
-            {"label": "Cierre de Periodo",      "icon": "lock",
-             "ruta": "/evaluacion/cierre-periodo"},
-            {"label": "Cierre de Año",          "icon": "lock_clock",
-             "ruta": "/evaluacion/cierre-anio"},
+            {"label": "Configuración SIE", "icon": "tune", "ruta": "/evaluacion/configuracion"},
+            {
+                "label": "Habilitaciones",
+                "icon": "assignment_return",
+                "ruta": "/evaluacion/habilitaciones",
+            },
+            {
+                "label": "Planes de Mejoramiento",
+                "icon": "trending_up",
+                "ruta": "/evaluacion/planes",
+            },
+            {"label": "Cierre de Periodo", "icon": "lock", "ruta": "/evaluacion/cierre-periodo"},
+            {"label": "Cierre de Año", "icon": "lock_clock", "ruta": "/evaluacion/cierre-anio"},
         ],
     },
     {
         "label": "Informes",
-        "icon":  "summarize",
-        "rol":   ["director", "coordinador", "profesor"],
+        "icon": "summarize",
+        "rol": ["director", "coordinador", "profesor"],
         "children": [
-            {"label": "Tablero",                   "icon": "dashboard",
-             "ruta": "/academico/tablero"},
-            {"label": "Boletín de Periodo",        "icon": "description",
-             "ruta": "/informes/boletin-periodo"},
-            {"label": "Boletín Anual",             "icon": "description",
-             "ruta": "/informes/boletin-anual"},
-            {"label": "Consolidado de Notas",      "icon": "bar_chart",
-             "ruta": "/informes/consolidado-notas"},
-            {"label": "Consolidado de Asistencia", "icon": "event_note",
-             "ruta": "/informes/consolidado-asistencia"},
-            {"label": "Estadísticos",              "icon": "analytics",
-             "ruta": "/informes/estadisticos"},
+            {"label": "Tablero", "icon": "dashboard", "ruta": "/academico/tablero"},
+            {
+                "label": "Boletín de Periodo",
+                "icon": "description",
+                "ruta": "/informes/boletin-periodo",
+            },
+            {"label": "Boletín Anual", "icon": "description", "ruta": "/informes/boletin-anual"},
+            {
+                "label": "Consolidado de Notas",
+                "icon": "bar_chart",
+                "ruta": "/informes/consolidado-notas",
+            },
+            {
+                "label": "Consolidado de Asistencia",
+                "icon": "event_note",
+                "ruta": "/informes/consolidado-asistencia",
+            },
+            {"label": "Estadísticos", "icon": "analytics", "ruta": "/informes/estadisticos"},
         ],
     },
     {
         "divider": True,
-        "rol":     ["admin", "director"],
+        "rol": ["admin", "director"],
     },
     {
         "label": "Administración",
-        "icon":  "settings",
-        "rol":   ["admin", "director"],
+        "icon": "settings",
+        "rol": ["admin", "director"],
         "children": [
-            {"label": "Usuarios",                  "icon": "badge",
-             "ruta": "/admin/usuarios"},
-            {"label": "Instituciones",             "icon": "apartment",
-             "ruta": "/admin/instituciones"},
-            {"label": "Configuración institucional", "icon": "settings",
-             "ruta": "/institucion/configuracion"},
-            {"label": "Auditoría",                 "icon": "history",
-             "ruta": "/admin/auditoria"},
-            {"label": "Diagnóstico",               "icon": "monitor_heart",
-             "ruta": "/diagnostico"},
+            {"label": "Usuarios", "icon": "badge", "ruta": "/admin/usuarios"},
+            {"label": "Instituciones", "icon": "apartment", "ruta": "/admin/instituciones"},
+            {
+                "label": "Configuración institucional",
+                "icon": "settings",
+                "ruta": "/institucion/configuracion",
+            },
+            {"label": "Auditoría", "icon": "history", "ruta": "/admin/auditoria"},
+            {"label": "Diagnóstico", "icon": "monitor_heart", "ruta": "/diagnostico"},
         ],
     },
 ]
@@ -201,11 +215,13 @@ def _modulo_visible(item: dict) -> bool:
         return True
     try:
         from src.domain.modulos import modulo_de_ruta
+
         m = modulo_de_ruta(ruta)
         if m is None:
             return True
         from container import Container
         from src.services.contexto_tenant import institucion_actual
+
         inst_id = institucion_actual()
         if inst_id is None:
             return True
@@ -222,6 +238,7 @@ def _get_logo_institucional() -> str | None:
     try:
         from container import Container
         from src.interface.context.session_context import SessionContext
+
         ctx = SessionContext.desde_storage()
         institucion_id = ctx.institucion_id if ctx else None
         config = Container.configuracion_service().get_activa(institucion_id)
@@ -236,6 +253,7 @@ def _get_ruta_activa() -> str:
     """Intenta obtener la ruta activa desde el contexto de NiceGUI."""
     try:
         from nicegui import context as ng_context
+
         return ng_context.client.request.url.path
     except Exception:
         return ""
@@ -243,31 +261,29 @@ def _get_ruta_activa() -> str:
 
 def _btn_topbar_accion(accion: dict) -> None:
     """Botón de acción en el topbar (fondo oscuro). Usa clase topbar-action-btn."""
-    label    = accion.get("label", "")
+    label = accion.get("label", "")
     on_click = accion.get("on_click", lambda: None)
-    icono    = accion.get("icono", None)
+    icono = accion.get("icono")
     variante = accion.get("variante", "primary")
 
-    clase_var = "topbar-action-danger" if variante == "danger" else (
-        "topbar-action-secondary" if variante == "secondary" else "topbar-action-primary"
+    clase_var = (
+        "topbar-action-danger"
+        if variante == "danger"
+        else ("topbar-action-secondary" if variante == "secondary" else "topbar-action-primary")
     )
 
     if icono:
         icon_html = (
             f'<span class="material-symbols-rounded" '
             f'style="font-size:16px;vertical-align:middle;margin-right:4px;">'
-            f'{icono}</span>'
+            f"{icono}</span>"
         )
-        content = f'{icon_html}{label}'
-        btn = ui.button(on_click=on_click).classes(
-            f"topbar-action-btn {clase_var}"
-        ).props("flat")
+        content = f"{icon_html}{label}"
+        btn = ui.button(on_click=on_click).classes(f"topbar-action-btn {clase_var}").props("flat")
         with btn:
             ui.html(content)
     else:
-        ui.button(label, on_click=on_click).classes(
-            f"topbar-action-btn {clase_var}"
-        ).props("flat")
+        ui.button(label, on_click=on_click).classes(f"topbar-action-btn {clase_var}").props("flat")
 
 
 def _theme_toggle_btn() -> None:
@@ -320,14 +336,10 @@ def _impersonation_banner(ctx: SessionContext | None) -> None:
     if not ctx or not getattr(ctx, "impersonando", False):
         return
     with ui.element("div").classes("impersonation-banner"):
-        ThemeManager.icono(
-            "visibility", size=18, clases="impersonation-banner-icon"
-        )
+        ThemeManager.icono("visibility", size=18, clases="impersonation-banner-icon")
         with ui.row().classes("impersonation-banner-text items-center gap-2"):
             ui.label("Estás viendo como")
-            ui.label(ctx.usuario_nombre or "usuario").classes(
-                "impersonation-banner-target"
-            )
+            ui.label(ctx.usuario_nombre or "usuario").classes("impersonation-banner-target")
             ui.label("solo lectura").classes("impersonation-banner-tag")
         btn_secondary(
             "Salir",
@@ -345,14 +357,13 @@ def _topbar(
     page_icono: str = "",
     page_acciones: list[dict] | None = None,
     logo_url: str | None = None,
+    notif_count: int = 0,
 ) -> None:
     """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
-    usuario_rol = ctx.usuario_rol if ctx else ""
 
     with ui.row().classes("andes-topbar items-center gap-0"):
-
         # ── Brand (decorativo — sin toggle desde paso_12d) ──────────────────
-        ui.element("div").classes("topbar-brand")
+        ui.element("a").classes("topbar-brand").props('href="/inicio"')
 
         # ── Page info ────────────────────────────────────────────────────────
         if page_titulo:
@@ -378,10 +389,29 @@ def _topbar(
         # ── Logo institucional ───────────────────────────────────────────────
         if logo_url:
             with ui.element("div").classes("topbar-logo-inst"):
-                ui.html(
-                    f'<img src="{logo_url}" alt="Logo institución" '
-                    f'class="topbar-logo-img" />'
-                )
+                ui.html(f'<img src="{logo_url}" alt="Logo institución" class="topbar-logo-img" />')
+
+        # ── Buscador global ──────────────────────────────────────────────
+        # TODO(portal): la búsqueda global aún no existe — no hay ruta `/buscar`
+        # ni servicio que la respalde. El input queda DESHABILITADO y lo anuncia
+        # en su placeholder para no simular una función ausente. Cuando el paso
+        # que introduzca la búsqueda registre `/buscar`, revertir esto es quitar
+        # `disable` de los props y volver a cablear `keydown.enter`.
+        with ui.element("div").classes("topbar-search"):
+            ui.input(placeholder="Buscar (próximamente)").classes(
+                "andes-input topbar-search-input"
+            ).props('borderless dense disable title="Búsqueda global — próximamente"')
+            ThemeManager.icono("search", size=18)
+
+        # ── Campana de notificaciones ────────────────────────────────────
+        with ui.element("div").classes("topbar-notif"):
+            btn_icon(
+                "notifications",
+                on_click=lambda: ui.navigate.to("/inicio"),
+                tooltip="Notificaciones",
+            )
+            if notif_count > 0:
+                ui.label(str(notif_count)).classes("topbar-notif-badge")
 
         # ── Theme toggle ─────────────────────────────────────────────────────
         if ctx is not None:
@@ -438,8 +468,8 @@ def _rail(
                 continue
 
             tiene_hijos = "children" in item
-            es_activo   = _calcular_activo(item, ruta_activa)
-            flyout_id   = f"flyout-g{idx}"
+            es_activo = _calcular_activo(item, ruta_activa)
+            flyout_id = f"flyout-g{idx}"
 
             clase = "rail-item"
             if es_activo:
@@ -473,7 +503,7 @@ def _rail(
                     continue
                 if not _usuario_puede_ver(child, usuario_rol):
                     continue
-                is_active   = ruta_activa == child.get("ruta")
+                is_active = ruta_activa == child.get("ruta")
                 clase_child = "flyout-item" + (" is-active" if is_active else "")
                 it = ui.element("div").classes(clase_child)
                 with it:
@@ -494,6 +524,7 @@ def app_layout(
     page_subtitulo: str = "",
     page_icono: str = "",
     page_acciones: list[dict] | None = None,
+    notif_count: int = 0,
 ) -> None:
     """
     Layout principal de la aplicación — Rail icon-only 60px (paso_12d).
@@ -683,6 +714,7 @@ def app_layout(
             page_icono=page_icono,
             page_acciones=page_acciones,
             logo_url=logo_url,
+            notif_count=notif_count,
         )
 
         # Contenido de la página

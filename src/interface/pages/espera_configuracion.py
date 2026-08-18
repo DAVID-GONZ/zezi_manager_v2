@@ -12,6 +12,7 @@ navegando a /inicio que el guard ya protege). El director ve un botón adicional
 
 Página SUELTA (sin app_layout/NAV) — misma estética que login.
 """
+
 from __future__ import annotations
 
 from nicegui import app, ui
@@ -22,13 +23,12 @@ from src.interface.design.theme import ThemeManager
 
 # page-delegate: ruta registrada en main.py vía registrar_pagina (mejora_09b)
 def espera_configuracion_page() -> None:
-    ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
+    ui.add_body_html("<style>body{margin:0;padding:0;}</style>", shared=True)
 
     rol = app.storage.user.get("usuario_rol", "")
 
     with ui.element("div").classes("andes-login-bg w-full"):
         with ui.element("div").classes("wizard-espera-card"):
-
             # ── Ícono + título ────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):
@@ -43,7 +43,6 @@ def espera_configuracion_page() -> None:
 
             # ── Botones de acción ─────────────────────────────────────────────
             with ui.element("div").classes("u-stack-sm u-mt-lg"):
-
                 # Director: acceso directo al wizard
                 if rol == "director":
                     btn_primary(

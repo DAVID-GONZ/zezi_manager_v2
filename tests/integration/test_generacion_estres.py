@@ -86,10 +86,7 @@ def _construir(conn, rng, holgado: bool) -> dict:
     max_demanda = max(sum(h for _, h in plan[g]) for g in grados)
 
     # Cupos de la plantilla (franjas lectivas × días)
-    if holgado:
-        cupos_obj = max_demanda + rng.randint(5, 12)
-    else:
-        cupos_obj = max_demanda + rng.randint(0, 3)
+    cupos_obj = max_demanda + rng.randint(5, 12) if holgado else max_demanda + rng.randint(0, 3)
     n_lectivas = max(1, -(-cupos_obj // len(_DIAS)))  # ceil
     cupos = n_lectivas * len(_DIAS)
     lectiva_ordenes = list(range(1, n_lectivas + 1))
@@ -146,7 +143,7 @@ def _construir(conn, rng, holgado: bool) -> dict:
         )
         docentes.append(cur.lastrowid)
 
-    carga = {d: 0 for d in docentes}
+    carga = dict.fromkeys(docentes, 0)
     for (gid, g) in grupos:
         for (aid, h) in plan[g]:
             cand = [d for d in docentes if carga[d] + h <= cap]

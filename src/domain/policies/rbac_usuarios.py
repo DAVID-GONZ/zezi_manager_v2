@@ -24,17 +24,18 @@ Los roles se manejan como strings (el valor del enum Rol) para que la política
 sea utilizable desde cualquier capa sin acoplarse al tipo Enum. Acepta tanto
 strings como objetos con atributo `.value` (p.ej. el enum Rol).
 """
+
 from __future__ import annotations
 
 # Matriz de asignación: actor_rol -> conjunto de roles que puede asignar/crear.
 _ASIGNABLES: dict[str, frozenset[str]] = {
-    "admin":    frozenset({"director"}),
+    "admin": frozenset({"director"}),
     "director": frozenset({"coordinador", "profesor"}),
 }
 
 # Gestión: actor_rol -> conjunto de roles destino que puede gestionar.
 _GESTIONABLES: dict[str, frozenset[str]] = {
-    "admin":    frozenset({"director"}),
+    "admin": frozenset({"director"}),
     "director": frozenset({"coordinador", "profesor"}),
 }
 
@@ -58,9 +59,7 @@ def roles_asignables(actor_rol: object) -> set[str]:
 
 def puede_asignar_rol(actor_rol: object, target_rol: object) -> bool:
     """True si `actor_rol` puede asignar/crear el rol `target_rol`."""
-    return _normalizar(target_rol) in _ASIGNABLES.get(
-        _normalizar(actor_rol), frozenset()
-    )
+    return _normalizar(target_rol) in _ASIGNABLES.get(_normalizar(actor_rol), frozenset())
 
 
 def puede_gestionar(actor_rol: object, target_rol: object) -> bool:
@@ -68,9 +67,7 @@ def puede_gestionar(actor_rol: object, target_rol: object) -> bool:
     True si `actor_rol` puede gestionar (reactivar / desactivar / resetear
     password / cambiar rol) a un usuario cuyo rol actual es `target_rol`.
     """
-    return _normalizar(target_rol) in _GESTIONABLES.get(
-        _normalizar(actor_rol), frozenset()
-    )
+    return _normalizar(target_rol) in _GESTIONABLES.get(_normalizar(actor_rol), frozenset())
 
 
 __all__ = [

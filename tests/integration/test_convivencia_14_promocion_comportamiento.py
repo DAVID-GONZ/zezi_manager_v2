@@ -11,19 +11,17 @@ Usa sqlite3 en memoria + create_schema + seed_base.
 from __future__ import annotations
 
 import sqlite3
-from datetime import date
 
 import pytest
 
 from src.domain.models.convivencia import (
-    CategoriaObservacion,
     ObservacionPeriodo,
 )
 from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
     SqliteConvivenciaRepository,
 )
 from src.infrastructure.db.schema import create_schema
-from src.infrastructure.db.seed import seed_base, _fast_hasher
+from src.infrastructure.db.seed import _fast_hasher, seed_base
 from src.services.convivencia_service import ConvivenciaService
 
 

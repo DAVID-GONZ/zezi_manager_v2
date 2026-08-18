@@ -6,6 +6,7 @@ Extraído de InfraestructuraService: get/listar/crear/actualizar/activar/
 eliminar/duplicar escenario + listar_horario_*_escenario. Recibe el mismo
 IInfraestructuraRepository por inyección; la lógica se movió idéntica.
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import EscenarioHorario, HorarioInfo
@@ -14,7 +15,6 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class EscenarioHorarioService:
-
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
@@ -44,6 +44,7 @@ class EscenarioHorarioService:
     ) -> EscenarioHorario:
         """Crea un escenario a partir de parámetros primitivos (sin importar el modelo en la UI)."""
         from src.domain.models.infraestructura import NuevoEscenarioDTO
+
         dto = NuevoEscenarioDTO(anio_id=anio_id, nombre=nombre, descripcion=descripcion)
         return self._repo.crear_escenario(dto.to_escenario())
 
@@ -56,10 +57,14 @@ class EscenarioHorarioService:
         self, esc_existente, nombre: str, descripcion: str | None = None
     ) -> EscenarioHorario:
         """Actualiza nombre/descripción de un escenario usando el objeto ya cargado."""
-        updated = esc_existente.model_copy(update={
-            "nombre": nombre,
-            "descripcion": descripcion if descripcion is not None else esc_existente.descripcion,
-        })
+        updated = esc_existente.model_copy(
+            update={
+                "nombre": nombre,
+                "descripcion": descripcion
+                if descripcion is not None
+                else esc_existente.descripcion,
+            }
+        )
         return self._repo.actualizar_escenario(updated)
 
     @requiere_escritura
@@ -77,9 +82,7 @@ class EscenarioHorarioService:
         """Duplica un escenario con un nuevo nombre (delegado al repositorio)."""
         return self._repo.duplicar_escenario(escenario_id, nuevo_nombre)
 
-    def listar_horario_grupo_escenario(
-        self, grupo_id: int, escenario_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo_escenario(self, grupo_id: int, escenario_id: int) -> list[HorarioInfo]:
         """Lista el horario de un grupo dentro de un escenario (delegado al repositorio)."""
         return self._repo.listar_horario_grupo_escenario(grupo_id, escenario_id)
 

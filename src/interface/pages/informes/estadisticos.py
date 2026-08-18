@@ -16,6 +16,7 @@ NOTA IMPORTANTE — R11:
   Todos los option dicts de ECharts están definidos como constantes de módulo
   con prefijo _EC_. NUNCA deben declararse dentro de funciones.
 """
+
 from __future__ import annotations
 
 import copy
@@ -41,67 +42,67 @@ logger = logging.getLogger("ESTADISTICOS")
 
 _TIPOS_INFORME: list[dict] = [
     {
-        "id":      "consolidado_notas",
-        "label":   "Consolidado de Notas",
+        "id": "consolidado_notas",
+        "label": "Consolidado de Notas",
         "filtros": ["grupo", "periodo"],
         "preview": "aggrid",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "consolidado_asistencia",
-        "label":   "Consolidado de Asistencia",
+        "id": "consolidado_asistencia",
+        "label": "Consolidado de Asistencia",
         "filtros": ["grupo", "periodo"],
         "preview": "aggrid",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "ranking_grupo",
-        "label":   "Ranking del Grupo",
+        "id": "ranking_grupo",
+        "label": "Ranking del Grupo",
         "filtros": ["grupo", "periodo"],
         "preview": "aggrid",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "distribucion_desempenos",
-        "label":   "Distribución de Desempeños",
+        "id": "distribucion_desempenos",
+        "label": "Distribución de Desempeños",
         "filtros": ["grupo", "asignatura", "periodo"],
         "preview": "donut",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "comparativo_periodos",
-        "label":   "Comparativo por Periodos",
+        "id": "comparativo_periodos",
+        "label": "Comparativo por Periodos",
         "filtros": ["grupo", "asignatura"],
         "preview": "linea",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "promedios_area",
-        "label":   "Promedios por Área",
+        "id": "promedios_area",
+        "label": "Promedios por Área",
         "filtros": ["grupo", "periodo"],
         "preview": "barras",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "tendencia_asistencia",
-        "label":   "Tendencia de Asistencia",
+        "id": "tendencia_asistencia",
+        "label": "Tendencia de Asistencia",
         "filtros": ["grupo", "asignatura", "periodo"],
         "preview": "linea",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "estados_asistencia",
-        "label":   "Estados de Asistencia",
+        "id": "estados_asistencia",
+        "label": "Estados de Asistencia",
         "filtros": ["grupo", "asignatura", "periodo"],
         "preview": "pie",
-        "pdf":     True,
+        "pdf": True,
     },
     {
-        "id":      "consolidado_anual",
-        "label":   "Consolidado Anual",
+        "id": "consolidado_anual",
+        "label": "Consolidado Anual",
         "filtros": ["grupo"],
         "preview": "aggrid",
-        "pdf":     True,
+        "pdf": True,
     },
 ]
 
@@ -115,18 +116,18 @@ _TIPOS_SELECT_OPTS: dict[str, str] = {t["id"]: t["label"] for t in _TIPOS_INFORM
 _EC_FALLBACK_COLOR = "#9D9D9D"  # = --graphite-300
 
 _NIVEL_COLORES: dict[str, str] = {
-    "Bajo":     DesempenoColors.BAJO,
-    "Básico":   DesempenoColors.BASICO,
-    "Alto":     DesempenoColors.ALTO,
+    "Bajo": DesempenoColors.BAJO,
+    "Básico": DesempenoColors.BASICO,
+    "Alto": DesempenoColors.ALTO,
     "Superior": DesempenoColors.SUPERIOR,
 }
 
 _ASISTENCIA_COLORES: dict[str, str] = {
-    "P":  AsistenciaColors.PRESENTE,
+    "P": AsistenciaColors.PRESENTE,
     "FJ": AsistenciaColors.FJ,
     "FI": AsistenciaColors.FI,
-    "R":  AsistenciaColors.RETRASO,
-    "E":  AsistenciaColors.EXCUSA,
+    "R": AsistenciaColors.RETRASO,
+    "E": AsistenciaColors.EXCUSA,
 }
 
 
@@ -134,43 +135,43 @@ _ASISTENCIA_COLORES: dict[str, str] = {
 
 _EC_DONUT_OPTIONS: dict = {
     "tooltip": {"trigger": "item", "formatter": "{b}: {c} ({d}%)"},
-    "legend":  {"orient": "horizontal", "bottom": 0},
+    "legend": {"orient": "horizontal", "bottom": 0},
     "series": [
         {
-            "name":              "Desempeño",
-            "type":              "pie",
-            "radius":            ["40%", "70%"],
+            "name": "Desempeño",
+            "type": "pie",
+            "radius": ["40%", "70%"],
             "avoidLabelOverlap": True,
-            "label":             {"show": True, "formatter": "{b}: {c}"},
-            "data":              [],
+            "label": {"show": True, "formatter": "{b}: {c}"},
+            "data": [],
         }
     ],
 }
 
 _EC_LINE_OPTIONS: dict = {
     "tooltip": {"trigger": "axis"},
-    "xAxis":   {"type": "category", "data": [], "axisLabel": {"rotate": 30}},
-    "yAxis":   {"type": "value", "min": 0, "max": 100, "name": "Promedio"},
+    "xAxis": {"type": "category", "data": [], "axisLabel": {"rotate": 30}},
+    "yAxis": {"type": "value", "min": 0, "max": 100, "name": "Promedio"},
     "series": [
         {
-            "name":   "Promedio",
-            "type":   "line",
+            "name": "Promedio",
+            "type": "line",
             "smooth": True,
-            "data":   [],
+            "data": [],
         }
     ],
 }
 
 _EC_LINE_ASISTENCIA_OPTIONS: dict = {
     "tooltip": {"trigger": "axis"},
-    "xAxis":   {"type": "category", "data": [], "axisLabel": {"rotate": 30}},
-    "yAxis":   {"type": "value", "min": 0, "max": 100, "name": "% Asistencia"},
+    "xAxis": {"type": "category", "data": [], "axisLabel": {"rotate": 30}},
+    "yAxis": {"type": "value", "min": 0, "max": 100, "name": "% Asistencia"},
     "series": [
         {
-            "name":   "% Asistencia",
-            "type":   "line",
+            "name": "% Asistencia",
+            "type": "line",
             "smooth": True,
-            "data":   [],
+            "data": [],
             "markLine": {
                 "data": [{"yAxis": 70, "name": "Mínimo (70%)"}],
                 "lineStyle": {"color": DesempenoColors.BAJO, "type": "dashed"},
@@ -181,14 +182,14 @@ _EC_LINE_ASISTENCIA_OPTIONS: dict = {
 
 _EC_BAR_OPTIONS: dict = {
     "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-    "grid":    {"left": "25%"},
-    "xAxis":   {"type": "value", "min": 0, "max": 100, "name": "Promedio"},
-    "yAxis":   {"type": "category", "data": [], "inverse": True},
+    "grid": {"left": "25%"},
+    "xAxis": {"type": "value", "min": 0, "max": 100, "name": "Promedio"},
+    "yAxis": {"type": "category", "data": [], "inverse": True},
     "series": [
         {
-            "name":  "Promedio",
-            "type":  "bar",
-            "data":  [],
+            "name": "Promedio",
+            "type": "bar",
+            "data": [],
             "label": {"show": True, "position": "right", "formatter": "{c}"},
         }
     ],
@@ -196,15 +197,15 @@ _EC_BAR_OPTIONS: dict = {
 
 _EC_PIE_OPTIONS: dict = {
     "tooltip": {"trigger": "item", "formatter": "{b}: {c} ({d}%)"},
-    "legend":  {"orient": "horizontal", "bottom": 0},
+    "legend": {"orient": "horizontal", "bottom": 0},
     "series": [
         {
-            "name":              "Asistencia",
-            "type":              "pie",
-            "radius":            ["40%", "70%"],
+            "name": "Asistencia",
+            "type": "pie",
+            "radius": ["40%", "70%"],
             "avoidLabelOverlap": True,
-            "label":             {"show": True, "formatter": "{b}: {c}"},
-            "data":              [],
+            "label": {"show": True, "formatter": "{b}: {c}"},
+            "data": [],
         }
     ],
 }
@@ -212,22 +213,24 @@ _EC_PIE_OPTIONS: dict = {
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "tipo":          None,   # str | None — uno de los 9 IDs de tipo
-        "grupo_id":      None,
+        "tipo": None,  # str | None — uno de los 9 IDs de tipo
+        "grupo_id": None,
         "asignacion_id": None,
-        "periodo_id":    None,
-        "grupos":        [],
-        "asignaciones":  [],
-        "periodos":      [],
+        "periodo_id": None,
+        "grupos": [],
+        "asignaciones": [],
+        "periodos": [],
         "todas_asignaciones_docente": [],  # solo usado cuando rol == "profesor"
-        "datos":         None,   # list | dict | None
-        "datos_listos":  False,
+        "datos": None,  # list | dict | None
+        "datos_listos": False,
     }
 
 
 # ── Helpers de carga ──────────────────────────────────────────────────────────
+
 
 def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
     """
@@ -242,7 +245,7 @@ def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
         try:
             todas = Container.asignacion_service().listar_por_docente(ctx.usuario_id)
             _s["todas_asignaciones_docente"] = todas
-            grupos_ids   = {a.grupo_id for a in todas}
+            grupos_ids = {a.grupo_id for a in todas}
             grupos_infra = Container.catalogo_academico_service().listar_grupos()
             _s["grupos"] = [g for g in grupos_infra if g.id in grupos_ids]
         except Exception as exc:
@@ -270,8 +273,7 @@ def _cargar_asignaciones(ctx: SessionContext, _s: dict) -> None:
     if ctx.usuario_rol == "profesor":
         # Filtrar las asignaciones del docente por el grupo seleccionado
         _s["asignaciones"] = [
-            a for a in _s.get("todas_asignaciones_docente", [])
-            if a.grupo_id == _s["grupo_id"]
+            a for a in _s.get("todas_asignaciones_docente", []) if a.grupo_id == _s["grupo_id"]
         ]
     else:
         try:
@@ -304,18 +306,16 @@ def _filtros_completos(_s: dict) -> bool:
         return False
     if "asignatura" in filtros and not _s["asignacion_id"]:
         return False
-    if "periodo" in filtros and not _s["periodo_id"]:
-        return False
-    return True
+    return not ("periodo" in filtros and not _s["periodo_id"])
 
 
 def _cargar_datos(ctx: SessionContext, _s: dict) -> None:
-    svc   = Container.estadisticos_service()
-    tipo  = _s["tipo"]
-    gid   = _s["grupo_id"]
-    aid   = _s["asignacion_id"]
-    pid   = _s["periodo_id"]
-    anio  = ctx.anio_id
+    svc = Container.estadisticos_service()
+    tipo = _s["tipo"]
+    gid = _s["grupo_id"]
+    aid = _s["asignacion_id"]
+    pid = _s["periodo_id"]
+    anio = ctx.anio_id
 
     try:
         if tipo == "consolidado_notas":
@@ -329,9 +329,7 @@ def _cargar_datos(ctx: SessionContext, _s: dict) -> None:
                 grupo_id=gid, asignacion_id=aid, periodo_id=pid, anio_id=anio
             )
         elif tipo == "comparativo_periodos":
-            _s["datos"] = svc.comparativo_periodos(
-                grupo_id=gid, asignacion_id=aid, anio_id=anio
-            )
+            _s["datos"] = svc.comparativo_periodos(grupo_id=gid, asignacion_id=aid, anio_id=anio)
         elif tipo == "promedios_area":
             _s["datos"] = svc.promedios_por_area(gid, pid)
         elif tipo == "tendencia_asistencia":
@@ -352,18 +350,19 @@ def _cargar_datos(ctx: SessionContext, _s: dict) -> None:
 
 def _nombre_archivo(_s: dict) -> str:
     tipo = _s["tipo"] or "informe"
-    gid  = _s["grupo_id"] or "sg"
-    pid  = _s["periodo_id"] or ("anual" if _s["tipo"] == "consolidado_anual" else "sp")
-    hoy  = date.today().strftime("%Y%m%d")
+    gid = _s["grupo_id"] or "sg"
+    pid = _s["periodo_id"] or ("anual" if _s["tipo"] == "consolidado_anual" else "sp")
+    hoy = date.today().strftime("%Y%m%d")
     return f"{tipo}_{gid}_{pid}_{hoy}"
 
 
 # ── Renders de preview ────────────────────────────────────────────────────────
 
+
 def _render_stats_summary(_s: dict) -> None:
     """Renderiza tarjetas de estadísticos resumidos según el tipo de informe."""
     datos = _s["datos"]
-    tipo  = _s["tipo"]
+    tipo = _s["tipo"]
     if not datos:
         return
 
@@ -376,15 +375,20 @@ def _render_stats_summary(_s: dict) -> None:
         promedio_grupal = sum(promedios) / n if n else 0
         aprobados = sum(1 for p in promedios if p >= 60)
         stats = [
-            ("Estudiantes",     str(n),                                                        Icons.STUDENTS, "primary"),
-            ("Promedio grupal", f"{promedio_grupal:.1f}",                                      Icons.GRADES,   "info"),
-            ("Aprobados",       f"{aprobados} ({aprobados * 100 // n if n else 0}%)",          Icons.CHECK,    "success"),
-            ("Reprobados",      str(n - aprobados),                                            Icons.WARNING,  "danger"),
+            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
+            ("Promedio grupal", f"{promedio_grupal:.1f}", Icons.GRADES, "info"),
+            (
+                "Aprobados",
+                f"{aprobados} ({aprobados * 100 // n if n else 0}%)",
+                Icons.CHECK,
+                "success",
+            ),
+            ("Reprobados", str(n - aprobados), Icons.WARNING, "danger"),
         ]
         if tipo == "ranking_grupo":
             mejor = max(promedios) if promedios else 0
             menor = min(promedios) if promedios else 0
-            stats.append(("Mejor nota", f"{mejor:.1f}", Icons.GRADES,  "success"))
+            stats.append(("Mejor nota", f"{mejor:.1f}", Icons.GRADES, "success"))
             stats.append(("Menor nota", f"{menor:.1f}", Icons.WARNING, "danger"))
 
     elif tipo == "consolidado_asistencia" and isinstance(datos, list) and datos:
@@ -393,9 +397,9 @@ def _render_stats_summary(_s: dict) -> None:
         pct_prom = sum(porcentajes) / n if n else 0
         bajo_70 = sum(1 for p in porcentajes if p < 70)
         stats = [
-            ("Estudiantes",        str(n),             Icons.STUDENTS, "primary"),
-            ("% Asistencia prom.", f"{pct_prom:.1f}%", Icons.CHECK,    "success"),
-            ("Bajo 70%",           str(bajo_70),        Icons.WARNING,  "danger"),
+            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
+            ("% Asistencia prom.", f"{pct_prom:.1f}%", Icons.CHECK, "success"),
+            ("Bajo 70%", str(bajo_70), Icons.WARNING, "danger"),
         ]
 
     elif tipo == "consolidado_anual" and isinstance(datos, list) and datos:
@@ -404,10 +408,10 @@ def _render_stats_summary(_s: dict) -> None:
         prom = sum(defs) / n if n else 0
         promovidos = sum(1 for r in datos if str(r.get("estado", "")).lower() == "promovido")
         stats = [
-            ("Estudiantes",      str(n),             Icons.STUDENTS, "primary"),
-            ("Definitiva prom.", f"{prom:.1f}",       Icons.GRADES,   "info"),
-            ("Promovidos",       str(promovidos),     Icons.CHECK,    "success"),
-            ("Reprobados",       str(n - promovidos), Icons.WARNING,  "danger"),
+            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
+            ("Definitiva prom.", f"{prom:.1f}", Icons.GRADES, "info"),
+            ("Promovidos", str(promovidos), Icons.CHECK, "success"),
+            ("Reprobados", str(n - promovidos), Icons.WARNING, "danger"),
         ]
 
     elif isinstance(datos, dict):
@@ -432,8 +436,8 @@ def _render_consolidado_notas(datos: list[dict]) -> None:
         return
 
     primer = datos[0]
-    keys_excl  = {"estudiante_id", "nombre_completo", "promedio", "promedio_periodo"}
-    asignaturas = [k for k in primer.keys() if k not in keys_excl]
+    keys_excl = {"estudiante_id", "nombre_completo", "promedio", "promedio_periodo"}
+    asignaturas = [k for k in primer if k not in keys_excl]
 
     col_defs = [{"headerName": "Estudiante", "field": "nombre_completo", "minWidth": 200}]
     for asig in asignaturas:
@@ -443,11 +447,13 @@ def _render_consolidado_notas(datos: list[dict]) -> None:
     col_defs.append({"headerName": "Promedio", "field": prom_field, "width": 110})
 
     with ui.element("div").classes("aggrid-scroll-wrapper"):
-        ui.aggrid({
-            "columnDefs":    col_defs,
-            "rowData":       datos,
-            "defaultColDef": {"resizable": True, "sortable": True},
-        }).classes("w-full h-full")
+        ui.aggrid(
+            {
+                "columnDefs": col_defs,
+                "rowData": datos,
+                "defaultColDef": {"resizable": True, "sortable": True},
+            }
+        ).classes("w-full h-full")
     ui.label(f"Vista previa: {len(datos)} filas").classes("text-secondary")
 
 
@@ -458,21 +464,23 @@ def _render_consolidado_asistencia(datos: list[dict]) -> None:
         return
 
     col_defs = [
-        {"headerName": "Estudiante",  "field": "nombre_completo",       "minWidth": 200},
-        {"headerName": "Asignatura",  "field": "nombre_asignatura",     "minWidth": 150},
-        {"headerName": "P",           "field": "presentes",              "width": 70},
-        {"headerName": "FJ",          "field": "faltas_justificadas",    "width": 70},
-        {"headerName": "FI",          "field": "faltas_injustificadas",  "width": 70},
-        {"headerName": "R",           "field": "retrasos",               "width": 70},
-        {"headerName": "E",           "field": "excusas",                "width": 70},
-        {"headerName": "%",           "field": "porcentaje",             "width": 80},
+        {"headerName": "Estudiante", "field": "nombre_completo", "minWidth": 200},
+        {"headerName": "Asignatura", "field": "nombre_asignatura", "minWidth": 150},
+        {"headerName": "P", "field": "presentes", "width": 70},
+        {"headerName": "FJ", "field": "faltas_justificadas", "width": 70},
+        {"headerName": "FI", "field": "faltas_injustificadas", "width": 70},
+        {"headerName": "R", "field": "retrasos", "width": 70},
+        {"headerName": "E", "field": "excusas", "width": 70},
+        {"headerName": "%", "field": "porcentaje", "width": 80},
     ]
     with ui.element("div").classes("aggrid-scroll-wrapper"):
-        ui.aggrid({
-            "columnDefs":    col_defs,
-            "rowData":       datos,
-            "defaultColDef": {"resizable": True, "sortable": True},
-        }).classes("w-full h-full")
+        ui.aggrid(
+            {
+                "columnDefs": col_defs,
+                "rowData": datos,
+                "defaultColDef": {"resizable": True, "sortable": True},
+            }
+        ).classes("w-full h-full")
     ui.label(f"Vista previa: {len(datos)} filas").classes("text-secondary")
 
 
@@ -483,16 +491,18 @@ def _render_ranking(datos: list[dict]) -> None:
         return
 
     col_defs = [
-        {"headerName": "#",          "field": "posicion",       "width": 70},
+        {"headerName": "#", "field": "posicion", "width": 70},
         {"headerName": "Estudiante", "field": "nombre_completo", "minWidth": 200},
-        {"headerName": "Promedio",   "field": "promedio",        "width": 110},
+        {"headerName": "Promedio", "field": "promedio", "width": 110},
     ]
     with ui.element("div").classes("aggrid-scroll-wrapper"):
-        ui.aggrid({
-            "columnDefs":    col_defs,
-            "rowData":       datos,
-            "defaultColDef": {"resizable": True, "sortable": True},
-        }).classes("w-full h-full")
+        ui.aggrid(
+            {
+                "columnDefs": col_defs,
+                "rowData": datos,
+                "defaultColDef": {"resizable": True, "sortable": True},
+            }
+        ).classes("w-full h-full")
     ui.label(f"Vista previa: {len(datos)} filas").classes("text-secondary")
 
 
@@ -504,20 +514,22 @@ def _render_consolidado_anual(datos: list[dict]) -> None:
 
     primer = datos[0]
     keys_fijas = {"estudiante_id", "nombre_completo", "definitiva", "estado"}
-    periodos   = [k for k in primer.keys() if k not in keys_fijas]
+    periodos = [k for k in primer if k not in keys_fijas]
 
-    col_defs = [{"headerName": "Estudiante",  "field": "nombre_completo", "minWidth": 200}]
+    col_defs = [{"headerName": "Estudiante", "field": "nombre_completo", "minWidth": 200}]
     for p in periodos:
         col_defs.append({"headerName": p, "field": p, "width": 110})
     col_defs.append({"headerName": "Definitiva", "field": "definitiva", "width": 110})
-    col_defs.append({"headerName": "Estado",     "field": "estado",     "width": 120})
+    col_defs.append({"headerName": "Estado", "field": "estado", "width": 120})
 
     with ui.element("div").classes("aggrid-scroll-wrapper"):
-        ui.aggrid({
-            "columnDefs":    col_defs,
-            "rowData":       datos,
-            "defaultColDef": {"resizable": True, "sortable": True},
-        }).classes("w-full h-full")
+        ui.aggrid(
+            {
+                "columnDefs": col_defs,
+                "rowData": datos,
+                "defaultColDef": {"resizable": True, "sortable": True},
+            }
+        ).classes("w-full h-full")
     ui.label(f"Vista previa: {len(datos)} filas").classes("text-secondary")
 
 
@@ -530,8 +542,8 @@ def _render_donut(datos: dict) -> None:
     opts = copy.deepcopy(_EC_DONUT_OPTIONS)
     opts["series"][0]["data"] = [
         {
-            "name":      nivel,
-            "value":     cant,
+            "name": nivel,
+            "value": cant,
             "itemStyle": {"color": _NIVEL_COLORES.get(nivel, _EC_FALLBACK_COLOR)},
         }
         for nivel, cant in datos.items()
@@ -548,8 +560,10 @@ def _render_linea_comparativo(datos: list[dict]) -> None:
         return
 
     opts = copy.deepcopy(_EC_LINE_OPTIONS)
-    opts["xAxis"]["data"]      = [r.get("periodo_nombre", str(r.get("periodo_numero", ""))) for r in datos]
-    opts["series"][0]["data"]  = [round(r.get("promedio", 0), 1) for r in datos]
+    opts["xAxis"]["data"] = [
+        r.get("periodo_nombre", str(r.get("periodo_numero", ""))) for r in datos
+    ]
+    opts["series"][0]["data"] = [round(r.get("promedio", 0), 1) for r in datos]
     ui.echart(opts).classes("echart-md")
     ui.label(f"Vista previa: {len(datos)} registros").classes("text-secondary")
 
@@ -561,7 +575,7 @@ def _render_linea_tendencia(datos: list[dict]) -> None:
         return
 
     opts = copy.deepcopy(_EC_LINE_ASISTENCIA_OPTIONS)
-    opts["xAxis"]["data"]     = [r.get("semana", r.get("fecha", str(i))) for i, r in enumerate(datos)]
+    opts["xAxis"]["data"] = [r.get("semana", r.get("fecha", str(i))) for i, r in enumerate(datos)]
     opts["series"][0]["data"] = [round(r.get("porcentaje", r.get("pct", 0)), 1) for r in datos]
     ui.echart(opts).classes("echart-md")
     ui.label(f"Vista previa: {len(datos)} registros").classes("text-secondary")
@@ -574,7 +588,9 @@ def _render_barras(datos: list[dict]) -> None:
         return
 
     opts = copy.deepcopy(_EC_BAR_OPTIONS)
-    opts["yAxis"]["data"]     = [r.get("area", r.get("nombre_area", str(i))) for i, r in enumerate(datos)]
+    opts["yAxis"]["data"] = [
+        r.get("area", r.get("nombre_area", str(i))) for i, r in enumerate(datos)
+    ]
     opts["series"][0]["data"] = [round(r.get("promedio", 0), 1) for r in datos]
     ui.echart(opts).classes("echart-lg")
     ui.label(f"Vista previa: {len(datos)} registros").classes("text-secondary")
@@ -589,8 +605,8 @@ def _render_pie_asistencia(datos: dict) -> None:
     opts = copy.deepcopy(_EC_PIE_OPTIONS)
     opts["series"][0]["data"] = [
         {
-            "name":      estado,
-            "value":     cant,
+            "name": estado,
+            "value": cant,
             "itemStyle": {"color": _ASISTENCIA_COLORES.get(estado, _EC_FALLBACK_COLOR)},
         }
         for estado, cant in datos.items()
@@ -604,9 +620,9 @@ def _render_preview(_s: dict) -> None:
     tipo = _s["tipo"]
     if not _s["datos_listos"] or _s["datos"] is None:
         with ui.element("div").classes("tablero-empty"):
-            ui.label(
-                "Selecciona un tipo de informe y haz clic en Previsualizar"
-            ).classes("tablero-empty-hint")
+            ui.label("Selecciona un tipo de informe y haz clic en Previsualizar").classes(
+                "tablero-empty-hint"
+            )
         return
 
     datos = _s["datos"]
@@ -636,28 +652,31 @@ def _render_preview(_s: dict) -> None:
 
 # ── Helpers de exportación ───────────────────────────────────────────────────
 
+
 def _contexto_export(ctx: SessionContext, _s: dict) -> dict:
     """Datos de membrete (grupo/periodo/asignatura) + IDs para la exportación."""
-    grupo_nombre = next(
-        (g.nombre or g.codigo for g in _s["grupos"] if g.id == _s["grupo_id"]), ""
-    )
+    grupo_nombre = next((g.nombre or g.codigo for g in _s["grupos"] if g.id == _s["grupo_id"]), "")
     periodo_nombre = next(
         (getattr(p, "nombre", str(p.id)) for p in _s["periodos"] if p.id == _s["periodo_id"]), ""
     )
-    asig_nombre = next(
-        (
-            getattr(a, "asignatura_nombre", "")
-            for a in _s["asignaciones"]
-            if getattr(a, "asignacion_id", None) == _s["asignacion_id"]
-        ),
-        "",
-    ) if _s.get("asignacion_id") else ""
+    asig_nombre = (
+        next(
+            (
+                getattr(a, "asignatura_nombre", "")
+                for a in _s["asignaciones"]
+                if getattr(a, "asignacion_id", None) == _s["asignacion_id"]
+            ),
+            "",
+        )
+        if _s.get("asignacion_id")
+        else ""
+    )
     return {
-        "grupo_id":           _s["grupo_id"],
-        "anio_id":            ctx.anio_id,
-        "grupo_nombre":       grupo_nombre,
-        "periodo_nombre":     periodo_nombre,
-        "asignatura_nombre":  asig_nombre,
+        "grupo_id": _s["grupo_id"],
+        "anio_id": ctx.anio_id,
+        "grupo_nombre": grupo_nombre,
+        "periodo_nombre": periodo_nombre,
+        "asignatura_nombre": asig_nombre,
     }
 
 
@@ -666,7 +685,10 @@ def _exportar_excel(ctx: SessionContext, _s: dict) -> None:
     nombre = _nombre_archivo(_s) + ".xlsx"
     try:
         content = Container.informe_service().exportar_estadistico(
-            tipo, _s["datos"], FormatoInforme.EXCEL, _contexto_export(ctx, _s),
+            tipo,
+            _s["datos"],
+            FormatoInforme.EXCEL,
+            _contexto_export(ctx, _s),
         )
         ui.download(content, nombre)
     except Exception as exc:
@@ -679,7 +701,10 @@ def _exportar_pdf(ctx: SessionContext, _s: dict) -> None:
     nombre = _nombre_archivo(_s) + ".pdf"
     try:
         content = Container.informe_service().exportar_estadistico(
-            tipo, _s["datos"], FormatoInforme.PDF, _contexto_export(ctx, _s),
+            tipo,
+            _s["datos"],
+            FormatoInforme.PDF,
+            _contexto_export(ctx, _s),
         )
         ui.download(content, nombre)
     except ValueError as exc:
@@ -690,6 +715,7 @@ def _exportar_pdf(ctx: SessionContext, _s: dict) -> None:
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def estadisticos_page() -> None:
@@ -732,8 +758,10 @@ def estadisticos_page() -> None:
                 return
 
             filtros_req = tipo["filtros"]
-            num_cols    = len(filtros_req)
-            grid_cls    = "form-grid-3" if num_cols >= 3 else "form-grid-2" if num_cols == 2 else "w-full"
+            num_cols = len(filtros_req)
+            grid_cls = (
+                "form-grid-3" if num_cols >= 3 else "form-grid-2" if num_cols == 2 else "w-full"
+            )
 
             with ui.element("div").classes(grid_cls):
                 # Selector de Grupo
@@ -741,10 +769,7 @@ def estadisticos_page() -> None:
                 # haga el match correcto entre options y value (JSON serializa int
                 # keys como strings, rompiendo la comparación de igualdad en Quasar).
                 if "grupo" in filtros_req:
-                    grupos_opts = {
-                        str(g.id): g.nombre or g.codigo
-                        for g in _s["grupos"]
-                    }
+                    grupos_opts = {str(g.id): g.nombre or g.codigo for g in _s["grupos"]}
                     ui.select(
                         label="Grupo",
                         options=grupos_opts or {"": "Sin grupos"},
@@ -755,8 +780,7 @@ def estadisticos_page() -> None:
                 # Selector de Asignatura (depende de Grupo)
                 if "asignatura" in filtros_req:
                     asig_opts = {
-                        str(a.asignacion_id): a.asignatura_nombre
-                        for a in _s["asignaciones"]
+                        str(a.asignacion_id): a.asignatura_nombre for a in _s["asignaciones"]
                     }
                     ui.select(
                         label="Asignatura",
@@ -767,10 +791,7 @@ def estadisticos_page() -> None:
 
                 # Selector de Periodo
                 if "periodo" in filtros_req:
-                    per_opts = {
-                        str(p.id): getattr(p, "nombre", str(p.id))
-                        for p in _s["periodos"]
-                    }
+                    per_opts = {str(p.id): getattr(p, "nombre", str(p.id)) for p in _s["periodos"]}
                     ui.select(
                         label="Periodo",
                         options=per_opts,
@@ -805,9 +826,9 @@ def estadisticos_page() -> None:
                 ui.label("Exportar").classes("panel-title")
 
             if not _s["datos_listos"]:
-                ui.label(
-                    "Haz clic en 'Previsualizar' para habilitar la descarga."
-                ).classes("text-caption text-muted u-pa-sm")
+                ui.label("Haz clic en 'Previsualizar' para habilitar la descarga.").classes(
+                    "text-caption text-muted u-pa-sm"
+                )
                 return
 
             tipo_info = _tipo_activo(_s)
@@ -830,20 +851,20 @@ def estadisticos_page() -> None:
     # ── Handlers de eventos ──────────────────────────────────────────────────
 
     def _limpiar_datos() -> None:
-        _s["datos"]        = None
+        _s["datos"] = None
         _s["datos_listos"] = False
 
     def on_tipo_change(nuevo_tipo: str | None) -> None:
-        _s["tipo"]          = nuevo_tipo
+        _s["tipo"] = nuevo_tipo
         _s["asignacion_id"] = None
-        _s["periodo_id"]    = None
+        _s["periodo_id"] = None
         _limpiar_datos()
         filtros_refreshable.refresh()
         preview_refreshable.refresh()
         export_refreshable.refresh()
 
     def on_grupo_change(grupo_id) -> None:
-        _s["grupo_id"]      = int(grupo_id) if grupo_id is not None else None
+        _s["grupo_id"] = int(grupo_id) if grupo_id is not None else None
         _s["asignacion_id"] = None
         _limpiar_datos()
         _cargar_asignaciones(ctx, _s)
@@ -867,6 +888,7 @@ def estadisticos_page() -> None:
 
     async def on_previsualizar() -> None:
         import asyncio
+
         if not _filtros_completos(_s):
             toast_warning("Completa todos los filtros requeridos.")
             return
@@ -887,7 +909,8 @@ def estadisticos_page() -> None:
             export_refreshable()
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Estadísticos",
     )
 

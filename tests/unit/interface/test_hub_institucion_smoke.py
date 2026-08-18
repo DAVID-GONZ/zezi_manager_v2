@@ -10,10 +10,8 @@ Verifica sin levantar NiceGUI:
 """
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
-
 
 HUB_PATH = (
     Path(__file__).resolve().parents[3]
@@ -23,7 +21,9 @@ HUB_PATH = (
 
 def test_hub_importa_sin_error() -> None:
     """La página puede importarse sin que NiceGUI levante un servidor."""
-    from src.interface.pages.institucion.hub_institucion import hub_institucion_page  # noqa: F401
+    from src.interface.pages.institucion.hub_institucion import (
+        hub_institucion_page,  # noqa: F401
+    )
 
 
 def test_hub_es_callable() -> None:

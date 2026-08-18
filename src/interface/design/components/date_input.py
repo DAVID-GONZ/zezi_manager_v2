@@ -21,6 +21,7 @@ Formato de fecha: SIEMPRE strings "YYYY-MM-DD" (o None / "" para vacío),
 que es exactamente lo que produce el input nativo `type=date` del navegador
 y lo que ya consumían las páginas migradas (`date.fromisoformat`).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -67,8 +68,12 @@ def date_input(
 
     with ui.element("div").classes(wrap_classes):
         inp = (
-            ui.input(label=label, placeholder=placeholder, value=value or "",
-                     on_change=lambda e: _emit(e.value))
+            ui.input(
+                label=label,
+                placeholder=placeholder,
+                value=value or "",
+                on_change=lambda e: _emit(e.value),
+            )
             .props("type=date dense outlined")
             .classes("ds-date-input andes-input")
         )
@@ -152,17 +157,23 @@ def date_range_input(
     with ui.element("div").classes(root_classes):
         with ui.element("div").classes("ds-daterange-fields"):
             refs["desde"] = (
-                ui.input(label=label_desde, placeholder="YYYY-MM-DD",
-                         value=estado["desde"] or "",
-                         on_change=lambda e: _set_desde(e.value))
+                ui.input(
+                    label=label_desde,
+                    placeholder="YYYY-MM-DD",
+                    value=estado["desde"] or "",
+                    on_change=lambda e: _set_desde(e.value),
+                )
                 .props("type=date dense outlined")
                 .classes("ds-date-input andes-input")
             )
             ui.label("–").classes("ds-daterange-sep")
             refs["hasta"] = (
-                ui.input(label=label_hasta, placeholder="YYYY-MM-DD",
-                         value=estado["hasta"] or "",
-                         on_change=lambda e: _set_hasta(e.value))
+                ui.input(
+                    label=label_hasta,
+                    placeholder="YYYY-MM-DD",
+                    value=estado["hasta"] or "",
+                    on_change=lambda e: _set_hasta(e.value),
+                )
                 .props("type=date dense outlined")
                 .classes("ds-date-input andes-input")
             )

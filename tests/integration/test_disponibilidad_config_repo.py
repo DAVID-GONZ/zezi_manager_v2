@@ -50,7 +50,7 @@ class TestDisponibilidadDocente:
         d = DisponibilidadDocente(
             usuario_id=usuario_id, dia_semana="Martes", franja_orden=1, disponible=False
         )
-        r1 = repo.upsert_disponibilidad(d)
+        repo.upsert_disponibilidad(d)
         # segunda llamada: actualizar a disponible=True
         d2 = DisponibilidadDocente(
             usuario_id=usuario_id, dia_semana="Martes", franja_orden=1, disponible=True

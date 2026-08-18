@@ -1,6 +1,7 @@
 """
 SqliteAcudienteRepository — implementación SQLite de IAcudienteRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -16,7 +17,6 @@ from src.domain.ports.acudiente_repo import IAcudienteRepository
 
 
 class SqliteAcudienteRepository(IAcudienteRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -26,6 +26,7 @@ class SqliteAcudienteRepository(IAcudienteRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -44,7 +45,9 @@ class SqliteAcudienteRepository(IAcudienteRepository):
     # Lectura — acudiente
     # ------------------------------------------------------------------
 
-    def listar(self, activos_solo: bool = False, institucion_id: int | None = None) -> list[Acudiente]:
+    def listar(
+        self, activos_solo: bool = False, institucion_id: int | None = None
+    ) -> list[Acudiente]:
         sql = "SELECT * FROM acudientes WHERE 1=1"
         params: list = []
         if activos_solo:
@@ -57,7 +60,9 @@ class SqliteAcudienteRepository(IAcudienteRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_acudiente(r) for r in rows]
 
-    def buscar_por_documento(self, numero: str, institucion_id: int | None = None) -> Acudiente | None:
+    def buscar_por_documento(
+        self, numero: str, institucion_id: int | None = None
+    ) -> Acudiente | None:
         sql = "SELECT * FROM acudientes WHERE numero_documento = ?"
         params: list = [numero.upper()]
         if institucion_id is not None:
@@ -70,9 +75,7 @@ class SqliteAcudienteRepository(IAcudienteRepository):
 
     def get_by_id(self, acudiente_id: int) -> Acudiente | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM acudientes WHERE id = ?", (acudiente_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM acudientes WHERE id = ?", (acudiente_id,)).fetchone()
             return self._row_to_acudiente(row) if row else None
 
     def get_by_documento(self, numero_documento: str) -> Acudiente | None:
@@ -246,9 +249,7 @@ class SqliteAcudienteRepository(IAcudienteRepository):
             if self._conn is None:
                 conn.commit()
 
-    def get_vinculo(
-        self, estudiante_id: int, acudiente_id: int
-    ) -> EstudianteAcudiente | None:
+    def get_vinculo(self, estudiante_id: int, acudiente_id: int) -> EstudianteAcudiente | None:
         with self._get_conn() as conn:
             row = conn.execute(
                 """

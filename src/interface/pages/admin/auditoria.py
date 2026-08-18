@@ -12,6 +12,7 @@ Dos secciones:
 Solo lectura: no expone acciones de escritura. La escritura de auditoría
 la realizan otros servicios vía IAuditoriaRepository.
 """
+
 from __future__ import annotations
 
 import logging
@@ -75,21 +76,21 @@ def auditoria_page() -> None:
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
         # filtros comunes
-        "desde":        None,   # str "YYYY-MM-DD" o None
-        "hasta":        None,
-        "usuario_id":   None,   # int o None
-        "pagina":       1,
+        "desde": None,  # str "YYYY-MM-DD" o None
+        "hasta": None,
+        "usuario_id": None,  # int o None
+        "pagina": 1,
         # filtros específicos de Cambios
-        "tabla":        None,
-        "accion":       None,   # str enum value o None
+        "tabla": None,
+        "accion": None,  # str enum value o None
         # filtros específicos de Sesiones
-        "tipo_evento":  None,   # str enum value o None
+        "tipo_evento": None,  # str enum value o None
         # datos cargados
-        "cambios":      [],
-        "sesiones":     [],
+        "cambios": [],
+        "sesiones": [],
         # verificación de integridad (encadenamiento por hash — seguridad_03)
         # None = aún no verificado; dict de primitivos del servicio si ya se corrió.
-        "integridad":   None,
+        "integridad": None,
     }
 
     # ── Helpers de filtro ──────────────────────────────────────────────────────
@@ -106,14 +107,14 @@ def auditoria_page() -> None:
 
     def _construir_filtro() -> FiltroAuditoriaDTO:
         return FiltroAuditoriaDTO(
-            usuario_id  = _s["usuario_id"],
-            tabla       = _s["tabla"] or None,
-            accion      = _s["accion"] or None,
-            tipo_evento = _s["tipo_evento"] or None,
-            desde       = _parsear_fecha(_s["desde"]),
-            hasta       = _parsear_fecha(_s["hasta"], fin_de_dia=True),
-            pagina      = _s["pagina"],
-            por_pagina  = _POR_PAGINA,
+            usuario_id=_s["usuario_id"],
+            tabla=_s["tabla"] or None,
+            accion=_s["accion"] or None,
+            tipo_evento=_s["tipo_evento"] or None,
+            desde=_parsear_fecha(_s["desde"]),
+            hasta=_parsear_fecha(_s["hasta"], fin_de_dia=True),
+            pagina=_s["pagina"],
+            por_pagina=_POR_PAGINA,
         )
 
     # ── Carga de datos ──────────────────────────────────────────────────────────
@@ -126,7 +127,9 @@ def auditoria_page() -> None:
 
     def _cargar_sesiones() -> None:
         try:
-            _s["sesiones"] = Container.auditoria_service().listar_eventos_sesion(_construir_filtro())
+            _s["sesiones"] = Container.auditoria_service().listar_eventos_sesion(
+                _construir_filtro()
+            )
         except Exception as exc:
             logger.error("Error al cargar eventos de sesión: %s", exc)
             _s["sesiones"] = []
@@ -193,18 +196,18 @@ def auditoria_page() -> None:
 
         columnas = [
             {"name": "timestamp", "label": "Fecha y hora", "field": "timestamp", "sortable": True},
-            {"name": "accion",    "label": "Acción",       "field": "accion",    "sortable": True},
-            {"name": "tabla",     "label": "Tabla",        "field": "tabla",     "sortable": True},
-            {"name": "registro",  "label": "Registro",     "field": "registro"},
-            {"name": "usuario",   "label": "Usuario ID",   "field": "usuario"},
+            {"name": "accion", "label": "Acción", "field": "accion", "sortable": True},
+            {"name": "tabla", "label": "Tabla", "field": "tabla", "sortable": True},
+            {"name": "registro", "label": "Registro", "field": "registro"},
+            {"name": "usuario", "label": "Usuario ID", "field": "usuario"},
         ]
         filas = [
             {
                 "timestamp": c.timestamp_display,
-                "accion":    c.accion.value if hasattr(c.accion, "value") else str(c.accion),
-                "tabla":     c.tabla,
-                "registro":  c.registro_id if c.registro_id is not None else "—",
-                "usuario":   c.usuario_id if c.usuario_id is not None else "—",
+                "accion": c.accion.value if hasattr(c.accion, "value") else str(c.accion),
+                "tabla": c.tabla,
+                "registro": c.registro_id if c.registro_id is not None else "—",
+                "usuario": c.usuario_id if c.usuario_id is not None else "—",
             }
             for c in cambios
         ]
@@ -223,19 +226,21 @@ def auditoria_page() -> None:
             return
 
         columnas = [
-            {"name": "fecha",       "label": "Fecha y hora", "field": "fecha",       "sortable": True},
-            {"name": "tipo_evento", "label": "Tipo",         "field": "tipo_evento", "sortable": True},
-            {"name": "usuario",     "label": "Usuario",      "field": "usuario",     "sortable": True},
-            {"name": "ip",          "label": "IP",           "field": "ip"},
-            {"name": "detalles",    "label": "Detalles",     "field": "detalles"},
+            {"name": "fecha", "label": "Fecha y hora", "field": "fecha", "sortable": True},
+            {"name": "tipo_evento", "label": "Tipo", "field": "tipo_evento", "sortable": True},
+            {"name": "usuario", "label": "Usuario", "field": "usuario", "sortable": True},
+            {"name": "ip", "label": "IP", "field": "ip"},
+            {"name": "detalles", "label": "Detalles", "field": "detalles"},
         ]
         filas = [
             {
-                "fecha":       e.fecha_display,
-                "tipo_evento": e.tipo_evento.value if hasattr(e.tipo_evento, "value") else str(e.tipo_evento),
-                "usuario":     e.usuario,
-                "ip":          e.ip_address or "—",
-                "detalles":    e.detalles or "—",
+                "fecha": e.fecha_display,
+                "tipo_evento": e.tipo_evento.value
+                if hasattr(e.tipo_evento, "value")
+                else str(e.tipo_evento),
+                "usuario": e.usuario,
+                "ip": e.ip_address or "—",
+                "detalles": e.detalles or "—",
             }
             for e in sesiones
         ]
@@ -276,7 +281,6 @@ def auditoria_page() -> None:
     # ── Contenido principal ──────────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("history", size=22, color="var(--color-primary)")
@@ -294,11 +298,10 @@ def auditoria_page() -> None:
                 _render_filtros_comunes()
 
                 with ui.tabs().classes("w-full") as tabs:
-                    ui.tab("cambios",  label="Cambios",  icon="edit_note")
+                    ui.tab("cambios", label="Cambios", icon="edit_note")
                     ui.tab("sesiones", label="Sesiones", icon="login")
 
                 with ui.tab_panels(tabs, value="cambios").classes("w-full mt-0"):
-
                     # ── Tab Cambios ───────────────────────────────────────────
                     with ui.tab_panel("cambios"):
                         with ui.row().classes("form-row-center-md u-mb-lg"):
@@ -344,9 +347,9 @@ def auditoria_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Auditoría",
-        page_subtitulo = "Registro de cambios y eventos de sesión (solo lectura)",
-        page_icono     = "history",
+        page_titulo="Auditoría",
+        page_subtitulo="Registro de cambios y eventos de sesión (solo lectura)",
+        page_icono="history",
     )
 
 

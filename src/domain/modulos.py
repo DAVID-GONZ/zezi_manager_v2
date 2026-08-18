@@ -10,19 +10,20 @@ Cada modulo declara las rutas que gatea, la clave de preferencia para
 desactivarlo (si aplica) y metadatos de presentacion (label, icono).
 Los consumidores consultan helpers en lugar de mantener copias locales.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class Modulo(str, Enum):
-    ASISTENCIA  = "asistencia"
-    EVALUACION  = "evaluacion"
-    ACADEMICO   = "academico"
+class Modulo(StrEnum):
+    ASISTENCIA = "asistencia"
+    EVALUACION = "evaluacion"
+    ACADEMICO = "academico"
     CONVIVENCIA = "convivencia"
-    INFORMES    = "informes"
-    ALERTAS     = "alertas"
+    INFORMES = "informes"
+    ALERTAS = "alertas"
 
 
 @dataclass(frozen=True)
@@ -31,9 +32,9 @@ class DefinicionModulo:
     label: str
     descripcion: str
     icono: str
-    ruta_principal: str | None          # None -> sin pagina propia, no genera tarjeta
-    rutas: frozenset[str]               # rutas que el modulo gatea
-    clave_preferencia: str | None       # None -> modulo nucleo, no desactivable
+    ruta_principal: str | None  # None -> sin pagina propia, no genera tarjeta
+    rutas: frozenset[str]  # rutas que el modulo gatea
+    clave_preferencia: str | None  # None -> modulo nucleo, no desactivable
 
 
 MODULOS: dict[Modulo, DefinicionModulo] = {
@@ -52,14 +53,16 @@ MODULOS: dict[Modulo, DefinicionModulo] = {
         descripcion="Notas, habilitaciones y planes",
         icono="grading",
         ruta_principal="/evaluacion/planilla",
-        rutas=frozenset({
-            "/evaluacion/configuracion",
-            "/evaluacion/planilla",
-            "/evaluacion/habilitaciones",
-            "/evaluacion/planes",
-            "/evaluacion/cierre-periodo",
-            "/evaluacion/cierre-anio",
-        }),
+        rutas=frozenset(
+            {
+                "/evaluacion/configuracion",
+                "/evaluacion/planilla",
+                "/evaluacion/habilitaciones",
+                "/evaluacion/planes",
+                "/evaluacion/cierre-periodo",
+                "/evaluacion/cierre-anio",
+            }
+        ),
         clave_preferencia=None,
     ),
     Modulo.ACADEMICO: DefinicionModulo(
@@ -68,19 +71,21 @@ MODULOS: dict[Modulo, DefinicionModulo] = {
         descripcion="Estudiantes, grupos y horarios",
         icono="school",
         ruta_principal="/estudiantes",
-        rutas=frozenset({
-            "/estudiantes",
-            "/admin/grupos",
-            "/admin/asignaturas",
-            "/admin/plan-estudios",
-            "/admin/asignaciones",
-            "/horarios",
-            "/academico/horarios",
-            "/academico/generar-horario",
-            "/admin/disponibilidad-docente",
-            "/admin/salas",
-            "/academico/tablero",
-        }),
+        rutas=frozenset(
+            {
+                "/estudiantes",
+                "/admin/grupos",
+                "/admin/asignaturas",
+                "/admin/plan-estudios",
+                "/admin/asignaciones",
+                "/horarios",
+                "/academico/horarios",
+                "/academico/generar-horario",
+                "/admin/disponibilidad-docente",
+                "/admin/salas",
+                "/academico/tablero",
+            }
+        ),
         clave_preferencia=None,
     ),
     Modulo.CONVIVENCIA: DefinicionModulo(
@@ -89,16 +94,18 @@ MODULOS: dict[Modulo, DefinicionModulo] = {
         descripcion="Observaciones, comportamiento y seguimiento",
         icono="psychology",
         ruta_principal="/convivencia/observaciones",
-        rutas=frozenset({
-            "/convivencia/observaciones",
-            "/convivencia/comportamiento",
-            "/convivencia/notas",
-            "/convivencia/reporte-periodo",
-            "/convivencia/configuracion",
-            "/convivencia/categorias",
-            "/convivencia/plantillas",
-            "/convivencia/seguimiento",
-        }),
+        rutas=frozenset(
+            {
+                "/convivencia/observaciones",
+                "/convivencia/comportamiento",
+                "/convivencia/notas",
+                "/convivencia/reporte-periodo",
+                "/convivencia/configuracion",
+                "/convivencia/categorias",
+                "/convivencia/plantillas",
+                "/convivencia/seguimiento",
+            }
+        ),
         clave_preferencia="modulo_convivencia_activo",
     ),
     Modulo.INFORMES: DefinicionModulo(
@@ -107,13 +114,15 @@ MODULOS: dict[Modulo, DefinicionModulo] = {
         descripcion="Boletines, consolidados y estadisticos",
         icono="summarize",
         ruta_principal="/informes/estadisticos",
-        rutas=frozenset({
-            "/informes/boletin-periodo",
-            "/informes/boletin-anual",
-            "/informes/estadisticos",
-            "/informes/consolidado-notas",
-            "/informes/consolidado-asistencia",
-        }),
+        rutas=frozenset(
+            {
+                "/informes/boletin-periodo",
+                "/informes/boletin-anual",
+                "/informes/estadisticos",
+                "/informes/consolidado-notas",
+                "/informes/consolidado-asistencia",
+            }
+        ),
         clave_preferencia=None,
     ),
     Modulo.ALERTAS: DefinicionModulo(
@@ -168,8 +177,8 @@ def modulos_con_pagina() -> list[DefinicionModulo]:
 
 
 __all__ = [
-    "DefinicionModulo",
     "MODULOS",
+    "DefinicionModulo",
     "Modulo",
     "clave_de_modulo",
     "definicion",

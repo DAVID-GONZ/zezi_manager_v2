@@ -12,6 +12,7 @@ Estructura del token: header.payload.signature (RFC 7519)
   - Algoritmo: HS256 (HMAC-SHA256)
   - Expiración: configurable, default 8 horas
 """
+
 from __future__ import annotations
 
 import base64
@@ -55,7 +56,7 @@ class JWTHandler:
     def __init__(self, secret: str, expiracion_horas: int = 8) -> None:
         if not secret:
             raise ValueError("JWT secret no puede estar vacío.")
-        self._secret  = secret.encode("utf-8")
+        self._secret = secret.encode("utf-8")
         self._exp_seg = expiracion_horas * 3600
 
     # ── Creación ──────────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ class JWTHandler:
         Returns:
             Token JWT como string (header.payload.signature).
         """
-        ahora  = int(time.time())
+        ahora = int(time.time())
         claims = {
             **payload,
             "iat": ahora,
@@ -80,8 +81,8 @@ class JWTHandler:
         }
 
         header = _b64url_encode(json.dumps({"alg": self.algorithm, "typ": "JWT"}).encode())
-        body   = _b64url_encode(json.dumps(claims, ensure_ascii=False).encode())
-        firma  = self._firmar(f"{header}.{body}")
+        body = _b64url_encode(json.dumps(claims, ensure_ascii=False).encode())
+        firma = self._firmar(f"{header}.{body}")
 
         return f"{header}.{body}.{firma}"
 
@@ -142,6 +143,7 @@ class JWTHandler:
 
 
 # ── Funciones de conveniencia (API funcional alternativa) ─────────────────────
+
 
 def crear_token(payload: dict[str, Any], secret: str, expiracion_horas: int = 8) -> str:
     """Atajo funcional para crear un token sin instanciar JWTHandler."""

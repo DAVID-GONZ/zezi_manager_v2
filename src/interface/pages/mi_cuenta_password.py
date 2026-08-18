@@ -6,7 +6,7 @@ from nicegui import app, ui
 
 from container import Container
 from src.interface.context.session_context import SessionContext
-from src.interface.design.components.buttons import btn_icon, btn_primary, btn_secondary
+from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.interface.design.components.toast import toast_success
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
@@ -33,7 +33,9 @@ def mi_cuenta_password_page() -> None:
                 # Campos
                 with ui.column().classes("w-full gap-4"):
                     actual_input = (
-                        ui.input(label="Contraseña actual", password=True, password_toggle_button=True)
+                        ui.input(
+                            label="Contraseña actual", password=True, password_toggle_button=True
+                        )
                         .classes("w-full andes-input")
                         .props("outlined")
                     )
@@ -41,7 +43,9 @@ def mi_cuenta_password_page() -> None:
                     ui.element("div").classes("pwd-separator")
 
                     nueva_input = (
-                        ui.input(label="Nueva contraseña", password=True, password_toggle_button=True)
+                        ui.input(
+                            label="Nueva contraseña", password=True, password_toggle_button=True
+                        )
                         .classes("w-full andes-input")
                         .props("outlined")
                     )
@@ -88,7 +92,9 @@ def mi_cuenta_password_page() -> None:
                 # Acciones
                 with ui.element("div").classes("pwd-actions"):
                     btn_secondary("Cancelar", on_click=lambda: ui.navigate.to("/inicio"))
-                    cambiar_btn = btn_primary("Cambiar contraseña", on_click=lambda: intentar_cambio())
+                    cambiar_btn = btn_primary(
+                        "Cambiar contraseña", on_click=lambda: intentar_cambio()
+                    )
 
         # --- Handlers ---
 
@@ -153,13 +159,15 @@ def mi_cuenta_password_page() -> None:
                 else:
                     row.classes(remove="met")
 
-            score = sum([
-                has_min_len,
-                has_upper and has_lower,
-                has_digit,
-                has_special,
-                len(val) >= 14,
-            ])
+            score = sum(
+                [
+                    has_min_len,
+                    has_upper and has_lower,
+                    has_digit,
+                    has_special,
+                    len(val) >= 14,
+                ]
+            )
 
             if score <= 2:
                 nivel, label_txt = "weak", "Débil"
@@ -170,7 +178,13 @@ def mi_cuenta_password_page() -> None:
 
             for s in (seg1, seg2, seg3):
                 s.classes(remove="s-weak s-fair s-strong")
-            for s in (seg1, seg2, seg3) if nivel == "strong" else (seg1, seg2) if nivel == "fair" else (seg1,):
+            for s in (
+                (seg1, seg2, seg3)
+                if nivel == "strong"
+                else (seg1, seg2)
+                if nivel == "fair"
+                else (seg1,)
+            ):
                 s.classes(add=f"s-{nivel}")
 
             strength_label.classes(remove="l-weak l-fair l-strong")

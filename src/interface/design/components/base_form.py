@@ -4,6 +4,7 @@ base_form.py — Formulario base reutilizable del design system Andes Minimal.
 Estilo Formik: etiqueta estática sobre cada campo, inputs compactos,
 sin label flotante de Quasar.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -117,24 +118,24 @@ def base_form(
 
         with ui.element("div").classes(f"base-form-grid base-form-grid-{columnas}col"):
             for campo in campos:
-                key         = campo.get("key", "")
-                label       = campo.get("label", key)
-                tipo        = campo.get("tipo", "text")
-                opciones    = campo.get("opciones", [])
+                key = campo.get("key", "")
+                label = campo.get("label", key)
+                tipo = campo.get("tipo", "text")
+                opciones = campo.get("opciones", [])
                 placeholder = campo.get("placeholder", "") or label
-                requerido   = campo.get("requerido", False)
-                ref         = campo.get("ref", None)
-                hint        = campo.get("hint", "")
-                disabled    = campo.get("disabled", False)
-                span        = campo.get("span", False)
+                requerido = campo.get("requerido", False)
+                ref = campo.get("ref", None)
+                hint = campo.get("hint", "")
+                disabled = campo.get("disabled", False)
+                span = campo.get("span", False)
                 tooltip_txt = campo.get("tooltip", "")
                 display_label = label.removesuffix(" *") if requerido else label
-                label_text    = f"{display_label} *" if requerido else label
-                minlength_v      = campo.get("minlength")
-                maxlength_v      = campo.get("maxlength")
-                normalizar_v     = campo.get("normalizar")
+                label_text = f"{display_label} *" if requerido else label
+                minlength_v = campo.get("minlength")
+                maxlength_v = campo.get("maxlength")
+                normalizar_v = campo.get("normalizar")
                 opciones_desde_v = campo.get("opciones_desde")
-                opciones_fn_v    = campo.get("opciones_fn")
+                opciones_fn_v = campo.get("opciones_fn")
 
                 if requerido and key:
                     _requeridos[key] = display_label
@@ -153,7 +154,7 @@ def base_form(
                             ui.html(
                                 f'<span class="material-symbols-rounded" '
                                 f'style="font-size:14px;opacity:.7;">'
-                                f'{icono_section}</span>'
+                                f"{icono_section}</span>"
                             )
                         ui.label(label)
                     continue
@@ -161,14 +162,17 @@ def base_form(
                 span_cls = "base-form-field-span" if span else ""
 
                 with ui.element("div").classes(f"base-form-field-col {span_cls}"):
-
                     # ── Select ──────────────────────────────────────────
                     if tipo == "select":
                         _label_above(display_label, requerido, tooltip_txt)
-                        widget = ui.select(
-                            options=opciones,
-                            value=campo.get("valor"),
-                        ).classes("andes-input w-full").props("borderless dense")
+                        widget = (
+                            ui.select(
+                                options=opciones,
+                                value=campo.get("valor"),
+                            )
+                            .classes("andes-input w-full")
+                            .props("borderless dense")
+                        )
                         if placeholder and placeholder != label:
                             widget.props(f'placeholder="{placeholder}"')
                         if disabled:
@@ -177,38 +181,54 @@ def base_form(
                     # ── Textarea ─────────────────────────────────────────
                     elif tipo == "textarea":
                         _label_above(display_label, requerido, tooltip_txt)
-                        widget = ui.textarea(
-                            placeholder=placeholder,
-                            value=campo.get("valor", ""),
-                        ).classes("andes-input andes-textarea w-full").props("borderless")
+                        widget = (
+                            ui.textarea(
+                                placeholder=placeholder,
+                                value=campo.get("valor", ""),
+                            )
+                            .classes("andes-input andes-textarea w-full")
+                            .props("borderless")
+                        )
                         if disabled:
                             widget.props("disable")
 
                     # ── Password ─────────────────────────────────────────
                     elif tipo == "password":
                         _label_above(display_label, requerido, tooltip_txt)
-                        widget = ui.input(
-                            placeholder=placeholder,
-                            value=campo.get("valor", ""),
-                            password=True,
-                            password_toggle_button=True,
-                        ).classes("andes-input w-full").props("borderless dense")
+                        widget = (
+                            ui.input(
+                                placeholder=placeholder,
+                                value=campo.get("valor", ""),
+                                password=True,
+                                password_toggle_button=True,
+                            )
+                            .classes("andes-input w-full")
+                            .props("borderless dense")
+                        )
                         if disabled:
                             widget.props("disable")
 
                     # ── Number ───────────────────────────────────────────
                     elif tipo == "number":
                         _label_above(display_label, requerido, tooltip_txt)
-                        min_val  = campo.get("min")
-                        max_val  = campo.get("max")
+                        min_val = campo.get("min")
+                        max_val = campo.get("max")
                         step_val = campo.get("step")
-                        fmt_val  = campo.get("format")
+                        fmt_val = campo.get("format")
                         kwargs: dict = {"value": campo.get("valor"), "placeholder": placeholder}
-                        if min_val  is not None: kwargs["min"]    = min_val
-                        if max_val  is not None: kwargs["max"]    = max_val
-                        if step_val is not None: kwargs["step"]   = step_val
-                        if fmt_val  is not None: kwargs["format"] = fmt_val
-                        widget = ui.number(**kwargs).classes("andes-input w-full").props("borderless dense")
+                        if min_val is not None:
+                            kwargs["min"] = min_val
+                        if max_val is not None:
+                            kwargs["max"] = max_val
+                        if step_val is not None:
+                            kwargs["step"] = step_val
+                        if fmt_val is not None:
+                            kwargs["format"] = fmt_val
+                        widget = (
+                            ui.number(**kwargs)
+                            .classes("andes-input w-full")
+                            .props("borderless dense")
+                        )
                         if disabled:
                             widget.props("disable")
 
@@ -286,10 +306,14 @@ def base_form(
                     # ── Text (default) ───────────────────────────────────
                     else:
                         _label_above(display_label, requerido, tooltip_txt)
-                        widget = ui.input(
-                            placeholder=placeholder,
-                            value=campo.get("valor", ""),
-                        ).classes("andes-input w-full").props("borderless dense")
+                        widget = (
+                            ui.input(
+                                placeholder=placeholder,
+                                value=campo.get("valor", ""),
+                            )
+                            .classes("andes-input w-full")
+                            .props("borderless dense")
+                        )
                         if disabled:
                             widget.props("disable")
 
@@ -310,12 +334,15 @@ def base_form(
             padre = _valores.get(padre_key)
             hijo = _valores.get(hijo_key)
             if padre is not None and hijo is not None and isinstance(hijo, ui.select):
-                def _hacer_handler(_h: ui.select, _fn: object):  # noqa: E501
+
+                def _hacer_handler(_h: ui.select, _fn: object):
                     def _handler(e) -> None:
                         _h.options = _fn(e.value) if e.value else []
                         _h.value = None
                         _h.update()
+
                     return _handler
+
                 padre.on_value_change(_hacer_handler(hijo, fn))
 
         ui.separator().classes("base-form-sep u-mt-lg u-mb-sm")

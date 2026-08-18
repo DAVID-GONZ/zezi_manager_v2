@@ -1,39 +1,42 @@
 """Modelos de dominio para Plan de Mejoramiento."""
+
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class EstadoNotaCorte(str, Enum):
-    SIN_PLAN = "sin_plan"       # Aprobó el corte, no va a plan
-    EN_PLAN = "en_plan"         # Bajo umbral, en plan de mejoramiento
-    APROBADO = "aprobado"       # Cerró el plan y aprobó
-    REPROBADO = "reprobado"     # Cerró el plan y reprobó
+class EstadoNotaCorte(StrEnum):
+    SIN_PLAN = "sin_plan"  # Aprobó el corte, no va a plan
+    EN_PLAN = "en_plan"  # Bajo umbral, en plan de mejoramiento
+    APROBADO = "aprobado"  # Cerró el plan y aprobó
+    REPROBADO = "reprobado"  # Cerró el plan y reprobó
 
 
 class CortePlan(BaseModel):
     """Registro de un corte de plan de mejoramiento para una asignación en un periodo."""
+
     id: int | None = None
     asignacion_id: int
     periodo_id: int
     fecha_ejecucion: date = Field(default_factory=date.today)
-    peso_registrado: float          # Suma de pesos de categorías con notas registradas (0..1)
-    nota_umbral: float              # = peso_registrado * nota_minima_aprobacion
-    nota_minima_aprobacion: float   # Umbral de aprobación del periodo (ej. 60.0)
-    usuario_id: int | None = None   # Quién ejecutó el corte
+    peso_registrado: float  # Suma de pesos de categorías con notas registradas (0..1)
+    nota_umbral: float  # = peso_registrado * nota_minima_aprobacion
+    nota_minima_aprobacion: float  # Umbral de aprobación del periodo (ej. 60.0)
+    usuario_id: int | None = None  # Quién ejecutó el corte
 
 
 class NotaCortePlan(BaseModel):
     """Nota de corte por estudiante. Todos los estudiantes tienen una."""
+
     id: int | None = None
     corte_id: int
     estudiante_id: int
-    asignacion_id: int      # desnorm
-    periodo_id: int         # desnorm
-    nota_al_corte: float    # Contribución parcial al corte (escala 0-100)
+    asignacion_id: int  # desnorm
+    periodo_id: int  # desnorm
+    nota_al_corte: float  # Contribución parcial al corte (escala 0-100)
     nota_definitiva_plan: float | None = None  # Congelado al cerrar el plan
     estado: EstadoNotaCorte = EstadoNotaCorte.SIN_PLAN
     usuario_cierre_id: int | None = None
@@ -41,13 +44,14 @@ class NotaCortePlan(BaseModel):
 
 class ActividadPlan(BaseModel):
     """Actividad de plan de mejoramiento (columna compartida para todos los en-plan)."""
+
     id: int | None = None
     corte_id: int
-    asignacion_id: int      # desnorm
-    periodo_id: int         # desnorm
+    asignacion_id: int  # desnorm
+    periodo_id: int  # desnorm
     nombre: str
     descripcion: str | None = None
-    peso: float             # (0, 1.0] - fracción del peso del plan
+    peso: float  # (0, 1.0] - fracción del peso del plan
     fecha: date | None = None
     usuario_id: int | None = None
 
@@ -62,11 +66,12 @@ class ActividadPlan(BaseModel):
 
 class NotaActividadPlan(BaseModel):
     """Nota de una actividad del plan por estudiante (celda)."""
+
     id: int | None = None
     actividad_plan_id: int
     estudiante_id: int
-    asignacion_id: int      # desnorm
-    periodo_id: int         # desnorm
+    asignacion_id: int  # desnorm
+    periodo_id: int  # desnorm
     valor: float | None = None
     usuario_id: int | None = None
 
@@ -75,16 +80,19 @@ class NotaActividadPlan(BaseModel):
 # DTOs
 # ---------------------------------------------------------------------------
 
+
 class EjecutarCorteDTO(BaseModel):
     """Datos para ejecutar un corte de plan de mejoramiento."""
+
     asignacion_id: int
     periodo_id: int
-    nota_minima_aprobacion: float = 60.0    # Umbral de aprobación (0-100)
+    nota_minima_aprobacion: float = 60.0  # Umbral de aprobación (0-100)
     usuario_id: int | None = None
 
 
 class NuevaActividadPlanDTO(BaseModel):
     """Datos para crear una actividad de plan de mejoramiento."""
+
     corte_id: int
     asignacion_id: int
     periodo_id: int
@@ -117,6 +125,7 @@ class NuevaActividadPlanDTO(BaseModel):
 
 class CalificarNotaPlanDTO(BaseModel):
     """Datos para calificar la nota de una actividad de plan."""
+
     valor: float
     usuario_id: int | None = None
 
@@ -131,15 +140,17 @@ class CalificarNotaPlanDTO(BaseModel):
 
 class CerrarPlanEstudianteDTO(BaseModel):
     """Datos para cerrar el plan de un estudiante específico."""
+
     estudiante_id: int
     corte_id: int
-    aprobado: bool          # True → APROBADO, False → REPROBADO
+    aprobado: bool  # True → APROBADO, False → REPROBADO
     usuario_cierre_id: int | None = None
 
 
 # ---------------------------------------------------------------------------
 # Calculador
 # ---------------------------------------------------------------------------
+
 
 class CalculadorPlan:
     """Utilidades de cálculo para Plan de Mejoramiento."""

@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Entidad
 # =============================================================================
 
+
 class PIAR(BaseModel):
     """
     Plan Individual de Apoyos y Ajustes Razonables de un estudiante.
@@ -35,16 +36,17 @@ class PIAR(BaseModel):
     y los ajustes acordados entre el equipo docente, el estudiante y su familia.
     No es un diagnóstico médico — es un instrumento pedagógico.
     """
-    id:                     int | None  = None
-    estudiante_id:          int
-    anio_id:                int
-    descripcion_necesidad:  str
-    ajustes_evaluativos:    str | None  = None
-    ajustes_pedagogicos:    str | None  = None
-    profesionales_apoyo:    str | None  = None
-    fecha_elaboracion:      date        = Field(default_factory=date.today)
-    fecha_revision:         date | None = None
-    usuario_elaboracion_id: int | None  = None
+
+    id: int | None = None
+    estudiante_id: int
+    anio_id: int
+    descripcion_necesidad: str
+    ajustes_evaluativos: str | None = None
+    ajustes_pedagogicos: str | None = None
+    profesionales_apoyo: str | None = None
+    fecha_elaboracion: date = Field(default_factory=date.today)
+    fecha_revision: date | None = None
+    usuario_elaboracion_id: int | None = None
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -57,13 +59,13 @@ class PIAR(BaseModel):
         if not v:
             raise ValueError("La descripción de necesidades no puede estar vacía.")
         if len(v) > 3000:
-            raise ValueError(
-                f"La descripción no puede exceder 3000 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La descripción no puede exceder 3000 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator(
-        "ajustes_evaluativos", "ajustes_pedagogicos", "profesionales_apoyo",
+        "ajustes_evaluativos",
+        "ajustes_pedagogicos",
+        "profesionales_apoyo",
         mode="before",
     )
     @classmethod
@@ -79,9 +81,7 @@ class PIAR(BaseModel):
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
-            raise ValueError(
-                "La fecha de elaboración no puede ser futura."
-            )
+            raise ValueError("La fecha de elaboración no puede ser futura.")
         return v
 
     @field_validator("fecha_revision", mode="before")
@@ -173,15 +173,17 @@ class PIAR(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevoPIARDTO(BaseModel):
     """Datos para registrar un PIAR nuevo."""
-    estudiante_id:          int
-    anio_id:                int
-    descripcion_necesidad:  str
-    ajustes_evaluativos:    str | None = None
-    ajustes_pedagogicos:    str | None = None
-    profesionales_apoyo:    str | None = None
-    fecha_revision:         date | None = None
+
+    estudiante_id: int
+    anio_id: int
+    descripcion_necesidad: str
+    ajustes_evaluativos: str | None = None
+    ajustes_pedagogicos: str | None = None
+    profesionales_apoyo: str | None = None
+    fecha_revision: date | None = None
 
     @field_validator("descripcion_necesidad", mode="before")
     @classmethod
@@ -200,11 +202,12 @@ class NuevoPIARDTO(BaseModel):
 
 class ActualizarPIARDTO(BaseModel):
     """Campos actualizables de un PIAR. Todos opcionales."""
-    descripcion_necesidad:  str | None  = None
-    ajustes_evaluativos:    str | None  = None
-    ajustes_pedagogicos:    str | None  = None
-    profesionales_apoyo:    str | None  = None
-    fecha_revision:         date | None = None
+
+    descripcion_necesidad: str | None = None
+    ajustes_evaluativos: str | None = None
+    ajustes_pedagogicos: str | None = None
+    profesionales_apoyo: str | None = None
+    fecha_revision: date | None = None
 
     @field_validator("descripcion_necesidad", mode="before")
     @classmethod

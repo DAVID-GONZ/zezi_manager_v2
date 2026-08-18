@@ -182,14 +182,14 @@ class TestAgregarCategoria:
 
 class TestEliminarActividad:
     def test_elimina_actividad_en_borrador(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         cat = svc.agregar_categoria(_cat_dto(), _ctx())
         act = svc.agregar_actividad(_act_dto(cat.id))
         assert act.estado == EstadoActividad.BORRADOR
         svc.eliminar_actividad(act.id)  # no lanza
 
     def test_lanza_si_actividad_cerrada(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         cat = svc.agregar_categoria(_cat_dto(), _ctx())
         act = svc.agregar_actividad(_act_dto(cat.id))
         svc.publicar_actividad(act.id)
@@ -211,7 +211,7 @@ class TestRegistrarNota:
             svc.registrar_nota(dto_nota, _ctx())
 
     def test_registra_nota_en_actividad_publicada(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         cat = svc.agregar_categoria(_cat_dto(), _ctx())
         act = svc.agregar_actividad(_act_dto(cat.id))
         svc.publicar_actividad(act.id)
@@ -262,7 +262,7 @@ class TestActualizarCategoria:
 
     def test_lanza_si_nuevo_peso_supera_100(self):
         svc, _ = _make_svc()
-        c1 = svc.agregar_categoria(_cat_dto(0.60), _ctx())
+        svc.agregar_categoria(_cat_dto(0.60), _ctx())
         dto2 = NuevaCategoriaDTO(asignacion_id=3, periodo_id=5, nombre="B", peso=0.30)
         c2 = svc.agregar_categoria(dto2, _ctx())
         # Intentar subir c2 a 0.50 haría 0.60 + 0.50 = 1.10
@@ -289,7 +289,7 @@ class TestRegistrarNotasMasivas:
         assert all(n.usuario_registro_id == 99 for n in notas)
 
     def test_registrar_masivo_en_actividad_publicada(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         cat = svc.agregar_categoria(_cat_dto(), _ctx())
         act = svc.agregar_actividad(_act_dto(cat.id))
         svc.publicar_actividad(act.id)

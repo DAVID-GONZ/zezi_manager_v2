@@ -25,6 +25,7 @@ Flujo:
   3. Categorías solo se renderiza si rol in (director, coordinador).
   4. Botón Desactivar en plantillas solo visible a dir/coord.
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,14 +54,15 @@ _ROLES_DIRECTIVOS = ("director", "coordinador")
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "categorias":   [],   # list[CategoriaObservacion]
-        "plantillas":   [],   # list[PlantillaObservacion]
-        "editando_cat": None, # CategoriaObservacion | None
-        "editando_plt": None, # PlantillaObservacion | None
-        "sel_cat":      None, # dict | None — fila seleccionada en el grid
-        "sel_plt":      None, # dict | None — fila seleccionada en el grid de plantillas
+        "categorias": [],  # list[CategoriaObservacion]
+        "plantillas": [],  # list[PlantillaObservacion]
+        "editando_cat": None,  # CategoriaObservacion | None
+        "editando_plt": None,  # PlantillaObservacion | None
+        "sel_cat": None,  # dict | None — fila seleccionada en el grid
+        "sel_plt": None,  # dict | None — fila seleccionada en el grid de plantillas
     }
 
 
@@ -98,6 +100,7 @@ def _cat_nombre_por_id(_s: dict) -> dict:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (convivencia_33)
 def configuracion_convivencia_page() -> None:
     ctx = SessionContext.desde_storage()
@@ -119,7 +122,12 @@ def configuracion_convivencia_page() -> None:
             titulo="Nueva categoría",
             campos=[
                 {"key": "nombre", "label": "Nombre", "tipo": "text", "requerido": True},
-                {"key": "es_comportamental", "label": "¿Es comportamental?", "tipo": "checkbox", "valor": False},
+                {
+                    "key": "es_comportamental",
+                    "label": "¿Es comportamental?",
+                    "tipo": "checkbox",
+                    "valor": False,
+                },
             ],
             on_submit=_crear_categoria,
             texto_submit="Guardar",
@@ -130,10 +138,19 @@ def configuracion_convivencia_page() -> None:
         form_dialog(
             titulo="Editar categoría",
             campos=[
-                {"key": "nombre", "label": "Nombre", "tipo": "text",
-                 "valor": getattr(cat, "nombre", ""), "requerido": True},
-                {"key": "es_comportamental", "label": "¿Es comportamental?", "tipo": "checkbox",
-                 "valor": getattr(cat, "es_comportamental", False)},
+                {
+                    "key": "nombre",
+                    "label": "Nombre",
+                    "tipo": "text",
+                    "valor": getattr(cat, "nombre", ""),
+                    "requerido": True,
+                },
+                {
+                    "key": "es_comportamental",
+                    "label": "¿Es comportamental?",
+                    "tipo": "checkbox",
+                    "valor": getattr(cat, "es_comportamental", False),
+                },
             ],
             on_submit=_actualizar_categoria,
             texto_submit="Guardar cambios",
@@ -145,7 +162,9 @@ def configuracion_convivencia_page() -> None:
             toast_warning("El nombre de la categoría es requerido.")
             return False
         try:
-            dto = NuevaCategoriaDTO(nombre=nombre, es_comportamental=bool(datos.get("es_comportamental", False)))
+            dto = NuevaCategoriaDTO(
+                nombre=nombre, es_comportamental=bool(datos.get("es_comportamental", False))
+            )
             Container.convivencia_service().crear_categoria(dto)
             toast_success("Categoría creada.")
             _cargar_estado(_s)
@@ -165,8 +184,10 @@ def configuracion_convivencia_page() -> None:
             toast_warning("El nombre de la categoría es requerido.")
             return False
         try:
-            dto = NuevaCategoriaDTO(nombre=nombre, es_comportamental=bool(datos.get("es_comportamental", False)))
-            Container.convivencia_service().actualizar_categoria(getattr(cat, "id"), dto)
+            dto = NuevaCategoriaDTO(
+                nombre=nombre, es_comportamental=bool(datos.get("es_comportamental", False))
+            )
+            Container.convivencia_service().actualizar_categoria(cat.id, dto)
             toast_success("Categoría actualizada.")
             _cargar_estado(_s)
             _contenido.refresh()
@@ -200,10 +221,20 @@ def configuracion_convivencia_page() -> None:
         form_dialog(
             titulo="Nueva plantilla",
             campos=[
-                {"key": "texto", "label": "Texto", "tipo": "textarea", "requerido": True,
-                 "placeholder": "Texto de la plantilla (máx. 2000 caracteres)"},
-                {"key": "categoria_id", "label": "Categoría", "tipo": "select",
-                 "opciones": _opciones_categorias(_s), "valor": None},
+                {
+                    "key": "texto",
+                    "label": "Texto",
+                    "tipo": "textarea",
+                    "requerido": True,
+                    "placeholder": "Texto de la plantilla (máx. 2000 caracteres)",
+                },
+                {
+                    "key": "categoria_id",
+                    "label": "Categoría",
+                    "tipo": "select",
+                    "opciones": _opciones_categorias(_s),
+                    "valor": None,
+                },
             ],
             on_submit=_crear_plantilla,
             texto_submit="Guardar",
@@ -214,12 +245,21 @@ def configuracion_convivencia_page() -> None:
         form_dialog(
             titulo="Editar plantilla",
             campos=[
-                {"key": "texto", "label": "Texto", "tipo": "textarea",
-                 "valor": getattr(plantilla, "texto", ""), "requerido": True,
-                 "placeholder": "Texto de la plantilla (máx. 2000 caracteres)"},
-                {"key": "categoria_id", "label": "Categoría", "tipo": "select",
-                 "opciones": _opciones_categorias(_s),
-                 "valor": getattr(plantilla, "categoria_id", None)},
+                {
+                    "key": "texto",
+                    "label": "Texto",
+                    "tipo": "textarea",
+                    "valor": getattr(plantilla, "texto", ""),
+                    "requerido": True,
+                    "placeholder": "Texto de la plantilla (máx. 2000 caracteres)",
+                },
+                {
+                    "key": "categoria_id",
+                    "label": "Categoría",
+                    "tipo": "select",
+                    "opciones": _opciones_categorias(_s),
+                    "valor": getattr(plantilla, "categoria_id", None),
+                },
             ],
             on_submit=_actualizar_plantilla,
             texto_submit="Guardar cambios",
@@ -257,7 +297,7 @@ def configuracion_convivencia_page() -> None:
         try:
             dto = NuevaPlantillaDTO(texto=texto, categoria_id=datos.get("categoria_id"))
             Container.convivencia_service().actualizar_plantilla(
-                getattr(plt, "id"),
+                plt.id,
                 dto,
                 usuario_id=getattr(ctx, "usuario_id", None),
                 usuario_rol=getattr(ctx, "usuario_rol", None),
@@ -282,7 +322,9 @@ def configuracion_convivencia_page() -> None:
                 _cargar_estado(_s)
                 _contenido.refresh()
             except Exception as exc:
-                logger.error("Error desactivando plantilla %s: %s", plantilla_id, exc, exc_info=True)
+                logger.error(
+                    "Error desactivando plantilla %s: %s", plantilla_id, exc, exc_info=True
+                )
                 toast_error(f"Error: {exc}")
 
         confirm_dialog(
@@ -304,7 +346,6 @@ def configuracion_convivencia_page() -> None:
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):
                 with ui.element("div").classes("page-body"):
-
                     # ── Columna izquierda: Categorías (solo dir/coord) ─────────
                     if es_directivo:
                         with ui.element("div").classes("page-col-side"):
@@ -331,42 +372,48 @@ def configuracion_convivencia_page() -> None:
                                 else:
                                     filas_cat = [
                                         {
-                                            "id":     getattr(cat, "id", None),
+                                            "id": getattr(cat, "id", None),
                                             "nombre": getattr(cat, "nombre", ""),
-                                            "tipo":   "Comportamental" if getattr(cat, "es_comportamental", False) else "General",
-                                            "estado": "Activa" if getattr(cat, "activa", True) else "Inactiva",
+                                            "tipo": "Comportamental"
+                                            if getattr(cat, "es_comportamental", False)
+                                            else "General",
+                                            "estado": "Activa"
+                                            if getattr(cat, "activa", True)
+                                            else "Inactiva",
                                             "activa": getattr(cat, "activa", True),
                                         }
                                         for cat in categorias
                                     ]
-                                    cat_grid = ui.aggrid({
-                                        "columnDefs": [
-                                            {
-                                                "headerName": "Nombre",
-                                                "field":      "nombre",
-                                                "flex":       1,
-                                                "resizable":  True,
-                                                "sortable":   True,
-                                            },
-                                            {
-                                                "headerName": "Tipo",
-                                                "field":      "tipo",
-                                                "width":      140,
-                                                "resizable":  False,
-                                                "sortable":   True,
-                                            },
-                                            {
-                                                "headerName": "Estado",
-                                                "field":      "estado",
-                                                "width":      100,
-                                                "resizable":  False,
-                                                "sortable":   True,
-                                            },
-                                        ],
-                                        "rowData":      filas_cat,
-                                        "rowSelection": "single",
-                                        "domLayout":    "autoHeight",
-                                    }).classes("w-full")
+                                    cat_grid = ui.aggrid(
+                                        {
+                                            "columnDefs": [
+                                                {
+                                                    "headerName": "Nombre",
+                                                    "field": "nombre",
+                                                    "flex": 1,
+                                                    "resizable": True,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Tipo",
+                                                    "field": "tipo",
+                                                    "width": 140,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Estado",
+                                                    "field": "estado",
+                                                    "width": 100,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                            ],
+                                            "rowData": filas_cat,
+                                            "rowSelection": "single",
+                                            "domLayout": "autoHeight",
+                                        }
+                                    ).classes("w-full")
 
                                     async def _on_cat_sel() -> None:
                                         rows = await cat_grid.get_selected_rows()
@@ -375,13 +422,20 @@ def configuracion_convivencia_page() -> None:
                                     cat_grid.on("selectionChanged", _on_cat_sel)
 
                                     with ui.row().classes("gap-sm"):
+
                                         def _on_editar_cat_btn() -> None:
                                             sel = _s.get("sel_cat")
                                             if not sel:
-                                                toast_warning("Selecciona una categoría de la tabla.")
+                                                toast_warning(
+                                                    "Selecciona una categoría de la tabla."
+                                                )
                                                 return
                                             cat_obj = next(
-                                                (c for c in _s["categorias"] if getattr(c, "id", None) == sel.get("id")),
+                                                (
+                                                    c
+                                                    for c in _s["categorias"]
+                                                    if getattr(c, "id", None) == sel.get("id")
+                                                ),
                                                 None,
                                             )
                                             if cat_obj:
@@ -390,15 +444,23 @@ def configuracion_convivencia_page() -> None:
                                         def _on_desactivar_cat_btn() -> None:
                                             sel = _s.get("sel_cat")
                                             if not sel:
-                                                toast_warning("Selecciona una categoría de la tabla.")
+                                                toast_warning(
+                                                    "Selecciona una categoría de la tabla."
+                                                )
                                                 return
                                             if not sel.get("activa"):
                                                 toast_warning("La categoría ya está inactiva.")
                                                 return
                                             _desactivar_categoria(sel["id"])
 
-                                        btn_icon(Icons.EDIT, on_click=_on_editar_cat_btn, tooltip="Editar seleccionada")
-                                        btn_danger("Desactivar", on_click=_on_desactivar_cat_btn, size="sm")
+                                        btn_icon(
+                                            Icons.EDIT,
+                                            on_click=_on_editar_cat_btn,
+                                            tooltip="Editar seleccionada",
+                                        )
+                                        btn_danger(
+                                            "Desactivar", on_click=_on_desactivar_cat_btn, size="sm"
+                                        )
 
                     # ── Columna derecha: Plantillas (todos los roles AULA) ─────
                     with ui.element("div").classes("page-col-main"):
@@ -425,53 +487,59 @@ def configuracion_convivencia_page() -> None:
                             else:
                                 filas_plt = [
                                     {
-                                        "id":       getattr(plt, "id", None),
-                                        "texto":    getattr(plt, "texto", ""),
-                                        "categoria": nombres_cat.get(getattr(plt, "categoria_id", None), "Sin categoría"),
-                                        "usos":     getattr(plt, "uso_count", 0),
-                                        "estado":   "Activa" if getattr(plt, "activa", True) else "Inactiva",
-                                        "activa":   getattr(plt, "activa", True),
+                                        "id": getattr(plt, "id", None),
+                                        "texto": getattr(plt, "texto", ""),
+                                        "categoria": nombres_cat.get(
+                                            getattr(plt, "categoria_id", None), "Sin categoría"
+                                        ),
+                                        "usos": getattr(plt, "uso_count", 0),
+                                        "estado": "Activa"
+                                        if getattr(plt, "activa", True)
+                                        else "Inactiva",
+                                        "activa": getattr(plt, "activa", True),
                                     }
                                     for plt in plantillas
                                 ]
-                                plt_grid = ui.aggrid({
-                                    "columnDefs": [
-                                        {
-                                            "headerName": "Texto",
-                                            "field":      "texto",
-                                            "flex":       1,
-                                            "resizable":  True,
-                                            "sortable":   True,
-                                            "wrapText":   True,
-                                            "autoHeight": True,
-                                            "cellClass":  "cell-multiline",
-                                        },
-                                        {
-                                            "headerName": "Categoría",
-                                            "field":      "categoria",
-                                            "width":      140,
-                                            "resizable":  False,
-                                            "sortable":   True,
-                                        },
-                                        {
-                                            "headerName": "Usos",
-                                            "field":      "usos",
-                                            "width":      75,
-                                            "resizable":  False,
-                                            "sortable":   True,
-                                        },
-                                        {
-                                            "headerName": "Estado",
-                                            "field":      "estado",
-                                            "width":      100,
-                                            "resizable":  False,
-                                            "sortable":   True,
-                                        },
-                                    ],
-                                    "rowData":      filas_plt,
-                                    "rowSelection": "single",
-                                    "domLayout":    "autoHeight",
-                                }).classes("w-full")
+                                plt_grid = ui.aggrid(
+                                    {
+                                        "columnDefs": [
+                                            {
+                                                "headerName": "Texto",
+                                                "field": "texto",
+                                                "flex": 1,
+                                                "resizable": True,
+                                                "sortable": True,
+                                                "wrapText": True,
+                                                "autoHeight": True,
+                                                "cellClass": "cell-multiline",
+                                            },
+                                            {
+                                                "headerName": "Categoría",
+                                                "field": "categoria",
+                                                "width": 140,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                            {
+                                                "headerName": "Usos",
+                                                "field": "usos",
+                                                "width": 75,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                            {
+                                                "headerName": "Estado",
+                                                "field": "estado",
+                                                "width": 100,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                        ],
+                                        "rowData": filas_plt,
+                                        "rowSelection": "single",
+                                        "domLayout": "autoHeight",
+                                    }
+                                ).classes("w-full")
 
                                 async def _on_plt_sel() -> None:
                                     rows = await plt_grid.get_selected_rows()
@@ -480,13 +548,18 @@ def configuracion_convivencia_page() -> None:
                                 plt_grid.on("selectionChanged", _on_plt_sel)
 
                                 with ui.row().classes("gap-sm"):
+
                                     def _on_editar_plt_btn() -> None:
                                         sel = _s.get("sel_plt")
                                         if not sel:
                                             toast_warning("Selecciona una plantilla de la tabla.")
                                             return
                                         plt_obj = next(
-                                            (p for p in _s["plantillas"] if getattr(p, "id", None) == sel.get("id")),
+                                            (
+                                                p
+                                                for p in _s["plantillas"]
+                                                if getattr(p, "id", None) == sel.get("id")
+                                            ),
                                             None,
                                         )
                                         if plt_obj:
@@ -502,9 +575,15 @@ def configuracion_convivencia_page() -> None:
                                             return
                                         _desactivar_plantilla(sel["id"])
 
-                                    btn_icon(Icons.EDIT, on_click=_on_editar_plt_btn, tooltip="Editar seleccionada")
+                                    btn_icon(
+                                        Icons.EDIT,
+                                        on_click=_on_editar_plt_btn,
+                                        tooltip="Editar seleccionada",
+                                    )
                                     if es_directivo:
-                                        btn_danger("Desactivar", on_click=_on_desactivar_plt_btn, size="sm")
+                                        btn_danger(
+                                            "Desactivar", on_click=_on_desactivar_plt_btn, size="sm"
+                                        )
 
         app_layout(
             ctx_actual,

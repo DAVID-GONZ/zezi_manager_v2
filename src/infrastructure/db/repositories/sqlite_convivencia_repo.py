@@ -1,6 +1,7 @@
 """
 SqliteConvivenciaRepository — implementación SQLite de IConvivenciaRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -21,7 +22,6 @@ _TIPOS_NEGATIVOS = ("dificultad", "citacion_acudiente")
 
 
 class SqliteConvivenciaRepository(IConvivenciaRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -31,6 +31,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -239,9 +240,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         filtro: FiltroConvivenciaDTO,
         institucion_id: int | None = None,
     ) -> int:
-        sql, params = self._build_filtro_sql(
-            filtro, institucion_id, select="COUNT(*)"
-        )
+        sql, params = self._build_filtro_sql(filtro, institucion_id, select="COUNT(*)")
         with self._get_conn() as conn:
             row = conn.execute(sql, params).fetchone()
             return int(row[0])
@@ -331,9 +330,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             ).fetchall()
             return [self._row_to_nota(r) for r in rows]
 
-    def listar_notas_por_grupo(
-        self, grupo_id: int, periodo_id: int
-    ) -> list[NotaComportamiento]:
+    def listar_notas_por_grupo(self, grupo_id: int, periodo_id: int) -> list[NotaComportamiento]:
         with self._get_conn() as conn:
             rows = conn.execute(
                 """
@@ -384,7 +381,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         d["activa"] = bool(d["activa"])
         return CategoriaObservacion(**d)
 
-    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
+    def listar_categorias(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[CategoriaObservacion]:
         sql = "SELECT * FROM categorias_observacion WHERE 1=1"
         params: list = []
         if solo_activas:
@@ -453,7 +452,10 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         return PlantillaObservacion(**d)
 
     def listar_plantillas(
-        self, categoria_id: int | None = None, solo_activas: bool = True, institucion_id: int | None = None
+        self,
+        categoria_id: int | None = None,
+        solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[PlantillaObservacion]:
         sql = "SELECT * FROM plantillas_observacion WHERE 1=1"
         params: list = []

@@ -29,7 +29,7 @@ Separación de responsabilidades:
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -37,18 +37,20 @@ from pydantic import BaseModel, Field, field_validator
 # Enumeraciones
 # =============================================================================
 
-class Rol(str, Enum):
-    ADMIN        = "admin"
-    DIRECTOR     = "director"
-    COORDINADOR  = "coordinador"
-    PROFESOR     = "profesor"
-    ESTUDIANTE   = "estudiante"   # acceso de consulta futuro
-    APODERADO    = "apoderado"    # portal de acudientes (v3.0)
+
+class Rol(StrEnum):
+    ADMIN = "admin"
+    DIRECTOR = "director"
+    COORDINADOR = "coordinador"
+    PROFESOR = "profesor"
+    ESTUDIANTE = "estudiante"  # acceso de consulta futuro
+    APODERADO = "apoderado"  # portal de acudientes (v3.0)
 
 
 # =============================================================================
 # Entidad principal
 # =============================================================================
+
 
 class Usuario(BaseModel):
     """
@@ -65,34 +67,35 @@ class Usuario(BaseModel):
       estudiante   → consulta (v3.0)
       apoderado    → portal de acudientes (v3.0)
     """
-    id:                 int | None     = None
-    usuario:            str            # username — inmutable tras creación
-    nombre_completo:    str
-    email:              str | None     = None
-    telefono:           str | None     = None
-    rol:                Rol            = Rol.PROFESOR
-    activo:             bool           = True
+
+    id: int | None = None
+    usuario: str  # username — inmutable tras creación
+    nombre_completo: str
+    email: str | None = None
+    telefono: str | None = None
+    rol: Rol = Rol.PROFESOR
+    activo: bool = True
     # Cambio forzado de contraseña (A2 — seguridad_01): se activa cuando el
     # admin crea/resetea sin contraseña explícita (temporal aleatoria). El
     # guard fuerza /cambiar-password hasta que el dueño la cambie. Default
     # seguro: los usuarios existentes NO quedan forzados.
-    debe_cambiar_password: bool        = False
-    fecha_creacion:     date           = Field(default_factory=date.today)
-    ultima_sesion:      datetime | None = None
-    carga_horaria_max:  int | None     = None
-    horas_extra:        int            = 0
+    debe_cambiar_password: bool = False
+    fecha_creacion: date = Field(default_factory=date.today)
+    ultima_sesion: datetime | None = None
+    carga_horaria_max: int | None = None
+    horas_extra: int = 0
 
     # Multi-tenant (paso_24): institución a la que pertenece el usuario.
     # Opcional con default None; el repo/seed asignan la institución por
     # defecto (#1). Cuando es None, el usuario aún no tiene tenant asignado.
-    institucion_id:     int | None     = None
+    institucion_id: int | None = None
 
     # Canal efímero de la contraseña temporal (A2 — seguridad_01). NO se
     # persiste (el repo usa columnas explícitas) ni se serializa: lo marca el
     # servicio en la entidad RETORNADA por crear/resetear para que el admin la
     # comunique al usuario. `exclude=True` lo saca de model_dump (auditoría,
     # logs); `repr=False` evita que aparezca en reprs/trazas.
-    password_temporal:  str | None     = Field(default=None, exclude=True, repr=False)
+    password_temporal: str | None = Field(default=None, exclude=True, repr=False)
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -106,9 +109,7 @@ class Usuario(BaseModel):
         if not v:
             raise ValueError("El nombre de usuario no puede estar vacío.")
         if " " in v:
-            raise ValueError(
-                f"El nombre de usuario no puede contener espacios: '{v}'."
-            )
+            raise ValueError(f"El nombre de usuario no puede contener espacios: '{v}'.")
         if len(v) < 3:
             raise ValueError(
                 f"El nombre de usuario debe tener al menos 3 caracteres (tiene {len(v)})."
@@ -126,13 +127,10 @@ class Usuario(BaseModel):
         v = str(v).strip()
         if len(v) < 3:
             raise ValueError(
-                f"El nombre completo debe tener al menos 3 caracteres "
-                f"(tiene {len(v)}: '{v}')."
+                f"El nombre completo debe tener al menos 3 caracteres (tiene {len(v)}: '{v}')."
             )
         if len(v) > 150:
-            raise ValueError(
-                f"El nombre no puede exceder 150 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 150 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("email", mode="before")
@@ -148,9 +146,7 @@ class Usuario(BaseModel):
             raise ValueError(f"El email debe contener '@': '{v}'.")
         partes = v.split("@")
         if len(partes) != 2 or not partes[0] or "." not in partes[1]:
-            raise ValueError(
-                f"El email no tiene un formato válido: '{v}'."
-            )
+            raise ValueError(f"El email no tiene un formato válido: '{v}'.")
         return v
 
     @field_validator("telefono", mode="before")
@@ -167,9 +163,7 @@ class Usuario(BaseModel):
     def validar_carga_horaria_max(cls, v: int | None) -> int | None:
         """Si se define, la carga horaria máxima no puede ser negativa."""
         if v is not None and v < 0:
-            raise ValueError(
-                f"carga_horaria_max no puede ser negativo (recibido: {v})."
-            )
+            raise ValueError(f"carga_horaria_max no puede ser negativo (recibido: {v}).")
         return v
 
     @field_validator("horas_extra")
@@ -212,8 +206,7 @@ class Usuario(BaseModel):
     @property
     def puede_gestionar_evaluaciones(self) -> bool:
         """Puede registrar notas y asistencia."""
-        return self.rol in (Rol.PROFESOR, Rol.DIRECTOR,
-                            Rol.COORDINADOR, Rol.ADMIN)
+        return self.rol in (Rol.PROFESOR, Rol.DIRECTOR, Rol.COORDINADOR, Rol.ADMIN)
 
     @property
     def nombre_display(self) -> str:
@@ -227,29 +220,24 @@ class Usuario(BaseModel):
     def desactivar(self) -> Usuario:
         """Retorna una copia con activo=False (soft delete)."""
         if not self.activo:
-            raise ValueError(
-                f"El usuario '{self.usuario}' ya está desactivado."
-            )
+            raise ValueError(f"El usuario '{self.usuario}' ya está desactivado.")
         return self.model_copy(update={"activo": False})
 
     def reactivar(self) -> Usuario:
         """Retorna una copia con activo=True."""
         if self.activo:
-            raise ValueError(
-                f"El usuario '{self.usuario}' ya está activo."
-            )
+            raise ValueError(f"El usuario '{self.usuario}' ya está activo.")
         return self.model_copy(update={"activo": True})
 
     def registrar_sesion(self, momento: datetime | None = None) -> Usuario:
         """Retorna una copia con ultima_sesion actualizada."""
-        return self.model_copy(
-            update={"ultima_sesion": momento or datetime.now()}
-        )
+        return self.model_copy(update={"ultima_sesion": momento or datetime.now()})
 
 
 # =============================================================================
 # Read models — producidos por JOINs, no persistidos
 # =============================================================================
+
 
 class DocenteInfoDTO(BaseModel):
     """
@@ -258,19 +246,20 @@ class DocenteInfoDTO(BaseModel):
     Producida por la query de `obtener_listado_profesores()` que hace
     JOIN con horarios y asignaciones para calcular la carga académica.
     """
-    id:                    int
-    usuario:               str
-    nombre_completo:       str
-    email:                 str | None
-    telefono:              str | None
-    activo:                bool
-    fecha_creacion:        date | None
-    ultima_sesion:         datetime | None
-    total_asignaciones:    int = 0
-    grupos_asignados:      int = 0
+
+    id: int
+    usuario: str
+    nombre_completo: str
+    email: str | None
+    telefono: str | None
+    activo: bool
+    fecha_creacion: date | None
+    ultima_sesion: datetime | None
+    total_asignaciones: int = 0
+    grupos_asignados: int = 0
     asignaturas_asignadas: int = 0
-    horas_totales:         int = 0
-    bloques_horarios:      int = 0
+    horas_totales: int = 0
+    bloques_horarios: int = 0
 
     @property
     def tiene_carga(self) -> bool:
@@ -297,18 +286,19 @@ class AsignacionDocenteInfoDTO(BaseModel):
     asignaciones, grupos, asignaturas y periodos.
     Incluye el comparativo entre horas teóricas y horas programadas.
     """
-    id:                int
-    grupo_id:          int
-    grupo_codigo:      str
-    grupo_nombre:      str | None
-    asignatura_id:     int
+
+    id: int
+    grupo_id: int
+    grupo_codigo: str
+    grupo_nombre: str | None
+    asignatura_id: int
     asignatura_nombre: str
     asignatura_codigo: str | None
-    horas_teoricas:    int         = 0
-    horas_programadas: int         = 0
-    periodo_id:        int
-    periodo_nombre:    str
-    activo:            bool        = True
+    horas_teoricas: int = 0
+    horas_programadas: int = 0
+    periodo_id: int
+    periodo_nombre: str
+    activo: bool = True
 
     @property
     def horas_pendientes(self) -> int:
@@ -330,6 +320,7 @@ class AsignacionDocenteInfoDTO(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevoUsuarioDTO(BaseModel):
     """
     Datos para crear un usuario nuevo.
@@ -337,13 +328,14 @@ class NuevoUsuarioDTO(BaseModel):
     La contraseña se gestiona por separado en el servicio de autenticación.
     Si no se provee, el servicio usa el username como contraseña inicial.
     """
-    usuario:         str
+
+    usuario: str
     nombre_completo: str
-    rol:             Rol             = Rol.PROFESOR
-    email:           str | None      = None
-    telefono:        str | None      = None
-    password:        str | None      = None  # gestionada por IAuthenticationService
-    institucion_id:  int | None      = None  # multi-tenant (paso_24)
+    rol: Rol = Rol.PROFESOR
+    email: str | None = None
+    telefono: str | None = None
+    password: str | None = None  # gestionada por IAuthenticationService
+    institucion_id: int | None = None  # multi-tenant (paso_24)
 
     @field_validator("usuario", mode="before")
     @classmethod
@@ -351,9 +343,7 @@ class NuevoUsuarioDTO(BaseModel):
         """Normaliza el username a minúsculas; exige mínimo 3 caracteres y sin espacios."""
         v = str(v).strip()
         if not v or " " in v or len(v) < 3:
-            raise ValueError(
-                "El nombre de usuario debe tener mínimo 3 caracteres y sin espacios."
-            )
+            raise ValueError("El nombre de usuario debe tener mínimo 3 caracteres y sin espacios.")
         return v.lower()
 
     @field_validator("nombre_completo", mode="before")
@@ -388,9 +378,10 @@ class ActualizarUsuarioDTO(BaseModel):
     Campos actualizables de un usuario. Todos opcionales.
     El username y el rol no se actualizan aquí.
     """
-    nombre_completo: str | None  = None
-    email:           str | None  = None
-    telefono:        str | None  = None
+
+    nombre_completo: str | None = None
+    email: str | None = None
+    telefono: str | None = None
 
     @field_validator("nombre_completo", mode="before")
     @classmethod
@@ -422,12 +413,13 @@ class ActualizarUsuarioDTO(BaseModel):
 
 class UsuarioResumenDTO(BaseModel):
     """Vista mínima para selects, lookups y referencias en otros módulos."""
-    id:              int
-    usuario:         str
+
+    id: int
+    usuario: str
     nombre_completo: str
-    rol:             Rol
-    activo:          bool
-    institucion_id:  int | None = None  # multi-tenant (paso_24)
+    rol: Rol
+    activo: bool
+    institucion_id: int | None = None  # multi-tenant (paso_24)
 
     @classmethod
     def desde_usuario(cls, u: Usuario) -> UsuarioResumenDTO:
@@ -446,12 +438,13 @@ class UsuarioResumenDTO(BaseModel):
 
 class FiltroUsuariosDTO(BaseModel):
     """Parámetros para listar usuarios."""
-    rol:           Rol | None   = None
-    solo_activos:  bool         = True
-    busqueda:      str | None   = None   # nombre o username
-    institucion_id: int | None  = None   # multi-tenant scope (paso_24)
-    pagina:        int          = Field(default=1, ge=1)
-    por_pagina:    int          = Field(default=50, ge=1, le=200)
+
+    rol: Rol | None = None
+    solo_activos: bool = True
+    busqueda: str | None = None  # nombre o username
+    institucion_id: int | None = None  # multi-tenant scope (paso_24)
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=50, ge=1, le=200)
 
     @field_validator("busqueda", mode="before")
     @classmethod
@@ -470,9 +463,10 @@ class ResumenUsuariosDTO(BaseModel):
     `por_rol` mapea cada rol (string) a su conteo. `total` es el total de
     usuarios considerados (activos por defecto).
     """
-    por_rol:  dict[str, int] = Field(default_factory=dict)
-    total:    int            = 0
-    activos:  int            = 0
+
+    por_rol: dict[str, int] = Field(default_factory=dict)
+    total: int = 0
+    activos: int = 0
 
     @property
     def directores(self) -> int:

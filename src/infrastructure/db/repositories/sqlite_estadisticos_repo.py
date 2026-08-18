@@ -4,6 +4,7 @@ SqliteEstadisticosRepository — implementación SQLite de IEstadisticosReposito
 Este repositorio es estrictamente de solo lectura: solo SELECT y agregaciones.
 No hace INSERT, UPDATE ni DELETE.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -16,7 +17,6 @@ from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 
 
 class SqliteEstadisticosRepository(IEstadisticosRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -26,6 +26,7 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -376,9 +377,9 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             return [
                 {
                     "semana": r["semana"],
-                    "porcentaje": round(
-                        (1 - r["ausencias"] / r["total"]) * 100, 1
-                    ) if r["total"] > 0 else 0.0,
+                    "porcentaje": round((1 - r["ausencias"] / r["total"]) * 100, 1)
+                    if r["total"] > 0
+                    else 0.0,
                 }
                 for r in rows
             ]
@@ -452,8 +453,7 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
 
         # Indexar cierres por (estudiante_id, asignacion_id)
         notas_idx: dict[tuple[int, int], float] = {
-            (r["estudiante_id"], r["asignacion_id"]): r["nota_definitiva"]
-            for r in cierres
+            (r["estudiante_id"], r["asignacion_id"]): r["nota_definitiva"] for r in cierres
         }
 
         resultado = []
@@ -465,7 +465,7 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             }
             notas = []
             for asig in asignaturas:
-                nota = notas_idx.get((est["id"], asig["asignacion_id"]), None)
+                nota = notas_idx.get((est["id"], asig["asignacion_id"]))
                 fila[asig["asignatura"]] = nota
                 if nota is not None:
                     notas.append(nota)
@@ -506,17 +506,19 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
                 total = r["total"] or 0
                 ausencias = (r["faltas_injustificadas"] or 0) + (r["retrasos"] or 0)
                 pct = round((1 - ausencias / total) * 100, 1) if total > 0 else 0.0
-                resultado.append({
-                    "estudiante_id": r["estudiante_id"],
-                    "nombre_completo": r["nombre_completo"],
-                    "nombre_asignatura": r["nombre_asignatura"],
-                    "presentes": r["presentes"] or 0,
-                    "faltas_injustificadas": r["faltas_injustificadas"] or 0,
-                    "faltas_justificadas": r["faltas_justificadas"] or 0,
-                    "retrasos": r["retrasos"] or 0,
-                    "excusas": r["excusas"] or 0,
-                    "porcentaje": pct,
-                })
+                resultado.append(
+                    {
+                        "estudiante_id": r["estudiante_id"],
+                        "nombre_completo": r["nombre_completo"],
+                        "nombre_asignatura": r["nombre_asignatura"],
+                        "presentes": r["presentes"] or 0,
+                        "faltas_injustificadas": r["faltas_injustificadas"] or 0,
+                        "faltas_justificadas": r["faltas_justificadas"] or 0,
+                        "retrasos": r["retrasos"] or 0,
+                        "excusas": r["excusas"] or 0,
+                        "porcentaje": pct,
+                    }
+                )
             return resultado
 
     def consolidado_anual_grupo(
@@ -596,7 +598,6 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             resultado.append(fila)
         return resultado
 
-
     # ------------------------------------------------------------------
     # Datos para boletines formales
     # ------------------------------------------------------------------
@@ -655,9 +656,12 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
                 ORDER BY ar.nombre, s.nombre
                 """,
                 (
-                    periodo_id, estudiante_id,
-                    periodo_id, estudiante_id,
-                    grupo_id, periodo_id,
+                    periodo_id,
+                    estudiante_id,
+                    periodo_id,
+                    estudiante_id,
+                    grupo_id,
+                    periodo_id,
                 ),
             ).fetchall()
 
@@ -667,22 +671,24 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             aid = r["area_id"]
             if aid not in areas:
                 areas[aid] = {"area_nombre": r["area_nombre"], "asignaturas": []}
-            areas[aid]["asignaturas"].append({
-                "nombre":               r["asignatura_nombre"],
-                "nota":                 r["nota"],
-                "presentes":            r["presentes"],
-                "faltas_injustificadas": r["faltas_injustificadas"],
-                "faltas_justificadas":  r["faltas_justificadas"],
-                "retrasos":             r["retrasos"],
-                "excusas":              r["excusas"],
-            })
+            areas[aid]["asignaturas"].append(
+                {
+                    "nombre": r["asignatura_nombre"],
+                    "nota": r["nota"],
+                    "presentes": r["presentes"],
+                    "faltas_injustificadas": r["faltas_injustificadas"],
+                    "faltas_justificadas": r["faltas_justificadas"],
+                    "retrasos": r["retrasos"],
+                    "excusas": r["excusas"],
+                }
+            )
 
         return {
             "estudiante": {
-                "nombre":   est["nombre"]  if est else f"Estudiante {estudiante_id}",
+                "nombre": est["nombre"] if est else f"Estudiante {estudiante_id}",
                 "documento": est["documento"] if est else "",
-                "grupo":    (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
-                "periodo":  est["periodo_nombre"] if est else str(periodo_id),
+                "grupo": (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "periodo": est["periodo_nombre"] if est else str(periodo_id),
             },
             "areas": list(areas.values()),
         }
@@ -700,16 +706,15 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
                 (hasta_periodo_id,),
             ).fetchone()
             if not meta_per:
-                return {"estudiante": {}, "periodos": [], "areas": [],
-                        "es_ultimo_periodo": False}
-            anio_id    = meta_per["anio_id"]
+                return {"estudiante": {}, "periodos": [], "areas": [], "es_ultimo_periodo": False}
+            anio_id = meta_per["anio_id"]
             numero_max = meta_per["numero"]
 
             total_per_anio = conn.execute(
                 "SELECT COUNT(*) FROM periodos WHERE anio_id = ?",
                 (anio_id,),
             ).fetchone()[0]
-            es_ultimo = (numero_max >= total_per_anio)
+            es_ultimo = numero_max >= total_per_anio
 
             # Datos del estudiante y grupo
             est = conn.execute(
@@ -787,13 +792,11 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             ).fetchall()
 
         notas_idx: dict[tuple[int, int], float | None] = {
-            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"]
-            for r in notas_rows
+            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"] for r in notas_rows
         }
         asist_idx: dict[int, dict] = {r["asig_id"]: dict(r) for r in asist_rows}
         periodos_list = [
-            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]}
-            for p in periodos
+            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]} for p in periodos
         ]
         periodo_ids = [p["id"] for p in periodos_list]
 
@@ -805,30 +808,34 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             sid = r["asig_id"]
             notas_p = {pid: notas_idx.get((sid, pid)) for pid in periodo_ids}
             notas_validas = [v for v in notas_p.values() if v is not None]
-            definitiva = round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            definitiva = (
+                round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            )
             asist = asist_idx.get(sid, {})
-            areas[aid]["asignaturas"].append({
-                "nombre":                r["asig_nombre"],
-                "notas_periodo":         notas_p,
-                "definitiva":            definitiva,
-                "presentes":             asist.get("presentes", 0),
-                "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
-                "faltas_justificadas":   asist.get("faltas_justificadas", 0),
-                "retrasos":              asist.get("retrasos", 0),
-                "excusas":               asist.get("excusas", 0),
-            })
+            areas[aid]["asignaturas"].append(
+                {
+                    "nombre": r["asig_nombre"],
+                    "notas_periodo": notas_p,
+                    "definitiva": definitiva,
+                    "presentes": asist.get("presentes", 0),
+                    "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
+                    "faltas_justificadas": asist.get("faltas_justificadas", 0),
+                    "retrasos": asist.get("retrasos", 0),
+                    "excusas": asist.get("excusas", 0),
+                }
+            )
 
         return {
             "estudiante": {
-                "nombre":    est["nombre"] if est else f"Estudiante {estudiante_id}",
+                "nombre": est["nombre"] if est else f"Estudiante {estudiante_id}",
                 "documento": est["documento"] if est else "",
-                "grupo":     (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
-                "periodo":   per_actual["nombre"] if per_actual else str(hasta_periodo_id),
-                "anio":      anio_id,
+                "grupo": (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "periodo": per_actual["nombre"] if per_actual else str(hasta_periodo_id),
+                "anio": anio_id,
             },
-            "periodos":           periodos_list,
-            "areas":              list(areas.values()),
-            "es_ultimo_periodo":  es_ultimo,
+            "periodos": periodos_list,
+            "areas": list(areas.values()),
+            "es_ultimo_periodo": es_ultimo,
         }
 
     def boletin_datos_anual(
@@ -916,15 +923,11 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
 
         # Indexar
         notas_idx: dict[tuple[int, int], float | None] = {
-            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"]
-            for r in notas_rows
+            (r["asig_id"], r["periodo_id"]): r["nota_definitiva"] for r in notas_rows
         }
-        asist_idx: dict[int, dict] = {
-            r["asig_id"]: dict(r) for r in asist_rows
-        }
+        asist_idx: dict[int, dict] = {r["asig_id"]: dict(r) for r in asist_rows}
         periodos_list = [
-            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]}
-            for p in periodos
+            {"id": p["id"], "nombre": p["nombre"], "numero": p["numero"]} for p in periodos
         ]
         periodo_ids = [p["id"] for p in periodos_list]
 
@@ -937,29 +940,33 @@ class SqliteEstadisticosRepository(IEstadisticosRepository):
             sid = r["asig_id"]
             notas_p = {pid: notas_idx.get((sid, pid)) for pid in periodo_ids}
             notas_validas = [v for v in notas_p.values() if v is not None]
-            definitiva = round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            definitiva = (
+                round(sum(notas_validas) / len(notas_validas), 1) if notas_validas else None
+            )
             asist = asist_idx.get(sid, {})
-            areas[aid]["asignaturas"].append({
-                "nombre":                r["asig_nombre"],
-                "notas_periodo":         notas_p,
-                "definitiva":            definitiva,
-                "presentes":             asist.get("presentes", 0),
-                "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
-                "faltas_justificadas":   asist.get("faltas_justificadas", 0),
-                "retrasos":              asist.get("retrasos", 0),
-                "excusas":               asist.get("excusas", 0),
-            })
+            areas[aid]["asignaturas"].append(
+                {
+                    "nombre": r["asig_nombre"],
+                    "notas_periodo": notas_p,
+                    "definitiva": definitiva,
+                    "presentes": asist.get("presentes", 0),
+                    "faltas_injustificadas": asist.get("faltas_injustificadas", 0),
+                    "faltas_justificadas": asist.get("faltas_justificadas", 0),
+                    "retrasos": asist.get("retrasos", 0),
+                    "excusas": asist.get("excusas", 0),
+                }
+            )
 
         return {
             "estudiante": {
-                "nombre":           est["nombre"] if est else f"Estudiante {estudiante_id}",
-                "documento":        est["documento"] if est else "",
-                "grupo":            (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
-                "anio":             anio_id,
+                "nombre": est["nombre"] if est else f"Estudiante {estudiante_id}",
+                "documento": est["documento"] if est else "",
+                "grupo": (est["grupo_nombre"] or est["grupo_codigo"]) if est else "",
+                "anio": anio_id,
                 "estado_promocion": promo["estado"] if promo else "pendiente",
             },
             "periodos": periodos_list,
-            "areas":    list(areas.values()),
+            "areas": list(areas.values()),
         }
 
 

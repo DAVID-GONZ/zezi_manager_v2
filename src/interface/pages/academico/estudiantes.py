@@ -13,6 +13,7 @@ Secciones:
   6. Sección resultado masivo (@ui.refreshable)
   7. Dialog de PIAR (ver / registrar / editar)
 """
+
 from __future__ import annotations
 
 import csv
@@ -41,8 +42,8 @@ from src.interface.design.components.buttons import (
     btn_secondary,
 )
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.estudiante_service import (
     ActualizarEstudianteDTO,
     ActualizarPIARDTO,
@@ -55,6 +56,7 @@ logger = logging.getLogger("ESTUDIANTES")
 
 
 # ── Helper de args de tabla ───────────────────────────────────────────────────
+
 
 def _row_from_args(args) -> dict:
     """
@@ -71,6 +73,7 @@ def _row_from_args(args) -> dict:
 # =============================================================================
 # Página principal
 # =============================================================================
+
 
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def estudiantes_page() -> None:
@@ -90,18 +93,18 @@ def estudiantes_page() -> None:
 
     # ── Estado mutable de la página ───────────────────────────────────────────
     _s: dict = {
-        "estudiantes":     [],
+        "estudiantes": [],
         "filtro_grupo_id": None,
-        "filtro_estado":   None,
-        "filtro_piar":     None,
+        "filtro_estado": None,
+        "filtro_piar": None,
         "filtro_busqueda": "",
         # True una vez el usuario interactúa con cualquier filtro (incl. elegir
         # "Todos los grupos", que usa None igual que el estado inicial). Permite
         # distinguir "aún no filtró" de "eligió ver todos".
-        "filtro_tocado":   False,
-        "grupos":          [],
-        "grupos_ids_docente": None,   # None → sin restricción; list → grupos del docente
-        "config":          None,
+        "filtro_tocado": False,
+        "grupos": [],
+        "grupos_ids_docente": None,  # None → sin restricción; list → grupos del docente
+        "config": None,
         "resultado_masivo": None,
     }
 
@@ -148,7 +151,7 @@ def estudiantes_page() -> None:
         try:
             filtro = FiltroEstudiantesDTO(
                 grupo_id=_s["filtro_grupo_id"],
-                grupos_ids=_s["grupos_ids_docente"],   # None para directivos/admin
+                grupos_ids=_s["grupos_ids_docente"],  # None para directivos/admin
                 estado_matricula=_s["filtro_estado"],
                 posee_piar=_s["filtro_piar"],
                 busqueda=_s["filtro_busqueda"] or None,
@@ -174,7 +177,7 @@ def estudiantes_page() -> None:
 
     def _estado_label(estado_str: str) -> str:
         return {
-            "activo":   "Activo",
+            "activo": "Activo",
             "inactivo": "Inactivo",
             "retirado": "Retirado",
             "graduado": "Graduado",
@@ -209,19 +212,23 @@ def estudiantes_page() -> None:
     def _descargar_plantilla_csv() -> None:
         """Genera y descarga un CSV de ejemplo con el formato correcto."""
         cabeceras = [
-            "tipo_documento", "numero_documento", "nombre",
-            "apellido", "genero", "grupo_codigo",
+            "tipo_documento",
+            "numero_documento",
+            "nombre",
+            "apellido",
+            "genero",
+            "grupo_codigo",
         ]
         ejemplos = [
             ["TI", "1020304050", "Maria Fernanda", "Lopez Torres", "F", "A1"],
-            ["TI", "1020304051", "Carlos Andres",  "Ramirez Ruiz",  "M", "A2"],
-            ["CC", "98765432",   "Ana Lucia",      "Gomez Prada",  "F", ""],
+            ["TI", "1020304051", "Carlos Andres", "Ramirez Ruiz", "M", "A2"],
+            ["CC", "98765432", "Ana Lucia", "Gomez Prada", "F", ""],
         ]
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(cabeceras)
         writer.writerows(ejemplos)
-        csv_bytes = buf.getvalue().encode("utf-8-sig")   # BOM para Excel
+        csv_bytes = buf.getvalue().encode("utf-8-sig")  # BOM para Excel
         ui.download(csv_bytes, "plantilla_estudiantes.csv")
 
     # ── Procesador CSV ────────────────────────────────────────────────────────
@@ -250,7 +257,10 @@ def estudiantes_page() -> None:
         if resultado.fue_exitosa:
             toast_success(f"Carga completada: {resultado.exitosas} estudiantes matriculados.")
         else:
-            toast_warning(f"{resultado.exitosas} exitosas, {resultado.fallidas} fallidas. " "Revisa la sección de resultados.")
+            toast_warning(
+                f"{resultado.exitosas} exitosas, {resultado.fallidas} fallidas. "
+                "Revisa la sección de resultados."
+            )
 
     # =========================================================================
     # CONSTRUCCIÓN DE LA UI
@@ -280,7 +290,7 @@ def estudiantes_page() -> None:
                     icono=Icons.SEARCH,
                     titulo="Selecciona un grupo para ver los estudiantes",
                     descripcion="Elige un grupo en el filtro (o escribe una búsqueda) "
-                                "para cargar el listado de estudiantes.",
+                    "para cargar el listado de estudiantes.",
                     variante="search",
                 )
                 return
@@ -299,17 +309,16 @@ def estudiantes_page() -> None:
             # ── Cabecera de la tabla ──────────────────────────────────────────
             with ui.element("div").classes("est-table w-full overflow-auto"):
                 with ui.element("table").classes("w-full est-table__table"):
-
                     # thead
                     with ui.element("thead"):
                         with ui.element("tr").classes("est-table__head-row"):
                             for label, extra in [
-                                ("Estudiante",  "est-table__th--left est-table__th--wide"),
-                                ("Documento",   "est-table__th--left"),
-                                ("Grupo",       "est-table__th--center"),
-                                ("Estado",      "est-table__th--center"),
-                                ("PIAR",        "est-table__th--center"),
-                                ("Acciones",    "est-table__th--center"),
+                                ("Estudiante", "est-table__th--left est-table__th--wide"),
+                                ("Documento", "est-table__th--left"),
+                                ("Grupo", "est-table__th--center"),
+                                ("Estado", "est-table__th--center"),
+                                ("PIAR", "est-table__th--center"),
+                                ("Acciones", "est-table__th--center"),
                             ]:
                                 with ui.element("th").classes(f"est-table__th {extra}"):
                                     ui.label(label)
@@ -318,16 +327,16 @@ def estudiantes_page() -> None:
                     # estudiantes es list[dict] (primitivos puros, sin enums)
                     with ui.element("tbody"):
                         for est in estudiantes:
-                            estado_raw = est["estado_matricula"]   # str plano del servicio
+                            estado_raw = est["estado_matricula"]  # str plano del servicio
                             fila = {
-                                "id":               est["id"],
-                                "nombre_completo":  est["nombre_completo"],
+                                "id": est["id"],
+                                "nombre_completo": est["nombre_completo"],
                                 "documento_display": est["documento_display"],
-                                "grupo_id":         est["grupo_id"],
-                                "grupo_codigo":     _grupo_codigo(est["grupo_id"]),
-                                "estado_str":       _estado_label(estado_raw),
-                                "estado_raw":       estado_raw,
-                                "posee_piar":       est["posee_piar"],
+                                "grupo_id": est["grupo_id"],
+                                "grupo_codigo": _grupo_codigo(est["grupo_id"]),
+                                "estado_str": _estado_label(estado_raw),
+                                "estado_raw": estado_raw,
+                                "posee_piar": est["posee_piar"],
                             }
 
                             # Captura de la fila en la closure — crítico en bucles
@@ -347,7 +356,6 @@ def estudiantes_page() -> None:
                                 _abrir_dialog_historial(f)
 
                             with ui.element("tr").classes("est-table__row"):
-
                                 # Nombre
                                 with ui.element("td").classes("est-table__td est-table__td--left"):
                                     ui.label(fila["nombre_completo"]).classes("est-table__nombre")
@@ -357,13 +365,17 @@ def estudiantes_page() -> None:
                                     ui.label(fila["documento_display"]).classes("est-table__doc")
 
                                 # Grupo
-                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                with ui.element("td").classes(
+                                    "est-table__td est-table__td--center"
+                                ):
                                     ui.label(fila["grupo_codigo"]).classes("est-table__grupo")
 
                                 # Estado
-                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                with ui.element("td").classes(
+                                    "est-table__td est-table__td--center"
+                                ):
                                     _variante = {
-                                        "activo":   "success",
+                                        "activo": "success",
                                         "inactivo": "neutral",
                                         "retirado": "error",
                                         "graduado": "info",
@@ -371,7 +383,9 @@ def estudiantes_page() -> None:
                                     status_badge(fila["estado_str"], variante=_variante)
 
                                 # PIAR
-                                with ui.element("td").classes("est-table__td est-table__td--center"):
+                                with ui.element("td").classes(
+                                    "est-table__td est-table__td--center"
+                                ):
                                     status_badge(
                                         "Sí" if fila["posee_piar"] else "No",
                                         variante="info" if fila["posee_piar"] else "neutral",
@@ -381,18 +395,44 @@ def estudiantes_page() -> None:
                                 # Gating paso_42: el profesor ve la tabla en modo
                                 # lectura (sin editar/retirar/PIAR). Solo
                                 # director/coordinador gestionan.
-                                with ui.element("td").classes("est-table__td est-table__td--center"):
-                                    with ui.row().classes("gap-1 justify-center"):
-                                        es_retirado = fila["estado_raw"] == "retirado"
+                                with ui.element("td").classes(
+                                    "est-table__td est-table__td--center"
+                                ), ui.row().classes("gap-1 justify-center"):
+                                    es_retirado = fila["estado_raw"] == "retirado"
 
-                                        if puede_gestionar and not es_retirado:
-                                            btn_icon("edit", on_click=_fila_editar, tooltip="Editar estudiante", variante="primary")
-                                            btn_icon("swap_horiz", on_click=_fila_trasladar, tooltip="Trasladar a otro grupo", variante="secondary")
-                                            btn_icon("person_remove", on_click=_fila_retirar, tooltip="Retirar matrícula", variante="danger")
-                                            btn_icon("description", on_click=_fila_piar, tooltip="Ver / registrar PIAR", variante="secondary")
-                                        # Historial: visible para todos los que ven la página
-                                        # (incluido el profesor en modo lectura).
-                                        btn_icon("history", on_click=_fila_historial, tooltip="Ver historial de movimientos", variante="ghost")
+                                    if puede_gestionar and not es_retirado:
+                                        btn_icon(
+                                            "edit",
+                                            on_click=_fila_editar,
+                                            tooltip="Editar estudiante",
+                                            variante="primary",
+                                        )
+                                        btn_icon(
+                                            "swap_horiz",
+                                            on_click=_fila_trasladar,
+                                            tooltip="Trasladar a otro grupo",
+                                            variante="secondary",
+                                        )
+                                        btn_icon(
+                                            "person_remove",
+                                            on_click=_fila_retirar,
+                                            tooltip="Retirar matrícula",
+                                            variante="danger",
+                                        )
+                                        btn_icon(
+                                            "description",
+                                            on_click=_fila_piar,
+                                            tooltip="Ver / registrar PIAR",
+                                            variante="secondary",
+                                        )
+                                    # Historial: visible para todos los que ven la página
+                                    # (incluido el profesor en modo lectura).
+                                    btn_icon(
+                                        "history",
+                                        on_click=_fila_historial,
+                                        tooltip="Ver historial de movimientos",
+                                        variante="ghost",
+                                    )
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -406,11 +446,24 @@ def estudiantes_page() -> None:
                     ui.label("Resultado de carga masiva").classes("panel-title")
 
                 with ui.element("div").classes("tablero-kpi-row"):
-                    stat_card("Total procesadas", resultado.total_procesadas, "check_circle", variante="info")
-                    stat_card("Exitosas",  resultado.exitosas,  "check",
-                              variante="success" if resultado.exitosas > 0 else "info")
-                    stat_card("Fallidas",  resultado.fallidas,  "error",
-                              variante="danger"  if resultado.fallidas > 0 else "success")
+                    stat_card(
+                        "Total procesadas",
+                        resultado.total_procesadas,
+                        "check_circle",
+                        variante="info",
+                    )
+                    stat_card(
+                        "Exitosas",
+                        resultado.exitosas,
+                        "check",
+                        variante="success" if resultado.exitosas > 0 else "info",
+                    )
+                    stat_card(
+                        "Fallidas",
+                        resultado.fallidas,
+                        "error",
+                        variante="danger" if resultado.fallidas > 0 else "success",
+                    )
 
                 if resultado.errores:
                     ui.label("Detalle de errores (máx. 10):").classes("text-weight-medium u-mt-md")
@@ -419,9 +472,14 @@ def estudiantes_page() -> None:
                             f"Fila {err['fila']} — Doc: {err['dato']} — {err['motivo']}"
                         ).classes("text-caption text-error u-mb-xs")
 
-                btn_secondary("Limpiar resultado", icon="close",
-                              on_click=lambda: (_s.update({"resultado_masivo": None}),
-                                                resultado_refreshable.refresh())).classes("u-mt-sm")
+                btn_secondary(
+                    "Limpiar resultado",
+                    icon="close",
+                    on_click=lambda: (
+                        _s.update({"resultado_masivo": None}),
+                        resultado_refreshable.refresh(),
+                    ),
+                ).classes("u-mt-sm")
 
         # ── Acciones de página ────────────────────────────────────────────────
 
@@ -440,7 +498,9 @@ def estudiantes_page() -> None:
                         posee_piar=datos.get("posee_piar", False),
                     )
                     Container.estudiante_service().matricular(
-                        dto, usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
+                        dto,
+                        usuario_id=ctx.usuario_id,
+                        actor_rol=ctx.usuario_rol,
                     )
                     toast_success("Estudiante matriculado exitosamente.")
                     _cargar_estudiantes()
@@ -456,15 +516,44 @@ def estudiantes_page() -> None:
             form_dialog(
                 titulo="Matricular estudiante",
                 campos=[
-                    {"key": "tipo_documento",   "label": "Tipo documento",    "tipo": "select",
-                     "opciones": {"TI": "TI", "CC": "CC", "CE": "CE", "NUIP": "NUIP"}, "valor": "TI"},
-                    {"key": "numero_documento", "label": "Número documento",  "tipo": "text",   "requerido": True},
-                    {"key": "nombre",           "label": "Nombre",            "tipo": "text",   "requerido": True},
-                    {"key": "apellido",         "label": "Apellido",          "tipo": "text",   "requerido": True},
-                    {"key": "grupo_id",         "label": "Grupo",             "tipo": "select", "opciones": _grupos_select()},
-                    {"key": "genero",           "label": "Género",            "tipo": "select",
-                     "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
-                    {"key": "posee_piar",       "label": "Posee PIAR",        "tipo": "checkbox", "valor": False},
+                    {
+                        "key": "tipo_documento",
+                        "label": "Tipo documento",
+                        "tipo": "select",
+                        "opciones": {"TI": "TI", "CC": "CC", "CE": "CE", "NUIP": "NUIP"},
+                        "valor": "TI",
+                    },
+                    {
+                        "key": "numero_documento",
+                        "label": "Número documento",
+                        "tipo": "text",
+                        "requerido": True,
+                    },
+                    {"key": "nombre", "label": "Nombre", "tipo": "text", "requerido": True},
+                    {"key": "apellido", "label": "Apellido", "tipo": "text", "requerido": True},
+                    {
+                        "key": "grupo_id",
+                        "label": "Grupo",
+                        "tipo": "select",
+                        "opciones": _grupos_select(),
+                    },
+                    {
+                        "key": "genero",
+                        "label": "Género",
+                        "tipo": "select",
+                        "opciones": {
+                            None: "No especificado",
+                            "M": "Masculino",
+                            "F": "Femenino",
+                            "OTRO": "Otro",
+                        },
+                    },
+                    {
+                        "key": "posee_piar",
+                        "label": "Posee PIAR",
+                        "tipo": "checkbox",
+                        "valor": False,
+                    },
                 ],
                 on_submit=_guardar,
                 texto_submit="Matricular",
@@ -483,12 +572,12 @@ def estudiantes_page() -> None:
                         "text-caption text-weight-medium u-mb-xs"
                     )
                     for col, desc in [
-                        ("tipo_documento",   "TI · CC · CE · NUIP"),
+                        ("tipo_documento", "TI · CC · CE · NUIP"),
                         ("numero_documento", "Identificador único del estudiante"),
-                        ("nombre",           "Nombres del estudiante"),
-                        ("apellido",         "Apellidos del estudiante"),
-                        ("genero",           "M · F · OTRO  (opcional)"),
-                        ("grupo_codigo",     "Código del grupo, ej: A1  (opcional)"),
+                        ("nombre", "Nombres del estudiante"),
+                        ("apellido", "Apellidos del estudiante"),
+                        ("genero", "M · F · OTRO  (opcional)"),
+                        ("grupo_codigo", "Código del grupo, ej: A1  (opcional)"),
                     ]:
                         with ui.row().classes("u-mb-xs gap-2"):
                             ui.label(col).classes(
@@ -541,7 +630,10 @@ def estudiantes_page() -> None:
                         estado_matricula=datos.get("estado"),
                     )
                     Container.estudiante_service().actualizar(
-                        est_id, dto, usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
+                        est_id,
+                        dto,
+                        usuario_id=ctx.usuario_id,
+                        actor_rol=ctx.usuario_rol,
                     )
                     toast_success("Estudiante actualizado.")
                     _cargar_estudiantes()
@@ -557,14 +649,57 @@ def estudiantes_page() -> None:
             form_dialog(
                 titulo=f"Editar — {est['nombre_completo']}",
                 campos=[
-                    {"key": "nombre",     "label": "Nombre",    "tipo": "text",     "valor": est["nombre"],   "requerido": True},
-                    {"key": "apellido",   "label": "Apellido",  "tipo": "text",     "valor": est["apellido"], "requerido": True},
-                    {"key": "estado",     "label": "Estado",    "tipo": "select",   "valor": est["estado_matricula"],
-                     "opciones": {"activo": "Activo", "inactivo": "Inactivo", "retirado": "Retirado", "graduado": "Graduado"}},
-                    {"key": "grupo_id",   "label": "Grupo",     "tipo": "select",   "valor": est["grupo_id"], "opciones": _grupos_select()},
-                    {"key": "genero",     "label": "Género",    "tipo": "select",   "valor": est["genero"],
-                     "opciones": {None: "No especificado", "M": "Masculino", "F": "Femenino", "OTRO": "Otro"}},
-                    {"key": "posee_piar", "label": "Posee PIAR","tipo": "checkbox", "valor": est["posee_piar"]},
+                    {
+                        "key": "nombre",
+                        "label": "Nombre",
+                        "tipo": "text",
+                        "valor": est["nombre"],
+                        "requerido": True,
+                    },
+                    {
+                        "key": "apellido",
+                        "label": "Apellido",
+                        "tipo": "text",
+                        "valor": est["apellido"],
+                        "requerido": True,
+                    },
+                    {
+                        "key": "estado",
+                        "label": "Estado",
+                        "tipo": "select",
+                        "valor": est["estado_matricula"],
+                        "opciones": {
+                            "activo": "Activo",
+                            "inactivo": "Inactivo",
+                            "retirado": "Retirado",
+                            "graduado": "Graduado",
+                        },
+                    },
+                    {
+                        "key": "grupo_id",
+                        "label": "Grupo",
+                        "tipo": "select",
+                        "valor": est["grupo_id"],
+                        "opciones": _grupos_select(),
+                    },
+                    {
+                        "key": "genero",
+                        "label": "Género",
+                        "tipo": "select",
+                        "valor": est["genero"],
+                        "opciones": {
+                            None: "No especificado",
+                            "M": "Masculino",
+                            "F": "Femenino",
+                            "OTRO": "Otro",
+                        },
+                    },
+                    {
+                        "key": "posee_piar",
+                        "label": "Posee PIAR",
+                        "tipo": "checkbox",
+                        "valor": est["posee_piar"],
+                    },
                 ],
                 on_submit=_guardar_edicion,
                 max_width="max-w-lg",
@@ -579,7 +714,9 @@ def estudiantes_page() -> None:
 
             def _ejecutar() -> None:
                 try:
-                    Container.estudiante_service().retirar(est_id, motivo=None, usuario_id=ctx.usuario_id)
+                    Container.estudiante_service().retirar(
+                        est_id, motivo=None, usuario_id=ctx.usuario_id
+                    )
                     toast_success(f"{nombre} retirado.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -619,9 +756,9 @@ def estudiantes_page() -> None:
 
             with custom_dialog(max_width="md") as dlg:
                 ui.label(f"Trasladar — {nombre}").classes("font-h3 form-dialog-title")
-                ui.label(
-                    f"Grupo actual: {fila.get('grupo_codigo', '—')}"
-                ).classes("text-caption text-muted u-mb-sm")
+                ui.label(f"Grupo actual: {fila.get('grupo_codigo', '—')}").classes(
+                    "text-caption text-muted u-mb-sm"
+                )
 
                 sel_destino = ui.select(
                     label="Grupo destino",
@@ -738,18 +875,28 @@ def estudiantes_page() -> None:
                             with ui.element("thead"):
                                 with ui.element("tr").classes("est-table__head-row"):
                                     for label in ("Fecha", "Movimiento", "Tipo", "Motivo"):
-                                        with ui.element("th").classes("est-table__th est-table__th--left"):
+                                        with ui.element("th").classes(
+                                            "est-table__th est-table__th--left"
+                                        ):
                                             ui.label(label)
                             with ui.element("tbody"):
                                 for m in movimientos:
                                     with ui.element("tr").classes("est-table__row"):
-                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                        with ui.element("td").classes(
+                                            "est-table__td est-table__td--left"
+                                        ):
                                             ui.label(m.fecha_display)
-                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                        with ui.element("td").classes(
+                                            "est-table__td est-table__td--left"
+                                        ):
                                             ui.label(m.ruta_display)
-                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                        with ui.element("td").classes(
+                                            "est-table__td est-table__td--left"
+                                        ):
                                             ui.label(m.tipo_movimiento.value)
-                                        with ui.element("td").classes("est-table__td est-table__td--left"):
+                                        with ui.element("td").classes(
+                                            "est-table__td est-table__td--left"
+                                        ):
                                             ui.label(m.motivo or "—")
 
                 with ui.row().classes("u-mt-md justify-end"):
@@ -787,8 +934,11 @@ def estudiantes_page() -> None:
                             profesionales_apoyo=datos.get("profesionales_apoyo") or None,
                         )
                         Container.estudiante_service().actualizar_piar(
-                            est_id, anio_id, dto,
-                            usuario_id=ctx.usuario_id, actor_rol=ctx.usuario_rol,
+                            est_id,
+                            anio_id,
+                            dto,
+                            usuario_id=ctx.usuario_id,
+                            actor_rol=ctx.usuario_rol,
                         )
                         toast_success("PIAR actualizado.")
                     else:
@@ -800,7 +950,9 @@ def estudiantes_page() -> None:
                             ajustes_pedagogicos=datos.get("ajustes_pedagogicos") or None,
                             profesionales_apoyo=datos.get("profesionales_apoyo") or None,
                         )
-                        Container.estudiante_service().registrar_piar(dto, usuario_id=ctx.usuario_id)
+                        Container.estudiante_service().registrar_piar(
+                            dto, usuario_id=ctx.usuario_id
+                        )
                         toast_success("PIAR registrado exitosamente.")
                     _cargar_estudiantes()
                     tabla_refreshable.refresh()
@@ -808,8 +960,15 @@ def estudiantes_page() -> None:
                     toast_warning(str(exc))
                     return False
                 except Exception as exc:
-                    logger.error("Error %s PIAR est=%s: %s", "actualizando" if is_edit else "registrando", est_id, exc)
-                    toast_error(f"Error inesperado al {'actualizar' if is_edit else 'registrar'} el PIAR.")
+                    logger.error(
+                        "Error %s PIAR est=%s: %s",
+                        "actualizando" if is_edit else "registrando",
+                        est_id,
+                        exc,
+                    )
+                    toast_error(
+                        f"Error inesperado al {'actualizar' if is_edit else 'registrar'} el PIAR."
+                    )
                     return False
 
             form_dialog(
@@ -853,7 +1012,6 @@ def estudiantes_page() -> None:
         # ── Renderizado de la página ──────────────────────────────────────────
 
         with ui.element("div").classes("page-stack"):
-
             # ── 1. Panel de filtros ───────────────────────────────────────────
             with ui.element("div").classes("panel-card"):
                 with ui.element("div").classes("panel-header"):
@@ -878,8 +1036,13 @@ def estudiantes_page() -> None:
 
                     ui.select(
                         label="Estado",
-                        options={None: "Todos", "activo": "Activo", "inactivo": "Inactivo",
-                                 "retirado": "Retirado", "graduado": "Graduado"},
+                        options={
+                            None: "Todos",
+                            "activo": "Activo",
+                            "inactivo": "Inactivo",
+                            "retirado": "Retirado",
+                            "graduado": "Graduado",
+                        },
                         value=None,
                         on_change=lambda e: (
                             _s.update({"filtro_estado": e.value, "filtro_tocado": True}),
@@ -891,7 +1054,9 @@ def estudiantes_page() -> None:
                     ui.checkbox(
                         "Solo con PIAR",
                         on_change=lambda e: (
-                            _s.update({"filtro_piar": True if e.value else None, "filtro_tocado": True}),
+                            _s.update(
+                                {"filtro_piar": True if e.value else None, "filtro_tocado": True}
+                            ),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
@@ -918,9 +1083,9 @@ def estudiantes_page() -> None:
                     ThemeManager.icono(Icons.STUDENTS, size=20)
                     with ui.element("div").classes("flex-1"):
                         ui.label("Estudiantes").classes("panel-title")
-                        ui.label(
-                            f"{len(_s['estudiantes'])} resultado(s)"
-                        ).classes("tablero-panel-subtitle")
+                        ui.label(f"{len(_s['estudiantes'])} resultado(s)").classes(
+                            "tablero-panel-subtitle"
+                        )
 
                     # ── 2a. Botones de acción ─────────────────────────────────
                     # Gating paso_42: solo director/coordinador ven las acciones
@@ -956,9 +1121,9 @@ def estudiantes_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Gestión de Estudiantes",
-        page_subtitulo = "Matrícula, estado y PIAR",
-        page_icono     = Icons.STUDENTS,
+        page_titulo="Gestión de Estudiantes",
+        page_subtitulo="Matrícula, estado y PIAR",
+        page_icono=Icons.STUDENTS,
     )
 
 

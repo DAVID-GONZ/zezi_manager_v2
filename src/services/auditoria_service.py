@@ -11,6 +11,7 @@ La auditoría es de solo lectura desde la perspectiva de los servicios
 de aplicación. Las escrituras las realizan otros servicios vía
 IAuditoriaRepository.registrar_cambio / registrar_evento.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -43,6 +44,7 @@ class AuditoriaService:
         if evento.institucion_id is None:
             try:
                 from src.services.contexto_tenant import institucion_actual
+
                 evento = evento.model_copy(update={"institucion_id": institucion_actual()})
             except Exception:
                 pass
@@ -100,8 +102,8 @@ class AuditoriaService:
         evento_roto_id = self._repo.verificar_cadena_eventos()
         cambio_roto_id = self._repo.verificar_cadena_cambios()
         return {
-            "eventos_ok":     evento_roto_id is None,
-            "cambios_ok":     cambio_roto_id is None,
+            "eventos_ok": evento_roto_id is None,
+            "cambios_ok": cambio_roto_id is None,
             "evento_roto_id": evento_roto_id,
             "cambio_roto_id": cambio_roto_id,
         }
@@ -147,12 +149,12 @@ class AuditoriaService:
                 accesos_denegados += 1
 
         return ResumenUsoDTO(
-            logins_hoy        = logins_hoy,
-            logins_periodo    = logins_periodo,
-            accesos_denegados = accesos_denegados,
-            usuarios_activos  = len(usuarios),
-            sesiones_periodo  = logins_periodo,
-            dias              = dias,
+            logins_hoy=logins_hoy,
+            logins_periodo=logins_periodo,
+            accesos_denegados=accesos_denegados,
+            usuarios_activos=len(usuarios),
+            sesiones_periodo=logins_periodo,
+            dias=dias,
         )
 
 

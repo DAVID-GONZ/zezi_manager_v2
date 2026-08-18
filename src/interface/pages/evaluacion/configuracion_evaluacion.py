@@ -23,6 +23,7 @@ La configuración institucional del SIEE se gestiona en /admin/configuracion.
 La gestión de actividades (crear, publicar, cerrar, eliminar) se delega
 completamente a /evaluacion/planilla.
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,8 +45,8 @@ from src.interface.design.components.buttons import (
     btn_primary,
 )
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.evaluacion_service import (
     ActualizarCategoriaDTO,
@@ -74,23 +75,23 @@ def configuracion_evaluacion_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "anio_id":            None,
-        "periodos":           [],
-        "asignaciones":       [],
-        "periodo_id":         None,
-        "asignacion_id":      None,
+        "anio_id": None,
+        "periodos": [],
+        "asignaciones": [],
+        "periodo_id": None,
+        "asignacion_id": None,
         # SIEE
-        "siee_cfg":           None,    # ConfiguracionSIEE
-        "cats_inst":          [],      # list[Categoria] institucionales
+        "siee_cfg": None,  # ConfiguracionSIEE
+        "cats_inst": [],  # list[Categoria] institucionales
         # Categorías del docente (para la asignacion+periodo activos)
-        "cats_docente":       [],      # list[Categoria] es_institucional=False
+        "cats_docente": [],  # list[Categoria] es_institucional=False
         # formulario nueva cat docente
-        "form_nombre":        "",
-        "form_peso":          0.10,
-        "form_padre_id":      None,    # solo MIXTO_SUBCATEGORIAS
+        "form_nombre": "",
+        "form_peso": 0.10,
+        "form_padre_id": None,  # solo MIXTO_SUBCATEGORIAS
         # Corte plan de mejoramiento
-        "corte":               None,   # CortePlan | None
-        "notas_corte":         [],     # list[NotaCortePlan]
+        "corte": None,  # CortePlan | None
+        "notas_corte": [],  # list[NotaCortePlan]
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -99,8 +100,7 @@ def configuracion_evaluacion_page() -> None:
             config = Container.configuracion_service().get_activa()
             _s["anio_id"] = config.id if config else None
             _s["periodos"] = (
-                Container.periodo_service().listar_por_anio(_s["anio_id"])
-                if _s["anio_id"] else []
+                Container.periodo_service().listar_por_anio(_s["anio_id"]) if _s["anio_id"] else []
             )
         except Exception as exc:
             logger.error("Error cargando periodos: %s", exc)
@@ -122,14 +122,14 @@ def configuracion_evaluacion_page() -> None:
             return
         try:
             svc = Container.evaluacion_service()
-            _s["siee_cfg"]   = svc.get_configuracion_siee(anio_id)
-            _s["cats_inst"]  = svc.listar_categorias_institucionales(anio_id)
+            _s["siee_cfg"] = svc.get_configuracion_siee(anio_id)
+            _s["cats_inst"] = svc.listar_categorias_institucionales(anio_id)
         except Exception as exc:
             logger.error("Error cargando SIEE: %s", exc)
 
     def _cargar_cats_docente() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             _s["cats_docente"] = []
             return
@@ -142,7 +142,7 @@ def configuracion_evaluacion_page() -> None:
 
     def _cargar_corte() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             _s["corte"] = None
             _s["notas_corte"] = []
@@ -169,20 +169,20 @@ def configuracion_evaluacion_page() -> None:
 
     def _ctx_dto() -> ContextoAcademicoDTO | None:
         anio_id = _s["anio_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not anio_id or not per_id:
             return None
         return ContextoAcademicoDTO(
-            usuario_id    = ctx.usuario_id,
-            anio_id       = anio_id,
-            periodo_id    = per_id,
-            asignacion_id = _s["asignacion_id"],
+            usuario_id=ctx.usuario_id,
+            anio_id=anio_id,
+            periodo_id=per_id,
+            asignacion_id=_s["asignacion_id"],
         )
 
     def _peso_disponible_docente() -> float:
         anio_id = _s["anio_id"]
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not anio_id or not asig_id or not per_id:
             return 1.0
         try:
@@ -195,8 +195,8 @@ def configuracion_evaluacion_page() -> None:
     # ── Acciones — categorías docente ─────────────────────────────────────────
     def _crear_cat_docente() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
-        cdt     = _ctx_dto()
+        per_id = _s["periodo_id"]
+        cdt = _ctx_dto()
         if not asig_id or not per_id or not cdt:
             toast_warning("Seleccione periodo y asignación primero")
             return
@@ -206,18 +206,16 @@ def configuracion_evaluacion_page() -> None:
         # NuevaCategoriaDTO valida nombre (no vacío) y peso (0 < x <= 1).
         try:
             dto = NuevaCategoriaDTO(
-                nombre             = _s["form_nombre"],
-                peso               = _s["form_peso"],
-                asignacion_id      = asig_id,
-                periodo_id         = per_id,
-                categoria_padre_id = padre_id,
+                nombre=_s["form_nombre"],
+                peso=_s["form_peso"],
+                asignacion_id=asig_id,
+                periodo_id=per_id,
+                categoria_padre_id=padre_id,
             )
-            Container.evaluacion_service().agregar_categoria(
-                dto, cdt, usuario_id=ctx.usuario_id
-            )
+            Container.evaluacion_service().agregar_categoria(dto, cdt, usuario_id=ctx.usuario_id)
             toast_success(f"Categoría '{dto.nombre}' creada")
-            _s["form_nombre"]   = ""
-            _s["form_peso"]     = 0.10
+            _s["form_nombre"] = ""
+            _s["form_peso"] = 0.10
             _s["form_padre_id"] = None
             _cargar_cats_docente()
             seccion_docente.refresh()
@@ -253,23 +251,34 @@ def configuracion_evaluacion_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Editar categoría",
-            campos    = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text",
-                 "valor": cat.nombre, "requerido": True},
-                {"key": "peso",   "label": "Peso (0.01–1.0) *", "tipo": "number",
-                 "valor": cat.peso, "min": 0.01, "max": 1.0, "step": 0.01, "format": "%.2f"},
+            titulo="Editar categoría",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": cat.nombre,
+                    "requerido": True,
+                },
+                {
+                    "key": "peso",
+                    "label": "Peso (0.01–1.0) *",
+                    "tipo": "number",
+                    "valor": cat.peso,
+                    "min": 0.01,
+                    "max": 1.0,
+                    "step": 0.01,
+                    "format": "%.2f",
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     def _eliminar_cat_docente(cat) -> None:
         def _ejecutar() -> None:
             try:
-                Container.evaluacion_service().eliminar_categoria(
-                    cat.id, usuario_id=ctx.usuario_id
-                )
+                Container.evaluacion_service().eliminar_categoria(cat.id, usuario_id=ctx.usuario_id)
                 toast_success(f"'{cat.nombre}' eliminada")
                 _cargar_cats_docente()
                 seccion_docente.refresh()
@@ -280,11 +289,11 @@ def configuracion_evaluacion_page() -> None:
                 toast_error("Error al eliminar")
 
         confirm_dialog(
-            titulo          = "Eliminar categoría",
-            mensaje         = f"¿Eliminar '{cat.nombre}'? Esta acción es irreversible.",
-            on_confirm      = _ejecutar,
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar categoría",
+            mensaje=f"¿Eliminar '{cat.nombre}'? Esta acción es irreversible.",
+            on_confirm=_ejecutar,
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     def _on_selector_cambio() -> None:
@@ -295,14 +304,12 @@ def configuracion_evaluacion_page() -> None:
 
     def _ejecutar_corte() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             toast_warning("Selecciona periodo y asignación primero")
             return
         # Obtener grupo_id de la asignacion seleccionada
-        asig_info = next(
-            (a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None
-        )
+        asig_info = next((a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None)
         if not asig_info:
             toast_warning("Asignación no encontrada")
             return
@@ -316,9 +323,11 @@ def configuracion_evaluacion_page() -> None:
                     nota_minima_aprobacion=60.0,
                     usuario_id=ctx.usuario_id,
                 )
-                corte, notas = Container.plan_mejoramiento_service().ejecutar_corte(dto, grupo_id)
+                _corte, notas = Container.plan_mejoramiento_service().ejecutar_corte(dto, grupo_id)
                 en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
-                toast_success(f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento.")
+                toast_success(
+                    f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento."
+                )
                 _cargar_corte()
                 seccion_corte.refresh()
             except ValueError as exc:
@@ -328,15 +337,15 @@ def configuracion_evaluacion_page() -> None:
                 toast_error("Error al ejecutar el corte")
 
         confirm_dialog(
-            titulo          = "Ejecutar corte de Plan de Mejoramiento",
-            mensaje         = (
+            titulo="Ejecutar corte de Plan de Mejoramiento",
+            mensaje=(
                 "Se calculará el corte con las notas registradas hasta ahora. "
                 "Los estudiantes con promedio ponderado menor al umbral irán a "
                 "Plan de Mejoramiento. Esta acción no se puede deshacer."
             ),
-            on_confirm      = _confirmar,
-            texto_confirmar = "Ejecutar corte",
-            texto_cancelar  = "Cancelar",
+            on_confirm=_confirmar,
+            texto_confirmar="Ejecutar corte",
+            texto_cancelar="Cancelar",
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -344,10 +353,10 @@ def configuracion_evaluacion_page() -> None:
     @ui.refreshable
     def seccion_docente() -> None:
         """Sección B — Categorías propias del docente."""
-        modo      = _modo_actual()
-        cats_doc  = _s["cats_docente"]
-        asig_id   = _s["asignacion_id"]
-        per_id    = _s["periodo_id"]
+        modo = _modo_actual()
+        cats_doc = _s["cats_docente"]
+        asig_id = _s["asignacion_id"]
+        per_id = _s["periodo_id"]
 
         # En modo INSTITUCIONAL_FIJO: solo mostramos info
         if modo == "institucional_fijo":
@@ -366,8 +375,8 @@ def configuracion_evaluacion_page() -> None:
                 ui.label("Mis categorías").classes("section-title-lg")
 
             # Selector de contexto
-            periodos_opts   = {p.id: p.nombre for p in _s["periodos"]}
-            asigs_opts      = {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
+            periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
+            asigs_opts = {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
 
             with ui.row().classes("form-row-center-md u-mb-lg"):
                 ui.select(
@@ -397,8 +406,8 @@ def configuracion_evaluacion_page() -> None:
 
             # Barra de peso disponible
             disponible = _peso_disponible_docente()
-            usado      = round((1.0 - disponible) * 100, 1)
-            total_pct  = round(disponible * 100, 1)
+            usado = round((1.0 - disponible) * 100, 1)
+            total_pct = round(disponible * 100, 1)
 
             with ui.element("div").classes("mb-4"):
                 with ui.row().classes("form-row-center-md u-mb-xs"):
@@ -411,7 +420,7 @@ def configuracion_evaluacion_page() -> None:
                 # Barra visual
                 with ui.element("div").classes("progress-bar-track bg-surface-alt"):
                     ancho_usado = min(100, round(usado))
-                    color_bar   = "fill-success" if usado <= 100 else "fill-error"
+                    color_bar = "fill-success" if usado <= 100 else "fill-error"
                     ui.element("div").classes(f"{color_bar} h-full").style(
                         f"width: {ancho_usado}%"  # DYNAMIC: ancho proporcional al % usado
                     )
@@ -450,9 +459,9 @@ def configuracion_evaluacion_page() -> None:
 
             # Tabla de categorías docente
             if not cats_doc:
-                ui.label("No has creado categorías propias para este periodo y asignación.").classes(
-                    "text-empty text-sm"
-                )
+                ui.label(
+                    "No has creado categorías propias para este periodo y asignación."
+                ).classes("text-empty text-sm")
                 return
 
             with ui.element("div").classes("w-full"):
@@ -468,7 +477,8 @@ def configuracion_evaluacion_page() -> None:
                 for cat in cats_doc:
                     padre_nombre = (
                         cats_inst_map.get(cat.categoria_padre_id, "—")
-                        if cat.categoria_padre_id else "—"
+                        if cat.categoria_padre_id
+                        else "—"
                     )
                     with ui.element("div").classes("divider-row"):
                         ui.label(cat.nombre).classes("flex-1 text-sm")
@@ -492,10 +502,10 @@ def configuracion_evaluacion_page() -> None:
     @ui.refreshable
     def seccion_corte() -> None:
         """Sección C — Corte de Plan de Mejoramiento."""
-        asig_id    = _s["asignacion_id"]
-        per_id     = _s["periodo_id"]
-        corte      = _s["corte"]
-        notas      = _s["notas_corte"]
+        asig_id = _s["asignacion_id"]
+        per_id = _s["periodo_id"]
+        corte = _s["corte"]
+        notas = _s["notas_corte"]
 
         with ui.element("div").classes("panel-card mt-4"):
             with ui.row().classes("form-row-center u-mb-md"):
@@ -503,16 +513,14 @@ def configuracion_evaluacion_page() -> None:
                 ui.label("Corte — Plan de Mejoramiento").classes("section-title-lg")
 
             if not asig_id or not per_id:
-                ui.label(
-                    "Selecciona periodo y asignación para ver el estado del corte."
-                ).classes("text-empty text-sm")
+                ui.label("Selecciona periodo y asignación para ver el estado del corte.").classes(
+                    "text-empty text-sm"
+                )
                 return
 
             if corte is None:
                 # Sin corte: mostrar botón para ejecutar (solo admin/coord/docente)
-                with ui.element("div").classes(
-                    "alert-panel-row bg-info-soft border border-info"
-                ):
+                with ui.element("div").classes("alert-panel-row bg-info-soft border border-info"):
                     ThemeManager.icono("info", size=24, color="var(--color-info)")
                     ui.label(
                         "No se ha ejecutado el corte para este periodo. "
@@ -526,36 +534,28 @@ def configuracion_evaluacion_page() -> None:
                 return
 
             # Con corte: mostrar estadísticas
-            en_plan  = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+            en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
             sin_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.SIN_PLAN)
             aprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.APROBADO)
             reprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.REPROBADO)
 
-            with ui.element("div").classes(
-                "form-box bg-success-soft border border-success mb-3"
-            ):
+            with ui.element("div").classes("form-box bg-success-soft border border-success mb-3"):
                 with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
                     ui.label(
                         f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
                     ).classes("font-semibold text-sm text-success")
                 with ui.row().classes("gap-4 flex-wrap"):
-                    ui.label(
-                        f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
-                    ).classes("text-sm")
-                    ui.label(
-                        f"Umbral aprobación: {corte.nota_umbral:.1f}"
-                    ).classes("text-sm")
+                    ui.label(f"Peso registrado: {corte.peso_registrado * 100:.1f}%").classes(
+                        "text-sm"
+                    )
+                    ui.label(f"Umbral aprobación: {corte.nota_umbral:.1f}").classes("text-sm")
 
             # Conteos por estado
             with ui.row().classes("form-row-center u-mt-sm"):
-                with ui.element("div").classes(
-                    "form-box-sm flex items-center gap-2 bg-subtle"
-                ):
+                with ui.element("div").classes("form-box-sm flex items-center gap-2 bg-subtle"):
                     ui.label(f"Total: {len(notas)}").classes("text-sm font-semibold")
-                with ui.element("div").classes(
-                    "form-box-sm flex items-center gap-2 bg-error-soft"
-                ):
+                with ui.element("div").classes("form-box-sm flex items-center gap-2 bg-error-soft"):
                     ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-error")
                 with ui.element("div").classes(
                     "form-box-sm flex items-center gap-2 bg-success-soft"
@@ -565,11 +565,15 @@ def configuracion_evaluacion_page() -> None:
                     with ui.element("div").classes(
                         "form-box-sm flex items-center gap-2 bg-info-soft"
                     ):
-                        ui.label(f"Aprobó plan: {aprobado}").classes("text-sm font-semibold text-info")
+                        ui.label(f"Aprobó plan: {aprobado}").classes(
+                            "text-sm font-semibold text-info"
+                        )
                     with ui.element("div").classes(
                         "form-box-sm flex items-center gap-2 bg-warning-soft"
                     ):
-                        ui.label(f"Reprobó plan: {reprobado}").classes("text-sm font-semibold text-warning")
+                        ui.label(f"Reprobó plan: {reprobado}").classes(
+                            "text-sm font-semibold text-warning"
+                        )
 
             ui.label(
                 "Para gestionar actividades del plan y cerrar por estudiante, "
@@ -584,7 +588,6 @@ def configuracion_evaluacion_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             # Header de página
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
@@ -609,8 +612,9 @@ def configuracion_evaluacion_page() -> None:
             seccion_corte()
 
     app_layout(
-        ctx, contenido,
-        page_titulo       = "Evaluación · Configuración",
+        ctx,
+        contenido,
+        page_titulo="Evaluación · Configuración",
     )
 
 

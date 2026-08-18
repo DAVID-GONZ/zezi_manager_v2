@@ -10,6 +10,7 @@ Por qué color=None es obligatorio:
   color="primary". Esas clases sobreescriben los estilos de .btn-primary
   definidos en styles.css. color=None bloquea esa inyección.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

@@ -18,7 +18,7 @@ Regla general: los campos de texto obligatorios se normalizan
 from __future__ import annotations
 
 from datetime import time
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -27,35 +27,38 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class Jornada(str, Enum):
-    AM    = "AM"
-    PM    = "PM"
+
+class Jornada(StrEnum):
+    AM = "AM"
+    PM = "PM"
     UNICA = "UNICA"
 
 
-class DiaSemana(str, Enum):
-    LUNES     = "Lunes"
-    MARTES    = "Martes"
+class DiaSemana(StrEnum):
+    LUNES = "Lunes"
+    MARTES = "Martes"
     MIERCOLES = "Miércoles"
-    JUEVES    = "Jueves"
-    VIERNES   = "Viernes"
-    SABADO    = "Sábado"
+    JUEVES = "Jueves"
+    VIERNES = "Viernes"
+    SABADO = "Sábado"
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
 
+
 class AreaConocimiento(BaseModel):
     """
     Área del currículo colombiano (Ley 115 de 1994, Art. 23).
     Ejemplos: 'Matemáticas', 'Ciencias Naturales y Educación Ambiental'.
     """
-    id:             int | None  = None
-    nombre:         str
-    codigo:         str | None  = None
-    color:          str | None  = None      # hex "#RGB" o "#RRGGBB"; None = sin color
-    institucion_id: int | None  = None
+
+    id: int | None = None
+    nombre: str
+    codigo: str | None = None
+    color: str | None = None  # hex "#RGB" o "#RRGGBB"; None = sin color
+    institucion_id: int | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -65,9 +68,7 @@ class AreaConocimiento(BaseModel):
         if not v:
             raise ValueError("El nombre del área no puede estar vacío.")
         if len(v) > 120:
-            raise ValueError(
-                f"El nombre no puede exceder 120 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 120 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("codigo", mode="before")
@@ -98,17 +99,18 @@ class Asignatura(BaseModel):
     Asignatura que se dicta en la institución.
     Pertenece a un área de conocimiento.
     """
-    id:              int | None = None
-    nombre:          str
-    codigo:          str | None = None
-    area_id:         int | None = None
-    horas_semanales: int        = Field(default=1, ge=1)
-    tipo_sala_requerido: str | None = None   # None = cualquier sala / "Aula"
-    bloque_doble:        bool       = False   # requiere franjas consecutivas
-    horas_consecutivas:  int        = Field(default=1, ge=1)  # bloques dobles N horas seguidas
+
+    id: int | None = None
+    nombre: str
+    codigo: str | None = None
+    area_id: int | None = None
+    horas_semanales: int = Field(default=1, ge=1)
+    tipo_sala_requerido: str | None = None  # None = cualquier sala / "Aula"
+    bloque_doble: bool = False  # requiere franjas consecutivas
+    horas_consecutivas: int = Field(default=1, ge=1)  # bloques dobles N horas seguidas
     # Multi-tenant (paso_29): institución dueña. None = sin tenant (single-tenant
     # temprano / arranque sin sesión); el servicio y el seed la resuelven a #1.
-    institucion_id:  int | None = None
+    institucion_id: int | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -118,9 +120,7 @@ class Asignatura(BaseModel):
         if not v:
             raise ValueError("El nombre de la asignatura no puede estar vacío.")
         if len(v) > 100:
-            raise ValueError(
-                f"El nombre no puede exceder 100 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 100 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("codigo", mode="before")
@@ -148,16 +148,17 @@ class Grupo(BaseModel):
 
     El código es el identificador legible: '601', '1101', 'A1', etc.
     """
-    id:               int | None = None
-    codigo:           str
-    nombre:           str | None = None
-    grado:            int | None = None
-    jornada:          Jornada    = Jornada.UNICA
-    capacidad_maxima: int        = Field(default=40, ge=1)
-    sala_id:          int | None = None   # aula propia del grupo (salón base)
+
+    id: int | None = None
+    codigo: str
+    nombre: str | None = None
+    grado: int | None = None
+    jornada: Jornada = Jornada.UNICA
+    capacidad_maxima: int = Field(default=40, ge=1)
+    sala_id: int | None = None  # aula propia del grupo (salón base)
     # Multi-tenant (paso_29): institución dueña. None = sin tenant; el servicio
     # y el seed la resuelven a #1.
-    institucion_id:   int | None = None
+    institucion_id: int | None = None
     # Director de grupo (convivencia_01): FK opcional a usuarios(id). Autoridad
     # por objeto, no un Rol. None = grupo sin director asignado.
     director_grupo_id: int | None = None
@@ -170,9 +171,7 @@ class Grupo(BaseModel):
         if not v:
             raise ValueError("El código del grupo no puede estar vacío.")
         if len(v) > 20:
-            raise ValueError(
-                f"El código no puede exceder 20 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El código no puede exceder 20 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("nombre", mode="before")
@@ -189,9 +188,7 @@ class Grupo(BaseModel):
     def validar_grado(cls, v: int | None) -> int | None:
         """Si se indica grado, debe estar en el rango 1..13 del sistema colombiano."""
         if v is not None and not (1 <= v <= 13):
-            raise ValueError(
-                f"El grado debe estar entre 1 y 13 (recibido: {v})."
-            )
+            raise ValueError(f"El grado debe estar entre 1 y 13 (recibido: {v}).")
         return v
 
     # ------------------------------------------------------------------
@@ -233,12 +230,13 @@ class Grado(BaseModel):
     Grado ofrecido por la institución (1–13), con su rango de estudiantes
     (norma colombiana) y el total de horas semanales objetivo del plan.
     """
-    id:              int | None = None
-    numero:          int        = Field(ge=1, le=13)
-    nombre:          str | None = None
-    min_estudiantes: int        = Field(default=0, ge=0)
-    max_estudiantes: int        = Field(default=40, ge=1)
-    horas_semanales: int        = Field(default=0, ge=0)
+
+    id: int | None = None
+    numero: int = Field(ge=1, le=13)
+    nombre: str | None = None
+    min_estudiantes: int = Field(default=0, ge=0)
+    max_estudiantes: int = Field(default=40, ge=1)
+    horas_semanales: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def validar_rango_estudiantes(self) -> Grado:
@@ -257,15 +255,16 @@ class ConfiguracionGradoInstitucion(BaseModel):
     Permite que cada institución ajuste min/max de estudiantes y horas semanales
     por grado sin modificar la tabla global `grados`.
     """
-    id:              int | None = None
-    grado_id:        int        = Field(gt=0)
-    institucion_id:  int        = Field(gt=0)
-    min_estudiantes: int        = Field(default=0, ge=0)
-    max_estudiantes: int        = Field(default=40, ge=1)
-    horas_semanales: int        = Field(default=0, ge=0)
+
+    id: int | None = None
+    grado_id: int = Field(gt=0)
+    institucion_id: int = Field(gt=0)
+    min_estudiantes: int = Field(default=0, ge=0)
+    max_estudiantes: int = Field(default=40, ge=1)
+    horas_semanales: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
-    def validar_rango_estudiantes(self) -> "ConfiguracionGradoInstitucion":
+    def validar_rango_estudiantes(self) -> ConfiguracionGradoInstitucion:
         """El mínimo de estudiantes no puede superar el máximo."""
         if self.min_estudiantes > self.max_estudiantes:
             raise ValueError(
@@ -280,12 +279,13 @@ class EscenarioHorario(BaseModel):
     Escenario de horario para un año lectivo.
     Solo puede haber un escenario activo por año (enforced por índice parcial).
     """
-    id:          int | None  = None
-    anio_id:     int
-    nombre:      str
-    descripcion: str | None  = None
-    activo:      bool        = False
-    created_at:  str | None  = None
+
+    id: int | None = None
+    anio_id: int
+    nombre: str
+    descripcion: str | None = None
+    activo: bool = False
+    created_at: str | None = None
 
     @field_validator("anio_id")
     @classmethod
@@ -307,8 +307,9 @@ class EscenarioHorario(BaseModel):
 
 class NuevoEscenarioDTO(BaseModel):
     """DTO para crear un nuevo escenario de horario."""
-    anio_id:     int
-    nombre:      str
+
+    anio_id: int
+    nombre: str
     descripcion: str | None = None
 
     @field_validator("anio_id")
@@ -341,17 +342,18 @@ class Horario(BaseModel):
     Invariante: hora_inicio < hora_fin.
     periodo_id es nullable (resolución vía escenario activo).
     """
-    id:            int | None  = None
-    grupo_id:      int
+
+    id: int | None = None
+    grupo_id: int
     asignatura_id: int
-    usuario_id:    int
-    asignacion_id: int | None  = None
-    periodo_id:    int | None  = None
-    escenario_id:  int
-    dia_semana:    DiaSemana
-    hora_inicio:   time
-    hora_fin:      time
-    sala:          str         = "Aula"
+    usuario_id: int
+    asignacion_id: int | None = None
+    periodo_id: int | None = None
+    escenario_id: int
+    dia_semana: DiaSemana
+    hora_inicio: time
+    hora_fin: time
+    sala: str = "Aula"
 
     @field_validator("grupo_id", "asignatura_id", "usuario_id")
     @classmethod
@@ -378,15 +380,11 @@ class Horario(BaseModel):
         if isinstance(v, str):
             partes = v.strip().split(":")
             if len(partes) < 2:
-                raise ValueError(
-                    f"Formato de hora inválido: '{v}'. Use HH:MM."
-                )
+                raise ValueError(f"Formato de hora inválido: '{v}'. Use HH:MM.")
             try:
                 return time(int(partes[0]), int(partes[1]))
             except ValueError:
-                raise ValueError(
-                    f"Hora fuera de rango: '{v}'."
-                )
+                raise ValueError(f"Hora fuera de rango: '{v}'.")
         raise ValueError(f"Tipo de hora no soportado: {type(v)}.")
 
     @field_validator("sala", mode="before")
@@ -401,8 +399,7 @@ class Horario(BaseModel):
         """Invariante temporal: la hora de inicio debe ser anterior a la de fin."""
         if self.hora_inicio >= self.hora_fin:
             raise ValueError(
-                f"hora_inicio ({self.hora_inicio}) debe ser anterior "
-                f"a hora_fin ({self.hora_fin})."
+                f"hora_inicio ({self.hora_inicio}) debe ser anterior a hora_fin ({self.hora_fin})."
             )
         return self
 
@@ -414,7 +411,7 @@ class Horario(BaseModel):
     def duracion_minutos(self) -> int:
         """Duración de la clase en minutos."""
         inicio = self.hora_inicio.hour * 60 + self.hora_inicio.minute
-        fin    = self.hora_fin.hour    * 60 + self.hora_fin.minute
+        fin = self.hora_fin.hour * 60 + self.hora_fin.minute
         return fin - inicio
 
     @property
@@ -438,11 +435,12 @@ class Logro(BaseModel):
     en el boletín junto a la nota. Ejemplo:
     'Comprende y aplica los conceptos de función cuadrática.'
     """
-    id:            int | None = None
+
+    id: int | None = None
     asignacion_id: int
-    periodo_id:    int
-    descripcion:   str
-    orden:         int        = Field(default=0, ge=0)
+    periodo_id: int
+    descripcion: str
+    orden: int = Field(default=0, ge=0)
 
     @field_validator("asignacion_id", "periodo_id")
     @classmethod
@@ -460,9 +458,7 @@ class Logro(BaseModel):
         if not v:
             raise ValueError("La descripción del logro no puede estar vacía.")
         if len(v) > 500:
-            raise ValueError(
-                f"La descripción no puede exceder 500 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La descripción no puede exceder 500 caracteres (tiene {len(v)}).")
         return v
 
 
@@ -485,13 +481,14 @@ class Franja(BaseModel):
     Las horas se modelan como strings "HH:MM" y se comparan
     lexicográficamente, coherente con el resto del modelo de horarios.
     """
-    id:           int | None = None
+
+    id: int | None = None
     plantilla_id: int
-    orden:        int        = Field(ge=1)
-    hora_inicio:  str
-    hora_fin:     str
-    tipo:         str        = "lectiva"
-    etiqueta:     str | None = None
+    orden: int = Field(ge=1)
+    hora_inicio: str
+    hora_fin: str
+    tipo: str = "lectiva"
+    etiqueta: str | None = None
 
     @field_validator("plantilla_id")
     @classmethod
@@ -516,9 +513,7 @@ class Franja(BaseModel):
         """El tipo de franja debe ser uno de TIPOS_FRANJA (lectiva/descanso/almuerzo)."""
         v = str(v).strip().lower()
         if v not in TIPOS_FRANJA:
-            raise ValueError(
-                f"tipo inválido: '{v}'. Use uno de {sorted(TIPOS_FRANJA)}."
-            )
+            raise ValueError(f"tipo inválido: '{v}'. Use uno de {sorted(TIPOS_FRANJA)}.")
         return v
 
     @field_validator("etiqueta", mode="before")
@@ -535,8 +530,7 @@ class Franja(BaseModel):
         """Invariante temporal: la hora de inicio debe ser anterior a la de fin."""
         if self.hora_inicio >= self.hora_fin:
             raise ValueError(
-                f"hora_inicio ({self.hora_inicio}) debe ser anterior "
-                f"a hora_fin ({self.hora_fin})."
+                f"hora_inicio ({self.hora_inicio}) debe ser anterior a hora_fin ({self.hora_fin})."
             )
         return self
 
@@ -551,13 +545,14 @@ class PlantillaFranja(BaseModel):
     Plantilla (rejilla) de franjas para una jornada. A lo sumo una activa
     por jornada (índice único parcial en BD).
     """
-    id:           int | None = None
-    nombre:       str
-    jornada:      str        = "UNICA"
+
+    id: int | None = None
+    nombre: str
+    jornada: str = "UNICA"
     dias_activos: list[str]
-    activa:       bool       = False
-    created_at:   str | None = None
-    institucion_id: int | None = None   # paso_32: lo resuelve el servicio si falta
+    activa: bool = False
+    created_at: str | None = None
+    institucion_id: int | None = None  # paso_32: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -574,9 +569,7 @@ class PlantillaFranja(BaseModel):
         """La jornada debe ser una de JORNADAS_VALIDAS (AM/PM/UNICA)."""
         v = str(v).strip().upper()
         if v not in JORNADAS_VALIDAS:
-            raise ValueError(
-                f"jornada inválida: '{v}'. Use uno de {sorted(JORNADAS_VALIDAS)}."
-            )
+            raise ValueError(f"jornada inválida: '{v}'. Use uno de {sorted(JORNADAS_VALIDAS)}.")
         return v
 
     @field_validator("dias_activos", mode="before")
@@ -593,15 +586,14 @@ class PlantillaFranja(BaseModel):
         invalidos = [d for d in dias if d not in DIAS_VALIDOS]
         if invalidos:
             raise ValueError(
-                f"Días inválidos en dias_activos: {invalidos}. "
-                f"Válidos: {DIAS_VALIDOS}."
+                f"Días inválidos en dias_activos: {invalidos}. Válidos: {DIAS_VALIDOS}."
             )
         return dias
 
 
 class NuevaPlantillaFranjaDTO(BaseModel):
-    nombre:       str
-    jornada:      str        = "UNICA"
+    nombre: str
+    jornada: str = "UNICA"
     dias_activos: list[str]
 
     def to_plantilla(self) -> PlantillaFranja:
@@ -611,11 +603,11 @@ class NuevaPlantillaFranjaDTO(BaseModel):
 
 class NuevaFranjaDTO(BaseModel):
     plantilla_id: int
-    orden:        int
-    hora_inicio:  str
-    hora_fin:     str
-    tipo:         str        = "lectiva"
-    etiqueta:     str | None = None
+    orden: int
+    hora_inicio: str
+    hora_fin: str
+    tipo: str = "lectiva"
+    etiqueta: str | None = None
 
     def to_franja(self) -> Franja:
         """Construye una Franja a partir de los datos del DTO."""
@@ -626,14 +618,15 @@ class NuevaFranjaDTO(BaseModel):
 # Generador de horarios (paso_15b)
 # =============================================================================
 
+
 class PesosGeneracion(BaseModel):
-    huecos:          float = Field(default=1.0, ge=0.0, le=2.0)
-    distribucion:    float = Field(default=1.0, ge=0.0, le=2.0)
-    compactacion:    float = Field(default=0.5, ge=0.0, le=2.0)
-    balance_diario:  float = Field(default=0.0, ge=0.0, le=2.0)
+    huecos: float = Field(default=1.0, ge=0.0, le=2.0)
+    distribucion: float = Field(default=1.0, ge=0.0, le=2.0)
+    compactacion: float = Field(default=0.5, ge=0.0, le=2.0)
+    balance_diario: float = Field(default=0.0, ge=0.0, le=2.0)
     franja_preferida: float = Field(default=0.0, ge=0.0, le=2.0)
-    dia_libre:       float = Field(default=0.0, ge=0.0, le=2.0)
-    hueco_comun:     float = Field(default=0.0, ge=0.0, le=2.0)
+    dia_libre: float = Field(default=0.0, ge=0.0, le=2.0)
+    hueco_comun: float = Field(default=0.0, ge=0.0, le=2.0)
 
 
 PESOS_DEFAULT = PesosGeneracion()
@@ -642,18 +635,18 @@ PESOS_DEFAULT = PesosGeneracion()
 ESTADOS_CONFIG: set[str] = {"borrador", "generado", "aplicado"}
 
 TRANSICIONES_CONFIG: dict[str, set[str]] = {
-    "borrador":  {"generado"},
-    "generado":  {"aplicado", "borrador"},
-    "aplicado":  set(),      # terminal
+    "borrador": {"generado"},
+    "generado": {"aplicado", "borrador"},
+    "aplicado": set(),  # terminal
 }
 
 
 class DisponibilidadDocente(BaseModel):
-    id:           int | None = None
-    usuario_id:   int        = Field(gt=0)
-    dia_semana:   str
-    franja_orden: int        = Field(ge=1)
-    disponible:   bool       = True
+    id: int | None = None
+    usuario_id: int = Field(gt=0)
+    dia_semana: str
+    franja_orden: int = Field(ge=1)
+    disponible: bool = True
 
     @field_validator("dia_semana", mode="before")
     @classmethod
@@ -661,25 +654,23 @@ class DisponibilidadDocente(BaseModel):
         """El día de la disponibilidad debe pertenecer a DIAS_VALIDOS."""
         v = str(v).strip()
         if v not in DIAS_VALIDOS:
-            raise ValueError(
-                f"dia_semana inválido: '{v}'. Válidos: {DIAS_VALIDOS}."
-            )
+            raise ValueError(f"dia_semana inválido: '{v}'. Válidos: {DIAS_VALIDOS}.")
         return v
 
 
 class ConfigGeneracion(BaseModel):
-    id:                   int | None = None
-    nombre:               str
-    periodo_id:           int        = Field(gt=0)
-    anio_id:              int        = Field(gt=0)
-    plantilla_id:         int        = Field(gt=0)
-    estado:               str        = "borrador"
-    grupos:               list[int]  = Field(default_factory=list)
-    pesos:                PesosGeneracion = Field(default_factory=PesosGeneracion)
+    id: int | None = None
+    nombre: str
+    periodo_id: int = Field(gt=0)
+    anio_id: int = Field(gt=0)
+    plantilla_id: int = Field(gt=0)
+    estado: str = "borrador"
+    grupos: list[int] = Field(default_factory=list)
+    pesos: PesosGeneracion = Field(default_factory=PesosGeneracion)
     escenario_destino_id: int | None = None
-    restricciones:        dict       = Field(default_factory=dict)
-    created_at:           str | None = None
-    updated_at:           str | None = None
+    restricciones: dict = Field(default_factory=dict)
+    created_at: str | None = None
+    updated_at: str | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -704,10 +695,10 @@ class ConfigGeneracion(BaseModel):
 
 
 class NuevaDisponibilidadDTO(BaseModel):
-    usuario_id:   int
-    dia_semana:   str
+    usuario_id: int
+    dia_semana: str
     franja_orden: int
-    disponible:   bool = True
+    disponible: bool = True
 
     def to_modelo(self) -> DisponibilidadDocente:
         """Construye una DisponibilidadDocente a partir de los datos del DTO."""
@@ -715,13 +706,13 @@ class NuevaDisponibilidadDTO(BaseModel):
 
 
 class NuevaConfigGeneracionDTO(BaseModel):
-    nombre:        str
-    periodo_id:    int
-    anio_id:       int
-    plantilla_id:  int
-    grupos:        list[int]        = Field(default_factory=list)
-    pesos:         PesosGeneracion  = Field(default_factory=PesosGeneracion)
-    restricciones: dict             = Field(default_factory=dict)
+    nombre: str
+    periodo_id: int
+    anio_id: int
+    plantilla_id: int
+    grupos: list[int] = Field(default_factory=list)
+    pesos: PesosGeneracion = Field(default_factory=PesosGeneracion)
+    restricciones: dict = Field(default_factory=dict)
 
     def to_config(self) -> ConfigGeneracion:
         """Construye una ConfigGeneracion a partir de los datos del DTO."""
@@ -732,54 +723,60 @@ class NuevaConfigGeneracionDTO(BaseModel):
 # Generador de horarios (paso_15c)
 # =============================================================================
 
+
 class BloqueGeneradoDTO(BaseModel):
     """Un bloque colocado por el generador en una franja lectiva concreta."""
+
     asignacion_id: int
-    grupo_id:      int
-    usuario_id:    int
-    dia_semana:    str
-    franja_orden:  int
-    hora_inicio:   str
-    hora_fin:      str
-    sala:          str      = "Aula"
-    sala_id:       int | None = None   # None = sala "Aula" legacy
+    grupo_id: int
+    usuario_id: int
+    dia_semana: str
+    franja_orden: int
+    hora_inicio: str
+    hora_fin: str
+    sala: str = "Aula"
+    sala_id: int | None = None  # None = sala "Aula" legacy
 
 
 class MetricasCalidadDTO(BaseModel):
     """Métricas de calidad blanda de una solución del generador (paso_15d)."""
-    huecos_grupo:         int   = 0    # ventanas vacías intra-día de los grupos
-    huecos_docente:       int   = 0    # ventanas vacías intra-día de los docentes
-    solapes_distribucion: int   = 0    # exceso de bloques de una misma asignación el mismo día
-    dias_docente:         int   = 0    # suma de días distintos trabajados por todos los docentes
-    costo_inicial:        float = 0.0
-    costo_final:          float = 0.0
-    pasos_mejora:         int   = 0
+
+    huecos_grupo: int = 0  # ventanas vacías intra-día de los grupos
+    huecos_docente: int = 0  # ventanas vacías intra-día de los docentes
+    solapes_distribucion: int = 0  # exceso de bloques de una misma asignación el mismo día
+    dias_docente: int = 0  # suma de días distintos trabajados por todos los docentes
+    costo_inicial: float = 0.0
+    costo_final: float = 0.0
+    pasos_mejora: int = 0
 
 
 class ResultadoGeneracionDTO(BaseModel):
     """Resultado de una corrida del generador de horarios v1."""
-    escenario_id:     int | None              = None
-    total_requeridos: int                     = 0   # suma de horas_semanales de las asignaciones
-    colocados:        int                     = 0
-    no_colocados:     int                     = 0
-    bloques:          list[BloqueGeneradoDTO] = []
-    incidencias:      list[str]               = []  # motivos de lo no colocado
-    valido:           bool                    = False  # analizar_lote.todo_ok del lote final
-    metricas:         MetricasCalidadDTO | None = None
-    causas:           dict[str, int]          = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
-    relajadas:        list[str]               = Field(default_factory=list)   # restricciones relajadas por infactibilidad
+
+    escenario_id: int | None = None
+    total_requeridos: int = 0  # suma de horas_semanales de las asignaciones
+    colocados: int = 0
+    no_colocados: int = 0
+    bloques: list[BloqueGeneradoDTO] = []
+    incidencias: list[str] = []  # motivos de lo no colocado
+    valido: bool = False  # analizar_lote.todo_ok del lote final
+    metricas: MetricasCalidadDTO | None = None
+    causas: dict[str, int] = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
+    relajadas: list[str] = Field(default_factory=list)  # restricciones relajadas por infactibilidad
 
 
 # =============================================================================
 # Restricciones configurables (paso_17)
 # =============================================================================
 
+
 class VentanaGrupo(BaseModel):
     """Restringe a qué franjas puede asignarse un grupo/grado."""
-    id:                 int | None = None
-    grupo_id:           int | None = None    # None = aplica por grado
-    grado:              int | None = None    # None = aplica a grupo_id específico
-    franjas_permitidas: list[int]            # lista de franja_orden permitidos
+
+    id: int | None = None
+    grupo_id: int | None = None  # None = aplica por grado
+    grado: int | None = None  # None = aplica a grupo_id específico
+    franjas_permitidas: list[int]  # lista de franja_orden permitidos
 
     @model_validator(mode="after")
     def validar_exclusividad(self) -> VentanaGrupo:
@@ -793,12 +790,13 @@ class VentanaGrupo(BaseModel):
 
 class BloqueAnclado(BaseModel):
     """Un bloque pre-colocado que el motor debe respetar."""
-    id:            int | None = None
-    escenario_id:  int
+
+    id: int | None = None
+    escenario_id: int
     asignacion_id: int
-    dia_semana:    str
-    franja_orden:  int = Field(ge=1)
-    sala_id:       int | None = None
+    dia_semana: str
+    franja_orden: int = Field(ge=1)
+    sala_id: int | None = None
 
     @field_validator("dia_semana", mode="before")
     @classmethod
@@ -812,12 +810,13 @@ class BloqueAnclado(BaseModel):
 
 class FranjaReunion(BaseModel):
     """Franja reservada para reunión de un conjunto de docentes."""
-    id:             int | None = None
-    nombre:         str
-    docentes:       list[int]      # lista de usuario_id
-    dia_semana:     str
-    franja_orden:   int = Field(ge=1)
-    modo:           str = "preferente"  # "estricta" | "preferente"
+
+    id: int | None = None
+    nombre: str
+    docentes: list[int]  # lista de usuario_id
+    dia_semana: str
+    franja_orden: int = Field(ge=1)
+    modo: str = "preferente"  # "estricta" | "preferente"
     institucion_id: int | None = None
 
     @field_validator("dia_semana", mode="before")
@@ -850,10 +849,11 @@ class FranjaReunion(BaseModel):
 
 class LimitesDocente(BaseModel):
     """Límites de carga diaria por docente (amplía carga_horaria_max en usuario)."""
-    id:             int | None = None
-    usuario_id:     int = Field(gt=0)
-    min_horas_dia:  int = Field(default=0, ge=0)
-    max_horas_dia:  int = Field(default=8, ge=1)
+
+    id: int | None = None
+    usuario_id: int = Field(gt=0)
+    min_horas_dia: int = Field(default=0, ge=0)
+    max_horas_dia: int = Field(default=8, ge=1)
 
     @model_validator(mode="after")
     def validar_rango(self) -> LimitesDocente:
@@ -870,18 +870,21 @@ class LimitesDocente(BaseModel):
 # Plan de estudios (paso_19)
 # =============================================================================
 
+
 class PlanEstudios(BaseModel):
     """Horas semanales de una asignatura para un grado específico."""
-    id:              int | None = None
-    grado:           int        = Field(ge=1, le=13)
-    asignatura_id:   int        = Field(gt=0)
-    horas_semanales: int        = Field(ge=1, le=40)
-    institucion_id:  int | None = None
+
+    id: int | None = None
+    grado: int = Field(ge=1, le=13)
+    asignatura_id: int = Field(gt=0)
+    horas_semanales: int = Field(ge=1, le=40)
+    institucion_id: int | None = None
 
 
 # =============================================================================
 # DTOs
 # =============================================================================
+
 
 class NuevaAreaDTO(BaseModel):
     nombre: str
@@ -902,14 +905,14 @@ class NuevaAreaDTO(BaseModel):
 
 
 class NuevaAsignaturaDTO(BaseModel):
-    nombre:          str
-    codigo:          str | None = None
-    area_id:         int | None = None
-    horas_semanales: int        = 1
+    nombre: str
+    codigo: str | None = None
+    area_id: int | None = None
+    horas_semanales: int = 1
     tipo_sala_requerido: str | None = None
-    bloque_doble:        bool       = False
-    horas_consecutivas:  int        = Field(default=1, ge=1)
-    institucion_id:  int | None = None   # paso_29: lo resuelve el servicio si falta
+    bloque_doble: bool = False
+    horas_consecutivas: int = Field(default=1, ge=1)
+    institucion_id: int | None = None  # paso_29: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -926,12 +929,12 @@ class NuevaAsignaturaDTO(BaseModel):
 
 
 class NuevoGrupoDTO(BaseModel):
-    codigo:           str
-    nombre:           str | None = None
-    grado:            int | None = None
-    jornada:          Jornada    = Jornada.UNICA
-    capacidad_maxima: int        = 40
-    institucion_id:   int | None = None   # paso_29: lo resuelve el servicio si falta
+    codigo: str
+    nombre: str | None = None
+    grado: int | None = None
+    jornada: Jornada = Jornada.UNICA
+    capacidad_maxima: int = 40
+    institucion_id: int | None = None  # paso_29: lo resuelve el servicio si falta
 
     @field_validator("codigo", mode="before")
     @classmethod
@@ -951,13 +954,15 @@ class NuevoGrupoDTO(BaseModel):
 # Sala (paso_17)
 # =============================================================================
 
+
 class Sala(BaseModel):
     """Sala o espacio físico donde se dictan clases."""
-    id:        int | None = None
-    nombre:    str
-    tipo:      str = "aula"   # "aula" | "laboratorio" | "computo" | "ed_fisica" | "otro"
+
+    id: int | None = None
+    nombre: str
+    tipo: str = "aula"  # "aula" | "laboratorio" | "computo" | "ed_fisica" | "otro"
     capacidad: int = Field(default=30, ge=1)
-    institucion_id: int | None = None   # paso_32: lo resuelve el servicio si falta
+    institucion_id: int | None = None  # paso_32: lo resuelve el servicio si falta
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -980,8 +985,8 @@ class Sala(BaseModel):
 
 
 class NuevaSalaDTO(BaseModel):
-    nombre:    str
-    tipo:      str = "aula"
+    nombre: str
+    tipo: str = "aula"
     capacidad: int = 30
 
     def to_sala(self) -> Sala:
@@ -990,16 +995,16 @@ class NuevaSalaDTO(BaseModel):
 
 
 class NuevoHorarioDTO(BaseModel):
-    grupo_id:      int
+    grupo_id: int
     asignatura_id: int
-    usuario_id:    int
-    escenario_id:  int
-    periodo_id:    int | None = None
-    dia_semana:    DiaSemana
-    hora_inicio:   time
-    hora_fin:      time
+    usuario_id: int
+    escenario_id: int
+    periodo_id: int | None = None
+    dia_semana: DiaSemana
+    hora_inicio: time
+    hora_fin: time
     asignacion_id: int | None = None
-    sala:          str        = "Aula"
+    sala: str = "Aula"
 
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
@@ -1024,9 +1029,9 @@ class NuevoHorarioDTO(BaseModel):
 
 class NuevoLogroDTO(BaseModel):
     asignacion_id: int
-    periodo_id:    int
-    descripcion:   str
-    orden:         int = 0
+    periodo_id: int
+    descripcion: str
+    orden: int = 0
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -1046,6 +1051,7 @@ class NuevoLogroDTO(BaseModel):
 # Modelos de lectura (read models desde JOINs)
 # =============================================================================
 
+
 class HorarioInfo(BaseModel):
     """
     Vista enriquecida de un bloque horario con nombres resueltos por JOIN.
@@ -1058,24 +1064,24 @@ class HorarioInfo(BaseModel):
     Los nombres de campo son los que el repositorio mapea desde las columnas
     del JOIN; la página v2.0 los usa sin transformación adicional.
     """
-    id:                int
-    grupo_id:          int
-    grupo_codigo:      str          # grupos.codigo
-    asignatura_id:     int
-    asignatura_nombre: str          # asignaturas.nombre
-    usuario_id:        int
-    docente_nombre:    str          # usuarios.nombre_completo
-    asignacion_id:     int | None
-    periodo_id:        int | None
-    periodo_nombre:    str          # periodos.nombre (puede ser '' si no hay periodo)
-    escenario_id:      int
-    dia_semana:        DiaSemana
-    hora_inicio:       time
-    hora_fin:          time
-    sala:              str          = "Aula"
 
-    @field_validator("grupo_codigo", "asignatura_nombre",
-                     "docente_nombre", mode="before")
+    id: int
+    grupo_id: int
+    grupo_codigo: str  # grupos.codigo
+    asignatura_id: int
+    asignatura_nombre: str  # asignaturas.nombre
+    usuario_id: int
+    docente_nombre: str  # usuarios.nombre_completo
+    asignacion_id: int | None
+    periodo_id: int | None
+    periodo_nombre: str  # periodos.nombre (puede ser '' si no hay periodo)
+    escenario_id: int
+    dia_semana: DiaSemana
+    hora_inicio: time
+    hora_fin: time
+    sala: str = "Aula"
+
+    @field_validator("grupo_codigo", "asignatura_nombre", "docente_nombre", mode="before")
     @classmethod
     def no_vacio(cls, v: str) -> str:
         """Normaliza los nombres resueltos por JOIN; ninguno puede quedar vacío."""
@@ -1123,7 +1129,7 @@ class HorarioInfo(BaseModel):
     def duracion_minutos(self) -> int:
         """Duración del bloque en minutos."""
         inicio = self.hora_inicio.hour * 60 + self.hora_inicio.minute
-        fin    = self.hora_fin.hour    * 60 + self.hora_fin.minute
+        fin = self.hora_fin.hour * 60 + self.hora_fin.minute
         return fin - inicio
 
     @property
@@ -1150,14 +1156,15 @@ class HorarioEstadisticasDTO(BaseModel):
     El servicio calcula estos valores a partir de queries de agregación;
     la página los muestra directamente sin lógica adicional.
     """
-    total_bloques:        int = 0   # filas totales en horarios
-    grupos_cubiertos:     int = 0   # grupos con al menos un bloque
-    materias_cargadas:    int = 0   # asignaturas distintas con horario
-    docentes_con_horario: int = 0   # docentes con al menos un bloque
+
+    total_bloques: int = 0  # filas totales en horarios
+    grupos_cubiertos: int = 0  # grupos con al menos un bloque
+    materias_cargadas: int = 0  # asignaturas distintas con horario
+    docentes_con_horario: int = 0  # docentes con al menos un bloque
 
 
 class CupoDTO(BaseModel):
-    usadas:  int
+    usadas: int
     maximas: int | None = None
 
     @property
@@ -1179,15 +1186,17 @@ class CupoDTO(BaseModel):
 # DTO plan de estudios (paso_19)
 # =============================================================================
 
+
 class NuevoPlanEstudiosDTO(BaseModel):
-    grado:           int = Field(ge=1, le=13)
-    asignatura_id:   int = Field(gt=0)
+    grado: int = Field(ge=1, le=13)
+    asignatura_id: int = Field(gt=0)
     horas_semanales: int = Field(ge=1, le=40)
 
 
 # =============================================================================
 # DTOs de carga masiva
 # =============================================================================
+
 
 class FilaReporteDTO(BaseModel):
     indice: int
@@ -1226,56 +1235,56 @@ class ResultadoLoteDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    "Jornada",
-    "DiaSemana",
+    "DIAS_VALIDOS",
+    "ESTADOS_CONFIG",
+    "PESOS_DEFAULT",
+    "TRANSICIONES_CONFIG",
     "AreaConocimiento",
     "Asignatura",
-    "Grupo",
-    "EscenarioHorario",
-    "NuevoEscenarioDTO",
-    "DIAS_VALIDOS",
-    "PlantillaFranja",
-    "Franja",
-    "NuevaPlantillaFranjaDTO",
-    "NuevaFranjaDTO",
-    "Horario",
-    "HorarioInfo",
-    "HorarioEstadisticasDTO",
+    "BloqueAnclado",
+    # paso_15c
+    "BloqueGeneradoDTO",
+    "ConfigGeneracion",
+    # mejora_07-T6
+    "ConfiguracionGradoInstitucion",
     "CupoDTO",
+    "DiaSemana",
+    "DisponibilidadDocente",
+    "EscenarioHorario",
+    "FilaReporteDTO",
+    "Franja",
+    "FranjaReunion",
+    "Grado",
+    "Grupo",
+    "Horario",
+    "HorarioEstadisticasDTO",
+    "HorarioInfo",
+    "Jornada",
+    "LimitesDocente",
     "Logro",
+    # paso_15d
+    "MetricasCalidadDTO",
     "NuevaAreaDTO",
     "NuevaAsignaturaDTO",
+    "NuevaConfigGeneracionDTO",
+    "NuevaDisponibilidadDTO",
+    "NuevaFranjaDTO",
+    "NuevaPlantillaFranjaDTO",
+    "NuevaSalaDTO",
+    "NuevoEscenarioDTO",
     "NuevoGrupoDTO",
     "NuevoHorarioDTO",
     "NuevoLogroDTO",
-    "FilaReporteDTO",
-    "ReporteLoteDTO",
-    "ResultadoLoteDTO",
+    "NuevoPlanEstudiosDTO",
     # paso_15b
     "PesosGeneracion",
-    "PESOS_DEFAULT",
-    "DisponibilidadDocente",
-    "ConfigGeneracion",
-    "ESTADOS_CONFIG",
-    "TRANSICIONES_CONFIG",
-    "NuevaDisponibilidadDTO",
-    "NuevaConfigGeneracionDTO",
-    # paso_15c
-    "BloqueGeneradoDTO",
-    "ResultadoGeneracionDTO",
-    # paso_15d
-    "MetricasCalidadDTO",
-    # paso_17
-    "Sala",
-    "NuevaSalaDTO",
-    "VentanaGrupo",
-    "BloqueAnclado",
-    "FranjaReunion",
-    "LimitesDocente",
     # paso_19
     "PlanEstudios",
-    "NuevoPlanEstudiosDTO",
-    "Grado",
-    # mejora_07-T6
-    "ConfiguracionGradoInstitucion",
+    "PlantillaFranja",
+    "ReporteLoteDTO",
+    "ResultadoGeneracionDTO",
+    "ResultadoLoteDTO",
+    # paso_17
+    "Sala",
+    "VentanaGrupo",
 ]

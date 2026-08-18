@@ -29,6 +29,7 @@ Regla de capas: este módulo NO importa interfaz ni infraestructura. Los
 repos siguen recibiendo `institucion_id` por parámetro (no importan de
 services); el scope se resuelve en el servicio.
 """
+
 from __future__ import annotations
 
 import contextlib

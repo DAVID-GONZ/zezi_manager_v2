@@ -1,8 +1,6 @@
 """Tests unitarios para generar_boletin_periodo_pdf y generar_boletin_acumulado_pdf."""
 from __future__ import annotations
 
-import pytest
-
 from src.infrastructure.exporters.boletin_pdf import (
     generar_boletin_acumulado_pdf,
     generar_boletin_periodo_pdf,

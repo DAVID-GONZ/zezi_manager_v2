@@ -1,6 +1,7 @@
 """
 SqliteSIEERepository — implementación SQLite de ISIEERepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -11,7 +12,6 @@ from src.domain.ports.siee_repo import ISIEERepository
 
 
 class SqliteSIEERepository(ISIEERepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
         if conn is not None:
@@ -23,6 +23,7 @@ class SqliteSIEERepository(ISIEERepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -38,7 +39,7 @@ class SqliteSIEERepository(ISIEERepository):
     def _row_to_categoria(self, row: sqlite3.Row) -> Categoria:
         d = dict(row)
         # SQLite almacena booleanos como 0/1
-        d["es_institucional"]      = bool(d.get("es_institucional", 0))
+        d["es_institucional"] = bool(d.get("es_institucional", 0))
         d["permite_subcategorias"] = bool(d.get("permite_subcategorias", 0))
         return Categoria(**d)
 

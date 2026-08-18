@@ -3,6 +3,7 @@ ConfiguracionService
 ======================
 Orquesta los casos de uso de configuración del año lectivo.
 """
+
 from __future__ import annotations
 
 from src.domain.models.configuracion import (
@@ -50,11 +51,13 @@ class ConfiguracionService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             # Sin catálogo de instituciones disponible (p.ej. tests con repos
@@ -77,17 +80,15 @@ class ConfiguracionService:
         institucion_id = self._resolver_institucion(dto.institucion_id)
         if self._repo.get_by_anio(institucion_id, dto.anio) is not None:
             raise ValueError(
-                f"Ya existe una configuración para el año {dto.anio} "
-                "en esta institución."
+                f"Ya existe una configuración para el año {dto.anio} en esta institución."
             )
-        config = dto.to_configuracion().model_copy(
-            update={"institucion_id": institucion_id}
-        )
+        config = dto.to_configuracion().model_copy(update={"institucion_id": institucion_id})
         config = self._repo.guardar(config)
         # Periodos: lee preferencia del tenant, fallback a 4
         _num_periodos = 4
         try:
             from container import Container
+
             _num_periodos = int(
                 Container.preferencias_service().get(institucion_id, "numero_periodos_default") or 4
             )
@@ -97,6 +98,7 @@ class ConfiguracionService:
         # Escala y nota mínima: best-effort desde preferencias
         try:
             from container import Container
+
             prefs = Container.preferencias_service().get_dto(institucion_id)
             _upd: dict = {}
             if config.nota_minima_aprobacion is None:
@@ -112,12 +114,16 @@ class ConfiguracionService:
         # Auto-snapshot (mejora_06): copia identidad vigente de la institución al nuevo año
         try:
             from container import Container
+
             snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
             if snap:
-                dto_snap = ActualizarInfoInstitucionalDTO(**{
-                    k: v for k, v in snap.items()
-                    if k in ActualizarInfoInstitucionalDTO.model_fields
-                })
+                dto_snap = ActualizarInfoInstitucionalDTO(
+                    **{
+                        k: v
+                        for k, v in snap.items()
+                        if k in ActualizarInfoInstitucionalDTO.model_fields
+                    }
+                )
                 config_snap = dto_snap.aplicar_a(config)
                 if config_snap != config:
                     config = self._repo.actualizar(config_snap)
@@ -139,6 +145,7 @@ class ConfiguracionService:
         # institución activa (se verifica contra el registro leído; scope None
         # → admin cross-tenant).
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(config.institucion_id)
         self._repo.activar(anio_id)
         return self._repo.get_by_id(anio_id)
@@ -168,8 +175,7 @@ class ConfiguracionService:
         config = self._repo.get_activa(institucion_id)
         if config is None:
             raise ValueError(
-                "No hay ningún año lectivo activo. "
-                "Configure y active un año antes de operar."
+                "No hay ningún año lectivo activo. Configure y active un año antes de operar."
             )
         return config
 
@@ -182,6 +188,7 @@ class ConfiguracionService:
         # y mutaciones por anio_id (actualizar_info_institucional, niveles,
         # criterios, config académica). Verifica el tenant del registro leído.
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(config.institucion_id)
         return config
 
@@ -211,9 +218,7 @@ class ConfiguracionService:
         - Al menos un nivel cubre el rango completo 0-100.
         """
         if not niveles:
-            raise ValueError(
-                "Debe especificar al menos un nivel de desempeño."
-            )
+            raise ValueError("Debe especificar al menos un nivel de desempeño.")
         # Verificar que el año existe
         self.get_by_id(anio_id)
 
@@ -265,16 +270,12 @@ class ConfiguracionService:
                 self._repo.actualizar_nivel(n.model_copy(update={"orden": i}))
 
     @requiere_escritura
-    def agregar_nivel(
-        self, anio_id: int, dto: NuevoNivelDesempenoDTO
-    ) -> NivelDesempeno:
+    def agregar_nivel(self, anio_id: int, dto: NuevoNivelDesempenoDTO) -> NivelDesempeno:
         """Agrega un nivel validando que su rango no se solape con los existentes."""
         self.get_by_id(anio_id)
         existentes = self._repo.listar_niveles(anio_id)
-        nuevo = dto.to_nivel().model_copy(
-            update={"anio_id": anio_id, "id": None}
-        )
-        self._validar_rangos_disjuntos(existentes + [nuevo])
+        nuevo = dto.to_nivel().model_copy(update={"anio_id": anio_id, "id": None})
+        self._validar_rangos_disjuntos([*existentes, nuevo])
         guardado = self._repo.guardar_nivel(nuevo)
         self._reindexar_orden(anio_id)
         return guardado
@@ -289,11 +290,9 @@ class ConfiguracionService:
         actual = next((n for n in existentes if n.id == nivel_id), None)
         if actual is None:
             raise ValueError(f"El nivel {nivel_id} no existe en el año {anio_id}.")
-        modificado = dto.to_nivel().model_copy(
-            update={"anio_id": anio_id, "id": nivel_id}
-        )
+        modificado = dto.to_nivel().model_copy(update={"anio_id": anio_id, "id": nivel_id})
         otros = [n for n in existentes if n.id != nivel_id]
-        self._validar_rangos_disjuntos(otros + [modificado])
+        self._validar_rangos_disjuntos([*otros, modificado])
         guardado = self._repo.actualizar_nivel(modificado)
         self._reindexar_orden(anio_id)
         return guardado
@@ -346,18 +345,19 @@ class ConfiguracionService:
         if config is None:
             raise ValueError(f"No existe configuración con id {anio_id}.")
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(config.institucion_id)
         try:
             from container import Container
+
             snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
         except Exception:
             snap = {}
         if not snap:
             return config
-        dto_snap = ActualizarInfoInstitucionalDTO(**{
-            k: v for k, v in snap.items()
-            if k in ActualizarInfoInstitucionalDTO.model_fields
-        })
+        dto_snap = ActualizarInfoInstitucionalDTO(
+            **{k: v for k, v in snap.items() if k in ActualizarInfoInstitucionalDTO.model_fields}
+        )
         config_actualizada = dto_snap.aplicar_a(config)
         return self._repo.actualizar(config_actualizada)
 

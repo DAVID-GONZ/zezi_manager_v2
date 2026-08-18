@@ -4,15 +4,11 @@ Tests de dominio para Institucion enriquecida (mejora_06).
 import pytest
 from pydantic import ValidationError
 
-from src.domain.models.institucion import (
-    Institucion,
-    JornadaPrincipal,
-    TipoInstitucion,
-    Calendario,
-    ActualizarInstitucionDTO,
-)
 from src.domain.models.configuracion import InformacionInstitucionalDTO
-
+from src.domain.models.institucion import (
+    ActualizarInstitucionDTO,
+    Institucion,
+)
 
 # ---------------------------------------------------------------------------
 # Institucion — campos opcionales

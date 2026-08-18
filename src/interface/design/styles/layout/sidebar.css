@@ -166,7 +166,7 @@
 }
 
 .flyout-item:hover {
-  background: var(--ink-050);
+  background: var(--nav-sidebar-hover);
 }
 
 .flyout-item.is-active {

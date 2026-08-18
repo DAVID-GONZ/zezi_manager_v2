@@ -43,7 +43,6 @@ from ..models.periodo import HitoPeriodo, Periodo, TipoHito
 
 
 class IPeriodoRepository(ABC):
-
     # =========================================================================
     # Lectura — periodos
     # =========================================================================

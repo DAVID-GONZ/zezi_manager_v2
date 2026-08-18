@@ -3,6 +3,7 @@ UsuarioService
 ================
 Orquesta los casos de uso del módulo de Usuarios.
 """
+
 from __future__ import annotations
 
 import secrets
@@ -52,8 +53,8 @@ class UsuarioService:
     ) -> None:
         """Inyecta el repo de usuarios y los servicios opcionales de
         autenticación y auditoría."""
-        self._repo      = repo
-        self._auth      = auth_service
+        self._repo = repo
+        self._auth = auth_service
         self._auditoria = auditoria
 
     # ------------------------------------------------------------------
@@ -72,9 +73,7 @@ class UsuarioService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -101,11 +100,13 @@ class UsuarioService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -118,6 +119,7 @@ class UsuarioService:
         # la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo, no el que pueda venir del caller. Scope None (admin/seed) → pasa.
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(usuario.institucion_id)
         return usuario
 
@@ -133,10 +135,10 @@ class UsuarioService:
             return
         self._auditoria.registrar_evento(
             EventoSesion(
-                usuario     = usuario.usuario,
-                usuario_id  = usuario.id,
-                tipo_evento = tipo_evento,
-                detalles    = detalles,
+                usuario=usuario.usuario,
+                usuario_id=usuario.id,
+                tipo_evento=tipo_evento,
+                detalles=detalles,
             )
         )
 
@@ -150,8 +152,7 @@ class UsuarioService:
             return
         if not puede_gestionar(actor_rol, target.rol):
             raise ValueError(
-                f"Tu rol no tiene permiso para gestionar al usuario "
-                f"'{target.usuario}'."
+                f"Tu rol no tiene permiso para gestionar al usuario '{target.usuario}'."
             )
 
     @staticmethod
@@ -231,8 +232,7 @@ class UsuarioService:
             rol_str = dto.rol.value if hasattr(dto.rol, "value") else str(dto.rol)
             if rol_str not in roles_asignables(actor_rol):
                 raise ValueError(
-                    f"Tu rol no tiene permiso para crear usuarios con rol "
-                    f"'{rol_str}'."
+                    f"Tu rol no tiene permiso para crear usuarios con rol '{rol_str}'."
                 )
         usuario = dto.to_usuario()
         # Username ÚNICO GLOBAL (paso_37): un username no puede repetirse en
@@ -240,9 +240,7 @@ class UsuarioService:
         # La institución del nuevo usuario se sigue resolviendo (scope de sesión
         # o #1 en seed/arranque) para scopear todo lo demás del multi-tenant.
         if self._repo.existe_usuario(dto.usuario):
-            raise ValueError(
-                f"Ya existe un usuario con el nombre '{dto.usuario}'."
-            )
+            raise ValueError(f"Ya existe un usuario con el nombre '{dto.usuario}'.")
 
         # A2 — credencial inicial. Sin contraseña explícita → temporal fuerte
         # aleatoria + cambio forzado (nunca el username, que es predecible).
@@ -257,10 +255,12 @@ class UsuarioService:
             debe_cambiar = True
 
         institucion_id = self._resolver_institucion(usuario.institucion_id)
-        usuario = usuario.model_copy(update={
-            "institucion_id": institucion_id,
-            "debe_cambiar_password": debe_cambiar,
-        })
+        usuario = usuario.model_copy(
+            update={
+                "institucion_id": institucion_id,
+                "debe_cambiar_password": debe_cambiar,
+            }
+        )
         usuario = self._repo.guardar(usuario)
 
         # Hash de contraseña (delegado a IAuthenticationService).
@@ -268,8 +268,12 @@ class UsuarioService:
             self._auth.resetear_password(usuario.id, password)
 
         self._auditar(
-            AccionCambio.CREATE, "usuarios", usuario.id,
-            None, usuario.model_dump(mode="json"), creado_por_id,
+            AccionCambio.CREATE,
+            "usuarios",
+            usuario.id,
+            None,
+            usuario.model_dump(mode="json"),
+            creado_por_id,
         )
         # La temporal viaja en la entidad retornada (campo efímero, no persistido
         # ni serializado). model_dump de la auditoría arriba ya la excluye.
@@ -288,8 +292,11 @@ class UsuarioService:
         usuario_actualizado = dto.aplicar_a(usuario)
         self._repo.actualizar(usuario_actualizado)
         self._auditar(
-            AccionCambio.UPDATE, "usuarios", usuario_id,
-            datos_ant, usuario_actualizado.model_dump(mode="json"),
+            AccionCambio.UPDATE,
+            "usuarios",
+            usuario_id,
+            datos_ant,
+            usuario_actualizado.model_dump(mode="json"),
             actualizado_por_id,
         )
         return usuario_actualizado
@@ -310,13 +317,9 @@ class UsuarioService:
         usuario = self._get_usuario_o_lanzar(usuario_id)
         if actor_rol is not None:
             self._verificar_gestion(actor_rol, usuario)
-            rol_str = (
-                nuevo_rol.value if hasattr(nuevo_rol, "value") else str(nuevo_rol)
-            )
+            rol_str = nuevo_rol.value if hasattr(nuevo_rol, "value") else str(nuevo_rol)
             if rol_str not in roles_asignables(actor_rol):
-                raise ValueError(
-                    f"Tu rol no tiene permiso para asignar el rol '{rol_str}'."
-                )
+                raise ValueError(f"Tu rol no tiene permiso para asignar el rol '{rol_str}'.")
         if not usuario.activo:
             raise ValueError(
                 f"El usuario '{usuario.usuario}' está desactivado y no puede modificarse."
@@ -325,12 +328,17 @@ class UsuarioService:
         self._repo.cambiar_rol(usuario_id, nuevo_rol)
         usuario_actualizado = usuario.model_copy(update={"rol": nuevo_rol})
         self._auditar(
-            AccionCambio.UPDATE, "usuarios", usuario_id,
-            datos_ant, usuario_actualizado.model_dump(mode="json"),
+            AccionCambio.UPDATE,
+            "usuarios",
+            usuario_id,
+            datos_ant,
+            usuario_actualizado.model_dump(mode="json"),
             cambiado_por_id,
         )
         self._registrar_evento(
-            TipoEventoSesion.CAMBIAR_ROL, usuario_actualizado, cambiado_por_id,
+            TipoEventoSesion.CAMBIAR_ROL,
+            usuario_actualizado,
+            cambiado_por_id,
             detalles=f"Rol cambiado a '{usuario_actualizado.rol.value}'",
         )
         return usuario_actualizado
@@ -351,13 +359,16 @@ class UsuarioService:
         usuario_desactivado = usuario.desactivar()  # lanza si ya está inactivo
         self._repo.desactivar(usuario_id)
         self._auditar(
-            AccionCambio.UPDATE, "usuarios", usuario_id,
+            AccionCambio.UPDATE,
+            "usuarios",
+            usuario_id,
             usuario.model_dump(mode="json"),
             usuario_desactivado.model_dump(mode="json"),
             desactivado_por_id,
         )
         self._registrar_evento(
-            TipoEventoSesion.DESACTIVAR_USUARIO, usuario_desactivado,
+            TipoEventoSesion.DESACTIVAR_USUARIO,
+            usuario_desactivado,
             desactivado_por_id,
         )
         return usuario_desactivado
@@ -378,13 +389,16 @@ class UsuarioService:
         usuario_reactivado = usuario.reactivar()  # lanza si ya está activo
         self._repo.reactivar(usuario_id)
         self._auditar(
-            AccionCambio.UPDATE, "usuarios", usuario_id,
+            AccionCambio.UPDATE,
+            "usuarios",
+            usuario_id,
             usuario.model_dump(mode="json"),
             usuario_reactivado.model_dump(mode="json"),
             reactivado_por_id,
         )
         self._registrar_evento(
-            TipoEventoSesion.ACTIVAR_USUARIO, usuario_reactivado,
+            TipoEventoSesion.ACTIVAR_USUARIO,
+            usuario_reactivado,
             reactivado_por_id,
         )
         return usuario_reactivado
@@ -414,9 +428,7 @@ class UsuarioService:
             (para comunicarla), o `None` cuando el admin fijó una. NUNCA se loguea.
         """
         if self._auth is None:
-            raise ValueError(
-                "El servicio de autenticación no está configurado."
-            )
+            raise ValueError("El servicio de autenticación no está configurado.")
         usuario = self._get_usuario_o_lanzar(usuario_id)
         self._verificar_gestion(actor_rol, usuario)
         explicita = (nueva_password or "").strip()
@@ -432,7 +444,9 @@ class UsuarioService:
         # A2: reset administrativo → el dueño debe re-elegir en el primer acceso.
         self._repo.marcar_debe_cambiar_password(usuario_id, True)
         self._registrar_evento(
-            TipoEventoSesion.RESETEAR_PASSWORD, usuario, reset_por_id,
+            TipoEventoSesion.RESETEAR_PASSWORD,
+            usuario,
+            reset_por_id,
             detalles=f"Contraseña restablecida para '{usuario.usuario}'",
         )
         return temporal
@@ -449,9 +463,7 @@ class UsuarioService:
         Lanza ValueError si la contraseña actual es incorrecta.
         """
         if self._auth is None:
-            raise ValueError(
-                "El servicio de autenticación no está configurado."
-            )
+            raise ValueError("El servicio de autenticación no está configurado.")
         # M4: la nueva contraseña debe cumplir la política de dominio ANTES de
         # delegar al auth (>=8, letra+dígito, != username). Se resuelve el
         # username del usuario para la regla anti-igualdad (lectura best-effort:
@@ -460,9 +472,7 @@ class UsuarioService:
         username = usuario.usuario if usuario is not None else None
         validar_password(password_nuevo, username=username)
 
-        exito = self._auth.cambiar_password(
-            usuario_id, password_actual, password_nuevo
-        )
+        exito = self._auth.cambiar_password(usuario_id, password_actual, password_nuevo)
         if not exito:
             raise ValueError("La contraseña actual no es correcta.")
         # A2: el dueño cambió su contraseña → ya no está forzado.
@@ -473,9 +483,7 @@ class UsuarioService:
         periodo_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
         """Retorna los docentes con su carga académica calculada."""
-        return self._repo.listar_docentes_info(
-            periodo_id=periodo_id, solo_activos=True
-        )
+        return self._repo.listar_docentes_info(periodo_id=periodo_id, solo_activos=True)
 
     @staticmethod
     def _aplicar_scope(filtro: FiltroUsuariosDTO) -> FiltroUsuariosDTO:
@@ -491,6 +499,7 @@ class UsuarioService:
         if filtro.institucion_id is not None:
             return filtro
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is None:
             return filtro
@@ -504,9 +513,7 @@ class UsuarioService:
         """Retorna la vista resumida de usuarios (auto-scope por tenant)."""
         return self._repo.listar_resumenes(self._aplicar_scope(filtro))
 
-    def listar_para_ver_como(
-        self, institucion_id: int | None = None
-    ) -> list[UsuarioResumenDTO]:
+    def listar_para_ver_como(self, institucion_id: int | None = None) -> list[UsuarioResumenDTO]:
         """
         Listado de SOLO LECTURA de usuarios activos candidatos a 'Ver como',
         con scope por institución (multi-tenant, paso_24 / frente C paso_28).
@@ -541,9 +548,7 @@ class UsuarioService:
         Cuenta usuarios por rol (incluye inactivos en el total) y expone el
         número de activos. No muta nada.
         """
-        todos = self._repo.listar_resumenes(
-            FiltroUsuariosDTO(solo_activos=False, por_pagina=200)
-        )
+        todos = self._repo.listar_resumenes(FiltroUsuariosDTO(solo_activos=False, por_pagina=200))
         por_rol: dict[str, int] = {}
         activos = 0
         for u in todos:
@@ -551,9 +556,7 @@ class UsuarioService:
             por_rol[rol_str] = por_rol.get(rol_str, 0) + 1
             if u.activo:
                 activos += 1
-        return ResumenUsuariosDTO(
-            por_rol=por_rol, total=len(todos), activos=activos
-        )
+        return ResumenUsuariosDTO(por_rol=por_rol, total=len(todos), activos=activos)
 
     def carga_horaria_max(self, usuario_id: int) -> int | None:
         """Retorna la carga horaria máxima del usuario, o None si no está definida."""
@@ -580,13 +583,19 @@ class UsuarioService:
             raise ValueError("Las horas extra no pueden ser negativas.")
         datos_ant = usuario.model_dump(mode="json")
         self._repo.actualizar_carga(usuario_id, carga_horaria_max, horas_extra)
-        actualizado = usuario.model_copy(update={
-            "carga_horaria_max": carga_horaria_max,
-            "horas_extra": horas_extra,
-        })
+        actualizado = usuario.model_copy(
+            update={
+                "carga_horaria_max": carga_horaria_max,
+                "horas_extra": horas_extra,
+            }
+        )
         self._auditar(
-            AccionCambio.UPDATE, "usuarios", usuario_id,
-            datos_ant, actualizado.model_dump(mode="json"), actualizado_por_id,
+            AccionCambio.UPDATE,
+            "usuarios",
+            usuario_id,
+            datos_ant,
+            actualizado.model_dump(mode="json"),
+            actualizado_por_id,
         )
         return actualizado
 

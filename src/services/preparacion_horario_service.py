@@ -26,36 +26,35 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class PuertaDTO:
-    id:         str
-    titulo:     str
-    severidad:  str          # "dura" | "advertencia"
-    ok:         bool
-    detalle:    str
-    fix_ruta:   str | None = None
+    id: str
+    titulo: str
+    severidad: str  # "dura" | "advertencia"
+    ok: bool
+    detalle: str
+    fix_ruta: str | None = None
 
 
 ReportePreparacionDTO = list[PuertaDTO]
 
 
 class PreparacionHorarioService:
-
     def __init__(
         self,
-        infra_repo:       IInfraestructuraRepository,
-        asignacion_repo:  IAsignacionRepository,
-        config_repo:      IConfiguracionRepository,
-        periodo_repo:     IPeriodoRepository,
-        usuario_repo:     IUsuarioRepository,
-        plan_svc:         PlanEstudiosService,
+        infra_repo: IInfraestructuraRepository,
+        asignacion_repo: IAsignacionRepository,
+        config_repo: IConfiguracionRepository,
+        periodo_repo: IPeriodoRepository,
+        usuario_repo: IUsuarioRepository,
+        plan_svc: PlanEstudiosService,
     ) -> None:
         """Inyecta los repos de infraestructura, asignación, configuración,
         periodo y usuario, más el servicio de plan de estudios."""
-        self._infra      = infra_repo
-        self._asigs      = asignacion_repo
-        self._cfg        = config_repo
-        self._periodos   = periodo_repo
-        self._usuarios   = usuario_repo
-        self._plan       = plan_svc
+        self._infra = infra_repo
+        self._asigs = asignacion_repo
+        self._cfg = config_repo
+        self._periodos = periodo_repo
+        self._usuarios = usuario_repo
+        self._plan = plan_svc
 
     # ------------------------------------------------------------------
     # API pública
@@ -63,8 +62,8 @@ class PreparacionHorarioService:
 
     def validar(
         self,
-        anio_id:      int,
-        periodo_id:   int,
+        anio_id: int,
+        periodo_id: int,
         plantilla_id: int,
     ) -> ReportePreparacionDTO:
         """Ejecuta las 7 puertas en orden y devuelve el reporte."""
@@ -74,20 +73,25 @@ class PreparacionHorarioService:
         # al tenant activo (director → su institución; admin/arranque → None =
         # todo). La validación opera dentro de un anio/periodo ya scopeados.
         from src.services.contexto_tenant import institucion_actual
+
         inst_id = institucion_actual()
 
         asignaciones = self._listar_asignaciones(periodo_id)
-        grupos       = self._infra.listar_grupos(institucion_id=inst_id)
-        asignaturas  = self._infra.listar_asignaturas(institucion_id=inst_id)
-        salas        = self._infra.listar_salas(institucion_id=inst_id)
-        franjas      = self._infra.listar_franjas(plantilla_id) if plantilla_id else []
-        plantilla    = (
+        grupos = self._infra.listar_grupos(institucion_id=inst_id)
+        asignaturas = self._infra.listar_asignaturas(institucion_id=inst_id)
+        salas = self._infra.listar_salas(institucion_id=inst_id)
+        franjas = self._infra.listar_franjas(plantilla_id) if plantilla_id else []
+        plantilla = (
             next(
-                (p for p in self._infra.listar_plantillas_franja(institucion_id=inst_id)
-                 if p.id == plantilla_id),
+                (
+                    p
+                    for p in self._infra.listar_plantillas_franja(institucion_id=inst_id)
+                    if p.id == plantilla_id
+                ),
                 None,
             )
-            if plantilla_id else None
+            if plantilla_id
+            else None
         )
 
         asig_map = {a.id: a for a in asignaturas}
@@ -114,9 +118,7 @@ class PreparacionHorarioService:
         pagina = 1
         while True:
             lote = self._asigs.listar(
-                FiltroAsignacionesDTO(
-                    periodo_id=periodo_id, pagina=pagina, por_pagina=500
-                )
+                FiltroAsignacionesDTO(periodo_id=periodo_id, pagina=pagina, por_pagina=500)
             )
             todas.extend(lote)
             if len(lote) < 500:
@@ -180,9 +182,7 @@ class PreparacionHorarioService:
                 titulo="Año lectivo configurado",
                 severidad="dura",
                 ok=False,
-                detalle=(
-                    f"El periodo {periodo_id} no pertenece al año {config.anio}."
-                ),
+                detalle=(f"El periodo {periodo_id} no pertenece al año {config.anio}."),
                 fix_ruta="/admin/configuracion",
             )
         return PuertaDTO(
@@ -201,7 +201,7 @@ class PreparacionHorarioService:
         sin_horas = [a for a in asignaturas if (a.horas_semanales or 0) < 1]
         if sin_horas:
             nombres = ", ".join(a.nombre for a in sin_horas[:5])
-            resto   = f" y {len(sin_horas) - 5} más" if len(sin_horas) > 5 else ""
+            resto = f" y {len(sin_horas) - 5} más" if len(sin_horas) > 5 else ""
             return PuertaDTO(
                 id="asignaturas_con_horas",
                 titulo="Asignaturas con horas definidas",
@@ -249,7 +249,9 @@ class PreparacionHorarioService:
             )
             if len(problemas) > 3:
                 detalle += f" y {len(problemas) - 3} más"
-            detalle += ". Amplía la plantilla (más franjas o días) o reduce el plan de estudios del grado."
+            detalle += (
+                ". Amplía la plantilla (más franjas o días) o reduce el plan de estudios del grado."
+            )
             return PuertaDTO(
                 id="horas_grupo_vs_slots",
                 titulo="Capacidad de la plantilla",
@@ -270,7 +272,9 @@ class PreparacionHorarioService:
     # Puerta 4 — docentes con carga_horaria_max no excedida
     # ------------------------------------------------------------------
 
-    def _p4_capacidad_docente(self, asignaciones, asig_map: dict, grado_de_grupo: dict) -> PuertaDTO:
+    def _p4_capacidad_docente(
+        self, asignaciones, asig_map: dict, grado_de_grupo: dict
+    ) -> PuertaDTO:
         carga_por_docente: dict[int, int] = {}
         for a in asignaciones:
             if not a.activo:
@@ -291,7 +295,10 @@ class PreparacionHorarioService:
                 titulo="Capacidad de docentes",
                 severidad="advertencia",
                 ok=False,
-                detalle=f"{len(excedidos)} docente(s) exceden su carga máxima: " + "; ".join(excedidos[:3]) + ("…" if len(excedidos) > 3 else "") + ".",
+                detalle=f"{len(excedidos)} docente(s) exceden su carga máxima: "
+                + "; ".join(excedidos[:3])
+                + ("…" if len(excedidos) > 3 else "")
+                + ".",
                 fix_ruta="/admin/asignaciones",
             )
         return PuertaDTO(
@@ -317,10 +324,7 @@ class PreparacionHorarioService:
                 cubiertos.add((g.grado, a.asignatura_id))
 
         plan_total = self._plan.listar()
-        sin_cubrir = [
-            p for p in plan_total
-            if (p.grado, p.asignatura_id) not in cubiertos
-        ]
+        sin_cubrir = [p for p in plan_total if (p.grado, p.asignatura_id) not in cubiertos]
 
         if not plan_total:
             return PuertaDTO(
@@ -342,7 +346,10 @@ class PreparacionHorarioService:
                 titulo="Plan de estudios cubierto",
                 severidad="advertencia",
                 ok=False,
-                detalle=f"{len(sin_cubrir)} combinación(es) del plan sin asignación: " + "; ".join(ejemplos) + ("…" if len(sin_cubrir) > 3 else "") + ".",
+                detalle=f"{len(sin_cubrir)} combinación(es) del plan sin asignación: "
+                + "; ".join(ejemplos)
+                + ("…" if len(sin_cubrir) > 3 else "")
+                + ".",
                 fix_ruta="/admin/asignaciones",
             )
 
@@ -406,9 +413,7 @@ class PreparacionHorarioService:
                 fix_ruta="/admin/salas",
             )
         tipos_requeridos = {
-            a.tipo_sala_requerido
-            for a in asignaturas
-            if getattr(a, "tipo_sala_requerido", None)
+            a.tipo_sala_requerido for a in asignaturas if getattr(a, "tipo_sala_requerido", None)
         }
         tipos_disponibles = {s.tipo for s in salas}
         faltantes = tipos_requeridos - tipos_disponibles

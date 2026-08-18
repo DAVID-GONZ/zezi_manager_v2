@@ -27,6 +27,7 @@ Flujo:
      - Lista de registros de comportamiento con badges por tipo.
      - Sección Alertas + Vista 360° (solo dir/coord).
 """
+
 from __future__ import annotations
 
 import logging
@@ -68,50 +69,51 @@ _ROLES_ALERTAS = ("director", "coordinador")
 
 _NIVEL_DISPLAY: dict[str, str] = {
     "advertencia": "Advertencia",
-    "critica":     "Crítica",
-    "info":        "Información",
+    "critica": "Crítica",
+    "info": "Información",
 }
 
 # Presentación de registros de comportamiento — strings literales (NO importan
 # TipoRegistro del dominio). Espejo de comportamiento.py (_TIPOS_DISPLAY / _CLASE_BADGE).
 _TIPOS_DISPLAY: dict[str, str] = {
-    "fortaleza":          "Fortaleza",
-    "dificultad":         "Dificultad",
-    "compromiso":         "Compromiso",
+    "fortaleza": "Fortaleza",
+    "dificultad": "Dificultad",
+    "compromiso": "Compromiso",
     "citacion_acudiente": "Citación acudiente",
-    "descargo":           "Descargo",
+    "descargo": "Descargo",
 }
 
 _CLASE_BADGE: dict[str, str] = {
-    "fortaleza":          "badge-fortaleza",
-    "dificultad":         "badge-dificultad",
-    "compromiso":         "badge-compromiso",
+    "fortaleza": "badge-fortaleza",
+    "dificultad": "badge-dificultad",
+    "compromiso": "badge-compromiso",
     "citacion_acudiente": "badge-citacion",
-    "descargo":           "badge-descargo",
+    "descargo": "badge-descargo",
 }
 
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
         # sel_* gestionados por el inline selector
-        "sel_periodo_id":        None,
-        "sel_periodo_nombre":    "",
-        "sel_grupo_id":          None,
-        "sel_grupo_nombre":      "",
-        "anio_id":               None,
-        "estudiantes":           [],   # list[Estudiante]
-        "resumen":               [],   # list[ResumenConvivenciaDTO]
-        "docentes":              [],   # list[Usuario]
+        "sel_periodo_id": None,
+        "sel_periodo_nombre": "",
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
+        "anio_id": None,
+        "estudiantes": [],  # list[Estudiante]
+        "resumen": [],  # list[ResumenConvivenciaDTO]
+        "docentes": [],  # list[Usuario]
         # detalle del estudiante seleccionado
-        "sel_estudiante_id":     None,
-        "sel_seccion":           "evolucion",  # evolucion|observaciones|registros|alertas
-        "serie":                 [],   # list[PuntoSerieDTO]
-        "observaciones_est":     [],   # list[ObservacionPeriodo]
-        "registros_est":         [],   # list[RegistroComportamiento]
-        "resultado_360":         None,
-        "alertas":               [],   # list[Alerta] del estudiante
+        "sel_estudiante_id": None,
+        "sel_seccion": "evolucion",  # evolucion|observaciones|registros|alertas
+        "serie": [],  # list[PuntoSerieDTO]
+        "observaciones_est": [],  # list[ObservacionPeriodo]
+        "registros_est": [],  # list[RegistroComportamiento]
+        "resultado_360": None,
+        "alertas": [],  # list[Alerta] del estudiante
     }
 
 
@@ -138,8 +140,7 @@ def _cargar_categorias() -> tuple[dict, dict]:
         categorias = Container.convivencia_service().listar_categorias(solo_activas=True)
         opciones = {getattr(c, "id", None): getattr(c, "nombre", "") for c in categorias}
         es_comportamental = {
-            getattr(c, "id", None): bool(getattr(c, "es_comportamental", False))
-            for c in categorias
+            getattr(c, "id", None): bool(getattr(c, "es_comportamental", False)) for c in categorias
         }
         return opciones, es_comportamental
     except Exception as exc:
@@ -232,6 +233,7 @@ def _cargar_alertas(_s: dict) -> None:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _resumen_estudiante(_s: dict, est_id: int | None):
     for r in _s["resumen"]:
         if getattr(r, "estudiante_id", None) == est_id:
@@ -252,9 +254,8 @@ def _nombre_estudiante(_s: dict, est_id: int | None) -> str:
 def _nombre_docente(_s: dict, docente_id: int | None) -> str:
     for d in _s["docentes"]:
         if getattr(d, "id", None) == docente_id:
-            return (
-                f"{getattr(d, 'apellido', '')} {getattr(d, 'nombre', '')}".strip()
-                or getattr(d, "email", str(docente_id))
+            return f"{getattr(d, 'apellido', '')} {getattr(d, 'nombre', '')}".strip() or getattr(
+                d, "email", str(docente_id)
             )
     return str(docente_id) if docente_id else "—"
 
@@ -272,17 +273,17 @@ def _fila_observacion(obs, opciones_cat: dict) -> dict:
     fecha = getattr(obs, "fecha_registro", None)
     fecha_str = str(fecha)[:10] if fecha is not None else ""
     return {
-        "id":                        getattr(obs, "id", None),
-        "estudiante_id":             getattr(obs, "estudiante_id", None),
-        "asignacion_id":             getattr(obs, "asignacion_id", None),
-        "periodo_id":                getattr(obs, "periodo_id", None),
-        "categoria_id":              cat_id,
-        "categoria_nombre":          opciones_cat.get(cat_id, "Sin categoría"),
+        "id": getattr(obs, "id", None),
+        "estudiante_id": getattr(obs, "estudiante_id", None),
+        "asignacion_id": getattr(obs, "asignacion_id", None),
+        "periodo_id": getattr(obs, "periodo_id", None),
+        "categoria_id": cat_id,
+        "categoria_nombre": opciones_cat.get(cat_id, "Sin categoría"),
         "registro_comportamiento_id": getattr(obs, "registro_comportamiento_id", None),
-        "texto_completo":            texto,
-        "texto":                     _texto_truncado(texto),
-        "es_publica":                es_publica,
-        "fecha":                     fecha_str,
+        "texto_completo": texto,
+        "texto": _texto_truncado(texto),
+        "es_publica": es_publica,
+        "fecha": fecha_str,
     }
 
 
@@ -291,12 +292,12 @@ def _fila_registro(reg) -> dict:
     if "." in tipo_raw:
         tipo_raw = tipo_raw.split(".")[-1]
     return {
-        "id":               getattr(reg, "id", None),
-        "fecha":            str(getattr(reg, "fecha", ""))[:10],
-        "tipo_raw":         tipo_raw,
-        "tipo_display":     _TIPOS_DISPLAY.get(tipo_raw, tipo_raw),
+        "id": getattr(reg, "id", None),
+        "fecha": str(getattr(reg, "fecha", ""))[:10],
+        "tipo_raw": tipo_raw,
+        "tipo_display": _TIPOS_DISPLAY.get(tipo_raw, tipo_raw),
         "tipo_badge_class": _CLASE_BADGE.get(tipo_raw, "badge-neutral"),
-        "descripcion":      str(getattr(reg, "descripcion", "")),
+        "descripcion": str(getattr(reg, "descripcion", "")),
     }
 
 
@@ -306,18 +307,21 @@ def _construir_filas_alertas(_s: dict) -> list[dict]:
         nivel_raw = str(getattr(alerta, "nivel", "")).lower()
         if "." in nivel_raw:
             nivel_raw = nivel_raw.split(".")[-1]
-        filas.append({
-            "fecha":         str(getattr(alerta, "fecha_generacion", ""))[:10],
-            "descripcion":   str(getattr(alerta, "descripcion", "")),
-            "nivel_raw":     nivel_raw,
-            "nivel_display": _NIVEL_DISPLAY.get(nivel_raw, nivel_raw),
-            "destinatario":  _nombre_docente(_s, getattr(alerta, "usuario_destino_id", None)),
-            "estado":        "Resuelta" if getattr(alerta, "resuelta", False) else "Pendiente",
-        })
+        filas.append(
+            {
+                "fecha": str(getattr(alerta, "fecha_generacion", ""))[:10],
+                "descripcion": str(getattr(alerta, "descripcion", "")),
+                "nivel_raw": nivel_raw,
+                "nivel_display": _NIVEL_DISPLAY.get(nivel_raw, nivel_raw),
+                "destinatario": _nombre_docente(_s, getattr(alerta, "usuario_destino_id", None)),
+                "estado": "Resuelta" if getattr(alerta, "resuelta", False) else "Pendiente",
+            }
+        )
     return filas
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard registrados en main.py
 def seguimiento_page() -> None:
@@ -356,14 +360,14 @@ def seguimiento_page() -> None:
             toast_warning("Esta observación no tiene categoría asignada. Edítala primero.")
             return
         try:
-            dto = NuevaObservacionDTO(**{
-                "estudiante_id": int(fila["estudiante_id"]),
-                "asignacion_id": asignacion_id,
-                "periodo_id":    int(fila["periodo_id"]),
-                "texto":         fila["texto_completo"],
-                "categoria_id":  int(categoria_id),
-                "es_publica":    not fila["es_publica"],
-            })
+            dto = NuevaObservacionDTO(
+                estudiante_id=int(fila["estudiante_id"]),
+                asignacion_id=asignacion_id,
+                periodo_id=int(fila["periodo_id"]),
+                texto=fila["texto_completo"],
+                categoria_id=int(categoria_id),
+                es_publica=not fila["es_publica"],
+            )
             Container.convivencia_service().registrar_observacion(dto, ctx.usuario_id)
             toast_success("Visibilidad actualizada.")
             _cargar_detalle(_s, ctx)
@@ -376,7 +380,9 @@ def seguimiento_page() -> None:
         def _ejecutar() -> None:
             try:
                 Container.convivencia_service().promover_observacion_a_plantilla(
-                    obs_id, usuario_id=ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+                    obs_id,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
                 )
                 toast_success("Observación guardada como plantilla.")
             except PermissionError as exc:
@@ -396,7 +402,9 @@ def seguimiento_page() -> None:
         def _ejecutar() -> None:
             try:
                 Container.convivencia_service().promover_a_comportamiento(
-                    obs_id, usuario_id=ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+                    obs_id,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
                 )
                 toast_success("Observación promovida a registro de comportamiento.")
                 _cargar_detalle(_s, ctx)
@@ -407,15 +415,14 @@ def seguimiento_page() -> None:
             except ValueError as exc:
                 toast_warning(f"No se puede promover: {exc}")
             except Exception as exc:
-                logger.error("Error promoviendo obs %s a comportamiento: %s", obs_id, exc, exc_info=True)
+                logger.error(
+                    "Error promoviendo obs %s a comportamiento: %s", obs_id, exc, exc_info=True
+                )
                 toast_error(f"Error: {exc}")
 
         confirm_dialog(
             titulo="Promover a comportamiento",
-            mensaje=(
-                "¿Deseas crear un registro de comportamiento a partir "
-                "de esta observación?"
-            ),
+            mensaje=("¿Deseas crear un registro de comportamiento a partir de esta observación?"),
             on_confirm=_ejecutar,
             variante="info",
         )
@@ -464,10 +471,10 @@ def seguimiento_page() -> None:
             toast_error(f"Error: {exc}")
 
     def _enviar_alerta(datos: dict) -> bool | None:
-        est_id      = datos.get("estudiante_id")
-        docente_id  = datos.get("usuario_destino_id")
+        est_id = datos.get("estudiante_id")
+        docente_id = datos.get("usuario_destino_id")
         descripcion = str(datos.get("descripcion", "")).strip()
-        nivel_str   = datos.get("nivel", "advertencia")
+        nivel_str = datos.get("nivel", "advertencia")
 
         if not est_id:
             toast_warning("Selecciona un estudiante.")
@@ -488,7 +495,9 @@ def seguimiento_page() -> None:
                     nivel=nivel_str,
                 )
                 Container.convivencia_service().crear_alerta_seguimiento_manual(
-                    dto, usuario_id=ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+                    dto,
+                    usuario_id=ctx.usuario_id,
+                    usuario_rol=ctx.usuario_rol,
                 )
                 toast_success("Alerta de seguimiento enviada.")
                 _cargar_alertas(_s)
@@ -518,25 +527,25 @@ def seguimiento_page() -> None:
             titulo="Nueva alerta de seguimiento",
             campos=[
                 {
-                    "key":       "usuario_destino_id",
-                    "label":     "Profesor destinatario",
-                    "tipo":      "select",
-                    "opciones":  opciones_doc,
+                    "key": "usuario_destino_id",
+                    "label": "Profesor destinatario",
+                    "tipo": "select",
+                    "opciones": opciones_doc,
                     "requerido": True,
                 },
                 {
-                    "key":         "descripcion",
-                    "label":       "Descripción",
-                    "tipo":        "textarea",
+                    "key": "descripcion",
+                    "label": "Descripción",
+                    "tipo": "textarea",
                     "placeholder": "Describe el motivo del seguimiento...",
-                    "requerido":   True,
+                    "requerido": True,
                 },
                 {
-                    "key":      "nivel",
-                    "label":    "Nivel de alerta",
-                    "tipo":     "select",
+                    "key": "nivel",
+                    "label": "Nivel de alerta",
+                    "tipo": "select",
                     "opciones": {"advertencia": "Advertencia", "critica": "Crítica"},
-                    "valor":    "advertencia",
+                    "valor": "advertencia",
                 },
             ],
             on_submit=lambda datos: _enviar_alerta(
@@ -592,8 +601,7 @@ def seguimiento_page() -> None:
                 )
                 return
             notas = [
-                getattr(r, "nota", None) for r in resumen
-                if getattr(r, "nota", None) is not None
+                getattr(r, "nota", None) for r in resumen if getattr(r, "nota", None) is not None
             ]
             estudiantes = len(resumen)
             con_nota = len(notas)
@@ -606,15 +614,17 @@ def seguimiento_page() -> None:
                 counter_card("Con nota", con_nota, "grade", variante="info")
                 counter_card("Promedio", promedio, "bar_chart", variante="neutral")
                 counter_card(
-                    "Con alerta", con_alerta, "flag",
+                    "Con alerta",
+                    con_alerta,
+                    "flag",
                     variante="danger" if con_alerta > 0 else "success",
                     alerta=con_alerta > 0,
                 )
                 counter_card("Observaciones", total_obs, "sticky_note_2", variante="info")
                 counter_card("Registros neg.", total_neg, "report_problem", variante="warning")
-            ui.label(
-                "Selecciona un estudiante del listado para ver su detalle."
-            ).classes("text-xs-meta")
+            ui.label("Selecciona un estudiante del listado para ver su detalle.").classes(
+                "text-xs-meta"
+            )
 
     # ── Sub-render: Detalle del estudiante ──────────────────────────────────
 
@@ -662,23 +672,22 @@ def seguimiento_page() -> None:
         # Secciones conmutables por botones (evita el scroll largo): solo se
         # muestra la sección activa (_s["sel_seccion"]).
         secciones = [
-            ("evolucion",     "Evolución",     "insights"),
+            ("evolucion", "Evolución", "insights"),
             ("observaciones", "Observaciones", "sticky_note_2"),
-            ("registros",     "Registros",     "rule"),
+            ("registros", "Registros", "rule"),
         ]
         if puede_alertas:
             secciones.append(("alertas", "Alertas y 360°", "notification_important"))
 
-        with ui.element("div").classes("panel-card"):
-            with ui.element("div").classes("seg-tabs"):
-                for _key, _label, _icon in secciones:
-                    _activa = _s["sel_seccion"] == _key
-                    (btn_secondary if _activa else btn_ghost)(
-                        _label,
-                        icon=_icon,
-                        size="sm",
-                        on_click=lambda k=_key: _set_seccion(k),
-                    )
+        with ui.element("div").classes("panel-card"), ui.element("div").classes("seg-tabs"):
+            for _key, _label, _icon in secciones:
+                _activa = _s["sel_seccion"] == _key
+                (btn_secondary if _activa else btn_ghost)(
+                    _label,
+                    icon=_icon,
+                    size="sm",
+                    on_click=lambda k=_key: _set_seccion(k),
+                )
 
         sec = _s["sel_seccion"]
         if sec == "alertas" and not puede_alertas:
@@ -770,11 +779,7 @@ def seguimiento_page() -> None:
             )
             _cat_id = fila.get("categoria_id")
             _ya_promovida = fila.get("registro_comportamiento_id") is not None
-            if (
-                _cat_id is not None
-                and es_comp_map.get(_cat_id, False)
-                and not _ya_promovida
-            ):
+            if _cat_id is not None and es_comp_map.get(_cat_id, False) and not _ya_promovida:
                 btn_ghost(
                     "",
                     on_click=lambda oid=fila["id"]: _promover_a_comportamiento(oid),
@@ -804,7 +809,9 @@ def seguimiento_page() -> None:
                         with ui.element("div").classes("panel-toolbar"):
                             ui.label(fa["nivel_display"]).classes("config-col-name")
                             ui.label(fa["fecha"]).classes("text-xs-meta")
-                            badge_var = "badge-success" if fa["estado"] == "Resuelta" else "badge-warning"
+                            badge_var = (
+                                "badge-success" if fa["estado"] == "Resuelta" else "badge-warning"
+                            )
                             ui.label(fa["estado"]).classes(f"badge {badge_var}")
                         ui.label(fa["descripcion"]).classes("alerta-item-text")
                         ui.label(f"→ {fa['destinatario']}").classes("text-xs-meta")
@@ -890,15 +897,15 @@ def seguimiento_page() -> None:
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
             _s["sel_periodo_id"] = s["sel_periodo_id"]
-            _s["sel_grupo_id"]   = s["sel_grupo_id"]
+            _s["sel_grupo_id"] = s["sel_grupo_id"]
             _s["sel_grupo_nombre"] = s.get("sel_grupo_nombre", "")
             # Al cambiar grupo/periodo, limpiar selección de estudiante y detalle.
             _s["sel_estudiante_id"] = None
-            _s["resultado_360"]     = None
-            _s["serie"]             = []
+            _s["resultado_360"] = None
+            _s["serie"] = []
             _s["observaciones_est"] = []
-            _s["registros_est"]     = []
-            _s["alertas"]           = []
+            _s["registros_est"] = []
+            _s["alertas"] = []
             if s["sel_grupo_id"]:
                 try:
                     _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(
@@ -913,7 +920,8 @@ def seguimiento_page() -> None:
             panel_hub.refresh()
 
         inline_periodo_grupo(
-            _s, on_sel_change,
+            _s,
+            on_sel_change,
             institucion_id=ctx.institucion_id,
             usuario_id=ctx.usuario_id,
             usuario_rol=ctx.usuario_rol,

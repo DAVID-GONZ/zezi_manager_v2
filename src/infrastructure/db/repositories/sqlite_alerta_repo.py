@@ -1,6 +1,7 @@
 """
 SqliteAlertaRepository — implementación SQLite de IAlertaRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -18,7 +19,6 @@ from src.domain.ports.alerta_repo import IAlertaRepository
 
 
 class SqliteAlertaRepository(IAlertaRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -28,6 +28,7 @@ class SqliteAlertaRepository(IAlertaRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -141,9 +142,7 @@ class SqliteAlertaRepository(IAlertaRepository):
 
     def get_alerta(self, alerta_id: int) -> Alerta | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM alertas WHERE id = ?", (alerta_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM alertas WHERE id = ?", (alerta_id,)).fetchone()
             return self._row_to_alerta(row) if row else None
 
     def listar_alertas(self, filtro: FiltroAlertasDTO) -> list[Alerta]:

@@ -43,7 +43,6 @@ from ..models.dtos import DashboardMetricsDTO
 
 
 class IEstadisticosRepository(ABC):
-
     # =========================================================================
     # Métricas de dashboard
     # =========================================================================

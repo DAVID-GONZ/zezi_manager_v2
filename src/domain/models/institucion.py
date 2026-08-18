@@ -24,7 +24,7 @@ Fuera de alcance (paso_24): `institucion_id` en tablas académicas
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -32,18 +32,19 @@ from pydantic import BaseModel, Field, field_validator
 # Enums (mejora_06)
 # =============================================================================
 
-class JornadaPrincipal(str, Enum):
-    AM    = "AM"
-    PM    = "PM"
+
+class JornadaPrincipal(StrEnum):
+    AM = "AM"
+    PM = "PM"
     UNICA = "UNICA"
 
 
-class TipoInstitucion(str, Enum):
-    PUBLICA  = "publica"
-    PRIVADA  = "privada"
+class TipoInstitucion(StrEnum):
+    PUBLICA = "publica"
+    PRIVADA = "privada"
 
 
-class Calendario(str, Enum):
+class Calendario(StrEnum):
     A = "A"
     B = "B"
 
@@ -52,6 +53,7 @@ class Calendario(str, Enum):
 # Entidad principal
 # =============================================================================
 
+
 class Institucion(BaseModel):
     """
     Una institución educativa (tenant) registrada en la plataforma.
@@ -59,30 +61,31 @@ class Institucion(BaseModel):
     La institución #1 representa la institución por defecto, sembrada a partir
     de la configuración institucional existente.
     """
-    id:             int | None  = None
-    nombre:         str
-    nit:            str | None   = None   # NIT / identificador tributario
-    codigo:         str | None   = None   # código externo (p.ej. DANE)
-    activa:         bool         = True
-    fecha_creacion: date         = Field(default_factory=date.today)
+
+    id: int | None = None
+    nombre: str
+    nit: str | None = None  # NIT / identificador tributario
+    codigo: str | None = None  # código externo (p.ej. DANE)
+    activa: bool = True
+    fecha_creacion: date = Field(default_factory=date.today)
 
     # Campos de identidad institucional (mejora_06)
-    nombre_oficial:         str | None              = None
-    codigo_dane:            str | None              = None
-    rector:                 str | None              = None
-    direccion:              str | None              = None
-    pais:                   str | None              = None
-    departamento:           str | None              = None
-    municipio:              str | None              = None
-    telefono:               str | None              = None
-    logo_path:              str | None              = None
-    logo_url:               str | None              = None
-    resolucion_aprobacion:  str | None              = None
-    lema:                   str | None              = None
-    email_institucional:    str | None              = None
-    jornada_principal:      JornadaPrincipal | None = None
-    tipo_institucion:       TipoInstitucion  | None = None
-    calendario:             Calendario       | None = None
+    nombre_oficial: str | None = None
+    codigo_dane: str | None = None
+    rector: str | None = None
+    direccion: str | None = None
+    pais: str | None = None
+    departamento: str | None = None
+    municipio: str | None = None
+    telefono: str | None = None
+    logo_path: str | None = None
+    logo_url: str | None = None
+    resolucion_aprobacion: str | None = None
+    lema: str | None = None
+    email_institucional: str | None = None
+    jornada_principal: JornadaPrincipal | None = None
+    tipo_institucion: TipoInstitucion | None = None
+    calendario: Calendario | None = None
 
     # Aprovisionamiento (mejora_09a): indica si el tenant ya completó su
     # configuración inicial obligatoria (wizard de mejora_09b). Los tenants
@@ -97,9 +100,7 @@ class Institucion(BaseModel):
         if not v:
             raise ValueError("El nombre de la institución no puede estar vacío.")
         if len(v) > 200:
-            raise ValueError(
-                f"El nombre no puede exceder 200 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 200 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("nit", "codigo", mode="before")
@@ -131,7 +132,7 @@ class Institucion(BaseModel):
         if not v:
             raise ValueError("El nombre oficial no puede ser una cadena vacía.")
         if len(v) > 200:
-            raise ValueError(f"El nombre oficial no puede exceder 200 caracteres.")
+            raise ValueError("El nombre oficial no puede exceder 200 caracteres.")
         return v
 
     @property
@@ -144,10 +145,12 @@ class Institucion(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevaInstitucionDTO(BaseModel):
     """Datos para crear una institución nueva."""
+
     nombre: str
-    nit:    str | None = None
+    nit: str | None = None
     codigo: str | None = None
 
     @field_validator("nombre", mode="before")
@@ -157,9 +160,7 @@ class NuevaInstitucionDTO(BaseModel):
         if not v:
             raise ValueError("El nombre de la institución no puede estar vacío.")
         if len(v) > 200:
-            raise ValueError(
-                f"El nombre no puede exceder 200 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 200 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("nit", "codigo", mode="before")
@@ -176,33 +177,35 @@ class NuevaInstitucionDTO(BaseModel):
 
 class ActualizarInstitucionDTO(BaseModel):
     """Campos editables de la entidad Institucion. Todos opcionales."""
-    nombre:                str | None              = None
-    nit:                   str | None              = None
-    nombre_oficial:        str | None              = None
-    codigo_dane:           str | None              = None
-    rector:                str | None              = None
-    direccion:             str | None              = None
-    pais:                  str | None              = None
-    departamento:          str | None              = None
-    municipio:             str | None              = None
-    telefono:              str | None              = None
-    logo_path:             str | None              = None
-    logo_url:              str | None              = None
-    resolucion_aprobacion: str | None              = None
-    lema:                  str | None              = None
-    email_institucional:   str | None              = None
-    jornada_principal:     JornadaPrincipal | None = None
-    tipo_institucion:      TipoInstitucion  | None = None
-    calendario:            Calendario       | None = None
 
-    def aplicar_a(self, inst: "Institucion") -> "Institucion":
+    nombre: str | None = None
+    nit: str | None = None
+    nombre_oficial: str | None = None
+    codigo_dane: str | None = None
+    rector: str | None = None
+    direccion: str | None = None
+    pais: str | None = None
+    departamento: str | None = None
+    municipio: str | None = None
+    telefono: str | None = None
+    logo_path: str | None = None
+    logo_url: str | None = None
+    resolucion_aprobacion: str | None = None
+    lema: str | None = None
+    email_institucional: str | None = None
+    jornada_principal: JornadaPrincipal | None = None
+    tipo_institucion: TipoInstitucion | None = None
+    calendario: Calendario | None = None
+
+    def aplicar_a(self, inst: Institucion) -> Institucion:
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return inst.model_copy(update=cambios) if cambios else inst
 
 
 class InstitucionResumenDTO(BaseModel):
     """Vista mínima para selects, filtros y lookups."""
-    id:     int
+
+    id: int
     nombre: str
     activa: bool
 
@@ -222,18 +225,19 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
     preferencias las completa el director en el wizard de configuración
     inicial (mejora_09b); aquí solo se piden los datos mínimos de arranque.
     """
+
     # Institución — datos básicos (todos obligatorios en el flujo admin).
-    nombre:          str
-    nombre_oficial:  str | None = None
-    codigo_dane:     str
-    pais:            str         = "Colombia"
-    departamento:    str
-    municipio:       str
+    nombre: str
+    nombre_oficial: str | None = None
+    codigo_dane: str
+    pais: str = "Colombia"
+    departamento: str
+    municipio: str
 
     # Director — la contraseña la genera el servicio (temporal).
-    director_usuario:         str
+    director_usuario: str
     director_nombre_completo: str
-    director_email:           str
+    director_email: str
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -242,9 +246,7 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
         if not v:
             raise ValueError("El nombre de la institución no puede estar vacío.")
         if len(v) > 200:
-            raise ValueError(
-                f"El nombre no puede exceder 200 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 200 caracteres (tiene {len(v)}).")
         return v.title()
 
     @field_validator("nombre_oficial", mode="before")
@@ -299,8 +301,7 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
         v = str(v).strip()
         if not v or " " in v or len(v) < 3:
             raise ValueError(
-                "El nombre de usuario del director debe tener mínimo 3 "
-                "caracteres y sin espacios."
+                "El nombre de usuario del director debe tener mínimo 3 caracteres y sin espacios."
             )
         return v.lower()
 
@@ -309,9 +310,7 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
     def validar_director_nombre(cls, v: str) -> str:
         v = str(v).strip()
         if len(v) < 3:
-            raise ValueError(
-                "El nombre completo del director debe tener al menos 3 caracteres."
-            )
+            raise ValueError("El nombre completo del director debe tener al menos 3 caracteres.")
         return v.title()
 
     @field_validator("director_email", mode="before")
@@ -332,8 +331,9 @@ class ResultadoAprovisionamientoDTO(BaseModel):
     `password_temporal` viaja una sola vez para que el admin la comunique al
     director; no se persiste ni se vuelve a exponer.
     """
-    institucion:       Institucion
-    director_usuario:  str
+
+    institucion: Institucion
+    director_usuario: str
     password_temporal: str | None = None
 
 

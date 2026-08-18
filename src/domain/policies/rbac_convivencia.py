@@ -40,6 +40,7 @@ Los roles se manejan como strings (el valor del enum Rol) para que la política
 sea utilizable desde cualquier capa sin acoplarse al tipo Enum. Acepta tanto
 strings como objetos con atributo `.value` (p.ej. el enum Rol).
 """
+
 from __future__ import annotations
 
 # Roles con autoridad global sobre convivencia (no dependen del objeto grupo).
@@ -56,9 +57,7 @@ def _normalizar(rol: object) -> str:
     return str(valor).strip().lower()
 
 
-def puede_gestionar_comportamiento(
-    usuario_rol: object, es_director_de_grupo: bool
-) -> bool:
+def puede_gestionar_comportamiento(usuario_rol: object, es_director_de_grupo: bool) -> bool:
     """
     True si un usuario con rol `usuario_rol` puede gestionar el comportamiento /
     la convivencia de un grupo, dado el hecho `es_director_de_grupo` (si el

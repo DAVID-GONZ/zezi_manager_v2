@@ -1,6 +1,7 @@
 """
 SqliteUsuarioRepository — implementación SQLite de IUsuarioRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -24,7 +25,6 @@ _COLS_USUARIO = (
 
 
 class SqliteUsuarioRepository(IUsuarioRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -34,6 +34,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -64,8 +65,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
     def get_by_username(self, username: str) -> Usuario | None:
         with self._get_conn() as conn:
             row = conn.execute(
-                f"SELECT {_COLS_USUARIO} FROM usuarios "
-                "WHERE LOWER(usuario) = LOWER(?)",
+                f"SELECT {_COLS_USUARIO} FROM usuarios WHERE LOWER(usuario) = LOWER(?)",
                 (username,),
             ).fetchone()
             return self._row_to_usuario(row) if row else None

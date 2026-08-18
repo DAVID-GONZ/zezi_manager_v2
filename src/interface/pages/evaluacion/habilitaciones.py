@@ -9,6 +9,7 @@ Tab 1 — Nivelación: planilla automática para estudiantes con bajo desempeño
 Tab 2 — Configuración: (implementación futura) publicación de actividades y fechas
            de entrega visibles para los estudiantes.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,8 +28,8 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
     CalificarNotaNivelacionDTO,
@@ -50,14 +51,14 @@ def habilitaciones_page() -> None:
     # ── Estado mutable global ─────────────────────────────────────────────────
     _s: dict = {
         # datos base
-        "periodos":     [],
-        "asignaciones": [],   # solo las del profesor (o todas si es directivo/admin)
+        "periodos": [],
+        "asignaciones": [],  # solo las del profesor (o todas si es directivo/admin)
         # nivelación
-        "nivel_periodo_id":  None,
-        "nivel_asig_id":     None,   # asignación seleccionada en el desplegable
-        "nivel_cierres":     [],     # list[CierrePeriodo] bajo desempeño
-        "nivel_cierre":      None,   # CierreNivelacion | None (si ya cerrada)
-        "nivel_planilla":    None,   # PlanillaNivelacionDTO | None
+        "nivel_periodo_id": None,
+        "nivel_asig_id": None,  # asignación seleccionada en el desplegable
+        "nivel_cierres": [],  # list[CierrePeriodo] bajo desempeño
+        "nivel_cierre": None,  # CierreNivelacion | None (si ya cerrada)
+        "nivel_planilla": None,  # PlanillaNivelacionDTO | None
     }
 
     # ── Carga de datos base ───────────────────────────────────────────────────
@@ -95,37 +96,34 @@ def habilitaciones_page() -> None:
         per_id = _s["nivel_periodo_id"]
         if per_id is None:
             return [a.asignacion_id for a in _s["asignaciones"]]
-        return [
-            a.asignacion_id for a in _s["asignaciones"]
-            if a.periodo_id == per_id
-        ]
+        return [a.asignacion_id for a in _s["asignaciones"] if a.periodo_id == per_id]
 
     def _cargar_nivelacion() -> None:
         """Carga bajo-desempeño, actividades y notas para la asignación seleccionada."""
-        asig_id  = _s["nivel_asig_id"]
-        per_id   = _s["nivel_periodo_id"]
+        asig_id = _s["nivel_asig_id"]
+        per_id = _s["nivel_periodo_id"]
         if asig_id is None or per_id is None:
-            _s["nivel_cierres"]     = []
-            _s["nivel_cierre"]      = None
-            _s["nivel_planilla"]    = None
+            _s["nivel_cierres"] = []
+            _s["nivel_cierre"] = None
+            _s["nivel_planilla"] = None
             return
         try:
             svc = Container.nivelacion_service()
-            _s["nivel_cierres"]     = svc.listar_bajo_desempeno([asig_id], per_id)
-            _s["nivel_cierre"]      = svc.get_cierre(asig_id, per_id)
+            _s["nivel_cierres"] = svc.listar_bajo_desempeno([asig_id], per_id)
+            _s["nivel_cierre"] = svc.get_cierre(asig_id, per_id)
             # Planilla con el promedio ponderado YA calculado por el servicio.
-            _s["nivel_planilla"]    = svc.planilla_nivelacion(asig_id, per_id)
+            _s["nivel_planilla"] = svc.planilla_nivelacion(asig_id, per_id)
         except Exception as exc:
             logger.error("Error cargando nivelación: %s", exc)
-            _s["nivel_cierres"]     = []
-            _s["nivel_cierre"]      = None
-            _s["nivel_planilla"]    = None
+            _s["nivel_cierres"] = []
+            _s["nivel_cierre"] = None
+            _s["nivel_planilla"] = None
 
     # ── Acciones nivelación ───────────────────────────────────────────────────
 
     def _agregar_actividad_dialog() -> None:
         asig_id = _s["nivel_asig_id"]
-        per_id  = _s["nivel_periodo_id"]
+        per_id = _s["nivel_periodo_id"]
         if asig_id is None or per_id is None:
             toast_warning("Seleccione asignación y periodo primero.")
             return
@@ -141,7 +139,7 @@ def habilitaciones_page() -> None:
                     periodo_id=per_id,
                     nombre=datos.get("nombre", ""),
                     descripcion=datos.get("descripcion") or None,
-                    peso=(datos.get("peso") or 0) / 100,   # UI en % → fracción
+                    peso=(datos.get("peso") or 0) / 100,  # UI en % → fracción
                     fecha=None,
                 )
                 est_ids = [c.estudiante_id for c in _s["nivel_cierres"]]
@@ -162,12 +160,29 @@ def habilitaciones_page() -> None:
         form_dialog(
             titulo="Nueva actividad de nivelación",
             campos=[
-                {"key": "nombre",      "label": "Nombre *",           "tipo": "text",
-                 "placeholder": "Ej: Taller recuperación 1", "requerido": True},
-                {"key": "descripcion", "label": "Descripción",         "tipo": "text",
-                 "placeholder": "Opcional"},
-                {"key": "peso",        "label": "Peso (%) *",          "tipo": "number",
-                 "valor": 30, "min": 1, "max": 100, "step": 1, "requerido": True},
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "placeholder": "Ej: Taller recuperación 1",
+                    "requerido": True,
+                },
+                {
+                    "key": "descripcion",
+                    "label": "Descripción",
+                    "tipo": "text",
+                    "placeholder": "Opcional",
+                },
+                {
+                    "key": "peso",
+                    "label": "Peso (%) *",
+                    "tipo": "number",
+                    "valor": 30,
+                    "min": 1,
+                    "max": 100,
+                    "step": 1,
+                    "requerido": True,
+                },
             ],
             on_submit=_guardar,
             texto_submit="Crear actividad",
@@ -185,9 +200,7 @@ def habilitaciones_page() -> None:
                     valor=float(datos.get("nota") or 0),
                     usuario_id=ctx.usuario_id,
                 )
-                Container.nivelacion_service().calificar_nota(
-                    actividad_id, estudiante_id, dto
-                )
+                Container.nivelacion_service().calificar_nota(actividad_id, estudiante_id, dto)
                 toast_success("Nota guardada")
                 _cargar_nivelacion()
                 planilla_nivelacion.refresh()
@@ -202,9 +215,16 @@ def habilitaciones_page() -> None:
         form_dialog(
             titulo=f"Calificar — Estudiante {estudiante_id}",
             campos=[
-                {"key": "nota", "label": "Nota (0–100) *", "tipo": "number",
-                 "valor": valor_actual if valor_actual is not None else 0.0,
-                 "min": 0.0, "max": 100.0, "step": 0.5, "requerido": True},
+                {
+                    "key": "nota",
+                    "label": "Nota (0–100) *",
+                    "tipo": "number",
+                    "valor": valor_actual if valor_actual is not None else 0.0,
+                    "min": 0.0,
+                    "max": 100.0,
+                    "step": 0.5,
+                    "requerido": True,
+                },
             ],
             on_submit=_guardar,
             texto_submit="Guardar nota",
@@ -213,7 +233,7 @@ def habilitaciones_page() -> None:
 
     def _cerrar_nivelacion() -> None:
         asig_id = _s["nivel_asig_id"]
-        per_id  = _s["nivel_periodo_id"]
+        per_id = _s["nivel_periodo_id"]
         if asig_id is None or per_id is None:
             return
 
@@ -247,8 +267,8 @@ def habilitaciones_page() -> None:
 
     @ui.refreshable
     def planilla_nivelacion() -> None:
-        asig_id     = _s["nivel_asig_id"]
-        per_id      = _s["nivel_periodo_id"]
+        asig_id = _s["nivel_asig_id"]
+        per_id = _s["nivel_periodo_id"]
 
         if asig_id is None or per_id is None or _s["nivel_planilla"] is None:
             ui.label("Seleccione una asignación y un periodo para ver la planilla.").classes(
@@ -256,11 +276,11 @@ def habilitaciones_page() -> None:
             )
             return
 
-        planilla    = _s["nivel_planilla"]   # PlanillaNivelacionDTO
+        planilla = _s["nivel_planilla"]  # PlanillaNivelacionDTO
         actividades = planilla.actividades
-        filas       = planilla.filas
-        cerrado     = planilla.cerrado
-        suma_pesos  = planilla.suma_pesos
+        filas = planilla.filas
+        cerrado = planilla.cerrado
+        suma_pesos = planilla.suma_pesos
 
         # ── Barra de acciones ────────────────────────────────────────────────
         with ui.row().classes("form-row-center-md u-mb-md"):
@@ -276,8 +296,10 @@ def habilitaciones_page() -> None:
                 )
                 if actividades:
                     ui.label(f"Pesos: {suma_pesos:.0%}").classes(
-                        "text-sm " + (
-                            "text-success font-semibold" if abs(suma_pesos - 1.0) <= 0.005
+                        "text-sm "
+                        + (
+                            "text-success font-semibold"
+                            if abs(suma_pesos - 1.0) <= 0.005
                             else "text-warning"
                         )
                     )
@@ -312,12 +334,10 @@ def habilitaciones_page() -> None:
 
             # Filas (el servicio ya calculó el promedio ponderado de cada fila)
             for fila in filas:
-                est_id      = fila.estudiante_id
+                est_id = fila.estudiante_id
                 nota_previa = fila.nota_previa
 
-                with ui.element("div").classes(
-                    "flex gap-1 items-center p-2 border-b row-hover"
-                ):
+                with ui.element("div").classes("flex gap-1 items-center p-2 border-b row-hover"):
                     # Nombre/ID del estudiante
                     ui.label(str(est_id)).classes("w-32 no-shrink cell-mono")
 
@@ -333,19 +353,20 @@ def habilitaciones_page() -> None:
                         with ui.element("div").classes("w-28 cell-num-center"):
                             valor_str = f"{valor:.1f}" if valor is not None else "—"
                             color_cls = (
-                                "text-success" if valor is not None and valor >= 60
-                                else "text-error" if valor is not None
+                                "text-success"
+                                if valor is not None and valor >= 60
+                                else "text-error"
+                                if valor is not None
                                 else "text-faint"
                             )
                             if cerrado:
-                                ui.label(valor_str).classes(
-                                    f"text-sm font-mono {color_cls}"
-                                )
+                                ui.label(valor_str).classes(f"text-sm font-mono {color_cls}")
                             else:
                                 btn_ghost(
                                     valor_str,
-                                    on_click=lambda _act_id=act.id, _est_id=est_id, _v=valor:
-                                        _calificar_nota(_act_id, _est_id, _v),
+                                    on_click=lambda _act_id=act.id, _est_id=est_id, _v=valor: (
+                                        _calificar_nota(_act_id, _est_id, _v)
+                                    ),
                                 ).classes(f"text-sm font-mono {color_cls}")
 
                     # Promedio ponderado (precalculado por el servicio)
@@ -353,24 +374,25 @@ def habilitaciones_page() -> None:
                         prom = fila.promedio
                         prom_str = f"{prom:.1f}" if prom is not None else "…"
                         prom_cls = (
-                            "text-success font-semibold" if prom is not None and prom >= 60
-                            else "text-error font-semibold" if prom is not None
+                            "text-success font-semibold"
+                            if prom is not None and prom >= 60
+                            else "text-error font-semibold"
+                            if prom is not None
                             else "text-faint"
                         )
-                        ui.label(prom_str).classes(f"w-28 text-right font-mono text-sm {prom_cls} no-shrink")
+                        ui.label(prom_str).classes(
+                            f"w-28 text-right font-mono text-sm {prom_cls} no-shrink"
+                        )
 
     # ── Contenido principal ───────────────────────────────────────────────────
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             with ui.tabs().classes("w-full") as tabs:
-                tab_nivel  = ui.tab("nivelacion",     label="Nivelación",             icon="school")
-                tab_config = ui.tab("configuracion",  label="Configuración",          icon="settings")
+                ui.tab("nivelacion", label="Nivelación", icon="school")
+                ui.tab("configuracion", label="Configuración", icon="settings")
 
             with ui.tab_panels(tabs, value="nivelacion").classes("w-full mt-0"):
-
-
                 # ── Tab 1: Nivelación ─────────────────────────────────────────
                 with ui.tab_panel("nivelacion"):
                     with ui.element("div").classes("panel-card"):
@@ -381,13 +403,12 @@ def habilitaciones_page() -> None:
                                 "Estudiantes con bajo desempeño al cierre del período"
                             ).classes("text-sm text-secondary ml-2")
 
-                        periodos_opts  = {None: "— Seleccione periodo —"}
+                        periodos_opts = {None: "— Seleccione periodo —"}
                         periodos_opts.update({p.id: p.nombre for p in _s["periodos"]})
                         asig_opts = {None: "— Seleccione asignación —"}
-                        asig_opts.update({
-                            a.asignacion_id: a.display_corto
-                            for a in _s["asignaciones"]
-                        })
+                        asig_opts.update(
+                            {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
+                        )
 
                         with ui.row().classes("form-row-inline u-mb-lg"):
                             ui.select(
@@ -412,7 +433,10 @@ def habilitaciones_page() -> None:
                             ).classes("w-60")
                             btn_icon(
                                 "refresh",
-                                on_click=lambda: (_cargar_nivelacion(), planilla_nivelacion.refresh()),
+                                on_click=lambda: (
+                                    _cargar_nivelacion(),
+                                    planilla_nivelacion.refresh(),
+                                ),
                                 tooltip="Recargar",
                             )
 
@@ -427,10 +451,11 @@ def habilitaciones_page() -> None:
 
                         # Banner de implementación futura
                         with ui.element("div").classes(
-                            "alert-panel-row border-dashed border-warning-soft "
-                            "bg-warning-soft mt-2"
+                            "alert-panel-row border-dashed border-warning-soft bg-warning-soft mt-2"
                         ):
-                            ThemeManager.icono("construction", size=32, color="var(--color-warning)")
+                            ThemeManager.icono(
+                                "construction", size=32, color="var(--color-warning)"
+                            )
                             with ui.element("div"):
                                 ui.label("Funcionalidad en desarrollo").classes(
                                     "text-sm font-semibold text-warning"
@@ -443,9 +468,7 @@ def habilitaciones_page() -> None:
 
                     # Vista previa de lo que vendrá
                     with ui.element("div").classes("panel-card mt-4"):
-                        ui.label("Próximas funcionalidades").classes(
-                            "text-base font-semibold mb-3"
-                        )
+                        ui.label("Próximas funcionalidades").classes("text-base font-semibold mb-3")
                         funcionalidades = [
                             (
                                 "list_alt",
@@ -479,12 +502,11 @@ def habilitaciones_page() -> None:
                                 ThemeManager.icono(icono, size=20, color="var(--color-secondary)")
                                 with ui.element("div"):
                                     ui.label(titulo).classes("text-sm font-medium")
-                                    ui.label(descripcion).classes(
-                                        "text-xs text-secondary mt-0.5"
-                                    )
+                                    ui.label(descripcion).classes("text-xs text-secondary mt-0.5")
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Evaluación · Nivelación",
     )
 

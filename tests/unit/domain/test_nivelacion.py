@@ -14,7 +14,7 @@ from src.domain.models.nivelacion import (
 
 class TestActividadNivelacion:
     def _act(self, **kw):
-        defaults = dict(id=1, asignacion_id=1, periodo_id=1, nombre="Taller 1", peso=0.5)
+        defaults = {"id": 1, "asignacion_id": 1, "periodo_id": 1, "nombre": "Taller 1", "peso": 0.5}
         return ActividadNivelacion(**{**defaults, **kw})
 
     def test_peso_valido(self):
@@ -40,10 +40,10 @@ class TestActividadNivelacion:
 
 class TestNotaNivelacion:
     def _nota(self, **kw):
-        defaults = dict(
-            actividad_nivelacion_id=1, estudiante_id=10,
-            asignacion_id=1, periodo_id=1,
-        )
+        defaults = {
+            "actividad_nivelacion_id": 1, "estudiante_id": 10,
+            "asignacion_id": 1, "periodo_id": 1,
+        }
         return NotaNivelacion(**{**defaults, **kw})
 
     def test_valor_none_pendiente(self):

@@ -36,7 +36,6 @@ from ..models.asistencia import (
 
 
 class IAsistenciaRepository(ABC):
-
     # =========================================================================
     # Escritura
     # =========================================================================
@@ -218,7 +217,9 @@ class IAsistenciaRepository(ABC):
         ...
 
     @abstractmethod
-    def clases_dictadas_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
+    def clases_dictadas_por_asignacion(
+        self, usuario_id: int, anio: int, mes: int
+    ) -> dict[int, int]:
         """
         Retorna el desglose de clases dictadas por asignación para un docente
         en un mes/año. Formato: {asignacion_id: numero_de_clases}.

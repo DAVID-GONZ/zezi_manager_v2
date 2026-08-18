@@ -12,7 +12,7 @@ Patrones de uso principales:
 
   Registrar un evento disciplinario:
     registro = repo.guardar_registro(nuevo_registro)
-    
+
   Actualizar un registro (ej. notificar acudiente o agregar seguimiento):
     repo.actualizar_registro(registro_modificado)
 
@@ -38,7 +38,6 @@ from ..models.convivencia import (
 
 
 class IConvivenciaRepository(ABC):
-
     # =========================================================================
     # Observaciones de Periodo
     # =========================================================================
@@ -158,7 +157,7 @@ class IConvivenciaRepository(ABC):
     @abstractmethod
     def actualizar_registro(self, registro: RegistroComportamiento) -> RegistroComportamiento:
         """
-        Actualiza un registro existente (ej. se agregó seguimiento o se 
+        Actualiza un registro existente (ej. se agregó seguimiento o se
         notificó al acudiente). Requiere que registro.id no sea None.
         """
         ...
@@ -179,7 +178,7 @@ class IConvivenciaRepository(ABC):
     @abstractmethod
     def get_nota(self, estudiante_id: int, periodo_id: int) -> NotaComportamiento | None:
         """
-        Retorna la nota de comportamiento de un estudiante en un periodo, 
+        Retorna la nota de comportamiento de un estudiante en un periodo,
         o None si no ha sido evaluado.
         """
         ...
@@ -193,11 +192,9 @@ class IConvivenciaRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_notas_por_grupo(
-        self, grupo_id: int, periodo_id: int
-    ) -> list[NotaComportamiento]:
+    def listar_notas_por_grupo(self, grupo_id: int, periodo_id: int) -> list[NotaComportamiento]:
         """
-        Retorna las notas de comportamiento de todos los estudiantes de un grupo 
+        Retorna las notas de comportamiento de todos los estudiantes de un grupo
         en un periodo específico.
         """
         ...
@@ -216,7 +213,9 @@ class IConvivenciaRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
+    def listar_categorias(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[CategoriaObservacion]:
         """
         Retorna la lista de categorías de observación.
         Si solo_activas=True (default), excluye las categorías desactivadas.
@@ -251,7 +250,10 @@ class IConvivenciaRepository(ABC):
 
     @abstractmethod
     def listar_plantillas(
-        self, categoria_id: int | None = None, solo_activas: bool = True, institucion_id: int | None = None
+        self,
+        categoria_id: int | None = None,
+        solo_activas: bool = True,
+        institucion_id: int | None = None,
     ) -> list[PlantillaObservacion]:
         """
         Retorna la lista de plantillas de observación.

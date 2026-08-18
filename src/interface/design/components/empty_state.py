@@ -12,6 +12,7 @@ Uso:
         cta_icono="add",
     )
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -23,8 +24,8 @@ from .buttons import btn_ghost, btn_primary
 
 _VARIANTE_ICONO_COLOR: dict[str, str] = {
     "default": "var(--color-text-secondary)",
-    "search":  "var(--color-text-secondary)",
-    "error":   "var(--color-error)",
+    "search": "var(--color-text-secondary)",
+    "error": "var(--color-error)",
 }
 
 

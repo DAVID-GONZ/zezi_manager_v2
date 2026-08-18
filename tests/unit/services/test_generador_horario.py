@@ -289,7 +289,7 @@ def test_generacion_simple_factible():
         _asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5),
         _asig_info(11, grupo_id=1, usuario_id=4, asignatura_id=6),
     ]
-    svc, infra, horario, infraestructura = _build(
+    svc, infra, horario, _infraestructura = _build(
         _config(), _plantilla(DIAS_3), FRANJAS_3, asig_infos, asignaturas,
     )
 
@@ -417,7 +417,7 @@ def test_costo_huecos_detecta_hueco():
     from src.services.generador_horario_service import _Leccion
 
     lec = _Leccion(10, grupo_id=1, usuario_id=3, etiqueta="G1/Mate")
-    f0, f1, f2 = FRANJAS_3  # orden 1, 2, 3
+    f0, _f1, f2 = FRANJAS_3  # orden 1, 2, 3
     orden_a_idx = {1: 0, 2: 1, 3: 2}
     colocados = [
         (lec, "Lunes", f0),  # idx 0
@@ -438,7 +438,7 @@ def test_costo_recreo_no_cuenta_como_hueco():
     # Lectivas en orden 1, 2 y 5; recreo (no lectivo) en orden 4. El índice
     # compacto las hace contiguas: 0, 1, 2.
     fa = _franja(1, "07:00", "07:55")
-    fb = _franja(2, "08:00", "08:55")
+    _franja(2, "08:00", "08:55")
     fc = _franja(5, "09:00", "09:55")
     orden_a_idx = {1: 0, 2: 1, 5: 2}
     lec = _Leccion(10, grupo_id=1, usuario_id=3, etiqueta="G1/Mate")
@@ -808,7 +808,7 @@ def test_balance_diario_distribucion_optima_menor_que_concentracion():
     from src.services.generador_horario_service import _Leccion
 
     lec = _Leccion(10, grupo_id=1, usuario_id=3, etiqueta="G1/Mate")
-    f1, f2, f3 = FRANJAS_3
+    f1, f2, _f3 = FRANJAS_3
     orden_a_idx = {1: 0, 2: 1, 3: 2}
     pesos = PesosGeneracion(
         balance_diario=1.0, huecos=0.0, distribucion=0.0, compactacion=0.0

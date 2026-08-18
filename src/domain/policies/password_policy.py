@@ -24,6 +24,7 @@ Reglas:
 NUNCA se loguea ni se persiste la contraseña aquí: estas funciones solo la
 inspeccionan en memoria y devuelven mensajes/errores, nunca el valor.
 """
+
 from __future__ import annotations
 
 LONGITUD_MINIMA = 10
@@ -63,9 +64,7 @@ _PASSWORDS_PROHIBIDAS: frozenset[str] = frozenset(
 )
 
 
-def errores_password(
-    password: str, *, username: str | None = None
-) -> list[str]:
+def errores_password(password: str, *, username: str | None = None) -> list[str]:
     """
     Devuelve la lista de mensajes de error de la contraseña dada.
 
@@ -76,45 +75,28 @@ def errores_password(
     errores: list[str] = []
 
     if len(pwd) < LONGITUD_MINIMA:
-        errores.append(
-            f"La contraseña debe tener al menos {LONGITUD_MINIMA} caracteres."
-        )
+        errores.append(f"La contraseña debe tener al menos {LONGITUD_MINIMA} caracteres.")
 
     if len(pwd) > LONGITUD_MAXIMA:
-        errores.append(
-            f"La contraseña no debe exceder {LONGITUD_MAXIMA} caracteres."
-        )
+        errores.append(f"La contraseña no debe exceder {LONGITUD_MAXIMA} caracteres.")
 
     if not any(c.isupper() for c in pwd):
-        errores.append(
-            "La contraseña debe incluir al menos una letra mayúscula."
-        )
+        errores.append("La contraseña debe incluir al menos una letra mayúscula.")
 
     if not any(c.islower() for c in pwd):
-        errores.append(
-            "La contraseña debe incluir al menos una letra minúscula."
-        )
+        errores.append("La contraseña debe incluir al menos una letra minúscula.")
 
     if not any(c.isdigit() for c in pwd):
-        errores.append(
-            "La contraseña debe incluir al menos un número."
-        )
+        errores.append("La contraseña debe incluir al menos un número.")
 
     if not any(not c.isalnum() for c in pwd):
-        errores.append(
-            "La contraseña debe incluir al menos un carácter especial."
-        )
+        errores.append("La contraseña debe incluir al menos un carácter especial.")
 
-    if username is not None and pwd.strip().lower() == username.strip().lower() \
-            and pwd != "":
-        errores.append(
-            "La contraseña no puede ser igual al nombre de usuario."
-        )
+    if username is not None and pwd.strip().lower() == username.strip().lower() and pwd != "":
+        errores.append("La contraseña no puede ser igual al nombre de usuario.")
 
     if pwd.lower() in _PASSWORDS_PROHIBIDAS:
-        errores.append(
-            "Esa contraseña es demasiado común. Elige una más original."
-        )
+        errores.append("Esa contraseña es demasiado común. Elige una más original.")
 
     return errores
 

@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -43,31 +43,33 @@ from pydantic import BaseModel, Field, field_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoEventoSesion(str, Enum):
-    LOGIN_EXITOSO      = "LOGIN_EXITOSO"
-    LOGIN_FALLIDO      = "LOGIN_FALLIDO"
-    LOGOUT             = "LOGOUT"
-    CREAR_USUARIO      = "CREAR_USUARIO"
-    EDITAR_USUARIO     = "EDITAR_USUARIO"
-    RESETEAR_PASSWORD  = "RESETEAR_PASSWORD"
-    CAMBIAR_ROL        = "CAMBIAR_ROL"
+
+class TipoEventoSesion(StrEnum):
+    LOGIN_EXITOSO = "LOGIN_EXITOSO"
+    LOGIN_FALLIDO = "LOGIN_FALLIDO"
+    LOGOUT = "LOGOUT"
+    CREAR_USUARIO = "CREAR_USUARIO"
+    EDITAR_USUARIO = "EDITAR_USUARIO"
+    RESETEAR_PASSWORD = "RESETEAR_PASSWORD"
+    CAMBIAR_ROL = "CAMBIAR_ROL"
     DESACTIVAR_USUARIO = "DESACTIVAR_USUARIO"
-    ACTIVAR_USUARIO    = "ACTIVAR_USUARIO"
-    ACCESO_DENEGADO    = "ACCESO_DENEGADO"
-    VER_COMO_INICIO    = "VER_COMO_INICIO"
-    VER_COMO_FIN       = "VER_COMO_FIN"
+    ACTIVAR_USUARIO = "ACTIVAR_USUARIO"
+    ACCESO_DENEGADO = "ACCESO_DENEGADO"
+    VER_COMO_INICIO = "VER_COMO_INICIO"
+    VER_COMO_FIN = "VER_COMO_FIN"
 
 
-class AccionCambio(str, Enum):
+class AccionCambio(StrEnum):
     CREATE = "CREATE"
     UPDATE = "UPDATE"
     DELETE = "DELETE"
-    READ   = "READ"    # accesos sensibles que conviene auditar
+    READ = "READ"  # accesos sensibles que conviene auditar
 
 
 # =============================================================================
 # Entidades — inmutables
 # =============================================================================
+
 
 class EventoSesion(BaseModel):
     """
@@ -77,14 +79,15 @@ class EventoSesion(BaseModel):
     El trigger `tg_actualizar_ultima_sesion` de la BD reacciona
     a inserciones con tipo=LOGIN_EXITOSO para actualizar `ultima_sesion`.
     """
-    id:             int | None            = None
-    usuario:        str                   # username (texto, no FK, para preservar tras borrado)
-    usuario_id:     int | None            = None
-    tipo_evento:    TipoEventoSesion
-    ip_address:     str | None            = None
-    fecha_hora:     datetime              = Field(default_factory=datetime.now)
-    detalles:       str | None            = None
-    institucion_id: int | None            = None  # multi-tenant informacional (mejora_07-T7)
+
+    id: int | None = None
+    usuario: str  # username (texto, no FK, para preservar tras borrado)
+    usuario_id: int | None = None
+    tipo_evento: TipoEventoSesion
+    ip_address: str | None = None
+    fecha_hora: datetime = Field(default_factory=datetime.now)
+    detalles: str | None = None
+    institucion_id: int | None = None  # multi-tenant informacional (mejora_07-T7)
 
     @field_validator("usuario", mode="before")
     @classmethod
@@ -149,15 +152,16 @@ class RegistroCambio(BaseModel):
     Reemplaza el `registrar_cambio()` del legacy, que recibía dicts
     y los serializaba implícitamente.
     """
-    id:              int | None      = None
-    usuario_id:      int | None      = None
-    accion:          AccionCambio
-    tabla:           str
-    registro_id:     int | None      = None
-    valor_anterior:  str | None      = None  # JSON string
-    valor_nuevo:     str | None      = None  # JSON string
-    timestamp:       datetime        = Field(default_factory=datetime.now)
-    institucion_id:  int | None      = None  # multi-tenant informacional (mejora_07-T7)
+
+    id: int | None = None
+    usuario_id: int | None = None
+    accion: AccionCambio
+    tabla: str
+    registro_id: int | None = None
+    valor_anterior: str | None = None  # JSON string
+    valor_nuevo: str | None = None  # JSON string
+    timestamp: datetime = Field(default_factory=datetime.now)
+    institucion_id: int | None = None  # multi-tenant informacional (mejora_07-T7)
 
     @field_validator("tabla", mode="before")
     @classmethod
@@ -187,9 +191,7 @@ class RegistroCambio(BaseModel):
         try:
             json.loads(v)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"valor_anterior/valor_nuevo debe ser JSON válido: {exc}"
-            )
+            raise ValueError(f"valor_anterior/valor_nuevo debe ser JSON válido: {exc}")
         return v
 
     # ------------------------------------------------------------------
@@ -239,12 +241,12 @@ class RegistroCambio(BaseModel):
     ) -> RegistroCambio:
         """Construye un registro de creación (sin valor anterior)."""
         return cls(
-            usuario_id    = usuario_id,
-            accion        = AccionCambio.CREATE,
-            tabla         = tabla,
-            registro_id   = registro_id,
-            valor_anterior= None,
-            valor_nuevo   = datos_nuevos,
+            usuario_id=usuario_id,
+            accion=AccionCambio.CREATE,
+            tabla=tabla,
+            registro_id=registro_id,
+            valor_anterior=None,
+            valor_nuevo=datos_nuevos,
         )
 
     @classmethod
@@ -258,12 +260,12 @@ class RegistroCambio(BaseModel):
     ) -> RegistroCambio:
         """Construye un registro de actualización."""
         return cls(
-            usuario_id    = usuario_id,
-            accion        = AccionCambio.UPDATE,
-            tabla         = tabla,
-            registro_id   = registro_id,
-            valor_anterior= datos_anteriores,
-            valor_nuevo   = datos_nuevos,
+            usuario_id=usuario_id,
+            accion=AccionCambio.UPDATE,
+            tabla=tabla,
+            registro_id=registro_id,
+            valor_anterior=datos_anteriores,
+            valor_nuevo=datos_nuevos,
         )
 
     @classmethod
@@ -276,12 +278,12 @@ class RegistroCambio(BaseModel):
     ) -> RegistroCambio:
         """Construye un registro de eliminación (sin valor nuevo)."""
         return cls(
-            usuario_id    = usuario_id,
-            accion        = AccionCambio.DELETE,
-            tabla         = tabla,
-            registro_id   = registro_id,
-            valor_anterior= datos_anteriores,
-            valor_nuevo   = None,
+            usuario_id=usuario_id,
+            accion=AccionCambio.DELETE,
+            tabla=tabla,
+            registro_id=registro_id,
+            valor_anterior=datos_anteriores,
+            valor_nuevo=None,
         )
 
 
@@ -289,13 +291,15 @@ class RegistroCambio(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class CrearEventoSesionDTO(BaseModel):
     """Datos para registrar un evento de sesión."""
-    usuario:     str
-    usuario_id:  int | None            = None
+
+    usuario: str
+    usuario_id: int | None = None
     tipo_evento: TipoEventoSesion
-    ip_address:  str | None            = None
-    detalles:    str | None            = None
+    ip_address: str | None = None
+    detalles: str | None = None
 
     def to_evento(self) -> EventoSesion:
         """Construye un EventoSesion a partir de los datos del DTO."""
@@ -309,12 +313,13 @@ class CrearRegistroCambioDTO(BaseModel):
     `desde_legacy()` permite migrar llamadas al `registrar_cambio()`
     de v1.0 sin reescribir todo el código de servicios de una vez.
     """
-    usuario_id:      int | None      = None
-    accion:          AccionCambio
-    tabla:           str
-    registro_id:     int | None      = None
-    valor_anterior:  dict | None     = None
-    valor_nuevo:     dict | None     = None
+
+    usuario_id: int | None = None
+    accion: AccionCambio
+    tabla: str
+    registro_id: int | None = None
+    valor_anterior: dict | None = None
+    valor_nuevo: dict | None = None
 
     def to_registro(self) -> RegistroCambio:
         """Construye un RegistroCambio a partir de los datos del DTO."""
@@ -329,7 +334,7 @@ class CrearRegistroCambioDTO(BaseModel):
         datos_nuevos: dict | None = None,
         id_registro: int | None = None,
         usuario_id: int | None = None,
-        descripcion: str | None = None,   # ignorado en v2.0
+        descripcion: str | None = None,  # ignorado en v2.0
     ) -> CrearRegistroCambioDTO:
         """
         Compatibilidad con la firma de `registrar_cambio()` del legacy.
@@ -343,7 +348,7 @@ class CrearRegistroCambioDTO(BaseModel):
             "CREATE": AccionCambio.CREATE,
             "UPDATE": AccionCambio.UPDATE,
             "DELETE": AccionCambio.DELETE,
-            "READ":   AccionCambio.READ,
+            "READ": AccionCambio.READ,
         }
         accion_enum = accion_map.get(str(accion).upper(), AccionCambio.UPDATE)
 
@@ -353,12 +358,12 @@ class CrearRegistroCambioDTO(BaseModel):
             datos_n["_descripcion"] = descripcion
 
         return cls(
-            usuario_id     = usuario_id,
-            accion         = accion_enum,
-            tabla          = tabla,
-            registro_id    = id_registro,
-            valor_anterior = datos_anteriores,
-            valor_nuevo    = datos_n if datos_n else None,
+            usuario_id=usuario_id,
+            accion=accion_enum,
+            tabla=tabla,
+            registro_id=id_registro,
+            valor_anterior=datos_anteriores,
+            valor_nuevo=datos_n if datos_n else None,
         )
 
 
@@ -368,25 +373,27 @@ class ResumenUsoDTO(BaseModel):
 
     Calculada sobre los eventos de sesión recientes para el dashboard de admin.
     """
-    logins_hoy:          int = 0
-    logins_periodo:      int = 0   # en la ventana de `dias`
-    accesos_denegados:   int = 0   # en la ventana de `dias`
-    usuarios_activos:    int = 0   # distintos que iniciaron sesión en la ventana
-    sesiones_periodo:    int = 0   # total de logins exitosos en la ventana
-    dias:                int = 7
+
+    logins_hoy: int = 0
+    logins_periodo: int = 0  # en la ventana de `dias`
+    accesos_denegados: int = 0  # en la ventana de `dias`
+    usuarios_activos: int = 0  # distintos que iniciaron sesión en la ventana
+    sesiones_periodo: int = 0  # total de logins exitosos en la ventana
+    dias: int = 7
 
 
 class FiltroAuditoriaDTO(BaseModel):
     """Parámetros para consultar registros de auditoría."""
-    usuario_id:    int | None                = None
-    tabla:         str | None                = None
-    accion:        AccionCambio | None       = None
-    tipo_evento:   TipoEventoSesion | None   = None
-    desde:         datetime | None           = None
-    hasta:         datetime | None           = None
-    institucion_id: int | None              = None
-    pagina:        int                       = Field(default=1, ge=1)
-    por_pagina:    int                       = Field(default=100, ge=1, le=500)
+
+    usuario_id: int | None = None
+    tabla: str | None = None
+    accion: AccionCambio | None = None
+    tipo_evento: TipoEventoSesion | None = None
+    desde: datetime | None = None
+    hasta: datetime | None = None
+    institucion_id: int | None = None
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=100, ge=1, le=500)
 
 
 # =============================================================================

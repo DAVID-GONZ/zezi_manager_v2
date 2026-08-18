@@ -110,7 +110,7 @@ class TestCambiarPassword:
         return BcryptAuthService(repo), repo
 
     def test_cambia_password_exitosamente(self):
-        svc, repo = self._svc_con_hash(1, "vieja")
+        svc, _repo = self._svc_con_hash(1, "vieja")
         resultado = svc.cambiar_password(1, "vieja", "nueva")
         assert resultado is True
 

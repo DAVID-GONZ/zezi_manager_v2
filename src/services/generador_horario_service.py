@@ -22,6 +22,7 @@ Extiende v1 (paso_15c) + v2 (paso_15d) con:
 El default sin configurar = comportamiento idéntico al motor anterior (R16).
 Lógica pura: sin NiceGUI, sin src.db, sin instanciación de repos.
 """
+
 from __future__ import annotations
 
 from src.domain.models.asignacion import FiltroAsignacionesDTO
@@ -38,23 +39,44 @@ from src.domain.models.infraestructura import (
 # son parámetros del motor de generación, no de la vista.
 # ---------------------------------------------------------------------------
 PESOS_PRINCIPALES: list[tuple[str, str, str]] = [
-    ("huecos",       "Evitar huecos",
-     "Reduce las horas libres entre clases de un grupo o docente. Mayor = horarios más compactos, sin ventanas."),
-    ("distribucion", "Repartir en la semana",
-     "Separa las clases de una misma materia en días distintos. Mayor = menos materias repetidas el mismo día."),
-    ("compactacion", "Compactar al docente",
-     "Concentra las clases del docente en menos jornadas. Mayor = el docente viene menos días o en bloques."),
+    (
+        "huecos",
+        "Evitar huecos",
+        "Reduce las horas libres entre clases de un grupo o docente. Mayor = horarios más compactos, sin ventanas.",
+    ),
+    (
+        "distribucion",
+        "Repartir en la semana",
+        "Separa las clases de una misma materia en días distintos. Mayor = menos materias repetidas el mismo día.",
+    ),
+    (
+        "compactacion",
+        "Compactar al docente",
+        "Concentra las clases del docente en menos jornadas. Mayor = el docente viene menos días o en bloques.",
+    ),
 ]
 
 PESOS_AVANZADOS: list[tuple[str, str, str]] = [
-    ("balance_diario",   "Equilibrar horas por día",
-     "Iguala cuántas horas dicta el docente cada día. Mayor = días más parejos, sin uno cargado y otro vacío."),
-    ("franja_preferida", "Respetar franja preferida",
-     "Ubica las materias en su franja preferida (mañana/tarde). Mayor = más respeto a esa preferencia."),
-    ("dia_libre",        "Dar un día libre",
-     "Intenta dejar al docente un día completo sin clases. Mayor = más prioridad a lograr ese día libre."),
-    ("hueco_comun",      "Proteger franja de reunión",
-     "Evita programar clases en la franja de reunión configurada. Mayor = más respeto a ese espacio común."),
+    (
+        "balance_diario",
+        "Equilibrar horas por día",
+        "Iguala cuántas horas dicta el docente cada día. Mayor = días más parejos, sin uno cargado y otro vacío.",
+    ),
+    (
+        "franja_preferida",
+        "Respetar franja preferida",
+        "Ubica las materias en su franja preferida (mañana/tarde). Mayor = más respeto a esa preferencia.",
+    ),
+    (
+        "dia_libre",
+        "Dar un día libre",
+        "Intenta dejar al docente un día completo sin clases. Mayor = más prioridad a lograr ese día libre.",
+    ),
+    (
+        "hueco_comun",
+        "Proteger franja de reunión",
+        "Evita programar clases en la franja de reunión configurada. Mayor = más respeto a ese espacio común.",
+    ),
 ]
 
 
@@ -71,8 +93,13 @@ class _Leccion:
     )
 
     def __init__(
-        self, asignacion_id, grupo_id, usuario_id, etiqueta,
-        tipo_sala_req=None, n_horas=1,
+        self,
+        asignacion_id,
+        grupo_id,
+        usuario_id,
+        etiqueta,
+        tipo_sala_req=None,
+        n_horas=1,
     ):
         """Inicializa la unidad de bloque con su asignación, grupo, docente,
         etiqueta, tipo de sala requerido y número de horas consecutivas."""
@@ -80,12 +107,11 @@ class _Leccion:
         self.grupo_id = grupo_id
         self.usuario_id = usuario_id
         self.etiqueta = etiqueta
-        self.tipo_sala_req = tipo_sala_req   # str | None
-        self.n_horas = n_horas               # int >= 1
+        self.tipo_sala_req = tipo_sala_req  # str | None
+        self.n_horas = n_horas  # int >= 1
 
 
 class GeneradorHorarioService:
-
     def __init__(
         self,
         infra_repo,
@@ -169,13 +195,11 @@ class GeneradorHorarioService:
         conteo_asig: dict[tuple, int] = {}
         dias_por_docente: dict[int, set] = {}
 
-        for (lec, dia, franja) in colocados:
+        for lec, dia, franja in colocados:
             idx = orden_a_idx[franja.orden]
             idx_grupo.setdefault((lec.grupo_id, dia), []).append(idx)
             idx_docente.setdefault((lec.usuario_id, dia), []).append(idx)
-            conteo_asig[(lec.asignacion_id, dia)] = (
-                conteo_asig.get((lec.asignacion_id, dia), 0) + 1
-            )
+            conteo_asig[(lec.asignacion_id, dia)] = conteo_asig.get((lec.asignacion_id, dia), 0) + 1
             dias_por_docente.setdefault(lec.usuario_id, set()).add(dia)
 
         def _huecos(idx_map):
@@ -213,8 +237,7 @@ class GeneradorHorarioService:
         peso_dl = getattr(pesos, "dia_libre", 0.0)
         if peso_dl > 0.0 and n_dias_total > 0:
             dia_libre_cost = sum(
-                1 for dias_set in dias_por_docente.values()
-                if len(dias_set) >= n_dias_total
+                1 for dias_set in dias_por_docente.values() if len(dias_set) >= n_dias_total
             )
 
         # T7 stubs: franja_preferida y hueco_comun se implementan con datos
@@ -295,7 +318,7 @@ class GeneradorHorarioService:
 
                 candidate_slots = slots_para_lec_fn(lec) if slots_para_lec_fn else slots
 
-                for (dia2, franja2) in candidate_slots:
+                for dia2, franja2 in candidate_slots:
                     if dia2 == dia_act and franja2.orden == franja_act.orden:
                         continue
                     clave_g2 = (lec.grupo_id, dia2, franja2.orden)
@@ -327,12 +350,8 @@ class GeneradorHorarioService:
                     if horas_dia_docente is not None:
                         k_act = (lec.usuario_id, dia_act)
                         k_new = (lec.usuario_id, dia2)
-                        horas_dia_docente[k_act] = max(
-                            0, horas_dia_docente.get(k_act, 0) - 1
-                        )
-                        horas_dia_docente[k_new] = (
-                            horas_dia_docente.get(k_new, 0) + 1
-                        )
+                        horas_dia_docente[k_act] = max(0, horas_dia_docente.get(k_act, 0) - 1)
+                        horas_dia_docente[k_new] = horas_dia_docente.get(k_new, 0) + 1
                     colocados[i] = (lec, dia2, franja2)
                     pasos += 1
                     mejoró_alguna_pasada = True
@@ -369,8 +388,7 @@ class GeneradorHorarioService:
                 incidencias=[f"La plantilla {config.plantilla_id} no existe."],
             )
 
-        franjas = [f for f in self._infra.listar_franjas(config.plantilla_id)
-                   if f.es_lectiva]
+        franjas = [f for f in self._infra.listar_franjas(config.plantilla_id) if f.es_lectiva]
         franjas.sort(key=lambda f: f.orden)
         orden_a_idx = {f.orden: idx for idx, f in enumerate(franjas)}
         dias = list(plantilla.dias_activos)
@@ -387,9 +405,7 @@ class GeneradorHorarioService:
         franja_by_orden = {f.orden: f for f in franjas}
         orden_siguiente: dict[int, int | None] = {}
         for i, o in enumerate(ordenes_lectivas):
-            orden_siguiente[o] = (
-                ordenes_lectivas[i + 1] if i + 1 < len(ordenes_lectivas) else None
-            )
+            orden_siguiente[o] = ordenes_lectivas[i + 1] if i + 1 < len(ordenes_lectivas) else None
 
         def _ordenes_n(orden_start: int, n: int) -> list[int] | None:
             """Lista de n órdenes lectivos consecutivos desde orden_start, o None."""
@@ -436,6 +452,7 @@ class GeneradorHorarioService:
         # acotado por institución, así que se acotan los grupos al mismo tenant
         # para que `sala_id` resuelva contra el mismo conjunto de salas.
         from src.services.contexto_tenant import institucion_actual
+
         sala_grupo_nombre: dict[int, str] = {}
         grado_de_grupo: dict[int, int | None] = {}
         for g in self._infra.listar_grupos(institucion_id=institucion_actual()):
@@ -519,7 +536,8 @@ class GeneradorHorarioService:
         def _slots_disponibles_docente(usuario_id: int) -> int:
             if usuario_id not in slots_disp_docente:
                 n = sum(
-                    1 for (dia, franja) in slots
+                    1
+                    for (dia, franja) in slots
                     if self._infra.es_disponible(usuario_id, dia, franja.orden)
                 )
                 slots_disp_docente[usuario_id] = n
@@ -560,7 +578,9 @@ class GeneradorHorarioService:
             n_sueltas = horas % n_h
             lecciones = [
                 _Leccion(
-                    a.asignacion_id, a.grupo_id, a.usuario_id,
+                    a.asignacion_id,
+                    a.grupo_id,
+                    a.usuario_id,
                     f"{a.grupo_codigo}/{a.asignatura_nombre}",
                     tipo_sala_req=tipo_sala if hay_salas else None,
                     n_horas=n_h,
@@ -569,7 +589,9 @@ class GeneradorHorarioService:
             ]
             lecciones += [
                 _Leccion(
-                    a.asignacion_id, a.grupo_id, a.usuario_id,
+                    a.asignacion_id,
+                    a.grupo_id,
+                    a.usuario_id,
                     f"{a.grupo_codigo}/{a.asignatura_nombre}",
                     tipo_sala_req=tipo_sala if hay_salas else None,
                     n_horas=1,
@@ -607,8 +629,7 @@ class GeneradorHorarioService:
             tope = _carga_max(uid)
             if tope is not None and demanda > tope:
                 incidencias.append(
-                    f"PRE-VUELO: docente {uid} requiere {demanda}h pero su carga "
-                    f"máxima es {tope}h."
+                    f"PRE-VUELO: docente {uid} requiere {demanda}h pero su carga máxima es {tope}h."
                 )
 
         # Slots por lección: combina n_horas + ventana de grupo
@@ -626,9 +647,9 @@ class GeneradorHorarioService:
             return base
 
         # --- Grids de backtracking ------------------------------------
-        ocupado_grupo: set = set()      # (grupo_id, dia, orden)
-        ocupado_docente: set = set()    # (usuario_id, dia, orden)
-        ocupado_sala: set = set()       # (sala_id, dia, orden)
+        ocupado_grupo: set = set()  # (grupo_id, dia, orden)
+        ocupado_docente: set = set()  # (usuario_id, dia, orden)
+        ocupado_sala: set = set()  # (sala_id, dia, orden)
         carga_docente: dict[int, int] = {}
         horas_dia_docente: dict[tuple, int] = {}  # (usuario_id, dia) -> count
         colocados: list[tuple[_Leccion, str, object]] = []
@@ -714,8 +735,9 @@ class GeneradorHorarioService:
 
         def _diagnosticar_no_colocado(lec: _Leccion) -> str:
             from collections import Counter
+
             motivos: Counter[str] = Counter()
-            for (dia, franja) in _slots_para_lec(lec):
+            for dia, franja in _slots_para_lec(lec):
                 ordenes = _ordenes_n(franja.orden, lec.n_horas)
                 if ordenes is None:
                     motivos["sin_consecutividad"] += 1
@@ -760,7 +782,7 @@ class GeneradorHorarioService:
             if presupuesto[0] <= 0:
                 return False
             lec = lecciones_ordenadas[idx]
-            for (dia, franja) in _slots_para_lec(lec):
+            for dia, franja in _slots_para_lec(lec):
                 presupuesto[0] -= 1
                 if presupuesto[0] <= 0:
                     return False
@@ -798,8 +820,7 @@ class GeneradorHorarioService:
                     return False
             for uid in docentes_involucrados:
                 if not all(
-                    self._infra.es_disponible(uid, dia, franja.orden)
-                    for (dia, franja) in slots
+                    self._infra.es_disponible(uid, dia, franja.orden) for (dia, franja) in slots
                 ):
                     return False
             return True
@@ -810,12 +831,13 @@ class GeneradorHorarioService:
             if not _coloreo_activable():
                 return False
             from src.domain.models.scheduling import colorear_aristas_bipartito
+
             aristas = [(lec.grupo_id, lec.usuario_id) for lec in lecciones_ordenadas]
             colores = colorear_aristas_bipartito(aristas, n_slots)
             if not all(c is not None for c in colores):
                 return False
             _reset_estado()
-            for lec, color in zip(lecciones_ordenadas, colores):
+            for lec, color in zip(lecciones_ordenadas, colores, strict=False):
                 dia, franja = slots[color]
                 _colocar(lec, dia, franja)
             return True
@@ -858,7 +880,7 @@ class GeneradorHorarioService:
                 if id(lec) in colocadas_ids:
                     continue
                 ubicada = False
-                for (dia, franja) in _slots_para_lec(lec):
+                for dia, franja in _slots_para_lec(lec):
                     if _puede_colocar(lec, dia, franja):
                         _colocar(lec, dia, franja)
                         ubicada = True
@@ -867,8 +889,7 @@ class GeneradorHorarioService:
                     causa = _diagnosticar_no_colocado(lec)
                     causas[causa] = causas.get(causa, 0) + 1
                     incidencias.append(
-                        f"No colocado: {lec.etiqueta} (asignación {lec.asignacion_id}) "
-                        f"— {causa}."
+                        f"No colocado: {lec.etiqueta} (asignación {lec.asignacion_id}) — {causa}."
                     )
 
         # --- Post-solve: verificar min_horas_dia ----------------------
@@ -886,8 +907,7 @@ class GeneradorHorarioService:
 
         # --- Aviso: clases sin sala del tipo requerido (no bloquea) ---
         sin_sala = sum(
-            1 for (lec, _d, _f) in colocados
-            if lec.tipo_sala_req and lec_sala.get(id(lec)) is None
+            1 for (lec, _d, _f) in colocados if lec.tipo_sala_req and lec_sala.get(id(lec)) is None
         )
         if sin_sala:
             incidencias.append(
@@ -902,7 +922,8 @@ class GeneradorHorarioService:
         costo_inicial, _ = self._costo(colocados, pesos, orden_a_idx, n_dias_total=n_dias)
         pasos_mejora = 0
 
-        def _skip_lec(lec): return lec.n_horas > 1 or bool(lec.tipo_sala_req)
+        def _skip_lec(lec):
+            return lec.n_horas > 1 or bool(lec.tipo_sala_req)
 
         def _extra_check(lec, dia, franja):
             if (lec.usuario_id, dia, franja.orden) in bloqueadas_reunion:
@@ -936,7 +957,7 @@ class GeneradorHorarioService:
 
         # --- Mapear a bloques generados (expandir macro-lecciones) ----
         bloques: list[BloqueGeneradoDTO] = []
-        for (lec, dia, franja_start) in colocados:
+        for lec, dia, franja_start in colocados:
             sid = lec_sala.get(id(lec))
             if sid:
                 sala_nombre = sala_nombre_map.get(sid, "Aula")
@@ -1019,14 +1040,10 @@ class GeneradorHorarioService:
 
         # --- Persistir solo si válido ---------------------------------
         if resultado.valido and filas:
-            self._horario.aplicar_lote(
-                escenario_id, config.periodo_id, filas, solo_validas=False
-            )
+            self._horario.aplicar_lote(escenario_id, config.periodo_id, filas, solo_validas=False)
 
         # --- Actualizar config ----------------------------------------
-        config_actualizada = config.model_copy(
-            update={"escenario_destino_id": escenario_id}
-        )
+        config_actualizada = config.model_copy(update={"escenario_destino_id": escenario_id})
         self._infra.actualizar_config_generacion(config_actualizada)
         if config.puede_transicionar_a("generado"):
             self._infra.cambiar_estado_config(config_id, "generado")

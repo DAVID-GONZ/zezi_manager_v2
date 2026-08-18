@@ -42,6 +42,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 ## Tareas
 
 ### T1 — `STORAGE_SECRET` separado en config — M1
+
 - En `config.py`, añadir el campo `STORAGE_SECRET: str` (espejo de `JWT_SECRET`:
   `min_length=32`, default sentinel inseguro propio, p.ej.
   `"cambia-este-storage-secret-en-produccion"`).
@@ -52,6 +53,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** `.venv/Scripts/python.exe -c "from config import settings; print(settings.STORAGE_SECRET[:4])"` sin error; `check_imports` no aplica (raíz).
 
 ### T2 — `main.py` usa `STORAGE_SECRET` — M1
+
 - Cambiar `storage_secret=settings.JWT_SECRET` → `storage_secret=settings.STORAGE_SECRET`.
 - Comentario breve: secreto de cookie de sesión separado del de JWT (paso seguridad_02).
 - **Nota a documentar en el reporte:** las sesiones activas se invalidan al
@@ -59,6 +61,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** `PYTHONUTF8=1 PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -c "import main"` importa sin error.
 
 ### T3 — Policy de contraseñas (dominio puro) — M4
+
 - Nuevo `src/domain/policies/password_policy.py` (mismo estilo que
   `rbac_usuarios.py`: funciones puras, sin infra/interfaz/IO). Constante
   `LONGITUD_MINIMA = 8`. Reglas:
@@ -74,6 +77,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** `.venv/Scripts/python.exe scripts/check_imports.py --layer domain` exit 0; `.venv/Scripts/python.exe -m pytest tests/unit/domain/test_password_policy.py -q`.
 
 ### T4 — Enforcement en el servicio — M4
+
 - En `usuario_service.py`:
   - `cambiar_password(...)`: validar `password_nuevo` con `validar_password(...)`
     (pasar el username del usuario para la regla anti-igualdad) ANTES de delegar
@@ -88,6 +92,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
   (casos: rechaza "1234567"/"abcdefgh"/igual-al-username; acepta "Clave2026").
 
 ### T5 — Generador temporal cumple la policy — M4 (coherencia con seguridad_01)
+
 - Revisar `_generar_password_temporal()` (añadido en seguridad_01, en
   `usuario_service.py`): garantizar **por construcción** ≥1 letra y ≥1 dígito y
   longitud ≥ 8 (que no pueda salir solo-dígitos o solo-letras). Si ya lo
@@ -95,6 +100,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** test que genere N temporales y todas pasen `errores_password()==[]`.
 
 ### T6 — UI de `cambiar_password.py` consistente con la policy — M4
+
 - Reemplazar el check local `_LONGITUD_MINIMA`/longitud por las reglas de la
   policy: mostrar `Container.usuario_service().requisitos_password()` como ayuda
   bajo el campo, y en el `except ValueError` surfacing del mensaje del servidor
@@ -104,6 +110,7 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** `.venv/Scripts/python.exe scripts/check_design.py --file src/interface/pages/cambiar_password.py` exit 0; `check_imports --layer interface` exit 0.
 
 ### T7 — `.env.example` documentado — B2
+
 - Rellenar `.env.example` con TODAS las variables relevantes, comentadas, con
   placeholders seguros (sin secretos reales): `APP_ENV`, `DATABASE_PATH`,
   `JWT_SECRET`, `STORAGE_SECRET`, `JWT_EXPIRE_MINUTES`, `HOST`, `PORT`,
@@ -113,11 +120,13 @@ Baseline antes de empezar: `python init.py` → **Todos los test pasando**
 - **Verificación:** archivo no vacío; `grep -c STORAGE_SECRET .env.example` ≥ 1.
 
 ### T8 — Verificación integral
+
 - `PYTHONUTF8=1 PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe init.py` **VERDE** (≥1233 passed + nuevos).
 - `.venv/Scripts/python.exe scripts/check_tasks.py`.
 - `progress/impl_seguridad_02_config_secretos.md` (formato implementer.md).
 
 ## criterio_done
+
 `STORAGE_SECRET` es independiente de `JWT_SECRET` y `main.py` firma la cookie con
 él (bloqueando el default inseguro en producción); las contraseñas elegidas por
 el usuario (cambiar/resetear-explícito/crear-explícito) se validan en el

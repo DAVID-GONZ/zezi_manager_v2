@@ -28,6 +28,7 @@ Flujo:
   6. "Nuevo registro de comportamiento": visible solo si el usuario está
      autorizado sobre el grupo activo.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,10 +46,14 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
-from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
+from src.interface.design.components.inline_selectors import (
+    inline_periodo_grupo_asignatura,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
-from src.interface.pages.convivencia._shared_observacion_form import abrir_crear_observacion_dialog
+from src.interface.pages.convivencia._shared_observacion_form import (
+    abrir_crear_observacion_dialog,
+)
 from src.services.convivencia_service import NuevoRegistroComportamientoDTO
 
 logger = logging.getLogger("OBSERVACIONES")
@@ -58,17 +63,18 @@ logger = logging.getLogger("OBSERVACIONES")
 # Strings literales — NO importan TipoRegistro del dominio
 
 _TIPOS_DISPLAY: dict[str, str] = {
-    "fortaleza":          "Fortaleza",
-    "dificultad":         "Dificultad",
-    "compromiso":         "Compromiso",
+    "fortaleza": "Fortaleza",
+    "dificultad": "Dificultad",
+    "compromiso": "Compromiso",
     "citacion_acudiente": "Citación acudiente",
-    "descargo":           "Descargo",
+    "descargo": "Descargo",
 }
 
 _MSG_NO_AUTORIZADO = (
     "Solo el director de grupo, la coordinación o la dirección pueden "
     "gestionar el comportamiento de este grupo."
 )
+
 
 def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
     """Autorización por objeto: ¿puede el usuario gestionar el comportamiento
@@ -81,26 +87,27 @@ def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
         return Container.catalogo_academico_service().puede_gestionar_comportamiento_en_grupo(
             ctx.usuario_rol, ctx.usuario_id, int(grupo_id)
         )
-    except Exception as exc:  # noqa: BLE001 — fail-closed ante error de resolución
+    except Exception as exc:
         logger.warning("No se pudo resolver autorización de comportamiento: %s", exc)
         return False
 
 
 # ── Estado ─────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "estudiantes":           [],
-        "periodos":              [],
-        "anio_id":               None,
-        "sel_estudiante_ids":    [],
-        "sel_periodo_id":        None,
-        "sel_grupo_id":          None,
-        "sel_grupo_nombre":      "",
-        "sel_asignacion_id":     None,
+        "estudiantes": [],
+        "periodos": [],
+        "anio_id": None,
+        "sel_estudiante_ids": [],
+        "sel_periodo_id": None,
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
+        "sel_asignacion_id": None,
         "sel_asignacion_nombre": "",
-        "plantilla_id":          None,
-        "asignaciones_grupo":    [],
+        "plantilla_id": None,
+        "asignaciones_grupo": [],
     }
 
 
@@ -130,6 +137,7 @@ def _cargar_plantillas(categoria_id: int | None = None, limite: int = 20) -> lis
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _nombre_estudiante(_s: dict, est_id: int | None) -> str:
     for est in _s["estudiantes"]:
         if getattr(est, "id", None) == est_id:
@@ -143,14 +151,17 @@ def _construir_filas_picker(_s: dict) -> list[dict]:
     for est in _s["estudiantes"]:
         est_id = getattr(est, "id", None)
         nombre = f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip()
-        filas.append({
-            "estudiante_id":   est_id,
-            "nombre_completo": nombre,
-        })
+        filas.append(
+            {
+                "estudiante_id": est_id,
+                "nombre_completo": nombre,
+            }
+        )
     return filas
 
 
 # ── Página ─────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard de rol registrados en main.py
 def observaciones_page() -> None:
@@ -214,10 +225,7 @@ def observaciones_page() -> None:
         if not todas_plantillas:
             toast_warning("No hay plantillas disponibles.")
             return
-        opciones_plt = {
-            getattr(p, "id", None): getattr(p, "texto", "")
-            for p in todas_plantillas
-        }
+        opciones_plt = {getattr(p, "id", None): getattr(p, "texto", "") for p in todas_plantillas}
 
         def _on_submit_plantilla(datos: dict) -> bool | None:
             plantilla_id = datos.get("plantilla_id")
@@ -240,13 +248,15 @@ def observaciones_page() -> None:
 
         form_dialog(
             titulo="Usar plantilla",
-            campos=[{
-                "key":       "plantilla_id",
-                "label":     "Seleccionar plantilla",
-                "tipo":      "select",
-                "opciones":  opciones_plt,
-                "requerido": True,
-            }],
+            campos=[
+                {
+                    "key": "plantilla_id",
+                    "label": "Seleccionar plantilla",
+                    "tipo": "select",
+                    "opciones": opciones_plt,
+                    "requerido": True,
+                }
+            ],
             on_submit=_on_submit_plantilla,
             texto_submit="Usar plantilla",
             max_width="max-w-lg",
@@ -288,7 +298,9 @@ def observaciones_page() -> None:
                 fecha=fecha_str,
             )
             Container.convivencia_service().registrar_comportamiento(
-                dto, ctx.usuario_id, _s["anio_id"],
+                dto,
+                ctx.usuario_id,
+                _s["anio_id"],
                 usuario_rol=ctx.usuario_rol,
             )
             toast_success("Registro guardado.")
@@ -311,7 +323,9 @@ def observaciones_page() -> None:
             return
 
         opciones_est = {
-            getattr(e, "id", None): f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
+            getattr(
+                e, "id", None
+            ): f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
             for e in _s["estudiantes"]
         }
         sel_ids = _s.get("sel_estudiante_ids", [])
@@ -320,37 +334,37 @@ def observaciones_page() -> None:
 
         campos = [
             {
-                "key":       "estudiante_id",
-                "label":     "Estudiante",
-                "tipo":      "select",
-                "opciones":  opciones_est,
-                "valor":     est_prefill,
+                "key": "estudiante_id",
+                "label": "Estudiante",
+                "tipo": "select",
+                "opciones": opciones_est,
+                "valor": est_prefill,
                 "requerido": True,
             },
             {
-                "key":       "tipo",
-                "label":     "Tipo de registro",
-                "tipo":      "select",
-                "opciones":  opciones_tipo,
+                "key": "tipo",
+                "label": "Tipo de registro",
+                "tipo": "select",
+                "opciones": opciones_tipo,
                 "requerido": True,
             },
             {
-                "key":         "descripcion",
-                "label":       "Descripción",
-                "tipo":        "textarea",
+                "key": "descripcion",
+                "label": "Descripción",
+                "tipo": "textarea",
                 "placeholder": "Máximo 1000 caracteres...",
-                "requerido":   True,
+                "requerido": True,
             },
             {
-                "key":   "requiere_firma",
+                "key": "requiere_firma",
                 "label": "¿Requiere firma del acudiente?",
-                "tipo":  "checkbox",
+                "tipo": "checkbox",
                 "valor": False,
             },
             {
-                "key":   "fecha",
+                "key": "fecha",
                 "label": "Fecha",
-                "tipo":  "text",
+                "tipo": "text",
                 "valor": str(date.today()),
             },
         ]
@@ -368,20 +382,20 @@ def observaciones_page() -> None:
     def panel_grid() -> None:
         col_defs = [
             {
-                "headerName":              "",
-                "field":                   "check",
-                "checkboxSelection":       True,
+                "headerName": "",
+                "field": "check",
+                "checkboxSelection": True,
                 "headerCheckboxSelection": True,
-                "width":                   50,
-                "sortable":                False,
-                "filter":                  False,
+                "width": 50,
+                "sortable": False,
+                "filter": False,
             },
             {
                 "headerName": "Estudiante",
-                "field":      "nombre_completo",
-                "flex":       1,
-                "sortable":   True,
-                "filter":     True,
+                "field": "nombre_completo",
+                "flex": 1,
+                "sortable": True,
+                "filter": True,
             },
         ]
 
@@ -422,15 +436,17 @@ def observaciones_page() -> None:
                 )
             else:
                 with ui.element("div").classes("aggrid-vh"):
-                    grid = ui.aggrid({
-                        "columnDefs":          col_defs,
-                        "rowData":             grid_rows,
-                        "rowSelection":        "multiple",
-                        "defaultColDef":       {"resizable": True},
-                        "suppressCellFocus":   True,
-                        "pagination":          True,
-                        "paginationPageSize":  20,
-                    }).classes("w-full")
+                    grid = ui.aggrid(
+                        {
+                            "columnDefs": col_defs,
+                            "rowData": grid_rows,
+                            "rowSelection": "multiple",
+                            "defaultColDef": {"resizable": True},
+                            "suppressCellFocus": True,
+                            "pagination": True,
+                            "paginationPageSize": 20,
+                        }
+                    ).classes("w-full")
                 _refs["grid"] = grid
 
                 async def on_grid_selection(_e, _grid=grid) -> None:
@@ -443,11 +459,11 @@ def observaciones_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["sel_periodo_id"]        = s["sel_periodo_id"]
-            _s["sel_grupo_id"]          = s["sel_grupo_id"]
-            _s["sel_asignacion_id"]     = s["sel_asignacion_id"]
+            _s["sel_periodo_id"] = s["sel_periodo_id"]
+            _s["sel_grupo_id"] = s["sel_grupo_id"]
+            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
             _s["sel_asignacion_nombre"] = s.get("sel_asignacion_nombre", "")
-            _s["sel_estudiante_ids"]    = []
+            _s["sel_estudiante_ids"] = []
             if s["sel_grupo_id"]:
                 try:
                     _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(
@@ -469,7 +485,8 @@ def observaciones_page() -> None:
             panel_grid.refresh()
 
         inline_periodo_grupo_asignatura(
-            _s, on_sel_change,
+            _s,
+            on_sel_change,
             usuario_id=ctx.usuario_id,
             institucion_id=ctx.institucion_id,
             usuario_rol=ctx.usuario_rol,

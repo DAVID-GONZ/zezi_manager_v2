@@ -6,6 +6,7 @@ Extraído de InfraestructuraService: CRUD de salas + asignar sala a grupo.
 Recibe el mismo IInfraestructuraRepository por inyección; la lógica se movió
 idéntica (firmas, tipos de retorno y `@requiere_escritura` intactos).
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import Sala
@@ -14,7 +15,6 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class SalaService:
-
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
@@ -36,11 +36,13 @@ class SalaService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -56,6 +58,7 @@ class SalaService:
         if obj is None:
             raise ValueError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(obj.institucion_id)
 
     # ── Salas (paso_17) ───────────────────────────────────────────────────────
@@ -65,6 +68,7 @@ class SalaService:
         # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar_salas(institucion_id=institucion_actual())
 
     def get_sala(self, sala_id: int) -> Sala | None:
@@ -94,9 +98,7 @@ class SalaService:
     @requiere_escritura
     def eliminar_sala(self, sala_id: int) -> bool:
         """Elimina una sala tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(
-            self._repo.get_sala(sala_id), "La sala"
-        )
+        self._verificar_pertenencia_obj(self._repo.get_sala(sala_id), "La sala")
         return self._repo.eliminar_sala(sala_id)
 
     @requiere_escritura

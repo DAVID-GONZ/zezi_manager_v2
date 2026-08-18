@@ -1,6 +1,7 @@
 """
 OpenpyxlExporter — implementación de IExporterService usando openpyxl.
 """
+
 from __future__ import annotations
 
 import io

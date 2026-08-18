@@ -41,7 +41,6 @@ from ..models.asignacion import (
 
 
 class IAsignacionRepository(ABC):
-
     # =========================================================================
     # Lectura — entidad de persistencia
     # =========================================================================

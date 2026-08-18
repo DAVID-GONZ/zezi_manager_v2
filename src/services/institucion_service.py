@@ -6,6 +6,7 @@ Orquesta los casos de uso del catálogo de instituciones (tenants).
 Primer ladrillo multi-tenant (paso_24): listar, crear y resolver la
 institución por defecto (#1). No contiene SQL ni lógica de presentación.
 """
+
 from __future__ import annotations
 
 from src.domain.models.institucion import (
@@ -91,13 +92,13 @@ class InstitucionService:
         if inst is None:
             return {}
         mapeo = {
-            "nombre_institucion":    inst.nombre_oficial or inst.nombre or None,
-            "dane_code":             inst.codigo_dane,
-            "rector":                inst.rector,
-            "direccion":             inst.direccion,
-            "municipio":             inst.municipio,
-            "telefono_institucion":  inst.telefono,
-            "logo_path":             inst.logo_path,
+            "nombre_institucion": inst.nombre_oficial or inst.nombre or None,
+            "dane_code": inst.codigo_dane,
+            "rector": inst.rector,
+            "direccion": inst.direccion,
+            "municipio": inst.municipio,
+            "telefono_institucion": inst.telefono,
+            "logo_path": inst.logo_path,
             "resolucion_aprobacion": inst.resolucion_aprobacion,
         }
         return {k: v for k, v in mapeo.items() if v is not None}
@@ -122,16 +123,14 @@ class InstitucionService:
         Verifica que el nombre no exista antes de insertar.
         """
         if self._repo.existe_nombre(dto.nombre):
-            raise ValueError(
-                f"Ya existe una institución con el nombre '{dto.nombre}'."
-            )
+            raise ValueError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
         return self._repo.guardar(dto.to_institucion())
 
 
 __all__ = [
     "ActualizarInstitucionDTO",
+    "Institucion",
     "InstitucionResumenDTO",
     "InstitucionService",
     "NuevaInstitucionDTO",
-    "Institucion",
 ]

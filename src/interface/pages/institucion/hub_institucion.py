@@ -39,6 +39,7 @@ Refreshables:
   _panel_modulos()     — re-renderiza formulario de módulos
   _panel_apariencia()  — re-renderiza formulario de apariencia
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,73 +47,74 @@ import logging
 from nicegui import ui
 
 from container import Container
+from src.domain.modulos import modulos_desactivables as _modulos_desactivables
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components.buttons import btn_ghost, btn_primary
-from src.interface.design.components.toast import toast_error, toast_success, toast_warning
+from src.interface.design.components.toast import (
+    toast_error,
+    toast_success,
+    toast_warning,
+)
 from src.interface.design.layout import app_layout
 from src.services.institucion_service import ActualizarInstitucionDTO
 from src.services.preferencias_institucion_service import ActualizarPreferenciaDTO
-
-from src.domain.modulos import modulos_desactivables as _modulos_desactivables
 
 logger = logging.getLogger("HUB_INSTITUCION")
 
 # Opciones de selects — strings crudos, sin importar enums del dominio (opción B).
 _OPCIONES_JORNADA: list[str] = ["AM", "PM", "UNICA"]
-_OPCIONES_TIPO:    list[str] = ["publica", "privada"]
-_OPCIONES_CAL:     list[str] = ["A", "B"]
+_OPCIONES_TIPO: list[str] = ["publica", "privada"]
+_OPCIONES_CAL: list[str] = ["A", "B"]
 
 # Mapa de tipos de registro para el multi-select del boletín (convivencia_29).
 # Espejo de TIPO_REGISTRO_DISPLAY del dominio — sin importar src.domain.models.*.
 _OPCIONES_TIPO_REGISTRO: dict[str, str] = {
-    "fortaleza":          "Fortaleza",
-    "dificultad":         "Dificultad",
-    "compromiso":         "Compromiso",
+    "fortaleza": "Fortaleza",
+    "dificultad": "Dificultad",
+    "compromiso": "Compromiso",
     "citacion_acudiente": "Citación acudiente",
-    "descargo":           "Descargo",
+    "descargo": "Descargo",
 }
 
 
 # ── Estado inicial ────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
         "identidad": {
-            "nombre":                "",
-            "nombre_oficial":        "",
-            "rector":                "",
-            "municipio":             "",
-            "codigo_dane":           "",
-            "nit":                   "",
-            "direccion":             "",
-            "telefono":              "",
-            "email_institucional":   "",
+            "nombre": "",
+            "nombre_oficial": "",
+            "rector": "",
+            "municipio": "",
+            "codigo_dane": "",
+            "nit": "",
+            "direccion": "",
+            "telefono": "",
+            "email_institucional": "",
             "resolucion_aprobacion": "",
-            "lema":                  "",
-            "jornada_principal":     None,
-            "tipo_institucion":      None,
-            "calendario":            None,
+            "lema": "",
+            "jornada_principal": None,
+            "tipo_institucion": None,
+            "calendario": None,
         },
         "preferencias": {
             "nota_minima_aprobacion_default": 60.0,
-            "nota_minima_escala_default":     0.0,
-            "nota_maxima_escala_default":     100.0,
-            "numero_periodos_default":        4,
+            "nota_minima_escala_default": 0.0,
+            "nota_maxima_escala_default": 100.0,
+            "numero_periodos_default": 4,
         },
-        "modulos": {
-            d.clave_preferencia: True
-            for d in _modulos_desactivables()
-        },
+        "modulos": {d.clave_preferencia: True for d in _modulos_desactivables()},
         "apariencia": {
-            "color_primario":   None,
+            "color_primario": None,
             "color_secundario": None,
         },
         # Política de registros de convivencia en el boletín (convivencia_29).
         "convivencia": {
-            "registros_boletin_tipos":                          ["fortaleza", "compromiso", "citacion_acudiente"],
+            "registros_boletin_tipos": ["fortaleza", "compromiso", "citacion_acudiente"],
             "registros_boletin_dificultad_requiere_notificacion": True,
-            "registros_boletin_incluye_descargo":               False,
-            "registros_boletin_dedup_observaciones":            True,
+            "registros_boletin_incluye_descargo": False,
+            "registros_boletin_dedup_observaciones": True,
         },
     }
 
@@ -122,56 +124,65 @@ def _cargar_estado(inst_id: int, _s: dict) -> None:
     try:
         inst = Container.institucion_service().get(inst_id)
         _jornada_raw = getattr(inst, "jornada_principal", None)
-        _tipo_raw    = getattr(inst, "tipo_institucion", None)
-        _cal_raw     = getattr(inst, "calendario", None)
-        _s["identidad"].update({
-            "nombre":                inst.nombre or "",
-            "nombre_oficial":        inst.nombre_oficial or "",
-            "rector":                inst.rector or "",
-            "municipio":             inst.municipio or "",
-            "codigo_dane":           inst.codigo_dane or "",
-            "nit":                   inst.nit or "",
-            "direccion":             inst.direccion or "",
-            "telefono":              inst.telefono or "",
-            "email_institucional":   inst.email_institucional or "",
-            "resolucion_aprobacion": inst.resolucion_aprobacion or "",
-            "lema":                  inst.lema or "",
-            "jornada_principal":     _jornada_raw.value if _jornada_raw else None,
-            "tipo_institucion":      _tipo_raw.value if _tipo_raw else None,
-            "calendario":            _cal_raw.value if _cal_raw else None,
-        })
+        _tipo_raw = getattr(inst, "tipo_institucion", None)
+        _cal_raw = getattr(inst, "calendario", None)
+        _s["identidad"].update(
+            {
+                "nombre": inst.nombre or "",
+                "nombre_oficial": inst.nombre_oficial or "",
+                "rector": inst.rector or "",
+                "municipio": inst.municipio or "",
+                "codigo_dane": inst.codigo_dane or "",
+                "nit": inst.nit or "",
+                "direccion": inst.direccion or "",
+                "telefono": inst.telefono or "",
+                "email_institucional": inst.email_institucional or "",
+                "resolucion_aprobacion": inst.resolucion_aprobacion or "",
+                "lema": inst.lema or "",
+                "jornada_principal": _jornada_raw.value if _jornada_raw else None,
+                "tipo_institucion": _tipo_raw.value if _tipo_raw else None,
+                "calendario": _cal_raw.value if _cal_raw else None,
+            }
+        )
     except Exception as exc:
         logger.error("Error cargando identidad institucional: %s", exc)
 
     try:
         prefs = Container.preferencias_service().get_dto(inst_id)
-        _s["preferencias"].update({
-            "nota_minima_aprobacion_default": prefs.nota_minima_aprobacion_default,
-            "nota_minima_escala_default":     prefs.nota_minima_escala_default,
-            "nota_maxima_escala_default":     prefs.nota_maxima_escala_default,
-            "numero_periodos_default":        prefs.numero_periodos_default,
-        })
+        _s["preferencias"].update(
+            {
+                "nota_minima_aprobacion_default": prefs.nota_minima_aprobacion_default,
+                "nota_minima_escala_default": prefs.nota_minima_escala_default,
+                "nota_maxima_escala_default": prefs.nota_maxima_escala_default,
+                "numero_periodos_default": prefs.numero_periodos_default,
+            }
+        )
         for d in _modulos_desactivables():
             clave = d.clave_preferencia
             _s["modulos"][clave] = getattr(prefs, clave, True)
-        _s["apariencia"].update({
-            "color_primario":   prefs.color_primario,
-            "color_secundario": prefs.color_secundario,
-        })
-        _s["convivencia"].update({
-            "registros_boletin_tipos":                          prefs.registros_boletin_tipos,
-            "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
-            "registros_boletin_incluye_descargo":               prefs.registros_boletin_incluye_descargo,
-            "registros_boletin_dedup_observaciones":            prefs.registros_boletin_dedup_observaciones,
-        })
+        _s["apariencia"].update(
+            {
+                "color_primario": prefs.color_primario,
+                "color_secundario": prefs.color_secundario,
+            }
+        )
+        _s["convivencia"].update(
+            {
+                "registros_boletin_tipos": prefs.registros_boletin_tipos,
+                "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
+                "registros_boletin_incluye_descargo": prefs.registros_boletin_incluye_descargo,
+                "registros_boletin_dedup_observaciones": prefs.registros_boletin_dedup_observaciones,
+            }
+        )
     except Exception as exc:
         logger.error("Error cargando preferencias: %s", exc)
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
-def hub_institucion_page() -> None:  # noqa: C901
+def hub_institucion_page() -> None:
     ctx = SessionContext.desde_storage()
     if not ctx:
         ui.navigate.to("/login")
@@ -188,7 +199,6 @@ def hub_institucion_page() -> None:  # noqa: C901
     def _panel_identidad() -> None:
 
         with ui.element("div").classes("base-form-grid base-form-grid-2col"):
-
             with ui.element("div").classes("base-form-field-col"):
                 with ui.element("div").classes("form-field-label-row"):
                     ui.label("Nombre corto").classes("form-field-label")
@@ -333,27 +343,31 @@ def hub_institucion_page() -> None:  # noqa: C901
                 return
             try:
                 dto = ActualizarInstitucionDTO(
-                    nombre                = nombre,
-                    nombre_oficial        = nombre_oficial,
-                    rector                = rector,
-                    municipio             = municipio,
-                    codigo_dane           = (codigo_dane_i.value or "").strip() or None,
-                    nit                   = (nit_i.value or "").strip() or None,
-                    direccion             = (direccion_i.value or "").strip() or None,
-                    telefono              = (telefono_i.value or "").strip() or None,
-                    email_institucional   = (email_i.value or "").strip() or None,
-                    resolucion_aprobacion = (resol_i.value or "").strip() or None,
-                    lema                  = (lema_i.value or "").strip() or None,
-                    jornada_principal     = jornada_i.value or None,
-                    tipo_institucion      = tipo_i.value or None,
-                    calendario            = calendario_i.value or None,
+                    nombre=nombre,
+                    nombre_oficial=nombre_oficial,
+                    rector=rector,
+                    municipio=municipio,
+                    codigo_dane=(codigo_dane_i.value or "").strip() or None,
+                    nit=(nit_i.value or "").strip() or None,
+                    direccion=(direccion_i.value or "").strip() or None,
+                    telefono=(telefono_i.value or "").strip() or None,
+                    email_institucional=(email_i.value or "").strip() or None,
+                    resolucion_aprobacion=(resol_i.value or "").strip() or None,
+                    lema=(lema_i.value or "").strip() or None,
+                    jornada_principal=jornada_i.value or None,
+                    tipo_institucion=tipo_i.value or None,
+                    calendario=calendario_i.value or None,
                 )
                 Container.institucion_service().actualizar(inst_id, dto)
                 # Mantener _s en sinc con lo guardado
-                _s["identidad"].update({
-                    "nombre": nombre, "nombre_oficial": nombre_oficial,
-                    "rector": rector, "municipio": municipio,
-                })
+                _s["identidad"].update(
+                    {
+                        "nombre": nombre,
+                        "nombre_oficial": nombre_oficial,
+                        "rector": rector,
+                        "municipio": municipio,
+                    }
+                )
                 toast_success("Identidad institucional actualizada correctamente.")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -365,24 +379,26 @@ def hub_institucion_page() -> None:  # noqa: C901
             try:
                 inst = Container.institucion_service().get(inst_id)
                 _jornada_raw = getattr(inst, "jornada_principal", None)
-                _tipo_raw    = getattr(inst, "tipo_institucion", None)
-                _cal_raw     = getattr(inst, "calendario", None)
-                _s["identidad"].update({
-                    "nombre":                inst.nombre or "",
-                    "nombre_oficial":        inst.nombre_oficial or "",
-                    "rector":                inst.rector or "",
-                    "municipio":             inst.municipio or "",
-                    "codigo_dane":           inst.codigo_dane or "",
-                    "nit":                   inst.nit or "",
-                    "direccion":             inst.direccion or "",
-                    "telefono":              inst.telefono or "",
-                    "email_institucional":   inst.email_institucional or "",
-                    "resolucion_aprobacion": inst.resolucion_aprobacion or "",
-                    "lema":                  inst.lema or "",
-                    "jornada_principal":     _jornada_raw.value if _jornada_raw else None,
-                    "tipo_institucion":      _tipo_raw.value if _tipo_raw else None,
-                    "calendario":            _cal_raw.value if _cal_raw else None,
-                })
+                _tipo_raw = getattr(inst, "tipo_institucion", None)
+                _cal_raw = getattr(inst, "calendario", None)
+                _s["identidad"].update(
+                    {
+                        "nombre": inst.nombre or "",
+                        "nombre_oficial": inst.nombre_oficial or "",
+                        "rector": inst.rector or "",
+                        "municipio": inst.municipio or "",
+                        "codigo_dane": inst.codigo_dane or "",
+                        "nit": inst.nit or "",
+                        "direccion": inst.direccion or "",
+                        "telefono": inst.telefono or "",
+                        "email_institucional": inst.email_institucional or "",
+                        "resolucion_aprobacion": inst.resolucion_aprobacion or "",
+                        "lema": inst.lema or "",
+                        "jornada_principal": _jornada_raw.value if _jornada_raw else None,
+                        "tipo_institucion": _tipo_raw.value if _tipo_raw else None,
+                        "calendario": _cal_raw.value if _cal_raw else None,
+                    }
+                )
             except Exception as exc:
                 logger.error("Error recargando identidad: %s", exc)
             _panel_identidad.refresh()
@@ -396,13 +412,15 @@ def hub_institucion_page() -> None:  # noqa: C901
     def _panel_preferencias() -> None:
 
         with ui.element("div").classes("base-form-grid base-form-grid-2col"):
-
             with ui.element("div").classes("base-form-field-col"):
                 ui.label("Nota mínima de aprobación").classes("form-field-label")
                 nota_apro_i = (
                     ui.number(
                         value=_s["preferencias"]["nota_minima_aprobacion_default"],
-                        min=0, max=100, step=0.5, format="%.1f",
+                        min=0,
+                        max=100,
+                        step=0.5,
+                        format="%.1f",
                     )
                     .classes("andes-input w-full")
                     .props("outlined")
@@ -413,7 +431,10 @@ def hub_institucion_page() -> None:  # noqa: C901
                 nota_min_i = (
                     ui.number(
                         value=_s["preferencias"]["nota_minima_escala_default"],
-                        min=0, max=100, step=0.5, format="%.1f",
+                        min=0,
+                        max=100,
+                        step=0.5,
+                        format="%.1f",
                     )
                     .classes("andes-input w-full")
                     .props("outlined")
@@ -424,7 +445,10 @@ def hub_institucion_page() -> None:  # noqa: C901
                 nota_max_i = (
                     ui.number(
                         value=_s["preferencias"]["nota_maxima_escala_default"],
-                        min=0, max=100, step=0.5, format="%.1f",
+                        min=0,
+                        max=100,
+                        step=0.5,
+                        format="%.1f",
                     )
                     .classes("andes-input w-full")
                     .props("outlined")
@@ -435,7 +459,10 @@ def hub_institucion_page() -> None:  # noqa: C901
                 periodos_i = (
                     ui.number(
                         value=_s["preferencias"]["numero_periodos_default"],
-                        min=1, max=6, step=1, format="%.0f",
+                        min=1,
+                        max=6,
+                        step=1,
+                        format="%.0f",
                     )
                     .classes("andes-input w-full")
                     .props("outlined")
@@ -444,38 +471,46 @@ def hub_institucion_page() -> None:  # noqa: C901
         def _guardar_preferencias() -> None:
             try:
                 min_apro = float(nota_apro_i.value or 0)
-                min_esc  = float(nota_min_i.value  or 0)
-                max_esc  = float(nota_max_i.value  or 100)
-                periodos = int(round(float(periodos_i.value or 4)))
+                min_esc = float(nota_min_i.value or 0)
+                max_esc = float(nota_max_i.value or 100)
+                periodos = round(float(periodos_i.value or 4))
                 if min_esc >= max_esc:
-                    toast_warning(
-                        "La nota mínima de escala debe ser menor que la máxima."
-                    )
+                    toast_warning("La nota mínima de escala debe ser menor que la máxima.")
                     return
                 if not (min_esc <= min_apro <= max_esc):
-                    toast_warning(
-                        "La nota de aprobación debe estar dentro del rango de escala."
-                    )
+                    toast_warning("La nota de aprobación debe estar dentro del rango de escala.")
                     return
                 svc = Container.preferencias_service()
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="nota_minima_aprobacion_default", valor=str(min_apro)
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="nota_minima_escala_default", valor=str(min_esc)
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="nota_maxima_escala_default", valor=str(max_esc)
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="numero_periodos_default", valor=str(periodos)
-                ))
-                _s["preferencias"].update({
-                    "nota_minima_aprobacion_default": min_apro,
-                    "nota_minima_escala_default":     min_esc,
-                    "nota_maxima_escala_default":     max_esc,
-                    "numero_periodos_default":        periodos,
-                })
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="nota_minima_aprobacion_default", valor=str(min_apro)
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="nota_minima_escala_default", valor=str(min_esc)
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="nota_maxima_escala_default", valor=str(max_esc)
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(clave="numero_periodos_default", valor=str(periodos)),
+                )
+                _s["preferencias"].update(
+                    {
+                        "nota_minima_aprobacion_default": min_apro,
+                        "nota_minima_escala_default": min_esc,
+                        "nota_maxima_escala_default": max_esc,
+                        "numero_periodos_default": periodos,
+                    }
+                )
                 toast_success("Preferencias académicas actualizadas correctamente.")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -486,12 +521,14 @@ def hub_institucion_page() -> None:  # noqa: C901
         def _recargar_preferencias() -> None:
             try:
                 prefs = Container.preferencias_service().get_dto(inst_id)
-                _s["preferencias"].update({
-                    "nota_minima_aprobacion_default": prefs.nota_minima_aprobacion_default,
-                    "nota_minima_escala_default":     prefs.nota_minima_escala_default,
-                    "nota_maxima_escala_default":     prefs.nota_maxima_escala_default,
-                    "numero_periodos_default":        prefs.numero_periodos_default,
-                })
+                _s["preferencias"].update(
+                    {
+                        "nota_minima_aprobacion_default": prefs.nota_minima_aprobacion_default,
+                        "nota_minima_escala_default": prefs.nota_minima_escala_default,
+                        "nota_maxima_escala_default": prefs.nota_maxima_escala_default,
+                        "numero_periodos_default": prefs.numero_periodos_default,
+                    }
+                )
             except Exception as exc:
                 logger.error("Error recargando preferencias: %s", exc)
             _panel_preferencias.refresh()
@@ -517,22 +554,21 @@ def hub_institucion_page() -> None:  # noqa: C901
                 clave = d.clave_preferencia
                 with ui.element("div").classes("form-row-between form-box"):
                     with ui.element("div").classes("u-stack-xs flex-1"):
-                        ui.label(f"Módulo de {d.label.lower()}").classes(
-                            "section-subtitle"
-                        )
+                        ui.label(f"Módulo de {d.label.lower()}").classes("section-subtitle")
                         ui.label(d.descripcion).classes("text-muted")
-                    toggles[clave] = ui.switch(
-                        "", value=_s["modulos"].get(clave, True)
-                    )
+                    toggles[clave] = ui.switch("", value=_s["modulos"].get(clave, True))
 
         def _guardar_modulos() -> None:
             try:
                 svc = Container.preferencias_service()
                 for clave, toggle in toggles.items():
-                    svc.set(inst_id, ActualizarPreferenciaDTO(
-                        clave=clave,
-                        valor=str(bool(toggle.value)).lower(),
-                    ))
+                    svc.set(
+                        inst_id,
+                        ActualizarPreferenciaDTO(
+                            clave=clave,
+                            valor=str(bool(toggle.value)).lower(),
+                        ),
+                    )
                     _s["modulos"][clave] = bool(toggle.value)
                 toast_success("Configuración de módulos actualizada correctamente.")
             except ValueError as exc:
@@ -559,42 +595,43 @@ def hub_institucion_page() -> None:  # noqa: C901
     @ui.refreshable
     def _panel_apariencia() -> None:
 
-        ui.label(
-            "Los cambios de color se aplican al recargar la aplicación."
-        ).classes("text-muted u-mb-sm")
+        ui.label("Los cambios de color se aplican al recargar la aplicación.").classes(
+            "text-muted u-mb-sm"
+        )
 
         with ui.element("div").classes("u-stack-sm"):
-
             with ui.element("div").classes("form-row-between form-box"):
                 ui.label("Color primario").classes("section-subtitle")
-                color_prim_i = ui.color_input(
-                    value=_s["apariencia"]["color_primario"]
-                )
+                color_prim_i = ui.color_input(value=_s["apariencia"]["color_primario"])
 
             with ui.element("div").classes("form-row-between form-box"):
                 ui.label("Color secundario").classes("section-subtitle")
-                color_sec_i = ui.color_input(
-                    value=_s["apariencia"]["color_secundario"]
-                )
+                color_sec_i = ui.color_input(value=_s["apariencia"]["color_secundario"])
 
         def _guardar_apariencia() -> None:
             try:
                 svc = Container.preferencias_service()
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="color_primario",
-                    valor=(color_prim_i.value or "").strip() or None,
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="color_secundario",
-                    valor=(color_sec_i.value or "").strip() or None,
-                ))
-                _s["apariencia"].update({
-                    "color_primario":   (color_prim_i.value or "").strip() or None,
-                    "color_secundario": (color_sec_i.value or "").strip() or None,
-                })
-                toast_success(
-                    "Colores actualizados. Recarga la página para aplicarlos."
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="color_primario",
+                        valor=(color_prim_i.value or "").strip() or None,
+                    ),
                 )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="color_secundario",
+                        valor=(color_sec_i.value or "").strip() or None,
+                    ),
+                )
+                _s["apariencia"].update(
+                    {
+                        "color_primario": (color_prim_i.value or "").strip() or None,
+                        "color_secundario": (color_sec_i.value or "").strip() or None,
+                    }
+                )
+                toast_success("Colores actualizados. Recarga la página para aplicarlos.")
             except ValueError as exc:
                 toast_warning(str(exc))
             except Exception as exc:
@@ -604,10 +641,12 @@ def hub_institucion_page() -> None:  # noqa: C901
         def _recargar_apariencia() -> None:
             try:
                 prefs = Container.preferencias_service().get_dto(inst_id)
-                _s["apariencia"].update({
-                    "color_primario":   prefs.color_primario,
-                    "color_secundario": prefs.color_secundario,
-                })
+                _s["apariencia"].update(
+                    {
+                        "color_primario": prefs.color_primario,
+                        "color_secundario": prefs.color_secundario,
+                    }
+                )
             except Exception as exc:
                 logger.error("Error recargando apariencia: %s", exc)
             _panel_apariencia.refresh()
@@ -626,7 +665,6 @@ def hub_institucion_page() -> None:  # noqa: C901
         ).classes("text-muted u-mb-sm")
 
         with ui.element("div").classes("u-stack-sm"):
-
             with ui.element("div").classes("base-form-field-col"):
                 ui.label("Tipos de evento incluidos en el boletín").classes("section-subtitle")
                 tipos_select = (
@@ -662,28 +700,44 @@ def hub_institucion_page() -> None:  # noqa: C901
             try:
                 svc = Container.preferencias_service()
                 tipos = list(tipos_select.value) if tipos_select.value else []
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="registros_boletin_tipos",
-                    valor=_json.dumps(tipos),
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="registros_boletin_dificultad_requiere_notificacion",
-                    valor=str(bool(dificultad_notif_cb.value)).lower(),
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="registros_boletin_incluye_descargo",
-                    valor=str(bool(descargo_cb.value)).lower(),
-                ))
-                svc.set(inst_id, ActualizarPreferenciaDTO(
-                    clave="registros_boletin_dedup_observaciones",
-                    valor=str(bool(dedup_cb.value)).lower(),
-                ))
-                _s["convivencia"].update({
-                    "registros_boletin_tipos":                          tipos,
-                    "registros_boletin_dificultad_requiere_notificacion": bool(dificultad_notif_cb.value),
-                    "registros_boletin_incluye_descargo":               bool(descargo_cb.value),
-                    "registros_boletin_dedup_observaciones":            bool(dedup_cb.value),
-                })
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="registros_boletin_tipos",
+                        valor=_json.dumps(tipos),
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="registros_boletin_dificultad_requiere_notificacion",
+                        valor=str(bool(dificultad_notif_cb.value)).lower(),
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="registros_boletin_incluye_descargo",
+                        valor=str(bool(descargo_cb.value)).lower(),
+                    ),
+                )
+                svc.set(
+                    inst_id,
+                    ActualizarPreferenciaDTO(
+                        clave="registros_boletin_dedup_observaciones",
+                        valor=str(bool(dedup_cb.value)).lower(),
+                    ),
+                )
+                _s["convivencia"].update(
+                    {
+                        "registros_boletin_tipos": tipos,
+                        "registros_boletin_dificultad_requiere_notificacion": bool(
+                            dificultad_notif_cb.value
+                        ),
+                        "registros_boletin_incluye_descargo": bool(descargo_cb.value),
+                        "registros_boletin_dedup_observaciones": bool(dedup_cb.value),
+                    }
+                )
                 toast_success("Configuración de convivencia en boletín actualizada.")
             except ValueError as exc:
                 toast_warning(str(exc))
@@ -694,12 +748,14 @@ def hub_institucion_page() -> None:  # noqa: C901
         def _recargar_convivencia() -> None:
             try:
                 prefs = Container.preferencias_service().get_dto(inst_id)
-                _s["convivencia"].update({
-                    "registros_boletin_tipos":                          prefs.registros_boletin_tipos,
-                    "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
-                    "registros_boletin_incluye_descargo":               prefs.registros_boletin_incluye_descargo,
-                    "registros_boletin_dedup_observaciones":            prefs.registros_boletin_dedup_observaciones,
-                })
+                _s["convivencia"].update(
+                    {
+                        "registros_boletin_tipos": prefs.registros_boletin_tipos,
+                        "registros_boletin_dificultad_requiere_notificacion": prefs.registros_boletin_dificultad_requiere_notificacion,
+                        "registros_boletin_incluye_descargo": prefs.registros_boletin_incluye_descargo,
+                        "registros_boletin_dedup_observaciones": prefs.registros_boletin_dedup_observaciones,
+                    }
+                )
             except Exception as exc:
                 logger.error("Error recargando convivencia: %s", exc)
             _panel_convivencia.refresh()
@@ -712,13 +768,12 @@ def hub_institucion_page() -> None:  # noqa: C901
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             with ui.element("div").classes("panel-card"):
-
                 with ui.tabs().classes("w-full") as tabs:
-                    tab_id   = ui.tab("identidad",    label="Identidad")
+                    tab_id = ui.tab("identidad", label="Identidad")
                     tab_pref = ui.tab("preferencias", label="Preferencias")
-                    tab_mod  = ui.tab("modulos",      label="Módulos")
-                    tab_ap   = ui.tab("apariencia",   label="Apariencia")
-                    tab_conv = ui.tab("convivencia",  label="Convivencia")
+                    tab_mod = ui.tab("modulos", label="Módulos")
+                    tab_ap = ui.tab("apariencia", label="Apariencia")
+                    tab_conv = ui.tab("convivencia", label="Convivencia")
 
                 with ui.tab_panels(tabs, value=tab_id).classes("w-full"):
                     with ui.tab_panel(tab_id):
@@ -735,9 +790,9 @@ def hub_institucion_page() -> None:  # noqa: C901
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Configuración institucional",
-        page_subtitulo = "Identidad, preferencias, módulos y apariencia",
-        page_icono     = "settings",
+        page_titulo="Configuración institucional",
+        page_subtitulo="Identidad, preferencias, módulos y apariencia",
+        page_icono="settings",
     )
 
 

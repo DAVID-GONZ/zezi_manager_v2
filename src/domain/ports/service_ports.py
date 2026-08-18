@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 # Autenticación
 # =============================================================================
 
+
 class IAuthenticationService(ABC):
     """
     Gestión de credenciales de usuarios.
@@ -141,6 +142,7 @@ class IAuthenticationService(ABC):
 # Notificaciones
 # =============================================================================
 
+
 class INotificationService(ABC):
     """
     Envío de notificaciones a usuarios, docentes y acudientes.
@@ -195,6 +197,7 @@ class INotificationService(ABC):
 # =============================================================================
 # Exportación
 # =============================================================================
+
 
 class IExporterService(ABC):
     """

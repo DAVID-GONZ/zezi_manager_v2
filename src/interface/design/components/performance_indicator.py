@@ -4,6 +4,7 @@ performance_indicator.py — Indicador de desempeño académico del design syste
 Visualiza el nivel de desempeño como barra de progreso con etiqueta y color semántico.
 Compatible con los niveles del sistema: Bajo, Básico, Alto, Superior.
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -11,16 +12,16 @@ from nicegui import ui
 from src.interface.design.styles.tokens import DesempenoColors
 
 _NIVEL_PORCENTAJE = {
-    "Bajo":     25,
-    "Básico":   50,
-    "Alto":     75,
+    "Bajo": 25,
+    "Básico": 50,
+    "Alto": 75,
     "Superior": 100,
 }
 
 _NIVEL_COLOR = {
-    "Bajo":     "var(--desempeno-bajo)",
-    "Básico":   "var(--desempeno-basico)",
-    "Alto":     "var(--desempeno-alto)",
+    "Bajo": "var(--desempeno-bajo)",
+    "Básico": "var(--desempeno-basico)",
+    "Alto": "var(--desempeno-alto)",
     "Superior": "var(--desempeno-superior)",
 }
 
@@ -64,14 +65,12 @@ def performance_indicator(
         # para_nota retorna una tupla (color_texto, color_fondo) — extraemos solo el nivel
         # Nota: para_nota delega a nivel_desempeno que retorna string
         from src.domain.models.evaluacion import nivel_desempeno
+
         nivel_resuelto = nivel_desempeno(valor) if valor is not None else None
 
     # Calcular porcentaje para la barra
     if valor is not None:
-        if valor <= 5.0:
-            pct = min(100, max(0, (valor / 5.0) * 100))
-        else:
-            pct = min(100, max(0, valor))
+        pct = min(100, max(0, valor / 5.0 * 100)) if valor <= 5.0 else min(100, max(0, valor))
     elif nivel_resuelto:
         pct = _NIVEL_PORCENTAJE.get(nivel_resuelto, 50)
     else:
@@ -91,15 +90,11 @@ def performance_indicator(
                     ui.label(valor_texto).classes("perf-value")
                 if mostrar_nivel and nivel_resuelto:
                     # DYNAMIC: color del nivel calculado por umbral.
-                    ui.label(nivel_resuelto).classes("perf-nivel").style(
-                        f"color:{barra_color}"
-                    )
+                    ui.label(nivel_resuelto).classes("perf-nivel").style(f"color:{barra_color}")
 
         # Barra de progreso
         # DYNAMIC: altura de la barra parametrizable por el caller.
-        with ui.element("div").classes("perf-bar-track").style(
-            f"height:{altura}px"
-        ):
+        with ui.element("div").classes("perf-bar-track").style(f"height:{altura}px"):
             # DYNAMIC: ancho y color se calculan por valor/umbral en runtime.
             ui.element("div").classes("perf-bar-fill").style(
                 f"width:{pct:.1f}%; background:{barra_color}"

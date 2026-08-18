@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.domain.models.institucion import Institucion, NuevaInstitucionConDirectorDTO
+from src.domain.models.institucion import NuevaInstitucionConDirectorDTO
 from src.domain.models.usuario import NuevoUsuarioDTO, Rol, Usuario
 from src.services.aprovisionamiento_institucion_service import (
     AprovisionamientoInstitucionService,
@@ -18,16 +18,16 @@ from src.services.aprovisionamiento_institucion_service import (
 
 
 def _dto(**overrides) -> NuevaInstitucionConDirectorDTO:
-    datos = dict(
-        nombre="Colegio San José",
-        codigo_dane="111001000001",
-        pais="Colombia",
-        departamento="Cundinamarca",
-        municipio="Bogotá",
-        director_usuario="director.sj",
-        director_nombre_completo="María Elena Directora",
-        director_email="director@sanjose.edu.co",
-    )
+    datos = {
+        "nombre": "Colegio San José",
+        "codigo_dane": "111001000001",
+        "pais": "Colombia",
+        "departamento": "Cundinamarca",
+        "municipio": "Bogotá",
+        "director_usuario": "director.sj",
+        "director_nombre_completo": "María Elena Directora",
+        "director_email": "director@sanjose.edu.co",
+    }
     datos.update(overrides)
     return NuevaInstitucionConDirectorDTO(**datos)
 
@@ -53,7 +53,7 @@ def _patch_usuario_service(monkeypatch, usuario_creado: Usuario) -> MagicMock:
 class TestCrearInstitucionConDirector:
 
     def test_crear_institucion_con_director_ok(self, monkeypatch):
-        svc, repo = _crear_svc_y_repo()
+        svc, _repo = _crear_svc_y_repo()
         director = Usuario(
             id=7, usuario="director.sj", nombre_completo="María Elena Directora",
             rol=Rol.DIRECTOR, institucion_id=42,
@@ -104,7 +104,7 @@ class TestCrearInstitucionConDirector:
         repo.sembrar_defaults_tenant.assert_not_called()
 
     def test_director_en_tenant_correcto(self, monkeypatch):
-        svc, repo = _crear_svc_y_repo()
+        svc, _repo = _crear_svc_y_repo()
         director = Usuario(
             id=7, usuario="director.sj", nombre_completo="María Elena Directora",
             rol=Rol.DIRECTOR, institucion_id=42,

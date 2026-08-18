@@ -37,7 +37,7 @@ ResumenAsistenciaDTO:
 from __future__ import annotations
 
 from datetime import date, datetime, time
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -46,12 +46,13 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class EstadoAsistencia(str, Enum):
-    PRESENTE            = "P"
-    FALTA_JUSTIFICADA   = "FJ"
+
+class EstadoAsistencia(StrEnum):
+    PRESENTE = "P"
+    FALTA_JUSTIFICADA = "FJ"
     FALTA_INJUSTIFICADA = "FI"
-    RETRASO             = "R"
-    EXCUSA              = "E"
+    RETRASO = "R"
+    EXCUSA = "E"
 
     @property
     def es_falta(self) -> bool:
@@ -64,19 +65,17 @@ class EstadoAsistencia(str, Enum):
     @property
     def afecta_porcentaje(self) -> bool:
         """False para estados que no penalizan el porcentaje de asistencia."""
-        return self in (
-            EstadoAsistencia.FALTA_INJUSTIFICADA
-        )
+        return self in (EstadoAsistencia.FALTA_INJUSTIFICADA)
 
     @property
     def descripcion(self) -> str:
         """Etiqueta legible del estado (p. ej. 'FI' → 'Falta Injustificada')."""
         descripciones = {
-            "P":  "Presente",
+            "P": "Presente",
             "FJ": "Falta Justificada",
             "FI": "Falta Injustificada",
-            "R":  "Retraso",
-            "E":  "Excusa",
+            "R": "Retraso",
+            "E": "Excusa",
         }
         return descripciones[self.value]
 
@@ -84,6 +83,7 @@ class EstadoAsistencia(str, Enum):
 # =============================================================================
 # Entidad
 # =============================================================================
+
 
 class ControlDiario(BaseModel):
     """
@@ -93,20 +93,21 @@ class ControlDiario(BaseModel):
     el trigger ON CONFLICT REPLACE recrea el registro. En el modelo,
     se inicializa al momento de construcción.
     """
-    id:                  int | None          = None
-    estudiante_id:       int
-    grupo_id:            int
-    asignacion_id:       int
-    periodo_id:          int
-    fecha:               date                = Field(default_factory=date.today)
-    estado:              EstadoAsistencia    = EstadoAsistencia.PRESENTE
-    hora_entrada:        time | None         = None
-    hora_salida:         time | None         = None
-    uniforme:            bool                = True
-    materiales:          bool                = True
-    observacion:         str | None          = None
-    usuario_registro_id: int | None          = None
-    fecha_actualizacion: datetime            = Field(default_factory=datetime.now)
+
+    id: int | None = None
+    estudiante_id: int
+    grupo_id: int
+    asignacion_id: int
+    periodo_id: int
+    fecha: date = Field(default_factory=date.today)
+    estado: EstadoAsistencia = EstadoAsistencia.PRESENTE
+    hora_entrada: time | None = None
+    hora_salida: time | None = None
+    uniforme: bool = True
+    materiales: bool = True
+    observacion: str | None = None
+    usuario_registro_id: int | None = None
+    fecha_actualizacion: datetime = Field(default_factory=datetime.now)
 
     @field_validator("estudiante_id", "grupo_id", "asignacion_id", "periodo_id")
     @classmethod
@@ -123,9 +124,7 @@ class ControlDiario(BaseModel):
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
-            raise ValueError(
-                f"No se puede registrar asistencia para una fecha futura ({v})."
-            )
+            raise ValueError(f"No se puede registrar asistencia para una fecha futura ({v}).")
         return v
 
     @field_validator("observacion", mode="before")
@@ -198,21 +197,29 @@ class ControlDiario(BaseModel):
 # Read models
 # =============================================================================
 
+
 class ResumenAsistenciaDTO(BaseModel):
     """
     Resumen de asistencia de un estudiante en un periodo o rango de fechas.
     Calculado por el repositorio con GROUP BY; la página lo muestra directamente.
     """
-    estudiante_id:        int
-    total_clases:         int   = 0
-    presentes:            int   = 0
-    faltas_justificadas:  int   = 0
-    faltas_injustificadas: int  = 0
-    retrasos:             int   = 0
-    excusas:              int   = 0
 
-    @field_validator("total_clases", "presentes", "faltas_justificadas",
-                     "faltas_injustificadas", "retrasos", "excusas")
+    estudiante_id: int
+    total_clases: int = 0
+    presentes: int = 0
+    faltas_justificadas: int = 0
+    faltas_injustificadas: int = 0
+    retrasos: int = 0
+    excusas: int = 0
+
+    @field_validator(
+        "total_clases",
+        "presentes",
+        "faltas_justificadas",
+        "faltas_injustificadas",
+        "retrasos",
+        "excusas",
+    )
     @classmethod
     def no_negativo(cls, v: int) -> int:
         """Ningún conteo del resumen (clases, presentes, faltas…) puede ser negativo."""
@@ -256,9 +263,10 @@ class RegistroAsistenciaItemDTO(BaseModel):
     Un ítem dentro de un registro masivo de asistencia.
     Representa la asistencia de un único estudiante en un registro grupal.
     """
+
     estudiante_id: int
-    estado:        EstadoAsistencia = EstadoAsistencia.PRESENTE
-    observacion:   str | None       = None
+    estado: EstadoAsistencia = EstadoAsistencia.PRESENTE
+    observacion: str | None = None
 
     @field_validator("estudiante_id")
     @classmethod
@@ -273,20 +281,22 @@ class RegistroAsistenciaItemDTO(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class RegistrarAsistenciaDTO(BaseModel):
     """Datos para registrar la asistencia de un único estudiante."""
-    estudiante_id:       int
-    grupo_id:            int
-    asignacion_id:       int
-    periodo_id:          int
-    fecha:               date                = Field(default_factory=date.today)
-    estado:              EstadoAsistencia    = EstadoAsistencia.PRESENTE
-    hora_entrada:        time | None         = None
-    hora_salida:         time | None         = None
-    uniforme:            bool                = True
-    materiales:          bool                = True
-    observacion:         str | None          = None
-    usuario_registro_id: int | None          = None
+
+    estudiante_id: int
+    grupo_id: int
+    asignacion_id: int
+    periodo_id: int
+    fecha: date = Field(default_factory=date.today)
+    estado: EstadoAsistencia = EstadoAsistencia.PRESENTE
+    hora_entrada: time | None = None
+    hora_salida: time | None = None
+    uniforme: bool = True
+    materiales: bool = True
+    observacion: str | None = None
+    usuario_registro_id: int | None = None
 
     @field_validator("fecha", mode="before")
     @classmethod
@@ -309,12 +319,13 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
     en una misma fecha y asignación. Operación atómica — el servicio
     crea un ControlDiario por cada item.
     """
-    grupo_id:            int
-    asignacion_id:       int
-    periodo_id:          int
-    fecha:               date                        = Field(default_factory=date.today)
-    registros:           list[RegistroAsistenciaItemDTO] = Field(default_factory=list)
-    usuario_registro_id: int | None                  = None
+
+    grupo_id: int
+    asignacion_id: int
+    periodo_id: int
+    fecha: date = Field(default_factory=date.today)
+    registros: list[RegistroAsistenciaItemDTO] = Field(default_factory=list)
+    usuario_registro_id: int | None = None
 
     @field_validator("fecha", mode="before")
     @classmethod
@@ -347,16 +358,16 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
         """Construye la lista de ControlDiario para persistir."""
         return [
             ControlDiario(
-                estudiante_id       = item.estudiante_id,
-                grupo_id            = self.grupo_id,
-                asignacion_id       = self.asignacion_id,
-                periodo_id          = self.periodo_id,
-                fecha               = self.fecha,
-                estado              = item.estado,
-                observacion         = item.observacion,
-                uniforme            = uniforme_default,
-                materiales          = materiales_default,
-                usuario_registro_id = self.usuario_registro_id,
+                estudiante_id=item.estudiante_id,
+                grupo_id=self.grupo_id,
+                asignacion_id=self.asignacion_id,
+                periodo_id=self.periodo_id,
+                fecha=self.fecha,
+                estado=item.estado,
+                observacion=item.observacion,
+                uniforme=uniforme_default,
+                materiales=materiales_default,
+                usuario_registro_id=self.usuario_registro_id,
             )
             for item in self.registros
         ]
@@ -364,15 +375,16 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
 
 class FiltroAsistenciaDTO(BaseModel):
     """Parámetros para consultar registros de asistencia."""
-    estudiante_id: int | None               = None
-    grupo_id:      int | None               = None
-    asignacion_id: int | None               = None
-    periodo_id:    int | None               = None
-    estado:        EstadoAsistencia | None  = None
-    fecha_desde:   date | None              = None
-    fecha_hasta:   date | None              = None
-    pagina:        int                      = Field(default=1, ge=1)
-    por_pagina:    int                      = Field(default=100, ge=1, le=500)
+
+    estudiante_id: int | None = None
+    grupo_id: int | None = None
+    asignacion_id: int | None = None
+    periodo_id: int | None = None
+    estado: EstadoAsistencia | None = None
+    fecha_desde: date | None = None
+    fecha_hasta: date | None = None
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=100, ge=1, le=500)
 
 
 # =============================================================================

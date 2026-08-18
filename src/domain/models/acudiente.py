@@ -27,7 +27,7 @@ Diferencia con TipoDocumento de estudiante:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, field_validator
 
@@ -35,29 +35,31 @@ from pydantic import BaseModel, field_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoDocumentoAcudiente(str, Enum):
-    CC        = "CC"        # Cédula de Ciudadanía
-    CE        = "CE"        # Cédula de Extranjería
-    TI        = "TI"        # Tarjeta de Identidad (acudiente menor)
+
+class TipoDocumentoAcudiente(StrEnum):
+    CC = "CC"  # Cédula de Ciudadanía
+    CE = "CE"  # Cédula de Extranjería
+    TI = "TI"  # Tarjeta de Identidad (acudiente menor)
     PASAPORTE = "PASAPORTE"
 
 
-class Parentesco(str, Enum):
-    PADRE       = "padre"
-    MADRE       = "madre"
-    ABUELO      = "abuelo"
-    ABUELA      = "abuela"
-    TIO         = "tio"
-    TIA         = "tia"
-    HERMANO     = "hermano"
-    HERMANA     = "hermana"
+class Parentesco(StrEnum):
+    PADRE = "padre"
+    MADRE = "madre"
+    ABUELO = "abuelo"
+    ABUELA = "abuela"
+    TIO = "tio"
+    TIA = "tia"
+    HERMANO = "hermano"
+    HERMANA = "hermana"
     TUTOR_LEGAL = "tutor_legal"
-    OTRO        = "otro"
+    OTRO = "otro"
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
+
 
 class Acudiente(BaseModel):
     """
@@ -68,17 +70,18 @@ class Acudiente(BaseModel):
     que un acudiente tuviera múltiples estudiantes a cargo y que los
     acudientes tuvieran acceso al portal.
     """
-    id:               int | None                = None
-    tipo_documento:   TipoDocumentoAcudiente    = TipoDocumentoAcudiente.CC
+
+    id: int | None = None
+    tipo_documento: TipoDocumentoAcudiente = TipoDocumentoAcudiente.CC
     numero_documento: str
-    nombre_completo:  str
-    parentesco:       Parentesco
-    celular:          str | None                = None
-    email:            str | None                = None
-    direccion:        str | None                = None
-    activo:           bool                      = True
-    usuario_id:       int | None                = None  # portal v3.0
-    institucion_id:   int | None                = None
+    nombre_completo: str
+    parentesco: Parentesco
+    celular: str | None = None
+    email: str | None = None
+    direccion: str | None = None
+    activo: bool = True
+    usuario_id: int | None = None  # portal v3.0
+    institucion_id: int | None = None
 
     @field_validator("numero_documento", mode="before")
     @classmethod
@@ -88,9 +91,7 @@ class Acudiente(BaseModel):
         if not v:
             raise ValueError("El número de documento no puede estar vacío.")
         if not v.replace("-", "").replace(" ", "").isalnum():
-            raise ValueError(
-                f"El documento solo puede contener letras, números y guiones: '{v}'."
-            )
+            raise ValueError(f"El documento solo puede contener letras, números y guiones: '{v}'.")
         return v.upper()
 
     @field_validator("nombre_completo", mode="before")
@@ -99,13 +100,9 @@ class Acudiente(BaseModel):
         """Normaliza el nombre completo; exige entre 3 y 150 caracteres."""
         v = str(v).strip()
         if len(v) < 3:
-            raise ValueError(
-                f"El nombre debe tener al menos 3 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre debe tener al menos 3 caracteres (tiene {len(v)}).")
         if len(v) > 150:
-            raise ValueError(
-                f"El nombre no puede exceder 150 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 150 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("celular", mode="before")
@@ -174,17 +171,13 @@ class Acudiente(BaseModel):
     def desactivar(self) -> Acudiente:
         """Retorna una copia con activo=False (soft delete); falla si ya está inactivo."""
         if not self.activo:
-            raise ValueError(
-                f"El acudiente '{self.nombre_completo}' ya está desactivado."
-            )
+            raise ValueError(f"El acudiente '{self.nombre_completo}' ya está desactivado.")
         return self.model_copy(update={"activo": False})
 
     def reactivar(self) -> Acudiente:
         """Retorna una copia con activo=True; falla si ya está activo."""
         if self.activo:
-            raise ValueError(
-                f"El acudiente '{self.nombre_completo}' ya está activo."
-            )
+            raise ValueError(f"El acudiente '{self.nombre_completo}' ya está activo.")
         return self.model_copy(update={"activo": True})
 
 
@@ -196,9 +189,10 @@ class EstudianteAcudiente(BaseModel):
     principal: aparece en el boletín y recibe notificaciones prioritarias.
     El servicio garantiza que solo haya un acudiente principal por estudiante.
     """
+
     estudiante_id: int
-    acudiente_id:  int
-    es_principal:  bool = False
+    acudiente_id: int
+    es_principal: bool = False
 
     @field_validator("estudiante_id", "acudiente_id")
     @classmethod
@@ -213,15 +207,17 @@ class EstudianteAcudiente(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevoAcudienteDTO(BaseModel):
     """Datos para registrar un acudiente nuevo."""
-    tipo_documento:   TipoDocumentoAcudiente    = TipoDocumentoAcudiente.CC
+
+    tipo_documento: TipoDocumentoAcudiente = TipoDocumentoAcudiente.CC
     numero_documento: str
-    nombre_completo:  str
-    parentesco:       Parentesco
-    celular:          str | None                = None
-    email:            str | None                = None
-    direccion:        str | None                = None
+    nombre_completo: str
+    parentesco: Parentesco
+    celular: str | None = None
+    email: str | None = None
+    direccion: str | None = None
 
     @field_validator("numero_documento", mode="before")
     @classmethod
@@ -259,11 +255,12 @@ class NuevoAcudienteDTO(BaseModel):
 
 class ActualizarAcudienteDTO(BaseModel):
     """Campos actualizables de un acudiente. Todos opcionales."""
+
     nombre_completo: str | None = None
-    parentesco:      Parentesco | None = None
-    celular:         str | None = None
-    email:           str | None = None
-    direccion:       str | None = None
+    parentesco: Parentesco | None = None
+    celular: str | None = None
+    email: str | None = None
+    direccion: str | None = None
 
     @field_validator("nombre_completo", mode="before")
     @classmethod
@@ -284,9 +281,10 @@ class ActualizarAcudienteDTO(BaseModel):
 
 class VincularAcudienteDTO(BaseModel):
     """Vincula un acudiente existente a un estudiante."""
+
     estudiante_id: int
-    acudiente_id:  int
-    es_principal:  bool = False
+    acudiente_id: int
+    es_principal: bool = False
 
     @field_validator("estudiante_id", "acudiente_id")
     @classmethod
@@ -303,12 +301,13 @@ class VincularAcudienteDTO(BaseModel):
 
 class AcudienteResumenDTO(BaseModel):
     """Vista mínima para mostrar en el perfil del estudiante."""
-    id:              int
+
+    id: int
     nombre_completo: str
-    parentesco:      Parentesco
-    celular:         str | None
-    email:           str | None
-    es_principal:    bool
+    parentesco: Parentesco
+    celular: str | None
+    email: str | None
+    es_principal: bool
 
     @classmethod
     def desde_acudiente(
@@ -320,12 +319,12 @@ class AcudienteResumenDTO(BaseModel):
         if acudiente.id is None:
             raise ValueError("El acudiente no tiene id asignado.")
         return cls(
-            id              = acudiente.id,
-            nombre_completo = acudiente.nombre_completo,
-            parentesco      = acudiente.parentesco,
-            celular         = acudiente.celular,
-            email           = acudiente.email,
-            es_principal    = es_principal,
+            id=acudiente.id,
+            nombre_completo=acudiente.nombre_completo,
+            parentesco=acudiente.parentesco,
+            celular=acudiente.celular,
+            email=acudiente.email,
+            es_principal=es_principal,
         )
 
 

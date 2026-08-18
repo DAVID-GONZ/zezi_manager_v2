@@ -51,7 +51,6 @@ from ..models.infraestructura import (
 
 
 class IInfraestructuraRepository(ABC):
-
     # =========================================================================
     # Escenarios de horario
     # =========================================================================
@@ -103,9 +102,7 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_horario_grupo_escenario(
-        self, grupo_id: int, escenario_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo_escenario(self, grupo_id: int, escenario_id: int) -> list[HorarioInfo]:
         """Retorna los bloques horarios de un grupo en un escenario específico."""
         ...
 
@@ -129,9 +126,7 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_plantillas_franja(
-        self, institucion_id: int | None = None
-    ) -> list[PlantillaFranja]:
+    def listar_plantillas_franja(self, institucion_id: int | None = None) -> list[PlantillaFranja]:
         """
         Retorna las plantillas de franja, ordenadas por nombre.
 
@@ -537,9 +532,7 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def reemplazar_disponibilidad_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def reemplazar_disponibilidad_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """
         Reemplaza ATÓMICAMENTE la disponibilidad de un docente: borra todas
         sus restricciones y carga las nuevas en una sola transacción.
@@ -562,9 +555,7 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_configs_generacion(
-        self, periodo_id: int | None = None
-    ) -> list[ConfigGeneracion]:
+    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
         """Retorna configs, opcionalmente filtradas por periodo."""
         ...
 
@@ -579,9 +570,7 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def cambiar_estado_config(
-        self, config_id: int, nuevo_estado: str
-    ) -> ConfigGeneracion:
+    def cambiar_estado_config(self, config_id: int, nuevo_estado: str) -> ConfigGeneracion:
         """
         Cambia el estado de una config validando la transición.
         Lanza ValueError si la transición no está permitida.
@@ -707,10 +696,14 @@ class IInfraestructuraRepository(ABC):
     def listar_plan_estudios(self, institucion_id: int | None = None) -> list[PlanEstudios]: ...
 
     @abstractmethod
-    def get_plan_estudios_por_grado(self, grado: int, institucion_id: int | None = None) -> list[PlanEstudios]: ...
+    def get_plan_estudios_por_grado(
+        self, grado: int, institucion_id: int | None = None
+    ) -> list[PlanEstudios]: ...
 
     @abstractmethod
-    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None) -> PlanEstudios: ...
+    def set_horas_plan(
+        self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None
+    ) -> PlanEstudios: ...
 
     @abstractmethod
     def eliminar_plan_estudios(self, grado: int, asignatura_id: int) -> bool: ...
@@ -720,10 +713,14 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def get_config_grado(self, grado_id: int, institucion_id: int) -> ConfiguracionGradoInstitucion | None: ...
+    def get_config_grado(
+        self, grado_id: int, institucion_id: int
+    ) -> ConfiguracionGradoInstitucion | None: ...
 
     @abstractmethod
-    def upsert_config_grado(self, cfg: ConfiguracionGradoInstitucion) -> ConfiguracionGradoInstitucion: ...
+    def upsert_config_grado(
+        self, cfg: ConfiguracionGradoInstitucion
+    ) -> ConfiguracionGradoInstitucion: ...
 
 
 __all__ = ["IInfraestructuraRepository"]

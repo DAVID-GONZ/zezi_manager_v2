@@ -22,6 +22,7 @@ Uso (context manager que te posiciona dentro de la card ya estilizada):
 Reemplaza el patrón prohibido `with ui.dialog() as dlg, ui.card().classes(
 "andes-card form-dialog-card max-w-md"):` en páginas.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -61,9 +62,8 @@ def custom_dialog(
         dlg.props("persistent")
 
     ancho_cls = _MAX_WIDTHS.get(max_width, _MAX_WIDTHS["md"])
-    with dlg:
-        with ui.card().classes(f"andes-card form-dialog-card {ancho_cls}"):
-            yield dlg
+    with dlg, ui.card().classes(f"andes-card form-dialog-card {ancho_cls}"):
+        yield dlg
 
 
 __all__ = ["custom_dialog"]

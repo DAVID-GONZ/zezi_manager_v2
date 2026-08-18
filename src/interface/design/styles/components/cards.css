@@ -331,107 +331,244 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* ── Greeting hero (Variante Clara con Acento Índigo) ───────────── */
+/* ── Greeting Hero — animated cinematic banner ───────────────── */
+
+@keyframes hero-enter {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes hero-collapse {
+  from { max-height: 240px; margin-bottom: var(--space-lg); }
+  to   { max-height: 0;     margin-bottom: 0; }
+}
+
+@keyframes hero-progress-drain {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+@keyframes time-icon-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1;    }
+  50%       { transform: scale(1.25); opacity: 0.65; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GREETING HERO — superficie de TINTA, invariante por tema.
+
+   D4: antes mezclaba dos sistemas de color incompatibles — el gradiente
+   y el texto salían de --color-primary* (que se INVIERTE en dark: el
+   fondo pasa a casi-blanco y --color-primary-contrast a casi-negro),
+   mientras los textos secundarios eran rgba(255,255,255,·) FIJO. No
+   existe ningún valor que funcione en ambos temas con esa mezcla.
+
+   Sistema único elegido: el hero es siempre una superficie oscura de la
+   familia primitiva ink-* (que, como paper-*/graphite-*, NO se
+   sobrescribe en dark) y todo su texto sale de la familia paper-*.
+   Ambas son invariantes ⇒ los ratios son idénticos en claro y oscuro.
+
+   Contraste (peor caso = extremo claro del gradiente, --ink-500 #4B50C0):
+     .greeting-name  paper-000 sobre ink-500 .............. 6.55:1
+     .greeting-role  paper-000 sobre badge (veil 10%) ..... 5.23:1
+     .greeting-saludo / .greeting-desc  paper-200 ......... 5.17:1
+   ══════════════════════════════════════════════════════════════════ */
+
 .greeting-hero {
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border);
-  border-left: 6px solid var(--color-primary);
-  padding: 32px 40px;
   position: relative;
   overflow: hidden;
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-lg);
+  background: linear-gradient(
+    128deg,
+    var(--ink-900) 0%,
+    var(--ink-700) 55%,
+    var(--ink-500) 100%
+  );
+  box-shadow: var(--shadow-md);
+}
+
+/* Orbe decorativo superior-derecha */
+.greeting-hero::before {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Orbe decorativo inferior-centro */
+.greeting-hero::after {
+  content: '';
+  position: absolute;
+  left: 35%;
+  bottom: -70px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* ── Animación de entrada y salida automática ────────────────── */
+
+.greeting-hero--animated {
+  /* M12: el tope de altura pertenece a la animación de colapso, no a la
+     base — en la base recortaba contenido incluso sin animación. */
+  max-height: 240px;
+  animation:
+    hero-enter    0.45s cubic-bezier(0.22, 1, 0.36, 1) both,
+    hero-out      0.4s  ease-in  4s    forwards,
+    hero-collapse 0.4s  ease     4.35s forwards;
+}
+
+/* ── Inner layout ────────────────────────────────────────────── */
+
+.greeting-hero-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Columna izquierda ───────────────────────────────────────── */
+
+.greeting-hero-left {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-  color: var(--color-text-primary);
+  gap: 4px;
+  min-width: 0;
 }
-/* Tipografía y jerarquía (z-index previene superposición de decoraciones) */
-.greeting-name,
-.greeting-desc,
-.greeting-meta {
+
+.greeting-time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: 2px;
+}
+
+.greeting-time-icon {
+  display: flex;
+  align-items: center;
+  animation: time-icon-pulse 3s ease-in-out infinite;
+}
+
+.greeting-saludo {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--paper-200);
+}
+
+.greeting-name {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--paper-000);
   position: relative;
   z-index: 2;
 }
 
-.greeting-name {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.5px;
-  margin-bottom: 4px;
-  color: var(--color-text-primary);
-}
-
 .greeting-desc {
-  font-size: var(--font-size-h4);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+  color: var(--paper-200);
   font-weight: 400;
-  margin-bottom: 24px;
+  line-height: 1.5;
+  position: relative;
+  z-index: 2;
 }
 
-/* Cápsula de Metadata del usuario */
-.greeting-meta {
+/* ── Columna derecha — badge de identidad ────────────────────── */
+
+.greeting-hero-right {
+  flex-shrink: 0;
+}
+
+.greeting-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--color-primary-lighter);
-  padding: 6px 14px;
-  border-radius: 99px;
-  width: fit-content;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  gap: var(--space-xs);
+  /* Veladuras decorativas sobre tinta: alfa de blanco, no un color de
+     tema. Son invariantes igual que la superficie, así que el sistema
+     sigue siendo uno solo. 10% mantiene .greeting-role en 5.23:1. */
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-full);
+  padding: 7px 16px;
 }
 
-.greeting-user {
+.greeting-role {
   font-size: var(--font-size-table);
   font-weight: 600;
-  color: var(--color-primary-dark);
+  color: var(--paper-000);
+  letter-spacing: 0.01em;
 }
 
-.greeting-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-primary-light);
-}
-.greeting-role {
-  font-size: var(--font-size-label);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  color: var(--color-primary);
-}
+/* ── Barra de cuenta regresiva ───────────────────────────────── */
 
-/* Selector universal para corregir el color del icono inyectado */
-.greeting-meta [class*="material-symbols"] {
-  color: var(--color-primary-dark) !important;
-}
-
-/* ── Elementos decorativos (Fondo) ───────────────────────── */
-.greeting-hero::before {
-  content: '';
+.greeting-progress-track {
   position: absolute;
-  right: -60px;
-  top: -60px;
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary-lighter) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 1;
 }
 
-.greeting-hero::after {
-  content: '';
-  position: absolute;
-  right: 15%;
-  bottom: -80px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--color-primary-lighter) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+.greeting-progress-bar {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.55);
+  transform-origin: left;
+}
+
+.greeting-hero--animated .greeting-progress-bar {
+  animation: hero-progress-drain 4s linear both;
+}
+
+/* ── Stagger de entrada en hijos ─────────────────────────────── */
+
+.greeting-hero--animated .greeting-time-row {
+  animation: hero-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+
+.greeting-hero--animated .greeting-name {
+  animation: hero-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+}
+
+.greeting-hero--animated .greeting-desc {
+  animation: hero-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+}
+
+.greeting-hero--animated .greeting-badge {
+  animation: hero-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .greeting-hero-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+  }
+  .greeting-hero-right { align-self: flex-start; }
+  .greeting-name { font-size: 1.4rem; }
 }
 
 /* ── Period status card ──────────────────────────────────── */
@@ -670,12 +807,6 @@
   min-width: 0;
 }
 
-.action-label {
-  font-size: var(--font-size-table);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
 .action-desc {
   font-size: var(--font-size-small);
   color: var(--color-text-secondary);
@@ -782,31 +913,16 @@
   color: var(--color-text-disabled);
 }
 
-/* ═══════════════════════════════════════════════════════
-   GREETING HERO — Animación de entrada (inicio_34 fase 2)
-   ═══════════════════════════════════════════════════════ */
-
-@keyframes greeting-fade-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.greeting-hero-animated .greeting-name {
-  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.greeting-hero-animated .greeting-desc {
-  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
-}
-
-.greeting-hero-animated .greeting-meta {
-  animation: greeting-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
-}
+/* ── Reduced motion — greeting hero ─────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .greeting-hero-animated .greeting-name,
-  .greeting-hero-animated .greeting-desc,
-  .greeting-hero-animated .greeting-meta { animation: none; }
+  .greeting-hero--animated,
+  .greeting-hero--animated .greeting-time-row,
+  .greeting-hero--animated .greeting-name,
+  .greeting-hero--animated .greeting-desc,
+  .greeting-hero--animated .greeting-badge,
+  .greeting-hero--animated .greeting-progress-bar { animation: none; }
+  .greeting-time-icon { animation: none; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -896,10 +1012,9 @@
 
 .module-hub-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-lg);
   width: 100%;
-  max-width: 720px;
 }
 
 @media (max-width: 640px) {
@@ -908,36 +1023,309 @@
   }
 }
 
-.module-card {
-  border: 1px solid var(--color-divider);
-  border-radius: var(--radius-xl);
-  padding: 20px;
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: all var(--transition-base);
+/* ── Resumen global del portal (portal_37) ───────────────────── */
+
+.portal-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.portal-resumen-linea {
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: var(--shadow-card);
-  min-height: 88px;
-}
-
-.module-card:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-lighter);
-  transform: translateY(-2px) scale(1.01);
-  transition:
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 180ms ease;
-  box-shadow: var(--shadow-md);
-}
-
-.module-card-icon {
-  width: 48px;
-  height: 48px;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.portal-resumen-linea--warning {
+  border-color: var(--color-warning);
+  background: var(--color-warning-light);
+}
+
+.portal-resumen-linea--error {
+  border-color: var(--color-error);
+  background: var(--color-error-light);
+}
+
+.portal-resumen-linea--info {
+  border-color: var(--color-info);
+  background: var(--color-info-light);
+}
+
+.portal-resumen-texto {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ELEVATED CARD — base compartida de tarjeta interactiva elevada
+   ------------------------------------------------------------------
+   D7: `.portal-module-card` (portal_38, aquí) y `.mkt-feature-card`
+   (marketing.css, portal_36) tenían ~90 líneas copiadas — mismos
+   keyframes, mismo reflejo de luz, mismo hover, mismo ícono flotante —
+   con solo el prefijo cambiado, y ya habían divergido (alfa del brillo,
+   keyframe del ícono, sombras). Lo común vive AQUÍ una sola vez, en
+   selectores agrupados; cada variante añade únicamente su delta y nunca
+   vuelve a copiar el cuerpo de la base.
+
+   El bundle carga cards.css antes que marketing.css (theme.py
+   CSS_LOAD_ORDER), así que los deltas `.mkt-*` ganan la cascada.
+
+   Tokens locales (inicio.py los inyecta por tarjeta con # DYNAMIC):
+     --card-accent:    color del módulo   (por defecto --color-primary)
+     --card-accent-bg: tinte del módulo   (por defecto --color-primary-lighter)
+   ══════════════════════════════════════════════════════════════════ */
+
+@keyframes card-shimmer {
+  from { transform: translateX(-140px) skewX(-10deg); opacity: 1; }
+  to   { transform: translateX(540px)  skewX(-10deg); opacity: 0.2; }
+}
+
+/* M1: el keyframe REPITE el transform del hover (scale + rotate). Si solo
+   animara translateY, a los 300 ms sobrescribiría el transform del hover
+   y el ícono perdería el tilt. */
+@keyframes icon-float {
+  0%, 100% { transform: scale(1.12) rotate(-5deg) translateY(-1px); }
+  50%      { transform: scale(1.12) rotate(-5deg) translateY(-4px); }
+}
+
+.portal-module-card,
+.mkt-feature-card {
+  --card-accent:    var(--color-primary);
+  --card-accent-bg: var(--color-primary-lighter);
+
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform    250ms var(--transition-fast),
+    box-shadow   250ms ease,
+    border-color 200ms ease;
+}
+
+/* ── Reflejo de luz en hover (corre una vez) ───────────────────── */
+.portal-module-card::after,
+.mkt-feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 90px;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.10) 50%,
+    transparent 100%
+  );
+  transform: translateX(-140px) skewX(-10deg);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Estado hover ──────────────────────────────────────────────── */
+/* M4: --shadow-lg ya es theme-aware (se re-tinta de índigo en dark);
+   las sombras negras literales anteriores eran invisibles en oscuro. */
+.portal-module-card:hover,
+.mkt-feature-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--card-accent);
+  box-shadow: var(--shadow-lg);
+  z-index: 1;
+}
+
+.portal-module-card:hover::after,
+.mkt-feature-card:hover::after {
+  animation: card-shimmer 0.55s ease-out forwards;
+}
+
+/* ── Ícono ─────────────────────────────────────────────────────── */
+/* El tamaño es delta de cada variante (44px portal / 48px marketing). */
+.portal-card-icon,
+.mkt-feature-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-lg);
   flex-shrink: 0;
+  background: var(--card-accent-bg);
+  box-shadow: inset 0 0 0 1px var(--color-divider);
+  transition: transform 300ms var(--transition-fast);
+}
+
+.portal-module-card:hover .portal-card-icon,
+.mkt-feature-card:hover .mkt-feature-icon {
+  /* Tilt + float — señal de profundidad sin ser llamativo */
+  transform: scale(1.12) rotate(-5deg) translateY(-1px);
+  animation: icon-float 2s ease-in-out 0.3s infinite;
+}
+
+/* ── Título ────────────────────────────────────────────────────── */
+.portal-card-title,
+.mkt-feature-title {
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  transition: color 200ms ease;
+}
+
+.portal-module-card:hover .portal-card-title,
+.mkt-feature-card:hover .mkt-feature-title {
+  color: var(--card-accent);
+}
+
+/* ── Accesibilidad ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .portal-module-card,
+  .mkt-feature-card { transition: none; }
+
+  .portal-module-card::before { transition: none; }
+
+  .portal-module-card:hover::after,
+  .mkt-feature-card:hover::after { animation: none; }
+
+  .portal-module-card:hover .portal-card-icon,
+  .mkt-feature-card:hover .mkt-feature-icon { animation: none; transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Portal Module Card — delta de la variante del portal (portal_38)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Barra de acento superior (crece en hover) ─────────────────── */
+.portal-module-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--card-accent) 0%,
+    var(--card-accent-bg) 100%
+  );
+  transform: scaleX(0.22);
+  transform-origin: left;
+  border-radius: 0 var(--radius-sm) 0 0;
+  transition: transform 350ms var(--transition-fast);
+  z-index: 2;
+}
+
+.portal-module-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────── */
+.portal-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.portal-card-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.portal-card-title {
+  flex: 1;
+}
+
+/* ── Sub-secciones ─────────────────────────────────────────────── */
+.portal-subcard {
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.portal-subcard--alertas {
+  background: var(--color-warning-light);
+}
+
+.portal-subcard--recientes,
+.portal-subcard--hitos {
+  background: transparent;
+}
+
+/* M2: era --color-text-disabled (2.71:1). Es texto informativo real,
+   no un estado deshabilitado. --color-text-secondary da 5.33:1 en
+   claro y 9.12:1 en oscuro. */
+.portal-card-section-title {
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+/* M3: --color-warning sobre --color-warning-light daba 2.81:1. El par
+   --color-warning-text (ocre oscuro en claro / ocre claro en oscuro)
+   sube a 5.36:1 y 6.51:1 respectivamente. */
+.portal-subcard--alertas .portal-card-section-title {
+  color: var(--color-warning-text);
+}
+
+/* ── Ítems de actividad ────────────────────────────────────────── */
+.portal-subcard-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+/* Punto indicador en recientes e hitos */
+.portal-subcard--recientes .portal-subcard-item::before,
+.portal-subcard--hitos .portal-subcard-item::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.portal-subcard--hitos .portal-subcard-item::before {
+  background: var(--card-accent);
+  opacity: 0.6;
+}
+
+.portal-subcard-item--warning {
+  color: var(--color-warning-text);
+}
+
+.portal-subcard-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.portal-subcard-label {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* M2: mismo motivo que .portal-card-section-title. */
+.portal-subcard-detalle {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  text-align: right;
 }

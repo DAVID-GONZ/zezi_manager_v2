@@ -3,6 +3,7 @@ HabilitacionService
 ====================
 Orquesta los casos de uso de habilitaciones y planes de mejoramiento.
 """
+
 from __future__ import annotations
 
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
@@ -39,10 +40,10 @@ class HabilitacionService:
     ) -> None:
         """Inyecta el repo de habilitación y los repos opcionales de cierre,
         configuración y auditoría."""
-        self._repo        = repo
+        self._repo = repo
         self._cierre_repo = cierre_repo
         self._config_repo = config_repo
-        self._auditoria   = auditoria
+        self._auditoria = auditoria
 
     # ------------------------------------------------------------------
     # Helpers
@@ -60,9 +61,7 @@ class HabilitacionService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -115,8 +114,12 @@ class HabilitacionService:
         habilitacion = dto.to_habilitacion()
         habilitacion = self._repo.guardar_habilitacion(habilitacion)
         self._auditar(
-            AccionCambio.CREATE, "habilitaciones", habilitacion.id,
-            None, habilitacion.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "habilitaciones",
+            habilitacion.id,
+            None,
+            habilitacion.model_dump(mode="json"),
+            usuario_id,
         )
         return habilitacion
 
@@ -151,15 +154,16 @@ class HabilitacionService:
             if criterios is not None:
                 nota_minima = criterios.nota_minima_habilitacion
 
-        if dto.nota >= nota_minima:
-            hab_final = hab_realizada.aprobar()
-        else:
-            hab_final = hab_realizada.reprobar()
+        hab_final = hab_realizada.aprobar() if dto.nota >= nota_minima else hab_realizada.reprobar()
 
         self._repo.actualizar_habilitacion(hab_final)
         self._auditar(
-            AccionCambio.UPDATE, "habilitaciones", hab_id,
-            datos_ant, hab_final.model_dump(mode="json"), dto.usuario_id,
+            AccionCambio.UPDATE,
+            "habilitaciones",
+            hab_id,
+            datos_ant,
+            hab_final.model_dump(mode="json"),
+            dto.usuario_id,
         )
         return hab_final
 
@@ -205,8 +209,12 @@ class HabilitacionService:
         plan = dto.to_plan(usuario_id=usuario_id)
         plan = self._repo.guardar_plan(plan)
         self._auditar(
-            AccionCambio.CREATE, "planes_mejoramiento", plan.id,
-            None, plan.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "planes_mejoramiento",
+            plan.id,
+            None,
+            plan.model_dump(mode="json"),
+            usuario_id,
         )
         return plan
 
@@ -227,8 +235,12 @@ class HabilitacionService:
         plan_cerrado = plan.cerrar(dto.estado, dto.observacion)
         self._repo.actualizar_plan(plan_cerrado)
         self._auditar(
-            AccionCambio.UPDATE, "planes_mejoramiento", plan_id,
-            datos_ant, plan_cerrado.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "planes_mejoramiento",
+            plan_id,
+            datos_ant,
+            plan_cerrado.model_dump(mode="json"),
+            usuario_id,
         )
         return plan_cerrado
 
@@ -239,9 +251,7 @@ class HabilitacionService:
         estado: EstadoPlanMejoramiento | None = None,
     ) -> list[PlanMejoramiento]:
         """Retorna los planes de mejoramiento de un estudiante."""
-        return self._repo.listar_planes_por_estudiante(
-            estudiante_id, asignacion_id, estado
-        )
+        return self._repo.listar_planes_por_estudiante(estudiante_id, asignacion_id, estado)
 
 
 __all__ = ["HabilitacionService"]

@@ -7,10 +7,7 @@ ejercitan en otros módulos de test de dominio.
 """
 from __future__ import annotations
 
-import pytest
-
 from src.domain.models.convivencia import CategoriaObservacion, NuevaCategoriaDTO
-
 
 # ---------------------------------------------------------------------------
 # CategoriaObservacion

@@ -1,6 +1,7 @@
 """
 SqliteAsignacionRepository — implementación SQLite de IAsignacionRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -15,7 +16,6 @@ from src.domain.ports.asignacion_repo import IAsignacionRepository
 
 
 class SqliteAsignacionRepository(IAsignacionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -25,6 +25,7 @@ class SqliteAsignacionRepository(IAsignacionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -97,10 +98,7 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         # Scope multi-tenant (paso_31): sin JOIN aquí (read plano de IDs), se
         # scopea con subconsulta a `grupos` por la institución del grupo.
         if filtro.institucion_id is not None:
-            sql += (
-                " AND grupo_id IN "
-                "(SELECT id FROM grupos WHERE institucion_id = ?)"
-            )
+            sql += " AND grupo_id IN (SELECT id FROM grupos WHERE institucion_id = ?)"
             params.append(filtro.institucion_id)
         sql += " ORDER BY id"
         offset = (filtro.pagina - 1) * filtro.por_pagina
@@ -133,9 +131,7 @@ class SqliteAsignacionRepository(IAsignacionRepository):
 
     def get_info(self, asignacion_id: int) -> AsignacionInfo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                self._INFO_SQL + " WHERE a.id = ?", (asignacion_id,)
-            ).fetchone()
+            row = conn.execute(self._INFO_SQL + " WHERE a.id = ?", (asignacion_id,)).fetchone()
             return self._row_to_info(row) if row else None
 
     def listar_info(self, filtro: FiltroAsignacionesDTO) -> list[AsignacionInfo]:

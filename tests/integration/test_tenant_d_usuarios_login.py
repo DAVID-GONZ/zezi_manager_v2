@@ -59,12 +59,11 @@ class TestCreacionGlobal:
             )
         assert u1.institucion_id == 1
 
-        with usar_institucion(otra):
-            with pytest.raises(ValueError, match="Ya existe"):
-                svc.crear_usuario(
-                    NuevoUsuarioDTO(usuario="director2", nombre_completo="Dir Dos",
-                                    rol=Rol.DIRECTOR)
-                )
+        with usar_institucion(otra), pytest.raises(ValueError, match="Ya existe"):
+            svc.crear_usuario(
+                NuevoUsuarioDTO(usuario="director2", nombre_completo="Dir Dos",
+                                rol=Rol.DIRECTOR)
+            )
 
     def test_duplicado_en_misma_institucion_falla(self, db_conn):
         svc, _ = _svc(db_conn)

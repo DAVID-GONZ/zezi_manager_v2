@@ -6,6 +6,7 @@ de los docentes.
 Ruta: /admin/disponibilidad-docente
 Acceso: admin, director, coordinador
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,20 +35,18 @@ def disponibilidad_docente_page() -> None:
         ui.navigate.to("/login")
         return
 
-    logger.info(
-        "Disponibilidad docente: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol
-    )
+    logger.info("Disponibilidad docente: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict[str, Any] = {
-        "docentes":       [],
-        "docente_id":     None,
-        "franjas":        [],   # franjas lectivas de la plantilla activa
-        "dias_activos":   [],
-        "disponibilidad": {},   # dict[(dia, orden), bool] — True=disponible
-        "min_horas_dia":  0,
-        "max_horas_dia":  8,
-        "plantilla_ok":   True,
+        "docentes": [],
+        "docente_id": None,
+        "franjas": [],  # franjas lectivas de la plantilla activa
+        "dias_activos": [],
+        "disponibilidad": {},  # dict[(dia, orden), bool] — True=disponible
+        "min_horas_dia": 0,
+        "max_horas_dia": 8,
+        "plantilla_ok": True,
     }
 
     # ── Carga inicial ─────────────────────────────────────────────────────────
@@ -70,7 +69,8 @@ def disponibilidad_docente_page() -> None:
             _s["dias_activos"] = list(getattr(plantilla, "dias_activos", []) or [])
             franjas_todas = Container.franja_service().listar_franjas(plantilla.id)
             _s["franjas"] = [
-                f for f in franjas_todas
+                f
+                for f in franjas_todas
                 if (f.tipo if isinstance(f.tipo, str) else f.tipo.value) == "lectiva"
             ]
         except Exception as exc:
@@ -84,9 +84,7 @@ def disponibilidad_docente_page() -> None:
             disp_bd = Container.restriccion_generacion_service().listar_disponibilidad_docente(
                 docente_id
             )
-            disp_dict = {
-                (d.dia_semana, d.franja_orden): d.disponible for d in disp_bd
-            }
+            disp_dict = {(d.dia_semana, d.franja_orden): d.disponible for d in disp_bd}
             nueva_disp: dict[tuple, bool] = {}
             for dia in _s["dias_activos"]:
                 for franja in _s["franjas"]:
@@ -197,22 +195,24 @@ def disponibilidad_docente_page() -> None:
     @ui.refreshable
     def _panel_limites() -> None:
         if not _s["docente_id"]:
-            ui.label("Selecciona un docente para ver sus límites.").classes(
-                "text-sm text-muted"
-            )
+            ui.label("Selecciona un docente para ver sus límites.").classes("text-sm text-muted")
             return
 
         with ui.row().classes("form-row-inline"):
             with ui.element("div").classes("u-stack-xs"):
                 ui.label("Mín. horas/día").classes("text-sm font-medium")
-                in_min = ui.number(
-                    value=_s["min_horas_dia"], min=0, max=12, step=1
-                ).classes("andes-input w-32").props("outlined")
+                in_min = (
+                    ui.number(value=_s["min_horas_dia"], min=0, max=12, step=1)
+                    .classes("andes-input w-32")
+                    .props("outlined")
+                )
             with ui.element("div").classes("u-stack-xs"):
                 ui.label("Máx. horas/día").classes("text-sm font-medium")
-                in_max = ui.number(
-                    value=_s["max_horas_dia"], min=1, max=12, step=1
-                ).classes("andes-input w-32").props("outlined")
+                in_max = (
+                    ui.number(value=_s["max_horas_dia"], min=1, max=12, step=1)
+                    .classes("andes-input w-32")
+                    .props("outlined")
+                )
 
             def _guardar_limites() -> None:
                 docente_id = _s["docente_id"]
@@ -240,7 +240,6 @@ def disponibilidad_docente_page() -> None:
     # ── Layout ────────────────────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             # Panel selector de docente
             with ui.element("div").classes("panel-card"):
                 ui.label("Docente").classes("section-subtitle-sm u-mb-xs")

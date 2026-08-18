@@ -1,6 +1,7 @@
 """
 form_dialog.py — Modal de formulario CRUD del design system Andes Minimal.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -11,11 +12,10 @@ from nicegui import ui
 from src.interface.design.components.base_form import base_form
 from src.interface.design.theme import ThemeManager
 
-
 _VARIANT_ICON: dict[str, str] = {
-    "danger":  "warning",
+    "danger": "warning",
     "warning": "report",
-    "info":    "info",
+    "info": "info",
     "success": "check_circle",
 }
 
@@ -28,10 +28,10 @@ _TAMAÑO_CLS: dict[str, str] = {
 
 # Backwards compat: Tailwind max-width classes → DS size classes
 _MAX_WIDTH_MAP: dict[str, str] = {
-    "max-w-sm":  "form-dialog-card-sm",
-    "max-w-md":  "form-dialog-card-md",
-    "max-w-lg":  "form-dialog-card-lg",
-    "max-w-xl":  "form-dialog-card-xl",
+    "max-w-sm": "form-dialog-card-sm",
+    "max-w-md": "form-dialog-card-md",
+    "max-w-lg": "form-dialog-card-lg",
+    "max-w-xl": "form-dialog-card-xl",
     "max-w-2xl": "form-dialog-card-xl",
 }
 
@@ -71,13 +71,17 @@ def form_dialog(
         texto_cancelar: Etiqueta del botón Cancelar.
         tamaño:        sm | md | lg | xl — sobrescribe max_width si se especifica.
     """
-    ancho_cls = _TAMAÑO_CLS.get(tamaño or "", "") or _MAX_WIDTH_MAP.get(max_width, "form-dialog-card-md")
+    ancho_cls = _TAMAÑO_CLS.get(tamaño or "", "") or _MAX_WIDTH_MAP.get(
+        max_width, "form-dialog-card-md"
+    )
     variant_cls = f" variant-{variante}" if variante != "default" else ""
     _submit_btn_ref: list = []
 
-    with ui.dialog() as dlg, ui.card().classes(
-        f"andes-card form-dialog-card {ancho_cls}{variant_cls}"
+    with (
+        ui.dialog() as dlg,
+        ui.card().classes(f"andes-card form-dialog-card {ancho_cls}{variant_cls}"),
     ):
+
         def _cancelar() -> None:
             if on_cancelar:
                 on_cancelar()

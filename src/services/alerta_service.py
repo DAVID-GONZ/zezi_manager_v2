@@ -3,6 +3,7 @@ AlertaService
 ==============
 Orquesta los casos de uso del módulo de Alertas.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,7 +32,7 @@ class AlertaService:
         estadisticos_repo: IEstadisticosRepository | None = None,
     ) -> None:
         """Inyecta el repositorio de alertas y el de estadísticos (opcional)."""
-        self._repo              = repo
+        self._repo = repo
         self._estadisticos_repo = estadisticos_repo
 
     # ------------------------------------------------------------------
@@ -118,12 +119,8 @@ class AlertaService:
         """
         alerta = self._get_alerta_o_lanzar(alerta_id)
         if alerta.resuelta:
-            raise ValueError(
-                f"La alerta con id {alerta_id} ya está resuelta."
-            )
-        return self._repo.resolver_alerta(
-            alerta_id, usuario_id, observacion, datetime.now()
-        )
+            raise ValueError(f"La alerta con id {alerta_id} ya está resuelta.")
+        return self._repo.resolver_alerta(alerta_id, usuario_id, observacion, datetime.now())
 
     def listar_alertas_para_usuario(
         self,
@@ -177,9 +174,7 @@ class AlertaService:
         if self._estadisticos_repo is None:
             return 0
 
-        cfg = self._repo.get_configuracion(
-            anio_id, TipoAlerta.MATERIAS_EN_RIESGO
-        )
+        cfg = self._repo.get_configuracion(anio_id, TipoAlerta.MATERIAS_EN_RIESGO)
         if cfg is None or not cfg.activa:
             return 0
 

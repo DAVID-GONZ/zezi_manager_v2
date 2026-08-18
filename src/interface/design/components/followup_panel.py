@@ -4,10 +4,11 @@ followup_panel.py — Panel de seguimientos pendientes con acción de resolver.
 Componente de presentación puro: recibe lista de FollowupItem y un callback,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from nicegui import ui
 
@@ -19,6 +20,7 @@ from src.interface.design.theme import ThemeManager
 @dataclass
 class FollowupItem:
     """Un seguimiento pendiente."""
+
     id: int
     descripcion: str
     nivel: str

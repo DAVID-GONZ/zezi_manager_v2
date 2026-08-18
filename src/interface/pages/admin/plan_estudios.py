@@ -12,6 +12,7 @@ Tres bloques:
   3. Vinculación de asignaturas a cada grado y asignación de horas hasta
      completar el objetivo, con filtro por área y barra de progreso.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,16 +39,26 @@ logger = logging.getLogger("ADMIN.PLAN_ESTUDIOS")
 
 # Flujo de configuración del generador de horarios.
 _PASOS_HORARIO = [
-    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
-    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
-    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
-    ("horarios",     "Horarios",         "/horarios"),
+    ("asignaturas", "Asignaturas", "/admin/asignaturas"),
+    ("plan", "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones", "/admin/asignaciones"),
+    ("horarios", "Horarios", "/horarios"),
 ]
 
 _NOMBRES_GRADO = {
-    1: "Primero", 2: "Segundo", 3: "Tercero", 4: "Cuarto", 5: "Quinto",
-    6: "Sexto", 7: "Séptimo", 8: "Octavo", 9: "Noveno",
-    10: "Décimo", 11: "Once", 12: "Doce", 13: "Trece",
+    1: "Primero",
+    2: "Segundo",
+    3: "Tercero",
+    4: "Cuarto",
+    5: "Quinto",
+    6: "Sexto",
+    7: "Séptimo",
+    8: "Octavo",
+    9: "Noveno",
+    10: "Décimo",
+    11: "Once",
+    12: "Doce",
+    13: "Trece",
 }
 
 
@@ -75,15 +86,20 @@ def plan_estudios_page() -> None:
     logger.info("Plan de estudios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     _s: dict = {
-        "grados":      [],     # list[Grado]
+        "grados": [],  # list[Grado]
         "asignaturas": [],
-        "areas":       [],
-        "grado_sel":   None,   # numero
-        "plan_map":    {},     # {asignatura_id: horas} del grado seleccionado
+        "areas": [],
+        "grado_sel": None,  # numero
+        "plan_map": {},  # {asignatura_id: horas} del grado seleccionado
         # form nuevo grado
-        "g_numero": None, "g_nombre": "", "g_min": 20, "g_max": 40, "g_horas": 30,
+        "g_numero": None,
+        "g_nombre": "",
+        "g_min": 20,
+        "g_max": 40,
+        "g_horas": 30,
         # vincular asignatura
-        "vinc_area_id": None, "vinc_asig_id": None,
+        "vinc_area_id": None,
+        "vinc_asig_id": None,
     }
 
     # ── Carga ─────────────────────────────────────────────────────────────────
@@ -143,8 +159,11 @@ def plan_estudios_page() -> None:
             return
         try:
             Container.plan_estudios_service().guardar_grado(
-                int(numero), str(_s["g_nombre"] or "").strip() or _NOMBRES_GRADO.get(int(numero)),
-                int(_s["g_min"] or 0), int(_s["g_max"] or 1), int(_s["g_horas"] or 0),
+                int(numero),
+                str(_s["g_nombre"] or "").strip() or _NOMBRES_GRADO.get(int(numero)),
+                int(_s["g_min"] or 0),
+                int(_s["g_max"] or 1),
+                int(_s["g_horas"] or 0),
             )
             toast_success(f"Grado {numero} guardado")
             _s["g_numero"] = None
@@ -161,7 +180,8 @@ def plan_estudios_page() -> None:
         def _ok(datos: dict) -> bool | None:
             try:
                 Container.plan_estudios_service().guardar_grado(
-                    g.numero, str(datos.get("nombre") or "").strip() or None,
+                    g.numero,
+                    str(datos.get("nombre") or "").strip() or None,
                     int(datos.get("min_estudiantes") or 0),
                     int(datos.get("max_estudiantes") or 1),
                     int(datos.get("horas_semanales") or 0),
@@ -181,12 +201,27 @@ def plan_estudios_page() -> None:
             titulo=f"Editar grado {g.numero}",
             campos=[
                 {"key": "nombre", "label": "Nombre", "tipo": "text", "valor": g.nombre or ""},
-                {"key": "min_estudiantes", "label": "Mín. estudiantes", "tipo": "number",
-                 "valor": g.min_estudiantes, "min": 0},
-                {"key": "max_estudiantes", "label": "Máx. estudiantes", "tipo": "number",
-                 "valor": g.max_estudiantes, "min": 1},
-                {"key": "horas_semanales", "label": "Horas/semana objetivo", "tipo": "number",
-                 "valor": g.horas_semanales, "min": 0},
+                {
+                    "key": "min_estudiantes",
+                    "label": "Mín. estudiantes",
+                    "tipo": "number",
+                    "valor": g.min_estudiantes,
+                    "min": 0,
+                },
+                {
+                    "key": "max_estudiantes",
+                    "label": "Máx. estudiantes",
+                    "tipo": "number",
+                    "valor": g.max_estudiantes,
+                    "min": 1,
+                },
+                {
+                    "key": "horas_semanales",
+                    "label": "Horas/semana objetivo",
+                    "tipo": "number",
+                    "valor": g.horas_semanales,
+                    "min": 0,
+                },
             ],
             on_submit=_ok,
             max_width="max-w-md",
@@ -209,7 +244,9 @@ def plan_estudios_page() -> None:
         confirm_dialog(
             titulo="Eliminar grado",
             mensaje=f"¿Eliminar el grado {g.numero}? No borra el plan ya asignado.",
-            on_confirm=_ok, variante="danger", texto_confirmar="Eliminar",
+            on_confirm=_ok,
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     # ── Acciones: plan (vincular / horas) ───────────────────────────────────────
@@ -262,9 +299,7 @@ def plan_estudios_page() -> None:
                 g, aid, cascade=True, usuario_id=ctx.usuario_id
             )
             if n:
-                toast_warning(
-                    f"Se quitaron {n} asignación(es) de docentes para esta materia."
-                )
+                toast_warning(f"Se quitaron {n} asignación(es) de docentes para esta materia.")
             else:
                 toast_success("Materia quitada del plan.")
             _cargar_plan()
@@ -281,8 +316,11 @@ def plan_estudios_page() -> None:
         asignadas = sum(_s["plan_map"].values())
         restantes = objetivo - asignadas
         with ui.row().classes("form-row-center"):
-            var = ("success" if objetivo and asignadas == objetivo
-                   else ("error" if objetivo and asignadas > objetivo else "info"))
+            var = (
+                "success"
+                if objetivo and asignadas == objetivo
+                else ("error" if objetivo and asignadas > objetivo else "info")
+            )
             status_badge(f"{asignadas} / {objetivo or '—'} h", variante=var)
             if objetivo:
                 if restantes > 0:
@@ -305,19 +343,25 @@ def plan_estudios_page() -> None:
             ).classes("text-caption text-secondary u-mb-sm")
 
             usados = {g.numero for g in _s["grados"]}
-            num_opts = {n: f"{n} — {_NOMBRES_GRADO.get(n, n)}"
-                        for n in range(1, 14) if n not in usados}
+            num_opts = {
+                n: f"{n} — {_NOMBRES_GRADO.get(n, n)}" for n in range(1, 14) if n not in usados
+            }
             with ui.row().classes("form-row-inline"):
-                ui.select(num_opts or {None: "Todos creados"}, label="Grado *") \
-                    .classes("w-44").props("dense outlined").bind_value(_s, "g_numero")
-                ui.input("Nombre (opcional)").classes("w-40").props("dense outlined") \
-                    .bind_value(_s, "g_nombre")
-                ui.number("Mín. estud.", min=0).classes("w-28").props("dense outlined") \
-                    .bind_value(_s, "g_min")
-                ui.number("Máx. estud.", min=1).classes("w-28").props("dense outlined") \
-                    .bind_value(_s, "g_max")
-                ui.number("Horas/sem", min=0).classes("w-28").props("dense outlined") \
-                    .bind_value(_s, "g_horas")
+                ui.select(num_opts or {None: "Todos creados"}, label="Grado *").classes(
+                    "w-44"
+                ).props("dense outlined").bind_value(_s, "g_numero")
+                ui.input("Nombre (opcional)").classes("w-40").props("dense outlined").bind_value(
+                    _s, "g_nombre"
+                )
+                ui.number("Mín. estud.", min=0).classes("w-28").props("dense outlined").bind_value(
+                    _s, "g_min"
+                )
+                ui.number("Máx. estud.", min=1).classes("w-28").props("dense outlined").bind_value(
+                    _s, "g_max"
+                )
+                ui.number("Horas/sem", min=0).classes("w-28").props("dense outlined").bind_value(
+                    _s, "g_horas"
+                )
                 btn_primary("Guardar grado", icon="add", on_click=_guardar_grado)
 
             if _s["grados"]:
@@ -329,26 +373,43 @@ def plan_estudios_page() -> None:
                         ui.label("").classes("flex-1")
                     for g in _s["grados"]:
                         with ui.element("div").classes("lista-fila"):
-                            ui.label(f"{g.numero} · {g.nombre or _NOMBRES_GRADO.get(g.numero, '')}").classes("w-40 font-medium")
-                            ui.label(f"{g.min_estudiantes} – {g.max_estudiantes}").classes("w-40 text-sm")
+                            ui.label(
+                                f"{g.numero} · {g.nombre or _NOMBRES_GRADO.get(g.numero, '')}"
+                            ).classes("w-40 font-medium")
+                            ui.label(f"{g.min_estudiantes} – {g.max_estudiantes}").classes(
+                                "w-40 text-sm"
+                            )
                             ui.label(f"{g.horas_semanales} h").classes("w-28 text-sm")
                             with ui.row().classes("form-row-actions"):
-                                btn_icon("edit", tooltip="Editar", on_click=lambda gg=g: _editar_grado(gg))
-                                btn_icon("delete", variante="danger", tooltip="Eliminar",
-                                         on_click=lambda gg=g: _eliminar_grado(gg))
+                                btn_icon(
+                                    "edit",
+                                    tooltip="Editar",
+                                    on_click=lambda gg=g: _editar_grado(gg),
+                                )
+                                btn_icon(
+                                    "delete",
+                                    variante="danger",
+                                    tooltip="Eliminar",
+                                    on_click=lambda gg=g: _eliminar_grado(gg),
+                                )
 
         # ── Sección 3: Plan de estudios del grado ────────────────────────
         with ui.element("div").classes("panel-card u-mt-sm"):
             ui.label("Plan de estudios por grado").classes("text-subtitle1 font-semibold u-mb-xs")
             if not _s["grados"]:
-                empty_state(icono=Icons.SUBJECTS, titulo="Crea primero un grado",
-                            descripcion="Agrega grados arriba para definir su plan.")
+                empty_state(
+                    icono=Icons.SUBJECTS,
+                    titulo="Crea primero un grado",
+                    descripcion="Agrega grados arriba para definir su plan.",
+                )
                 return
 
             ui.label("Grado").classes("parrilla-chips-label")
             with ui.element("div").classes("parrilla-chips"):
                 for g in _s["grados"]:
-                    cls = "parrilla-chip" + (" parrilla-chip-activo" if g.numero == _s["grado_sel"] else "")
+                    cls = "parrilla-chip" + (
+                        " parrilla-chip-activo" if g.numero == _s["grado_sel"] else ""
+                    )
                     chip = ui.element("div").classes(cls)
                     chip.on("click", lambda _, n=g.numero: _seleccionar_grado(n))
                     with chip:
@@ -362,17 +423,20 @@ def plan_estudios_page() -> None:
             area_opts.update({a.id: a.nombre for a in _s["areas"]})
             f_area = _s["vinc_area_id"]
             disponibles = {
-                a.id: a.nombre for a in _s["asignaturas"]
+                a.id: a.nombre
+                for a in _s["asignaturas"]
                 if a.id not in _s["plan_map"] and (f_area is None or a.area_id == f_area)
             }
             with ui.row().classes("form-row-inline u-mt-sm"):
                 ui.select(
-                    area_opts, value=_s["vinc_area_id"], label="Filtrar por área",
+                    area_opts,
+                    value=_s["vinc_area_id"],
+                    label="Filtrar por área",
                     on_change=lambda e: (_s.__setitem__("vinc_area_id", e.value), vista.refresh()),
                 ).classes("w-44").props("dense outlined")
-                ui.select(disponibles or {None: "Sin asignaturas"}, label="Asignatura a vincular") \
-                    .classes("w-56").props("dense outlined") \
-                    .bind_value(_s, "vinc_asig_id")
+                ui.select(
+                    disponibles or {None: "Sin asignaturas"}, label="Asignatura a vincular"
+                ).classes("w-56").props("dense outlined").bind_value(_s, "vinc_asig_id")
                 btn_secondary("Vincular", icon="add_link", on_click=_vincular)
 
             # Tabla de asignaturas vinculadas con horas
@@ -389,29 +453,35 @@ def plan_estudios_page() -> None:
                     for aid in sorted(_s["plan_map"], key=_asig_nombre):
                         with ui.element("div").classes("lista-fila"):
                             ui.label(_asig_nombre(aid)).classes("flex-1 text-sm")
-                            ui.number(value=_s["plan_map"][aid], min=1, max=40, step=1) \
-                                .classes("w-28").props("dense outlined debounce=400") \
-                                .on("update:model-value",
-                                    lambda e, a=aid: _set_horas(a, e.args))
+                            ui.number(value=_s["plan_map"][aid], min=1, max=40, step=1).classes(
+                                "w-28"
+                            ).props("dense outlined debounce=400").on(
+                                "update:model-value", lambda e, a=aid: _set_horas(a, e.args)
+                            )
                             with ui.element("div").classes("w-10 text-right"):
-                                btn_icon("close", variante="danger", tooltip="Quitar",
-                                         on_click=lambda a=aid: _quitar(a))
+                                btn_icon(
+                                    "close",
+                                    variante="danger",
+                                    tooltip="Quitar",
+                                    on_click=lambda a=aid: _quitar(a),
+                                )
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             pipeline_nav(
-                _PASOS_HORARIO, activo="plan",
+                _PASOS_HORARIO,
+                activo="plan",
                 hint="Paso 2 · Por cada grado define las horas semanales de cada "
-                     "asignatura hasta completar el total. Esto alimenta las asignaciones y el horario.",
+                "asignatura hasta completar el total. Esto alimenta las asignaciones y el horario.",
             )
             vista()
 
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Plan de estudios",
-        page_subtitulo = "Grados, horas objetivo y asignaturas por grado",
-        page_icono     = Icons.SUBJECTS,
+        page_titulo="Plan de estudios",
+        page_subtitulo="Grados, horas objetivo y asignaturas por grado",
+        page_icono=Icons.SUBJECTS,
     )
 
 

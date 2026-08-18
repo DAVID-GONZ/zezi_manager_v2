@@ -179,8 +179,8 @@ def test_configuracion_sie_nav_solo_profesor():
 def test_rutas_de_modulos_estan_registradas():
     """Toda ruta declarada en MODULOS[*].rutas debe tener registro en el guard.
     Falla si se anade una ruta al modulo sin registrarla en main.py."""
-    from src.interface.auth import roles_de_ruta
     from src.domain.modulos import MODULOS
+    from src.interface.auth import roles_de_ruta
 
     sin_registro = set()
     for d in MODULOS.values():

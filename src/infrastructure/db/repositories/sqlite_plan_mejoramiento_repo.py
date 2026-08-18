@@ -1,4 +1,5 @@
 """Implementación SQLite del repositorio de Plan de Mejoramiento."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -19,6 +20,7 @@ from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
 
 def _db_path() -> Path:
     from src.infrastructure.db.connection import DB_PATH
+
     return DB_PATH
 
 
@@ -43,7 +45,9 @@ def _row_to_corte(row: sqlite3.Row) -> CortePlan:
         id=d["id"],
         asignacion_id=d["asignacion_id"],
         periodo_id=d["periodo_id"],
-        fecha_ejecucion=date.fromisoformat(d["fecha_ejecucion"]) if d["fecha_ejecucion"] else date.today(),
+        fecha_ejecucion=date.fromisoformat(d["fecha_ejecucion"])
+        if d["fecha_ejecucion"]
+        else date.today(),
         peso_registrado=d["peso_registrado"],
         nota_umbral=d["nota_umbral"],
         nota_minima_aprobacion=d["nota_minima_aprobacion"],
@@ -95,7 +99,6 @@ def _row_to_nota_actividad(row: sqlite3.Row) -> NotaActividadPlan:
 
 
 class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
-
     # ------------------------------------------------------------------
     # Corte
     # ------------------------------------------------------------------
@@ -108,10 +111,13 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
                     peso_registrado, nota_umbral, nota_minima_aprobacion, usuario_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    corte.asignacion_id, corte.periodo_id,
+                    corte.asignacion_id,
+                    corte.periodo_id,
                     corte.fecha_ejecucion.isoformat(),
-                    corte.peso_registrado, corte.nota_umbral,
-                    corte.nota_minima_aprobacion, corte.usuario_id,
+                    corte.peso_registrado,
+                    corte.nota_umbral,
+                    corte.nota_minima_aprobacion,
+                    corte.usuario_id,
                 ),
             )
             return corte.model_copy(update={"id": cur.lastrowid})
@@ -126,9 +132,7 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
 
     def get_corte_by_id(self, corte_id: int) -> CortePlan | None:
         with _get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM cortes_plan WHERE id=?", (corte_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM cortes_plan WHERE id=?", (corte_id,)).fetchone()
             return _row_to_corte(row) if row else None
 
     # ------------------------------------------------------------------
@@ -143,10 +147,14 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
                     nota_al_corte, nota_definitiva_plan, estado, usuario_cierre_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    nota.corte_id, nota.estudiante_id,
-                    nota.asignacion_id, nota.periodo_id,
-                    nota.nota_al_corte, nota.nota_definitiva_plan,
-                    nota.estado.value, nota.usuario_cierre_id,
+                    nota.corte_id,
+                    nota.estudiante_id,
+                    nota.asignacion_id,
+                    nota.periodo_id,
+                    nota.nota_al_corte,
+                    nota.nota_definitiva_plan,
+                    nota.estado.value,
+                    nota.usuario_cierre_id,
                 ),
             )
             return nota.model_copy(update={"id": cur.lastrowid})
@@ -174,9 +182,11 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
                    SET nota_definitiva_plan=?, estado=?, usuario_cierre_id=?
                    WHERE corte_id=? AND estudiante_id=?""",
                 (
-                    nota.nota_definitiva_plan, nota.estado.value,
+                    nota.nota_definitiva_plan,
+                    nota.estado.value,
                     nota.usuario_cierre_id,
-                    nota.corte_id, nota.estudiante_id,
+                    nota.corte_id,
+                    nota.estudiante_id,
                 ),
             )
             return nota
@@ -193,8 +203,12 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
                     peso, fecha, usuario_id)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    actividad.corte_id, actividad.asignacion_id, actividad.periodo_id,
-                    actividad.nombre, actividad.descripcion, actividad.peso,
+                    actividad.corte_id,
+                    actividad.asignacion_id,
+                    actividad.periodo_id,
+                    actividad.nombre,
+                    actividad.descripcion,
+                    actividad.peso,
                     actividad.fecha.isoformat() if actividad.fecha else None,
                     actividad.usuario_id,
                 ),
@@ -242,9 +256,12 @@ class SqlitePlanMejoramientoRepository(IPlanMejoramientoRepository):
                     periodo_id, valor, usuario_id)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
-                    nota.actividad_plan_id, nota.estudiante_id,
-                    nota.asignacion_id, nota.periodo_id,
-                    nota.valor, nota.usuario_id,
+                    nota.actividad_plan_id,
+                    nota.estudiante_id,
+                    nota.asignacion_id,
+                    nota.periodo_id,
+                    nota.valor,
+                    nota.usuario_id,
                 ),
             )
             return nota.model_copy(update={"id": cur.lastrowid})

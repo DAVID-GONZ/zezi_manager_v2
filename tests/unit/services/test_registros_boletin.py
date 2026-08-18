@@ -13,18 +13,14 @@ Cubre:
 """
 from __future__ import annotations
 
-import json
 from datetime import date
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.domain.models.convivencia import (
+    TIPO_REGISTRO_DISPLAY,
     FiltroConvivenciaDTO,
-    NotaComportamiento,
     ObservacionPeriodo,
     RegistroComportamiento,
-    TIPO_REGISTRO_DISPLAY,
     TipoRegistro,
 )
 from src.domain.models.preferencia_institucion import (
@@ -35,14 +31,12 @@ from src.domain.models.preferencia_institucion import (
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.services.convivencia_service import ConvivenciaService
 from src.services.informe_service import InformeService
-
 from src.services.preferencias_institucion_service import (
     CLAVES_CONOCIDAS,
     PreferenciasInstitucionService,
     _inferir_categoria,
     _inferir_tipo,
 )
-
 
 # ===========================================================================
 # Fakes
@@ -102,10 +96,7 @@ def _make_registro(
     acudiente_notificado: bool = False,
     descripcion: str = "desc",
 ) -> RegistroComportamiento:
-    if tipo == TipoRegistro.DESCARGO:
-        requiere_firma = False
-    else:
-        requiere_firma = False
+    requiere_firma = False if tipo == TipoRegistro.DESCARGO else False
     return RegistroComportamiento(
         id=id_,
         estudiante_id=1,
@@ -397,8 +388,9 @@ class TestConvivenciaBoletin:
 
     def _make_informe_svc(self, registros=None, obs=None):
         """Helper: InformeService con ConvivenciaService(FakeConvRepo)."""
-        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         from unittest.mock import MagicMock
+
+        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         repo = _FakeConvRepo(registros=registros, obs=obs)
         est_repo = MagicMock(spec=IEstadisticosRepository)
         return InformeService(
@@ -448,6 +440,7 @@ class TestConvivenciaBoletin:
     def test_sin_repo_devuelve_registros_vacios(self):
         """Sin convivencia_repo, registros es lista vacía."""
         from unittest.mock import MagicMock
+
         from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         est_repo = MagicMock(spec=IEstadisticosRepository)
         svc = InformeService(estadisticos_repo=est_repo)
@@ -468,8 +461,9 @@ class TestConvivenciaBoletinAnual:
         return m
 
     def _make_informe_svc_anual(self, registros=None):
-        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         from unittest.mock import MagicMock
+
+        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         periodos = [self._make_periodo(1, "P1"), self._make_periodo(2, "P2")]
         periodo_svc = MagicMock()
         periodo_svc.listar_por_anio.return_value = periodos
@@ -519,8 +513,9 @@ class TestConvivenciaBoletinAnual:
 
     def test_sin_repo_devuelve_empty(self):
         """Sin convivencia_repo ni periodo_svc, retorna estructura vacía con registros=[]."""
-        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         from unittest.mock import MagicMock
+
+        from src.domain.ports.estadisticos_repo import IEstadisticosRepository
         est_repo = MagicMock(spec=IEstadisticosRepository)
         svc = InformeService(estadisticos_repo=est_repo)
         result = svc.convivencia_boletin_anual(1, 2026)

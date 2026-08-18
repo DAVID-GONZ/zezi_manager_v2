@@ -116,9 +116,7 @@ class FakeEstudianteRepo(IEstudianteRepository):
         if filtro.grupo_id is not None and e.grupo_id != filtro.grupo_id:
             return False
         # grupos_ids None → sin restricción; lista vacía → ningún match.
-        if filtro.grupos_ids is not None and e.grupo_id not in filtro.grupos_ids:
-            return False
-        return True
+        return not (filtro.grupos_ids is not None and e.grupo_id not in filtro.grupos_ids)
 
     def listar_filtrado(self, filtro: FiltroEstudiantesDTO) -> list[Estudiante]:
         return [e for e in self._ests.values() if self._aplica_filtro(e, filtro)]
@@ -251,7 +249,7 @@ class TestRegistrarPIAR:
 
 class TestActualizarPIAR:
     def test_actualiza_piar_existente(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         est = svc.matricular(_dto())
         svc.registrar_piar(NuevoPIARDTO(
             estudiante_id=est.id, anio_id=1,

@@ -22,26 +22,26 @@ from .schema import INDICES, SCHEMA, TRIGGERS, get_db_stats, init_db
 from .seed import SeedResult, seed_base, seed_dev, seed_test
 
 __all__ = [
-    # Conexión
-    "get_connection",
     "DB_PATH",
-    "verify_db_integrity",
+    "INDICES",
+    "SCHEMA",
+    "TRIGGERS",
+    "SeedResult",
+    # Escritura
+    "execute",
+    "fetch_all",
     # Lectura
     "fetch_df",
     "fetch_one",
-    "fetch_all",
+    # Conexión
+    "get_connection",
+    "get_db_stats",
     "get_scalar",
-    # Escritura
-    "execute",
     # Esquema
     "init_db",
-    "get_db_stats",
-    "SCHEMA",
-    "INDICES",
-    "TRIGGERS",
     # Seed
     "seed_base",
     "seed_dev",
     "seed_test",
-    "SeedResult",
+    "verify_db_integrity",
 ]

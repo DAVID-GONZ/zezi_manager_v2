@@ -1,6 +1,7 @@
 """
 exporter_factory — selecciona el mejor exportador disponible en tiempo de arranque.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,6 +30,7 @@ def crear_exporter() -> IExporterService:
         import weasyprint  # noqa: F401
 
         from .pdf_exporter import WeasyPrintExporter
+
         _log.info("Exportador activo: WeasyPrintExporter (PDF via weasyprint + Excel + CSV)")
         return WeasyPrintExporter()
     except Exception:
@@ -41,6 +43,7 @@ def crear_exporter() -> IExporterService:
         import reportlab  # noqa: F401
 
         from .pdf_exporter import WeasyPrintExporter
+
         _log.info("Exportador activo: WeasyPrintExporter (PDF via reportlab + Excel + CSV)")
         return WeasyPrintExporter()
     except ImportError:
@@ -51,10 +54,8 @@ def crear_exporter() -> IExporterService:
         import openpyxl  # noqa: F401
 
         from .openpyxl_exporter import OpenpyxlExporter
-        _log.warning(
-            "weasyprint no disponible. PDF no funcionará. "
-            "Instala: pip install weasyprint"
-        )
+
+        _log.warning("weasyprint no disponible. PDF no funcionará. Instala: pip install weasyprint")
         return OpenpyxlExporter()
     except ImportError:
         pass
@@ -65,6 +66,7 @@ def crear_exporter() -> IExporterService:
         "Solo CSV funcionará. Instala: pip install openpyxl weasyprint"
     )
     from .null_exporter import NullExporter
+
     return NullExporter()
 
 

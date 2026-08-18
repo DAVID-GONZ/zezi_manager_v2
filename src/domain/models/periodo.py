@@ -25,7 +25,7 @@ Reglas de negocio:
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -34,17 +34,19 @@ from pydantic import BaseModel, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoHito(str, Enum):
-    ENTREGA_NOTAS          = "entrega_notas"
-    INICIO_HABILITACIONES  = "inicio_habilitaciones"
-    FIN_HABILITACIONES     = "fin_habilitaciones"
-    ENTREGA_BOLETINES      = "entrega_boletines"
-    GENERAL                = "general"
+
+class TipoHito(StrEnum):
+    ENTREGA_NOTAS = "entrega_notas"
+    INICIO_HABILITACIONES = "inicio_habilitaciones"
+    FIN_HABILITACIONES = "fin_habilitaciones"
+    ENTREGA_BOLETINES = "entrega_boletines"
+    GENERAL = "general"
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
+
 
 class Periodo(BaseModel):
     """
@@ -59,15 +61,16 @@ class Periodo(BaseModel):
     para ese periodo. El modelo lo hace explícito para que los servicios
     puedan verificarlo antes de llegar a la BD.
     """
-    id:               int | None      = None
-    anio_id:          int
-    numero:           int
-    nombre:           str
-    fecha_inicio:     date | None     = None
-    fecha_fin:        date | None     = None
-    peso_porcentual:  float           = 25.0
-    activo:           bool            = True
-    cerrado:          bool            = False
+
+    id: int | None = None
+    anio_id: int
+    numero: int
+    nombre: str
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
+    peso_porcentual: float = 25.0
+    activo: bool = True
+    cerrado: bool = False
     fecha_cierre_real: datetime | None = None
 
     # ------------------------------------------------------------------
@@ -87,9 +90,7 @@ class Periodo(BaseModel):
     def validar_numero(cls, v: int) -> int:
         """El número de periodo debe estar en el rango 1..6."""
         if not (1 <= v <= 6):
-            raise ValueError(
-                f"El número de periodo debe estar entre 1 y 6 (recibido: {v})."
-            )
+            raise ValueError(f"El número de periodo debe estar entre 1 y 6 (recibido: {v}).")
         return v
 
     @field_validator("nombre", mode="before")
@@ -100,9 +101,7 @@ class Periodo(BaseModel):
         if not v:
             raise ValueError("El nombre del periodo no puede estar vacío.")
         if len(v) > 50:
-            raise ValueError(
-                f"El nombre no puede exceder 50 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 50 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("peso_porcentual")
@@ -110,9 +109,7 @@ class Periodo(BaseModel):
     def validar_peso(cls, v: float) -> float:
         """El peso porcentual del periodo debe estar en (0, 100] (redondeado a 2)."""
         if not (0 < v <= 100):
-            raise ValueError(
-                f"El peso porcentual debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"El peso porcentual debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     # ------------------------------------------------------------------
@@ -132,13 +129,9 @@ class Periodo(BaseModel):
                 f"a fecha_fin ({self.fecha_fin})."
             )
         if self.cerrado and self.fecha_cierre_real is None:
-            raise ValueError(
-                "Un periodo cerrado debe tener fecha_cierre_real."
-            )
+            raise ValueError("Un periodo cerrado debe tener fecha_cierre_real.")
         if not self.cerrado and self.fecha_cierre_real is not None:
-            raise ValueError(
-                "Un periodo abierto no puede tener fecha_cierre_real."
-            )
+            raise ValueError("Un periodo abierto no puede tener fecha_cierre_real.")
         return self
 
     # ------------------------------------------------------------------
@@ -186,33 +179,28 @@ class Periodo(BaseModel):
         """
         if self.cerrado:
             raise ValueError(
-                f"El periodo '{self.nombre}' ya fue cerrado el "
-                f"{self.fecha_cierre_real}."
+                f"El periodo '{self.nombre}' ya fue cerrado el {self.fecha_cierre_real}."
             )
-        return self.model_copy(update={
-            "cerrado":          True,
-            "activo":           False,
-            "fecha_cierre_real": fecha or datetime.now(),
-        })
+        return self.model_copy(
+            update={
+                "cerrado": True,
+                "activo": False,
+                "fecha_cierre_real": fecha or datetime.now(),
+            }
+        )
 
     def activar(self) -> Periodo:
         """Retorna una copia con activo=True."""
         if self.cerrado:
-            raise ValueError(
-                "No se puede activar un periodo cerrado."
-            )
+            raise ValueError("No se puede activar un periodo cerrado.")
         if self.activo:
-            raise ValueError(
-                f"El periodo '{self.nombre}' ya está activo."
-            )
+            raise ValueError(f"El periodo '{self.nombre}' ya está activo.")
         return self.model_copy(update={"activo": True})
 
     def desactivar(self) -> Periodo:
         """Retorna una copia con activo=False."""
         if not self.activo:
-            raise ValueError(
-                f"El periodo '{self.nombre}' ya está inactivo."
-            )
+            raise ValueError(f"El periodo '{self.nombre}' ya está inactivo.")
         return self.model_copy(update={"activo": False})
 
 
@@ -224,10 +212,11 @@ class HitoPeriodo(BaseModel):
     entrega de boletines. Los hitos sirven para alertas automáticas
     y para mostrar el cronograma en el panel de director.
     """
-    id:          int | None  = None
-    periodo_id:  int
-    tipo:        TipoHito    = TipoHito.GENERAL
-    descripcion: str | None  = None
+
+    id: int | None = None
+    periodo_id: int
+    tipo: TipoHito = TipoHito.GENERAL
+    descripcion: str | None = None
     fecha_limite: date | None = None
 
     @field_validator("periodo_id")
@@ -266,14 +255,16 @@ class HitoPeriodo(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevoPeriodoDTO(BaseModel):
     """Datos para crear un periodo nuevo."""
-    anio_id:         int
-    numero:          int
-    nombre:          str
-    peso_porcentual: float          = 25.0
-    fecha_inicio:    date | None    = None
-    fecha_fin:       date | None    = None
+
+    anio_id: int
+    numero: int
+    nombre: str
+    peso_porcentual: float = 25.0
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
 
     @field_validator("numero")
     @classmethod
@@ -294,10 +285,7 @@ class NuevoPeriodoDTO(BaseModel):
     @model_validator(mode="after")
     def validar_fechas(self) -> Self:
         """Si ambas están definidas, fecha_inicio no puede ser posterior a fecha_fin."""
-        if (
-            self.fecha_inicio and self.fecha_fin
-            and self.fecha_inicio > self.fecha_fin
-        ):
+        if self.fecha_inicio and self.fecha_fin and self.fecha_inicio > self.fecha_fin:
             raise ValueError("fecha_inicio no puede ser posterior a fecha_fin.")
         return self
 
@@ -308,11 +296,12 @@ class NuevoPeriodoDTO(BaseModel):
 
 class ActualizarPeriodoDTO(BaseModel):
     """Campos actualizables de un periodo. Todos opcionales."""
-    nombre:          str | None     = None
-    peso_porcentual: float | None   = None
-    fecha_inicio:    date | None    = None
-    fecha_fin:       date | None    = None
-    activo:          bool | None    = None
+
+    nombre: str | None = None
+    peso_porcentual: float | None = None
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
+    activo: bool | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -326,9 +315,7 @@ class ActualizarPeriodoDTO(BaseModel):
     def aplicar_a(self, periodo: Periodo) -> Periodo:
         """Aplica los campos no nulos al periodo; rechaza si el periodo está cerrado."""
         if periodo.cerrado:
-            raise ValueError(
-                "No se puede modificar un periodo cerrado."
-            )
+            raise ValueError("No se puede modificar un periodo cerrado.")
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return periodo.model_copy(update=cambios) if cambios else periodo
 
@@ -342,9 +329,10 @@ class NuevoHitoPeriodoDTO(BaseModel):
     UI pero se acepta como None para hitos de tipo informativo sin
     fecha límite definida.
     """
-    periodo_id:   int
-    tipo:         TipoHito    = TipoHito.GENERAL
-    descripcion:  str                          # requerida
+
+    periodo_id: int
+    tipo: TipoHito = TipoHito.GENERAL
+    descripcion: str  # requerida
     fecha_limite: date | None = None
 
     @field_validator("descripcion", mode="before")
@@ -355,9 +343,7 @@ class NuevoHitoPeriodoDTO(BaseModel):
         if not v:
             raise ValueError("La descripción del hito no puede estar vacía.")
         if len(v) > 300:
-            raise ValueError(
-                f"La descripción no puede exceder 300 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La descripción no puede exceder 300 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("periodo_id")

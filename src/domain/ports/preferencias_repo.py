@@ -1,4 +1,5 @@
 """Puerto abstracto para el repositorio de preferencias de institución."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -7,7 +8,6 @@ from src.domain.models.preferencia_institucion import PreferenciaInstitucion
 
 
 class IPreferenciasRepository(ABC):
-
     @abstractmethod
     def get(self, institucion_id: int, clave: str) -> PreferenciaInstitucion | None: ...
 

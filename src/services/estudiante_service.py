@@ -3,6 +3,7 @@ EstudianteService
 ==================
 Orquesta los casos de uso del módulo de Estudiantes y PIARs.
 """
+
 from __future__ import annotations
 
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
@@ -39,13 +40,13 @@ class EstudianteService:
     ) -> None:
         """Inyecta el repo de estudiantes, los repos opcionales de acudientes
         y auditoría, y el lector de grupos usado en el traslado."""
-        self._repo           = repo
+        self._repo = repo
         self._acudiente_repo = acudiente_repo
-        self._auditoria      = auditoria
+        self._auditoria = auditoria
         # Lector de grupos para el traslado (paso_43). Callable[[int], Grupo|None].
         # Por defecto resuelve vía Container.catalogo_academico_service().get_grupo;
         # inyectable en tests para evitar el Container.
-        self._grupo_reader   = grupo_reader
+        self._grupo_reader = grupo_reader
 
     # Roles con permiso de gestión (crear/importar/editar/PIAR) en /estudiantes.
     # admin se incluye por coherencia con es_directivo (no accede a la ruta, pero
@@ -87,9 +88,7 @@ class EstudianteService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -108,6 +107,7 @@ class EstudianteService:
         # a la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo. Scope None (admin/seed) → pasa.
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(est.institucion_id)
         return est
 
@@ -127,11 +127,13 @@ class EstudianteService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -163,14 +165,16 @@ class EstudianteService:
         # en otra institución sin colisionar.
         institucion_id = self._resolver_institucion(estudiante.institucion_id)
         if self._repo.existe_documento(dto.numero_documento, institucion_id=institucion_id):
-            raise ValueError(
-                f"Ya existe un estudiante con el documento '{dto.numero_documento}'."
-            )
+            raise ValueError(f"Ya existe un estudiante con el documento '{dto.numero_documento}'.")
         estudiante = estudiante.model_copy(update={"institucion_id": institucion_id})
         estudiante = self._repo.guardar(estudiante)
         self._auditar(
-            AccionCambio.CREATE, "estudiantes", estudiante.id,
-            None, estudiante.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "estudiantes",
+            estudiante.id,
+            None,
+            estudiante.model_dump(mode="json"),
+            usuario_id,
         )
         return estudiante
 
@@ -207,8 +211,12 @@ class EstudianteService:
                 usuario_registro_id=usuario_id,
             )
         self._auditar(
-            AccionCambio.UPDATE, "estudiantes", estudiante_id,
-            datos_ant, estudiante_actualizado.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "estudiantes",
+            estudiante_id,
+            datos_ant,
+            estudiante_actualizado.model_dump(mode="json"),
+            usuario_id,
         )
         return estudiante_actualizado
 
@@ -230,12 +238,14 @@ class EstudianteService:
         estudiante_retirado = estudiante.model_copy(
             update={"estado_matricula": EstadoMatricula.RETIRADO}
         )
-        self._repo.actualizar_estado_matricula(
-            estudiante_id, EstadoMatricula.RETIRADO.value
-        )
+        self._repo.actualizar_estado_matricula(estudiante_id, EstadoMatricula.RETIRADO.value)
         self._auditar(
-            AccionCambio.UPDATE, "estudiantes", estudiante_id,
-            datos_ant, estudiante_retirado.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "estudiantes",
+            estudiante_id,
+            datos_ant,
+            estudiante_retirado.model_dump(mode="json"),
+            usuario_id,
         )
         return estudiante_retirado
 
@@ -283,6 +293,7 @@ class EstudianteService:
             return self._grupo_reader(grupo_id)
         try:
             from container import Container
+
             return Container.catalogo_academico_service().get_grupo(grupo_id)
         except Exception:
             return None
@@ -318,12 +329,11 @@ class EstudianteService:
 
         grupo_destino = self._leer_grupo(grupo_destino_id)
         if grupo_destino is None:
-            raise ValueError(
-                f"El grupo destino (id {grupo_destino_id}) no existe."
-            )
+            raise ValueError(f"El grupo destino (id {grupo_destino_id}) no existe.")
         # Aislamiento por institución: no se traslada a un grupo de otra
         # institución. Scope None (admin/seed) → pasa.
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(grupo_destino.institucion_id)
 
         if origen_id == grupo_destino_id:
@@ -337,9 +347,7 @@ class EstudianteService:
 
         # Regla de grado: distinto grado exige confirmación explícita + motivo.
         es_cambio_grado = (
-            grado_origen is not None
-            and grado_destino is not None
-            and grado_origen != grado_destino
+            grado_origen is not None and grado_destino is not None and grado_origen != grado_destino
         )
         motivo_limpio = (motivo or "").strip() or None
         if es_cambio_grado:
@@ -351,8 +359,7 @@ class EstudianteService:
                 )
             if motivo_limpio is None:
                 raise ValueError(
-                    "Un cambio de grado requiere un motivo "
-                    "(promoción, repitencia o corrección)."
+                    "Un cambio de grado requiere un motivo (promoción, repitencia o corrección)."
                 )
 
         datos_ant = estudiante.model_dump(mode="json")
@@ -365,18 +372,18 @@ class EstudianteService:
             motivo=motivo_limpio,
             usuario_registro_id=usuario_id,
         )
-        estudiante_actualizado = estudiante.model_copy(
-            update={"grupo_id": grupo_destino_id}
-        )
+        estudiante_actualizado = estudiante.model_copy(update={"grupo_id": grupo_destino_id})
         self._auditar(
-            AccionCambio.UPDATE, "estudiantes", estudiante_id,
-            datos_ant, estudiante_actualizado.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "estudiantes",
+            estudiante_id,
+            datos_ant,
+            estudiante_actualizado.model_dump(mode="json"),
+            usuario_id,
         )
         return estudiante_actualizado
 
-    def listar_historial(
-        self, estudiante_id: int
-    ) -> list[MovimientoEstudianteInfoDTO]:
+    def listar_historial(self, estudiante_id: int) -> list[MovimientoEstudianteInfoDTO]:
         """
         Retorna el historial de movimientos del estudiante (más reciente
         primero). Verifica pertenencia a la institución activa (paso_36).
@@ -396,6 +403,7 @@ class EstudianteService:
         if filtro.institucion_id is not None:
             return filtro
         from src.services.contexto_tenant import institucion_actual
+
         return filtro.model_copy(update={"institucion_id": institucion_actual()})
 
     def listar_por_grupo(
@@ -410,6 +418,7 @@ class EstudianteService:
         director → su institución.
         """
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar_por_grupo(
             grupo_id,
             solo_activos=solo_activos,
@@ -446,15 +455,17 @@ class EstudianteService:
         resultado = []
         for r in resumenes:
             datos = r.model_dump(mode="json")
-            resultado.append({
-                "id":               datos["id"],
-                "nombre_completo":  datos["nombre_completo"],
-                "documento_display": datos["documento_display"],
-                "grupo_id":         datos.get("grupo_id"),
-                "estado_matricula": datos["estado_matricula"],   # str plano
-                "genero":           datos.get("genero"),
-                "posee_piar":       datos["posee_piar"],
-            })
+            resultado.append(
+                {
+                    "id": datos["id"],
+                    "nombre_completo": datos["nombre_completo"],
+                    "documento_display": datos["documento_display"],
+                    "grupo_id": datos.get("grupo_id"),
+                    "estado_matricula": datos["estado_matricula"],  # str plano
+                    "genero": datos.get("genero"),
+                    "posee_piar": datos["posee_piar"],
+                }
+            )
         return resultado
 
     def get_by_id(self, estudiante_id: int) -> Estudiante:
@@ -475,14 +486,14 @@ class EstudianteService:
         datos = est.model_dump(mode="json")
         # Exponemos solo los campos que la UI necesita para el formulario
         return {
-            "id":               datos["id"],
-            "nombre":           datos["nombre"],
-            "apellido":         datos["apellido"],
-            "genero":           datos.get("genero"),          # str | None
-            "grupo_id":         datos.get("grupo_id"),        # int | None
-            "posee_piar":       datos["posee_piar"],
-            "estado_matricula": datos["estado_matricula"],    # str plano
-            "nombre_completo":  est.nombre_completo,
+            "id": datos["id"],
+            "nombre": datos["nombre"],
+            "apellido": datos["apellido"],
+            "genero": datos.get("genero"),  # str | None
+            "grupo_id": datos.get("grupo_id"),  # int | None
+            "posee_piar": datos["posee_piar"],
+            "estado_matricula": datos["estado_matricula"],  # str plano
+            "nombre_completo": est.nombre_completo,
             "documento_display": est.documento_display,
         }
 
@@ -511,12 +522,14 @@ class EstudianteService:
         # Marcar al estudiante como poseedor de PIAR
         estudiante = self._get_estudiante_o_lanzar(dto.estudiante_id)
         if not estudiante.posee_piar:
-            self._repo.actualizar(
-                estudiante.model_copy(update={"posee_piar": True})
-            )
+            self._repo.actualizar(estudiante.model_copy(update={"posee_piar": True}))
         self._auditar(
-            AccionCambio.CREATE, "piars", piar.id,
-            None, piar.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "piars",
+            piar.id,
+            None,
+            piar.model_dump(mode="json"),
+            usuario_id,
         )
         return piar
 
@@ -544,6 +557,7 @@ class EstudianteService:
         est = self._repo.get_by_id(estudiante_id)
         if est is not None:
             from src.services.contexto_tenant import verificar_pertenencia
+
             verificar_pertenencia(est.institucion_id)
         piar_actual = self._repo.get_piar(estudiante_id, anio_id)
         if piar_actual is None:
@@ -555,8 +569,12 @@ class EstudianteService:
         piar_nuevo = dto.aplicar_a(piar_actual)
         piar_nuevo = self._repo.actualizar_piar(piar_nuevo)
         self._auditar(
-            AccionCambio.UPDATE, "piars", piar_nuevo.id,
-            datos_ant, piar_nuevo.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "piars",
+            piar_nuevo.id,
+            datos_ant,
+            piar_nuevo.model_dump(mode="json"),
+            usuario_id,
         )
         return piar_nuevo
 
@@ -602,7 +620,7 @@ class EstudianteService:
             num_doc = fila.get("numero_documento", "").strip()
             try:
                 codigo_grupo = fila.get("grupo_codigo", "").strip()
-                grupo_id     = mapa_grupos.get(codigo_grupo) if codigo_grupo else None
+                grupo_id = mapa_grupos.get(codigo_grupo) if codigo_grupo else None
                 dto = NuevoEstudianteDTO(
                     tipo_documento=fila.get("tipo_documento", "TI").strip() or "TI",
                     numero_documento=num_doc,
@@ -620,14 +638,14 @@ class EstudianteService:
 
 
 __all__ = [
+    "ActualizarEstudianteDTO",
+    "ActualizarPIARDTO",
     "EstudianteService",
+    "FiltroEstudiantesDTO",
+    "MovimientoEstudianteInfoDTO",
     # DTOs re-exportados explícitamente para que la capa de interfaz
     # los importe desde el servicio y no desde el dominio directamente.
     "NuevoEstudianteDTO",
-    "ActualizarEstudianteDTO",
-    "FiltroEstudiantesDTO",
     "NuevoPIARDTO",
-    "ActualizarPIARDTO",
-    "MovimientoEstudianteInfoDTO",
     "TipoMovimiento",
 ]

@@ -97,6 +97,7 @@ def registrar_rutas_ui() -> None:
 
     from src.domain.models.usuario import Rol
     from src.interface.auth import AUTENTICADO, PUBLICO, registrar_pagina
+    from src.interface.pages.landing import landing_page
     from src.interface.pages.login import login_page
 
     # Conjuntos de roles reutilizados (matriz del spec paso_35).
@@ -108,9 +109,6 @@ def registrar_rutas_ui() -> None:
     _PROFESOR       = {Rol.PROFESOR}
 
     # ── Públicas (con lógica propia de redirección por sesión) ────────────────
-    def raiz():
-        ui.navigate.to("/inicio")
-
     def pagina_login():
         if app.storage.user.get("autenticado"):
             ui.navigate.to("/inicio")
@@ -121,7 +119,7 @@ def registrar_rutas_ui() -> None:
         app.storage.user.clear()
         ui.navigate.to("/login")
 
-    registrar_pagina("/", raiz, roles=PUBLICO)
+    registrar_pagina("/", landing_page, roles=PUBLICO)
     registrar_pagina("/login", pagina_login, roles=PUBLICO)
     registrar_pagina("/logout", pagina_logout, roles=PUBLICO)
 
@@ -144,9 +142,9 @@ def registrar_rutas_ui() -> None:
         roles=_DIR_COORD,
     )
 
-    # ── Inicio / Hub de módulos (público — landing page) ────────────────────
+    # ── Inicio / Hub de módulos (autenticado — portal) ──────────────────────
     from src.interface.pages.inicio import inicio_page
-    registrar_pagina("/inicio", inicio_page, roles=PUBLICO)
+    registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
 
     # ── Cambio forzado de contraseña (A2 — seguridad_01) ──────────────────────
     # El route_guard fuerza esta ruta cuando la sesión tiene
@@ -176,7 +174,6 @@ def registrar_rutas_ui() -> None:
         catalogo_instituciones_page,
     )
     from src.interface.pages.admin.configuracion_sie import configuracion_sie_page
-    from src.interface.pages.institucion.hub_institucion import hub_institucion_page
     from src.interface.pages.admin.diagnostico import diagnostico_page
     from src.interface.pages.admin.disponibilidad_docente import (
         disponibilidad_docente_page,
@@ -185,6 +182,7 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.admin.plan_estudios import plan_estudios_page
     from src.interface.pages.admin.salas import salas_page
     from src.interface.pages.admin.usuarios import usuarios_page
+    from src.interface.pages.institucion.hub_institucion import hub_institucion_page
 
     registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
     registrar_pagina("/admin/instituciones", catalogo_instituciones_page, roles=_ADMIN)

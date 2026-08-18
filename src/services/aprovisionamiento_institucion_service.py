@@ -14,6 +14,7 @@ No se reutilizan los servicios scopeados por sesión (`guardar_area`,
 admin es `None`); el aprovisionamiento delega en infraestructura con
 `institucion_id` explícito.
 """
+
 from __future__ import annotations
 
 from src.domain.models.institucion import (
@@ -49,15 +50,17 @@ class AprovisionamientoInstitucionService:
         if self._repo.existe_nombre(dto.nombre):
             raise ValueError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
 
-        inst = self._repo.guardar(Institucion(
-            nombre=dto.nombre,
-            nombre_oficial=dto.nombre_oficial,
-            codigo_dane=dto.codigo_dane,
-            pais=dto.pais,
-            departamento=dto.departamento,
-            municipio=dto.municipio,
-            configuracion_inicial_completa=False,
-        ))
+        inst = self._repo.guardar(
+            Institucion(
+                nombre=dto.nombre,
+                nombre_oficial=dto.nombre_oficial,
+                codigo_dane=dto.codigo_dane,
+                pais=dto.pais,
+                departamento=dto.departamento,
+                municipio=dto.municipio,
+                configuracion_inicial_completa=False,
+            )
+        )
 
         self._repo.sembrar_defaults_tenant(inst.id)
 
@@ -95,17 +98,25 @@ class AprovisionamientoInstitucionService:
         coordinación entre servicios.
         """
         from container import Container
-        from src.services.preferencias_institucion_service import ActualizarPreferenciaDTO
+        from src.services.preferencias_institucion_service import (
+            ActualizarPreferenciaDTO,
+        )
 
         svc_prefs = Container.preferencias_service()
-        svc_prefs.set(inst_id, ActualizarPreferenciaDTO(
-            clave="color_primario",
-            valor=color_primario,
-        ))
-        svc_prefs.set(inst_id, ActualizarPreferenciaDTO(
-            clave="color_secundario",
-            valor=color_secundario,
-        ))
+        svc_prefs.set(
+            inst_id,
+            ActualizarPreferenciaDTO(
+                clave="color_primario",
+                valor=color_primario,
+            ),
+        )
+        svc_prefs.set(
+            inst_id,
+            ActualizarPreferenciaDTO(
+                clave="color_secundario",
+                valor=color_secundario,
+            ),
+        )
         Container.institucion_service().marcar_configuracion_inicial_completa(inst_id)
 
 

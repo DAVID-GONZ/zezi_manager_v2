@@ -26,7 +26,7 @@ Dependencias:
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -35,27 +35,28 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoDocumento(str, Enum):
-    TI      = "TI"       # Tarjeta de Identidad (menores)
-    CC      = "CC"       # Cédula de Ciudadanía (adultos)
-    CE      = "CE"       # Cédula de Extranjería
-    NUIP    = "NUIP"     # Número Único de Identificación Personal (nuevo sistema)
+
+class TipoDocumento(StrEnum):
+    TI = "TI"  # Tarjeta de Identidad (menores)
+    CC = "CC"  # Cédula de Ciudadanía (adultos)
+    CE = "CE"  # Cédula de Extranjería
+    NUIP = "NUIP"  # Número Único de Identificación Personal (nuevo sistema)
 
 
-class Genero(str, Enum):
-    M       = "M"
-    F       = "F"
-    OTRO    = "OTRO"
+class Genero(StrEnum):
+    M = "M"
+    F = "F"
+    OTRO = "OTRO"
 
 
-class EstadoMatricula(str, Enum):
-    ACTIVO      = "activo"
-    INACTIVO    = "inactivo"
-    RETIRADO    = "retirado"
-    GRADUADO    = "graduado"
+class EstadoMatricula(StrEnum):
+    ACTIVO = "activo"
+    INACTIVO = "inactivo"
+    RETIRADO = "retirado"
+    GRADUADO = "graduado"
 
 
-class TipoMovimiento(str, Enum):
+class TipoMovimiento(StrEnum):
     """
     Tipo de movimiento registrado en historial_estudiantes.
 
@@ -65,15 +66,17 @@ class TipoMovimiento(str, Enum):
       REINGRESO  — reactivación de matrícula.
       GRADUACION — egreso por finalización del ciclo.
     """
-    TRASLADO    = "TRASLADO"
-    RETIRO      = "RETIRO"
-    REINGRESO   = "REINGRESO"
-    GRADUACION  = "GRADUACION"
+
+    TRASLADO = "TRASLADO"
+    RETIRO = "RETIRO"
+    REINGRESO = "REINGRESO"
+    GRADUACION = "GRADUACION"
 
 
 # =============================================================================
 # Entidad principal
 # =============================================================================
+
 
 class Estudiante(BaseModel):
     """
@@ -101,28 +104,28 @@ class Estudiante(BaseModel):
     """
 
     # Campos de identidad
-    id:                 int | None          = None
-    id_publico:         str | None          = None
-    tipo_documento:     TipoDocumento       = TipoDocumento.TI
-    numero_documento:   str
+    id: int | None = None
+    id_publico: str | None = None
+    tipo_documento: TipoDocumento = TipoDocumento.TI
+    numero_documento: str
 
     # Datos personales
-    nombre:             str
-    apellido:           str
-    genero:             Genero | None       = None
-    fecha_nacimiento:   date | None         = None
-    direccion:          str | None          = None
+    nombre: str
+    apellido: str
+    genero: Genero | None = None
+    fecha_nacimiento: date | None = None
+    direccion: str | None = None
 
     # Contexto académico
-    grupo_id:           int | None          = None
-    posee_piar:         bool                = False
-    fecha_ingreso:      date                = Field(default_factory=date.today)
-    estado_matricula:   EstadoMatricula     = EstadoMatricula.ACTIVO
+    grupo_id: int | None = None
+    posee_piar: bool = False
+    fecha_ingreso: date = Field(default_factory=date.today)
+    estado_matricula: EstadoMatricula = EstadoMatricula.ACTIVO
 
     # Multi-tenant (paso_30, frente B2): institución a la que pertenece el
     # estudiante. Nullable a nivel de modelo para soportar construcción desde
     # BDs preexistentes / arranque sin sesión; el servicio lo resuelve al crear.
-    institucion_id:     int | None          = None
+    institucion_id: int | None = None
 
     # ------------------------------------------------------------------
     # Validadores de campo individual
@@ -164,9 +167,7 @@ class Estudiante(BaseModel):
             try:
                 v = date.fromisoformat(v)
             except ValueError:
-                raise ValueError(
-                    f"Formato de fecha inválido: '{v}'. Use YYYY-MM-DD."
-                )
+                raise ValueError(f"Formato de fecha inválido: '{v}'. Use YYYY-MM-DD.")
         hoy = date.today()
         if v >= hoy:
             raise ValueError("La fecha de nacimiento no puede ser futura.")
@@ -256,7 +257,7 @@ class Estudiante(BaseModel):
         """
         return self.estado_matricula in (
             EstadoMatricula.ACTIVO,
-            EstadoMatricula.INACTIVO,   # inactivo temporal (permiso, enfermedad)
+            EstadoMatricula.INACTIVO,  # inactivo temporal (permiso, enfermedad)
         )
 
     @property
@@ -284,9 +285,7 @@ class Estudiante(BaseModel):
                 f"No se puede retirar a '{self.nombre_completo}': "
                 f"su estado actual es '{self.estado_matricula.value}'."
             )
-        return self.model_copy(
-            update={"estado_matricula": EstadoMatricula.RETIRADO}
-        )
+        return self.model_copy(update={"estado_matricula": EstadoMatricula.RETIRADO})
 
     def reactivar(self) -> Estudiante:
         """Retorna una nueva instancia con estado ACTIVO."""
@@ -295,9 +294,7 @@ class Estudiante(BaseModel):
                 f"Solo se puede reactivar un estudiante RETIRADO. "
                 f"Estado actual: '{self.estado_matricula.value}'."
             )
-        return self.model_copy(
-            update={"estado_matricula": EstadoMatricula.ACTIVO}
-        )
+        return self.model_copy(update={"estado_matricula": EstadoMatricula.ACTIVO})
 
     def asignar_grupo(self, grupo_id: int) -> Estudiante:
         """Retorna una nueva instancia con el grupo actualizado."""
@@ -310,6 +307,7 @@ class Estudiante(BaseModel):
 # DTOs — objetos de transferencia de datos
 # =============================================================================
 
+
 class NuevoEstudianteDTO(BaseModel):
     """
     Datos necesarios para matricular un estudiante nuevo.
@@ -317,15 +315,16 @@ class NuevoEstudianteDTO(BaseModel):
     Solo incluye los campos que el operador debe proveer.
     Los campos opcionales se inicializan con valores por defecto en Estudiante.
     """
-    tipo_documento:   TipoDocumento     = TipoDocumento.TI
+
+    tipo_documento: TipoDocumento = TipoDocumento.TI
     numero_documento: str
-    nombre:           str
-    apellido:         str
-    genero:           Genero | None     = None
-    fecha_nacimiento: date | None       = None
-    grupo_id:         int | None        = None
-    posee_piar:       bool              = False
-    direccion:        str | None        = None
+    nombre: str
+    apellido: str
+    genero: Genero | None = None
+    fecha_nacimiento: date | None = None
+    grupo_id: int | None = None
+    posee_piar: bool = False
+    direccion: str | None = None
 
     # Los mismos validadores de Estudiante aplican aquí
     @field_validator("numero_documento", mode="before")
@@ -360,13 +359,14 @@ class ActualizarEstudianteDTO(BaseModel):
     Todos son opcionales: solo se actualiza lo que se provee.
     El número de documento no es actualizable (es el identificador principal).
     """
-    nombre:           str | None        = None
-    apellido:         str | None        = None
-    genero:           Genero | None     = None
-    fecha_nacimiento: date | None       = None
-    grupo_id:         int | None        = None
-    posee_piar:       bool | None       = None
-    direccion:        str | None        = None
+
+    nombre: str | None = None
+    apellido: str | None = None
+    genero: Genero | None = None
+    fecha_nacimiento: date | None = None
+    grupo_id: int | None = None
+    posee_piar: bool | None = None
+    direccion: str | None = None
     estado_matricula: EstadoMatricula | None = None
 
     @field_validator("nombre", "apellido", mode="before")
@@ -387,10 +387,7 @@ class ActualizarEstudianteDTO(BaseModel):
         Retorna una copia del estudiante con los campos del DTO aplicados.
         Ignora los campos que son None (no se actualizan).
         """
-        cambios = {
-            k: v for k, v in self.model_dump().items()
-            if v is not None
-        }
+        cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         if not cambios:
             return estudiante
         return estudiante.model_copy(update=cambios)
@@ -401,20 +398,21 @@ class FiltroEstudiantesDTO(BaseModel):
     Parámetros de filtrado para listar estudiantes.
     Consumido por IEstudianteRepository.listar_filtrado().
     """
-    grupo_id:         int | None                = None
+
+    grupo_id: int | None = None
     # Restricción por conjunto de grupos (paso docente): cuando NO es None el
     # listado se acota a `e.grupo_id IN (...)`. Lista vacía → 0 resultados
     # (docente sin asignaciones). Coexiste con grupo_id (se aplican en AND).
-    grupos_ids:       list[int] | None          = None
-    estado_matricula: EstadoMatricula | None    = None
-    posee_piar:       bool | None               = None
-    busqueda:         str | None                = None   # nombre, apellido o documento
+    grupos_ids: list[int] | None = None
+    estado_matricula: EstadoMatricula | None = None
+    posee_piar: bool | None = None
+    busqueda: str | None = None  # nombre, apellido o documento
     # Multi-tenant (paso_30, frente B2): scope de institución. El servicio lo
     # resuelve desde institucion_actual() (None → admin ve todo; institución →
     # filtra). El repo aplica WHERE e.institucion_id = ? cuando no es None.
-    institucion_id:   int | None                = None
-    pagina:           int                       = Field(default=1, ge=1)
-    por_pagina:       int                       = Field(default=50, ge=1, le=200)
+    institucion_id: int | None = None
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=50, ge=1, le=200)
 
     @field_validator("busqueda", mode="before")
     @classmethod
@@ -431,14 +429,15 @@ class EstudianteResumenDTO(BaseModel):
     Vista reducida de un estudiante para listados y selects.
     No incluye campos de auditoría ni direcciones.
     """
-    id:               int
-    id_publico:       str | None
+
+    id: int
+    id_publico: str | None
     documento_display: str
-    nombre_completo:  str
-    genero:           Genero | None
-    grupo_id:         int | None
+    nombre_completo: str
+    genero: Genero | None
+    grupo_id: int | None
     estado_matricula: EstadoMatricula
-    posee_piar:       bool
+    posee_piar: bool
 
     @classmethod
     def desde_estudiante(cls, est: Estudiante) -> EstudianteResumenDTO:
@@ -446,20 +445,21 @@ class EstudianteResumenDTO(BaseModel):
         if est.id is None:
             raise ValueError("No se puede crear un resumen de un estudiante sin id.")
         return cls(
-            id               = est.id,
-            id_publico       = est.id_publico,
-            documento_display= est.documento_display,
-            nombre_completo  = est.nombre_completo,
-            genero           = est.genero,
-            grupo_id         = est.grupo_id,
-            estado_matricula = est.estado_matricula,
-            posee_piar       = est.posee_piar,
+            id=est.id,
+            id_publico=est.id_publico,
+            documento_display=est.documento_display,
+            nombre_completo=est.nombre_completo,
+            genero=est.genero,
+            grupo_id=est.grupo_id,
+            estado_matricula=est.estado_matricula,
+            posee_piar=est.posee_piar,
         )
 
 
 # =============================================================================
 # Historial de movimientos (paso_43)
 # =============================================================================
+
 
 class MovimientoEstudiante(BaseModel):
     """
@@ -473,14 +473,15 @@ class MovimientoEstudiante(BaseModel):
     `grupo_origen_id` puede ser None (primer grupo / estudiante sin grupo previo);
     `grupo_destino_id` puede ser None en movimientos que no son traslados.
     """
-    id:                  int | None        = None
-    estudiante_id:       int
-    grupo_origen_id:     int | None        = None
-    grupo_destino_id:    int | None        = None
-    fecha_movimiento:    datetime | None   = None
-    tipo_movimiento:     TipoMovimiento    = TipoMovimiento.TRASLADO
-    motivo:              str | None        = None
-    usuario_registro_id: int | None        = None
+
+    id: int | None = None
+    estudiante_id: int
+    grupo_origen_id: int | None = None
+    grupo_destino_id: int | None = None
+    fecha_movimiento: datetime | None = None
+    tipo_movimiento: TipoMovimiento = TipoMovimiento.TRASLADO
+    motivo: str | None = None
+    usuario_registro_id: int | None = None
 
     @field_validator("motivo", mode="before")
     @classmethod
@@ -498,14 +499,15 @@ class MovimientoEstudianteInfoDTO(BaseModel):
     resueltos por el repositorio (join a grupos). Pensado para la vista de
     Historial: no expone ids de grupo crudos, sino sus códigos.
     """
-    id:                  int | None        = None
-    estudiante_id:       int
-    grupo_origen_codigo: str | None        = None
-    grupo_destino_codigo: str | None       = None
-    fecha_movimiento:    datetime | None   = None
-    tipo_movimiento:     TipoMovimiento    = TipoMovimiento.TRASLADO
-    motivo:              str | None        = None
-    usuario_registro_id: int | None        = None
+
+    id: int | None = None
+    estudiante_id: int
+    grupo_origen_codigo: str | None = None
+    grupo_destino_codigo: str | None = None
+    fecha_movimiento: datetime | None = None
+    tipo_movimiento: TipoMovimiento = TipoMovimiento.TRASLADO
+    motivo: str | None = None
+    usuario_registro_id: int | None = None
 
     @property
     def fecha_display(self) -> str:
@@ -527,18 +529,18 @@ class MovimientoEstudianteInfoDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    # Enums
-    "TipoDocumento",
-    "Genero",
+    "ActualizarEstudianteDTO",
     "EstadoMatricula",
-    "TipoMovimiento",
     # Entidad
     "Estudiante",
+    "EstudianteResumenDTO",
+    "FiltroEstudiantesDTO",
+    "Genero",
     "MovimientoEstudiante",
+    "MovimientoEstudianteInfoDTO",
     # DTOs
     "NuevoEstudianteDTO",
-    "ActualizarEstudianteDTO",
-    "FiltroEstudiantesDTO",
-    "EstudianteResumenDTO",
-    "MovimientoEstudianteInfoDTO",
+    # Enums
+    "TipoDocumento",
+    "TipoMovimiento",
 ]

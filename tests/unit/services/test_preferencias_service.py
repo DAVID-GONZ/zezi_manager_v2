@@ -1,10 +1,16 @@
 """Tests unitarios de PreferenciasInstitucionService."""
 from __future__ import annotations
-import pytest
+
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.domain.models.preferencia_institucion import (
-    ActualizarPreferenciaDTO, CategoriaPreferencia, PreferenciaInstitucion,
-    PreferenciasDTO, TipoValor,
+    ActualizarPreferenciaDTO,
+    CategoriaPreferencia,
+    PreferenciaInstitucion,
+    PreferenciasDTO,
+    TipoValor,
 )
 from src.services.preferencias_institucion_service import PreferenciasInstitucionService
 

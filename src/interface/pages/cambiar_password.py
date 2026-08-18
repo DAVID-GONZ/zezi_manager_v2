@@ -20,6 +20,7 @@ Flujo:
      debe_cambiar_password en la BD.
   4. Se limpia el flag en app.storage.user y se navega a /inicio.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,11 +36,10 @@ logger = logging.getLogger("CAMBIAR_PASSWORD")
 
 # page-delegate: ruta registrada en main.py vía registrar_pagina (T6)
 def cambiar_password_page() -> None:
-    ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
+    ui.add_body_html("<style>body{margin:0;padding:0;}</style>", shared=True)
 
     with ui.element("div").classes("andes-login-bg w-full"):
         with ui.element("div").classes("andes-login-card"):
-
             # ── Encabezado ──────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):
@@ -52,20 +52,21 @@ def cambiar_password_page() -> None:
             # ── Formulario ───────────────────────────────────────────────────
             with ui.column().classes("w-full gap-4"):
                 actual_input = (
-                    ui.input(label="Contraseña actual", password=True,
-                             password_toggle_button=True)
+                    ui.input(label="Contraseña actual", password=True, password_toggle_button=True)
                     .classes("w-full andes-input")
                     .props("outlined")
                 )
                 nueva_input = (
-                    ui.input(label="Nueva contraseña", password=True,
-                             password_toggle_button=True)
+                    ui.input(label="Nueva contraseña", password=True, password_toggle_button=True)
                     .classes("w-full andes-input")
                     .props("outlined")
                 )
                 confirmar_input = (
-                    ui.input(label="Confirmar nueva contraseña", password=True,
-                             password_toggle_button=True)
+                    ui.input(
+                        label="Confirmar nueva contraseña",
+                        password=True,
+                        password_toggle_button=True,
+                    )
                     .classes("w-full andes-input")
                     .props("outlined")
                 )
@@ -73,9 +74,10 @@ def cambiar_password_page() -> None:
                 # ── Requisitos de la contraseña (de la policy, vía servicio) ──
                 # La página NO importa src.domain.*: pide los textos al servicio.
                 requisitos = Container.usuario_service().requisitos_password()
-                ui.label("La nueva contraseña debe cumplir: " + " ".join(
-                    f"• {regla}" for regla in requisitos
-                )).classes("andes-login-logo-subtitle w-full")
+                ui.label(
+                    "La nueva contraseña debe cumplir: "
+                    + " ".join(f"• {regla}" for regla in requisitos)
+                ).classes("andes-login-logo-subtitle w-full")
 
             # ── Banner de error ──────────────────────────────────────────────
             error_container = ui.row().classes(
@@ -102,8 +104,8 @@ def cambiar_password_page() -> None:
                     cambiar_btn.enable()
                     cambiar_btn.props(remove="loading")
 
-                actual    = actual_input.value or ""
-                nueva     = nueva_input.value or ""
+                actual = actual_input.value or ""
+                nueva = nueva_input.value or ""
                 confirmar = confirmar_input.value or ""
 
                 if not actual or not nueva or not confirmar:
@@ -125,22 +127,20 @@ def cambiar_password_page() -> None:
                     return
 
                 try:
-                    Container.usuario_service().cambiar_password(
-                        usuario_id, actual, nueva
-                    )
+                    Container.usuario_service().cambiar_password(usuario_id, actual, nueva)
                     # El servicio ya limpió el flag en la BD; limpiarlo también en
                     # la sesión para que el guard deje de forzar esta página.
                     app.storage.user["debe_cambiar_password"] = False
-                    logger.info("Cambio de contraseña forzado completado: usuario_id=%s", usuario_id)
+                    logger.info(
+                        "Cambio de contraseña forzado completado: usuario_id=%s", usuario_id
+                    )
                     ui.navigate.to("/inicio")
                 except ValueError as exc:
                     # El servidor valida la actual y la política de la nueva.
                     # Surfacing del mensaje accionable (no tragar el texto de la
                     # policy: longitud / letra+dígito / != usuario).
                     mensaje = str(exc).strip()
-                    _mostrar_error(
-                        mensaje or "No se pudo cambiar la contraseña. Revisa los datos."
-                    )
+                    _mostrar_error(mensaje or "No se pudo cambiar la contraseña. Revisa los datos.")
                     on_finish()
                 except Exception:
                     logger.exception("Error inesperado al cambiar contraseña")

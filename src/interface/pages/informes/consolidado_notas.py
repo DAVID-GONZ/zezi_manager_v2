@@ -18,8 +18,10 @@ Flujo:
 Refreshables:
   filtros_refreshable()  — re-renderiza el formulario cuando cambia el grupo.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 from datetime import date
 
@@ -44,17 +46,18 @@ logger = logging.getLogger("CONSOLIDADO_NOTAS")
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "grupo_id":       None,
-        "asignacion_id":  None,
-        "periodo_id":     None,
-        "fecha_desde":    None,
-        "fecha_hasta":    None,
-        "formato":        "excel",
-        "grupos":         [],
-        "asignaciones":   [],
-        "periodos":       [],
+        "grupo_id": None,
+        "asignacion_id": None,
+        "periodo_id": None,
+        "fecha_desde": None,
+        "fecha_hasta": None,
+        "formato": "excel",
+        "grupos": [],
+        "asignaciones": [],
+        "periodos": [],
     }
 
 
@@ -90,6 +93,7 @@ def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def consolidado_notas_page() -> None:
     ctx = SessionContext.desde_storage()
@@ -107,10 +111,7 @@ def consolidado_notas_page() -> None:
 
             with ui.element("div").classes("form-grid-2"):
                 # Grupo
-                grupos_opts = {
-                    g.id: g.nombre or g.codigo
-                    for g in _s["grupos"]
-                }
+                grupos_opts = {g.id: g.nombre or g.codigo for g in _s["grupos"]}
                 ui.select(
                     label="Grupo",
                     options=grupos_opts,
@@ -119,10 +120,7 @@ def consolidado_notas_page() -> None:
                 ).classes("w-full")
 
                 # Asignación
-                asig_opts = {
-                    a.asignacion_id: a.asignatura_nombre
-                    for a in _s["asignaciones"]
-                }
+                asig_opts = {a.asignacion_id: a.asignatura_nombre for a in _s["asignaciones"]}
                 ui.select(
                     label="Asignación",
                     options=asig_opts,
@@ -131,10 +129,7 @@ def consolidado_notas_page() -> None:
                 ).classes("w-full")
 
                 # Periodo
-                per_opts = {
-                    p.id: getattr(p, "nombre", str(p.id))
-                    for p in _s["periodos"]
-                }
+                per_opts = {p.id: getattr(p, "nombre", str(p.id)) for p in _s["periodos"]}
                 ui.select(
                     label="Periodo",
                     options=per_opts,
@@ -181,16 +176,12 @@ def consolidado_notas_page() -> None:
         filtros_refreshable.refresh()
 
     def on_fecha_desde(valor: str) -> None:
-        try:
+        with contextlib.suppress(ValueError):
             _s["fecha_desde"] = date.fromisoformat(valor) if valor else None
-        except ValueError:
-            pass
 
     def on_fecha_hasta(valor: str) -> None:
-        try:
+        with contextlib.suppress(ValueError):
             _s["fecha_hasta"] = date.fromisoformat(valor) if valor else None
-        except ValueError:
-            pass
 
     def on_generar() -> None:
         if not _s["grupo_id"]:
@@ -232,7 +223,8 @@ def consolidado_notas_page() -> None:
             filtros_refreshable()
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Consolidado de Notas",
     )
 

@@ -24,6 +24,7 @@ Flujo:
 Refreshables:
   panel_grid() — grilla de estudiantes con notas editables.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,17 +36,23 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     empty_state,
     toast_error,
-    toast_info,
     toast_success,
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_primary
-from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
+from src.interface.design.components.inline_selectors import (
+    inline_periodo_grupo_asignatura,
+)
 from src.interface.design.components.status_badge import status_badge
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
-from src.interface.pages.convivencia._shared_observacion_form import abrir_crear_observacion_dialog
-from src.services.convivencia_service import FiltroConvivenciaDTO, NuevaNotaComportamientoDTO
+from src.interface.pages.convivencia._shared_observacion_form import (
+    abrir_crear_observacion_dialog,
+)
+from src.services.convivencia_service import (
+    FiltroConvivenciaDTO,
+    NuevaNotaComportamientoDTO,
+)
 
 logger = logging.getLogger("NOTAS_CONVIVENCIA")
 
@@ -57,21 +64,22 @@ _MSG_NO_AUTORIZADO = (
 
 # Strings de tipo para RegistroComportamiento (sin importar TipoRegistro del dominio)
 _TIPOS_DISPLAY: dict[str, str] = {
-    "fortaleza":          "Fortaleza",
-    "dificultad":         "Dificultad",
-    "compromiso":         "Compromiso",
+    "fortaleza": "Fortaleza",
+    "dificultad": "Dificultad",
+    "compromiso": "Compromiso",
     "citacion_acudiente": "Citación acudiente",
-    "descargo":           "Descargo",
+    "descargo": "Descargo",
 }
 
 # Variantes de badge por tipo de registro (clases convivencia del design system)
 _TIPO_BADGE_VARIANTE: dict[str, str] = {
-    "fortaleza":          "fortaleza",
-    "dificultad":         "dificultad",
-    "compromiso":         "compromiso",
+    "fortaleza": "fortaleza",
+    "dificultad": "dificultad",
+    "compromiso": "compromiso",
     "citacion_acudiente": "citacion",
-    "descargo":           "descargo",
+    "descargo": "descargo",
 }
+
 
 def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
     """Autorización por objeto: puede el usuario gestionar las notas de
@@ -84,32 +92,33 @@ def _autorizado_para_grupo(ctx: SessionContext, grupo_id: int | None) -> bool:
         return Container.catalogo_academico_service().puede_gestionar_comportamiento_en_grupo(
             ctx.usuario_rol, ctx.usuario_id, int(grupo_id)
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("No se pudo resolver autorización de notas: %s", exc)
         return False
 
 
 # -- Estado --------------------------------------------------------------------
 
+
 def _estado_inicial() -> dict:
     return {
-        "estudiantes":              [],
-        "periodos":                 [],
-        "notas":                    [],
-        "sel_estudiante_ids":       [],
-        "sel_estudiante_id":        None,   # único seleccionado; None si 0 o >1
+        "estudiantes": [],
+        "periodos": [],
+        "notas": [],
+        "sel_estudiante_ids": [],
+        "sel_estudiante_id": None,  # único seleccionado; None si 0 o >1
         "observaciones_estudiante": [],
-        "registros_estudiante":     [],
-        "asignaciones_grupo":       [],
-        "sel_periodo_id":           None,
-        "sel_grupo_id":             None,
-        "sel_grupo_nombre":         "",
-        "sel_asignacion_id":        None,
-        "sel_asignacion_nombre":    "",
-        "periodo_cerrado":          False,
-        "cambios_pendientes":       {},
-        "nota_min_escala":          0.0,
-        "nota_max_escala":          100.0,
+        "registros_estudiante": [],
+        "asignaciones_grupo": [],
+        "sel_periodo_id": None,
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
+        "sel_asignacion_id": None,
+        "sel_asignacion_nombre": "",
+        "periodo_cerrado": False,
+        "cambios_pendientes": {},
+        "nota_min_escala": 0.0,
+        "nota_max_escala": 100.0,
     }
 
 
@@ -173,6 +182,7 @@ def _cargar_asignaciones_grupo(_s: dict) -> None:
 
 # -- Helpers -------------------------------------------------------------------
 
+
 def _construir_filas_grid(_s: dict) -> list[dict]:
     """Combina estudiantes con sus notas de comportamiento."""
     notas_por_est = {getattr(n, "estudiante_id", None): n for n in _s["notas"]}
@@ -187,16 +197,19 @@ def _construir_filas_grid(_s: dict) -> list[dict]:
         observacion = cambio.get(
             "observacion", getattr(nota_obj, "observacion", "") if nota_obj else ""
         )
-        filas.append({
-            "estudiante_id":       est_id,
-            "nombre_completo":     nombre,
-            "nota":                valor,        # None = celda vacía; "" rompe numericColumn
-            "observacion_boletin": observacion or "",
-        })
+        filas.append(
+            {
+                "estudiante_id": est_id,
+                "nombre_completo": nombre,
+                "nota": valor,  # None = celda vacía; "" rompe numericColumn
+                "observacion_boletin": observacion or "",
+            }
+        )
     return filas
 
 
 # -- Página --------------------------------------------------------------------
+
 
 # page-delegate: ruta y guard de rol registrados en main.py
 def notas_convivencia_page() -> None:
@@ -218,8 +231,8 @@ def notas_convivencia_page() -> None:
             if not isinstance(data, dict):
                 return
             row = data.get("data", {})
-            est_id    = row.get("estudiante_id")
-            campo     = data.get("colId") or data.get("column", {}).get("colId")
+            est_id = row.get("estudiante_id")
+            campo = data.get("colId") or data.get("column", {}).get("colId")
             nuevo_val = data.get("newValue")
             if est_id is None:
                 return
@@ -233,7 +246,9 @@ def notas_convivencia_page() -> None:
                 # Guarda observacion + nota actual de la fila; si no hay nota, pendiente
                 valor_actual = row.get("nota")
                 if valor_actual is not None and valor_actual != "":
-                    _guardar_nota_estudiante(est_id, valor_actual, str(nuevo_val) if nuevo_val else "")
+                    _guardar_nota_estudiante(
+                        est_id, valor_actual, str(nuevo_val) if nuevo_val else ""
+                    )
                 else:
                     _s["cambios_pendientes"].setdefault(est_id, {})
                     _s["cambios_pendientes"][est_id]["observacion"] = nuevo_val
@@ -266,7 +281,9 @@ def notas_convivencia_page() -> None:
                 observacion=observacion if observacion else None,
             )
             Container.convivencia_service().registrar_nota_comportamiento(
-                dto, ctx.usuario_id, usuario_rol=ctx.usuario_rol,
+                dto,
+                ctx.usuario_id,
+                usuario_rol=ctx.usuario_rol,
             )
             _s["cambios_pendientes"].pop(est_id, None)
             toast_success("Nota guardada.")
@@ -277,21 +294,21 @@ def notas_convivencia_page() -> None:
             logger.error("Error guardando nota: %s", exc, exc_info=True)
             toast_error(f"Error: {exc}")
 
-
     # -- Helpers de convivencia del estudiante ----------------------------------
 
     def _cargar_convivencia_estudiante(_s: dict) -> None:
         """Carga observaciones y registros de comportamiento del estudiante activo."""
-        est_id     = _s["sel_estudiante_id"]
+        est_id = _s["sel_estudiante_id"]
         periodo_id = _s["sel_periodo_id"]
         if not est_id or not periodo_id:
             _s["observaciones_estudiante"] = []
-            _s["registros_estudiante"]     = []
+            _s["registros_estudiante"] = []
             return
         svc = Container.convivencia_service()
         try:
             _s["observaciones_estudiante"] = svc.listar_observaciones(
-                int(est_id), int(periodo_id),
+                int(est_id),
+                int(periodo_id),
                 usuario_id=ctx.usuario_id,
                 usuario_rol=ctx.usuario_rol,
             )
@@ -352,7 +369,7 @@ def notas_convivencia_page() -> None:
           2. Historial de convivencia (RegistroComportamiento) — solo lectura.
         Con botón "Nueva observación" gated a selección única.
         """
-        est_id   = _s["sel_estudiante_id"]
+        est_id = _s["sel_estudiante_id"]
         obs_list = _s["observaciones_estudiante"]
         reg_list = _s["registros_estudiante"]
 
@@ -411,12 +428,12 @@ def notas_convivencia_page() -> None:
                 )
             else:
                 for obs in obs_list:
-                    cat_id     = getattr(obs, "categoria_id", None)
+                    cat_id = getattr(obs, "categoria_id", None)
                     cat_nombre = opciones_cat.get(cat_id, "Sin categoría")
                     es_publica = getattr(obs, "es_publica", True)
-                    fecha      = getattr(obs, "fecha_registro", None)
-                    fecha_str  = str(fecha)[:10] if fecha is not None else ""
-                    texto      = getattr(obs, "texto", "")
+                    fecha = getattr(obs, "fecha_registro", None)
+                    fecha_str = str(fecha)[:10] if fecha is not None else ""
+                    texto = getattr(obs, "texto", "")
 
                     with ui.element("div").classes("panel-card u-mt-sm"):
                         with ui.element("div").classes("form-row-between"):
@@ -452,11 +469,11 @@ def notas_convivencia_page() -> None:
                 )
             else:
                 for reg in reg_list:
-                    tipo_str   = str(getattr(reg, "tipo", "")).replace("TipoRegistro.", "")
+                    tipo_str = str(getattr(reg, "tipo", "")).replace("TipoRegistro.", "")
                     tipo_label = _TIPOS_DISPLAY.get(tipo_str, tipo_str.capitalize())
-                    variante   = _TIPO_BADGE_VARIANTE.get(tipo_str, "neutral")
-                    fecha_reg  = getattr(reg, "fecha", None)
-                    fecha_str  = str(fecha_reg) if fecha_reg is not None else ""
+                    variante = _TIPO_BADGE_VARIANTE.get(tipo_str, "neutral")
+                    fecha_reg = getattr(reg, "fecha", None)
+                    fecha_str = str(fecha_reg) if fecha_reg is not None else ""
                     descripcion = getattr(reg, "descripcion", "")
 
                     with ui.element("div").classes("panel-card u-mt-sm"):
@@ -475,34 +492,34 @@ def notas_convivencia_page() -> None:
 
         col_defs = [
             {
-                "headerName":              "",
-                "field":                   "check",
-                "checkboxSelection":       True,
+                "headerName": "",
+                "field": "check",
+                "checkboxSelection": True,
                 "headerCheckboxSelection": True,
-                "width":                   50,
-                "sortable":                False,
-                "filter":                  False,
+                "width": 50,
+                "sortable": False,
+                "filter": False,
             },
             {
                 "headerName": "Estudiante",
-                "field":      "nombre_completo",
-                "flex":       1,
-                "sortable":   True,
-                "filter":     True,
-                "pinned":     "left",
+                "field": "nombre_completo",
+                "flex": 1,
+                "sortable": True,
+                "filter": True,
+                "pinned": "left",
             },
             {
                 "headerName": f"Nota ({_s['nota_min_escala']:g}–{_s['nota_max_escala']:g})",
-                "field":      "nota",
-                "width":      130,
-                "editable":   editable,
-                "type":       "numericColumn",
+                "field": "nota",
+                "width": 130,
+                "editable": editable,
+                "type": "numericColumn",
             },
             {
                 "headerName": "Observación General (Boletín)",
-                "field":      "observacion_boletin",
-                "flex":       2,
-                "editable":   editable,
+                "field": "observacion_boletin",
+                "flex": 2,
+                "editable": editable,
             },
         ]
         grid_rows = _construir_filas_grid(_s)
@@ -519,7 +536,9 @@ def notas_convivencia_page() -> None:
             if editable:
                 with ui.element("div").classes("panel-toolbar"):
                     ui.element("div").classes("panel-toolbar-spacer")
-                    ui.label("Las notas se guardan automáticamente al salir de la celda.").classes("text-secondary")
+                    ui.label("Las notas se guardan automáticamente al salir de la celda.").classes(
+                        "text-secondary"
+                    )
 
             if not _s.get("sel_grupo_id"):
                 empty_state(
@@ -535,16 +554,18 @@ def notas_convivencia_page() -> None:
                 )
             else:
                 with ui.element("div").classes("aggrid-vh"):
-                    grid = ui.aggrid({
-                        "columnDefs":           col_defs,
-                        "rowData":              grid_rows,
-                        "rowSelection":         "multiple",
-                        "defaultColDef":        {"resizable": True},
-                        "suppressCellFocus":    False,
-                        "stopEditingWhenCellsLoseFocus": True,
-                        "pagination":           True,
-                        "paginationPageSize":   20,
-                    }).classes("w-full")
+                    grid = ui.aggrid(
+                        {
+                            "columnDefs": col_defs,
+                            "rowData": grid_rows,
+                            "rowSelection": "multiple",
+                            "defaultColDef": {"resizable": True},
+                            "suppressCellFocus": False,
+                            "stopEditingWhenCellsLoseFocus": True,
+                            "pagination": True,
+                            "paginationPageSize": 20,
+                        }
+                    ).classes("w-full")
                 _refs["grid"] = grid
                 grid.on("cellValueChanged", on_cell_value_changed)
 
@@ -563,15 +584,15 @@ def notas_convivencia_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["sel_periodo_id"]           = s["sel_periodo_id"]
-            _s["sel_grupo_id"]             = s["sel_grupo_id"]
-            _s["sel_asignacion_id"]        = s["sel_asignacion_id"]
-            _s["sel_asignacion_nombre"]    = s.get("sel_asignacion_nombre", "")
-            _s["sel_estudiante_ids"]       = []
-            _s["sel_estudiante_id"]        = None
+            _s["sel_periodo_id"] = s["sel_periodo_id"]
+            _s["sel_grupo_id"] = s["sel_grupo_id"]
+            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
+            _s["sel_asignacion_nombre"] = s.get("sel_asignacion_nombre", "")
+            _s["sel_estudiante_ids"] = []
+            _s["sel_estudiante_id"] = None
             _s["observaciones_estudiante"] = []
-            _s["registros_estudiante"]     = []
-            _s["cambios_pendientes"]       = {}
+            _s["registros_estudiante"] = []
+            _s["cambios_pendientes"] = {}
             _verificar_periodo(_s)
             if s["sel_grupo_id"]:
                 try:
@@ -590,7 +611,8 @@ def notas_convivencia_page() -> None:
             panel_convivencia.refresh()
 
         inline_periodo_grupo_asignatura(
-            _s, on_sel_change,
+            _s,
+            on_sel_change,
             usuario_id=ctx.usuario_id,
             institucion_id=ctx.institucion_id,
             usuario_rol=ctx.usuario_rol,

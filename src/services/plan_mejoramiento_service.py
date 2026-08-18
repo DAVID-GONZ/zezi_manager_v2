@@ -1,4 +1,5 @@
 """Servicio de Plan de Mejoramiento."""
+
 from __future__ import annotations
 
 from src.domain.models.plan_mejoramiento import (
@@ -53,9 +54,7 @@ class PlanMejoramientoService:
            con estado EN_PLAN (si nota < umbral) o SIN_PLAN.
         """
         if self._plan_repo.get_corte(dto.asignacion_id, dto.periodo_id) is not None:
-            raise ValueError(
-                "Ya existe un corte para esta asignación en este periodo"
-            )
+            raise ValueError("Ya existe un corte para esta asignación en este periodo")
 
         estudiantes = self._est_repo.listar_por_grupo(grupo_id)
         if not estudiantes:
@@ -65,9 +64,7 @@ class PlanMejoramientoService:
         actividades = self._eval_repo.listar_actividades(dto.asignacion_id, dto.periodo_id)
 
         if not categorias:
-            raise ValueError(
-                "No hay categorías configuradas para esta asignación y periodo"
-            )
+            raise ValueError("No hay categorías configuradas para esta asignación y periodo")
 
         # Actividades agrupadas por categoria_id
         acts_por_cat: dict[int, list] = {}
@@ -82,20 +79,18 @@ class PlanMejoramientoService:
 
         # Categorías que tienen al menos una nota en alguna de sus actividades
         cats_con_notas = [
-            cat for cat in categorias
-            if cat.id and any(
-                len(notas_por_act.get(a.id, [])) > 0
-                for a in acts_por_cat.get(cat.id, [])
-                if a.id
+            cat
+            for cat in categorias
+            if cat.id
+            and any(
+                len(notas_por_act.get(a.id, [])) > 0 for a in acts_por_cat.get(cat.id, []) if a.id
             )
         ]
 
         if not cats_con_notas:
             raise ValueError("No hay notas registradas para ninguna categoría")
 
-        peso_reg = CalculadorPlan.peso_registrado(
-            [{"peso": c.peso} for c in cats_con_notas]
-        )
+        peso_reg = CalculadorPlan.peso_registrado([{"peso": c.peso} for c in cats_con_notas])
         umbral = CalculadorPlan.nota_umbral(peso_reg, dto.nota_minima_aprobacion)
 
         corte = self._plan_repo.guardar_corte(
@@ -121,17 +116,11 @@ class PlanMejoramientoService:
                 acts = acts_por_cat.get(cat.id, [])
                 if not acts:
                     continue
-                promedio_cat = (
-                    sum(nota_map.get(a.id, 0.0) for a in acts if a.id) / len(acts)
-                )
+                promedio_cat = sum(nota_map.get(a.id, 0.0) for a in acts if a.id) / len(acts)
                 cats_data.append({"peso": cat.peso, "promedio": promedio_cat})
 
             nota_al_corte = CalculadorPlan.nota_al_corte(cats_data)
-            estado = (
-                EstadoNotaCorte.EN_PLAN
-                if nota_al_corte < umbral
-                else EstadoNotaCorte.SIN_PLAN
-            )
+            estado = EstadoNotaCorte.EN_PLAN if nota_al_corte < umbral else EstadoNotaCorte.SIN_PLAN
 
             nota_c = self._plan_repo.guardar_nota_corte(
                 NotaCortePlan(
@@ -162,7 +151,8 @@ class PlanMejoramientoService:
     def listar_en_plan(self, corte_id: int) -> list[NotaCortePlan]:
         """Lista solo los estudiantes que están EN_PLAN."""
         return [
-            n for n in self._plan_repo.listar_notas_corte(corte_id)
+            n
+            for n in self._plan_repo.listar_notas_corte(corte_id)
             if n.estado == EstadoNotaCorte.EN_PLAN
         ]
 
@@ -183,8 +173,7 @@ class PlanMejoramientoService:
         suma_actual = self._plan_repo.suma_pesos_actividades(dto.corte_id)
         if suma_actual + dto.peso > 1.0 + 0.005:
             raise ValueError(
-                f"La suma de pesos superaría 1.0 "
-                f"(actual: {suma_actual:.3f}, nuevo: {dto.peso:.3f})"
+                f"La suma de pesos superaría 1.0 (actual: {suma_actual:.3f}, nuevo: {dto.peso:.3f})"
             )
 
         actividad = self._plan_repo.guardar_actividad(dto.to_actividad(usuario_id))
@@ -214,9 +203,7 @@ class PlanMejoramientoService:
         """Lista todas las notas de una actividad del plan."""
         return self._plan_repo.listar_notas_actividad(actividad_plan_id)
 
-    def notas_por_actividad_corte(
-        self, corte_id: int
-    ) -> dict[int, dict[int, NotaActividadPlan]]:
+    def notas_por_actividad_corte(self, corte_id: int) -> dict[int, dict[int, NotaActividadPlan]]:
         """Devuelve las notas de TODAS las actividades de un corte en una sola
         llamada: {actividad_id: {estudiante_id: NotaActividadPlan}}.
 
@@ -243,9 +230,7 @@ class PlanMejoramientoService:
         """
         nota = self._plan_repo.get_nota_actividad(actividad_plan_id, estudiante_id)
         if nota is None:
-            raise ValueError(
-                "El estudiante no tiene asignada esta actividad de plan"
-            )
+            raise ValueError("El estudiante no tiene asignada esta actividad de plan")
 
         # Buscar corte_id a través de la actividad
         actividad = self._plan_repo.get_actividad(actividad_plan_id)
@@ -254,18 +239,15 @@ class PlanMejoramientoService:
 
         nota_corte = self._plan_repo.get_nota_corte(actividad.corte_id, estudiante_id)
         if nota_corte and nota_corte.estado in (
-            EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO
+            EstadoNotaCorte.APROBADO,
+            EstadoNotaCorte.REPROBADO,
         ):
             raise ValueError("El plan del estudiante ya fue cerrado")
 
-        actualizada = nota.model_copy(
-            update={"valor": dto.valor, "usuario_id": dto.usuario_id}
-        )
+        actualizada = nota.model_copy(update={"valor": dto.valor, "usuario_id": dto.usuario_id})
         return self._plan_repo.guardar_nota_actividad(actualizada)
 
-    def calcular_nota_plan_estudiante(
-        self, corte_id: int, estudiante_id: int
-    ) -> float | None:
+    def calcular_nota_plan_estudiante(self, corte_id: int, estudiante_id: int) -> float | None:
         """
         Calcula el promedio ponderado del plan para un estudiante.
         Retorna None si alguna nota no está registrada.
@@ -306,13 +288,9 @@ class PlanMejoramientoService:
             )
             nuevo_estado = EstadoNotaCorte.APROBADO
         else:
-            nota_calculada = self.calcular_nota_plan_estudiante(
-                dto.corte_id, dto.estudiante_id
-            )
+            nota_calculada = self.calcular_nota_plan_estudiante(dto.corte_id, dto.estudiante_id)
             if nota_calculada is None:
-                raise ValueError(
-                    "No todas las actividades del plan están calificadas"
-                )
+                raise ValueError("No todas las actividades del plan están calificadas")
             nota_definitiva = nota_calculada
             nuevo_estado = EstadoNotaCorte.REPROBADO
 
@@ -327,16 +305,16 @@ class PlanMejoramientoService:
 
 
 __all__ = [
-    "PlanMejoramientoService",
     # re-exports para interface layer
     "ActividadPlan",
     "CalculadorPlan",
-    "CortePlan",
-    "CerrarPlanEstudianteDTO",
     "CalificarNotaPlanDTO",
+    "CerrarPlanEstudianteDTO",
+    "CortePlan",
     "EjecutarCorteDTO",
     "EstadoNotaCorte",
     "NotaActividadPlan",
     "NotaCortePlan",
     "NuevaActividadPlanDTO",
+    "PlanMejoramientoService",
 ]

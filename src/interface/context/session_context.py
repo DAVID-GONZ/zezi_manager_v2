@@ -7,6 +7,7 @@ Wrappea app.storage.user de NiceGUI y expone el contexto académico activo
 Los servicios NO reciben SessionContext — reciben ContextoAcademicoDTO
 (del dominio). SessionContext es exclusivo de la capa de interfaz.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,10 +24,11 @@ class SessionContext:
     Use `desde_storage()` para reconstruir desde la sesión de NiceGUI,
     y `guardar()` para persistir cambios de contexto.
     """
-    usuario_id:      int
-    usuario_nombre:  str
-    usuario_rol:     str
-    institucion_id:  int | None = None   # multi-tenant (paso_24)
+
+    usuario_id: int
+    usuario_nombre: str
+    usuario_rol: str
+    institucion_id: int | None = None  # multi-tenant (paso_24)
     # A2 (seguridad_01): cambio forzado de contraseña. Lo setea login.py desde
     # user_db.debe_cambiar_password; el route_guard fuerza /cambiar-password.
     debe_cambiar_password: bool = False
@@ -34,26 +36,26 @@ class SessionContext:
     # (no gatear ante errores de lectura). Lo siembra login.py; el route_guard
     # fuerza /configuracion-inicial (director) o /espera-configuracion (otros).
     institucion_config_completa: bool = True
-    anio_id:         int | None = None
-    periodo_id:      int | None = None
-    grupo_id:        int | None = None
-    asignacion_id:   int | None = None
+    anio_id: int | None = None
+    periodo_id: int | None = None
+    grupo_id: int | None = None
+    asignacion_id: int | None = None
 
     # Nombres legibles para mostrar en UI (no IDs)
-    anio_nombre:       str = field(default="")
-    periodo_nombre:    str = field(default="")
-    grupo_nombre:      str = field(default="")
+    anio_nombre: str = field(default="")
+    periodo_nombre: str = field(default="")
+    grupo_nombre: str = field(default="")
     asignacion_nombre: str = field(default="")
 
     # ── Estado de impersonación "Ver como" (paso_21) ──────────────────────────
     # Cuando un admin asume la vista de otro usuario en SOLO LECTURA, guardamos
     # su identidad real para poder restaurarla con salir_ver_como().
-    impersonando:      bool        = False
-    admin_real_id:     int | None  = None
-    admin_real_nombre: str         = field(default="")
-    admin_real_rol:    str         = field(default="")
+    impersonando: bool = False
+    admin_real_id: int | None = None
+    admin_real_nombre: str = field(default="")
+    admin_real_rol: str = field(default="")
     admin_real_institucion_id: int | None = None
-    solo_lectura:      bool        = False
+    solo_lectura: bool = False
 
     @classmethod
     def desde_storage(cls) -> SessionContext | None:
@@ -80,32 +82,33 @@ class SessionContext:
             storage.get("institucion_id"),
         )
         return cls(
-            usuario_id        = storage.get("usuario_id"),
-            usuario_nombre    = storage.get("usuario_nombre", ""),
-            usuario_rol       = storage.get("usuario_rol", ""),
-            institucion_id    = storage.get("institucion_id"),
-            debe_cambiar_password = bool(storage.get("debe_cambiar_password", False)),
-            institucion_config_completa = bool(storage.get("institucion_config_completa", True)),
-            anio_id           = storage.get("anio_id"),
-            periodo_id        = storage.get("periodo_id"),
-            grupo_id          = storage.get("grupo_id"),
-            asignacion_id     = storage.get("asignacion_id"),
-            anio_nombre       = storage.get("anio_nombre", ""),
-            periodo_nombre    = storage.get("periodo_nombre", ""),
-            grupo_nombre      = storage.get("grupo_nombre", ""),
-            asignacion_nombre = storage.get("asignacion_nombre", ""),
-            impersonando      = bool(storage.get("impersonando", False)),
-            admin_real_id     = storage.get("admin_real_id"),
-            admin_real_nombre = storage.get("admin_real_nombre", ""),
-            admin_real_rol    = storage.get("admin_real_rol", ""),
-            admin_real_institucion_id = storage.get("admin_real_institucion_id"),
-            solo_lectura      = solo_lectura,
+            usuario_id=storage.get("usuario_id"),
+            usuario_nombre=storage.get("usuario_nombre", ""),
+            usuario_rol=storage.get("usuario_rol", ""),
+            institucion_id=storage.get("institucion_id"),
+            debe_cambiar_password=bool(storage.get("debe_cambiar_password", False)),
+            institucion_config_completa=bool(storage.get("institucion_config_completa", True)),
+            anio_id=storage.get("anio_id"),
+            periodo_id=storage.get("periodo_id"),
+            grupo_id=storage.get("grupo_id"),
+            asignacion_id=storage.get("asignacion_id"),
+            anio_nombre=storage.get("anio_nombre", ""),
+            periodo_nombre=storage.get("periodo_nombre", ""),
+            grupo_nombre=storage.get("grupo_nombre", ""),
+            asignacion_nombre=storage.get("asignacion_nombre", ""),
+            impersonando=bool(storage.get("impersonando", False)),
+            admin_real_id=storage.get("admin_real_id"),
+            admin_real_nombre=storage.get("admin_real_nombre", ""),
+            admin_real_rol=storage.get("admin_real_rol", ""),
+            admin_real_institucion_id=storage.get("admin_real_institucion_id"),
+            solo_lectura=solo_lectura,
         )
 
     @staticmethod
     def _sincronizar_solo_lectura(valor: bool) -> None:
         """Refleja el flag de impersonación en la capa de servicios."""
         from src.services.solo_lectura import activar_solo_lectura
+
         activar_solo_lectura(valor)
 
     @staticmethod
@@ -120,33 +123,36 @@ class SessionContext:
         institución del objetivo; al salir vuelve a None (admin real).
         """
         from src.services.contexto_tenant import activar_institucion
+
         scope = None if rol == "admin" else institucion_id
         activar_institucion(scope)
 
     def guardar(self) -> None:
         """Persiste el contexto completo en app.storage.user."""
-        app.storage.user.update({
-            "usuario_id":        self.usuario_id,
-            "usuario_nombre":    self.usuario_nombre,
-            "usuario_rol":       self.usuario_rol,
-            "institucion_id":    self.institucion_id,
-            "debe_cambiar_password": self.debe_cambiar_password,
-            "institucion_config_completa": self.institucion_config_completa,
-            "anio_id":           self.anio_id,
-            "periodo_id":        self.periodo_id,
-            "grupo_id":          self.grupo_id,
-            "asignacion_id":     self.asignacion_id,
-            "anio_nombre":       self.anio_nombre,
-            "periodo_nombre":    self.periodo_nombre,
-            "grupo_nombre":      self.grupo_nombre,
-            "asignacion_nombre": self.asignacion_nombre,
-            "impersonando":      self.impersonando,
-            "admin_real_id":     self.admin_real_id,
-            "admin_real_nombre": self.admin_real_nombre,
-            "admin_real_rol":    self.admin_real_rol,
-            "admin_real_institucion_id": self.admin_real_institucion_id,
-            "solo_lectura":      self.solo_lectura,
-        })
+        app.storage.user.update(
+            {
+                "usuario_id": self.usuario_id,
+                "usuario_nombre": self.usuario_nombre,
+                "usuario_rol": self.usuario_rol,
+                "institucion_id": self.institucion_id,
+                "debe_cambiar_password": self.debe_cambiar_password,
+                "institucion_config_completa": self.institucion_config_completa,
+                "anio_id": self.anio_id,
+                "periodo_id": self.periodo_id,
+                "grupo_id": self.grupo_id,
+                "asignacion_id": self.asignacion_id,
+                "anio_nombre": self.anio_nombre,
+                "periodo_nombre": self.periodo_nombre,
+                "grupo_nombre": self.grupo_nombre,
+                "asignacion_nombre": self.asignacion_nombre,
+                "impersonando": self.impersonando,
+                "admin_real_id": self.admin_real_id,
+                "admin_real_nombre": self.admin_real_nombre,
+                "admin_real_rol": self.admin_real_rol,
+                "admin_real_institucion_id": self.admin_real_institucion_id,
+                "solo_lectura": self.solo_lectura,
+            }
+        )
         # Mantener el flag de servicios coherente tras cualquier persistencia.
         self._sincronizar_solo_lectura(self.solo_lectura)
         # Mantener el scope de institución coherente (regla admin→None).
@@ -158,16 +164,15 @@ class SessionContext:
         Lanza ValueError si falta anio_id o periodo_id.
         """
         from src.domain.models.dtos import ContextoAcademicoDTO
+
         if not self.anio_id or not self.periodo_id:
-            raise ValueError(
-                "Contexto incompleto: selecciona un año y periodo activos."
-            )
+            raise ValueError("Contexto incompleto: selecciona un año y periodo activos.")
         return ContextoAcademicoDTO(
-            usuario_id    = self.usuario_id,
-            anio_id       = self.anio_id,
-            periodo_id    = self.periodo_id,
-            grupo_id      = self.grupo_id,
-            asignacion_id = self.asignacion_id,
+            usuario_id=self.usuario_id,
+            anio_id=self.anio_id,
+            periodo_id=self.periodo_id,
+            grupo_id=self.grupo_id,
+            asignacion_id=self.asignacion_id,
         )
 
     # ── Impersonación "Ver como" (paso_21) ───────────────────────────────────
@@ -193,28 +198,28 @@ class SessionContext:
         - Marca impersonando=True, solo_lectura=True, persiste y audita.
         """
         if not self.impersonando:
-            self.admin_real_id     = self.usuario_id
+            self.admin_real_id = self.usuario_id
             self.admin_real_nombre = self.usuario_nombre
-            self.admin_real_rol    = self.usuario_rol
+            self.admin_real_rol = self.usuario_rol
             # Conservar la institución real del admin para restaurarla al salir.
             self.admin_real_institucion_id = self.institucion_id
 
-        admin_id     = self.admin_real_id
+        admin_id = self.admin_real_id
         admin_nombre = self.admin_real_nombre
 
-        self.usuario_id     = target_usuario_id
-        self.usuario_rol    = target_rol
+        self.usuario_id = target_usuario_id
+        self.usuario_rol = target_rol
         self.usuario_nombre = target_nombre
         self.institucion_id = target_institucion_id
 
         ctx_target = contexto_academico_target or {}
-        self.anio_id           = ctx_target.get("anio_id")
-        self.periodo_id        = ctx_target.get("periodo_id")
-        self.grupo_id          = ctx_target.get("grupo_id")
-        self.asignacion_id     = ctx_target.get("asignacion_id")
-        self.anio_nombre       = ctx_target.get("anio_nombre", "")
-        self.periodo_nombre    = ctx_target.get("periodo_nombre", "")
-        self.grupo_nombre      = ctx_target.get("grupo_nombre", "")
+        self.anio_id = ctx_target.get("anio_id")
+        self.periodo_id = ctx_target.get("periodo_id")
+        self.grupo_id = ctx_target.get("grupo_id")
+        self.asignacion_id = ctx_target.get("asignacion_id")
+        self.anio_nombre = ctx_target.get("anio_nombre", "")
+        self.periodo_nombre = ctx_target.get("periodo_nombre", "")
+        self.grupo_nombre = ctx_target.get("grupo_nombre", "")
         self.asignacion_nombre = ctx_target.get("asignacion_nombre", "")
 
         self.impersonando = True
@@ -238,26 +243,26 @@ class SessionContext:
         if not self.impersonando:
             return
 
-        target_id     = self.usuario_id
+        target_id = self.usuario_id
         target_nombre = self.usuario_nombre
-        target_rol    = self.usuario_rol
-        admin_id      = self.admin_real_id
-        admin_nombre  = self.admin_real_nombre
+        target_rol = self.usuario_rol
+        admin_id = self.admin_real_id
+        admin_nombre = self.admin_real_nombre
 
-        self.usuario_id     = self.admin_real_id
+        self.usuario_id = self.admin_real_id
         self.usuario_nombre = self.admin_real_nombre
-        self.usuario_rol    = self.admin_real_rol
+        self.usuario_rol = self.admin_real_rol
         self.institucion_id = self.admin_real_institucion_id
 
         # Limpiar contexto académico del objetivo y estado de impersonación.
         self.anio_id = self.periodo_id = self.grupo_id = self.asignacion_id = None
         self.anio_nombre = self.periodo_nombre = ""
         self.grupo_nombre = self.asignacion_nombre = ""
-        self.impersonando      = False
-        self.solo_lectura      = False
-        self.admin_real_id     = None
+        self.impersonando = False
+        self.solo_lectura = False
+        self.admin_real_id = None
         self.admin_real_nombre = ""
-        self.admin_real_rol    = ""
+        self.admin_real_rol = ""
         self.admin_real_institucion_id = None
         self.guardar()
 
@@ -287,10 +292,8 @@ class SessionContext:
                 EventoSesion,
                 TipoEventoSesion,
             )
-            tipo = (
-                TipoEventoSesion.VER_COMO_INICIO if inicio
-                else TipoEventoSesion.VER_COMO_FIN
-            )
+
+            tipo = TipoEventoSesion.VER_COMO_INICIO if inicio else TipoEventoSesion.VER_COMO_FIN
             verbo = "inicia" if inicio else "finaliza"
             detalles = (
                 f"Admin '{admin_nombre}' (id={admin_id}) {verbo} 'Ver como' "
@@ -298,10 +301,10 @@ class SessionContext:
             )
             Container.auditoria_service().registrar_evento(
                 EventoSesion(
-                    usuario     = admin_nombre or "admin",
-                    usuario_id  = admin_id,
-                    tipo_evento = tipo,
-                    detalles    = detalles,
+                    usuario=admin_nombre or "admin",
+                    usuario_id=admin_id,
+                    tipo_evento=tipo,
+                    detalles=detalles,
                 )
             )
         except Exception:
@@ -328,8 +331,7 @@ class SessionContext:
 
     @property
     def contexto_completo(self) -> bool:
-        return all([self.anio_id, self.periodo_id,
-                    self.grupo_id, self.asignacion_id])
+        return all([self.anio_id, self.periodo_id, self.grupo_id, self.asignacion_id])
 
 
 __all__ = ["SessionContext"]

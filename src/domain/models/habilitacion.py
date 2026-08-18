@@ -43,7 +43,7 @@ Máquina de estados — PlanMejoramiento
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -52,37 +52,38 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoHabilitacion(str, Enum):
-    PERIODO = "periodo"    # recupera un periodo específico
-    ANUAL   = "anual"      # recupera la materia al final del año
+
+class TipoHabilitacion(StrEnum):
+    PERIODO = "periodo"  # recupera un periodo específico
+    ANUAL = "anual"  # recupera la materia al final del año
 
 
-class EstadoHabilitacion(str, Enum):
-    PENDIENTE  = "pendiente"
-    REALIZADA  = "realizada"
-    APROBADA   = "aprobada"
-    REPROBADA  = "reprobada"
+class EstadoHabilitacion(StrEnum):
+    PENDIENTE = "pendiente"
+    REALIZADA = "realizada"
+    APROBADA = "aprobada"
+    REPROBADA = "reprobada"
 
 
-class EstadoPlanMejoramiento(str, Enum):
-    ACTIVO     = "activo"
-    CUMPLIDO   = "cumplido"
+class EstadoPlanMejoramiento(StrEnum):
+    ACTIVO = "activo"
+    CUMPLIDO = "cumplido"
     INCUMPLIDO = "incumplido"
 
 
 # Transiciones permitidas: estado_actual → {estados_siguientes}
 _TRANSICIONES_HABILITACION: dict[EstadoHabilitacion, set[EstadoHabilitacion]] = {
-    EstadoHabilitacion.PENDIENTE:  {EstadoHabilitacion.REALIZADA},
-    EstadoHabilitacion.REALIZADA:  {EstadoHabilitacion.APROBADA,
-                                    EstadoHabilitacion.REPROBADA},
-    EstadoHabilitacion.APROBADA:   set(),
-    EstadoHabilitacion.REPROBADA:  set(),
+    EstadoHabilitacion.PENDIENTE: {EstadoHabilitacion.REALIZADA},
+    EstadoHabilitacion.REALIZADA: {EstadoHabilitacion.APROBADA, EstadoHabilitacion.REPROBADA},
+    EstadoHabilitacion.APROBADA: set(),
+    EstadoHabilitacion.REPROBADA: set(),
 }
 
 
 # =============================================================================
 # Habilitación
 # =============================================================================
+
 
 class Habilitacion(BaseModel):
     """
@@ -99,17 +100,18 @@ class Habilitacion(BaseModel):
                         Solo puede existir en estado REALIZADA, APROBADA
                         o REPROBADA — nunca en PENDIENTE.
     """
-    id:                  int | None            = None
-    estudiante_id:       int
-    asignacion_id:       int
-    periodo_id:          int | None            = None
-    tipo:                TipoHabilitacion
-    nota_antes:          float | None          = None
-    nota_habilitacion:   float | None          = None
-    fecha:               date | None           = None
-    estado:              EstadoHabilitacion    = EstadoHabilitacion.PENDIENTE
-    observacion:         str | None            = None
-    usuario_registro_id: int | None            = None
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int | None = None
+    tipo: TipoHabilitacion
+    nota_antes: float | None = None
+    nota_habilitacion: float | None = None
+    fecha: date | None = None
+    estado: EstadoHabilitacion = EstadoHabilitacion.PENDIENTE
+    observacion: str | None = None
+    usuario_registro_id: int | None = None
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -130,9 +132,7 @@ class Habilitacion(BaseModel):
         if v is None:
             return None
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("observacion", mode="before")
@@ -153,9 +153,7 @@ class Habilitacion(BaseModel):
         """Reglas cruzadas: PERIODO exige periodo_id, ANUAL lo prohíbe, y no hay nota si está PENDIENTE."""
         # tipo=PERIODO exige periodo_id
         if self.tipo == TipoHabilitacion.PERIODO and self.periodo_id is None:
-            raise ValueError(
-                "Una habilitación de tipo PERIODO requiere periodo_id."
-            )
+            raise ValueError("Una habilitación de tipo PERIODO requiere periodo_id.")
         # tipo=ANUAL no admite periodo_id
         if self.tipo == TipoHabilitacion.ANUAL and self.periodo_id is not None:
             raise ValueError(
@@ -164,10 +162,7 @@ class Habilitacion(BaseModel):
             )
         # nota_habilitacion solo existe si la hab. fue realizada
         estados_sin_nota = {EstadoHabilitacion.PENDIENTE}
-        if (
-            self.estado in estados_sin_nota
-            and self.nota_habilitacion is not None
-        ):
+        if self.estado in estados_sin_nota and self.nota_habilitacion is not None:
             raise ValueError(
                 f"No puede haber nota_habilitacion en estado '{self.estado.value}'. "
                 "La nota solo se registra después de que la habilitación se realiza."
@@ -214,7 +209,8 @@ class Habilitacion(BaseModel):
         permitidos = _TRANSICIONES_HABILITACION[self.estado]
         if destino not in permitidos:
             permitidos_str = (
-                ", ".join(e.value for e in permitidos) if permitidos
+                ", ".join(e.value for e in permitidos)
+                if permitidos
                 else "ninguno (estado terminal)"
             )
             raise ValueError(
@@ -243,16 +239,16 @@ class Habilitacion(BaseModel):
         """
         self._validar_transicion(EstadoHabilitacion.REALIZADA)
         if not (0 <= nota <= 100):
-            raise ValueError(
-                f"La nota debe estar entre 0 y 100 (recibido: {nota})."
-            )
-        return self.model_copy(update={
-            "estado":              EstadoHabilitacion.REALIZADA,
-            "nota_habilitacion":   round(nota, 2),
-            "fecha":               fecha or date.today(),
-            "usuario_registro_id": usuario_id or self.usuario_registro_id,
-            "observacion":         observacion.strip() if observacion else self.observacion,
-        })
+            raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {nota}).")
+        return self.model_copy(
+            update={
+                "estado": EstadoHabilitacion.REALIZADA,
+                "nota_habilitacion": round(nota, 2),
+                "fecha": fecha or date.today(),
+                "usuario_registro_id": usuario_id or self.usuario_registro_id,
+                "observacion": observacion.strip() if observacion else self.observacion,
+            }
+        )
 
     def aprobar(self) -> Habilitacion:
         """
@@ -272,6 +268,7 @@ class Habilitacion(BaseModel):
 # Plan de Mejoramiento
 # =============================================================================
 
+
 class PlanMejoramiento(BaseModel):
     """
     Plan de trabajo diseñado para que el estudiante supere sus dificultades
@@ -282,18 +279,19 @@ class PlanMejoramiento(BaseModel):
 
     Estado terminal: CUMPLIDO o INCUMPLIDO — un plan cerrado no se modifica.
     """
-    id:                     int | None               = None
-    estudiante_id:          int
-    asignacion_id:          int
-    periodo_id:             int
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
     descripcion_dificultad: str
     actividades_propuestas: str
-    fecha_inicio:           date                     = Field(default_factory=date.today)
-    fecha_seguimiento:      date | None              = None
-    fecha_cierre:           date | None              = None
-    estado:                 EstadoPlanMejoramiento   = EstadoPlanMejoramiento.ACTIVO
-    observacion_cierre:     str | None               = None
-    usuario_id:             int | None               = None
+    fecha_inicio: date = Field(default_factory=date.today)
+    fecha_seguimiento: date | None = None
+    fecha_cierre: date | None = None
+    estado: EstadoPlanMejoramiento = EstadoPlanMejoramiento.ACTIVO
+    observacion_cierre: str | None = None
+    usuario_id: int | None = None
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -315,9 +313,7 @@ class PlanMejoramiento(BaseModel):
         if not v:
             raise ValueError("El campo no puede estar vacío.")
         if len(v) > 2000:
-            raise ValueError(
-                f"El campo no puede exceder 2000 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El campo no puede exceder 2000 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("observacion_cierre", mode="before")
@@ -337,19 +333,13 @@ class PlanMejoramiento(BaseModel):
     def validar_coherencia(self) -> Self:
         """Reglas de fechas y estado: cronología válida, cierre exige observación y un plan ACTIVO no lleva fecha_cierre."""
         # fecha_seguimiento no puede ser anterior al inicio
-        if (
-            self.fecha_seguimiento
-            and self.fecha_seguimiento < self.fecha_inicio
-        ):
+        if self.fecha_seguimiento and self.fecha_seguimiento < self.fecha_inicio:
             raise ValueError(
                 f"La fecha de seguimiento ({self.fecha_seguimiento}) no puede "
                 f"ser anterior al inicio del plan ({self.fecha_inicio})."
             )
         # fecha_cierre no puede ser anterior al inicio
-        if (
-            self.fecha_cierre
-            and self.fecha_cierre < self.fecha_inicio
-        ):
+        if self.fecha_cierre and self.fecha_cierre < self.fecha_inicio:
             raise ValueError(
                 f"La fecha de cierre ({self.fecha_cierre}) no puede "
                 f"ser anterior al inicio del plan ({self.fecha_inicio})."
@@ -361,17 +351,11 @@ class PlanMejoramiento(BaseModel):
         }
         if self.estado in estados_cerrados and not self.observacion_cierre:
             raise ValueError(
-                f"Un plan en estado '{self.estado.value}' debe tener "
-                "observacion_cierre."
+                f"Un plan en estado '{self.estado.value}' debe tener observacion_cierre."
             )
         # Un plan activo no debe tener fecha_cierre
-        if (
-            self.estado == EstadoPlanMejoramiento.ACTIVO
-            and self.fecha_cierre is not None
-        ):
-            raise ValueError(
-                "Un plan ACTIVO no puede tener fecha_cierre."
-            )
+        if self.estado == EstadoPlanMejoramiento.ACTIVO and self.fecha_cierre is not None:
+            raise ValueError("Un plan ACTIVO no puede tener fecha_cierre.")
         return self
 
     # ------------------------------------------------------------------
@@ -440,44 +424,43 @@ class PlanMejoramiento(BaseModel):
                         o la observación está vacía.
         """
         if self.esta_cerrado:
-            raise ValueError(
-                f"El plan ya fue cerrado con estado '{self.estado.value}'."
-            )
+            raise ValueError(f"El plan ya fue cerrado con estado '{self.estado.value}'.")
         if estado == EstadoPlanMejoramiento.ACTIVO:
             raise ValueError(
-                "No se puede cerrar un plan con estado ACTIVO. "
-                "Use CUMPLIDO o INCUMPLIDO."
+                "No se puede cerrar un plan con estado ACTIVO. Use CUMPLIDO o INCUMPLIDO."
             )
         observacion = observacion.strip()
         if not observacion:
-            raise ValueError(
-                "La observación de cierre es obligatoria para cerrar el plan."
-            )
+            raise ValueError("La observación de cierre es obligatoria para cerrar el plan.")
         fecha_cierre = fecha or date.today()
         if fecha_cierre < self.fecha_inicio:
             raise ValueError(
                 f"La fecha de cierre ({fecha_cierre}) no puede ser anterior "
                 f"al inicio del plan ({self.fecha_inicio})."
             )
-        return self.model_copy(update={
-            "estado":             estado,
-            "observacion_cierre": observacion,
-            "fecha_cierre":       fecha_cierre,
-        })
+        return self.model_copy(
+            update={
+                "estado": estado,
+                "observacion_cierre": observacion,
+                "fecha_cierre": fecha_cierre,
+            }
+        )
 
 
 # =============================================================================
 # DTOs
 # =============================================================================
 
+
 class NuevaHabilitacionDTO(BaseModel):
     """Datos para programar una habilitación."""
+
     estudiante_id: int
     asignacion_id: int
-    tipo:          TipoHabilitacion
-    periodo_id:    int | None = None
-    nota_antes:    float | None = None
-    fecha:         date | None = None
+    tipo: TipoHabilitacion
+    periodo_id: int | None = None
+    nota_antes: float | None = None
+    fecha: date | None = None
 
     @field_validator("nota_antes")
     @classmethod
@@ -491,13 +474,9 @@ class NuevaHabilitacionDTO(BaseModel):
     def validar_tipo_periodo(self) -> Self:
         """Coherencia tipo/periodo: PERIODO exige periodo_id y ANUAL lo prohíbe."""
         if self.tipo == TipoHabilitacion.PERIODO and self.periodo_id is None:
-            raise ValueError(
-                "Una habilitación de tipo PERIODO requiere periodo_id."
-            )
+            raise ValueError("Una habilitación de tipo PERIODO requiere periodo_id.")
         if self.tipo == TipoHabilitacion.ANUAL and self.periodo_id is not None:
-            raise ValueError(
-                "Una habilitación de tipo ANUAL no debe tener periodo_id."
-            )
+            raise ValueError("Una habilitación de tipo ANUAL no debe tener periodo_id.")
         return self
 
     def to_habilitacion(self, usuario_id: int | None = None) -> Habilitacion:
@@ -510,10 +489,11 @@ class NuevaHabilitacionDTO(BaseModel):
 
 class RegistrarNotaHabilitacionDTO(BaseModel):
     """Datos para registrar la nota cuando el estudiante presenta la habilitación."""
-    nota:        float
-    fecha:       date | None = None
-    usuario_id:  int | None  = None
-    observacion: str | None  = None
+
+    nota: float
+    fecha: date | None = None
+    usuario_id: int | None = None
+    observacion: str | None = None
 
     @field_validator("nota")
     @classmethod
@@ -526,12 +506,13 @@ class RegistrarNotaHabilitacionDTO(BaseModel):
 
 class NuevoPlanMejoramientoDTO(BaseModel):
     """Datos para crear un plan de mejoramiento."""
-    estudiante_id:          int
-    asignacion_id:          int
-    periodo_id:             int
+
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
     descripcion_dificultad: str
     actividades_propuestas: str
-    fecha_seguimiento:      date | None = None
+    fecha_seguimiento: date | None = None
 
     @field_validator("descripcion_dificultad", "actividades_propuestas", mode="before")
     @classmethod
@@ -552,9 +533,10 @@ class NuevoPlanMejoramientoDTO(BaseModel):
 
 class CerrarPlanMejoramientoDTO(BaseModel):
     """Datos para cerrar un plan de mejoramiento."""
-    estado:      EstadoPlanMejoramiento
+
+    estado: EstadoPlanMejoramiento
     observacion: str
-    fecha:       date | None = None
+    fecha: date | None = None
 
     @field_validator("estado")
     @classmethod
@@ -562,8 +544,7 @@ class CerrarPlanMejoramientoDTO(BaseModel):
         """El estado de cierre debe ser CUMPLIDO o INCUMPLIDO, nunca ACTIVO."""
         if v == EstadoPlanMejoramiento.ACTIVO:
             raise ValueError(
-                "No se puede cerrar un plan con estado ACTIVO. "
-                "Use CUMPLIDO o INCUMPLIDO."
+                "No se puede cerrar un plan con estado ACTIVO. Use CUMPLIDO o INCUMPLIDO."
             )
         return v
 
@@ -579,13 +560,14 @@ class CerrarPlanMejoramientoDTO(BaseModel):
 
 class FiltroHabilitacionesDTO(BaseModel):
     """Parámetros para listar habilitaciones."""
-    estudiante_id: int | None               = None
-    asignacion_id: int | None               = None
-    periodo_id:    int | None               = None
-    tipo:          TipoHabilitacion | None  = None
-    estado:        EstadoHabilitacion | None = None
-    pagina:        int                      = Field(default=1, ge=1)
-    por_pagina:    int                      = Field(default=50, ge=1, le=200)
+
+    estudiante_id: int | None = None
+    asignacion_id: int | None = None
+    periodo_id: int | None = None
+    tipo: TipoHabilitacion | None = None
+    estado: EstadoHabilitacion | None = None
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=50, ge=1, le=200)
 
 
 # =============================================================================
@@ -593,17 +575,17 @@ class FiltroHabilitacionesDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    # Enums
-    "TipoHabilitacion",
+    "CerrarPlanMejoramientoDTO",
     "EstadoHabilitacion",
     "EstadoPlanMejoramiento",
+    "FiltroHabilitacionesDTO",
     # Entidades
     "Habilitacion",
-    "PlanMejoramiento",
     # DTOs
     "NuevaHabilitacionDTO",
-    "RegistrarNotaHabilitacionDTO",
     "NuevoPlanMejoramientoDTO",
-    "CerrarPlanMejoramientoDTO",
-    "FiltroHabilitacionesDTO",
+    "PlanMejoramiento",
+    "RegistrarNotaHabilitacionDTO",
+    # Enums
+    "TipoHabilitacion",
 ]

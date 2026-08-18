@@ -12,6 +12,7 @@ Flujo:
   3. "Generar todos PDF" → un único PDF con todos los boletines fusionados.
   4. "Generar todos Excel" → un único libro con una hoja por estudiante.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,14 +35,15 @@ logger = logging.getLogger("BOLETIN_ANUAL")
 
 # ── Estado ────────────────────────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     return {
-        "grupo_id":                   None,
-        "anio_id":                    None,
-        "grupos":                     [],
-        "estudiantes":                [],
+        "grupo_id": None,
+        "anio_id": None,
+        "grupos": [],
+        "estudiantes": [],
         "todas_asignaciones_docente": [],
-        "generando":                  False,
+        "generando": False,
     }
 
 
@@ -50,7 +52,7 @@ def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
         try:
             todas = Container.asignacion_service().listar_por_docente(ctx.usuario_id)
             _s["todas_asignaciones_docente"] = todas
-            grupos_ids   = {a.grupo_id for a in todas}
+            grupos_ids = {a.grupo_id for a in todas}
             grupos_infra = Container.catalogo_academico_service().listar_grupos()
             _s["grupos"] = [g for g in grupos_infra if g.id in grupos_ids]
         except Exception as exc:
@@ -82,6 +84,7 @@ def _grupo_nombre(_s: dict) -> str:
 
 # ── Helpers de descarga ───────────────────────────────────────────────────────
 
+
 def _boletin_pdf(estudiante_id: int, _s: dict) -> bytes:
     svc = Container.informe_service()
     return svc.generar_boletin_anual(
@@ -106,7 +109,9 @@ def _boletin_excel(estudiante_id: int, _s: dict) -> bytes:
 def _descargar_pdf_individual(estudiante_id: int, nombre: str, _s: dict) -> None:
     try:
         contenido = _boletin_pdf(estudiante_id, _s)
-        ui.download(src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.pdf")
+        ui.download(
+            src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.pdf"
+        )
     except ValueError as exc:
         toast_error(f"Sin datos o exportador no disponible: {exc}")
     except NotImplementedError:
@@ -119,7 +124,9 @@ def _descargar_pdf_individual(estudiante_id: int, nombre: str, _s: dict) -> None
 def _descargar_excel_individual(estudiante_id: int, nombre: str, _s: dict) -> None:
     try:
         contenido = _boletin_excel(estudiante_id, _s)
-        ui.download(src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.xlsx")
+        ui.download(
+            src=contenido, filename=f"boletin_anual_{nombre.replace(' ', '_')}_{_s['anio_id']}.xlsx"
+        )
     except Exception as exc:
         logger.error("Error Excel %s: %s", nombre, exc, exc_info=True)
         toast_error(f"Error al exportar Excel de {nombre}.")
@@ -160,6 +167,7 @@ def _generar_todos_excel(_s: dict) -> None:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def boletin_anual_page() -> None:
     ctx = SessionContext.desde_storage()
@@ -168,7 +176,7 @@ def boletin_anual_page() -> None:
         return
 
     _s = _estado_inicial()
-    _s["anio_id"]  = ctx.anio_id
+    _s["anio_id"] = ctx.anio_id
     _cargar_grupos(ctx, _s)
     if _s["grupo_id"]:
         _cargar_estudiantes(_s)
@@ -218,10 +226,14 @@ def boletin_anual_page() -> None:
 
         with ui.element("div").classes("andes-card"):
             with ui.row().classes("items-center justify-between u-mb-md"):
-                ui.label(f"Estudiantes ({len(_s['estudiantes'])})").classes("text-subtitle1 text-weight-medium")
+                ui.label(f"Estudiantes ({len(_s['estudiantes'])})").classes(
+                    "text-subtitle1 text-weight-medium"
+                )
                 with ui.row().classes("gap-2"):
+
                     async def _generar_pdf_masivo():
                         import asyncio
+
                         _s["generando"] = True
                         lista_refreshable.refresh()
                         await asyncio.sleep(0)
@@ -231,6 +243,7 @@ def boletin_anual_page() -> None:
 
                     async def _generar_excel_masivo():
                         import asyncio
+
                         _s["generando"] = True
                         lista_refreshable.refresh()
                         await asyncio.sleep(0)
@@ -257,12 +270,16 @@ def boletin_anual_page() -> None:
                         btn_icon(
                             icono="picture_as_pdf",
                             tooltip="Descargar PDF anual",
-                            on_click=lambda e, eid=est.id, en=nombre: _descargar_pdf_individual(eid, en, _s),
+                            on_click=lambda e, eid=est.id, en=nombre: _descargar_pdf_individual(
+                                eid, en, _s
+                            ),
                         )
                         btn_icon(
                             icono="table_view",
                             tooltip="Descargar Excel anual",
-                            on_click=lambda e, eid=est.id, en=nombre: _descargar_excel_individual(eid, en, _s),
+                            on_click=lambda e, eid=est.id, en=nombre: _descargar_excel_individual(
+                                eid, en, _s
+                            ),
                         )
 
     def on_grupo_change(grupo_id) -> None:
@@ -281,7 +298,8 @@ def boletin_anual_page() -> None:
             lista_refreshable()
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Boletines Anuales",
     )
 

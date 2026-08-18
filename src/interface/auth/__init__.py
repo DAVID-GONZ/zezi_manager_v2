@@ -5,11 +5,13 @@ Expone el guard de ruta deny-by-default (`registrar_pagina`), los sentinels
 de acceso (`PUBLICO`, `AUTENTICADO`) y el registro consultable `ruta → roles`
 que es la ÚNICA fuente de verdad de autorización por ruta.
 """
+
 from __future__ import annotations
 
 from .route_guard import (
     AUTENTICADO,
     PUBLICO,
+    decidir_acceso,
     registrar_pagina,
     roles_de_ruta,
     rutas_registradas,
@@ -18,6 +20,7 @@ from .route_guard import (
 __all__ = [
     "AUTENTICADO",
     "PUBLICO",
+    "decidir_acceso",
     "registrar_pagina",
     "roles_de_ruta",
     "rutas_registradas",

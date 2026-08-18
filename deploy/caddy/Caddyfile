@@ -1,0 +1,68 @@
+# =============================================================================
+# ZECI Manager v2 — Plantilla Caddy (seguridad_web_01 — R1-R7)
+#
+# Caddy gestiona TLS automáticamente con Let's Encrypt (R1, R6).
+# No requiere configuración explícita de certificados ni renovación manual.
+#
+# PLACEHOLDERS a sustituir:
+#   YOUR_DOMAIN  → dominio real (ej. zeci.ejemplo.org)
+#   APP_PORT     → puerto de la app Python (por defecto 8080)
+#
+# Verificación manual: caddy validate --config Caddyfile
+#
+# Preferir Caddy sobre nginx cuando:
+#   - El entorno no tiene certbot preinstalado.
+#   - Se quiere renovación de certificados sin cron jobs externos.
+# Preferir nginx cuando:
+#   - El servidor ya gestiona otros servicios con nginx.
+#   - Se requiere configuración de ciphers muy específica para auditorías.
+# =============================================================================
+
+YOUR_DOMAIN {
+    # TLS automático con Let's Encrypt (R1, R6)
+    # Caddy redirige 80→443 automáticamente (R3).
+
+    # ─── Cabeceras de seguridad ──────────────────────────────────────────────
+    # Caddy activa HSTS por sí solo al servir TLS, pero lo declaramos explícito
+    # para que la política quede a la vista y sea auditable igual que en nginx.
+    header {
+        # HSTS: 2 años. Añade `; includeSubDomains` solo si TODOS los
+        # subdominios sirven HTTPS.
+        Strict-Transport-Security "max-age=63072000"
+
+        # Anti-clickjacking sobre sesión autenticada.
+        Content-Security-Policy "frame-ancestors 'self'"
+        X-Frame-Options "SAMEORIGIN"
+
+        # Impide que el navegador adivine el tipo MIME.
+        X-Content-Type-Options "nosniff"
+
+        # No filtrar rutas internas (con IDs de estudiante) a terceros.
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # Caddy la añade por defecto; delata la versión del servidor.
+        -Server
+    }
+
+    # Tamaño máximo de subida: los `ui.upload` de importación de estudiantes
+    # y de horarios superan de largo cualquier límite por defecto.
+    request_body {
+        max_size 20MB
+    }
+
+    # Caddy 2.x propaga Upgrade, X-Forwarded-For y X-Forwarded-Proto por
+    # defecto en reverse_proxy, cubriendo R4 y R5 sin directivas extra.
+    reverse_proxy 127.0.0.1:APP_PORT
+
+    # TLS: Caddy usa TLS 1.2+ por defecto (R7).
+    # Para restringir explícitamente:
+    # tls {
+    #     protocols tls1.2 tls1.3
+    # }
+
+    # Log de acceso (útil para el logging de S09)
+    log {
+        output file /var/log/caddy/zeci_access.log
+        format json
+    }
+}

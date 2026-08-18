@@ -15,6 +15,7 @@ Uso de iconos en cualquier página/componente:
     ThemeManager.icono("space_dashboard", color="white")
     ThemeManager.icono(Icons.EDIT, size=20, fill=1)
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,10 +31,11 @@ def _color_bg_native() -> str:
     Fallback silencioso a "" si no se encuentra (deja que pywebview use el
     default nativo)."""
     import re
+
     tokens = Path(__file__).parent / "styles" / "tokens.css"
     try:
         txt = tokens.read_text(encoding="utf-8")
-        m = re.search(r'--color-bg\s*:\s*([^;]+);', txt)
+        m = re.search(r"--color-bg\s*:\s*([^;]+);", txt)
         if m:
             return m.group(1).strip()
     except Exception:
@@ -84,6 +86,7 @@ class ThemeManager:
         "components/flujo.css",
         "components/impersonation.css",
         "components/inline_selectors.css",
+        "components/marketing.css",
         "themes/dark.css",
         "domain/asistencia.css",
         "domain/desempeno.css",
@@ -126,9 +129,7 @@ class ThemeManager:
 
         # Meta viewport para responsive
         ui.add_head_html(
-            '<meta name="viewport" '
-            'content="width=device-width, initial-scale=1.0">',
-            shared=True
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0">', shared=True
         )
 
         # Configuración para modo nativo (pywebview) — no-op en modo web.
@@ -177,8 +178,7 @@ class ThemeManager:
         from nicegui import ui
 
         font_variation = (
-            f"font-variation-settings: 'FILL' {fill}, "
-            f"'wght' {weight}, 'GRAD' 0, 'opsz' {size};"
+            f"font-variation-settings: 'FILL' {fill}, 'wght' {weight}, 'GRAD' 0, 'opsz' {size};"
         )
         estilos = [
             font_variation,
@@ -193,11 +193,7 @@ class ThemeManager:
         estilo_inline = " ".join(estilos)
         clases_span = f"material-symbols-rounded {clases}".strip()
 
-        return ui.html(
-            f'<span class="{clases_span}" style="{estilo_inline}">'
-            f"{nombre}"
-            f"</span>"
-        )
+        return ui.html(f'<span class="{clases_span}" style="{estilo_inline}">{nombre}</span>')
 
     @classmethod
     def render_logo(

@@ -1,6 +1,7 @@
 """
 login.py — Página de inicio de sesión de ZECI Manager v2.0
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,14 +14,13 @@ from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("LOGIN")
 
+
 # page-delegate: ruta registrada en main.py vía registrar_pagina (PUBLICO)
 def login_page() -> None:
-    ui.add_body_html('<style>body{margin:0;padding:0;}</style>', shared=True)
+    ui.add_body_html("<style>body{margin:0;padding:0;}</style>", shared=True)
 
     with ui.element("div").classes("andes-login-bg w-full"):
-    
         with ui.element("div").classes("andes-login-card") as login_card_el:
-            
             # ── Encabezado ──────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):
@@ -33,7 +33,7 @@ def login_page() -> None:
                 usuario_input = (
                     ui.input(label="Usuario", placeholder="usuario")
                     .classes("w-full andes-input")
-                    .props("outlined") 
+                    .props("outlined")
                 )
 
                 password_input = (
@@ -67,14 +67,18 @@ def login_page() -> None:
             _pwd_toggle_el.on("click", _toggle_pwd)
 
             # Contenedor para el error
-            error_container = ui.row().classes("alert alert--error form-row-center u-mt-md login-alert-banner hidden")
+            error_container = ui.row().classes(
+                "alert alert--error form-row-center u-mt-md login-alert-banner hidden"
+            )
             with error_container:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")
 
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
-                error_container.classes(add="hidden", remove="andes-login-alert-in andes-login-error-shake")
+                error_container.classes(
+                    add="hidden", remove="andes-login-alert-in andes-login-error-shake"
+                )
                 error_label.set_text("")
                 usuario_input.props(remove="error")
                 password_input.props(remove="error")
@@ -93,11 +97,13 @@ def login_page() -> None:
                     login_card_el.classes(remove="andes-login-loading")
 
                 nombre_usuario = usuario_input.value.strip() if usuario_input.value else ""
-                contrasena     = password_input.value if password_input.value else ""
+                contrasena = password_input.value if password_input.value else ""
 
                 if not nombre_usuario or not contrasena:
                     error_label.set_text("Completa usuario y contraseña.")
-                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    error_container.classes(
+                        remove="hidden", add="andes-login-alert-in andes-login-error-shake"
+                    )
                     if not nombre_usuario:
                         usuario_input.props("error")
                     if not contrasena:
@@ -108,35 +114,34 @@ def login_page() -> None:
                 # A1 — throttle/lockout: si el username está bloqueado por exceso
                 # de fallos, abortar sin tocar el servicio de auth.
                 from src.domain.policies import login_throttle
+
                 bloqueado, segundos = login_throttle.estado_bloqueo(nombre_usuario)
                 if bloqueado:
                     error_label.set_text(
                         f"Demasiados intentos. Espera {segundos} s e inténtalo de nuevo."
                     )
-                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    error_container.classes(
+                        remove="hidden", add="andes-login-alert-in andes-login-error-shake"
+                    )
                     usuario_input.props("error")
                     on_finish()
                     return
 
                 try:
                     svc_auth = Container.auth_service()
-                    user_db = svc_auth.autenticar_usuario(
-                        nombre_usuario, contrasena
-                    )
+                    user_db = svc_auth.autenticar_usuario(nombre_usuario, contrasena)
 
                     rol_str = (
-                        user_db.rol.value
-                        if hasattr(user_db.rol, "value")
-                        else str(user_db.rol)
+                        user_db.rol.value if hasattr(user_db.rol, "value") else str(user_db.rol)
                     )
 
                     # A1 — credenciales correctas: limpiar el contador de fallos.
                     login_throttle.registrar_exito(nombre_usuario)
 
-                    app.storage.user["autenticado"]    = True
-                    app.storage.user["usuario_id"]     = user_db.id
+                    app.storage.user["autenticado"] = True
+                    app.storage.user["usuario_id"] = user_db.id
                     app.storage.user["usuario_nombre"] = user_db.nombre_completo
-                    app.storage.user["usuario_rol"]    = rol_str
+                    app.storage.user["usuario_rol"] = rol_str
                     # A2 — cambio forzado: el guard fuerza /cambiar-password si
                     # el flag está activo. Lo lee desde la entidad autenticada.
                     app.storage.user["debe_cambiar_password"] = bool(
@@ -144,12 +149,13 @@ def login_page() -> None:
                     )
 
                     from src.interface.context.session_context import SessionContext
+
                     ctx = SessionContext(
-                        usuario_id     = user_db.id,
-                        usuario_nombre = user_db.nombre_completo,
-                        usuario_rol    = rol_str,
+                        usuario_id=user_db.id,
+                        usuario_nombre=user_db.nombre_completo,
+                        usuario_rol=rol_str,
                         # Multi-tenant (paso_24): institución del usuario.
-                        institucion_id = getattr(user_db, "institucion_id", None),
+                        institucion_id=getattr(user_db, "institucion_id", None),
                     )
 
                     ctx = Container.inicializar_contexto(ctx)
@@ -179,11 +185,12 @@ def login_page() -> None:
                             EventoSesion,
                             TipoEventoSesion,
                         )
+
                         Container.auditoria_service().registrar_evento(
                             EventoSesion(
-                                usuario     = user_db.usuario,
-                                usuario_id  = user_db.id,
-                                tipo_evento = TipoEventoSesion.LOGIN_EXITOSO,
+                                usuario=user_db.usuario,
+                                usuario_id=user_db.id,
+                                tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
                             )
                         )
                     except Exception as audit_exc:
@@ -191,7 +198,10 @@ def login_page() -> None:
 
                     logger.info(
                         "Login exitoso: usuario_id=%s rol=%s año=%s periodo=%s",
-                        user_db.id, rol_str, ctx.anio_nombre, ctx.periodo_nombre,
+                        user_db.id,
+                        rol_str,
+                        ctx.anio_nombre,
+                        ctx.periodo_nombre,
                     )
                     ui.navigate.to("/inicio")
 
@@ -210,26 +220,29 @@ def login_page() -> None:
                                 EventoSesion,
                                 TipoEventoSesion,
                             )
+
                             Container.auditoria_service().registrar_evento(
                                 EventoSesion(
-                                    usuario     = nombre_usuario,
-                                    tipo_evento = TipoEventoSesion.LOGIN_FALLIDO,
+                                    usuario=nombre_usuario,
+                                    tipo_evento=TipoEventoSesion.LOGIN_FALLIDO,
                                 )
                             )
                         except Exception as audit_exc:
-                            logger.warning(
-                                "No se pudo registrar login fallido: %s", audit_exc
-                            )
+                            logger.warning("No se pudo registrar login fallido: %s", audit_exc)
                         usuario_input.props("error")
                         password_input.props("error")
                         error_label.set_text("Usuario o contraseña incorrectos.")
-                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    error_container.classes(
+                        remove="hidden", add="andes-login-alert-in andes-login-error-shake"
+                    )
                     on_finish()
 
                 except Exception:
                     logger.exception("Error inesperado en login")
                     error_label.set_text("Error del sistema. Intenta de nuevo.")
-                    error_container.classes(remove="hidden", add="andes-login-alert-in andes-login-error-shake")
+                    error_container.classes(
+                        remove="hidden", add="andes-login-alert-in andes-login-error-shake"
+                    )
                     on_finish()
 
             password_input.on("keydown.enter", lambda _: intentar_login())
@@ -237,7 +250,9 @@ def login_page() -> None:
             password_input.on("keydown", lambda _: password_input.props(remove="error"))
 
             # Botón instanciado mediante la fábrica
-            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes("w-full u-mt-lg")
+            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes(
+                "w-full u-mt-lg"
+            )
 
             # ── Pie ──────────────────────────────────────────────────────────
             ui.label("© 2026 by LDGV").classes("andes-login-footer w-full")

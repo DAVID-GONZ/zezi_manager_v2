@@ -5,6 +5,7 @@ Orquesta el proceso de cierre de periodo y cierre anual.
 Es el servicio más complejo del sistema: coordina múltiples repos
 para calcular definitivas y generar los registros de cierre.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -48,13 +49,13 @@ class CierreService:
     ) -> None:
         """Inyecta los repos de cierre, evaluación, periodo, configuración y
         estudiante, más los de alertas, auditoría y asignación (opcionales)."""
-        self._cierre_repo    = cierre_repo
-        self._eval_repo      = evaluacion_repo
-        self._periodo_repo   = periodo_repo
-        self._config_repo    = config_repo
+        self._cierre_repo = cierre_repo
+        self._eval_repo = evaluacion_repo
+        self._periodo_repo = periodo_repo
+        self._config_repo = config_repo
         self._estudiante_repo = estudiante_repo
-        self._alerta_repo    = alerta_repo
-        self._auditoria      = auditoria
+        self._alerta_repo = alerta_repo
+        self._auditoria = auditoria
         self._asignacion_repo = asignacion_repo
 
     # ------------------------------------------------------------------
@@ -73,9 +74,7 @@ class CierreService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -99,18 +98,14 @@ class CierreService:
         if nota >= nota_minima:
             return
 
-        cfg = self._alerta_repo.get_configuracion(
-            anio_id, TipoAlerta.PROMEDIO_BAJO
-        )
+        cfg = self._alerta_repo.get_configuracion(anio_id, TipoAlerta.PROMEDIO_BAJO)
         if cfg is None or not cfg.activa:
             return
 
         if nota > cfg.umbral:
             return  # no es tan baja como para alertar
 
-        if self._alerta_repo.existe_pendiente(
-            estudiante_id, TipoAlerta.PROMEDIO_BAJO
-        ):
+        if self._alerta_repo.existe_pendiente(estudiante_id, TipoAlerta.PROMEDIO_BAJO):
             return
 
         nivel = NivelAlerta.CRITICA if nota < cfg.umbral / 2 else NivelAlerta.ADVERTENCIA
@@ -155,51 +150,41 @@ class CierreService:
         if periodo is None:
             raise ValueError(f"Periodo con id {periodo_id} no existe.")
         if not periodo.esta_abierto:
-            raise ValueError(
-                f"El periodo '{periodo.nombre}' ya está cerrado."
-            )
+            raise ValueError(f"El periodo '{periodo.nombre}' ya está cerrado.")
 
         # Obtener config del año para nota mínima y clasificación
         config = self._config_repo.get_by_id(ctx.anio_id)
         nota_minima = config.nota_minima_aprobacion if config else 60.0
 
         # Obtener actividades y categorías (comunes para todos los estudiantes)
-        categorias   = self._eval_repo.listar_categorias(asignacion_id, periodo_id)
-        actividades  = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
+        categorias = self._eval_repo.listar_categorias(asignacion_id, periodo_id)
+        actividades = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
 
         # Obtener estudiantes del grupo
-        estudiantes = self._estudiante_repo.listar_por_grupo(
-            ctx.grupo_id, solo_activos=True
-        )
+        estudiantes = self._estudiante_repo.listar_por_grupo(ctx.grupo_id, solo_activos=True)
 
         cierres: list[CierrePeriodo] = []
         for est in estudiantes:
-            notas = self._eval_repo.listar_notas_por_estudiante(
-                est.id, asignacion_id, periodo_id
-            )
-            definitiva = CalculadorNotas.calcular_definitiva(
-                notas, actividades, categorias
-            )
+            notas = self._eval_repo.listar_notas_por_estudiante(est.id, asignacion_id, periodo_id)
+            definitiva = CalculadorNotas.calcular_definitiva(notas, actividades, categorias)
 
             # Clasificar nivel de desempeño
             nivel = self._config_repo.clasificar_nota(definitiva, ctx.anio_id)
 
             cierre = CierrePeriodo(
-                estudiante_id     = est.id,
-                asignacion_id     = asignacion_id,
-                periodo_id        = periodo_id,
-                nota_definitiva   = definitiva,
-                desempeno_id      = nivel.id if nivel else None,
-                fecha_cierre      = date.today(),
-                usuario_cierre_id = usuario_id,
+                estudiante_id=est.id,
+                asignacion_id=asignacion_id,
+                periodo_id=periodo_id,
+                nota_definitiva=definitiva,
+                desempeno_id=nivel.id if nivel else None,
+                fecha_cierre=date.today(),
+                usuario_cierre_id=usuario_id,
             )
             cierre = self._cierre_repo.guardar_cierre_periodo(cierre)
             cierres.append(cierre)
 
             # Verificar alerta académica
-            self._verificar_alerta_academica(
-                est.id, definitiva, nota_minima, ctx.anio_id
-            )
+            self._verificar_alerta_academica(est.id, definitiva, nota_minima, ctx.anio_id)
 
         return cierres
 
@@ -238,9 +223,7 @@ class CierreService:
         config = self._config_repo.get_by_id(anio_id)
         nota_minima = config.nota_minima_aprobacion if config else 60.0
 
-        estudiantes = self._estudiante_repo.listar_por_grupo(
-            grupo_id, solo_activos=True
-        )
+        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id, solo_activos=True)
 
         cierres_anio: list[CierreAnio] = []
 
@@ -258,19 +241,21 @@ class CierreService:
             for asignacion_id, cps in por_asignacion.items():
                 # Calcular promedio ponderado
                 total_peso = sum(
-                    p.peso_porcentual
-                    for p in periodos
-                    if any(cp.periodo_id == p.id for cp in cps)
+                    p.peso_porcentual for p in periodos if any(cp.periodo_id == p.id for cp in cps)
                 )
                 if total_peso == 0:
                     promedio = 0.0
                 else:
-                    promedio = sum(
-                        cp.nota_definitiva * next(
-                            (p.peso_porcentual for p in periodos if p.id == cp.periodo_id), 0
+                    promedio = (
+                        sum(
+                            cp.nota_definitiva
+                            * next(
+                                (p.peso_porcentual for p in periodos if p.id == cp.periodo_id), 0
+                            )
+                            for cp in cps
                         )
-                        for cp in cps
-                    ) / total_peso
+                        / total_peso
+                    )
 
                 promedio = round(promedio, 2)
 
@@ -278,9 +263,7 @@ class CierreService:
                 nota_hab = None
                 nota_definitiva_anual = promedio
                 # Buscar en cierres anio si ya existe con habilitación
-                cierre_existente = self._cierre_repo.get_cierre_anio(
-                    est.id, asignacion_id, anio_id
-                )
+                cierre_existente = self._cierre_repo.get_cierre_anio(est.id, asignacion_id, anio_id)
                 if cierre_existente and cierre_existente.nota_habilitacion is not None:
                     nota_hab = cierre_existente.nota_habilitacion
                     nota_definitiva_anual = nota_hab
@@ -289,16 +272,16 @@ class CierreService:
                 perdio = nota_definitiva_anual < nota_minima
 
                 cierre_anio = CierreAnio(
-                    estudiante_id          = est.id,
-                    asignacion_id          = asignacion_id,
-                    anio_id                = anio_id,
-                    nota_promedio_periodos = promedio,
-                    nota_habilitacion      = nota_hab,
-                    nota_definitiva_anual  = nota_definitiva_anual,
-                    perdio                 = perdio,
-                    desempeno_id           = nivel.id if nivel else None,
-                    fecha_cierre           = date.today(),
-                    usuario_cierre_id      = usuario_id,
+                    estudiante_id=est.id,
+                    asignacion_id=asignacion_id,
+                    anio_id=anio_id,
+                    nota_promedio_periodos=promedio,
+                    nota_habilitacion=nota_hab,
+                    nota_definitiva_anual=nota_definitiva_anual,
+                    perdio=perdio,
+                    desempeno_id=nivel.id if nivel else None,
+                    fecha_cierre=date.today(),
+                    usuario_cierre_id=usuario_id,
                 )
                 cierre_anio = self._cierre_repo.guardar_cierre_anio(cierre_anio)
                 cierres_anio.append(cierre_anio)
@@ -339,15 +322,19 @@ class CierreService:
             )
         datos_ant = promocion.model_dump(mode="json")
         promocion_decidida = promocion.decidir(
-            estado               = dto.estado,
-            asignaturas_perdidas = dto.asignaturas_perdidas,
-            observacion          = dto.observacion,
-            usuario_id           = usuario_id,
+            estado=dto.estado,
+            asignaturas_perdidas=dto.asignaturas_perdidas,
+            observacion=dto.observacion,
+            usuario_id=usuario_id,
         )
         self._cierre_repo.actualizar_promocion(promocion_decidida)
         self._auditar(
-            AccionCambio.UPDATE, "promociones_anuales", promocion.id,
-            datos_ant, promocion_decidida.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "promociones_anuales",
+            promocion.id,
+            datos_ant,
+            promocion_decidida.model_dump(mode="json"),
+            usuario_id,
         )
         return promocion_decidida
 
@@ -404,6 +391,7 @@ class CierreService:
         try:
             from src.domain.models.asignacion import FiltroAsignacionesDTO
             from src.services.contexto_tenant import institucion_actual
+
             # Scope multi-tenant (paso_31): este agregado cruza TODAS las
             # asignaciones del periodo (todos los grupos), así que un director
             # no debe ver el estado de cierres de otra institución. None
@@ -419,8 +407,7 @@ class CierreService:
             return vacio
 
         asignacion_ids = [
-            a.asignacion_id for a in asignaciones
-            if getattr(a, "asignacion_id", None) is not None
+            a.asignacion_id for a in asignaciones if getattr(a, "asignacion_id", None) is not None
         ]
         if not asignacion_ids:
             return vacio
@@ -429,9 +416,9 @@ class CierreService:
         cerradas = sum(1 for cierres in estado.values() if cierres)
         total = len(asignacion_ids)
         return {
-            "cerradas":   cerradas,
+            "cerradas": cerradas,
             "pendientes": total - cerradas,
-            "total":      total,
+            "total": total,
         }
 
     @requiere_escritura
@@ -455,9 +442,9 @@ class CierreService:
             None,
             {
                 "asignacion_id": asignacion_id,
-                "periodo_id":    periodo_id,
-                "cantidad":      cantidad,
-                "motivo":        motivo or "",
+                "periodo_id": periodo_id,
+                "cantidad": cantidad,
+                "motivo": motivo or "",
             },
             None,
             usuario_id,
@@ -487,11 +474,11 @@ class CierreService:
         resultados: dict[int, list[CierrePeriodo] | str] = {}
         for asig_id in asignacion_ids:
             ctx_asig = ContextoAcademicoDTO(
-                usuario_id    = ctx.usuario_id,
-                anio_id       = ctx.anio_id,
-                periodo_id    = periodo_id,
-                grupo_id      = grupo_id,
-                asignacion_id = asig_id,
+                usuario_id=ctx.usuario_id,
+                anio_id=ctx.anio_id,
+                periodo_id=periodo_id,
+                grupo_id=grupo_id,
+                asignacion_id=asig_id,
             )
             try:
                 cierres = self.cerrar_periodo(asig_id, periodo_id, ctx_asig, usuario_id)

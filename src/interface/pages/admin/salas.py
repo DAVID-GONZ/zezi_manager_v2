@@ -5,6 +5,7 @@ Página de administración de salas físicas.
 Ruta: /admin/salas
 Acceso: admin, director
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,11 +30,11 @@ from src.services.sala_service import Sala
 logger = logging.getLogger("ADMIN.SALAS")
 
 _TIPOS_SALA = {
-    "aula":        "Aula",
+    "aula": "Aula",
     "laboratorio": "Laboratorio",
-    "computo":     "Sala de Cómputo",
-    "ed_fisica":   "Ed. Física / Cancha",
-    "otro":        "Otro",
+    "computo": "Sala de Cómputo",
+    "ed_fisica": "Ed. Física / Cancha",
+    "otro": "Otro",
 }
 
 
@@ -48,10 +49,10 @@ def salas_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "salas":     [],
-        "grupos":    [],
-        "nombre":    "",
-        "tipo":      "aula",
+        "salas": [],
+        "grupos": [],
+        "nombre": "",
+        "tipo": "aula",
         "capacidad": 30,
     }
 
@@ -87,8 +88,8 @@ def salas_page() -> None:
             )
             Container.sala_service().crear_sala(sala)
             toast_success(f"Sala '{sala.nombre}' creada")
-            _s["nombre"]    = ""
-            _s["tipo"]      = "aula"
+            _s["nombre"] = ""
+            _s["tipo"] = "aula"
             _s["capacidad"] = 30
             _cargar_salas()
             tabla_salas.refresh()
@@ -115,11 +116,11 @@ def salas_page() -> None:
 
     def _eliminar_sala(sala_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Eliminar sala",
-            mensaje         = f"¿Eliminar la sala '{nombre}'? Esta acción es irreversible.",
-            on_confirm      = lambda: _confirmar_eliminar_sala(sala_id, nombre),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar sala",
+            mensaje=f"¿Eliminar la sala '{nombre}'? Esta acción es irreversible.",
+            on_confirm=lambda: _confirmar_eliminar_sala(sala_id, nombre),
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     def _editar_sala(sala: Sala) -> None:
@@ -145,17 +146,32 @@ def salas_page() -> None:
                 return False
 
         form_dialog(
-            titulo = "Editar sala",
-            campos = [
-                {"key": "nombre",    "label": "Nombre *",  "tipo": "text",
-                 "valor": sala.nombre, "requerido": True},
-                {"key": "tipo",      "label": "Tipo",      "tipo": "select",
-                 "valor": sala.tipo,   "opciones": _TIPOS_SALA},
-                {"key": "capacidad", "label": "Capacidad", "tipo": "number",
-                 "valor": sala.capacidad, "min": 1},
+            titulo="Editar sala",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": sala.nombre,
+                    "requerido": True,
+                },
+                {
+                    "key": "tipo",
+                    "label": "Tipo",
+                    "tipo": "select",
+                    "valor": sala.tipo,
+                    "opciones": _TIPOS_SALA,
+                },
+                {
+                    "key": "capacidad",
+                    "label": "Capacidad",
+                    "tipo": "number",
+                    "valor": sala.capacidad,
+                    "min": 1,
+                },
             ],
-            on_submit = _guardar,
-            max_width = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     # ── Tabla refreshable ─────────────────────────────────────────────────────
@@ -244,12 +260,8 @@ def salas_page() -> None:
                     ui.input("Nombre *", placeholder="Sala 101").classes("w-48").bind_value(
                         _s, "nombre"
                     )
-                    ui.select(
-                        _TIPOS_SALA, label="Tipo"
-                    ).classes("w-40").bind_value(_s, "tipo")
-                    ui.number("Capacidad", min=1).classes("w-24").bind_value(
-                        _s, "capacidad"
-                    )
+                    ui.select(_TIPOS_SALA, label="Tipo").classes("w-40").bind_value(_s, "tipo")
+                    ui.number("Capacidad", min=1).classes("w-24").bind_value(_s, "capacidad")
                     btn_primary("Crear sala", icon="add", on_click=_crear_sala)
 
                 ui.separator().classes("my-3")
@@ -268,9 +280,9 @@ def salas_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Gestión de Salas",
-        page_subtitulo = "Espacios físicos disponibles para asignación de clases",
-        page_icono     = "meeting_room",
+        page_titulo="Gestión de Salas",
+        page_subtitulo="Espacios físicos disponibles para asignación de clases",
+        page_icono="meeting_room",
     )
 
 

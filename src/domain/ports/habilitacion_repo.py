@@ -44,7 +44,6 @@ from ..models.habilitacion import (
 
 
 class IHabilitacionRepository(ABC):
-
     # =========================================================================
     # Habilitaciones — lectura
     # =========================================================================

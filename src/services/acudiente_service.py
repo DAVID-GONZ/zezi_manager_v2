@@ -3,6 +3,7 @@ AcudienteService
 =================
 Orquesta los casos de uso del módulo de Acudientes.
 """
+
 from __future__ import annotations
 
 from src.domain.ports.acudiente_repo import IAcudienteRepository
@@ -26,11 +27,13 @@ class AcudienteService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -38,11 +41,13 @@ class AcudienteService:
     def listar(self, activos_solo: bool = False) -> list:
         """Retorna todos los acudientes del tenant activo."""
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar(activos_solo=activos_solo, institucion_id=institucion_actual())
 
     def buscar_por_documento(self, numero: str):
         """Busca un acudiente por documento dentro del tenant activo."""
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.buscar_por_documento(numero, institucion_id=institucion_actual())
 
     def get_principal(self, estudiante_id: int):

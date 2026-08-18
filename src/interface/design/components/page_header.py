@@ -5,6 +5,7 @@ Ajustes NiceGUI 3.x:
   - Iconos via ThemeManager.icono() (ui.html) en vez de ui.element().text()
   - Botones de acción usan btn_*() del design system
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -74,10 +75,10 @@ def page_header(
         if acciones:
             with ui.row().classes("gap-2 items-center"):
                 for accion in acciones:
-                    variante     = accion.get("variante", "primary")
+                    variante = accion.get("variante", "primary")
                     icono_accion = accion.get("icono", None)
                     label_accion = accion.get("label", "")
-                    on_click     = accion.get("on_click", lambda: None)
+                    on_click = accion.get("on_click", lambda: None)
 
                     if variante == "danger":
                         btn_danger(label_accion, on_click=on_click, icon=icono_accion)

@@ -13,6 +13,7 @@ un slot (color) sin choques de grupo ni de docente. Si el grado máximo del
 grafo es <= n_colores, el teorema de König garantiza la existencia del
 coloreo, y este lo encuentra de forma exacta, determinista y polinómica.
 """
+
 from __future__ import annotations
 
 
@@ -74,6 +75,7 @@ def colorear_aristas_bipartito(
         grado_b[bi] += 1
 
     import sys as _sys
+
     limite_previo = _sys.getrecursionlimit()
     _sys.setrecursionlimit(max(limite_previo, size * 4 + 1000))
     try:

@@ -340,7 +340,7 @@ def _setup_corte_con_estudiantes(
 
 class TestEjecutarCorte:
     def test_lanza_si_ya_existe_corte(self):
-        plan_repo, eval_repo, est_repo, svc = _setup_corte_con_estudiantes()
+        _plan_repo, _eval_repo, _est_repo, svc = _setup_corte_con_estudiantes()
         dto = _dto_corte()
         svc.ejecutar_corte(dto, grupo_id=1)
         with pytest.raises(ValueError, match="Ya existe un corte"):
@@ -370,17 +370,17 @@ class TestEjecutarCorte:
             svc.ejecutar_corte(_dto_corte(), grupo_id=1)
 
     def test_crea_corte_y_notas_para_todos(self):
-        plan_repo, _, _, svc = _setup_corte_con_estudiantes()
+        _plan_repo, _, _, svc = _setup_corte_con_estudiantes()
         corte, notas = svc.ejecutar_corte(_dto_corte(), grupo_id=1)
         assert corte.id is not None
         assert len(notas) == 2
 
     def test_clasifica_en_plan_correctamente(self):
         """Est1 nota baja (30) → EN_PLAN; Est2 nota alta (75) → SIN_PLAN."""
-        plan_repo, _, _, svc = _setup_corte_con_estudiantes(
+        _plan_repo, _, _, svc = _setup_corte_con_estudiantes(
             nota_est1=30.0, nota_est2=75.0, nota_min=60.0
         )
-        corte, notas = svc.ejecutar_corte(_dto_corte(nota_min=60.0), grupo_id=1)
+        _corte, notas = svc.ejecutar_corte(_dto_corte(nota_min=60.0), grupo_id=1)
         # umbral = 1.0 * 60.0 = 60.0
         estados = {n.estudiante_id: n.estado for n in notas}
         assert estados[1] == EstadoNotaCorte.EN_PLAN
@@ -399,7 +399,7 @@ class TestAgregarActividad:
         return plan_repo, svc, corte.id
 
     def test_lanza_si_suma_pesos_supera_1(self):
-        plan_repo, svc, corte_id = self._setup_con_corte()
+        _plan_repo, svc, corte_id = self._setup_con_corte()
         # Agregar primera actividad con peso 0.7
         dto1 = NuevaActividadPlanDTO(
             corte_id=corte_id, asignacion_id=1, periodo_id=1,
@@ -444,13 +444,13 @@ class TestCalificarNota:
         return plan_repo, svc, actividad.id, corte.id
 
     def test_lanza_si_nota_no_existe(self):
-        plan_repo, svc, act_id, corte_id = self._setup_con_actividad()
+        _plan_repo, svc, act_id, _corte_id = self._setup_con_actividad()
         dto = CalificarNotaPlanDTO(valor=80.0)
         with pytest.raises(ValueError, match="no tiene asignada"):
             svc.calificar_nota(act_id, estudiante_id=999, dto=dto)
 
     def test_lanza_si_plan_ya_cerrado(self):
-        plan_repo, svc, act_id, corte_id = self._setup_con_actividad()
+        _plan_repo, svc, act_id, corte_id = self._setup_con_actividad()
         # Calificar al est1 primero
         svc.calificar_nota(act_id, estudiante_id=1, dto=CalificarNotaPlanDTO(valor=80.0))
         # Cerrar el plan del est1 como aprobado
@@ -463,7 +463,7 @@ class TestCalificarNota:
             svc.calificar_nota(act_id, estudiante_id=1, dto=CalificarNotaPlanDTO(valor=90.0))
 
     def test_califica_correctamente(self):
-        plan_repo, svc, act_id, corte_id = self._setup_con_actividad()
+        _plan_repo, svc, act_id, _corte_id = self._setup_con_actividad()
         dto = CalificarNotaPlanDTO(valor=75.0)
         nota = svc.calificar_nota(act_id, estudiante_id=1, dto=dto)
         assert nota.valor == 75.0
@@ -489,7 +489,7 @@ class TestCerrarPlanEstudiante:
         return plan_repo, svc, corte.id, actividad.id
 
     def test_lanza_si_no_existe_nota_corte(self):
-        plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
+        _plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
         dto = CerrarPlanEstudianteDTO(
             estudiante_id=999, corte_id=corte_id, aprobado=True
         )
@@ -497,7 +497,7 @@ class TestCerrarPlanEstudiante:
             svc.cerrar_plan_estudiante(dto)
 
     def test_lanza_si_ya_cerrado(self):
-        plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
+        _plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
         dto = CerrarPlanEstudianteDTO(
             estudiante_id=1, corte_id=corte_id, aprobado=True
         )
@@ -533,7 +533,7 @@ class TestCerrarPlanEstudiante:
 
     def test_aprobado_congela_nota_minima(self):
         """aprobado=True → nota_definitiva = peso_reg * nota_minima."""
-        plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
+        _plan_repo, svc, corte_id, _ = self._setup_listo_para_cierre()
         dto = CerrarPlanEstudianteDTO(
             estudiante_id=1, corte_id=corte_id, aprobado=True
         )
@@ -544,7 +544,7 @@ class TestCerrarPlanEstudiante:
 
     def test_reprobado_usa_nota_calculada(self):
         """aprobado=False → nota_definitiva = promedio ponderado de actividades del plan."""
-        plan_repo, svc, corte_id, act_id = self._setup_listo_para_cierre()
+        _plan_repo, svc, corte_id, _act_id = self._setup_listo_para_cierre()
         # est1 calificado con 70.0 en actividad peso=1.0 → nota_plan = 70.0
         dto = CerrarPlanEstudianteDTO(
             estudiante_id=1, corte_id=corte_id, aprobado=False

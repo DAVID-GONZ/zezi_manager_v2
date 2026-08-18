@@ -7,6 +7,7 @@ ventanas de grupo, bloques anclados, franjas de reunión, límites docente y
 disponibilidad docente. Recibe el mismo IInfraestructuraRepository por
 inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escritura`).
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import (
@@ -22,22 +23,17 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class RestriccionGeneracionService:
-
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
 
     # ── Disponibilidad docente (paso_15b) ─────────────────────────────────────
 
-    def es_disponible_docente(
-        self, usuario_id: int, dia: str, franja_orden: int
-    ) -> bool:
+    def es_disponible_docente(self, usuario_id: int, dia: str, franja_orden: int) -> bool:
         """Indica si un docente está disponible en una franja (delegado al repositorio)."""
         return self._repo.es_disponible(usuario_id, dia, franja_orden)
 
-    def bloquear_franjas_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def bloquear_franjas_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Carga en lote las franjas no disponibles de un docente (delegado al repositorio)."""
         return self._repo.cargar_disponibilidad_lote(usuario_id, slots)
 
@@ -46,18 +42,14 @@ class RestriccionGeneracionService:
         return self._repo.limpiar_disponibilidad_docente(usuario_id)
 
     @requiere_escritura
-    def guardar_disponibilidad_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def guardar_disponibilidad_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Reemplaza ATÓMICAMENTE la disponibilidad de un docente (borra + carga
         en una sola transacción). `slots` son los bloques NO disponibles, cada uno
         con 'dia_semana' y 'franja_orden'. Retorna cuántos slots quedaron cargados.
         """
         return self._repo.reemplazar_disponibilidad_docente(usuario_id, slots)
 
-    def listar_disponibilidad_docente(
-        self, usuario_id: int
-    ) -> list[DisponibilidadDocente]:
+    def listar_disponibilidad_docente(self, usuario_id: int) -> list[DisponibilidadDocente]:
         """Lista la disponibilidad configurada de un docente (delegado al repositorio)."""
         return self._repo.listar_disponibilidad_docente(usuario_id)
 
@@ -79,9 +71,8 @@ class RestriccionGeneracionService:
             NuevaConfigGeneracionDTO,
             PesosGeneracion,
         )
-        pesos_obj = (
-            PesosGeneracion(**pesos) if isinstance(pesos, dict) else PesosGeneracion()
-        )
+
+        pesos_obj = PesosGeneracion(**pesos) if isinstance(pesos, dict) else PesosGeneracion()
         dto = NuevaConfigGeneracionDTO(
             nombre=nombre,
             periodo_id=periodo_id,
@@ -113,9 +104,7 @@ class RestriccionGeneracionService:
             }
         return restricciones
 
-    def listar_configs_generacion(
-        self, periodo_id: int | None = None
-    ) -> list[ConfigGeneracion]:
+    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
         """Lista las configs de generación, opcionalmente de un periodo (delegado al repositorio)."""
         return self._repo.listar_configs_generacion(periodo_id)
 
@@ -124,15 +113,14 @@ class RestriccionGeneracionService:
         return self._repo.get_config_generacion(config_id)
 
     @requiere_escritura
-    def actualizar_config_generacion(
-        self, config_id: int, **campos
-    ) -> ConfigGeneracion:
+    def actualizar_config_generacion(self, config_id: int, **campos) -> ConfigGeneracion:
         """Actualiza los campos indicados de una config de generación (lanza si no existe)."""
         config = self._repo.get_config_generacion(config_id)
         if config is None:
             raise ValueError(f"Config {config_id} no existe.")
         if "pesos" in campos and isinstance(campos["pesos"], dict):
             from src.domain.models.infraestructura import PesosGeneracion
+
             campos = {**campos, "pesos": PesosGeneracion(**campos["pesos"])}
         updated = config.model_copy(update=campos)
         return self._repo.actualizar_config_generacion(updated)
@@ -143,9 +131,7 @@ class RestriccionGeneracionService:
         return self._repo.eliminar_config_generacion(config_id)
 
     @requiere_escritura
-    def cambiar_estado_config(
-        self, config_id: int, nuevo_estado: str
-    ) -> ConfigGeneracion:
+    def cambiar_estado_config(self, config_id: int, nuevo_estado: str) -> ConfigGeneracion:
         """Cambia el estado de una config de generación (delegado al repositorio)."""
         return self._repo.cambiar_estado_config(config_id, nuevo_estado)
 
@@ -199,6 +185,7 @@ class RestriccionGeneracionService:
     def listar_franjas_reunion(self) -> list[FranjaReunion]:
         """Lista las franjas de reunión del tenant activo."""
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar_franjas_reunion(institucion_id=institucion_actual())
 
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
@@ -210,11 +197,12 @@ class RestriccionGeneracionService:
         """Crea una franja de reunión inyectando el tenant si falta."""
         if f.institucion_id is None:
             from src.services.contexto_tenant import institucion_actual
-            from src.domain.models.infraestructura import FranjaReunion as _FR
+
             inst_id = institucion_actual()
             if inst_id is None:
                 try:
                     from container import Container
+
                     inst_id = Container.institucion_service().id_por_defecto()
                 except Exception:
                     pass

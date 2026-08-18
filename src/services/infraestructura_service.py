@@ -5,6 +5,7 @@ Fachada sobre IInfraestructuraRepository que expone a la capa de
 interfaz las operaciones sobre AreaConocimiento, Asignatura, Grupo,
 Horario y Logro sin revelar el repositorio directamente.
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import (
@@ -27,7 +28,6 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
 class InfraestructuraService:
-
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
@@ -43,6 +43,7 @@ class InfraestructuraService:
         svc = self._subservicios.get("sala")
         if svc is None:
             from src.services.sala_service import SalaService
+
             svc = SalaService(repo=self._repo)
             self._subservicios["sala"] = svc
         return svc
@@ -52,6 +53,7 @@ class InfraestructuraService:
         svc = self._subservicios.get("franja")
         if svc is None:
             from src.services.franja_service import FranjaService
+
             svc = FranjaService(repo=self._repo)
             self._subservicios["franja"] = svc
         return svc
@@ -61,6 +63,7 @@ class InfraestructuraService:
         svc = self._subservicios.get("escenario")
         if svc is None:
             from src.services.escenario_horario_service import EscenarioHorarioService
+
             svc = EscenarioHorarioService(repo=self._repo)
             self._subservicios["escenario"] = svc
         return svc
@@ -72,6 +75,7 @@ class InfraestructuraService:
             from src.services.restriccion_generacion_service import (
                 RestriccionGeneracionService,
             )
+
             svc = RestriccionGeneracionService(repo=self._repo)
             self._subservicios["restriccion"] = svc
         return svc
@@ -81,6 +85,7 @@ class InfraestructuraService:
         svc = self._subservicios.get("catalogo")
         if svc is None:
             from src.services.catalogo_academico_service import CatalogoAcademicoService
+
             svc = CatalogoAcademicoService(repo=self._repo)
             self._subservicios["catalogo"] = svc
         return svc
@@ -137,13 +142,9 @@ class InfraestructuraService:
 
     def duplicar_escenario(self, escenario_id: int, nuevo_nombre: str) -> EscenarioHorario:
         """Duplica un escenario con un nuevo nombre (delega en EscenarioHorarioService)."""
-        return self._escenario_horario_service().duplicar_escenario(
-            escenario_id, nuevo_nombre
-        )
+        return self._escenario_horario_service().duplicar_escenario(escenario_id, nuevo_nombre)
 
-    def listar_horario_grupo_escenario(
-        self, grupo_id: int, escenario_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo_escenario(self, grupo_id: int, escenario_id: int) -> list[HorarioInfo]:
         """Lista el horario de un grupo dentro de un escenario (delega en EscenarioHorarioService)."""
         return self._escenario_horario_service().listar_horario_grupo_escenario(
             grupo_id, escenario_id
@@ -260,43 +261,29 @@ class InfraestructuraService:
 
     # ── Disponibilidad docente — delega en RestriccionGeneracionService ─────────
 
-    def es_disponible_docente(
-        self, usuario_id: int, dia: str, franja_orden: int
-    ) -> bool:
+    def es_disponible_docente(self, usuario_id: int, dia: str, franja_orden: int) -> bool:
         """Indica si un docente está disponible en una franja (delega en RestriccionGeneracionService)."""
         return self._restriccion_generacion_service().es_disponible_docente(
             usuario_id, dia, franja_orden
         )
 
-    def bloquear_franjas_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def bloquear_franjas_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Carga en lote las franjas no disponibles de un docente (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().bloquear_franjas_docente(
-            usuario_id, slots
-        )
+        return self._restriccion_generacion_service().bloquear_franjas_docente(usuario_id, slots)
 
     def limpiar_disponibilidad_docente(self, usuario_id: int) -> int:
         """Borra toda la disponibilidad configurada de un docente (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().limpiar_disponibilidad_docente(
-            usuario_id
-        )
+        return self._restriccion_generacion_service().limpiar_disponibilidad_docente(usuario_id)
 
-    def guardar_disponibilidad_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def guardar_disponibilidad_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Reemplaza ATÓMICAMENTE la disponibilidad de un docente (delega en RestriccionGeneracionService)."""
         return self._restriccion_generacion_service().guardar_disponibilidad_docente(
             usuario_id, slots
         )
 
-    def listar_disponibilidad_docente(
-        self, usuario_id: int
-    ) -> list[DisponibilidadDocente]:
+    def listar_disponibilidad_docente(self, usuario_id: int) -> list[DisponibilidadDocente]:
         """Lista la disponibilidad configurada de un docente (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().listar_disponibilidad_docente(
-            usuario_id
-        )
+        return self._restriccion_generacion_service().listar_disponibilidad_docente(usuario_id)
 
     # ── Config generación — delega en RestriccionGeneracionService ──────────────
 
@@ -323,21 +310,15 @@ class InfraestructuraService:
             min_horas, max_horas, modo
         )
 
-    def listar_configs_generacion(
-        self, periodo_id: int | None = None
-    ) -> list[ConfigGeneracion]:
+    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
         """Lista las configs de generación (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().listar_configs_generacion(
-            periodo_id
-        )
+        return self._restriccion_generacion_service().listar_configs_generacion(periodo_id)
 
     def get_config_generacion(self, config_id: int) -> ConfigGeneracion | None:
         """Retorna una config de generación por id (delega en RestriccionGeneracionService)."""
         return self._restriccion_generacion_service().get_config_generacion(config_id)
 
-    def actualizar_config_generacion(
-        self, config_id: int, **campos
-    ) -> ConfigGeneracion:
+    def actualizar_config_generacion(self, config_id: int, **campos) -> ConfigGeneracion:
         """Actualiza los campos indicados de una config de generación (delega en RestriccionGeneracionService)."""
         return self._restriccion_generacion_service().actualizar_config_generacion(
             config_id, **campos
@@ -345,23 +326,15 @@ class InfraestructuraService:
 
     def eliminar_config_generacion(self, config_id: int) -> bool:
         """Elimina una config de generación (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().eliminar_config_generacion(
-            config_id
-        )
+        return self._restriccion_generacion_service().eliminar_config_generacion(config_id)
 
-    def cambiar_estado_config(
-        self, config_id: int, nuevo_estado: str
-    ) -> ConfigGeneracion:
+    def cambiar_estado_config(self, config_id: int, nuevo_estado: str) -> ConfigGeneracion:
         """Cambia el estado de una config de generación (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().cambiar_estado_config(
-            config_id, nuevo_estado
-        )
+        return self._restriccion_generacion_service().cambiar_estado_config(config_id, nuevo_estado)
 
     def duplicar_config_generacion(self, config_id: int) -> ConfigGeneracion:
         """Duplica una config de generación (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().duplicar_config_generacion(
-            config_id
-        )
+        return self._restriccion_generacion_service().duplicar_config_generacion(config_id)
 
     # ── Salas (paso_17) — delega en SalaService (mejora_01) ─────────────────────
 
@@ -411,9 +384,7 @@ class InfraestructuraService:
 
     def listar_bloques_anclados(self, escenario_id: int) -> list[BloqueAnclado]:
         """Lista los bloques anclados de un escenario (delega en RestriccionGeneracionService)."""
-        return self._restriccion_generacion_service().listar_bloques_anclados(
-            escenario_id
-        )
+        return self._restriccion_generacion_service().listar_bloques_anclados(escenario_id)
 
     def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado:
         """Crea un bloque anclado (delega en RestriccionGeneracionService)."""

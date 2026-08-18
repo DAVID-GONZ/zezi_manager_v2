@@ -4,6 +4,7 @@ activity_feed.py — Feed de actividad reciente con timeline vertical.
 Componente de presentación puro: recibe lista de ActivityItem,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from src.interface.design.components.section_panel import section_panel
 @dataclass
 class ActivityItem:
     """Un registro de actividad para el feed."""
+
     etiqueta: str
     categoria: str
     timestamp: datetime | str | None
@@ -28,8 +30,10 @@ def _tiempo_relativo(ts: datetime | str | None) -> str:
         if ts is None:
             return "—"
         fecha = (
-            datetime.fromisoformat(ts) if isinstance(ts, str) and "T" in ts
-            else datetime.strptime(ts[:19], "%Y-%m-%d %H:%M:%S") if isinstance(ts, str)
+            datetime.fromisoformat(ts)
+            if isinstance(ts, str) and "T" in ts
+            else datetime.strptime(ts[:19], "%Y-%m-%d %H:%M:%S")
+            if isinstance(ts, str)
             else ts
         )
         delta = datetime.now() - fecha

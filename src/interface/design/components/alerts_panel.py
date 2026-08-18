@@ -4,6 +4,7 @@ alerts_panel.py — Panel de alertas pendientes con resumen y lista.
 Componente de presentación puro: recibe lista de AlertItem,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from src.interface.design.theme import ThemeManager
 @dataclass
 class AlertItem:
     """Una alerta para mostrar en el panel."""
+
     nivel: str
     tipo: str
     descripcion: str = ""

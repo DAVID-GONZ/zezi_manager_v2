@@ -1,6 +1,7 @@
 """
 NullExporter — fallback cuando las dependencias de exportación no están instaladas.
 """
+
 from __future__ import annotations
 
 import csv
@@ -35,8 +36,7 @@ class NullExporter(IExporterService):
         ruta_destino: Path | None = None,
     ) -> bytes:
         raise RuntimeError(
-            "El exportador Excel no está disponible. "
-            "Instala openpyxl: pip install openpyxl"
+            "El exportador Excel no está disponible. Instala openpyxl: pip install openpyxl"
         )
 
     def exportar_pdf(

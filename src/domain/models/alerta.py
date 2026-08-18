@@ -21,7 +21,7 @@ Reglas de negocio:
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -30,24 +30,26 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class TipoAlerta(str, Enum):
-    FALTAS_INJUSTIFICADAS     = "faltas_injustificadas"
-    PROMEDIO_BAJO             = "promedio_bajo"
-    MATERIAS_EN_RIESGO        = "materias_en_riesgo"
+
+class TipoAlerta(StrEnum):
+    FALTAS_INJUSTIFICADAS = "faltas_injustificadas"
+    PROMEDIO_BAJO = "promedio_bajo"
+    MATERIAS_EN_RIESGO = "materias_en_riesgo"
     PLAN_MEJORAMIENTO_VENCIDO = "plan_mejoramiento_vencido"
-    HABILITACION_PENDIENTE    = "habilitacion_pendiente"
-    SEGUIMIENTO_REQUERIDO     = "seguimiento_requerido"
+    HABILITACION_PENDIENTE = "habilitacion_pendiente"
+    SEGUIMIENTO_REQUERIDO = "seguimiento_requerido"
 
 
-class NivelAlerta(str, Enum):
-    INFO        = "info"
+class NivelAlerta(StrEnum):
+    INFO = "info"
     ADVERTENCIA = "advertencia"
-    CRITICA     = "critica"
+    CRITICA = "critica"
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
+
 
 class ConfiguracionAlerta(BaseModel):
     """
@@ -60,22 +62,21 @@ class ConfiguracionAlerta(BaseModel):
       - plan_mejoramiento_vencido: días de vencimiento antes de alertar (ej. 1)
       - habilitacion_pendiente:    días antes de la fecha límite (ej. 1)
     """
-    id:                  int | None  = None
-    anio_id:             int
-    tipo_alerta:         TipoAlerta
-    umbral:              float
-    activa:              bool        = True
-    notificar_docente:   bool        = True
-    notificar_director:  bool        = False
-    notificar_acudiente: bool        = False
+
+    id: int | None = None
+    anio_id: int
+    tipo_alerta: TipoAlerta
+    umbral: float
+    activa: bool = True
+    notificar_docente: bool = True
+    notificar_director: bool = False
+    notificar_acudiente: bool = False
 
     @field_validator("umbral")
     @classmethod
     def validar_umbral(cls, v: float) -> float:
         if v <= 0:
-            raise ValueError(
-                f"El umbral debe ser mayor que cero (recibido: {v})."
-            )
+            raise ValueError(f"El umbral debe ser mayor que cero (recibido: {v}).")
         return v
 
     @model_validator(mode="after")
@@ -96,12 +97,11 @@ class ConfiguracionAlerta(BaseModel):
                     f"El umbral para '{self.tipo_alerta.value}' debe ser un "
                     f"número entero (recibido: {self.umbral})."
                 )
-        elif self.tipo_alerta == TipoAlerta.PROMEDIO_BAJO:
-            if not (0 <= self.umbral <= 100):
-                raise ValueError(
-                    f"El umbral para 'promedio_bajo' debe estar entre 0 y 100 "
-                    f"(recibido: {self.umbral})."
-                )
+        elif self.tipo_alerta == TipoAlerta.PROMEDIO_BAJO and not (0 <= self.umbral <= 100):
+            raise ValueError(
+                f"El umbral para 'promedio_bajo' debe estar entre 0 y 100 "
+                f"(recibido: {self.umbral})."
+            )
         return self
 
     @property
@@ -122,17 +122,18 @@ class Alerta(BaseModel):
     Una vez resuelta, la alerta es inmutable: no puede volver a abrirse
     ni resolverse de nuevo.
     """
-    id:                     int | None      = None
-    estudiante_id:          int
-    tipo_alerta:            TipoAlerta
-    nivel:                  NivelAlerta     = NivelAlerta.ADVERTENCIA
-    descripcion:            str
-    fecha_generacion:       datetime        = Field(default_factory=datetime.now)
-    resuelta:               bool            = False
-    fecha_resolucion:       datetime | None = None
-    usuario_resolucion_id:  int | None      = None
-    observacion_resolucion: str | None      = None
-    usuario_destino_id:     int | None      = None
+
+    id: int | None = None
+    estudiante_id: int
+    tipo_alerta: TipoAlerta
+    nivel: NivelAlerta = NivelAlerta.ADVERTENCIA
+    descripcion: str
+    fecha_generacion: datetime = Field(default_factory=datetime.now)
+    resuelta: bool = False
+    fecha_resolucion: datetime | None = None
+    usuario_resolucion_id: int | None = None
+    observacion_resolucion: str | None = None
+    usuario_destino_id: int | None = None
 
     @field_validator("estudiante_id", mode="before")
     @classmethod
@@ -150,9 +151,7 @@ class Alerta(BaseModel):
         if not v:
             raise ValueError("La descripción de la alerta no puede estar vacía.")
         if len(v) > 500:
-            raise ValueError(
-                f"La descripción no puede exceder 500 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La descripción no puede exceder 500 caracteres (tiene {len(v)}).")
         return v
 
     @model_validator(mode="after")
@@ -162,16 +161,11 @@ class Alerta(BaseModel):
         Si no está resuelta, no debe tener datos de resolución.
         """
         if self.resuelta and self.fecha_resolucion is None:
-            raise ValueError(
-                "Una alerta resuelta debe tener fecha_resolucion."
-            )
+            raise ValueError("Una alerta resuelta debe tener fecha_resolucion.")
         if not self.resuelta and (
-            self.fecha_resolucion is not None
-            or self.usuario_resolucion_id is not None
+            self.fecha_resolucion is not None or self.usuario_resolucion_id is not None
         ):
-            raise ValueError(
-                "Una alerta pendiente no puede tener datos de resolución."
-            )
+            raise ValueError("Una alerta pendiente no puede tener datos de resolución.")
         return self
 
     # ------------------------------------------------------------------
@@ -219,24 +213,28 @@ class Alerta(BaseModel):
                 f"La alerta #{self.id} ya fue resuelta el "
                 f"{self.fecha_resolucion}. No se puede resolver de nuevo."
             )
-        return self.model_copy(update={
-            "resuelta":               True,
-            "fecha_resolucion":       fecha or datetime.now(),
-            "usuario_resolucion_id":  usuario_id,
-            "observacion_resolucion": observacion.strip() if observacion else None,
-        })
+        return self.model_copy(
+            update={
+                "resuelta": True,
+                "fecha_resolucion": fecha or datetime.now(),
+                "usuario_resolucion_id": usuario_id,
+                "observacion_resolucion": observacion.strip() if observacion else None,
+            }
+        )
 
 
 # =============================================================================
 # DTOs
 # =============================================================================
 
+
 class CrearAlertaDTO(BaseModel):
     """Datos necesarios para generar una alerta nueva."""
+
     estudiante_id: int
-    tipo_alerta:   TipoAlerta
-    nivel:         NivelAlerta = NivelAlerta.ADVERTENCIA
-    descripcion:   str
+    tipo_alerta: TipoAlerta
+    nivel: NivelAlerta = NivelAlerta.ADVERTENCIA
+    descripcion: str
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -252,7 +250,8 @@ class CrearAlertaDTO(BaseModel):
 
 class ResolverAlertaDTO(BaseModel):
     """Datos para marcar una alerta como resuelta."""
-    usuario_id:  int
+
+    usuario_id: int
     observacion: str | None = None
 
     @field_validator("observacion", mode="before")
@@ -266,12 +265,13 @@ class ResolverAlertaDTO(BaseModel):
 
 class FiltroAlertasDTO(BaseModel):
     """Parámetros para listar alertas."""
-    estudiante_id: int | None       = None
-    tipo_alerta:   TipoAlerta | None = None
-    nivel:         NivelAlerta | None = None
-    solo_pendientes: bool           = True
-    pagina:        int              = Field(default=1, ge=1)
-    por_pagina:    int              = Field(default=50, ge=1, le=200)
+
+    estudiante_id: int | None = None
+    tipo_alerta: TipoAlerta | None = None
+    nivel: NivelAlerta | None = None
+    solo_pendientes: bool = True
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=50, ge=1, le=200)
 
 
 # =============================================================================

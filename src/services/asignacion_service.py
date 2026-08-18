@@ -3,6 +3,7 @@ AsignacionService
 ==================
 Orquesta los casos de uso del módulo de Asignaciones académicas.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,19 +26,22 @@ from src.services.solo_lectura import requiere_escritura
 # DTOs de resultado (consumidos por las vistas — se re-exportan desde aquí)
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class CupoDocenteDTO:
     """Cupo de un docente para una (asignatura, grupo) con sus horas."""
+
     usuario_id: int
     carga_actual: int
-    cap_efectivo: int | None      # None = sin tope configurado
+    cap_efectivo: int | None  # None = sin tope configurado
     tiene_cupo: bool
-    es_actual: bool               # ya está asignado a esa materia/grupo
+    es_actual: bool  # ya está asignado a esa materia/grupo
 
 
 @dataclass(frozen=True)
 class CompletitudGrupoDTO:
     """Cobertura del plan de estudios de un grupo en un periodo."""
+
     horas_asignadas: int
     horas_totales: int
 
@@ -61,20 +65,20 @@ class AsignacionService:
     def __init__(
         self,
         repo: IAsignacionRepository,
-        periodo_repo:  IPeriodoRepository           | None = None,
-        auditoria:     IAuditoriaRepository         | None = None,
-        usuario_repo:  IUsuarioRepository           | None = None,
-        infra_repo:    IInfraestructuraRepository   | None = None,
+        periodo_repo: IPeriodoRepository | None = None,
+        auditoria: IAuditoriaRepository | None = None,
+        usuario_repo: IUsuarioRepository | None = None,
+        infra_repo: IInfraestructuraRepository | None = None,
         plan_svc=None,
     ) -> None:
         """Inyecta el repo de asignaciones y las dependencias opcionales
         (periodos, auditoría, usuarios, infraestructura y plan de estudios)."""
-        self._repo         = repo
+        self._repo = repo
         self._periodo_repo = periodo_repo
-        self._auditoria    = auditoria
+        self._auditoria = auditoria
         self._usuario_repo = usuario_repo
-        self._infra_repo   = infra_repo
-        self._plan_svc     = plan_svc
+        self._infra_repo = infra_repo
+        self._plan_svc = plan_svc
 
     # ------------------------------------------------------------------
     # Horas y carga docente (vía plan de estudios, con fallback global)
@@ -95,13 +99,9 @@ class AsignacionService:
     def carga_docente(self, usuario_id: int, periodo_id: int) -> int:
         """Suma de horas semanales asignadas (activas) a un docente en un periodo."""
         activas = self._repo.listar(
-            FiltroAsignacionesDTO(
-                usuario_id=usuario_id, periodo_id=periodo_id, solo_activas=True
-            )
+            FiltroAsignacionesDTO(usuario_id=usuario_id, periodo_id=periodo_id, solo_activas=True)
         )
-        return sum(
-            self.horas_de_asignacion(a.grupo_id, a.asignatura_id) for a in activas
-        )
+        return sum(self.horas_de_asignacion(a.grupo_id, a.asignatura_id) for a in activas)
 
     @requiere_escritura
     def desactivar_por_grado_asignatura(
@@ -116,9 +116,7 @@ class AsignacionService:
         n = 0
         for g in grupos:
             activas = self._repo.listar(
-                FiltroAsignacionesDTO(
-                    grupo_id=g.id, asignatura_id=asignatura_id, solo_activas=True
-                )
+                FiltroAsignacionesDTO(grupo_id=g.id, asignatura_id=asignatura_id, solo_activas=True)
             )
             for a in activas:
                 self.desactivar(a.id, usuario_id=usuario_id)
@@ -150,8 +148,10 @@ class AsignacionService:
         """
         activas = self._repo.listar(
             FiltroAsignacionesDTO(
-                grupo_id=grupo_id, asignatura_id=asignatura_id,
-                periodo_id=periodo_id, solo_activas=True,
+                grupo_id=grupo_id,
+                asignatura_id=asignatura_id,
+                periodo_id=periodo_id,
+                solo_activas=True,
             )
         )
         activa = activas[0] if activas else None
@@ -170,13 +170,14 @@ class AsignacionService:
         # ¿existe un combo inactivo para reactivar?
         todas = self._repo.listar(
             FiltroAsignacionesDTO(
-                grupo_id=grupo_id, asignatura_id=asignatura_id,
-                periodo_id=periodo_id, solo_activas=False,
+                grupo_id=grupo_id,
+                asignatura_id=asignatura_id,
+                periodo_id=periodo_id,
+                solo_activas=False,
             )
         )
         destino = next(
-            (a for a in todas
-             if a.usuario_id == nuevo_usuario_id and not a.activo),
+            (a for a in todas if a.usuario_id == nuevo_usuario_id and not a.activo),
             None,
         )
         if destino is not None:
@@ -184,8 +185,10 @@ class AsignacionService:
 
         return self.crear_asignacion(
             NuevaAsignacionDTO(
-                usuario_id=nuevo_usuario_id, grupo_id=grupo_id,
-                asignatura_id=asignatura_id, periodo_id=periodo_id,
+                usuario_id=nuevo_usuario_id,
+                grupo_id=grupo_id,
+                asignatura_id=asignatura_id,
+                periodo_id=periodo_id,
             ),
             usuario_id=usuario_id,
         )
@@ -211,7 +214,7 @@ class AsignacionService:
         """
         out: dict[int, CupoDocenteDTO] = {}
         for did in docente_ids:
-            es_actual = (did == usuario_actual_id)
+            es_actual = did == usuario_actual_id
             carga = self.carga_docente(did, periodo_id)
             cap = None
             if self._usuario_repo is not None:
@@ -223,8 +226,11 @@ class AsignacionService:
                 proyectado = carga + (0 if es_actual else (horas or 0))
                 tiene_cupo = proyectado <= cap
             out[did] = CupoDocenteDTO(
-                usuario_id=did, carga_actual=carga, cap_efectivo=cap,
-                tiene_cupo=tiene_cupo or es_actual, es_actual=es_actual,
+                usuario_id=did,
+                carga_actual=carga,
+                cap_efectivo=cap,
+                tiene_cupo=tiene_cupo or es_actual,
+                es_actual=es_actual,
             )
         return out
 
@@ -238,35 +244,24 @@ class AsignacionService:
         """(horas del plan ya asignadas, total del plan) para un grupo+periodo."""
         if grado is None or self._plan_svc is None:
             return CompletitudGrupoDTO(0, 0)
-        plan = {
-            p.asignatura_id: p.horas_semanales
-            for p in self._plan_svc.por_grado(grado)
-        }
+        plan = {p.asignatura_id: p.horas_semanales for p in self._plan_svc.por_grado(grado)}
         total = sum(plan.values())
         asigns = self._repo.listar(
-            FiltroAsignacionesDTO(
-                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True
-            )
+            FiltroAsignacionesDTO(grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True)
         )
         asignadas = sum(plan.get(a.asignatura_id, 0) for a in asigns)
         return CompletitudGrupoDTO(asignadas, total)
 
-    def materias_sin_docente(
-        self, grupo_id: int, grado: int | None, periodo_id: int
-    ) -> list[int]:
+    def materias_sin_docente(self, grupo_id: int, grado: int | None, periodo_id: int) -> list[int]:
         """IDs de asignaturas del plan del grado sin docente activo en el grupo."""
         if grado is None or self._plan_svc is None:
             return []
         asigns = self._repo.listar(
-            FiltroAsignacionesDTO(
-                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True
-            )
+            FiltroAsignacionesDTO(grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True)
         )
         ya = {a.asignatura_id for a in asigns}
         return [
-            p.asignatura_id
-            for p in self._plan_svc.por_grado(grado)
-            if p.asignatura_id not in ya
+            p.asignatura_id for p in self._plan_svc.por_grado(grado) if p.asignatura_id not in ya
         ]
 
     # ------------------------------------------------------------------
@@ -285,9 +280,7 @@ class AsignacionService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -313,7 +306,8 @@ class AsignacionService:
             nombre = usuario.nombre_completo or usuario.usuario
             extra_txt = (
                 f" ({usuario.carga_horaria_max}h base + {usuario.horas_extra}h extra)"
-                if usuario.horas_extra else ""
+                if usuario.horas_extra
+                else ""
             )
             raise ValueError(
                 f"Esta asignación elevaría la carga de {nombre} a {total}h/semana, "
@@ -347,18 +341,14 @@ class AsignacionService:
         if self._periodo_repo is not None:
             periodo = self._periodo_repo.get_by_id(dto.periodo_id)
             if periodo is None:
-                raise ValueError(
-                    f"Periodo con id {dto.periodo_id} no existe."
-                )
+                raise ValueError(f"Periodo con id {dto.periodo_id} no existe.")
             if not periodo.esta_abierto:
                 raise ValueError(
                     f"El periodo '{periodo.nombre}' está cerrado. "
                     "No se pueden crear asignaciones en periodos cerrados."
                 )
 
-        if self._repo.existe(
-            dto.grupo_id, dto.asignatura_id, dto.usuario_id, dto.periodo_id
-        ):
+        if self._repo.existe(dto.grupo_id, dto.asignatura_id, dto.usuario_id, dto.periodo_id):
             raise ValueError(
                 "Ya existe una asignación con esa combinación de grupo, "
                 "asignatura, docente y periodo."
@@ -369,8 +359,12 @@ class AsignacionService:
         asignacion = dto.to_asignacion()
         asignacion = self._repo.guardar(asignacion)
         self._auditar(
-            AccionCambio.CREATE, "asignaciones", asignacion.id,
-            None, asignacion.model_dump(mode="json"), usuario_id,
+            AccionCambio.CREATE,
+            "asignaciones",
+            asignacion.id,
+            None,
+            asignacion.model_dump(mode="json"),
+            usuario_id,
         )
         return asignacion
 
@@ -383,15 +377,17 @@ class AsignacionService:
         """Desactiva una asignación (soft delete)."""
         asig = self._get_asignacion_o_lanzar(asignacion_id)
         if not asig.activo:
-            raise ValueError(
-                f"La asignación {asignacion_id} ya está desactivada."
-            )
+            raise ValueError(f"La asignación {asignacion_id} ya está desactivada.")
         datos_ant = asig.model_dump(mode="json")
         self._repo.desactivar(asignacion_id)
         asig_desactivada = asig.model_copy(update={"activo": False})
         self._auditar(
-            AccionCambio.UPDATE, "asignaciones", asignacion_id,
-            datos_ant, asig_desactivada.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "asignaciones",
+            asignacion_id,
+            datos_ant,
+            asig_desactivada.model_dump(mode="json"),
+            usuario_id,
         )
         return asig_desactivada
 
@@ -409,8 +405,12 @@ class AsignacionService:
         self._repo.reactivar(asignacion_id)
         asig_react = asig.model_copy(update={"activo": True})
         self._auditar(
-            AccionCambio.UPDATE, "asignaciones", asignacion_id,
-            datos_ant, asig_react.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "asignaciones",
+            asignacion_id,
+            datos_ant,
+            asig_react.model_dump(mode="json"),
+            usuario_id,
         )
         return asig_react
 
@@ -428,12 +428,8 @@ class AsignacionService:
         """
         asig = self._get_asignacion_o_lanzar(asignacion_id)
         if asig.usuario_id == nuevo_usuario_id:
-            raise ValueError(
-                "El nuevo docente es el mismo que el actual."
-            )
-        if self._repo.existe(
-            asig.grupo_id, asig.asignatura_id, nuevo_usuario_id, asig.periodo_id
-        ):
+            raise ValueError("El nuevo docente es el mismo que el actual.")
+        if self._repo.existe(asig.grupo_id, asig.asignatura_id, nuevo_usuario_id, asig.periodo_id):
             raise ValueError(
                 "Ya existe una asignación con ese docente para el mismo "
                 "grupo, asignatura y periodo."
@@ -442,8 +438,12 @@ class AsignacionService:
         self._repo.reasignar_docente(asignacion_id, nuevo_usuario_id)
         asig_reasignada = asig.model_copy(update={"usuario_id": nuevo_usuario_id})
         self._auditar(
-            AccionCambio.UPDATE, "asignaciones", asignacion_id,
-            datos_ant, asig_reasignada.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "asignaciones",
+            asignacion_id,
+            datos_ant,
+            asig_reasignada.model_dump(mode="json"),
+            usuario_id,
         )
         return asig_reasignada
 
@@ -459,6 +459,7 @@ class AsignacionService:
         if filtro.institucion_id is not None:
             return filtro
         from src.services.contexto_tenant import institucion_actual
+
         return filtro.model_copy(update={"institucion_id": institucion_actual()})
 
     def listar_con_info(
@@ -479,6 +480,7 @@ class AsignacionService:
         director → su institución.
         """
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar_por_docente(
             usuario_id, periodo_id, institucion_id=institucion_actual()
         )

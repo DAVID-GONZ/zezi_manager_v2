@@ -72,6 +72,8 @@ docs/_build/
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/

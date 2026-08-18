@@ -64,6 +64,7 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
 ## Tareas
 
 ### T1 — `login_throttle.py` (mecanismo neutral en memoria) — A1
+
 - Nuevo módulo en `src/services/` (sin importar interfaz ni infraestructura,
   igual que `solo_lectura.py`). Estado privado: `dict[str, _Estado]` por username
   en minúsculas.
@@ -76,6 +77,7 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
 - **Verificación:** `python scripts/check_imports.py --layer services` exit 0.
 
 ### T2 — Login con throttle + auditoría de fallos — A1
+
 - En `login.py`, antes de autenticar: si `estado_bloqueo(usuario)` indica
   bloqueado → mensaje "Demasiados intentos. Espera N s." y abortar (sin tocar
   el servicio de auth).
@@ -87,11 +89,13 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
 - **Verificación:** `python scripts/check_design.py --file src/interface/pages/login.py` exit 0; `check_imports --layer interface` exit 0.
 
 ### T3 — Campo de dominio `debe_cambiar_password` — A2 (CAMBIO DE MODELO)
+
 - En `Usuario` (`usuario.py`) añadir `debe_cambiar_password: bool = False`.
   Default seguro (compatibilidad: usuarios existentes = no forzado).
 - **Verificación:** `python -m pytest tests/unit/domain/ -q` y `tests/unit/services/ -q` sin regresiones.
 
 ### T4 — Columna `usuarios.debe_cambiar_password` + repo — A2 (CAMBIO DE SCHEMA)
+
 - `schema.py`: añadir `debe_cambiar_password BOOLEAN NOT NULL DEFAULT 0` a la
   tabla `usuarios` (CREATE) **y** `ALTER TABLE ... ADD COLUMN` idempotente en la
   ruta de migración de `init_db` (no perder datos de BD existentes).
@@ -104,6 +108,7 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
   (añadir cobertura del flag).
 
 ### T5 — Servicio: temporal fuerte + ciclo del flag — A2
+
 - En `usuario_service.py`:
   - `@staticmethod _generar_password_temporal() -> str` usando `secrets`
     (≥12 chars, alfanumérico). NO loguear el valor.
@@ -121,6 +126,7 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
   (casos: crear sin pass → temporal + flag; reset → flag; cambiar → flag off).
 
 ### T6 — Página `/cambiar-password` + enforcement en el guard — A2
+
 - Nueva `cambiar_password.py`: formulario (actual, nueva, confirmar) que llama
   `usuario_service().cambiar_password(...)`; al éxito limpia el flag en storage
   y navega a `/inicio`. Patrón de página estándar (sin `app_layout` completo o
@@ -136,11 +142,13 @@ Baseline antes de empezar: `python init.py` → **1195 passed, 1 skipped**.
   `check_imports --layer interface` exit 0.
 
 ### T7 — Verificación integral
+
 - `python init.py` **VERDE** (≥1195 passed; sumar los tests nuevos).
 - `python scripts/check_tasks.py`.
 - Escribir `progress/impl_seguridad_01_credenciales.md` (formato implementer.md).
 
 ## criterio_done
+
 Tras `MAX_INTENTOS` fallos el login bloquea temporalmente y audita
 `LOGIN_FALLIDO`; las cuentas creadas/reseteadas sin contraseña explícita reciben
 una temporal aleatoria fuerte (nunca el username) y quedan con

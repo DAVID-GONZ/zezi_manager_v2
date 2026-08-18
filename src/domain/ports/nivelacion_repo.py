@@ -3,6 +3,7 @@ Port: INivelacionRepository
 ==============================
 Contrato de acceso a datos para el módulo de nivelación.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -15,7 +16,6 @@ from ..models.nivelacion import (
 
 
 class INivelacionRepository(ABC):
-
     # =========================================================================
     # ActividadNivelacion
     # =========================================================================

@@ -1,6 +1,7 @@
 """
 BcryptAuthService — implementación bcrypt de IAuthenticationService.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -111,9 +112,7 @@ class BcryptAuthService(IAuthenticationService):
             RuntimeError: si el servicio fue construido sin repositorio.
         """
         if self._repo is None:
-            raise RuntimeError(
-                "BcryptAuthService requiere un repo para autenticar usuarios."
-            )
+            raise RuntimeError("BcryptAuthService requiere un repo para autenticar usuarios.")
 
         # 1. Buscar el usuario por username (incluye inactivos para distinguir
         #    "cuenta desactivada" de "usuario no existe").

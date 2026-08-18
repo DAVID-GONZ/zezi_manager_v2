@@ -5,14 +5,20 @@ from datetime import date
 
 import pytest
 
-from src.domain.models.alerta import Alerta, ConfiguracionAlerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
+from src.domain.models.alerta import (
+    Alerta,
+    ConfiguracionAlerta,
+    FiltroAlertasDTO,
+    NivelAlerta,
+    TipoAlerta,
+)
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
     NotaComportamiento,
-    NuevaCategoriaDTO,
     NuevaAlertaSeguimientoDTO,
+    NuevaCategoriaDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
@@ -323,7 +329,7 @@ class TestEnforcementAutorizacion:
         assert stub.llamadas == [("profesor", 99, 10)]
 
     def test_sin_provider_es_compat_retro(self):
-        svc, repo = _make_svc()  # sin provider
+        svc, _repo = _make_svc()  # sin provider
         reg = svc.registrar_comportamiento(
             self._dto_registro(), usuario_id=99, usuario_rol="profesor",
         )
@@ -725,7 +731,7 @@ class TestObservacionAutorizacionPorObjeto:
 
     def test_sin_asignacion_provider_no_bloquea_a_profesor(self):
         """Sin asignacion_svc_provider, compat retro: no bloquea aunque sea profesor."""
-        svc, repo = _make_svc()  # sin asignacion_svc_provider
+        svc, _repo = _make_svc()  # sin asignacion_svc_provider
         dto = NuevaObservacionDTO(
             estudiante_id=1, asignacion_id=3, periodo_id=5,
             texto="Obs sin provider", categoria_id=1,
@@ -1161,7 +1167,7 @@ class TestCrearAlertaSeguimientoManual:
 
     def test_crear_alerta_seguimiento_coordinador_permitido(self):
         """Coordinador también puede crear alertas de seguimiento."""
-        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        svc, _, _alerta_repo = self._make_svc_con_alerta_repo()
         dto = NuevaAlertaSeguimientoDTO(
             estudiante_id=3,
             usuario_destino_id=7,
@@ -1188,7 +1194,7 @@ class TestCrearAlertaSeguimientoManual:
 
     def test_crear_alerta_seguimiento_nivel_critica(self):
         """Se puede crear alerta con nivel CRITICA."""
-        svc, _, alerta_repo = self._make_svc_con_alerta_repo()
+        svc, _, _alerta_repo = self._make_svc_con_alerta_repo()
         dto = NuevaAlertaSeguimientoDTO(
             estudiante_id=8,
             usuario_destino_id=4,
@@ -1316,11 +1322,11 @@ def _svc_vista_360(
     """Factory para tests de vista_360 con dependencias configurables."""
     conv_repo = conv_repo or FakeConvRepo()
     est = estudiante or _FakeEstWithGrupo(1)
-    svc_kwargs: dict = dict(
-        repo=conv_repo,
-        alerta_repo=alerta_repo,
-        estudiante_svc_provider=lambda: _FakeEstSvcById(est),
-    )
+    svc_kwargs: dict = {
+        "repo": conv_repo,
+        "alerta_repo": alerta_repo,
+        "estudiante_svc_provider": lambda: _FakeEstSvcById(est),
+    }
     if con_niveles:
         svc_kwargs["configuracion_svc_provider"] = lambda: _FakeConfigSvc(_NIVELES)
         svc_kwargs["periodo_svc_provider"]        = lambda: _FakePeriodoSvc()

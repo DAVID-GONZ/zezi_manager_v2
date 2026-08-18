@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Entidad principal
 # =============================================================================
 
+
 class ConfiguracionAnio(BaseModel):
     """
     Configuración del año lectivo activo.
@@ -41,31 +42,32 @@ class ConfiguracionAnio(BaseModel):
     Los módulos de notas y asistencia usan el año activo como referencia
     para determinar qué periodos y qué configuraciones están vigentes.
     """
-    id:                     int | None  = None
-    anio:                   int
+
+    id: int | None = None
+    anio: int
     # Multi-tenant (paso_27): institución dueña de esta configuración.
     # Nullable a nivel de modelo para compatibilidad con la migración/backfill;
     # el repo y el servicio siempre lo resuelven a la institución por defecto.
-    institucion_id:         int | None  = None
-    fecha_inicio_clases:    date | None = None
-    fecha_fin_clases:       date | None = None
-    nota_minima_aprobacion: float       = 60.0
-    activo:                 bool        = True
+    institucion_id: int | None = None
+    fecha_inicio_clases: date | None = None
+    fecha_fin_clases: date | None = None
+    nota_minima_aprobacion: float = 60.0
+    activo: bool = True
 
     # Escala de notas
-    nota_minima_escala:     float       = 0.0    # límite inferior de la escala
-    nota_maxima_escala:     float       = 100.0  # límite superior de la escala
+    nota_minima_escala: float = 0.0  # límite inferior de la escala
+    nota_maxima_escala: float = 100.0  # límite superior de la escala
 
     # Datos institucionales (para boletines e informes)
-    nombre_institucion:     str         = "Institución Educativa"
-    dane_code:              str | None  = None
-    rector:                 str | None  = None
-    direccion:              str | None  = None
-    municipio:              str | None  = None
-    telefono_institucion:   str | None  = None
-    logo_path:              str | None  = None
-    logo_url:               str | None  = None  # URL del logo institucional (topbar/sidebar)
-    resolucion_aprobacion:  str | None  = None
+    nombre_institucion: str = "Institución Educativa"
+    dane_code: str | None = None
+    rector: str | None = None
+    direccion: str | None = None
+    municipio: str | None = None
+    telefono_institucion: str | None = None
+    logo_path: str | None = None
+    logo_url: str | None = None  # URL del logo institucional (topbar/sidebar)
+    resolucion_aprobacion: str | None = None
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -76,9 +78,7 @@ class ConfiguracionAnio(BaseModel):
     def validar_anio(cls, v: int) -> int:
         """El año lectivo debe estar en el rango válido 2000..2100."""
         if not (2000 <= v <= 2100):
-            raise ValueError(
-                f"El año debe estar entre 2000 y 2100 (recibido: {v})."
-            )
+            raise ValueError(f"El año debe estar entre 2000 y 2100 (recibido: {v}).")
         return v
 
     @field_validator("nota_minima_aprobacion")
@@ -86,9 +86,7 @@ class ConfiguracionAnio(BaseModel):
     def validar_nota_minima(cls, v: float) -> float:
         """La nota mínima de aprobación debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("nota_minima_escala", "nota_maxima_escala")
@@ -107,14 +105,18 @@ class ConfiguracionAnio(BaseModel):
         if not v:
             raise ValueError("El nombre de la institución no puede estar vacío.")
         if len(v) > 200:
-            raise ValueError(
-                f"El nombre no puede exceder 200 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 200 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator(
-        "dane_code", "rector", "direccion", "municipio",
-        "telefono_institucion", "logo_path", "logo_url", "resolucion_aprobacion",
+        "dane_code",
+        "rector",
+        "direccion",
+        "municipio",
+        "telefono_institucion",
+        "logo_path",
+        "logo_url",
+        "resolucion_aprobacion",
         mode="before",
     )
     @classmethod
@@ -189,11 +191,7 @@ class ConfiguracionAnio(BaseModel):
     def aprobacion_en_rango(self) -> bool:
         """True si la nota mínima de aprobación cae dentro de la escala
         [nota_minima_escala, nota_maxima_escala]."""
-        return (
-            self.nota_minima_escala
-            <= self.nota_minima_aprobacion
-            <= self.nota_maxima_escala
-        )
+        return self.nota_minima_escala <= self.nota_minima_aprobacion <= self.nota_maxima_escala
 
     # ------------------------------------------------------------------
     # Transiciones de estado
@@ -219,18 +217,20 @@ class ConfiguracionAnio(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevaConfiguracionAnioDTO(BaseModel):
     """Datos para crear un año lectivo nuevo."""
-    anio:                   int
+
+    anio: int
     # Multi-tenant (paso_27): si falta, el servicio asigna la institución
     # por defecto (#1).
-    institucion_id:         int | None  = None
-    fecha_inicio_clases:    date | None = None
-    fecha_fin_clases:       date | None = None
-    nota_minima_aprobacion: float       = 60.0
-    nota_minima_escala:     float       = 0.0
-    nota_maxima_escala:     float       = 100.0
-    nombre_institucion:     str         = "Institución Educativa"
+    institucion_id: int | None = None
+    fecha_inicio_clases: date | None = None
+    fecha_fin_clases: date | None = None
+    nota_minima_aprobacion: float = 60.0
+    nota_minima_escala: float = 0.0
+    nota_maxima_escala: float = 100.0
+    nombre_institucion: str = "Institución Educativa"
 
     @field_validator("anio")
     @classmethod
@@ -274,13 +274,14 @@ class NuevaConfiguracionAnioDTO(BaseModel):
 
 class ActualizarConfiguracionAnioDTO(BaseModel):
     """Campos académicos actualizables. Todos opcionales."""
-    anio:                   int | None   = None
-    institucion_id:         int | None   = None
-    fecha_inicio_clases:    date | None  = None
-    fecha_fin_clases:       date | None  = None
+
+    anio: int | None = None
+    institucion_id: int | None = None
+    fecha_inicio_clases: date | None = None
+    fecha_fin_clases: date | None = None
     nota_minima_aprobacion: float | None = None
-    nota_minima_escala:     float | None = None
-    nota_maxima_escala:     float | None = None
+    nota_minima_escala: float | None = None
+    nota_maxima_escala: float | None = None
 
     @field_validator("nota_minima_aprobacion")
     @classmethod
@@ -303,13 +304,14 @@ class ActualizarInfoInstitucionalDTO(BaseModel):
     puedan actualizar la información del colegio sin
     afectar la configuración de notas.
     """
-    nombre_institucion:    str | None = None
-    dane_code:             str | None = None
-    rector:                str | None = None
-    direccion:             str | None = None
-    municipio:             str | None = None
-    telefono_institucion:  str | None = None
-    logo_path:             str | None = None
+
+    nombre_institucion: str | None = None
+    dane_code: str | None = None
+    rector: str | None = None
+    direccion: str | None = None
+    municipio: str | None = None
+    telefono_institucion: str | None = None
+    logo_path: str | None = None
     resolucion_aprobacion: str | None = None
 
     @field_validator("nombre_institucion", mode="before")
@@ -335,21 +337,20 @@ class InformacionInstitucionalDTO(BaseModel):
     El generador de informes construye este DTO desde ConfiguracionAnio.
     Todos los campos son obligatorios para garantizar boletines completos.
     """
-    anio:                   int
-    nombre_institucion:     str
-    dane_code:              str
-    rector:                 str
+
+    anio: int
+    nombre_institucion: str
+    dane_code: str
+    rector: str
     nota_minima_aprobacion: float
-    direccion:              str | None = None
-    municipio:              str | None = None
-    telefono_institucion:   str | None = None
-    logo_path:              str | None = None
-    resolucion_aprobacion:  str | None = None
+    direccion: str | None = None
+    municipio: str | None = None
+    telefono_institucion: str | None = None
+    logo_path: str | None = None
+    resolucion_aprobacion: str | None = None
 
     @classmethod
-    def desde_configuracion(
-        cls, config: ConfiguracionAnio
-    ) -> InformacionInstitucionalDTO:
+    def desde_configuracion(cls, config: ConfiguracionAnio) -> InformacionInstitucionalDTO:
         """
         Construye el DTO desde una ConfiguracionAnio.
         Falla explícitamente si faltan campos obligatorios para boletines.
@@ -365,25 +366,25 @@ class InformacionInstitucionalDTO(BaseModel):
                 "Completa la información institucional antes de generar boletines."
             )
         return cls(
-            anio                   = config.anio,
-            nombre_institucion     = config.nombre_institucion,
-            dane_code              = config.dane_code,
-            rector                 = config.rector,
-            nota_minima_aprobacion = config.nota_minima_aprobacion,
-            direccion              = config.direccion,
-            municipio              = config.municipio,
-            telefono_institucion   = config.telefono_institucion,
-            logo_path              = config.logo_path,
-            resolucion_aprobacion  = config.resolucion_aprobacion,
+            anio=config.anio,
+            nombre_institucion=config.nombre_institucion,
+            dane_code=config.dane_code,
+            rector=config.rector,
+            nota_minima_aprobacion=config.nota_minima_aprobacion,
+            direccion=config.direccion,
+            municipio=config.municipio,
+            telefono_institucion=config.telefono_institucion,
+            logo_path=config.logo_path,
+            resolucion_aprobacion=config.resolucion_aprobacion,
         )
 
     @classmethod
     def desde_institucion(
         cls,
-        institucion: "Any",  # Institucion — forward ref para evitar circular import
+        institucion: Any,  # Institucion — forward ref para evitar circular import
         anio: int,
         nota_minima_aprobacion: float,
-    ) -> "InformacionInstitucionalDTO":
+    ) -> InformacionInstitucionalDTO:
         """
         Construye el DTO desde la entidad Institucion (para previews de boletines).
         Falla si codigo_dane o rector son None, igual que desde_configuracion.
@@ -399,22 +400,23 @@ class InformacionInstitucionalDTO(BaseModel):
                 "Completa la información institucional antes de generar el preview."
             )
         return cls(
-            anio                   = anio,
-            nombre_institucion     = getattr(institucion, "nombre_oficial", None) or institucion.nombre,
-            dane_code              = institucion.codigo_dane,
-            rector                 = institucion.rector,
-            nota_minima_aprobacion = nota_minima_aprobacion,
-            direccion              = getattr(institucion, "direccion", None),
-            municipio              = getattr(institucion, "municipio", None),
-            telefono_institucion   = getattr(institucion, "telefono", None),
-            logo_path              = getattr(institucion, "logo_path", None),
-            resolucion_aprobacion  = getattr(institucion, "resolucion_aprobacion", None),
+            anio=anio,
+            nombre_institucion=getattr(institucion, "nombre_oficial", None) or institucion.nombre,
+            dane_code=institucion.codigo_dane,
+            rector=institucion.rector,
+            nota_minima_aprobacion=nota_minima_aprobacion,
+            direccion=getattr(institucion, "direccion", None),
+            municipio=getattr(institucion, "municipio", None),
+            telefono_institucion=getattr(institucion, "telefono", None),
+            logo_path=getattr(institucion, "logo_path", None),
+            resolucion_aprobacion=getattr(institucion, "resolucion_aprobacion", None),
         )
 
 
 # =============================================================================
 # NivelDesempeno — SIE por año (Decreto 1290)
 # =============================================================================
+
 
 class NivelDesempeno(BaseModel):
     """
@@ -431,13 +433,14 @@ class NivelDesempeno(BaseModel):
     El atributo `clasifica(nota)` permite resolver el nivel de una nota
     sin consultar la BD de nuevo.
     """
-    id:          int | None  = None
-    anio_id:     int
-    nombre:      str
-    rango_min:   float
-    rango_max:   float
-    descripcion: str | None  = None
-    orden:       int         = Field(default=0, ge=0)
+
+    id: int | None = None
+    anio_id: int
+    nombre: str
+    rango_min: float
+    rango_max: float
+    descripcion: str | None = None
+    orden: int = Field(default=0, ge=0)
 
     @field_validator("anio_id")
     @classmethod
@@ -463,9 +466,7 @@ class NivelDesempeno(BaseModel):
     def validar_rango(cls, v: float) -> float:
         """Los límites del rango del nivel deben estar en 0-100 (redondeados a 2)."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"El rango debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"El rango debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @model_validator(mode="after")
@@ -473,8 +474,7 @@ class NivelDesempeno(BaseModel):
         """El rango mínimo del nivel debe ser estrictamente menor que el máximo."""
         if self.rango_min >= self.rango_max:
             raise ValueError(
-                f"rango_min ({self.rango_min}) debe ser menor que "
-                f"rango_max ({self.rango_max})."
+                f"rango_min ({self.rango_min}) debe ser menor que rango_max ({self.rango_max})."
             )
         return self
 
@@ -496,12 +496,13 @@ class CriterioPromocion(BaseModel):
     ser promovido (condicionalmente o no), y la nota mínima para
     presentar habilitación.
     """
-    id:                         int | None  = None
-    anio_id:                    int
-    max_asignaturas_perdidas:   int         = Field(default=2, ge=0)
-    permite_condicionada:       bool        = True
-    nota_minima_habilitacion:   float       = 60.0
-    nota_minima_anual:          float       = 60.0
+
+    id: int | None = None
+    anio_id: int
+    max_asignaturas_perdidas: int = Field(default=2, ge=0)
+    permite_condicionada: bool = True
+    nota_minima_habilitacion: float = 60.0
+    nota_minima_anual: float = 60.0
 
     @field_validator("anio_id")
     @classmethod
@@ -516,9 +517,7 @@ class CriterioPromocion(BaseModel):
     def validar_nota(cls, v: float) -> float:
         """Las notas mínimas de promoción deben estar en 0-100 (redondeadas a 2)."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota mínima debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     def puede_ser_promovido(self, asignaturas_perdidas: int) -> bool:
@@ -534,14 +533,16 @@ class CriterioPromocion(BaseModel):
 # DTOs de NivelDesempeno y CriterioPromocion
 # =============================================================================
 
+
 class NuevoNivelDesempenoDTO(BaseModel):
     """Datos para crear un nivel de desempeño."""
-    anio_id:     int
-    nombre:      str
-    rango_min:   float
-    rango_max:   float
+
+    anio_id: int
+    nombre: str
+    rango_min: float
+    rango_max: float
     descripcion: str | None = None
-    orden:       int        = 0
+    orden: int = 0
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -574,16 +575,18 @@ class NuevoNivelDesempenoDTO(BaseModel):
 
 class ActualizarNivelDesempenoDTO(BaseModel):
     """Campos actualizables de un nivel de desempeño."""
-    nombre:      str | None   = None
-    rango_min:   float | None = None
-    rango_max:   float | None = None
-    descripcion: str | None   = None
-    orden:       int | None   = None
+
+    nombre: str | None = None
+    rango_min: float | None = None
+    rango_max: float | None = None
+    descripcion: str | None = None
+    orden: int | None = None
 
     def aplicar_a(self, nivel: NivelDesempeno) -> NivelDesempeno:
         """Devuelve una copia del nivel con solo los campos no nulos del DTO aplicados."""
         cambios = {k: v for k, v in self.model_dump().items() if v is not None}
         return nivel.model_copy(update=cambios) if cambios else nivel
+
 
 # =============================================================================
 # Exports

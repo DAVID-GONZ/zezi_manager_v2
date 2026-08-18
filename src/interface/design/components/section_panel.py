@@ -4,10 +4,11 @@ section_panel.py — Panel con encabezado estándar (icono + título).
 Componente de presentación puro: no llama servicios ni Container.
 Usa las clases .panel-card, .panel-header y .panel-title del CSS core.
 """
+
 from __future__ import annotations
 
-from contextlib import contextmanager
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from nicegui import ui
 

@@ -275,7 +275,7 @@ class TestCrearBloque:
 
     def test_r2_asignacion_inexistente(self):
         """R2: Si la asignación no existe → ValueError."""
-        svc, _, asig = _make_service()
+        svc, _, _asig = _make_service()
         # No añadimos nada al FakeAsignacionRepo → get_by_id retorna None
         with pytest.raises(ValueError, match="La asignación no existe"):
             svc.crear_bloque(ESCENARIO_ID, ASIG_ID, "Lunes", "07:00", "08:00")
@@ -304,7 +304,6 @@ class TestCrearBloque:
         infra._asignaturas[ASIGNATURA_ID] = _make_asignatura()
 
         call_count = [0]
-        original_existe_cruce = infra.existe_cruce
 
         def existe_cruce_selectivo(*args, usuario_id=None, grupo_id=None, sala=None, excluir_horario_id=None):
             call_count[0] += 1
@@ -415,7 +414,7 @@ class TestDisponibilidad:
         assert not cupo.excedido
 
     def test_disponibilidad_docente_sin_limite(self):
-        svc, infra, asig = _make_service(carga_max=None)
+        svc, infra, _asig = _make_service(carga_max=None)
         infra._bloques_docente = 10
         cupo = svc.disponibilidad_docente(ESCENARIO_ID, USUARIO_ID)
         assert cupo.maximas is None

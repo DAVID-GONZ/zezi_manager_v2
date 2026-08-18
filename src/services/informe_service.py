@@ -7,10 +7,12 @@ Coordina el repositorio de estadísticos (obtención de datos) con el
 IExporterService (conversión al formato de salida). No contiene lógica
 de presentación ni accede directamente a la BD.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from src.domain.models.dtos import (
     FormatoInforme,
@@ -26,37 +28,40 @@ if TYPE_CHECKING:
 # ── Sanitización de datos para exportación ───────────────────────────────────
 
 # Campos que nunca deben aparecer en un documento exportado
-_CAMPOS_EXCLUIR: frozenset[str] = frozenset({
-    "estudiante_id",
-    # Los flags *_perdio del consolidado anual son internos
-})
+_CAMPOS_EXCLUIR: frozenset[str] = frozenset(
+    {
+        "estudiante_id",
+        # Los flags *_perdio del consolidado anual son internos
+    }
+)
 
 # Renombre de claves de sistema a nombres semánticos en español
 _CAMPO_RENOMBRAR: dict[str, str] = {
-    "nombre_completo":       "Estudiante",
-    "documento":             "Documento",
-    "nombre_asignatura":     "Asignatura",
-    "promedio_periodo":      "Promedio",
-    "promedio":              "Promedio",
-    "posicion":              "#",
-    "presentes":             "Presentes",
+    "nombre_completo": "Estudiante",
+    "documento": "Documento",
+    "nombre_asignatura": "Asignatura",
+    "promedio_periodo": "Promedio",
+    "promedio": "Promedio",
+    "posicion": "#",
+    "presentes": "Presentes",
     "faltas_injustificadas": "F. Injustificadas",
-    "faltas_justificadas":   "F. Justificadas",
-    "retrasos":              "Retrasos",
-    "excusas":               "Excusas",
-    "porcentaje":            "% Asistencia",
-    "estado_promocion":      "Estado",
-    "definitiva":            "Definitiva",
-    "area_nombre":           "Área",
-    "total_asignaturas":     "Asignaturas",
+    "faltas_justificadas": "F. Justificadas",
+    "retrasos": "Retrasos",
+    "excusas": "Excusas",
+    "porcentaje": "% Asistencia",
+    "estado_promocion": "Estado",
+    "definitiva": "Definitiva",
+    "area_nombre": "Área",
+    "total_asignaturas": "Asignaturas",
 }
 
 
 @dataclass
 class BoletinesGrupoDTO:
     """Resultado de la generación masiva de boletines de un grupo."""
-    contenido: bytes | None = None              # PDF/Excel fusionado (None si nada)
-    errores: list[str] = field(default_factory=list)   # nombres con fallo
+
+    contenido: bytes | None = None  # PDF/Excel fusionado (None si nada)
+    errores: list[str] = field(default_factory=list)  # nombres con fallo
 
 
 def sanitizar_datos_exportacion(datos: list[dict]) -> list[dict]:
@@ -87,6 +92,7 @@ def sanitizar_datos_exportacion(datos: list[dict]) -> list[dict]:
 
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class InformeService:
     """
     Orquesta la generación de informes académicos en diferentes formatos.
@@ -98,7 +104,7 @@ class InformeService:
         estadisticos_repo: IEstadisticosRepository,
         exporter: IExporterService | None = None,
         estudiante_repo=None,
-        convivencia_svc_provider: Callable[[], "ConvivenciaService"] | None = None,
+        convivencia_svc_provider: Callable[[], ConvivenciaService] | None = None,
     ) -> None:
         """Inyecta el repo de estadísticos y, opcionalmente, el exportador,
         el repo de estudiantes y un proveedor lazy de ``ConvivenciaService``.
@@ -107,9 +113,9 @@ class InformeService:
         ``ConvivenciaService``; se usa lazy para evitar ciclos de wiring.
         Si es None, los métodos de convivencia retornan dicts vacíos.
         """
-        self._estadisticos_repo        = estadisticos_repo
-        self._exporter                 = exporter
-        self._estudiante_repo          = estudiante_repo
+        self._estadisticos_repo = estadisticos_repo
+        self._exporter = exporter
+        self._estudiante_repo = estudiante_repo
         self._convivencia_svc_provider = convivencia_svc_provider
 
     # ------------------------------------------------------------------
@@ -153,8 +159,10 @@ class InformeService:
         svc = self._conv_svc()
         if svc is None:
             return {
-                "nota": None, "nota_observacion": None,
-                "observaciones": [], "registros": [],
+                "nota": None,
+                "nota_observacion": None,
+                "observaciones": [],
+                "registros": [],
             }
         return svc.paquete_boletin_periodo(estudiante_id, periodo_id)
 
@@ -170,9 +178,12 @@ class InformeService:
         svc = self._conv_svc()
         if svc is None:
             return {
-                "periodos": [], "notas_por_periodo": {},
-                "definitiva": None, "concepto": None,
-                "observaciones_por_categoria": [], "registros": [],
+                "periodos": [],
+                "notas_por_periodo": {},
+                "definitiva": None,
+                "concepto": None,
+                "observaciones_por_categoria": [],
+                "registros": [],
             }
         return svc.paquete_boletin_anual(estudiante_id, anio_id)
 
@@ -190,9 +201,7 @@ class InformeService:
         Retorna una lista de dicts donde cada fila es un estudiante
         con sus notas definitivas por asignatura.
         """
-        return self._estadisticos_repo.consolidado_notas_grupo(
-            dto.grupo_id, dto.periodo_id
-        )
+        return self._estadisticos_repo.consolidado_notas_grupo(dto.grupo_id, dto.periodo_id)
 
     def generar_notas(
         self,
@@ -236,9 +245,7 @@ class InformeService:
         Retorna una lista de dicts donde cada fila es un registro de
         asistencia por estudiante y asignatura.
         """
-        return self._estadisticos_repo.consolidado_asistencia_grupo(
-            dto.grupo_id, dto.periodo_id
-        )
+        return self._estadisticos_repo.consolidado_asistencia_grupo(dto.grupo_id, dto.periodo_id)
 
     def generar_asistencia(
         self,
@@ -357,6 +364,7 @@ class InformeService:
 
         if fmt == FormatoInforme.PDF:
             import importlib
+
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_acumulado(
                 estudiante_id, grupo_id, periodo_id
@@ -376,17 +384,17 @@ class InformeService:
         for area in datos_raw.get("areas", []):
             for asig in area.get("asignaturas", []):
                 fila: dict = {
-                    "Área":       area["area_nombre"],
+                    "Área": area["area_nombre"],
                     "Asignatura": asig["nombre"],
                 }
                 for per in periodos:
                     fila[per["nombre"]] = asig.get("notas_periodo", {}).get(per["id"])
-                fila[label_def]       = asig.get("definitiva")
-                fila["Presentes"]     = asig.get("presentes", 0)
-                fila["F. Inj."]       = asig.get("faltas_injustificadas", 0)
-                fila["F. Just."]      = asig.get("faltas_justificadas", 0)
-                fila["Retrasos"]      = asig.get("retrasos", 0)
-                fila["Excusas"]       = asig.get("excusas", 0)
+                fila[label_def] = asig.get("definitiva")
+                fila["Presentes"] = asig.get("presentes", 0)
+                fila["F. Inj."] = asig.get("faltas_injustificadas", 0)
+                fila["F. Just."] = asig.get("faltas_justificadas", 0)
+                fila["Retrasos"] = asig.get("retrasos", 0)
+                fila["Excusas"] = asig.get("excusas", 0)
                 filas.append(fila)
         main_bytes = exporter.exportar_excel(filas, nombre_hoja="Boletín Periodo")
         if self._conv_svc() is None:
@@ -421,37 +429,34 @@ class InformeService:
 
         if fmt == FormatoInforme.PDF:
             import importlib
+
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
-            datos = self._estadisticos_repo.boletin_datos_anual(
-                estudiante_id, grupo_id, anio_id
-            )
+            datos = self._estadisticos_repo.boletin_datos_anual(estudiante_id, grupo_id, anio_id)
             datos["convivencia_anual"] = self.convivencia_boletin_anual(estudiante_id, anio_id)
             return _boletin_mod.generar_boletin_anual_pdf(datos)
 
         # Excel: tabla plana con columna por periodo
         # (convivencia_31) Las columnas de convivencia se llevan a la hoja "Convivencia".
         exporter = self._get_exporter_o_lanzar()
-        datos_raw = self._estadisticos_repo.boletin_datos_anual(
-            estudiante_id, grupo_id, anio_id
-        )
+        datos_raw = self._estadisticos_repo.boletin_datos_anual(estudiante_id, grupo_id, anio_id)
         periodos = datos_raw.get("periodos", [])
 
         filas: list[dict] = []
         for area in datos_raw.get("areas", []):
             for asig in area.get("asignaturas", []):
                 fila: dict = {
-                    "Área":       area["area_nombre"],
+                    "Área": area["area_nombre"],
                     "Asignatura": asig["nombre"],
                 }
                 for per in periodos:
                     nota = asig.get("notas_periodo", {}).get(per["id"])
                     fila[per["nombre"]] = nota
-                fila["Definitiva"]    = asig.get("definitiva")
-                fila["Presentes"]     = asig.get("presentes", 0)
-                fila["F. Inj."]       = asig.get("faltas_injustificadas", 0)
-                fila["F. Just."]      = asig.get("faltas_justificadas", 0)
-                fila["Retrasos"]      = asig.get("retrasos", 0)
-                fila["Excusas"]       = asig.get("excusas", 0)
+                fila["Definitiva"] = asig.get("definitiva")
+                fila["Presentes"] = asig.get("presentes", 0)
+                fila["F. Inj."] = asig.get("faltas_injustificadas", 0)
+                fila["F. Just."] = asig.get("faltas_justificadas", 0)
+                fila["Retrasos"] = asig.get("retrasos", 0)
+                fila["Excusas"] = asig.get("excusas", 0)
                 filas.append(fila)
         main_bytes = exporter.exportar_excel(filas, nombre_hoja="Boletín Anual")
         if self._conv_svc() is None:
@@ -496,13 +501,20 @@ class InformeService:
             try:
                 if anio_id is not None:
                     contenido = self.generar_boletin_anual(
-                        est.id, grupo_id, anio_id, formato,
+                        est.id,
+                        grupo_id,
+                        anio_id,
+                        formato,
                         grupo_nombre=grupo_nombre,
                     )
                 else:
                     contenido = self.generar_boletin_periodo(
-                        est.id, grupo_id, periodo_id, formato,
-                        grupo_nombre=grupo_nombre, periodo_nombre=periodo_nombre,
+                        est.id,
+                        grupo_id,
+                        periodo_id,
+                        formato,
+                        grupo_nombre=grupo_nombre,
+                        periodo_nombre=periodo_nombre,
                     )
             except Exception:
                 errores.append(nombre)
@@ -517,12 +529,8 @@ class InformeService:
         else:
             # (convivencia_31) Añadir hoja resumen "Convivencia — todos" si hay provider.
             if hojas and self._conv_svc() is not None:
-                resumen_filas = self._hoja_convivencia_resumen_grupo(
-                    grupo_id, periodo_id, anio_id
-                )
-                resumen_bytes = self._serializar_hoja_matriz(
-                    resumen_filas, "Convivencia — todos"
-                )
+                resumen_filas = self._hoja_convivencia_resumen_grupo(grupo_id, periodo_id, anio_id)
+                resumen_bytes = self._serializar_hoja_matriz(resumen_filas, "Convivencia — todos")
                 hojas.append(("Convivencia — todos", resumen_bytes))
             contenido_final = merge_excels(hojas) if hojas else None
 
@@ -552,14 +560,11 @@ class InformeService:
         wb.save(buf)
         return buf.getvalue()
 
-    def _hoja_convivencia_periodo(
-        self, estudiante_id: int, periodo_id: int
-    ) -> list[list]:
+    def _hoja_convivencia_periodo(self, estudiante_id: int, periodo_id: int) -> list[list]:
         """Matriz para la hoja 'Convivencia' del boletín de periodo individual."""
         conv = self.convivencia_boletin(estudiante_id, periodo_id)
         filas: list[list] = [["CONVIVENCIA"], []]
-        filas.append(["Nota de comportamiento",
-                       conv["nota"] if conv["nota"] is not None else "—"])
+        filas.append(["Nota de comportamiento", conv["nota"] if conv["nota"] is not None else "—"])
         filas.append(["Concepto", conv.get("nota_observacion") or ""])
         filas.append([])
         # Observaciones agrupadas por categoría (disponibles desde convivencia_32;
@@ -580,9 +585,7 @@ class InformeService:
                 filas.append([r["fecha"], r["tipo"], r["descripcion"]])
         return filas
 
-    def _hoja_convivencia_anual(
-        self, estudiante_id: int, anio_id: int
-    ) -> list[list]:
+    def _hoja_convivencia_anual(self, estudiante_id: int, anio_id: int) -> list[list]:
         """Matriz para la hoja 'Convivencia' del boletín anual individual."""
         conv = self.convivencia_boletin_anual(estudiante_id, anio_id)
         filas: list[list] = [["CONVIVENCIA ANUAL"], []]
@@ -592,11 +595,13 @@ class InformeService:
         for per in conv.get("periodos", []):
             nota = notas_por_periodo.get(per["id"])
             filas.append([per["nombre"], nota if nota is not None else "—", ""])
-        filas.append([
-            "Definitiva",
-            conv["definitiva"] if conv["definitiva"] is not None else "—",
-            conv.get("concepto") or "",
-        ])
+        filas.append(
+            [
+                "Definitiva",
+                conv["definitiva"] if conv["definitiva"] is not None else "—",
+                conv.get("concepto") or "",
+            ]
+        )
         filas.append([])
         # Observaciones agrupadas por categoría
         for grupo in conv.get("observaciones_por_categoria", []):
@@ -605,11 +610,13 @@ class InformeService:
             filas.append([grupo["categoria"]])
             filas.append(["Periodo", "Autor", "Texto"])
             for it in grupo["items"]:
-                filas.append([
-                    it.get("periodo", ""),
-                    it.get("autor", ""),
-                    it.get("texto", ""),
-                ])
+                filas.append(
+                    [
+                        it.get("periodo", ""),
+                        it.get("autor", ""),
+                        it.get("texto", ""),
+                    ]
+                )
             filas.append([])
         # Registros del año (convivencia_29)
         if conv.get("registros"):
@@ -641,15 +648,13 @@ class InformeService:
         _repo = _svc._repo
 
         from src.domain.models.convivencia import (
-            FiltroConvivenciaDTO,
             TIPO_REGISTRO_DISPLAY,
+            FiltroConvivenciaDTO,
         )
 
         estudiantes = sorted(
             self._estudiante_repo.listar_por_grupo(grupo_id),
-            key=lambda e: (
-                f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".lower()
-            ),
+            key=lambda e: f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".lower(),
         )
         est_nombre = {
             e.id: f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".strip()
@@ -689,16 +694,16 @@ class InformeService:
             for est in estudiantes:
                 nota_obj = _repo.get_nota(est.id, periodo_id)
                 nota_val = nota_obj.valor if nota_obj is not None else None
-                concepto = (
-                    (nota_obj.observacion if nota_obj is not None else None) or ""
+                concepto = (nota_obj.observacion if nota_obj is not None else None) or ""
+                filas.append(
+                    [
+                        est_nombre.get(est.id, ""),
+                        nota_val if nota_val is not None else "—",
+                        concepto,
+                        obs_count.get(est.id, 0),
+                        reg_count.get(est.id, 0),
+                    ]
                 )
-                filas.append([
-                    est_nombre.get(est.id, ""),
-                    nota_val if nota_val is not None else "—",
-                    concepto,
-                    obs_count.get(est.id, 0),
-                    reg_count.get(est.id, 0),
-                ])
 
             # Pie — Observaciones públicas (todas)
             if obs_all:
@@ -714,13 +719,15 @@ class InformeService:
                         if hasattr(o.fecha_registro, "date")
                         else str(o.fecha_registro)
                     )
-                    filas.append([
-                        est_nombre.get(o.estudiante_id, ""),
-                        str(o.categoria_id or ""),
-                        fecha_str,
-                        "",  # autor: ObservacionPeriodo solo tiene usuario_id (migrar en 32)
-                        o.texto,
-                    ])
+                    filas.append(
+                        [
+                            est_nombre.get(o.estudiante_id, ""),
+                            str(o.categoria_id or ""),
+                            fecha_str,
+                            "",  # autor: ObservacionPeriodo solo tiene usuario_id (migrar en 32)
+                            o.texto,
+                        ]
+                    )
 
             # Pie — Eventos de convivencia
             if regs_all:
@@ -731,12 +738,14 @@ class InformeService:
                     regs_all,
                     key=lambda x: (est_nombre.get(x.estudiante_id, ""), str(x.fecha)),
                 ):
-                    filas.append([
-                        est_nombre.get(r.estudiante_id, ""),
-                        str(r.fecha),
-                        TIPO_REGISTRO_DISPLAY.get(r.tipo.value, r.tipo.value),
-                        r.descripcion,
-                    ])
+                    filas.append(
+                        [
+                            est_nombre.get(r.estudiante_id, ""),
+                            str(r.fecha),
+                            TIPO_REGISTRO_DISPLAY.get(r.tipo.value, r.tipo.value),
+                            r.descripcion,
+                        ]
+                    )
 
         else:
             # ── Modo anual ─────────────────────────────────────────────
@@ -751,23 +760,19 @@ class InformeService:
             filas.append([])
             per_headers = [p.nombre for p in periodos]
             filas.append(
-                ["Estudiante"] + per_headers + ["Definitiva", "Concepto final",
-                                                "# Obs. públicas", "# Eventos"]
+                ["Estudiante", *per_headers, "Definitiva", "Concepto final", "# Obs. públicas", "# Eventos"]
             )
 
             for est in estudiantes:
-                notas_est = {
-                    n.periodo_id: n
-                    for n in _repo.listar_notas_por_estudiante(est.id)
-                }
+                notas_est = {n.periodo_id: n for n in _repo.listar_notas_por_estudiante(est.id)}
                 notas_vals = [
-                    (notas_est[p.id].valor if p.id in notas_est else None)
-                    for p in periodos
+                    (notas_est[p.id].valor if p.id in notas_est else None) for p in periodos
                 ]
                 notas_presentes = [v for v in notas_vals if v is not None]
                 definitiva = (
                     round(sum(notas_presentes) / len(notas_presentes), 2)
-                    if notas_presentes else None
+                    if notas_presentes
+                    else None
                 )
                 # Concepto del último periodo con nota
                 concepto_final = ""
@@ -778,26 +783,21 @@ class InformeService:
 
                 # Contar obs y eventos del año
                 obs_cnt = sum(
-                    len(_repo.listar_observaciones_por_estudiante(
-                        est.id, p.id, solo_publicas=True
-                    ))
+                    len(_repo.listar_observaciones_por_estudiante(est.id, p.id, solo_publicas=True))
                     for p in periodos
                 )
                 reg_cnt = sum(
-                    len(_repo.listar_registros(
-                        FiltroConvivenciaDTO(estudiante_id=est.id, periodo_id=p.id)
-                    ))
+                    len(
+                        _repo.listar_registros(
+                            FiltroConvivenciaDTO(estudiante_id=est.id, periodo_id=p.id)
+                        )
+                    )
                     for p in periodos
                 )
 
-                fila_vals = [
-                    (v if v is not None else "—") for v in notas_vals
-                ]
+                fila_vals = [(v if v is not None else "—") for v in notas_vals]
                 filas.append(
-                    [est_nombre.get(est.id, "")]
-                    + fila_vals
-                    + [definitiva if definitiva is not None else "—",
-                       concepto_final, obs_cnt, reg_cnt]
+                    [est_nombre.get(est.id, ""), *fila_vals, definitiva if definitiva is not None else "—", concepto_final, obs_cnt, reg_cnt]
                 )
 
         return filas
@@ -807,20 +807,23 @@ class InformeService:
     # ------------------------------------------------------------------
 
     _ESTADO_ASISTENCIA_LABEL = {
-        "P": "Presente", "FJ": "Falta Justificada",
-        "FI": "Falta Injustificada", "R": "Retraso", "E": "Excusa",
+        "P": "Presente",
+        "FJ": "Falta Justificada",
+        "FI": "Falta Injustificada",
+        "R": "Retraso",
+        "E": "Excusa",
     }
 
     # tipo → (título PDF, nombre de hoja Excel)
     _ESTADISTICO_TITULOS = {
-        "consolidado_notas":       ("Consolidado de Notas", "Consolidado Notas"),
-        "consolidado_asistencia":  ("Consolidado de Asistencia", "Consolidado Asistencia"),
-        "ranking_grupo":           ("Ranking del Grupo", "Ranking"),
+        "consolidado_notas": ("Consolidado de Notas", "Consolidado Notas"),
+        "consolidado_asistencia": ("Consolidado de Asistencia", "Consolidado Asistencia"),
+        "ranking_grupo": ("Ranking del Grupo", "Ranking"),
         "distribucion_desempenos": ("Distribución de Desempeños", "Distribución Desempeños"),
-        "estados_asistencia":      ("Estados de Asistencia", "Estados Asistencia"),
-        "comparativo_periodos":    ("Comparativo por Periodos", "Comparativo Periodos"),
-        "promedios_area":          ("Promedios por Área", "Promedios por Área"),
-        "tendencia_asistencia":    ("Tendencia de Asistencia", "Tendencia Asistencia"),
+        "estados_asistencia": ("Estados de Asistencia", "Estados Asistencia"),
+        "comparativo_periodos": ("Comparativo por Periodos", "Comparativo Periodos"),
+        "promedios_area": ("Promedios por Área", "Promedios por Área"),
+        "tendencia_asistencia": ("Tendencia de Asistencia", "Tendencia Asistencia"),
     }
 
     def _filas_estadistico(self, tipo: str, datos) -> list[dict]:
@@ -831,15 +834,14 @@ class InformeService:
                 for k, v in (datos or {}).items()
             ]
         if tipo == "distribucion_desempenos":
-            return [
-                {"Nivel de Desempeño": k, "Estudiantes": v}
-                for k, v in (datos or {}).items()
-            ]
+            return [{"Nivel de Desempeño": k, "Estudiantes": v} for k, v in (datos or {}).items()]
         if tipo == "comparativo_periodos":
             raw = sanitizar_datos_exportacion(datos if isinstance(datos, list) else [])
             return [
-                {"Periodo": r.get("periodo_nombre", r.get("Periodo", "")),
-                 "Promedio": r.get("promedio", r.get("Promedio", 0))}
+                {
+                    "Periodo": r.get("periodo_nombre", r.get("Periodo", "")),
+                    "Promedio": r.get("promedio", r.get("Promedio", 0)),
+                }
                 for r in raw
             ]
         if tipo == "tendencia_asistencia":
@@ -904,6 +906,7 @@ class InformeService:
             )
 
         encabezados = list(datos[0].keys())
+
         def _celda(val) -> str:
             if val is None:
                 return "—"

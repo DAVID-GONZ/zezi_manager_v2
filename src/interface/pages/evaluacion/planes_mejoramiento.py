@@ -11,6 +11,7 @@ Flujo:
   3. Gestionar actividades del plan para los estudiantes EN_PLAN.
   4. Cerrar el plan por estudiante (Aprobar / Reprobar).
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,8 +30,8 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.plan_mejoramiento_service import (
     CalificarNotaPlanDTO,
@@ -44,10 +45,10 @@ logger = logging.getLogger("EVALUACION.PLANES")
 _ROLES_DIRECTIVOS = ("director", "coordinador")
 
 _ESTADO_LABELS = {
-    EstadoNotaCorte.SIN_PLAN.value:  ("Sin plan",  "neutral"),
-    EstadoNotaCorte.EN_PLAN.value:   ("En plan",   "warning"),
-    EstadoNotaCorte.APROBADO.value:  ("Aprobó",    "success"),
-    EstadoNotaCorte.REPROBADO.value: ("Reprobó",   "error"),
+    EstadoNotaCorte.SIN_PLAN.value: ("Sin plan", "neutral"),
+    EstadoNotaCorte.EN_PLAN.value: ("En plan", "warning"),
+    EstadoNotaCorte.APROBADO.value: ("Aprobó", "success"),
+    EstadoNotaCorte.REPROBADO.value: ("Reprobó", "error"),
 }
 
 
@@ -64,22 +65,22 @@ def planes_mejoramiento_page() -> None:
 
     # ── Estado mutable ─────────────────────────────────────────────────────────
     _s: dict = {
-        "periodos":         [],
-        "asignaciones":     [],
-        "periodo_id":       None,
-        "asignacion_id":    None,
-        "grupo_id":         None,
-        "corte":            None,    # CortePlan | None
-        "notas_corte":      [],      # list[NotaCortePlan] — todos los estudiantes
-        "actividades_plan": [],      # list[ActividadPlan]
+        "periodos": [],
+        "asignaciones": [],
+        "periodo_id": None,
+        "asignacion_id": None,
+        "grupo_id": None,
+        "corte": None,  # CortePlan | None
+        "notas_corte": [],  # list[NotaCortePlan] — todos los estudiantes
+        "actividades_plan": [],  # list[ActividadPlan]
         # formulario nueva actividad
-        "form_act_nombre":  "",
-        "form_act_peso":    0.20,
-        "form_act_desc":    "",
+        "form_act_nombre": "",
+        "form_act_peso": 0.20,
+        "form_act_desc": "",
         # Mapa estudiante_id → nombre (cargado junto con notas_corte)
-        "nombres_est":      {},
+        "nombres_est": {},
         # Notas por actividad plan: {actividad_plan_id: {estudiante_id: NotaActividadPlan}}
-        "notas_act":        {},
+        "notas_act": {},
     }
 
     # ── Carga de datos ─────────────────────────────────────────────────────────
@@ -87,9 +88,7 @@ def planes_mejoramiento_page() -> None:
         try:
             config = Container.configuracion_service().get_activa()
             anio_id = config.id if config else None
-            _s["periodos"] = (
-                Container.periodo_service().listar_por_anio(anio_id) if anio_id else []
-            )
+            _s["periodos"] = Container.periodo_service().listar_por_anio(anio_id) if anio_id else []
         except Exception as exc:
             logger.error("Error cargando periodos: %s", exc)
             _s["periodos"] = []
@@ -104,7 +103,7 @@ def planes_mejoramiento_page() -> None:
 
     def _cargar_corte() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             _s["corte"] = None
             _s["notas_corte"] = []
@@ -153,9 +152,7 @@ def planes_mejoramiento_page() -> None:
             grupo_id = _s["grupo_id"]
             if grupo_id:
                 ests = Container.estudiante_service().listar_por_grupo(grupo_id)
-                _s["nombres_est"] = {
-                    e.id: f"{e.apellido}, {e.nombre}" for e in ests
-                }
+                _s["nombres_est"] = {e.id: f"{e.apellido}, {e.nombre}" for e in ests}
         except Exception as exc:
             logger.error("Error cargando nombres: %s", exc)
             _s["nombres_est"] = {}
@@ -235,7 +232,7 @@ def planes_mejoramiento_page() -> None:
     def _cerrar_plan(nc, aprobado: bool) -> None:
         nombre = _s["nombres_est"].get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
         accion = "Aprobar" if aprobado else "Reprobar"
-        corte  = _s["corte"]
+        corte = _s["corte"]
 
         def _ejecutar() -> None:
             try:
@@ -258,15 +255,15 @@ def planes_mejoramiento_page() -> None:
                 toast_error("Error al cerrar el plan")
 
         confirm_dialog(
-            titulo          = f"{accion} plan de {nombre}",
-            mensaje         = (
+            titulo=f"{accion} plan de {nombre}",
+            mensaje=(
                 f"¿Confirmas {'aprobar' if aprobado else 'reprobar'} el plan de {nombre}? "
                 "Esta acción congela la nota definitiva del plan y no se puede revertir."
             ),
-            on_confirm      = _ejecutar,
-            texto_confirmar = accion,
-            texto_cancelar  = "Cancelar",
-            variante        = "default" if aprobado else "danger",
+            on_confirm=_ejecutar,
+            texto_confirmar=accion,
+            texto_cancelar="Cancelar",
+            variante="default" if aprobado else "danger",
         )
 
     # ── Secciones refreshables ─────────────────────────────────────────────────
@@ -274,7 +271,7 @@ def planes_mejoramiento_page() -> None:
     def panel_corte() -> None:
         corte = _s["corte"]
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
 
         if not asig_id or not per_id:
             return
@@ -303,19 +300,18 @@ def planes_mejoramiento_page() -> None:
                 )
             else:
                 notas = _s["notas_corte"]
-                en_plan  = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+                en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
                 sin_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.SIN_PLAN)
                 cerrados = sum(
-                    1 for n in notas
+                    1
+                    for n in notas
                     if n.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO)
                 )
                 with ui.row().classes("form-row-inline text-sm"):
-                    ui.label(
-                        f"Peso registrado: {corte.peso_registrado * 100:.1f}%"
-                    ).classes("text-muted")
-                    ui.label(
-                        f"Umbral: {corte.nota_umbral:.1f}"
-                    ).classes("text-muted")
+                    ui.label(f"Peso registrado: {corte.peso_registrado * 100:.1f}%").classes(
+                        "text-muted"
+                    )
+                    ui.label(f"Umbral: {corte.nota_umbral:.1f}").classes("text-muted")
                     ui.label(f"Total: {len(notas)}").classes("font-semibold")
                     ui.label(f"En plan: {en_plan}").classes("font-semibold text-warning")
                     ui.label(f"Sin plan: {sin_plan}").classes("font-semibold text-success")
@@ -324,8 +320,8 @@ def planes_mejoramiento_page() -> None:
 
     @ui.refreshable
     def panel_estudiantes() -> None:
-        corte  = _s["corte"]
-        notas  = _s["notas_corte"]
+        corte = _s["corte"]
+        notas = _s["notas_corte"]
         if not corte or not notas:
             empty_state(
                 icono="assignment",
@@ -340,9 +336,11 @@ def planes_mejoramiento_page() -> None:
                 ui.label("Estudiantes — Resultado del Corte").classes("text-lg font-bold")
 
             # Encabezado
-            with ui.element("div").classes(
-                "grid gap-2 p-2 font-semibold text-sm border-b bg-subtle"
-            ).classes("pm-grid-cols"):
+            with (
+                ui.element("div")
+                .classes("grid gap-2 p-2 font-semibold text-sm border-b bg-subtle")
+                .classes("pm-grid-cols")
+            ):
                 ui.label("Estudiante")
                 ui.label("Nota corte").classes("text-center")
                 ui.label("Estado").classes("text-center")
@@ -350,13 +348,15 @@ def planes_mejoramiento_page() -> None:
 
             nombres = _s["nombres_est"]
             for nc in sorted(notas, key=lambda n: nombres.get(n.estudiante_id, "")):
-                nombre    = nombres.get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
+                nombre = nombres.get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
                 lbl, color = _ESTADO_LABELS.get(nc.estado.value, (nc.estado.value, "neutral"))
                 ya_cerrado = nc.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO)
 
-                with ui.element("div").classes(
-                    "grid gap-2 p-2 border-b items-center"
-                ).classes("pm-grid-cols"):
+                with (
+                    ui.element("div")
+                    .classes("grid gap-2 p-2 border-b items-center")
+                    .classes("pm-grid-cols")
+                ):
                     ui.label(nombre).classes("text-sm")
                     ui.label(f"{nc.nota_al_corte:.1f}").classes("text-center cell-mono")
                     status_badge(lbl, color)
@@ -376,17 +376,15 @@ def planes_mejoramiento_page() -> None:
                         elif ya_cerrado:
                             nota_def = nc.nota_definitiva_plan
                             if nota_def is not None:
-                                ui.label(
-                                    f"Def: {nota_def:.1f}"
-                                ).classes("text-xs text-muted")
+                                ui.label(f"Def: {nota_def:.1f}").classes("text-xs text-muted")
 
     @ui.refreshable
     def panel_actividades() -> None:
-        corte    = _s["corte"]
-        acts     = _s["actividades_plan"]
-        notas    = _s["notas_corte"]
+        corte = _s["corte"]
+        acts = _s["actividades_plan"]
+        notas = _s["notas_corte"]
         notas_act = _s["notas_act"]
-        nombres  = _s["nombres_est"]
+        nombres = _s["nombres_est"]
 
         if not corte:
             return
@@ -408,26 +406,28 @@ def planes_mejoramiento_page() -> None:
                 ui.label("No hay actividades del plan aún.").classes("text-empty text-sm mb-4")
             else:
                 # Encabezado de la planilla
-                n_cols = 1 + len(acts)
+                1 + len(acts)
                 header_cols = "180px " + " ".join(["80px"] * len(acts))
-                with ui.element("div").classes(
-                    "grid gap-1 p-2 font-semibold text-sm border-b bg-subtle"
-                ).style(f"grid-template-columns: {header_cols}"):  # DYNAMIC: columnas según len(acts)
+                with (
+                    ui.element("div")
+                    .classes("grid gap-1 p-2 font-semibold text-sm border-b bg-subtle")
+                    .style(f"grid-template-columns: {header_cols}")
+                ):  # DYNAMIC: columnas según len(acts)
                     ui.label("Estudiante")
                     for act in acts:
-                        ui.label(f"{act.nombre[:18]} ({act.peso*100:.0f}%)").classes(
+                        ui.label(f"{act.nombre[:18]} ({act.peso * 100:.0f}%)").classes(
                             "text-center text-xs"
                         )
 
                 # Filas de estudiantes EN_PLAN
                 for nc in sorted(en_plan, key=lambda n: nombres.get(n.estudiante_id, "")):
                     nombre = nombres.get(nc.estudiante_id, f"Est. {nc.estudiante_id}")
-                    ya_cerrado = nc.estado in (
-                        EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO
-                    )
-                    with ui.element("div").classes(
-                        "grid gap-1 p-2 border-b items-center"
-                    ).style(f"grid-template-columns: {header_cols}"):  # DYNAMIC: columnas según len(acts)
+                    ya_cerrado = nc.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO)
+                    with (
+                        ui.element("div")
+                        .classes("grid gap-1 p-2 border-b items-center")
+                        .style(f"grid-template-columns: {header_cols}")
+                    ):  # DYNAMIC: columnas según len(acts)
                         ui.label(nombre).classes("text-sm")
                         for act in acts:
                             nota = notas_act.get(act.id, {}).get(nc.estudiante_id)
@@ -437,16 +437,25 @@ def planes_mejoramiento_page() -> None:
                                     f"{valor_actual:.1f}" if valor_actual is not None else "—"
                                 ).classes("text-center cell-mono")
                             else:
-                                inp = ui.input(
-                                    value=str(round(valor_actual, 1)) if valor_actual is not None else "",
-                                    placeholder="0-100",
-                                ).classes("w-16 text-center").props("dense")
+                                inp = (
+                                    ui.input(
+                                        value=str(round(valor_actual, 1))
+                                        if valor_actual is not None
+                                        else "",
+                                        placeholder="0-100",
+                                    )
+                                    .classes("w-16 text-center")
+                                    .props("dense")
+                                )
                                 # Guardar al perder foco
-                                inp.on("blur", lambda e, aid=act.id, eid=nc.estudiante_id: (
-                                    _calificar_nota(aid, eid, e.sender.value)
-                                    if e.sender.value.strip()
-                                    else None
-                                ))
+                                inp.on(
+                                    "blur",
+                                    lambda e, aid=act.id, eid=nc.estudiante_id: (
+                                        _calificar_nota(aid, eid, e.sender.value)
+                                        if e.sender.value.strip()
+                                        else None
+                                    ),
+                                )
 
             # ── Añadir actividad ───────────────────────────────────────────────
             with ui.element("div").classes("mt-4 pt-4 border-top-soft"):
@@ -459,7 +468,10 @@ def planes_mejoramiento_page() -> None:
                     ui.number(
                         "Peso (0-1) *",
                         value=_s["form_act_peso"],
-                        min=0.01, max=1.0, step=0.05, precision=2,
+                        min=0.01,
+                        max=1.0,
+                        step=0.05,
+                        precision=2,
                         on_change=lambda e: _s.__setitem__("form_act_peso", e.value),
                     ).classes("w-32")
                     ui.input(
@@ -474,14 +486,13 @@ def planes_mejoramiento_page() -> None:
                 # Info de peso disponible
                 suma_pesos = sum(a.peso for a in acts)
                 disp = round((1.0 - suma_pesos) * 100, 1)
-                ui.label(
-                    f"Peso disponible para actividades: {disp:.1f}%"
-                ).classes("text-xs text-muted mt-1")
+                ui.label(f"Peso disponible para actividades: {disp:.1f}%").classes(
+                    "text-xs text-muted mt-1"
+                )
 
     # ── Contenido principal ────────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             # Header
             with ui.element("div").classes("panel-card mb-0"):
                 with ui.row().classes("items-center gap-2"):
@@ -497,9 +508,7 @@ def planes_mejoramiento_page() -> None:
             with ui.element("div").classes("panel-card mt-4"):
                 ui.label("Contexto").classes("section-subtitle u-mb-md")
                 periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
-                asigs_opts    = {
-                    a.asignacion_id: a.display_corto for a in _s["asignaciones"]
-                }
+                asigs_opts = {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
                 with ui.row().classes("form-row-center-md"):
                     ui.select(
                         periodos_opts or {"": "Sin periodos"},
@@ -521,9 +530,9 @@ def planes_mejoramiento_page() -> None:
                     ).classes("w-72")
 
                 if not _s["asignacion_id"] or not _s["periodo_id"]:
-                    ui.label(
-                        "Selecciona periodo y asignación para ver los planes."
-                    ).classes("text-empty text-sm mt-2")
+                    ui.label("Selecciona periodo y asignación para ver los planes.").classes(
+                        "text-empty text-sm mt-2"
+                    )
 
             # Panel corte (estado)
             panel_corte()
@@ -535,8 +544,9 @@ def planes_mejoramiento_page() -> None:
             panel_actividades()
 
     app_layout(
-        ctx, contenido,
-        page_titulo       = "Evaluación · Planes de Mejoramiento",
+        ctx,
+        contenido,
+        page_titulo="Evaluación · Planes de Mejoramiento",
     )
 
 

@@ -4,6 +4,7 @@ period_status.py — Tarjeta de estado del periodo activo.
 Componente de presentación puro: recibe un PeriodData,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from src.interface.design.components.status_badge import status_badge
 @dataclass
 class PeriodData:
     """Datos del periodo activo para renderizar la tarjeta."""
+
     nombre: str
     fecha_inicio: date | None
     fecha_fin: date | None
@@ -54,9 +56,7 @@ def period_status_card(periodo: PeriodData) -> None:
             total_dias = (periodo.fecha_fin - periodo.fecha_inicio).days
             dias_pasados = (hoy - periodo.fecha_inicio).days
             dias_rest = (periodo.fecha_fin - hoy).days
-            progreso = min(100, max(0,
-                dias_pasados / total_dias * 100 if total_dias > 0 else 0
-            ))
+            progreso = min(100, max(0, dias_pasados / total_dias * 100 if total_dias > 0 else 0))
             clase_bar = _clase_periodo_bar(progreso)
 
             with ui.element("div").classes("period-dates-row"):
@@ -64,13 +64,13 @@ def period_status_card(periodo: PeriodData) -> None:
                 ui.label(periodo.fecha_fin.strftime("%d %b")).classes("text-xs-meta")
 
             with ui.element("div").classes("period-bar-track"):
-                ui.element("div").classes(
-                    f"period-bar-fill {clase_bar}"
-                ).style(f"width:{progreso:.0f}%")  # DYNAMIC: valor calculado
+                ui.element("div").classes(f"period-bar-fill {clase_bar}").style(
+                    f"width:{progreso:.0f}%"
+                )  # DYNAMIC: valor calculado
 
-            ui.label(
-                f"{max(0, dias_rest)} días restantes · {progreso:.0f}% transcurrido"
-            ).classes(_clase_period_days(dias_rest))
+            ui.label(f"{max(0, dias_rest)} días restantes · {progreso:.0f}% transcurrido").classes(
+                _clase_period_days(dias_rest)
+            )
 
         if periodo.cerrado:
             status_badge("Cerrado", "neutral")

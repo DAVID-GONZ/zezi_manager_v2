@@ -9,6 +9,7 @@ Permite:
  - CRUD de áreas de conocimiento.
  - CRUD de asignaturas filtradas por área.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,18 +30,18 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.catalogo_academico_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
 
 # Flujo de configuración del generador de horarios.
 _PASOS_HORARIO = [
-    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
-    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
-    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
-    ("horarios",     "Horarios",         "/horarios"),
+    ("asignaturas", "Asignaturas", "/admin/asignaturas"),
+    ("plan", "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones", "/admin/asignaciones"),
+    ("horarios", "Horarios", "/horarios"),
 ]
 
 
@@ -55,17 +56,17 @@ def asignaturas_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "areas":              [],
-        "asignaturas":        [],
-        "area_filtro_id":     None,
-        "busqueda":           "",
+        "areas": [],
+        "asignaturas": [],
+        "area_filtro_id": None,
+        "busqueda": "",
         # formulario área
-        "area_nombre":        "",
-        "area_codigo":        "",
+        "area_nombre": "",
+        "area_codigo": "",
         # formulario asignatura
-        "asig_nombre":        "",
-        "asig_codigo":        "",
-        "asig_area_id":       None,
+        "asig_nombre": "",
+        "asig_codigo": "",
+        "asig_area_id": None,
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -137,11 +138,11 @@ def asignaturas_page() -> None:
 
     def _eliminar_area(area_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Eliminar área",
-            mensaje         = f"¿Eliminar el área '{nombre}'? Esta acción es irreversible.",
-            on_confirm      = lambda: _confirmar_eliminar_area(area_id, nombre),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar área",
+            mensaje=f"¿Eliminar el área '{nombre}'? Esta acción es irreversible.",
+            on_confirm=lambda: _confirmar_eliminar_area(area_id, nombre),
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     def _editar_area(area: AreaConocimiento) -> None:
@@ -169,15 +170,19 @@ def asignaturas_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Editar área",
-            campos    = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text",
-                 "valor": area.nombre, "requerido": True},
-                {"key": "codigo", "label": "Código",   "tipo": "text",
-                 "valor": area.codigo or ""},
+            titulo="Editar área",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": area.nombre,
+                    "requerido": True,
+                },
+                {"key": "codigo", "label": "Código", "tipo": "text", "valor": area.codigo or ""},
             ],
-            on_submit    = _guardar,
-            max_width    = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     # ── CRUD Asignaturas ──────────────────────────────────────────────────────
@@ -193,8 +198,8 @@ def asignaturas_page() -> None:
             )
             Container.catalogo_academico_service().guardar_asignatura(asig)
             toast_success(f"Asignatura '{asig.nombre}' creada")
-            _s["asig_nombre"]  = ""
-            _s["asig_codigo"]  = ""
+            _s["asig_nombre"] = ""
+            _s["asig_codigo"] = ""
             _s["asig_area_id"] = None
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
@@ -218,11 +223,11 @@ def asignaturas_page() -> None:
 
     def _eliminar_asignatura(asig_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Eliminar asignatura",
-            mensaje         = f"¿Eliminar la asignatura '{nombre}'? Esta acción es irreversible.",
-            on_confirm      = lambda: _confirmar_eliminar_asig(asig_id, nombre),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar asignatura",
+            mensaje=f"¿Eliminar la asignatura '{nombre}'? Esta acción es irreversible.",
+            on_confirm=lambda: _confirmar_eliminar_asig(asig_id, nombre),
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     def _editar_asignatura(asig: Asignatura) -> None:
@@ -232,12 +237,14 @@ def asignaturas_page() -> None:
             try:
                 # Reconstruir vía constructor para re-validar (model_copy no dispara
                 # validadores); conserva horas/tipo_sala/bloque_doble del registro.
-                asig_act = Asignatura(**{
-                    **asig.model_dump(),
-                    "nombre": datos.get("nombre", ""),
-                    "codigo": datos.get("codigo"),
-                    "area_id": datos.get("area_id") or None,
-                })
+                asig_act = Asignatura(
+                    **{
+                        **asig.model_dump(),
+                        "nombre": datos.get("nombre", ""),
+                        "codigo": datos.get("codigo"),
+                        "area_id": datos.get("area_id") or None,
+                    }
+                )
                 Container.catalogo_academico_service().actualizar_asignatura(asig_act)
                 toast_success(f"Asignatura '{asig_act.nombre}' actualizada")
                 _cargar_asignaturas()
@@ -251,17 +258,26 @@ def asignaturas_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Editar asignatura",
-            campos    = [
-                {"key": "nombre", "label": "Nombre *", "tipo": "text",
-                 "valor": asig.nombre, "requerido": True},
-                {"key": "codigo", "label": "Código", "tipo": "text",
-                 "valor": asig.codigo or ""},
-                {"key": "area_id", "label": "Área", "tipo": "select",
-                 "valor": asig.area_id, "opciones": areas_dict},
+            titulo="Editar asignatura",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": asig.nombre,
+                    "requerido": True,
+                },
+                {"key": "codigo", "label": "Código", "tipo": "text", "valor": asig.codigo or ""},
+                {
+                    "key": "area_id",
+                    "label": "Área",
+                    "tipo": "select",
+                    "valor": asig.area_id,
+                    "opciones": areas_dict,
+                },
             ],
-            on_submit    = _guardar,
-            max_width    = "max-w-md",
+            on_submit=_guardar,
+            max_width="max-w-md",
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -309,17 +325,19 @@ def asignaturas_page() -> None:
                     status_badge(a.codigo, "neutral")
                 with ui.row().classes("gap-1 ml-auto"):
                     btn_icon("edit", on_click=lambda area=a: _editar_area(area), tooltip="Editar")
-                    btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_area(aid, nom), tooltip="Eliminar", variante="danger")
+                    btn_icon(
+                        "delete",
+                        on_click=lambda aid=a.id, nom=a.nombre: _eliminar_area(aid, nom),
+                        tooltip="Eliminar",
+                        variante="danger",
+                    )
 
     @ui.refreshable
     def tabla_asignaturas() -> None:
         asigs = _s["asignaturas"]
         q = _s["busqueda"]
         if q:
-            asigs = [
-                a for a in asigs
-                if q in a.nombre.lower() or q in (a.codigo or "").lower()
-            ]
+            asigs = [a for a in asigs if q in a.nombre.lower() or q in (a.codigo or "").lower()]
         if not asigs:
             if q:
                 empty_state(
@@ -345,17 +363,26 @@ def asignaturas_page() -> None:
                     ui.label(a.codigo or "—").classes("w-24 cell-mono")
                     ui.label(_nombre_area(a.area_id)).classes("w-44 text-sm")
                     with ui.row().classes("w-24 form-row-actions"):
-                        btn_icon("edit", on_click=lambda asig=a: _editar_asignatura(asig), tooltip="Editar")
-                        btn_icon("delete", on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom), tooltip="Eliminar", variante="danger")
+                        btn_icon(
+                            "edit",
+                            on_click=lambda asig=a: _editar_asignatura(asig),
+                            tooltip="Editar",
+                        )
+                        btn_icon(
+                            "delete",
+                            on_click=lambda aid=a.id, nom=a.nombre: _eliminar_asignatura(aid, nom),
+                            tooltip="Eliminar",
+                            variante="danger",
+                        )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             pipeline_nav(
-                _PASOS_HORARIO, activo="asignaturas",
+                _PASOS_HORARIO,
+                activo="asignaturas",
                 hint="Paso 1 · Define las materias (nombre, código, área). "
-                     "Las horas de cada una se asignan por grado en «Plan de estudios».",
+                "Las horas de cada una se asignan por grado en «Plan de estudios».",
             )
 
             # ── Sección: Áreas de conocimiento ───────────────────────────────
@@ -383,13 +410,17 @@ def asignaturas_page() -> None:
                     ThemeManager.icono(Icons.GRADES, size=20, color="var(--color-primary)")
                     ui.label("Asignaturas").classes("text-lg font-bold")
                     filtro_area()
-                    btn_icon("refresh", on_click=lambda: (
-                        _cargar_areas(),
-                        _cargar_asignaturas(),
-                        tabla_areas.refresh(),
-                        filtro_area.refresh(),
-                        tabla_asignaturas.refresh(),
-                    ), tooltip="Recargar")
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (
+                            _cargar_areas(),
+                            _cargar_asignaturas(),
+                            tabla_areas.refresh(),
+                            filtro_area.refresh(),
+                            tabla_asignaturas.refresh(),
+                        ),
+                        tooltip="Recargar",
+                    )
 
                 ui.label("Nueva asignatura").classes("section-subtitle-sm u-mb-xs")
                 ui.label(
@@ -415,9 +446,9 @@ def asignaturas_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Gestión de Asignaturas",
-        page_subtitulo = "Áreas de conocimiento y asignaturas del currículo",
-        page_icono     = Icons.SUBJECTS,
+        page_titulo="Gestión de Asignaturas",
+        page_subtitulo="Áreas de conocimiento y asignaturas del currículo",
+        page_icono=Icons.SUBJECTS,
     )
 
 

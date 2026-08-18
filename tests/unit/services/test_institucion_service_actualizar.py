@@ -4,13 +4,12 @@ Tests de servicio para InstitucionService.actualizar y snapshot_institucional (m
 import pytest
 
 from src.domain.models.institucion import (
-    Institucion,
     ActualizarInstitucionDTO,
+    Institucion,
     NuevaInstitucionDTO,
 )
 from src.domain.ports.institucion_repo import IInstitucionRepository
 from src.services.institucion_service import InstitucionService
-
 
 # ---------------------------------------------------------------------------
 # FakeRepo

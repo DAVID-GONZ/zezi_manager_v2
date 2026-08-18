@@ -15,6 +15,7 @@ Dos perspectivas complementarias sobre la misma relación docente×grupo×materi
 Las horas provienen del plan de estudios del grado (fallback al horas global de
 la asignatura), de modo que carga y cobertura son coherentes con el generador.
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,10 +47,10 @@ from src.services.asignacion_service import FiltroAsignacionesDTO, NuevaAsignaci
 
 # Flujo de configuración del generador de horarios.
 _PASOS_HORARIO = [
-    ("asignaturas",  "Asignaturas",      "/admin/asignaturas"),
-    ("plan",         "Plan de estudios", "/admin/plan-estudios"),
-    ("asignaciones", "Asignaciones",     "/admin/asignaciones"),
-    ("horarios",     "Horarios",         "/horarios"),
+    ("asignaturas", "Asignaturas", "/admin/asignaturas"),
+    ("plan", "Plan de estudios", "/admin/plan-estudios"),
+    ("asignaciones", "Asignaciones", "/admin/asignaciones"),
+    ("horarios", "Horarios", "/horarios"),
 ]
 
 logger = logging.getLogger("ADMIN.ASIGNACIONES")
@@ -61,8 +62,7 @@ def _texto_error(exc: Exception) -> str:
     if callable(errores):
         try:
             msgs = [
-                str(e.get("msg", "")).split("Value error, ", 1)[-1].strip()
-                for e in exc.errors()
+                str(e.get("msg", "")).split("Value error, ", 1)[-1].strip() for e in exc.errors()
             ]
             msgs = [m for m in msgs if m]
             if msgs:
@@ -101,25 +101,25 @@ def asignaciones_page() -> None:
     # Directivos (director/coordinador): gestión completa.
     # Docentes: solo un tablero de lectura de sus grupos y horas.
     es_directivo = ctx.usuario_rol in ("director", "coordinador")
-    es_profesor = (ctx.usuario_rol == "profesor")
+    es_profesor = ctx.usuario_rol == "profesor"
 
     logger.info("Asignaciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     _s: dict = {
-        "anio_id":      None,
-        "periodos":     [],
-        "periodo_id":   None,
-        "grupos":       [],
-        "docentes":     [],
-        "asignaturas":  [],
-        "perspectiva":  "grupo",   # "grupo" | "docente"
-        "solo_con_cupo": True,     # filtrar docentes sin cupo en los selectores
+        "anio_id": None,
+        "periodos": [],
+        "periodo_id": None,
+        "grupos": [],
+        "docentes": [],
+        "asignaturas": [],
+        "perspectiva": "grupo",  # "grupo" | "docente"
+        "solo_con_cupo": True,  # filtrar docentes sin cupo en los selectores
         "grupo_sel_id": None,
         "docente_sel_id": None,
-        "plan":         [],   # list[PlanEstudios] del grado del grupo seleccionado
-        "asigns":       [],   # AsignacionInfo del grupo+periodo (activas + inactivas)
-        "doc_asigns":   [],   # AsignacionInfo activas del docente+periodo
-        "mis_asigns":   [],   # AsignacionInfo activas del profesor en sesión
+        "plan": [],  # list[PlanEstudios] del grado del grupo seleccionado
+        "asigns": [],  # AsignacionInfo del grupo+periodo (activas + inactivas)
+        "doc_asigns": [],  # AsignacionInfo activas del docente+periodo
+        "mis_asigns": [],  # AsignacionInfo activas del profesor en sesión
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -150,8 +150,7 @@ def asignaciones_page() -> None:
             _s["asignaturas"] = []
         try:
             periodos = (
-                Container.periodo_service().listar_por_anio(_s["anio_id"])
-                if _s["anio_id"] else []
+                Container.periodo_service().listar_por_anio(_s["anio_id"]) if _s["anio_id"] else []
             )
             _s["periodos"] = periodos
             activo = next((p for p in periodos if not getattr(p, "cerrado", False)), None)
@@ -174,7 +173,8 @@ def asignaciones_page() -> None:
         try:
             _s["plan"] = (
                 Container.plan_estudios_service().por_grado(grupo.grado)
-                if grupo.grado is not None else []
+                if grupo.grado is not None
+                else []
             )
         except Exception as exc:
             logger.error("Error cargando plan: %s", exc)
@@ -244,9 +244,7 @@ def asignaciones_page() -> None:
     def _completitud_grupo(g) -> tuple[int, int]:
         """(horas del plan ya asignadas, total del plan) para un grupo+periodo."""
         try:
-            c = Container.asignacion_service().completitud_grupo(
-                g.id, g.grado, _s["periodo_id"]
-            )
+            c = Container.asignacion_service().completitud_grupo(g.id, g.grado, _s["periodo_id"])
         except Exception:
             return (0, 0)
         return (c.horas_asignadas, c.horas_totales)
@@ -257,8 +255,10 @@ def asignaciones_page() -> None:
         if not g or g.grado is None:
             return {}
         asig_nombre = {a.id: a.nombre for a in _s["asignaturas"]}
-        plan_horas = {p.asignatura_id: p.horas_semanales
-                      for p in Container.plan_estudios_service().por_grado(g.grado)}
+        plan_horas = {
+            p.asignatura_id: p.horas_semanales
+            for p in Container.plan_estudios_service().por_grado(g.grado)
+        }
         try:
             pendientes = Container.asignacion_service().materias_sin_docente(
                 grupo_id, g.grado, _s["periodo_id"]
@@ -266,8 +266,7 @@ def asignaciones_page() -> None:
         except Exception:
             pendientes = []
         return {
-            aid: f"{asig_nombre.get(aid, '?')} ({plan_horas.get(aid, 0)}h)"
-            for aid in pendientes
+            aid: f"{asig_nombre.get(aid, '?')} ({plan_horas.get(aid, 0)}h)" for aid in pendientes
         }
 
     # ── Acciones (Por grupo) ────────────────────────────────────────────────────
@@ -279,8 +278,11 @@ def asignaciones_page() -> None:
         svc = Container.asignacion_service()
         try:
             svc.asignar_docente_a_materia(
-                grupo_id=gid, asignatura_id=asignatura_id, periodo_id=pid,
-                nuevo_usuario_id=nuevo_uid, usuario_id=ctx.usuario_id,
+                grupo_id=gid,
+                asignatura_id=asignatura_id,
+                periodo_id=pid,
+                nuevo_usuario_id=nuevo_uid,
+                usuario_id=ctx.usuario_id,
             )
             toast_success("Asignación quitada" if nuevo_uid is None else "Docente asignado")
         except ValueError as exc:
@@ -299,7 +301,8 @@ def asignaciones_page() -> None:
         plan_ids = {p.asignatura_id for p in _s["plan"]}
         asignadas = {a.asignatura_id for a in _s["asigns"] if a.activo}
         disponibles = {
-            a.id: a.nombre for a in _s["asignaturas"]
+            a.id: a.nombre
+            for a in _s["asignaturas"]
             if a.id not in plan_ids and a.id not in asignadas
         }
         if not disponibles:
@@ -312,10 +315,14 @@ def asignaciones_page() -> None:
                 toast_warning("Selecciona materia y docente.")
                 return False
             try:
-                Container.asignacion_service().crear_asignacion(NuevaAsignacionDTO(
-                    usuario_id=datos["usuario_id"], grupo_id=_s["grupo_sel_id"],
-                    asignatura_id=datos["asignatura_id"], periodo_id=_s["periodo_id"],
-                ))
+                Container.asignacion_service().crear_asignacion(
+                    NuevaAsignacionDTO(
+                        usuario_id=datos["usuario_id"],
+                        grupo_id=_s["grupo_sel_id"],
+                        asignatura_id=datos["asignatura_id"],
+                        periodo_id=_s["periodo_id"],
+                    )
+                )
                 toast_success("Materia agregada")
                 _cargar_grupo()
                 matriz.refresh()
@@ -330,10 +337,20 @@ def asignaciones_page() -> None:
         form_dialog(
             titulo="Agregar materia fuera del plan",
             campos=[
-                {"key": "asignatura_id", "label": "Asignatura *", "tipo": "select",
-                 "opciones": disponibles, "requerido": True},
-                {"key": "usuario_id", "label": "Docente *", "tipo": "select",
-                 "opciones": docentes_opts, "requerido": True},
+                {
+                    "key": "asignatura_id",
+                    "label": "Asignatura *",
+                    "tipo": "select",
+                    "opciones": disponibles,
+                    "requerido": True,
+                },
+                {
+                    "key": "usuario_id",
+                    "label": "Docente *",
+                    "tipo": "select",
+                    "opciones": docentes_opts,
+                    "requerido": True,
+                },
             ],
             on_submit=_crear,
             texto_submit="Agregar",
@@ -376,10 +393,12 @@ def asignaciones_page() -> None:
             cap_txt = f"{carga}/{cap} h" if cap is not None else f"{carga} h · sin tope"
             ui.label(f"Carga actual del docente: {cap_txt}").classes("text-caption text-secondary")
 
-            sel_grupo = ui.select(grupos_opts, label="Grupo *") \
-                .classes("w-full").props("outlined")
-            sel_asig = ui.select({}, label="Asignatura del plan (sin docente) *") \
-                .classes("w-full").props("outlined")
+            sel_grupo = ui.select(grupos_opts, label="Grupo *").classes("w-full").props("outlined")
+            sel_asig = (
+                ui.select({}, label="Asignatura del plan (sin docente) *")
+                .classes("w-full")
+                .props("outlined")
+            )
 
             def _on_grupo(e) -> None:
                 opts = _materias_sin_docente(e.value) if e.value else {}
@@ -393,10 +412,14 @@ def asignaciones_page() -> None:
                     toast_warning("Selecciona grupo y una asignatura pendiente.")
                     return
                 try:
-                    Container.asignacion_service().crear_asignacion(NuevaAsignacionDTO(
-                        usuario_id=did, grupo_id=gid,
-                        asignatura_id=aid, periodo_id=_s["periodo_id"],
-                    ))
+                    Container.asignacion_service().crear_asignacion(
+                        NuevaAsignacionDTO(
+                            usuario_id=did,
+                            grupo_id=gid,
+                            asignatura_id=aid,
+                            periodo_id=_s["periodo_id"],
+                        )
+                    )
                     toast_success("Asignación creada")
                     dlg.close()
                     _cargar_docente()
@@ -439,7 +462,10 @@ def asignaciones_page() -> None:
             maxh = int(maxv) if maxv not in (None, "") else None
             extra = int(extrav or 0)
             Container.usuario_service().configurar_carga(
-                did, maxh, extra, actualizado_por_id=ctx.usuario_id,
+                did,
+                maxh,
+                extra,
+                actualizado_por_id=ctx.usuario_id,
             )
             toast_success("Tope de carga actualizado")
         except ValueError as exc:
@@ -472,14 +498,17 @@ def asignaciones_page() -> None:
         matriz.refresh()
 
     # ── Fila de materia (Por grupo, con selector inline) ──────────────────────────
-    def _fila_materia(nombre: str, horas, asignatura_id: int, activo,
-                      fuera_plan: bool = False) -> None:
+    def _fila_materia(
+        nombre: str, horas, asignatura_id: int, activo, fuera_plan: bool = False
+    ) -> None:
         # Construir opciones de docente con su cupo (carga/cap) y filtrar los que
         # no tienen cupo para estas horas (salvo el actualmente asignado).
         h = horas or 0
         cur_uid = activo.usuario_id if activo else None
         cupos = Container.asignacion_service().docentes_con_cupo(
-            asignatura_id=asignatura_id, grupo_id=_s["grupo_sel_id"], horas=h,
+            asignatura_id=asignatura_id,
+            grupo_id=_s["grupo_sel_id"],
+            horas=h,
             periodo_id=_s["periodo_id"],
             docente_ids=[d.id for d in _s["docentes"]],
             usuario_actual_id=cur_uid,
@@ -505,26 +534,36 @@ def asignaciones_page() -> None:
                 ui.label(nombre).classes("text-sm font-medium")
                 if fuera_plan:
                     ui.label("Fuera del plan").classes("text-xs text-warning")
-            ui.label(f"{horas} h" if horas is not None else "—").classes("w-16 text-sm text-secondary")
+            ui.label(f"{horas} h" if horas is not None else "—").classes(
+                "w-16 text-sm text-secondary"
+            )
             ui.select(
                 opts,
                 value=cur_uid if cur_uid else 0,
                 on_change=lambda e, aid=asignatura_id: _set_docente(aid, e.value or None),
             ).classes("w-72").props("dense outlined")
             with ui.element("div").classes("w-28"):
-                status_badge("Asignada", variante="success") if activo \
-                    else status_badge("Pendiente", variante="warning")
+                status_badge("Asignada", variante="success") if activo else status_badge(
+                    "Pendiente", variante="warning"
+                )
             with ui.element("div").classes("w-10 text-right"):
                 if activo:
-                    btn_icon("link_off", variante="danger", tooltip="Quitar",
-                             on_click=lambda aid=activo.asignacion_id, lbl=nombre: _quitar(aid, lbl))
+                    btn_icon(
+                        "link_off",
+                        variante="danger",
+                        tooltip="Quitar",
+                        on_click=lambda aid=activo.asignacion_id, lbl=nombre: _quitar(aid, lbl),
+                    )
 
     # ── Render: Por grupo ─────────────────────────────────────────────────────────
     def _render_por_grupo() -> None:
         grupo = _grupo_sel()
         if not grupo:
-            empty_state(icono="groups", titulo="Selecciona un grupo",
-                        descripcion="Elige un grupo para configurar sus asignaciones.")
+            empty_state(
+                icono="groups",
+                titulo="Selecciona un grupo",
+                descripcion="Elige un grupo para configurar sus asignaciones.",
+            )
             return
 
         activo_map = _activo_por_materia()
@@ -533,15 +572,15 @@ def asignaciones_page() -> None:
         plan_ids = {p.asignatura_id for p in plan}
         cubiertas = sum(1 for p in plan if p.asignatura_id in activo_map)
         total_horas = sum(p.horas_semanales for p in plan)
-        horas_asignadas = sum(
-            p.horas_semanales for p in plan if p.asignatura_id in activo_map
-        )
+        horas_asignadas = sum(p.horas_semanales for p in plan if p.asignatura_id in activo_map)
         restantes = total_horas - horas_asignadas
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-between"):
                 with ui.element("div"):
-                    ui.label(f"{grupo.codigo} · {grupo.nombre}").classes("text-subtitle1 font-semibold")
+                    ui.label(f"{grupo.codigo} · {grupo.nombre}").classes(
+                        "text-subtitle1 font-semibold"
+                    )
                     grado_txt = f"Grado {grupo.grado}" if grupo.grado is not None else "Sin grado"
                     ui.label(grado_txt).classes("text-xs text-secondary")
                 with ui.row().classes("items-center gap-2"):
@@ -552,8 +591,12 @@ def asignaciones_page() -> None:
                     btn_secondary("Agregar materia", icon="add", on_click=_agregar_fuera_plan)
             with ui.row().classes("items-center gap-2 u-mt-xs"):
                 ui.switch(
-                    "Solo docentes con cupo", value=_s["solo_con_cupo"],
-                    on_change=lambda e: (_s.__setitem__("solo_con_cupo", e.value), matriz.refresh()),
+                    "Solo docentes con cupo",
+                    value=_s["solo_con_cupo"],
+                    on_change=lambda e: (
+                        _s.__setitem__("solo_con_cupo", e.value),
+                        matriz.refresh(),
+                    ),
                 ).props("dense")
                 ui.label("Los selectores muestran carga/cupo de cada docente.").classes(
                     "text-xs text-secondary"
@@ -575,7 +618,9 @@ def asignaciones_page() -> None:
 
         if plan:
             with ui.element("div").classes("panel-card u-mt-sm"):
-                ui.label("Plan de estudios del grado").classes("text-subtitle2 font-semibold u-mb-sm")
+                ui.label("Plan de estudios del grado").classes(
+                    "text-subtitle2 font-semibold u-mb-sm"
+                )
                 with ui.element("div").classes("lista-head"):
                     ui.label("Asignatura").classes("flex-1")
                     ui.label("Horas").classes("w-16")
@@ -585,7 +630,8 @@ def asignaciones_page() -> None:
                 for p in plan:
                     _fila_materia(
                         asig_nombre.get(p.asignatura_id, f"#{p.asignatura_id}"),
-                        p.horas_semanales, p.asignatura_id,
+                        p.horas_semanales,
+                        p.asignatura_id,
                         activo_map.get(p.asignatura_id),
                     )
 
@@ -594,15 +640,17 @@ def asignaciones_page() -> None:
             with ui.element("div").classes("panel-card u-mt-sm"):
                 ui.label("Materias fuera del plan").classes("text-subtitle2 font-semibold u-mb-sm")
                 for a in extras:
-                    _fila_materia(a.asignatura_nombre, None, a.asignatura_id,
-                                  a, fuera_plan=True)
+                    _fila_materia(a.asignatura_nombre, None, a.asignatura_id, a, fuera_plan=True)
 
     # ── Render: Por docente ───────────────────────────────────────────────────────
     def _render_por_docente() -> None:
         docente = _docente_sel()
         if not docente:
-            empty_state(icono=Icons.TEACHERS, titulo="Selecciona un docente",
-                        descripcion="Elige un docente para ver y gestionar su carga.")
+            empty_state(
+                icono=Icons.TEACHERS,
+                titulo="Selecciona un docente",
+                descripcion="Elige un docente para ver y gestionar su carga.",
+            )
             return
 
         asigns = _s["doc_asigns"]
@@ -620,10 +668,14 @@ def asignaciones_page() -> None:
             with ui.row().classes("form-row-between"):
                 with ui.element("div"):
                     ui.label(docente.nombre_completo).classes("text-subtitle1 font-semibold")
-                    ui.label(f"{len(asigns)} asignación(es) en el periodo").classes("text-xs text-secondary")
+                    ui.label(f"{len(asigns)} asignación(es) en el periodo").classes(
+                        "text-xs text-secondary"
+                    )
                 with ui.row().classes("items-center gap-2"):
                     if cap is not None:
-                        var = "success" if carga <= maxh else ("warning" if carga <= cap else "error")
+                        var = (
+                            "success" if carga <= maxh else ("warning" if carga <= cap else "error")
+                        )
                         status_badge(f"{carga} / {cap} h", variante=var)
                     else:
                         status_badge(f"{carga} h · sin tope", variante="neutral")
@@ -634,16 +686,34 @@ def asignaciones_page() -> None:
 
             # Configuración del tope: máximo base + horas extra
             with ui.row().classes("form-row-center-md u-mt-sm"):
-                inp_max = ui.number(
-                    label="Máx. base (h)", value=maxh, min=0, max=60, step=1,
-                ).classes("w-32").props("dense outlined")
-                inp_extra = ui.number(
-                    label="Horas extra", value=extra, min=0, max=30, step=1,
-                ).classes("w-32").props("dense outlined")
+                inp_max = (
+                    ui.number(
+                        label="Máx. base (h)",
+                        value=maxh,
+                        min=0,
+                        max=60,
+                        step=1,
+                    )
+                    .classes("w-32")
+                    .props("dense outlined")
+                )
+                inp_extra = (
+                    ui.number(
+                        label="Horas extra",
+                        value=extra,
+                        min=0,
+                        max=30,
+                        step=1,
+                    )
+                    .classes("w-32")
+                    .props("dense outlined")
+                )
                 btn_secondary(
-                    "Guardar tope", icon="save",
+                    "Guardar tope",
+                    icon="save",
                     on_click=lambda: _guardar_carga_docente(
-                        docente.id, inp_max.value, inp_extra.value),
+                        docente.id, inp_max.value, inp_extra.value
+                    ),
                 )
                 if cap is not None:
                     ui.label(
@@ -657,29 +727,43 @@ def asignaciones_page() -> None:
                     "Sube las horas extra o reasigna materias."
                 ).classes("text-xs text-error u-mt-xs")
             elif maxh is not None and carga > maxh:
-                ui.label(
-                    f"Usando {carga - maxh} h de las {extra} h extra disponibles."
-                ).classes("text-xs text-warning u-mt-xs")
+                ui.label(f"Usando {carga - maxh} h de las {extra} h extra disponibles.").classes(
+                    "text-xs text-warning u-mt-xs"
+                )
 
         with ui.element("div").classes("panel-card u-mt-sm"):
             if not asigns:
-                empty_state(icono="assignment_ind", titulo="Sin asignaciones",
-                            descripcion="Este docente no tiene materias asignadas en el periodo.")
+                empty_state(
+                    icono="assignment_ind",
+                    titulo="Sin asignaciones",
+                    descripcion="Este docente no tiene materias asignadas en el periodo.",
+                )
                 return
             with ui.element("div").classes("lista-head"):
                 ui.label("Grupo").classes("w-24")
                 ui.label("Asignatura").classes("flex-1")
                 ui.label("Horas").classes("w-16")
                 ui.label("").classes("w-10")
-            for a in sorted(asigns, key=lambda x: (grupo_nombre.get(x.grupo_id, ""), x.asignatura_nombre)):
+            for a in sorted(
+                asigns, key=lambda x: (grupo_nombre.get(x.grupo_id, ""), x.asignatura_nombre)
+            ):
                 with ui.element("div").classes("lista-fila"):
-                    ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes("w-24 cell-mono")
+                    ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes(
+                        "w-24 cell-mono"
+                    )
                     ui.label(a.asignatura_nombre).classes("flex-1 text-sm")
-                    ui.label(f"{_horas(a.grupo_id, a.asignatura_id)} h").classes("w-16 text-sm text-secondary")
+                    ui.label(f"{_horas(a.grupo_id, a.asignatura_id)} h").classes(
+                        "w-16 text-sm text-secondary"
+                    )
                     with ui.element("div").classes("w-10 text-right"):
-                        btn_icon("link_off", variante="danger", tooltip="Quitar",
-                                 on_click=lambda aid=a.asignacion_id,
-                                 lbl=f"{a.asignatura_nombre} ({grupo_nombre.get(a.grupo_id, '')})": _quitar(aid, lbl))
+                        btn_icon(
+                            "link_off",
+                            variante="danger",
+                            tooltip="Quitar",
+                            on_click=lambda aid=a.asignacion_id, lbl=f"{a.asignatura_nombre} ({grupo_nombre.get(a.grupo_id, '')})": (
+                                _quitar(aid, lbl)
+                            ),
+                        )
 
     # ── Render: tablero del profesor (solo lectura) ────────────────────────────────
     def _render_profesor_board() -> None:
@@ -700,8 +784,11 @@ def asignaciones_page() -> None:
 
         if not asigns:
             with ui.element("div").classes("panel-card u-mt-sm"):
-                empty_state(icono="assignment_ind", titulo="Sin asignaciones",
-                            descripcion="No tienes materias asignadas en el periodo activo.")
+                empty_state(
+                    icono="assignment_ind",
+                    titulo="Sin asignaciones",
+                    descripcion="No tienes materias asignadas en el periodo activo.",
+                )
             return
 
         por_grupo: dict = {}
@@ -716,16 +803,18 @@ def asignaciones_page() -> None:
                 with ui.element("div").classes("panel-card w-64"):
                     with ui.row().classes("items-center justify-between"):
                         with ui.element("div"):
-                            ui.label(grupo_nombre.get(gid, str(gid))).classes("text-subtitle2 font-semibold")
+                            ui.label(grupo_nombre.get(gid, str(gid))).classes(
+                                "text-subtitle2 font-semibold"
+                            )
                             if g is not None:
                                 ui.label(g.nombre).classes("text-xs text-secondary")
                         status_badge(f"{sub} h", variante="info")
                     for a in items:
                         with ui.row().classes("divider-row form-row-between"):
                             ui.label(a.asignatura_nombre).classes("text-sm")
-                            ui.label(
-                                f"{asvc.horas_de_asignacion(gid, a.asignatura_id)} h"
-                            ).classes("text-xs text-secondary")
+                            ui.label(f"{asvc.horas_de_asignacion(gid, a.asignatura_id)} h").classes(
+                                "text-xs text-secondary"
+                            )
 
     # ── Matriz (controles + dispatch) ───────────────────────────────────────────────
     # Los controles viven DENTRO del refreshable para que su estado activo
@@ -737,7 +826,9 @@ def asignaciones_page() -> None:
                 periodo_opts = {p.id: p.nombre for p in _s["periodos"]}
                 if periodo_opts:
                     ui.select(
-                        periodo_opts, value=_s["periodo_id"], label="Periodo",
+                        periodo_opts,
+                        value=_s["periodo_id"],
+                        label="Periodo",
                         on_change=lambda e: _cambiar_periodo(e.value),
                     ).classes("w-48").props("dense outlined")
                 if es_directivo:
@@ -750,8 +841,9 @@ def asignaciones_page() -> None:
                             b.on("click", lambda _, c=clave: _cambiar_perspectiva(c))
                             with b:
                                 ui.label(lbl)
-                btn_icon("refresh", tooltip="Recargar",
-                         on_click=lambda: (_recargar(), matriz.refresh()))
+                btn_icon(
+                    "refresh", tooltip="Recargar", on_click=lambda: (_recargar(), matriz.refresh())
+                )
 
             if es_directivo and _s["perspectiva"] == "grupo":
                 ui.label("Grupo").classes("parrilla-chips-label u-mt-sm")
@@ -777,8 +869,11 @@ def asignaciones_page() -> None:
                             ui.label(d.nombre_completo)
 
         if not _s["periodo_id"]:
-            empty_state(icono=Icons.PERIODS, titulo="Sin periodo activo",
-                        descripcion="No hay periodos en el año activo. Configúralos primero.")
+            empty_state(
+                icono=Icons.PERIODS,
+                titulo="Sin periodo activo",
+                descripcion="No hay periodos en el año activo. Configúralos primero.",
+            )
             return
         if es_profesor:
             _render_profesor_board()
@@ -792,21 +887,23 @@ def asignaciones_page() -> None:
         with ui.element("div").classes("page-stack"):
             if not es_profesor:
                 pipeline_nav(
-                    _PASOS_HORARIO, activo="asignaciones",
+                    _PASOS_HORARIO,
+                    activo="asignaciones",
                     hint="Paso 3 · Asigna un docente a cada materia del plan (por grupo) "
-                         "o reparte materias a cada docente según su carga. Luego genera el horario.",
+                    "o reparte materias a cada docente según su carga. Luego genera el horario.",
                 )
             matriz()
 
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Asignaciones",
-        page_subtitulo = (
-            "Tu carga académica del periodo" if es_profesor
+        page_titulo="Asignaciones",
+        page_subtitulo=(
+            "Tu carga académica del periodo"
+            if es_profesor
             else "Asigna docentes a materias por grupo, o materias a cada docente según su carga"
         ),
-        page_icono     = "assignment_ind",
+        page_icono="assignment_ind",
     )
 
 

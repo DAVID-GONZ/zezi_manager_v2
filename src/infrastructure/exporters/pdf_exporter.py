@@ -1,6 +1,7 @@
 """
 WeasyPrintExporter — PDF via weasyprint (con fallback a reportlab), Excel via openpyxl, CSV nativo.
 """
+
 from __future__ import annotations
 
 from html.parser import HTMLParser
@@ -9,6 +10,7 @@ from pathlib import Path
 from src.domain.ports.service_ports import IExporterService
 
 # ── Fallback: HTML → PDF via reportlab ───────────────────────────────────────
+
 
 class _HTMLTableParser(HTMLParser):
     """Parser mínimo que extrae título, cabeceras, filas y metadatos de un HTML tabular simple."""
@@ -108,11 +110,11 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
     story: list = []
 
     # ── Membrete ──────────────────────────────────────────────────────────────
-    page_w = page_size[0] - 3 * cm   # ancho útil (márgenes L + R = 3 cm)
+    page_w = page_size[0] - 3 * cm  # ancho útil (márgenes L + R = 3 cm)
     fecha_str = _date.today().strftime("%d/%m/%Y")
 
-    grupo      = parser.meta.get("report-grupo", "")
-    periodo    = parser.meta.get("report-periodo", "")
+    grupo = parser.meta.get("report-grupo", "")
+    periodo = parser.meta.get("report-periodo", "")
     asignatura = parser.meta.get("report-asignatura", "")
 
     col_izq_items = ["INSTITUCIÓN EDUCATIVA ZECI"]
@@ -141,23 +143,29 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
         fontSize=8,
         leading=11,
         textColor=colors.HexColor("#555555"),
-        alignment=2,   # RIGHT
+        alignment=2,  # RIGHT
     )
 
-    membrete_data = [[
-        Paragraph(col_izq_text, membrete_style_izq),
-        Paragraph(col_der_text, membrete_style_der),
-    ]]
+    membrete_data = [
+        [
+            Paragraph(col_izq_text, membrete_style_izq),
+            Paragraph(col_der_text, membrete_style_der),
+        ]
+    ]
     membrete_tbl = Table(
         membrete_data,
         colWidths=[page_w * 0.7, page_w * 0.3],
     )
-    membrete_tbl.setStyle(TableStyle([
-        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
-        ("LINEBELOW",     (0, 0), (-1, -1), 1,   colors.HexColor("#2B6CB0")),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",    (0, 0), (-1, -1), 4),
-    ]))
+    membrete_tbl.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#2B6CB0")),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     story.append(membrete_tbl)
     story.append(Spacer(1, 0.4 * cm))
 
@@ -166,9 +174,9 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
         # Columnas proporcionales
         if len(parser.headers) > 2:
             col_w_nombre = page_w * 0.35
-            col_w_resto  = (page_w - col_w_nombre) / (len(parser.headers) - 1)
-            col_w_resto  = max(col_w_resto, 1.5 * cm)
-            col_widths   = [col_w_nombre] + [col_w_resto] * (len(parser.headers) - 1)
+            col_w_resto = (page_w - col_w_nombre) / (len(parser.headers) - 1)
+            col_w_resto = max(col_w_resto, 1.5 * cm)
+            col_widths = [col_w_nombre] + [col_w_resto] * (len(parser.headers) - 1)
         else:
             col_widths = [page_w / len(parser.headers)] * len(parser.headers)
 
@@ -195,31 +203,36 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
         )
 
         def _wrap(text, style: ParagraphStyle) -> Paragraph:
-            if text is None or str(text).strip().lower() == "none":
-                txt = "—"
-            else:
-                txt = str(text)
+            txt = "—" if text is None or str(text).strip().lower() == "none" else str(text)
             return Paragraph(txt, style)
 
-        table_data = (
-            [[_wrap(h, cell_style_header) for h in parser.headers]]
-            + [[_wrap(c, cell_style_normal) for c in row] for row in parser.rows]
-        )
+        table_data = [[_wrap(h, cell_style_header) for h in parser.headers]] + [
+            [_wrap(c, cell_style_normal) for c in row] for row in parser.rows
+        ]
 
         tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND",     (0, 0), (-1, 0),  colors.HexColor("#2B6CB0")),
-            ("TEXTCOLOR",      (0, 0), (-1, 0),  colors.white),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
-            ("GRID",           (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
-            ("VALIGN",         (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN",          (1, 0), (-1, -1), "CENTER"),
-            ("ALIGN",          (0, 0), (0, -1),  "LEFT"),
-            ("TOPPADDING",     (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING",  (0, 0), (-1, -1), 3),
-            ("LEFTPADDING",    (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING",   (0, 0), (-1, -1), 4),
-        ]))
+        tbl.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2B6CB0")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#f5f5f5")],
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 0), (0, -1), "LEFT"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
         story.append(tbl)
     else:
         story.append(Paragraph("No hay datos para mostrar.", styles["Normal"]))
@@ -229,6 +242,7 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
 
 
 # ── Exportador principal ──────────────────────────────────────────────────────
+
 
 class WeasyPrintExporter(IExporterService):
     """
@@ -248,6 +262,7 @@ class WeasyPrintExporter(IExporterService):
         # Intento 1: weasyprint
         try:
             import weasyprint
+
             pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
         except Exception:
             # Intento 2: reportlab (sin dependencias nativas)
@@ -271,6 +286,7 @@ class WeasyPrintExporter(IExporterService):
         ruta_destino: Path | None = None,
     ) -> bytes:
         from .openpyxl_exporter import OpenpyxlExporter
+
         return OpenpyxlExporter().exportar_excel(datos, nombre_hoja, ruta_destino)
 
     def exportar_csv(
@@ -280,6 +296,7 @@ class WeasyPrintExporter(IExporterService):
         encoding: str = "utf-8-sig",
     ) -> bytes:
         from .null_exporter import _csv_bytes
+
         contenido = _csv_bytes(datos, encoding)
         if ruta_destino is not None:
             Path(ruta_destino).write_bytes(contenido)

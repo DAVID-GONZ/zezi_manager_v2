@@ -174,3 +174,53 @@
   align-items: center;
   gap: var(--space-sm);
 }
+
+/* ── Buscador global ─────────────────────────────────────────── */
+
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-sm);
+  height: var(--input-height-sm);
+  min-width: var(--topbar-search-w);
+}
+
+.topbar-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  width: 100%;
+}
+
+/* ── Campana de notificaciones ──────────────────────────────── */
+
+.topbar-notif {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.topbar-notif-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: var(--badge-dot-size);
+  height: var(--badge-dot-size);
+  background: var(--color-error);
+  /* Relleno saturado invariante por tema → texto invariante (5.62:1). */
+  color: var(--color-on-filled);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-xs);
+  pointer-events: none;
+}

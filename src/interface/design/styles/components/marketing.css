@@ -1,0 +1,203 @@
+/* marketing.css — Andes Minimal v2 — Landing de marketing (portal_36)
+   Clases mkt-*: standalone, no usa app_layout.
+   Frontera Core/Adapter intacta: sin selectores .q-*, .ag-*, .nicegui-*.
+
+   D7: la tarjeta de característica NO define aquí su elevación, su
+   reflejo de luz ni su ícono flotante — todo eso es la base compartida
+   `.portal-module-card, .mkt-feature-card` de components/cards.css
+   (bloque ELEVATED CARD). Aquí solo viven los deltas de la variante.
+*/
+
+/* ── Layout raíz ─────────────────────────────────────────────────── */
+
+.mkt-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+
+  /* Ancla el tema claro — la landing siempre es modo claro, aunque el OS
+     o el toggle del portal estén en oscuro.
+     D8: se re-apunta a los PRIMITIVOS (paper/ink/graphite y los
+     shadow-neutral-*), que por diseño no se sobrescriben en dark. Antes
+     eran hex copiados de tokens.css: mismo valor, pero duplicado y
+     condenado a divergir. */
+  --color-bg:               var(--paper-050);
+  --color-surface:          var(--paper-000);
+  --color-surface-alt:      var(--paper-100);
+  --color-border:           var(--paper-200);
+  --color-divider:          var(--divider-neutral);
+  --color-text-primary:     var(--graphite-900);
+  --color-text-secondary:   var(--graphite-500);
+  --color-primary:          var(--ink-700);
+  --color-primary-dark:     var(--ink-900);
+  --color-primary-light:    var(--ink-500);
+  --color-primary-lighter:  var(--ink-100);
+  --color-primary-contrast: var(--paper-000);
+  --shadow-sm:              var(--shadow-neutral-sm);
+  --shadow-md:              var(--shadow-neutral-md);
+  --shadow-lg:              var(--shadow-neutral-lg);
+  --shadow-card:            var(--shadow-neutral-card);
+}
+
+/* ── Top-bar ─────────────────────────────────────────────────────── */
+
+.mkt-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-index-topbar);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* D1: los dos grupos fijos de la top-bar comparten cuerpo — un solo
+   selector agrupado en vez de dos reglas idénticas. */
+.mkt-logo-wrap,
+.mkt-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.mkt-logo-name {
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.mkt-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── Enlaces de navegación ───────────────────────────────────────
+   M10: hover + active. El focus-visible lo cubre la regla global de
+   reset.css con --color-primary, que aquí está anclado a --ink-700
+   (10.66:1 sobre la superficie blanca). */
+
+.mkt-nav-link {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.mkt-nav-link:hover {
+  color: var(--color-primary);
+}
+
+.mkt-nav-link:active {
+  color: var(--color-primary-dark);
+}
+
+/* ── Hero ────────────────────────────────────────────────────────── */
+
+.mkt-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xxl) var(--space-lg);
+  background: var(--color-surface-alt);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mkt-hero-content {
+  max-width: var(--mkt-max-w);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  text-align: center;
+  align-items: center;
+}
+
+.mkt-hero-title {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.mkt-hero-sub {
+  font-size: var(--font-size-h4);
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+/* ── Sección de características ──────────────────────────────────── */
+
+.mkt-feature-section {
+  padding: var(--space-xxl) var(--space-lg);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mkt-section-title {
+  font-size: var(--font-size-h2);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.mkt-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-lg);
+  max-width: var(--mkt-max-w);
+  margin: 0 auto;
+}
+
+/* ── Deltas de la tarjeta respecto a la base ELEVATED CARD ───────── */
+
+.mkt-feature-card {
+  padding: var(--space-lg);
+  gap: var(--space-sm);
+}
+
+.mkt-feature-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.mkt-feature-desc {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+
+.mkt-footer {
+  margin-top: auto;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mkt-footer-copy {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}

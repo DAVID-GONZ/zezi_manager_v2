@@ -1,6 +1,7 @@
 """
 SqliteNivelacionRepository — implementación SQLite de INivelacionRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -15,7 +16,6 @@ from src.domain.ports.nivelacion_repo import INivelacionRepository
 
 
 class SqliteNivelacionRepository(INivelacionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -25,6 +25,7 @@ class SqliteNivelacionRepository(INivelacionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -144,8 +145,7 @@ class SqliteNivelacionRepository(INivelacionRepository):
                 SET valor = ?, usuario_id = ?
                 WHERE actividad_nivelacion_id = ? AND estudiante_id = ?
                 """,
-                (nota.valor, nota.usuario_id,
-                 nota.actividad_nivelacion_id, nota.estudiante_id),
+                (nota.valor, nota.usuario_id, nota.actividad_nivelacion_id, nota.estudiante_id),
             )
             if self._conn is None:
                 conn.commit()

@@ -20,7 +20,6 @@ from ..models.institucion import Institucion
 
 
 class IInstitucionRepository(ABC):
-
     @abstractmethod
     def get_by_id(self, institucion_id: int) -> Institucion | None:
         """Retorna la institución con ese id, o None si no existe."""

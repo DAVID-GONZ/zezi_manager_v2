@@ -29,11 +29,9 @@ logger = logging.getLogger("DB.SCHEMA")
 # =============================================================================
 
 SCHEMA: list[str] = [
-
     # -------------------------------------------------------------------------
     # 1. CONFIGURACIÓN INSTITUCIONAL
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS instituciones (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +61,6 @@ SCHEMA: list[str] = [
         configuracion_inicial_completa BOOLEAN NOT NULL DEFAULT 0
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS configuracion_anio (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +93,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, anio)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS niveles_desempeno (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +109,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS configuracion_periodos (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,7 +120,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS criterios_promocion (
         id                          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,11 +136,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     # -------------------------------------------------------------------------
     # 2. INFRAESTRUCTURA ACADÉMICA
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS escenarios_horario (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,7 +151,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS plantillas_franja (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,7 +164,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, nombre)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS franjas (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -189,7 +179,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(plantilla_id) REFERENCES plantillas_franja(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS areas_conocimiento (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,7 +190,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, codigo)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS asignaturas (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,7 +207,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(area_id) REFERENCES areas_conocimiento(id) ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS grupos (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -241,7 +228,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, codigo)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS grados (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -252,11 +238,9 @@ SCHEMA: list[str] = [
         horas_semanales INTEGER NOT NULL DEFAULT 0  CHECK(horas_semanales >= 0)
     )
     """,
-
     # -------------------------------------------------------------------------
     # 3. USUARIOS Y ACUDIENTES
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS usuarios (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -285,7 +269,6 @@ SCHEMA: list[str] = [
         institucion_id      INTEGER REFERENCES instituciones(id)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS acudientes (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -310,7 +293,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS estudiantes (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -335,7 +317,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS estudiante_acudiente (
         estudiante_id  INTEGER NOT NULL,
@@ -347,7 +328,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(acudiente_id)  REFERENCES acudientes(id)  ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS historial_estudiantes (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -367,11 +347,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)    ON DELETE SET NULL
     )
     """,
-
     # -------------------------------------------------------------------------
     # 4. PERIODOS Y ASIGNACIONES
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS periodos (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -392,7 +370,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS hitos_periodo (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -407,7 +384,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(periodo_id) REFERENCES periodos(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS asignaciones (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -424,7 +400,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(periodo_id)    REFERENCES periodos(id)    ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS logros (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -437,7 +412,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS horarios (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -464,11 +438,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(escenario_id)  REFERENCES escenarios_horario(id)  ON DELETE CASCADE
     )
     """,
-
     # -------------------------------------------------------------------------
     # 5. EVALUACIÓN
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS configuracion_siee (
         id                              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -489,7 +461,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS categorias (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -519,7 +490,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(categoria_padre_id) REFERENCES categorias(id)        ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS actividades (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -534,7 +504,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(categoria_id) REFERENCES categorias(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS notas (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -550,7 +519,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)     ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS puntos_extra (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -570,11 +538,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(periodo_id)    REFERENCES periodos(id)       ON DELETE CASCADE
     )
     """,
-
     # -------------------------------------------------------------------------
     # 6. CIERRES Y PROMOCIÓN
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS cierres_periodo (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -597,7 +563,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)        ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS cierres_anio (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -625,7 +590,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)          ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS promocion_anual (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -645,11 +609,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_decision_id) REFERENCES usuarios(id)          ON DELETE SET NULL
     )
     """,
-
     # -------------------------------------------------------------------------
     # 7. HABILITACIONES Y PLANES DE MEJORAMIENTO
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS habilitaciones (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -676,7 +638,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)      ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS planes_mejoramiento (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -699,11 +660,9 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)      ON DELETE SET NULL
     )
     """,
-
     # -------------------------------------------------------------------------
     # 7b. PLAN DE MEJORAMIENTO (corte mid-periodo)
     # -------------------------------------------------------------------------
-
     """
     CREATE TABLE IF NOT EXISTS cortes_plan (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -721,7 +680,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS notas_corte_plan (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -743,7 +701,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS actividades_plan (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -762,7 +719,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)       ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS notas_actividad_plan (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -781,9 +737,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)        REFERENCES usuarios(id)         ON DELETE SET NULL
     )
     """,
-
     # 7c. NIVELACIÓN
-
     """
     CREATE TABLE IF NOT EXISTS actividades_nivelacion (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -800,7 +754,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS notas_nivelacion (
         id                       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -819,7 +772,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)              REFERENCES usuarios(id)                ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS cierres_nivelacion (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -834,9 +786,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
     )
     """,
-
     # 8. ASISTENCIA Y CONVIVENCIA
-
     """
     CREATE TABLE IF NOT EXISTS categorias_observacion (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -847,7 +797,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, nombre)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS plantillas_observacion (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -858,7 +807,6 @@ SCHEMA: list[str] = [
         institucion_id INTEGER REFERENCES instituciones(id)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS control_diario (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -885,7 +833,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)      ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS observaciones_periodo (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -915,7 +862,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)      ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS registro_comportamiento (
         id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -939,7 +885,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)   ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS nota_comportamiento_periodo (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -959,9 +904,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)           ON DELETE SET NULL
     )
     """,
-
-    # 9. ALERTAS 
-
+    # 9. ALERTAS
     """
     CREATE TABLE IF NOT EXISTS configuracion_alertas (
         id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -985,7 +928,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS alertas (
         id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -1013,9 +955,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_resolucion_id)  REFERENCES usuarios(id)   ON DELETE SET NULL
     )
     """,
-
     # 10. INFORMES Y PIAR
-
     """
     CREATE TABLE IF NOT EXISTS boletines_emitidos (
         id                  INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -1037,7 +977,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_generador_id) REFERENCES usuarios(id)          ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS piar (
         id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -1057,11 +996,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_elaboracion_id) REFERENCES usuarios(id)          ON DELETE SET NULL
     )
     """,
-
-   
     # 11. AUDITORÍA
-    
-
     """
     CREATE TABLE IF NOT EXISTS auditoria (
         id          INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -1093,7 +1028,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS audit_log (
         id              INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -1115,9 +1049,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
-
     # 12. GENERADOR DE HORARIOS
-
     """
     CREATE TABLE IF NOT EXISTS disponibilidad_docente (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1131,7 +1063,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS config_generacion (
         id                   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1154,9 +1085,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(escenario_destino_id) REFERENCES escenarios_horario(id)  ON DELETE SET NULL
     )
     """,
-
     # salas, ventanas_grupo, bloques_anclados, franjas_reunion, limites_docente
-
     """
     CREATE TABLE IF NOT EXISTS salas (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1168,7 +1097,6 @@ SCHEMA: list[str] = [
         UNIQUE(institucion_id, nombre)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS ventanas_grupo (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1179,7 +1107,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS bloques_anclados (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1195,7 +1122,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(sala_id)       REFERENCES salas(id)              ON DELETE SET NULL
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS franjas_reunion (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1209,7 +1135,6 @@ SCHEMA: list[str] = [
         institucion_id INTEGER REFERENCES instituciones(id)
     )
     """,
-
     """
     CREATE TABLE IF NOT EXISTS limites_docente (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1220,9 +1145,7 @@ SCHEMA: list[str] = [
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
     )
     """,
-
     # plan_estudios (paso_19; mejora_07-T2 añade institucion_id)
-
     """
     CREATE TABLE IF NOT EXISTS plan_estudios (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1234,7 +1157,6 @@ SCHEMA: list[str] = [
         FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
     )
     """,
-
     # configuracion_grado_institucion (mejora_07-T6)
     # Tabla puente: configuración por-institución de un grado global.
     """
@@ -1248,7 +1170,6 @@ SCHEMA: list[str] = [
         UNIQUE(grado_id, institucion_id)
     )
     """,
-
     # preferencias_institucion (mejora_08): preferencias configurables por tenant.
     """
     CREATE TABLE IF NOT EXISTS preferencias_institucion (
@@ -1270,104 +1191,83 @@ SCHEMA: list[str] = [
 # =============================================================================
 
 INDICES: list[str] = [
-
     # configuracion_anio
     "CREATE INDEX IF NOT EXISTS idx_config_anio        ON configuracion_anio(anio)",
     # Multi-tenant
     "CREATE INDEX IF NOT EXISTS idx_config_institucion ON configuracion_anio(institucion_id)",
-
     # usuarios (multi-tenant)
     "CREATE INDEX IF NOT EXISTS idx_usuarios_institucion ON usuarios(institucion_id)",
-
     # niveles_desempeno
     "CREATE INDEX IF NOT EXISTS idx_niveles_anio        ON niveles_desempeno(anio_id)",
-
     # asignaturas
     "CREATE INDEX IF NOT EXISTS idx_asig_area           ON asignaturas(area_id)",
     # Multi-tenant: scope por institución.
     "CREATE INDEX IF NOT EXISTS idx_asig_institucion    ON asignaturas(institucion_id)",
-
     # grupos (multi-tenant)
     "CREATE INDEX IF NOT EXISTS idx_grupos_institucion  ON grupos(institucion_id)",
     # Consultas: filtro por director_grupo_id.
     "CREATE INDEX IF NOT EXISTS idx_grupos_director      ON grupos(director_grupo_id)",
-
     # estudiantes
     "CREATE INDEX IF NOT EXISTS idx_est_grupo           ON estudiantes(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_est_estado          ON estudiantes(estado_matricula)",
     "CREATE INDEX IF NOT EXISTS idx_est_documento       ON estudiantes(numero_documento)",
     # estudiantes (multi-tenant): scope por institución)
     "CREATE INDEX IF NOT EXISTS idx_est_institucion     ON estudiantes(institucion_id)",
-
     # acudientes
     "CREATE INDEX IF NOT EXISTS idx_acud_documento      ON acudientes(numero_documento)",
-
     # periodos
     "CREATE INDEX IF NOT EXISTS idx_periodos_anio       ON periodos(anio_id)",
     "CREATE INDEX IF NOT EXISTS idx_periodos_activo     ON periodos(activo)",
-
     # asignaciones (tabla pivot crítica)
     "CREATE INDEX IF NOT EXISTS idx_asignac_usuario     ON asignaciones(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_asignac_grupo       ON asignaciones(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_asignac_asignatura  ON asignaciones(asignatura_id)",
     "CREATE INDEX IF NOT EXISTS idx_asignac_periodo     ON asignaciones(periodo_id)",
-
     # logros
     "CREATE INDEX IF NOT EXISTS idx_logros_asignacion   ON logros(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_logros_periodo      ON logros(periodo_id)",
-
     # escenarios_horario
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_escenario_activo_unico ON escenarios_horario(anio_id) WHERE activo = 1",
     "CREATE INDEX IF NOT EXISTS idx_escenarios_anio     ON escenarios_horario(anio_id)",
-
     # plantillas_franja / franjas
     # Multi-tenant: unicidad de plantilla activa por (institucion, jornada),
     # no global — cada institución puede tener su propia plantilla activa por jornada.
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(institucion_id, jornada) WHERE activa = 1",
     "CREATE INDEX IF NOT EXISTS idx_franjas_plantilla ON franjas(plantilla_id)",
     "CREATE INDEX IF NOT EXISTS idx_plantilla_institucion ON plantillas_franja(institucion_id)",
-
     # horarios
     "CREATE INDEX IF NOT EXISTS idx_horarios_grupo      ON horarios(grupo_id)",
     "CREATE INDEX IF NOT EXISTS idx_horarios_usuario    ON horarios(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_horarios_periodo    ON horarios(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_horarios_escenario  ON horarios(escenario_id)",
-
     # categorias y actividades
     "CREATE INDEX IF NOT EXISTS idx_cats_asignacion     ON categorias(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_cats_periodo        ON categorias(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_acts_categoria      ON actividades(categoria_id)",
     "CREATE INDEX IF NOT EXISTS idx_acts_fecha          ON actividades(fecha)",
-
     # notas
     "CREATE INDEX IF NOT EXISTS idx_notas_estudiante    ON notas(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_actividad     ON notas(actividad_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_fecha         ON notas(fecha_registro)",
-
     # cierres_periodo
     "CREATE INDEX IF NOT EXISTS idx_cierres_p_est       ON cierres_periodo(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_cierres_p_per       ON cierres_periodo(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_cierres_p_asig      ON cierres_periodo(asignacion_id)",
-
     # cierres_anio
     "CREATE INDEX IF NOT EXISTS idx_cierres_a_est       ON cierres_anio(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_cierres_a_anio      ON cierres_anio(anio_id)",
-
     # promocion_anual
     "CREATE INDEX IF NOT EXISTS idx_prom_est            ON promocion_anual(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_prom_anio           ON promocion_anual(anio_id)",
     "CREATE INDEX IF NOT EXISTS idx_prom_estado         ON promocion_anual(estado)",
-
     # habilitaciones
     "CREATE INDEX IF NOT EXISTS idx_habil_est           ON habilitaciones(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_habil_asig          ON habilitaciones(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_habil_estado        ON habilitaciones(estado)",
-
     # planes_mejoramiento
     "CREATE INDEX IF NOT EXISTS idx_planes_est          ON planes_mejoramiento(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_planes_periodo      ON planes_mejoramiento(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_planes_estado       ON planes_mejoramiento(estado)",
-
     # control_diario
     "CREATE INDEX IF NOT EXISTS idx_ctrl_fecha          ON control_diario(fecha)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_estudiante     ON control_diario(estudiante_id)",
@@ -1375,36 +1275,28 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_ctrl_asignacion     ON control_diario(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_periodo        ON control_diario(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_estado         ON control_diario(estado)",
-
     # categorias_observacion (convivencia_09)
     "CREATE INDEX IF NOT EXISTS ix_categorias_obs_activa ON categorias_observacion(activa)",
-
     # plantillas_observacion (convivencia_12)
     "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_categoria ON plantillas_observacion(categoria_id)",
     "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_activa    ON plantillas_observacion(activa)",
-
     # observaciones_periodo
     "CREATE INDEX IF NOT EXISTS idx_obs_estudiante      ON observaciones_periodo(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_obs_periodo         ON observaciones_periodo(periodo_id)",
-
     # registro_comportamiento
     "CREATE INDEX IF NOT EXISTS idx_comp_estudiante     ON registro_comportamiento(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_comp_periodo        ON registro_comportamiento(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_comp_tipo           ON registro_comportamiento(tipo)",
-
     # alertas
     "CREATE INDEX IF NOT EXISTS idx_alertas_est         ON alertas(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_alertas_tipo        ON alertas(tipo_alerta)",
     "CREATE INDEX IF NOT EXISTS idx_alertas_resuelta    ON alertas(resuelta)",
-
     # historial_estudiantes
     "CREATE INDEX IF NOT EXISTS idx_hist_estudiante     ON historial_estudiantes(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_hist_fecha          ON historial_estudiantes(fecha_movimiento)",
-
     # piar
     "CREATE INDEX IF NOT EXISTS idx_piar_est            ON piar(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_piar_anio           ON piar(anio_id)",
-
     # auditoría
     "CREATE INDEX IF NOT EXISTS idx_audit_usuario_id    ON auditoria(usuario_id)",
     "CREATE INDEX IF NOT EXISTS idx_audit_fecha         ON auditoria(fecha_hora)",
@@ -1414,19 +1306,15 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_auditlog_tabla      ON audit_log(tabla)",
     "CREATE INDEX IF NOT EXISTS idx_auditlog_timestamp  ON audit_log(timestamp)",
     "CREATE INDEX IF NOT EXISTS idx_audit_log_institucion ON audit_log(institucion_id)",
-
     # actividades_nivelacion
     "CREATE INDEX IF NOT EXISTS idx_act_nivel_asig    ON actividades_nivelacion(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_act_nivel_periodo  ON actividades_nivelacion(periodo_id)",
-
     # notas_nivelacion
     "CREATE INDEX IF NOT EXISTS idx_nota_nivel_act     ON notas_nivelacion(actividad_nivelacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_nota_nivel_est     ON notas_nivelacion(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_nota_nivel_asig    ON notas_nivelacion(asignacion_id)",
-
     # cierres_nivelacion
     "CREATE INDEX IF NOT EXISTS idx_cierre_nivel_asig  ON cierres_nivelacion(asignacion_id)",
-
     # cortes_plan / plan de mejoramiento
     "CREATE INDEX IF NOT EXISTS idx_cortes_plan_asig    ON cortes_plan(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_cortes_plan_per     ON cortes_plan(periodo_id)",
@@ -1435,13 +1323,10 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_act_plan_corte      ON actividades_plan(corte_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_act  ON notas_actividad_plan(actividad_plan_id)",
     "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_est  ON notas_actividad_plan(estudiante_id)",
-
     # disponibilidad_docente
     "CREATE INDEX IF NOT EXISTS idx_disponibilidad_docente ON disponibilidad_docente(usuario_id, dia_semana)",
-
     # config_generacion
     "CREATE INDEX IF NOT EXISTS idx_config_generacion_periodo ON config_generacion(periodo_id, estado)",
-
     # salas (paso_17)
     "CREATE INDEX IF NOT EXISTS idx_salas_tipo           ON salas(tipo)",
     "CREATE INDEX IF NOT EXISTS idx_salas_institucion    ON salas(institucion_id)",
@@ -1450,13 +1335,10 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_bloques_anclados_esc ON bloques_anclados(escenario_id)",
     "CREATE INDEX IF NOT EXISTS idx_franjas_reunion      ON franjas_reunion(dia_semana, franja_orden)",
     "CREATE INDEX IF NOT EXISTS idx_limites_docente      ON limites_docente(usuario_id)",
-
     # plan_estudios (paso_19)
     "CREATE INDEX IF NOT EXISTS idx_plan_estudios_grado  ON plan_estudios(grado)",
-
     # configuracion_grado_institucion (mejora_07-T6)
     "CREATE INDEX IF NOT EXISTS idx_cfg_grado_inst ON configuracion_grado_institucion(institucion_id)",
-
     # preferencias_institucion (mejora_08)
     "CREATE INDEX IF NOT EXISTS idx_pref_inst ON preferencias_institucion(institucion_id)",
 ]
@@ -1467,7 +1349,6 @@ INDICES: list[str] = [
 # =============================================================================
 
 TRIGGERS: list[str] = [
-
     # La suma de pesos de categorías para una asignación+periodo no puede superar 1.0
     """
     CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias
@@ -1482,7 +1363,6 @@ TRIGGERS: list[str] = [
         ) + NEW.peso > 1.001;
     END
     """,
-
     # Igual que el anterior pero para UPDATE (cuando se edita el peso)
     """
     CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias_update
@@ -1498,7 +1378,6 @@ TRIGGERS: list[str] = [
         ) + NEW.peso > 1.001;
     END
     """,
-
     # Actualiza ultima_sesion en usuarios cuando hay un LOGIN_EXITOSO en auditoria
     """
     CREATE TRIGGER IF NOT EXISTS tg_actualizar_ultima_sesion
@@ -1510,7 +1389,6 @@ TRIGGERS: list[str] = [
         WHERE  id = NEW.usuario_id;
     END
     """,
-
     # Impide eliminar un periodo que ya tiene cierres registrados
     """
     CREATE TRIGGER IF NOT EXISTS tg_proteger_periodo_con_cierres
@@ -1522,7 +1400,6 @@ TRIGGERS: list[str] = [
         );
     END
     """,
-
     # Impide modificar notas en un periodo cerrado
     """
     CREATE TRIGGER IF NOT EXISTS tg_proteger_nota_periodo_cerrado
@@ -1558,6 +1435,7 @@ TRIGGERS: list[str] = [
 # INICIALIZACIÓN
 # =============================================================================
 
+
 def create_schema(conn) -> None:
     """
     Aplica SCHEMA, INDICES y TRIGGERS a una conexión SQLite ya abierta.
@@ -1571,6 +1449,7 @@ def create_schema(conn) -> None:
     conn.execute("PRAGMA foreign_keys = ON")
     if not hasattr(conn, "row_factory") or conn.row_factory is None:
         import sqlite3 as _sqlite3
+
         conn.row_factory = _sqlite3.Row
     for sql in SCHEMA:
         conn.execute(sql)
@@ -1604,7 +1483,6 @@ def init_db(db_path: Path | None = None) -> bool:
 
     try:
         with get_connection() as conn:
-
             # ------------------------------------------------------------------
             # Tablas
             # ------------------------------------------------------------------
@@ -1672,11 +1550,12 @@ def get_db_stats() -> dict:
                 "AND name NOT LIKE 'sqlite_%' ORDER BY name"
             ).fetchall()
 
-            stats = {t[0]: conn.execute(f"SELECT COUNT(*) FROM {t[0]}").fetchone()[0]
-                     for t in tables}
+            stats = {
+                t[0]: conn.execute(f"SELECT COUNT(*) FROM {t[0]}").fetchone()[0] for t in tables
+            }
 
             if DB_PATH.exists():
-                stats["_db_size_mb"] = round(DB_PATH.stat().st_size / (1024 ** 2), 2)
+                stats["_db_size_mb"] = round(DB_PATH.stat().st_size / (1024**2), 2)
 
             return stats
 
@@ -1686,6 +1565,10 @@ def get_db_stats() -> dict:
 
 
 __all__ = [
-    "INDICES", "SCHEMA", "TRIGGERS",
-    "create_schema", "get_db_stats", "init_db",
+    "INDICES",
+    "SCHEMA",
+    "TRIGGERS",
+    "create_schema",
+    "get_db_stats",
+    "init_db",
 ]

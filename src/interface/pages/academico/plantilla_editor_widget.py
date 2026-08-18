@@ -14,6 +14,7 @@ La lógica de dominio (validaciones de solape, orden de horas, persistencia) viv
 en `infraestructura_service`; estos helpers solo capturan los datos y delegan a
 los callbacks que la página provee. Sin imports de servicios ni de `src.db`.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -61,13 +62,19 @@ def plantilla_form_dialog(on_submit: Callable[[dict], None]) -> None:
         ui.label("Nueva plantilla").classes("font-h3 form-dialog-title")
 
         in_nombre = ui.input(
-            "Nombre *", placeholder="Ej: Plantilla Jornada Mañana",
+            "Nombre *",
+            placeholder="Ej: Plantilla Jornada Mañana",
         ).classes("w-full")
         sel_jornada = ui.select(
-            list(JORNADA_OPTS.keys()), label="Jornada", value="UNICA",
+            list(JORNADA_OPTS.keys()),
+            label="Jornada",
+            value="UNICA",
         ).classes("w-full")
         sel_dias = ui.select(
-            DIAS_VALIDOS, label="Días activos", value=[], multiple=True,
+            DIAS_VALIDOS,
+            label="Días activos",
+            value=[],
+            multiple=True,
         ).classes("w-full")
 
         def _guardar() -> None:
@@ -109,10 +116,14 @@ def franja_form_dialog(
         in_inicio = _input_hora("Hora inicio *", ini_inicio)
         in_fin = _input_hora("Hora fin *", ini_fin)
         sel_tipo = ui.select(
-            list(TIPO_FRANJA_OPTS.keys()), label="Tipo", value=ini_tipo,
+            list(TIPO_FRANJA_OPTS.keys()),
+            label="Tipo",
+            value=ini_tipo,
         ).classes("w-full")
         in_etiqueta = ui.input(
-            "Etiqueta (opcional)", placeholder="Ej: Período 1", value=ini_etiqueta,
+            "Etiqueta (opcional)",
+            placeholder="Ej: Período 1",
+            value=ini_etiqueta,
         ).classes("w-full")
 
         def _guardar() -> None:
@@ -155,34 +166,35 @@ def render_franjas_editor(
         return
 
     ordenadas = sorted(franjas, key=lambda f: f.orden)
-    with ui.element("div").classes("overflow-auto"):
-        with ui.element("table").classes("table-mini"):
-            with ui.element("thead"), ui.element("tr"):
-                for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
-                    with ui.element("th").classes(
-                        "border px-3 py-2 text-left font-semibold bg-surface-alt"
-                    ):
-                        ui.label(str(col))
-            with ui.element("tbody"):
-                for f in ordenadas:
-                    with ui.element("tr"):
-                        with ui.element("td").classes("form-box"):
-                            ui.label(str(f.orden))
-                        with ui.element("td").classes("form-box"):
-                            ui.label(str(f.hora_inicio))
-                        with ui.element("td").classes("form-box"):
-                            ui.label(str(f.hora_fin))
-                        with ui.element("td").classes("form-box"):
-                            ui.label(TIPO_FRANJA_OPTS.get(_tipo_str(f.tipo), _tipo_str(f.tipo)))
-                        with ui.element("td").classes("form-box"):
-                            ui.label(str(f.etiqueta or "—"))
-                        with ui.element("td").classes("form-box"):
-                            if puede_editar:
-                                with ui.row().classes("gap-1"):
-                                    if on_edit:
-                                        btn_icon("edit", on_click=lambda _, o=f.orden: on_edit(o))
-                                    if on_delete:
-                                        btn_icon("delete", on_click=lambda _, o=f.orden: on_delete(o))
+    with ui.element("div").classes("overflow-auto"), ui.element("table").classes("table-mini"):
+        with ui.element("thead"), ui.element("tr"):
+            for col in ("#", "Inicio", "Fin", "Tipo", "Etiqueta", "Acciones"):
+                with ui.element("th").classes(
+                    "border px-3 py-2 text-left font-semibold bg-surface-alt"
+                ):
+                    ui.label(str(col))
+        with ui.element("tbody"):
+            for f in ordenadas:
+                with ui.element("tr"):
+                    with ui.element("td").classes("form-box"):
+                        ui.label(str(f.orden))
+                    with ui.element("td").classes("form-box"):
+                        ui.label(str(f.hora_inicio))
+                    with ui.element("td").classes("form-box"):
+                        ui.label(str(f.hora_fin))
+                    with ui.element("td").classes("form-box"):
+                        ui.label(TIPO_FRANJA_OPTS.get(_tipo_str(f.tipo), _tipo_str(f.tipo)))
+                    with ui.element("td").classes("form-box"):
+                        ui.label(str(f.etiqueta or "—"))
+                    with ui.element("td").classes("form-box"):
+                        if puede_editar:
+                            with ui.row().classes("gap-1"):
+                                if on_edit:
+                                    btn_icon("edit", on_click=lambda _, o=f.orden: on_edit(o))
+                                if on_delete:
+                                    btn_icon(
+                                        "delete", on_click=lambda _, o=f.orden: on_delete(o)
+                                    )
 
 
 def render_plantilla_preview(plantilla, franjas: list) -> None:
@@ -204,34 +216,39 @@ def render_plantilla_preview(plantilla, franjas: list) -> None:
         return
 
     ordenadas = sorted(franjas, key=lambda f: f.orden)
-    with ui.element("div").classes("parrilla-scroll"):
-        with ui.element("div").classes("parrilla-grid").style(
+    with (
+        ui.element("div").classes("parrilla-scroll"), ui.element("div")
+        .classes("parrilla-grid")
+        .style(
             # DYNAMIC: nº de columnas depende de los días activos
             f"grid-template-columns: 160px repeat({len(dias)}, minmax(100px, 1fr))"
-        ):
-            with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):
-                ui.label("Hora")
-            for dia in dias:
-                with ui.element("div").classes("parrilla-encabezado"):
-                    ui.label(str(dia))
+        )
+    ):
+        with ui.element("div").classes("parrilla-encabezado parrilla-esquina"):
+            ui.label("Hora")
+        for dia in dias:
+            with ui.element("div").classes("parrilla-encabezado"):
+                ui.label(str(dia))
 
-            for f in ordenadas:
-                lectiva = (_tipo_str(f.tipo) == "lectiva")
-                label_cls = "parrilla-franja-label" + ("" if lectiva else " parrilla-franja-nolectiva")
-                etiqueta = f.etiqueta or f"{f.hora_inicio}–{f.hora_fin}"
-                with ui.element("div").classes(label_cls):
-                    ui.label(str(etiqueta))
-                for _dia in dias:
-                    if lectiva:
-                        with ui.element("div").classes("parrilla-celda parrilla-hueco"):
-                            ui.label(f"{f.hora_inicio}–{f.hora_fin}").classes("parrilla-celda-sub")
-                    else:
-                        with ui.element("div").classes(
-                            "parrilla-celda parrilla-hueco parrilla-nolectiva-celda"
-                        ):
-                            ui.label(
-                                TIPO_FRANJA_OPTS.get(_tipo_str(f.tipo), "Descanso")
-                            ).classes("parrilla-nolectiva-texto")
+        for f in ordenadas:
+            lectiva = _tipo_str(f.tipo) == "lectiva"
+            label_cls = "parrilla-franja-label" + (
+                "" if lectiva else " parrilla-franja-nolectiva"
+            )
+            etiqueta = f.etiqueta or f"{f.hora_inicio}–{f.hora_fin}"
+            with ui.element("div").classes(label_cls):
+                ui.label(str(etiqueta))
+            for _dia in dias:
+                if lectiva:
+                    with ui.element("div").classes("parrilla-celda parrilla-hueco"):
+                        ui.label(f"{f.hora_inicio}–{f.hora_fin}").classes("parrilla-celda-sub")
+                else:
+                    with ui.element("div").classes(
+                        "parrilla-celda parrilla-hueco parrilla-nolectiva-celda"
+                    ):
+                        ui.label(TIPO_FRANJA_OPTS.get(_tipo_str(f.tipo), "Descanso")).classes(
+                            "parrilla-nolectiva-texto"
+                        )
 
 
 __all__ = [

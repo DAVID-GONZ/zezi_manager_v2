@@ -20,6 +20,7 @@ Admin (auditor de plataforma):
 El RBAC real vive en el servicio; la vista solo consulta la política para
 mostrar u ocultar controles (defensa en profundidad).
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,10 +47,10 @@ from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
 logger = logging.getLogger("ADMIN.USUARIOS")
 
 _ROLES_OPCIONES = {
-    "admin":        "Administrador",
-    "director":     "Director",
-    "coordinador":  "Coordinador",
-    "profesor":     "Profesor",
+    "admin": "Administrador",
+    "director": "Director",
+    "coordinador": "Coordinador",
+    "profesor": "Profesor",
 }
 
 
@@ -85,9 +86,9 @@ def usuarios_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "usuarios":          [],
-        "filtro_rol":        None,
-        "filtro_activos":    True,
+        "usuarios": [],
+        "filtro_rol": None,
+        "filtro_activos": True,
         "filtro_institucion": None,
     }
 
@@ -122,9 +123,7 @@ def usuarios_page() -> None:
                     email=datos.get("email"),
                     password=datos.get("password") or None,
                 )
-                svc.crear_usuario(
-                    dto, creado_por_id=ctx.usuario_id, actor_rol=ctx.usuario_rol
-                )
+                svc.crear_usuario(dto, creado_por_id=ctx.usuario_id, actor_rol=ctx.usuario_rol)
                 toast_success(f"Usuario '{dto.usuario}' creado")
                 _cargar_estado()
                 tabla.refresh()
@@ -137,31 +136,56 @@ def usuarios_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Crear nuevo usuario",
-            campos    = [
-                {"key": "nombre_completo", "label": "Nombre completo",  "tipo": "text",
-                 "requerido": True, "minlength": 3, "normalizar": "titulo"},
-                {"key": "usuario",         "label": "Nombre de usuario", "tipo": "text",
-                 "requerido": True, "minlength": 3, "normalizar": "minusculas",
-                 "hint": "Sin espacios"},
-                {"key": "password",        "label": "Contraseña inicial",  "tipo": "password",
-                 "hint": "Dejar vacío genera una temporal"},
-                {"key": "rol",             "label": "Rol",                 "tipo": "select",
-                 "opciones": roles_disponibles_crear,
-                 "valor": _rol_crear_default},
-                {"key": "email",           "label": "Email (opcional)",    "tipo": "email",
-                 "normalizar": "minusculas"},
+            titulo="Crear nuevo usuario",
+            campos=[
+                {
+                    "key": "nombre_completo",
+                    "label": "Nombre completo",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 3,
+                    "normalizar": "titulo",
+                },
+                {
+                    "key": "usuario",
+                    "label": "Nombre de usuario",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 3,
+                    "normalizar": "minusculas",
+                    "hint": "Sin espacios",
+                },
+                {
+                    "key": "password",
+                    "label": "Contraseña inicial",
+                    "tipo": "password",
+                    "hint": "Dejar vacío genera una temporal",
+                },
+                {
+                    "key": "rol",
+                    "label": "Rol",
+                    "tipo": "select",
+                    "opciones": roles_disponibles_crear,
+                    "valor": _rol_crear_default,
+                },
+                {
+                    "key": "email",
+                    "label": "Email (opcional)",
+                    "tipo": "email",
+                    "normalizar": "minusculas",
+                },
             ],
-            on_submit    = _crear,
-            texto_submit = "Crear",
-            max_width    = "max-w-lg",
-            columnas     = 2,
+            on_submit=_crear,
+            texto_submit="Crear",
+            max_width="max-w-lg",
+            columnas=2,
         )
 
     def _confirmar_desactivar(usuario_id: int, nombre: str) -> None:
         try:
             svc.desactivar(
-                usuario_id, desactivado_por_id=ctx.usuario_id,
+                usuario_id,
+                desactivado_por_id=ctx.usuario_id,
                 actor_rol=ctx.usuario_rol,
             )
             toast_success(f"Usuario '{nombre}' desactivado")
@@ -178,11 +202,11 @@ def usuarios_page() -> None:
             toast_warning("No tienes permiso para desactivar a este usuario")
             return
         confirm_dialog(
-            titulo          = "Desactivar usuario",
-            mensaje         = f"¿Desactivar la cuenta de '{nombre}'? No podrá iniciar sesión.",
-            on_confirm      = lambda: _confirmar_desactivar(usuario_id, nombre),
-            variante        = "danger",
-            texto_confirmar = "Desactivar",
+            titulo="Desactivar usuario",
+            mensaje=f"¿Desactivar la cuenta de '{nombre}'? No podrá iniciar sesión.",
+            on_confirm=lambda: _confirmar_desactivar(usuario_id, nombre),
+            variante="danger",
+            texto_confirmar="Desactivar",
         )
 
     def _reactivar_usuario(usuario_id: int, nombre: str, rol_actual: str) -> None:
@@ -191,7 +215,8 @@ def usuarios_page() -> None:
             return
         try:
             svc.reactivar(
-                usuario_id, reactivado_por_id=ctx.usuario_id,
+                usuario_id,
+                reactivado_por_id=ctx.usuario_id,
                 actor_rol=ctx.usuario_rol,
             )
             toast_success(f"Usuario '{nombre}' reactivado")
@@ -203,8 +228,7 @@ def usuarios_page() -> None:
             logger.error("Error al reactivar usuario %s: %s", usuario_id, exc)
             toast_error("Error al reactivar el usuario")
 
-    def _resetear_password(usuario_id: int, nombre: str, username: str,
-                           rol_actual: str) -> None:
+    def _resetear_password(usuario_id: int, nombre: str, username: str, rol_actual: str) -> None:
         if not svc.puede_gestionar(ctx.usuario_rol, rol_actual):
             toast_warning("No tienes permiso para restablecer la contraseña de este usuario")
             return
@@ -213,7 +237,9 @@ def usuarios_page() -> None:
             try:
                 nueva = datos.get("password") or ""
                 svc.resetear_password(
-                    usuario_id, nueva, actor_rol=ctx.usuario_rol,
+                    usuario_id,
+                    nueva,
+                    actor_rol=ctx.usuario_rol,
                     reset_por_id=ctx.usuario_id,
                 )
                 usada = "el nombre de usuario" if not nueva.strip() else "la nueva contraseña"
@@ -229,14 +255,18 @@ def usuarios_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = f"Restablecer contraseña de '{nombre}'",
-            campos    = [
-                {"key": "password", "label": "Nueva contraseña", "tipo": "password",
-                 "hint": f"Dejar vacío usa el username ({username})"},
+            titulo=f"Restablecer contraseña de '{nombre}'",
+            campos=[
+                {
+                    "key": "password",
+                    "label": "Nueva contraseña",
+                    "tipo": "password",
+                    "hint": f"Dejar vacío usa el username ({username})",
+                },
             ],
-            on_submit    = _aplicar,
-            texto_submit = "Restablecer",
-            max_width    = "max-w-sm",
+            on_submit=_aplicar,
+            texto_submit="Restablecer",
+            max_width="max-w-sm",
         )
 
     def _cambiar_rol(usuario_id: int, nombre: str, rol_actual: str) -> None:
@@ -250,15 +280,15 @@ def usuarios_page() -> None:
         opciones_rol = {
             r: _ROLES_OPCIONES.get(r, r) for r in _ROLES_OPCIONES if r in roles_asignables
         }
-        valor_default = (
-            rol_actual if rol_actual in opciones_rol else next(iter(opciones_rol))
-        )
+        valor_default = rol_actual if rol_actual in opciones_rol else next(iter(opciones_rol))
 
         def _aplicar(datos: dict) -> bool | None:
             try:
                 nuevo_rol = datos.get("rol", rol_actual)
                 svc.cambiar_rol(
-                    usuario_id, nuevo_rol, cambiado_por_id=ctx.usuario_id,
+                    usuario_id,
+                    nuevo_rol,
+                    cambiado_por_id=ctx.usuario_id,
                     actor_rol=ctx.usuario_rol,
                 )
                 toast_success(f"Rol actualizado a '{_ROLES_OPCIONES.get(nuevo_rol, nuevo_rol)}'")
@@ -273,20 +303,26 @@ def usuarios_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = f"Cambiar rol de '{nombre}'",
-            campos    = [
-                {"key": "rol", "label": "Nuevo rol", "tipo": "select",
-                 "opciones": opciones_rol,
-                 "valor": valor_default,
-                 "requerido": True},
+            titulo=f"Cambiar rol de '{nombre}'",
+            campos=[
+                {
+                    "key": "rol",
+                    "label": "Nuevo rol",
+                    "tipo": "select",
+                    "opciones": opciones_rol,
+                    "valor": valor_default,
+                    "requerido": True,
+                },
             ],
-            on_submit    = _aplicar,
-            texto_submit = "Cambiar rol",
-            max_width    = "max-w-sm",
+            on_submit=_aplicar,
+            texto_submit="Cambiar rol",
+            max_width="max-w-sm",
         )
 
     def _ver_como(
-        usuario_id: int, nombre: str, rol: str,
+        usuario_id: int,
+        nombre: str,
+        rol: str,
         institucion_id: int | None = None,
     ) -> None:
         if not es_admin:
@@ -325,10 +361,10 @@ def usuarios_page() -> None:
             return
 
         _ROL_CLASES = {
-            "admin":       "badge-error",
-            "director":    "badge-purple",
+            "admin": "badge-error",
+            "director": "badge-purple",
             "coordinador": "badge-info",
-            "profesor":    "badge-success",
+            "profesor": "badge-success",
         }
 
         with ui.element("div").classes("w-full"):
@@ -352,9 +388,9 @@ def usuarios_page() -> None:
                     ui.label(u.nombre_completo).classes("flex-1")
                     ui.label(u.usuario).classes("w-32 cell-mono")
                     if es_admin:
-                        ui.label(
-                            instituciones_opts.get(u.institucion_id, "—")
-                        ).classes("w-48 text-truncate")
+                        ui.label(instituciones_opts.get(u.institucion_id, "—")).classes(
+                            "w-48 text-truncate"
+                        )
                     with ui.element("div").classes("w-28 form-row-center"):
                         status_badge(
                             _ROLES_OPCIONES.get(rol_str, rol_str),
@@ -364,24 +400,61 @@ def usuarios_page() -> None:
                         badge_estado_general(bool(u.activo))
                     with ui.element("div").classes("table-row-actions"):
                         if es_admin and u.id != ctx.usuario_id and u.activo:
-                            btn_icon("visibility", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str, inst=u.institucion_id: _ver_como(uid, nom, r, inst), tooltip="Ver como (solo lectura)")
+                            btn_icon(
+                                "visibility",
+                                on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str, inst=u.institucion_id: (
+                                    _ver_como(uid, nom, r, inst)
+                                ),
+                                tooltip="Ver como (solo lectura)",
+                            )
                         if gestionable and u.activo:
                             if puede_crear:
-                                btn_icon("manage_accounts", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _cambiar_rol(uid, nom, r), tooltip="Cambiar rol")
-                            btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
-                            btn_icon("person_off", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _desactivar_usuario(uid, nom, r), tooltip="Desactivar", variante="danger")
+                                btn_icon(
+                                    "manage_accounts",
+                                    on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: (
+                                        _cambiar_rol(uid, nom, r)
+                                    ),
+                                    tooltip="Cambiar rol",
+                                )
+                            btn_icon(
+                                "key",
+                                on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: (
+                                    _resetear_password(uid, nom, un, r)
+                                ),
+                                tooltip="Restablecer contraseña",
+                                variante="secondary",
+                            )
+                            btn_icon(
+                                "person_off",
+                                on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: (
+                                    _desactivar_usuario(uid, nom, r)
+                                ),
+                                tooltip="Desactivar",
+                                variante="danger",
+                            )
                         if gestionable and not u.activo:
-                            btn_icon("restart_alt", on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: _reactivar_usuario(uid, nom, r), tooltip="Reactivar", variante="primary")
-                            btn_icon("key", on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: _resetear_password(uid, nom, un, r), tooltip="Restablecer contraseña", variante="secondary")
+                            btn_icon(
+                                "restart_alt",
+                                on_click=lambda uid=u.id, nom=u.nombre_completo, r=rol_str: (
+                                    _reactivar_usuario(uid, nom, r)
+                                ),
+                                tooltip="Reactivar",
+                                variante="primary",
+                            )
+                            btn_icon(
+                                "key",
+                                on_click=lambda uid=u.id, nom=u.nombre_completo, un=u.usuario, r=rol_str: (
+                                    _resetear_password(uid, nom, un, r)
+                                ),
+                                tooltip="Restablecer contraseña",
+                                variante="secondary",
+                            )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             with ui.element("div").classes("panel-card"):
-
-                with ui.row().classes(
-                    "gap-4 items-center justify-between flex-wrap mb-4"
-                ):
+                with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
                     with ui.row().classes("form-row-center-md"):
                         ui.label("Filtros:").classes("text-sm font-semibold")
                         roles_opts = {None: "Todos los roles"}
@@ -414,7 +487,11 @@ def usuarios_page() -> None:
                             ),
                         )
                         status_badge(str(len(_s["usuarios"])), "primary")
-                        btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
+                        btn_icon(
+                            "refresh",
+                            on_click=lambda: (_cargar_estado(), tabla.refresh()),
+                            tooltip="Recargar",
+                        )
 
                     if puede_crear:
                         btn_primary(
@@ -435,9 +512,9 @@ def usuarios_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo      = "Gestión de Usuarios",
-        page_subtitulo   = _subtitulo,
-        page_icono       = Icons.TEACHERS,
+        page_titulo="Gestión de Usuarios",
+        page_subtitulo=_subtitulo,
+        page_icono=Icons.TEACHERS,
     )
 
 

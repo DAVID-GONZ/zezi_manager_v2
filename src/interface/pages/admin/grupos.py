@@ -17,6 +17,7 @@ Refreshables:
   tabla()        — re-renderiza la lista de grupos
   grados_tabla() — re-renderiza el catálogo de grados
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,8 +45,8 @@ logger = logging.getLogger("ADMIN.GRUPOS")
 # Opciones de jornada para selectores
 _JORNADAS = {
     "Mañana (AM)": "AM",
-    "Tarde (PM)":  "PM",
-    "Única":       "UNICA",
+    "Tarde (PM)": "PM",
+    "Única": "UNICA",
 }
 _JORNADA_LABELS = {v: k for k, v in _JORNADAS.items()}
 
@@ -61,19 +62,19 @@ def grupos_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "grupos":         [],
-        "grados":         [],
-        "cargando":       False,
+        "grupos": [],
+        "grados": [],
+        "cargando": False,
         # formulario crear
-        "form_codigo":    "",
-        "form_grado":     1,
-        "form_jornada":   "UNICA",
+        "form_codigo": "",
+        "form_grado": 1,
+        "form_jornada": "UNICA",
         "form_capacidad": 40,
         # edición
-        "edit_id":        None,
-        "edit_codigo":    "",
-        "edit_grado":     1,
-        "edit_jornada":   "UNICA",
+        "edit_id": None,
+        "edit_codigo": "",
+        "edit_grado": 1,
+        "edit_jornada": "UNICA",
         "edit_capacidad": 40,
     }
 
@@ -106,8 +107,7 @@ def grupos_page() -> None:
         if not grados:
             return {n: str(n) for n in range(1, 14)}
         return {
-            g.numero: (f"{g.numero} — {g.nombre}" if g.nombre else str(g.numero))
-            for g in grados
+            g.numero: (f"{g.numero} — {g.nombre}" if g.nombre else str(g.numero)) for g in grados
         }
 
     def _grado_valido(numero: int | None) -> int:
@@ -135,7 +135,7 @@ def grupos_page() -> None:
             Container.catalogo_academico_service().guardar_grupo(grupo)
             toast_success(f"Grupo {grupo.codigo} creado")
             _s["form_codigo"] = ""
-            _s["form_grado"]  = _grado_valido(None)
+            _s["form_grado"] = _grado_valido(None)
             _s["form_jornada"] = "UNICA"
             _s["form_capacidad"] = 40
             _cargar_estado()
@@ -160,11 +160,11 @@ def grupos_page() -> None:
 
     def _eliminar_grupo(grupo_id: int, codigo: str) -> None:
         confirm_dialog(
-            titulo          = "Eliminar grupo",
-            mensaje         = f"¿Eliminar el grupo {codigo}? Esta acción es irreversible.",
-            on_confirm      = lambda: _confirmar_eliminar_grupo(grupo_id, codigo),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar grupo",
+            mensaje=f"¿Eliminar el grupo {codigo}? Esta acción es irreversible.",
+            on_confirm=lambda: _confirmar_eliminar_grupo(grupo_id, codigo),
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     def _abrir_editar(grupo: Grupo) -> None:
@@ -196,23 +196,41 @@ def grupos_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Editar grupo",
-            campos    = [
-                {"key": "codigo",    "label": "Código *",  "tipo": "text",
-                 "valor": grupo.codigo,           "requerido": True},
-                {"key": "grado",     "label": "Grado",     "tipo": "select",
-                 "valor": _grado_valido(grupo.grado),
-                 "opciones": _opciones_grado()},
-                {"key": "jornada",   "label": "Jornada",   "tipo": "select",
-                 "valor": jornada_val,
-                 "opciones": {v: k for k, v in _JORNADAS.items()}},
-                {"key": "capacidad", "label": "Capacidad", "tipo": "number",
-                 "valor": grupo.capacidad_maxima, "min": 1},
+            titulo="Editar grupo",
+            campos=[
+                {
+                    "key": "codigo",
+                    "label": "Código *",
+                    "tipo": "text",
+                    "valor": grupo.codigo,
+                    "requerido": True,
+                },
+                {
+                    "key": "grado",
+                    "label": "Grado",
+                    "tipo": "select",
+                    "valor": _grado_valido(grupo.grado),
+                    "opciones": _opciones_grado(),
+                },
+                {
+                    "key": "jornada",
+                    "label": "Jornada",
+                    "tipo": "select",
+                    "valor": jornada_val,
+                    "opciones": {v: k for k, v in _JORNADAS.items()},
+                },
+                {
+                    "key": "capacidad",
+                    "label": "Capacidad",
+                    "tipo": "number",
+                    "valor": grupo.capacidad_maxima,
+                    "min": 1,
+                },
             ],
-            on_submit    = _guardar,
-            texto_submit = "Guardar",
-            max_width    = "max-w-md",
-            columnas     = 2,
+            on_submit=_guardar,
+            texto_submit="Guardar",
+            max_width="max-w-md",
+            columnas=2,
         )
 
     # ── Director de grupo (convivencia_02) ────────────────────────────────────
@@ -222,9 +240,7 @@ def grupos_page() -> None:
     def _candidatos_director(grupo_id: int) -> dict:
         """Mapa {usuario_id: nombre} de docentes con asignación en el grupo."""
         try:
-            return Container.catalogo_academico_service().candidatos_director_grupo(
-                grupo_id
-            )
+            return Container.catalogo_academico_service().candidatos_director_grupo(grupo_id)
         except Exception as exc:
             logger.error("Error al cargar candidatos a director (%s): %s", grupo_id, exc)
             return {}
@@ -232,12 +248,9 @@ def grupos_page() -> None:
     def _cambiar_director(grupo_id: int, valor) -> None:
         usuario_id = valor if valor else None  # sentinel 0 / None → desasignar
         try:
-            Container.catalogo_academico_service().asignar_director_grupo(
-                grupo_id, usuario_id
-            )
+            Container.catalogo_academico_service().asignar_director_grupo(grupo_id, usuario_id)
             toast_success(
-                "Director de grupo actualizado" if usuario_id
-                else "Director de grupo desasignado"
+                "Director de grupo actualizado" if usuario_id else "Director de grupo desasignado"
             )
             _cargar_estado()
             tabla.refresh()
@@ -257,11 +270,11 @@ def grupos_page() -> None:
     def _guardar_grado(datos: dict) -> bool | None:
         try:
             Container.plan_estudios_service().guardar_grado(
-                numero          = int(datos.get("numero")),
-                nombre          = (datos.get("nombre") or "").strip() or None,
-                min_estudiantes = int(datos.get("min_estudiantes") or 0),
-                max_estudiantes = int(datos.get("max_estudiantes") or 1),
-                horas_semanales = int(datos.get("horas_semanales") or 0),
+                numero=int(datos.get("numero")),
+                nombre=(datos.get("nombre") or "").strip() or None,
+                min_estudiantes=int(datos.get("min_estudiantes") or 0),
+                max_estudiantes=int(datos.get("max_estudiantes") or 1),
+                horas_semanales=int(datos.get("horas_semanales") or 0),
             )
             toast_success("Grado guardado")
             _cargar_grados()
@@ -276,44 +289,98 @@ def grupos_page() -> None:
 
     def _abrir_crear_grado() -> None:
         form_dialog(
-            titulo    = "Nuevo grado",
-            campos    = [
-                {"key": "numero",          "label": "Número *",      "tipo": "number",
-                 "valor": None, "min": 1, "max": 13, "requerido": True},
-                {"key": "nombre",          "label": "Nombre",        "tipo": "text",
-                 "valor": "", "placeholder": "Sexto, Décimo…"},
-                {"key": "min_estudiantes", "label": "Mín. estud.",   "tipo": "number",
-                 "valor": 0,  "min": 0},
-                {"key": "max_estudiantes", "label": "Máx. estud.",   "tipo": "number",
-                 "valor": 40, "min": 1},
-                {"key": "horas_semanales", "label": "Horas/semana",  "tipo": "number",
-                 "valor": 0,  "min": 0},
+            titulo="Nuevo grado",
+            campos=[
+                {
+                    "key": "numero",
+                    "label": "Número *",
+                    "tipo": "number",
+                    "valor": None,
+                    "min": 1,
+                    "max": 13,
+                    "requerido": True,
+                },
+                {
+                    "key": "nombre",
+                    "label": "Nombre",
+                    "tipo": "text",
+                    "valor": "",
+                    "placeholder": "Sexto, Décimo…",
+                },
+                {
+                    "key": "min_estudiantes",
+                    "label": "Mín. estud.",
+                    "tipo": "number",
+                    "valor": 0,
+                    "min": 0,
+                },
+                {
+                    "key": "max_estudiantes",
+                    "label": "Máx. estud.",
+                    "tipo": "number",
+                    "valor": 40,
+                    "min": 1,
+                },
+                {
+                    "key": "horas_semanales",
+                    "label": "Horas/semana",
+                    "tipo": "number",
+                    "valor": 0,
+                    "min": 0,
+                },
             ],
-            on_submit    = _guardar_grado,
-            texto_submit = "Crear",
-            max_width    = "max-w-md",
-            columnas     = 2,
+            on_submit=_guardar_grado,
+            texto_submit="Crear",
+            max_width="max-w-md",
+            columnas=2,
         )
 
     def _abrir_editar_grado(grado) -> None:
         form_dialog(
-            titulo    = f"Editar grado {grado.numero}",
-            campos    = [
-                {"key": "numero",          "label": "Número *",      "tipo": "number",
-                 "valor": grado.numero, "min": 1, "max": 13, "requerido": True},
-                {"key": "nombre",          "label": "Nombre",        "tipo": "text",
-                 "valor": grado.nombre or "", "placeholder": "Sexto, Décimo…"},
-                {"key": "min_estudiantes", "label": "Mín. estud.",   "tipo": "number",
-                 "valor": grado.min_estudiantes, "min": 0},
-                {"key": "max_estudiantes", "label": "Máx. estud.",   "tipo": "number",
-                 "valor": grado.max_estudiantes, "min": 1},
-                {"key": "horas_semanales", "label": "Horas/semana",  "tipo": "number",
-                 "valor": grado.horas_semanales, "min": 0},
+            titulo=f"Editar grado {grado.numero}",
+            campos=[
+                {
+                    "key": "numero",
+                    "label": "Número *",
+                    "tipo": "number",
+                    "valor": grado.numero,
+                    "min": 1,
+                    "max": 13,
+                    "requerido": True,
+                },
+                {
+                    "key": "nombre",
+                    "label": "Nombre",
+                    "tipo": "text",
+                    "valor": grado.nombre or "",
+                    "placeholder": "Sexto, Décimo…",
+                },
+                {
+                    "key": "min_estudiantes",
+                    "label": "Mín. estud.",
+                    "tipo": "number",
+                    "valor": grado.min_estudiantes,
+                    "min": 0,
+                },
+                {
+                    "key": "max_estudiantes",
+                    "label": "Máx. estud.",
+                    "tipo": "number",
+                    "valor": grado.max_estudiantes,
+                    "min": 1,
+                },
+                {
+                    "key": "horas_semanales",
+                    "label": "Horas/semana",
+                    "tipo": "number",
+                    "valor": grado.horas_semanales,
+                    "min": 0,
+                },
             ],
-            on_submit    = _guardar_grado,
-            texto_submit = "Guardar",
-            max_width    = "max-w-md",
-            columnas     = 2,
+            on_submit=_guardar_grado,
+            texto_submit="Guardar",
+            max_width="max-w-md",
+            columnas=2,
         )
 
     def _confirmar_eliminar_grado(numero: int) -> None:
@@ -342,11 +409,11 @@ def grupos_page() -> None:
         else:
             mensaje = f"¿Eliminar el grado {numero}? Esta acción es irreversible."
         confirm_dialog(
-            titulo          = "Eliminar grado",
-            mensaje         = mensaje,
-            on_confirm      = lambda: _confirmar_eliminar_grado(numero),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
+            titulo="Eliminar grado",
+            mensaje=mensaje,
+            on_confirm=lambda: _confirmar_eliminar_grado(numero),
+            variante="danger",
+            texto_confirmar="Eliminar",
         )
 
     # ── Secciones refreshables ────────────────────────────────────────────────
@@ -371,8 +438,15 @@ def grupos_page() -> None:
                     if en_uso:
                         status_badge(f"{en_uso} grupo(s)", "primary")
                     with ui.row().classes("gap-2 ml-auto"):
-                        btn_icon("edit", on_click=lambda g=g: _abrir_editar_grado(g), tooltip="Editar")
-                        btn_icon("delete", on_click=lambda n=g.numero: _eliminar_grado(n), tooltip="Eliminar", variante="danger")
+                        btn_icon(
+                            "edit", on_click=lambda g=g: _abrir_editar_grado(g), tooltip="Editar"
+                        )
+                        btn_icon(
+                            "delete",
+                            on_click=lambda n=g.numero: _eliminar_grado(n),
+                            tooltip="Eliminar",
+                            variante="danger",
+                        )
 
     @ui.refreshable
     def tabla() -> None:
@@ -387,13 +461,15 @@ def grupos_page() -> None:
         filas = []
         for g in grupos:
             jornada_val = g.jornada.value if hasattr(g.jornada, "value") else str(g.jornada)
-            filas.append({
-                "id":           g.id,
-                "codigo":       g.codigo,
-                "grado":        g.grado or "—",
-                "jornada_label": _JORNADA_LABELS.get(jornada_val, jornada_val),
-                "capacidad":    g.capacidad_maxima,
-            })
+            filas.append(
+                {
+                    "id": g.id,
+                    "codigo": g.codigo,
+                    "grado": g.grado or "—",
+                    "jornada_label": _JORNADA_LABELS.get(jornada_val, jornada_val),
+                    "capacidad": g.capacidad_maxima,
+                }
+            )
 
         with ui.element("div").classes("w-full"):
             for fila in filas:
@@ -417,52 +493,59 @@ def grupos_page() -> None:
                             opciones,
                             value=actual,
                             label="Director de grupo",
-                            on_change=lambda e, gid=fila["id"]: _cambiar_director(
-                                gid, e.value
-                            ),
+                            on_change=lambda e, gid=fila["id"]: _cambiar_director(gid, e.value),
                         ).classes("w-56")
                     else:
-                        ui.label("Sin docentes asignados").classes(
-                            "w-56 text-muted text-sm italic"
-                        )
+                        ui.label("Sin docentes asignados").classes("w-56 text-muted text-sm italic")
                     with ui.row().classes("gap-2 ml-auto"):
-                        btn_icon("edit", on_click=lambda g=g_obj: _abrir_editar(g), tooltip="Editar")
-                        btn_icon("delete", on_click=lambda gid=fila["id"], cod=fila["codigo"]: _eliminar_grupo(gid, cod), tooltip="Eliminar", variante="danger")
+                        btn_icon(
+                            "edit", on_click=lambda g=g_obj: _abrir_editar(g), tooltip="Editar"
+                        )
+                        btn_icon(
+                            "delete",
+                            on_click=lambda gid=fila["id"], cod=fila["codigo"]: _eliminar_grupo(
+                                gid, cod
+                            ),
+                            tooltip="Eliminar",
+                            variante="danger",
+                        )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             # Panel: catálogo de grados
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-md"):
                     ui.label("Grados").classes("text-base font-semibold")
                     status_badge(str(len(_s["grados"])), "primary")
                     btn_icon("add", on_click=_abrir_crear_grado, tooltip="Nuevo grado")
-                    btn_icon("refresh", on_click=lambda: (_cargar_grados(), grados_tabla.refresh()), tooltip="Recargar")
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (_cargar_grados(), grados_tabla.refresh()),
+                        tooltip="Recargar",
+                    )
                 grados_tabla()
 
             # Panel de gestión de grupos
             with ui.element("div").classes("panel-card mt-4"):
-
                 # Formulario de creación
                 ui.label("Crear nuevo grupo").classes("section-subtitle u-mb-sm")
                 with ui.row().classes("form-row-inline"):
-                    cod = ui.input("Código *", placeholder="601").classes("w-28").bind_value(
+                    ui.input("Código *", placeholder="601").classes("w-28").bind_value(
                         _s, "form_codigo"
                     )
                     # Asegura un valor inicial dentro del catálogo
                     _s["form_grado"] = _grado_valido(_s["form_grado"])
-                    grd = ui.select(
+                    ui.select(
                         _opciones_grado(),
                         label="Grado",
                     ).classes("w-40").bind_value(_s, "form_grado")
-                    jor = ui.select(
+                    ui.select(
                         {v: k for k, v in _JORNADAS.items()},
                         value="UNICA",
                         label="Jornada",
                     ).classes("w-36").bind_value(_s, "form_jornada")
-                    cap = ui.number("Capacidad", value=40, min=1).classes("w-28").bind_value(
+                    ui.number("Capacidad", value=40, min=1).classes("w-28").bind_value(
                         _s, "form_capacidad"
                     )
                     btn_primary("Crear grupo", on_click=_crear_grupo, icon="add").classes("mt-1")
@@ -472,15 +555,19 @@ def grupos_page() -> None:
                 with ui.row().classes("form-row-center u-mb-md"):
                     ui.label("Grupos registrados").classes("text-base font-semibold")
                     status_badge(str(len(_s["grupos"])), "primary")
-                    btn_icon("refresh", on_click=lambda: (_cargar_estado(), tabla.refresh()), tooltip="Recargar")
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (_cargar_estado(), tabla.refresh()),
+                        tooltip="Recargar",
+                    )
                 tabla()
 
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Gestión de Grupos",
-        page_subtitulo = "Crea y administra los grupos académicos de la institución",
-        page_icono     = Icons.GROUPS,
+        page_titulo="Gestión de Grupos",
+        page_subtitulo="Crea y administra los grupos académicos de la institución",
+        page_icono=Icons.GROUPS,
     )
 
 

@@ -30,7 +30,7 @@ Responsabilidades del servicio (no del modelo):
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -39,16 +39,18 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Enumeraciones
 # =============================================================================
 
-class EstadoPromocion(str, Enum):
-    PENDIENTE   = "pendiente"
-    PROMOVIDO   = "promovido"
-    REPROBADO   = "reprobado"
-    CONDICIONAL = "condicional"   # promovido con materias pendientes
+
+class EstadoPromocion(StrEnum):
+    PENDIENTE = "pendiente"
+    PROMOVIDO = "promovido"
+    REPROBADO = "reprobado"
+    CONDICIONAL = "condicional"  # promovido con materias pendientes
 
 
 # =============================================================================
 # CierrePeriodo — registro inmutable
 # =============================================================================
+
 
 class CierrePeriodo(BaseModel):
     """
@@ -64,14 +66,15 @@ class CierrePeriodo(BaseModel):
                      Lo resuelve el servicio comparando la nota con los rangos
                      configurados en niveles_desempeno.
     """
-    id:               int | None  = None
-    estudiante_id:    int
-    asignacion_id:    int
-    periodo_id:       int
-    nota_definitiva:  float
-    desempeno_id:     int | None  = None
-    logro_id:         int | None  = None
-    fecha_cierre:     date        = Field(default_factory=date.today)
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
+    nota_definitiva: float
+    desempeno_id: int | None = None
+    logro_id: int | None = None
+    fecha_cierre: date = Field(default_factory=date.today)
     usuario_cierre_id: int | None = None
 
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
@@ -87,9 +90,7 @@ class CierrePeriodo(BaseModel):
     def validar_nota(cls, v: float) -> float:
         """La nota definitiva debe estar en 0-100; se redondea a 2 decimales."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota definitiva debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota definitiva debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("fecha_cierre", mode="before")
@@ -99,9 +100,7 @@ class CierrePeriodo(BaseModel):
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
-            raise ValueError(
-                f"La fecha de cierre ({v}) no puede ser futura."
-            )
+            raise ValueError(f"La fecha de cierre ({v}) no puede ser futura.")
         return v
 
     # ------------------------------------------------------------------
@@ -128,6 +127,7 @@ class CierrePeriodo(BaseModel):
 # CierreAnio — registro inmutable
 # =============================================================================
 
+
 class CierreAnio(BaseModel):
     """
     Nota definitiva anual de un estudiante en una asignatura.
@@ -144,17 +144,18 @@ class CierreAnio(BaseModel):
     perdio:                 True si nota_definitiva_anual < nota_minima.
                             El servicio lo determina; el modelo lo almacena.
     """
-    id:                     int | None  = None
-    estudiante_id:          int
-    asignacion_id:          int
-    anio_id:                int
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    anio_id: int
     nota_promedio_periodos: float
-    nota_habilitacion:      float | None = None
-    nota_definitiva_anual:  float
-    perdio:                 bool
-    desempeno_id:           int | None  = None
-    fecha_cierre:           date        = Field(default_factory=date.today)
-    usuario_cierre_id:      int | None  = None
+    nota_habilitacion: float | None = None
+    nota_definitiva_anual: float
+    perdio: bool
+    desempeno_id: int | None = None
+    fecha_cierre: date = Field(default_factory=date.today)
+    usuario_cierre_id: int | None = None
 
     @field_validator("estudiante_id", "asignacion_id", "anio_id")
     @classmethod
@@ -175,9 +176,7 @@ class CierreAnio(BaseModel):
         if v is None:
             return None
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("fecha_cierre", mode="before")
@@ -242,6 +241,7 @@ class CierreAnio(BaseModel):
 # PromocionAnual — entidad con máquina de estados
 # =============================================================================
 
+
 class PromocionAnual(BaseModel):
     """
     Decisión de promoción de un estudiante al año siguiente.
@@ -256,14 +256,15 @@ class PromocionAnual(BaseModel):
     es inmutable — cambiar una decisión de promoción requiere
     intervención administrativa directa en la BD.
     """
-    id:                  int | None         = None
-    estudiante_id:       int
-    anio_id:             int
-    estado:              EstadoPromocion     = EstadoPromocion.PENDIENTE
-    asignaturas_perdidas: int               = Field(default=0, ge=0)
-    observacion:         str | None         = None
-    fecha_decision:      date | None        = None
-    usuario_decision_id: int | None         = None
+
+    id: int | None = None
+    estudiante_id: int
+    anio_id: int
+    estado: EstadoPromocion = EstadoPromocion.PENDIENTE
+    asignaturas_perdidas: int = Field(default=0, ge=0)
+    observacion: str | None = None
+    fecha_decision: date | None = None
+    usuario_decision_id: int | None = None
 
     @field_validator("estudiante_id", "anio_id")
     @classmethod
@@ -291,9 +292,7 @@ class PromocionAnual(BaseModel):
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
-            raise ValueError(
-                f"La fecha de decisión ({v}) no puede ser futura."
-            )
+            raise ValueError(f"La fecha de decisión ({v}) no puede ser futura.")
         return v
 
     @model_validator(mode="after")
@@ -303,13 +302,9 @@ class PromocionAnual(BaseModel):
         Una promoción pendiente no debe tener fecha_decision.
         """
         if self.esta_finalizado and self.fecha_decision is None:
-            raise ValueError(
-                f"Una promoción '{self.estado.value}' debe tener fecha_decision."
-            )
+            raise ValueError(f"Una promoción '{self.estado.value}' debe tener fecha_decision.")
         if self.esta_pendiente and self.fecha_decision is not None:
-            raise ValueError(
-                "Una promoción PENDIENTE no puede tener fecha_decision."
-            )
+            raise ValueError("Una promoción PENDIENTE no puede tener fecha_decision.")
         return self
 
     # ------------------------------------------------------------------
@@ -371,8 +366,7 @@ class PromocionAnual(BaseModel):
         """
         if self.esta_finalizado:
             raise ValueError(
-                f"La promoción ya fue decidida como '{self.estado.value}'. "
-                "No se puede cambiar."
+                f"La promoción ya fue decidida como '{self.estado.value}'. No se puede cambiar."
             )
         if estado == EstadoPromocion.PENDIENTE:
             raise ValueError(
@@ -381,30 +375,33 @@ class PromocionAnual(BaseModel):
             )
         if asignaturas_perdidas < 0:
             raise ValueError(
-                f"asignaturas_perdidas no puede ser negativo "
-                f"(recibido: {asignaturas_perdidas})."
+                f"asignaturas_perdidas no puede ser negativo (recibido: {asignaturas_perdidas})."
             )
-        return self.model_copy(update={
-            "estado":               estado,
-            "asignaturas_perdidas": asignaturas_perdidas,
-            "observacion":          observacion.strip() if observacion else None,
-            "fecha_decision":       fecha or date.today(),
-            "usuario_decision_id":  usuario_id,
-        })
+        return self.model_copy(
+            update={
+                "estado": estado,
+                "asignaturas_perdidas": asignaturas_perdidas,
+                "observacion": observacion.strip() if observacion else None,
+                "fecha_decision": fecha or date.today(),
+                "usuario_decision_id": usuario_id,
+            }
+        )
 
 
 # =============================================================================
 # DTOs
 # =============================================================================
 
+
 class CrearCierrePeriodoDTO(BaseModel):
     """Datos para registrar el cierre de un periodo."""
-    estudiante_id:    int
-    asignacion_id:    int
-    periodo_id:       int
-    nota_definitiva:  float
-    desempeno_id:     int | None = None
-    logro_id:         int | None = None
+
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
+    nota_definitiva: float
+    desempeno_id: int | None = None
+    logro_id: int | None = None
     usuario_cierre_id: int | None = None
 
     @field_validator("nota_definitiva")
@@ -422,15 +419,16 @@ class CrearCierrePeriodoDTO(BaseModel):
 
 class CrearCierreAnioDTO(BaseModel):
     """Datos para registrar el cierre anual de una asignatura."""
-    estudiante_id:          int
-    asignacion_id:          int
-    anio_id:                int
+
+    estudiante_id: int
+    asignacion_id: int
+    anio_id: int
     nota_promedio_periodos: float
-    nota_habilitacion:      float | None = None
-    nota_definitiva_anual:  float
-    perdio:                 bool
-    desempeno_id:           int | None   = None
-    usuario_cierre_id:      int | None   = None
+    nota_habilitacion: float | None = None
+    nota_definitiva_anual: float
+    perdio: bool
+    desempeno_id: int | None = None
+    usuario_cierre_id: int | None = None
 
     @field_validator(
         "nota_promedio_periodos",
@@ -453,20 +451,19 @@ class CrearCierreAnioDTO(BaseModel):
 
 class DecidirPromocionDTO(BaseModel):
     """Datos para registrar la decisión de promoción."""
-    estado:               EstadoPromocion
-    asignaturas_perdidas: int         = Field(default=0, ge=0)
-    observacion:          str | None  = None
-    usuario_id:           int | None  = None
-    fecha:                date | None = None
+
+    estado: EstadoPromocion
+    asignaturas_perdidas: int = Field(default=0, ge=0)
+    observacion: str | None = None
+    usuario_id: int | None = None
+    fecha: date | None = None
 
     @field_validator("estado")
     @classmethod
     def validar_estado(cls, v: EstadoPromocion) -> EstadoPromocion:
         """El estado de la decisión no puede ser PENDIENTE (debe ser un resultado final)."""
         if v == EstadoPromocion.PENDIENTE:
-            raise ValueError(
-                "No se puede usar PENDIENTE como estado de decisión."
-            )
+            raise ValueError("No se puede usar PENDIENTE como estado de decisión.")
         return v
 
     @field_validator("observacion", mode="before")

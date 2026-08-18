@@ -6,6 +6,7 @@ Extraído de InfraestructuraService: CRUD de AreaConocimiento, Asignatura y
 Grupo. Recibe el mismo IInfraestructuraRepository por inyección; la lógica se
 movió idéntica (firmas, retornos y `@requiere_escritura` en los mutadores).
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import (
@@ -18,7 +19,6 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class CatalogoAcademicoService:
-
     def __init__(
         self,
         repo: IInfraestructuraRepository,
@@ -50,11 +50,13 @@ class CatalogoAcademicoService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -70,6 +72,7 @@ class CatalogoAcademicoService:
         if obj is None:
             raise ValueError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(obj.institucion_id)
 
     # ── Áreas ─────────────────────────────────────────────────────────────────
@@ -77,6 +80,7 @@ class CatalogoAcademicoService:
     def listar_areas(self) -> list[AreaConocimiento]:
         """Lista las áreas del tenant activo (o todas si admin/sin sesión)."""
         from src.services.contexto_tenant import institucion_actual
+
         return self._repo.listar_areas(institucion_id=institucion_actual())
 
     @requiere_escritura
@@ -113,9 +117,8 @@ class CatalogoAcademicoService:
         # institución (ve todo); director → su institución. NO se cae al
         # id_por_defecto aquí: admin debe ver todas las instituciones.
         from src.services.contexto_tenant import institucion_actual
-        return self._repo.listar_asignaturas(
-            area_id=area_id, institucion_id=institucion_actual()
-        )
+
+        return self._repo.listar_asignaturas(area_id=area_id, institucion_id=institucion_actual())
 
     @requiere_escritura
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
@@ -134,17 +137,13 @@ class CatalogoAcademicoService:
         # preserva la institución existente (un update no puede mover de tenant).
         actual = self._repo.get_asignatura(asignatura.id)
         self._verificar_pertenencia_obj(actual, "La asignatura")
-        asignatura = asignatura.model_copy(
-            update={"institucion_id": actual.institucion_id}
-        )
+        asignatura = asignatura.model_copy(update={"institucion_id": actual.institucion_id})
         return self._repo.actualizar_asignatura(asignatura)
 
     @requiere_escritura
     def eliminar_asignatura(self, asignatura_id: int) -> bool:
         """Elimina una asignatura tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(
-            self._repo.get_asignatura(asignatura_id), "La asignatura"
-        )
+        self._verificar_pertenencia_obj(self._repo.get_asignatura(asignatura_id), "La asignatura")
         return self._repo.eliminar_asignatura(asignatura_id)
 
     # ── Grupos ────────────────────────────────────────────────────────────────
@@ -158,9 +157,8 @@ class CatalogoAcademicoService:
         # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro;
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
-        return self._repo.listar_grupos(
-            grado=grado, institucion_id=institucion_actual()
-        )
+
+        return self._repo.listar_grupos(grado=grado, institucion_id=institucion_actual())
 
     @requiere_escritura
     def guardar_grupo(self, grupo: Grupo) -> Grupo:
@@ -183,9 +181,7 @@ class CatalogoAcademicoService:
     @requiere_escritura
     def eliminar_grupo(self, grupo_id: int) -> bool:
         """Elimina un grupo tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(
-            self._repo.get_grupo(grupo_id), "El grupo"
-        )
+        self._verificar_pertenencia_obj(self._repo.get_grupo(grupo_id), "El grupo")
         return self._repo.eliminar_grupo(grupo_id)
 
     # ── Director de grupo (convivencia_02) ──────────────────────────────────────
@@ -209,9 +205,7 @@ class CatalogoAcademicoService:
         return {info.usuario_id: info.docente_nombre for info in infos}
 
     @requiere_escritura
-    def asignar_director_grupo(
-        self, grupo_id: int, usuario_id: int | None
-    ) -> Grupo:
+    def asignar_director_grupo(self, grupo_id: int, usuario_id: int | None) -> Grupo:
         """Asigna (o quita, con `usuario_id=None`) el director de un grupo.
 
         Verifica el tenant del grupo (autorización a nivel de objeto, paso_36) y,
@@ -285,6 +279,7 @@ class CatalogoAcademicoService:
         from src.domain.policies.rbac_convivencia import (
             puede_gestionar_comportamiento,
         )
+
         return puede_gestionar_comportamiento(
             usuario_rol, self.es_director_de_grupo(usuario_id, grupo_id)
         )

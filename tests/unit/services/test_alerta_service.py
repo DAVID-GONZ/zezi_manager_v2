@@ -133,7 +133,7 @@ class TestConfigurarAlerta:
         assert cfg.id is not None
 
     def test_desactiva_configuracion(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         svc.configurar_alerta(_cfg())
         resultado = svc.desactivar_configuracion(1, TipoAlerta.FALTAS_INJUSTIFICADAS)
         assert resultado is True

@@ -735,7 +735,7 @@ class TestBoletinExcelHojasConvivencia:
         # Extraer filas de datos (saltar encabezados: título, vacío, encabezado de cols)
         data_rows = [f for f in filas if f and isinstance(f[0], str) and f[0] not in (
             "Estudiante",
-            f"CONVIVENCIA — Grupo 10 — Periodo 5",
+            "CONVIVENCIA — Grupo 10 — Periodo 5",
             "Observaciones públicas (todas)",
             "Eventos de convivencia",
         ) and not f[0].startswith("CONVIVENCIA")]
@@ -754,8 +754,9 @@ class TestBoletinExcelHojasConvivencia:
             estudiante_id=1, asignacion_id=1, periodo_id=5,
             texto="Obs de prueba", es_publica=True,
         )
-        from src.domain.models.convivencia import RegistroComportamiento, TipoRegistro
         from datetime import date as _date
+
+        from src.domain.models.convivencia import RegistroComportamiento, TipoRegistro
         reg = RegistroComportamiento(
             estudiante_id=1, grupo_id=10, periodo_id=5,
             tipo=TipoRegistro.DIFICULTAD,

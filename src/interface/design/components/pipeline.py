@@ -5,6 +5,7 @@ Renderiza una secuencia de pasos clicables que orienta un proceso de varios
 módulos (p. ej. Asignaturas → Plan de estudios → Asignaciones → Horarios),
 resaltando el paso actual y permitiendo navegar a los demás.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence

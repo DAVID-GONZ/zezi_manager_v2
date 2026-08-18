@@ -14,12 +14,9 @@ import sqlite3
 from datetime import datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.infrastructure.db.repositories.sqlite_alerta_repo import SqliteAlertaRepository
 from src.services.alerta_service import AlertaService
-
 
 # =============================================================================
 # Fixtures

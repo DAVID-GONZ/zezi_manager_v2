@@ -6,6 +6,7 @@ Ajustes NiceGUI 3.x:
   - Contenedores de icono usando context managers con ui.element("div")
     en vez del método .add() que no existe en NiceGUI 3.x.
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -48,8 +49,8 @@ def stat_card(
         "primary": "var(--color-primary)",
         "success": "var(--color-success)",
         "warning": "var(--color-warning)",
-        "danger":  "var(--color-error)",
-        "info":    "var(--color-info)",
+        "danger": "var(--color-error)",
+        "info": "var(--color-info)",
     }
     icono_color = _ICON_COLORS.get(variante, "var(--color-primary)")
 

@@ -1,6 +1,7 @@
 """
 SqliteHabilitacionRepository — implementación SQLite de IHabilitacionRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -19,7 +20,6 @@ from src.domain.ports.habilitacion_repo import IHabilitacionRepository
 
 
 class SqliteHabilitacionRepository(IHabilitacionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -29,6 +29,7 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 

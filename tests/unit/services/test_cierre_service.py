@@ -103,7 +103,7 @@ class FakeCierreRepo(ICierreRepository):
 
 
 class FakeEvalRepo(IEvaluacionRepository):
-    def __init__(self, notas: list[Nota] = None):
+    def __init__(self, notas: list[Nota] | None = None):
         self._notas = notas or []
 
     def listar_categorias(self, asig_id, per_id) -> list[Categoria]:
@@ -183,7 +183,7 @@ class FakeConfigRepo(IConfiguracionRepository):
 
 
 class FakeEstudianteRepo(IEstudianteRepository):
-    def __init__(self, estudiantes: list[Estudiante] = None):
+    def __init__(self, estudiantes: list[Estudiante] | None = None):
         self._ests = {e.id: e for e in (estudiantes or [])}
 
     def listar_por_grupo(self, grupo_id, solo_activos=True): return list(self._ests.values())
@@ -267,7 +267,7 @@ class TestCerrarPeriodo:
     def test_genera_cierre_por_estudiante(self):
         periodo = _make_periodo(10, 1, 1, cerrado=False)
         est = _make_estudiante(1)
-        svc, cierre_repo = _make_svc([periodo], [est])
+        svc, _cierre_repo = _make_svc([periodo], [est])
         cierres = svc.cerrar_periodo(asignacion_id=3, periodo_id=10, ctx=_ctx())
         assert len(cierres) == 1
         assert cierres[0].estudiante_id == 1
@@ -289,7 +289,7 @@ class TestCerrarAnio:
         p1 = _make_periodo(10, 1, 1, cerrado=True)
         p2 = _make_periodo(11, 1, 2, cerrado=True)
         est = _make_estudiante(1)
-        svc, cierre_repo = _make_svc([p1, p2], [est])
+        svc, _cierre_repo = _make_svc([p1, p2], [est])
         cierres = svc.cerrar_anio(grupo_id=5, anio_id=1, ctx=_ctx())
         assert isinstance(cierres, list)
 
@@ -306,7 +306,7 @@ class TestDecidirPromocion:
         est = _make_estudiante(1)
         svc, cierre_repo = _make_svc([p1], [est])
         # Crear la promoción directamente
-        prom = cierre_repo.guardar_promocion(PromocionAnual(estudiante_id=1, anio_id=1))
+        cierre_repo.guardar_promocion(PromocionAnual(estudiante_id=1, anio_id=1))
         dto = DecidirPromocionDTO(estado=EstadoPromocion.PROMOVIDO, observacion="Sin novedades")
         resultado = svc.decidir_promocion(est_id=1, anio_id=1, dto=dto)
         assert resultado.estado == EstadoPromocion.PROMOVIDO

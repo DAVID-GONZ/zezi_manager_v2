@@ -13,6 +13,7 @@ preferencias sembrados) y marcado como pendiente de configuración inicial
 La página NO edita identidad completa ni preferencias (eso es del director,
 en el wizard/hub de 09b/09c); aquí solo datos básicos + director.
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,8 +52,7 @@ def _formatear_errores_validacion(exc: ValidationError) -> str:
     mensajes: list[str] = []
     for err in exc.errors():
         msg = str(err.get("msg", "")).strip()
-        if msg.startswith(_PREFIJO_VALUE_ERROR):
-            msg = msg[len(_PREFIJO_VALUE_ERROR):]
+        msg = msg.removeprefix(_PREFIJO_VALUE_ERROR)
         if msg and msg not in mensajes:
             mensajes.append(msg)
     return " ".join(mensajes) or "Revisa los datos del formulario."
@@ -102,9 +102,7 @@ def catalogo_instituciones_page() -> None:
                     btn_ghost(
                         "Copiar",
                         on_click=lambda: (
-                            ui.run_javascript(
-                                f"navigator.clipboard.writeText({password!r})"
-                            ),
+                            ui.run_javascript(f"navigator.clipboard.writeText({password!r})"),
                             toast_success("Contraseña copiada"),
                         ),
                         icon="content_copy",
@@ -133,7 +131,8 @@ def catalogo_instituciones_page() -> None:
 
             try:
                 resultado = Container.aprovisionamiento_service().crear_institucion_con_director(
-                    dto, actor_rol=ctx.usuario_rol,
+                    dto,
+                    actor_rol=ctx.usuario_rol,
                 )
                 toast_success(f"Institución '{resultado.institucion.nombre}' creada")
                 _cargar_estado()
@@ -152,40 +151,83 @@ def catalogo_instituciones_page() -> None:
                 return False
 
         form_dialog(
-            titulo    = "Crear institución",
-            subtitulo = "Registra la institución y su usuario director",
-            campos    = [
+            titulo="Crear institución",
+            subtitulo="Registra la institución y su usuario director",
+            campos=[
                 {"tipo": "section", "label": "Institución", "icono": "apartment"},
-                {"key": "nombre", "label": "Nombre de la institución", "tipo": "text",
-                 "requerido": True, "minlength": 3, "maxlength": 200,
-                 "normalizar": "titulo"},
-                {"key": "codigo_dane", "label": "Código DANE", "tipo": "text",
-                 "requerido": True, "minlength": 12, "maxlength": 12,
-                 "hint": "12 dígitos numéricos"},
+                {
+                    "key": "nombre",
+                    "label": "Nombre de la institución",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 3,
+                    "maxlength": 200,
+                    "normalizar": "titulo",
+                },
+                {
+                    "key": "codigo_dane",
+                    "label": "Código DANE",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 12,
+                    "maxlength": 12,
+                    "hint": "12 dígitos numéricos",
+                },
                 {"tipo": "section", "label": "Ubicación", "icono": "location_on"},
-                {"key": "pais", "label": "País", "tipo": "select",
-                 "requerido": True, "opciones": ["Colombia"],
-                 "valor": "Colombia"},
-                {"key": "departamento", "label": "Departamento", "tipo": "select",
-                 "requerido": True, "opciones": DEPARTAMENTOS},
-                {"key": "municipio", "label": "Municipio", "tipo": "select",
-                 "requerido": True,
-                 "opciones_desde": "departamento", "opciones_fn": municipios_de},
+                {
+                    "key": "pais",
+                    "label": "País",
+                    "tipo": "select",
+                    "requerido": True,
+                    "opciones": ["Colombia"],
+                    "valor": "Colombia",
+                },
+                {
+                    "key": "departamento",
+                    "label": "Departamento",
+                    "tipo": "select",
+                    "requerido": True,
+                    "opciones": DEPARTAMENTOS,
+                },
+                {
+                    "key": "municipio",
+                    "label": "Municipio",
+                    "tipo": "select",
+                    "requerido": True,
+                    "opciones_desde": "departamento",
+                    "opciones_fn": municipios_de,
+                },
                 {"tipo": "section", "label": "Director", "icono": "person"},
-                {"key": "director_nombre_completo", "label": "Nombre completo", "tipo": "text",
-                 "requerido": True, "minlength": 3,
-                 "normalizar": "titulo"},
-                {"key": "director_usuario", "label": "Nombre de usuario", "tipo": "text",
-                 "requerido": True, "minlength": 3,
-                 "normalizar": "minusculas", "hint": "Sin espacios"},
-                {"key": "director_email", "label": "Correo electrónico", "tipo": "email",
-                 "requerido": True, "normalizar": "minusculas"},
+                {
+                    "key": "director_nombre_completo",
+                    "label": "Nombre completo",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 3,
+                    "normalizar": "titulo",
+                },
+                {
+                    "key": "director_usuario",
+                    "label": "Nombre de usuario",
+                    "tipo": "text",
+                    "requerido": True,
+                    "minlength": 3,
+                    "normalizar": "minusculas",
+                    "hint": "Sin espacios",
+                },
+                {
+                    "key": "director_email",
+                    "label": "Correo electrónico",
+                    "tipo": "email",
+                    "requerido": True,
+                    "normalizar": "minusculas",
+                },
             ],
-            on_submit    = _crear,
-            texto_submit = "Crear institución",
-            max_width    = "max-w-lg",
-            columnas     = 2,
-            icono        = "apartment",
+            on_submit=_crear,
+            texto_submit="Crear institución",
+            max_width="max-w-lg",
+            columnas=2,
+            icono="apartment",
         )
 
     # ── Sección refreshable ───────────────────────────────────────────────────
@@ -209,9 +251,7 @@ def catalogo_instituciones_page() -> None:
                 ui.label("Estado").classes("w-48")
 
             for inst in instituciones:
-                ubicacion = ", ".join(
-                    p for p in [inst.municipio, inst.departamento] if p
-                ) or "—"
+                ubicacion = ", ".join(p for p in [inst.municipio, inst.departamento] if p) or "—"
                 with ui.element("div").classes("divider-row"):
                     ui.label(inst.nombre).classes("flex-1")
                     ui.label(ubicacion).classes("w-48 name-w48-ellipsis")
@@ -225,9 +265,7 @@ def catalogo_instituciones_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes(
-                    "gap-4 items-center justify-between flex-wrap mb-4"
-                ):
+                with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
                     ui.label("Instituciones registradas").classes("text-base font-semibold")
                     btn_primary(
                         "Crear institución",
@@ -240,9 +278,9 @@ def catalogo_instituciones_page() -> None:
     app_layout(
         ctx,
         contenido,
-        page_titulo    = "Instituciones",
-        page_subtitulo = "Catálogo de instituciones (tenants) de la plataforma",
-        page_icono     = "apartment",
+        page_titulo="Instituciones",
+        page_subtitulo="Catálogo de instituciones (tenants) de la plataforma",
+        page_icono="apartment",
     )
 
 

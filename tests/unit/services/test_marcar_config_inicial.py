@@ -11,7 +11,6 @@ from src.domain.models.institucion import Institucion, NuevaInstitucionDTO
 from src.domain.ports.institucion_repo import IInstitucionRepository
 from src.services.institucion_service import InstitucionService
 
-
 # ---------------------------------------------------------------------------
 # FakeRepo (mínimo para los tests de este módulo)
 # ---------------------------------------------------------------------------

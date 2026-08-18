@@ -1,6 +1,7 @@
 """
 SqlitePeriodoRepository — implementación SQLite de IPeriodoRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -11,7 +12,6 @@ from src.domain.ports.periodo_repo import IPeriodoRepository
 
 
 class SqlitePeriodoRepository(IPeriodoRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -21,6 +21,7 @@ class SqlitePeriodoRepository(IPeriodoRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -45,9 +46,7 @@ class SqlitePeriodoRepository(IPeriodoRepository):
 
     def get_by_id(self, periodo_id: int) -> Periodo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM periodos WHERE id = ?", (periodo_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM periodos WHERE id = ?", (periodo_id,)).fetchone()
             return self._row_to_periodo(row) if row else None
 
     def get_por_numero(self, anio_id: int, numero: int) -> Periodo | None:
@@ -71,9 +70,7 @@ class SqlitePeriodoRepository(IPeriodoRepository):
             ).fetchone()
             return self._row_to_periodo(row) if row else None
 
-    def listar_por_anio(
-        self, anio_id: int, incluir_cerrados: bool = True
-    ) -> list[Periodo]:
+    def listar_por_anio(self, anio_id: int, incluir_cerrados: bool = True) -> list[Periodo]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM periodos WHERE anio_id = ?"
             params: list = [anio_id]
@@ -83,9 +80,7 @@ class SqlitePeriodoRepository(IPeriodoRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_periodo(r) for r in rows]
 
-    def suma_pesos_otros(
-        self, anio_id: int, excluir_periodo_id: int | None = None
-    ) -> float:
+    def suma_pesos_otros(self, anio_id: int, excluir_periodo_id: int | None = None) -> float:
         with self._get_conn() as conn:
             row = conn.execute(
                 """
@@ -188,14 +183,10 @@ class SqlitePeriodoRepository(IPeriodoRepository):
 
     def get_hito(self, hito_id: int) -> HitoPeriodo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM hitos_periodo WHERE id = ?", (hito_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM hitos_periodo WHERE id = ?", (hito_id,)).fetchone()
             return self._row_to_hito(row) if row else None
 
-    def listar_hitos(
-        self, periodo_id: int, tipo: TipoHito | None = None
-    ) -> list[HitoPeriodo]:
+    def listar_hitos(self, periodo_id: int, tipo: TipoHito | None = None) -> list[HitoPeriodo]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM hitos_periodo WHERE periodo_id = ?"
             params: list = [periodo_id]
@@ -264,11 +255,10 @@ class SqlitePeriodoRepository(IPeriodoRepository):
 
     def eliminar_hito(self, hito_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM hitos_periodo WHERE id = ?", (hito_id,)
-            )
+            cursor = conn.execute("DELETE FROM hitos_periodo WHERE id = ?", (hito_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
 
-__all__ = ["SqlitePeriodoRepository"]   
+
+__all__ = ["SqlitePeriodoRepository"]

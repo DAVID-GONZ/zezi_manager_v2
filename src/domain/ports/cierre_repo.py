@@ -15,13 +15,13 @@ Patrones de uso principales:
 
   Consultar estado de promoción:
     promocion = repo.get_promocion(estudiante_id, anio_id)
-    
+
   Actualizar estado de promoción:
     repo.actualizar_promocion(promocion_decidida)
 
 Invariantes del repositorio:
   - CierrePeriodo y CierreAnio son tratados como registros inmutables a nivel
-    lógico, pero a nivel de persistencia un "guardar" actúa como Upsert 
+    lógico, pero a nivel de persistencia un "guardar" actúa como Upsert
     (reemplazo) si ocurre una corrección.
   - PromocionAnual mantiene estado, por lo que separa guardar (creación)
     de actualizar (decisión).
@@ -40,7 +40,6 @@ from ..models.cierre import (
 
 
 class ICierreRepository(ABC):
-
     # =========================================================================
     # Cierre Periodo
     # =========================================================================
@@ -50,7 +49,7 @@ class ICierreRepository(ABC):
         self, estudiante_id: int, asignacion_id: int, periodo_id: int
     ) -> CierrePeriodo | None:
         """
-        Retorna el cierre de periodo para un estudiante en una asignación y 
+        Retorna el cierre de periodo para un estudiante en una asignación y
         periodo específicos. Retorna None si no existe.
         """
         ...
@@ -69,7 +68,7 @@ class ICierreRepository(ABC):
     def guardar_cierre_periodo(self, cierre: CierrePeriodo) -> CierrePeriodo:
         """
         Guarda un cierre de periodo.
-        Si ya existe uno para el mismo estudiante, asignación y periodo, 
+        Si ya existe uno para el mismo estudiante, asignación y periodo,
         lo reemplaza (Upsert) para permitir correcciones excepcionales.
         Retorna la entidad guardada con su id.
         """
@@ -84,7 +83,7 @@ class ICierreRepository(ABC):
         self, estudiante_id: int, asignacion_id: int, anio_id: int
     ) -> CierreAnio | None:
         """
-        Retorna el cierre anual para un estudiante en una asignación y año 
+        Retorna el cierre anual para un estudiante en una asignación y año
         específicos. Retorna None si no existe.
         """
         ...
@@ -103,7 +102,7 @@ class ICierreRepository(ABC):
     def guardar_cierre_anio(self, cierre: CierreAnio) -> CierreAnio:
         """
         Guarda un cierre anual.
-        Si ya existe uno para el mismo estudiante, asignación y año, lo reemplaza 
+        Si ya existe uno para el mismo estudiante, asignación y año, lo reemplaza
         (Upsert) en caso de correcciones o ingreso de nota de habilitación.
         Retorna la entidad guardada con su id.
         """
@@ -114,9 +113,7 @@ class ICierreRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def get_promocion(
-        self, estudiante_id: int, anio_id: int
-    ) -> PromocionAnual | None:
+    def get_promocion(self, estudiante_id: int, anio_id: int) -> PromocionAnual | None:
         """
         Retorna el registro de promoción de un estudiante para un año.
         Retorna None si no se ha iniciado el proceso de promoción.
@@ -128,7 +125,7 @@ class ICierreRepository(ABC):
         self, anio_id: int, estado: EstadoPromocion | None = None
     ) -> list[PromocionAnual]:
         """
-        Lista todas las decisiones de promoción de un año. 
+        Lista todas las decisiones de promoción de un año.
         Opcionalmente filtra por un estado específico (ej. PENDIENTE).
         """
         ...
@@ -136,7 +133,7 @@ class ICierreRepository(ABC):
     @abstractmethod
     def guardar_promocion(self, promocion: PromocionAnual) -> PromocionAnual:
         """
-        Inserta un nuevo registro de promoción anual (usualmente inicializado 
+        Inserta un nuevo registro de promoción anual (usualmente inicializado
         en estado PENDIENTE).
         Retorna la entidad con id asignado.
         """

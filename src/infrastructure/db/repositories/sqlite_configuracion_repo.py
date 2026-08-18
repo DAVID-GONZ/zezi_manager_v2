@@ -18,7 +18,6 @@ from src.domain.ports.configuracion_repo import IConfiguracionRepository
 
 
 class SqliteConfiguracionRepository(IConfiguracionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -28,6 +27,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -56,9 +56,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def get_by_anio(
-        self, institucion_id: int | None, anio: int
-    ) -> ConfiguracionAnio | None:
+    def get_by_anio(self, institucion_id: int | None, anio: int) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
             if institucion_id is None:
                 row = conn.execute(
@@ -66,15 +64,12 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT * FROM configuracion_anio "
-                    "WHERE institucion_id = ? AND anio = ?",
+                    "SELECT * FROM configuracion_anio WHERE institucion_id = ? AND anio = ?",
                     (institucion_id, anio),
                 ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def listar(
-        self, institucion_id: int | None = None
-    ) -> list[ConfiguracionAnio]:
+    def listar(self, institucion_id: int | None = None) -> list[ConfiguracionAnio]:
         with self._get_conn() as conn:
             if institucion_id is None:
                 rows = conn.execute(
@@ -82,8 +77,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM configuracion_anio "
-                    "WHERE institucion_id = ? ORDER BY anio DESC",
+                    "SELECT * FROM configuracion_anio WHERE institucion_id = ? ORDER BY anio DESC",
                     (institucion_id,),
                 ).fetchall()
             return [ConfiguracionAnio(**dict(r)) for r in rows]
@@ -248,9 +242,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
 
     def eliminar_nivel(self, nivel_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM niveles_desempeno WHERE id = ?", (nivel_id,)
-            )
+            cursor = conn.execute("DELETE FROM niveles_desempeno WHERE id = ?", (nivel_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -261,9 +253,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
         niveles: list[NivelDesempeno],
     ) -> list[NivelDesempeno]:
         with self._get_conn() as conn:
-            conn.execute(
-                "DELETE FROM niveles_desempeno WHERE anio_id = ?", (anio_id,)
-            )
+            conn.execute("DELETE FROM niveles_desempeno WHERE anio_id = ?", (anio_id,))
             resultado: list[NivelDesempeno] = []
             for nivel in niveles:
                 cursor = conn.execute(

@@ -1,6 +1,7 @@
 """
 SqliteEvaluacionRepository — implementación SQLite de IEvaluacionRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -20,7 +21,6 @@ from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 
 
 class SqliteEvaluacionRepository(IEvaluacionRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -30,6 +30,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -75,9 +76,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
 
     def get_categoria(self, cat_id: int) -> Categoria | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM categorias WHERE id = ?", (cat_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM categorias WHERE id = ?", (cat_id,)).fetchone()
             return self._row_to_categoria(row) if row else None
 
     def guardar_categoria(self, categoria: Categoria) -> Categoria:
@@ -190,9 +189,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
 
     def get_actividad(self, act_id: int) -> Actividad | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM actividades WHERE id = ?", (act_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM actividades WHERE id = ?", (act_id,)).fetchone()
             return self._row_to_actividad(row) if row else None
 
     def guardar_actividad(self, actividad: Actividad) -> Actividad:

@@ -4,6 +4,7 @@ milestones_panel.py — Panel de hitos/fechas próximas.
 Componente de presentación puro: recibe lista de MilestoneItem,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from src.interface.design.components.section_panel import section_panel
 @dataclass
 class MilestoneItem:
     """Un hito o fecha próxima."""
+
     descripcion: str
     fecha_limite: date | None
 

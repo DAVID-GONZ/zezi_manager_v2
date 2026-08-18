@@ -24,6 +24,7 @@ Refreshables:
   stats_refreshable()  re-renderiza los 5 contadores.
   grilla_refreshable() re-renderiza el banner + filas de estudiantes.
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,10 +41,12 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
-from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
+from src.interface.design.components.inline_selectors import (
+    inline_periodo_grupo_asignatura,
+)
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
@@ -55,11 +58,11 @@ logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
 _ESTADOS: list[tuple[str, str, str, str]] = [
     # (codigo, etiqueta_botón, clase_CSS_botón, etiqueta_larga)
-    ("P",  "P",  "asis-btn-p",  "Presente"),
+    ("P", "P", "asis-btn-p", "Presente"),
     ("FJ", "FJ", "asis-btn-fj", "Falta Justificada"),
     ("FI", "FI", "asis-btn-fi", "Falta Injustificada"),
-    ("R",  "R",  "asis-btn-r",  "Retraso"),
-    ("E",  "E",  "asis-btn-e",  "Excusa"),
+    ("R", "R", "asis-btn-r", "Retraso"),
+    ("E", "E", "asis-btn-e", "Excusa"),
 ]
 
 # Estados que normalmente requieren texto de observación
@@ -71,28 +74,29 @@ _ESTADO_DEFAULT = "P"
 
 # ── Estado mutable de la página ────────────────────────────────────────────────
 
+
 def _estado_inicial() -> dict:
     """
     Retorna el dict de estado mutable para una instancia de página.
     Un dict por petición HTTP → aislamiento entre usuarios.
     """
     return {
-        "fecha":           date.today(),
-        "registros":       {},   # {estudiante_id: str_codigo}
-        "observaciones":   {},   # {estudiante_id: str}
-        "estudiantes":     [],   # list[Estudiante] ordenados por apellido, nombre
+        "fecha": date.today(),
+        "registros": {},  # {estudiante_id: str_codigo}
+        "observaciones": {},  # {estudiante_id: str}
+        "estudiantes": [],  # list[Estudiante] ordenados por apellido, nombre
         "periodo_cerrado": False,
-        "pendiente":       False,
+        "pendiente": False,
         # Alias — actualizados por on_sel_change desde los pills inline
-        "grupo_id":              None,
-        "asignacion_id":         None,
-        "periodo_id":            None,
+        "grupo_id": None,
+        "asignacion_id": None,
+        "periodo_id": None,
         # Claves del inline selector (escritas por inline_periodo_grupo_asignatura)
-        "sel_periodo_id":        None,
-        "sel_periodo_nombre":    "",
-        "sel_grupo_id":          None,
-        "sel_grupo_nombre":      "",
-        "sel_asignacion_id":     None,
+        "sel_periodo_id": None,
+        "sel_periodo_nombre": "",
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
+        "sel_asignacion_id": None,
         "sel_asignacion_nombre": "",
     }
 
@@ -111,9 +115,9 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     Si falta grupo_id, asignacion_id o periodo_id en el contexto,
     deja _s en estado vacío sin lanzar excepción.
     """
-    grupo_id      = _s.get("grupo_id")
+    grupo_id = _s.get("grupo_id")
     asignacion_id = _s.get("asignacion_id")
-    periodo_id    = _s.get("periodo_id")
+    periodo_id = _s.get("periodo_id")
 
     if not grupo_id or not asignacion_id or not periodo_id:
         _s.update(
@@ -136,10 +140,12 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     # 2. Estudiantes del grupo, ordenados por apellido + nombre
     try:
         estudiantes = Container.estudiante_service().listar_por_grupo(grupo_id)
-        estudiantes.sort(key=lambda e: (
-            getattr(e, "apellido", "") or "",
-            getattr(e, "nombre", "")   or "",
-        ))
+        estudiantes.sort(
+            key=lambda e: (
+                getattr(e, "apellido", "") or "",
+                getattr(e, "nombre", "") or "",
+            )
+        )
         _s["estudiantes"] = estudiantes
     except Exception as exc:
         logger.error("Error cargando estudiantes del grupo %s: %s", grupo_id, exc)
@@ -153,14 +159,16 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     existentes: dict[int, dict[str, str]] = {}
     try:
         existentes = Container.asistencia_service().estados_por_grupo_y_fecha(
-            grupo_id      = grupo_id,
-            asignacion_id = asignacion_id,
-            fecha         = _s["fecha"],
+            grupo_id=grupo_id,
+            asignacion_id=asignacion_id,
+            fecha=_s["fecha"],
         )
     except Exception as exc:
         logger.warning(
             "Error leyendo asistencia existente (grupo=%s, fecha=%s): %s",
-            grupo_id, _s["fecha"], exc,
+            grupo_id,
+            _s["fecha"],
+            exc,
         )
 
     # 4. Fusionar
@@ -174,7 +182,7 @@ def _cargar_estado(ctx: SessionContext, _s: dict) -> None:
     }
     _s["pendiente"] = False
 
-                
+
 def _s_cerrado(periodo_id: int | None) -> bool:
     """
     Consulta el estado de cierre del periodo indicado.
@@ -190,6 +198,7 @@ def _s_cerrado(periodo_id: int | None) -> bool:
 
 
 # ── Stats ──────────────────────────────────────────────────────────────────────
+
 
 def _stats_panel(_s: dict) -> None:
     """5 tarjetas de conteo: P / FJ / FI / R / E."""
@@ -207,12 +216,13 @@ def _stats_panel(_s: dict) -> None:
 
 # ── Fila de estudiante ─────────────────────────────────────────────────────────
 
+
 def _fila_estudiante(
     est,
     estado_actual: str,
-    obs_actual:    str,
-    readonly:      bool,
-    numero:        int,
+    obs_actual: str,
+    readonly: bool,
+    numero: int,
     on_estado,
     on_obs,
 ) -> None:
@@ -224,11 +234,10 @@ def _fila_estudiante(
     FJ y E muestran un campo de observación junto a los botones.
     """
     apellidos = getattr(est, "apellido", "") or ""
-    nombre    = getattr(est, "nombre", "")   or ""
+    nombre = getattr(est, "nombre", "") or ""
     documento = getattr(est, "numero_documento", "") or ""
 
     with ui.element("div").classes("asis-row"):
-
         ui.label(str(numero)).classes("asis-cell asis-cell-num")
 
         with ui.element("div").classes("asis-cell asis-cell-nombre"):
@@ -238,9 +247,7 @@ def _fila_estudiante(
 
         with ui.element("div").classes("asis-cell asis-cell-estado"):
             if readonly:
-                ui.label(estado_actual).classes(
-                    f"asis-badge asis-badge-{estado_actual.lower()}"
-                )
+                ui.label(estado_actual).classes(f"asis-badge asis-badge-{estado_actual.lower()}")
             else:
                 with ui.element("div").classes("asis-btn-group"):
                     for codigo, etiqueta, clase_btn, larga in _ESTADOS:
@@ -262,6 +269,7 @@ def _fila_estudiante(
 
 # ── Grilla ─────────────────────────────────────────────────────────────────────
 
+
 def _grilla(_s: dict, on_estado, on_obs) -> None:
     """
     Banner de periodo cerrado (si aplica) + grilla de estudiantes.
@@ -270,44 +278,41 @@ def _grilla(_s: dict, on_estado, on_obs) -> None:
     if _s["periodo_cerrado"]:
         with ui.element("div").classes("asis-banner-cerrado"):
             ThemeManager.icono(Icons.CLOSE_PERIOD, size=16, clases="asis-banner-icon")
-            ui.label(
-                "Periodo cerrado — modo solo lectura."
-            ).classes("asis-banner-text")
+            ui.label("Periodo cerrado — modo solo lectura.").classes("asis-banner-text")
 
-    with ui.element("div").classes("asis-grid-wrap"):
-        with ui.element("div").classes("asis-grid"):
-
-            if not _s["estudiantes"]:
-                with ui.element("div").classes("asis-empty"):
-                    ThemeManager.icono(Icons.STUDENTS, size=40, clases="asis-empty-icon")
-                    ui.label("Sin estudiantes en este grupo").classes("asis-empty-text")
-                    ui.label(
-                        "Configura el contexto académico para cargar la lista."
-                    ).classes("asis-empty-hint")
-                return
-
-            with ui.element("div").classes("asis-row asis-header-row"):
-                ui.label("#").classes("asis-cell asis-cell-num")
-                ui.label("Estudiante").classes("asis-cell asis-cell-nombre")
-                ui.label("Estado").classes("asis-cell asis-cell-estado")
-
-            for i, est in enumerate(_s["estudiantes"], start=1):
-                _fila_estudiante(
-                    est           = est,
-                    estado_actual = _s["registros"].get(est.id, _ESTADO_DEFAULT),
-                    obs_actual    = _s["observaciones"].get(est.id, ""),
-                    readonly      = _s["periodo_cerrado"],
-                    numero        = i,
-                    on_estado     = on_estado,
-                    on_obs        = on_obs,
+    with ui.element("div").classes("asis-grid-wrap"), ui.element("div").classes("asis-grid"):
+        if not _s["estudiantes"]:
+            with ui.element("div").classes("asis-empty"):
+                ThemeManager.icono(Icons.STUDENTS, size=40, clases="asis-empty-icon")
+                ui.label("Sin estudiantes en este grupo").classes("asis-empty-text")
+                ui.label("Configura el contexto académico para cargar la lista.").classes(
+                    "asis-empty-hint"
                 )
+            return
+
+        with ui.element("div").classes("asis-row asis-header-row"):
+            ui.label("#").classes("asis-cell asis-cell-num")
+            ui.label("Estudiante").classes("asis-cell asis-cell-nombre")
+            ui.label("Estado").classes("asis-cell asis-cell-estado")
+
+        for i, est in enumerate(_s["estudiantes"], start=1):
+            _fila_estudiante(
+                est=est,
+                estado_actual=_s["registros"].get(est.id, _ESTADO_DEFAULT),
+                obs_actual=_s["observaciones"].get(est.id, ""),
+                readonly=_s["periodo_cerrado"],
+                numero=i,
+                on_estado=on_estado,
+                on_obs=on_obs,
+            )
 
 
 # ── Toolbar ────────────────────────────────────────────────────────────────────
 
+
 def _toolbar(
-    fecha_valor:     str,
-    readonly:        bool,
+    fecha_valor: str,
+    readonly: bool,
     on_fecha_cambio,
     on_marcar_todos,
     on_guardar,
@@ -317,7 +322,6 @@ def _toolbar(
     En modo solo lectura solo muestra el selector de fecha.
     """
     with ui.element("div").classes("asis-toolbar"):
-
         with ui.element("div").classes("asis-date-wrap"):
             ThemeManager.icono(Icons.SCHEDULE, size=18, clases="asis-date-icon")
             date_input(
@@ -350,15 +354,16 @@ def _toolbar(
 
 # ── Persistencia ───────────────────────────────────────────────────────────────
 
+
 def _guardar(_s: dict, ctx: SessionContext) -> None:
     """
     Persiste la asistencia llamando a AsistenciaService.guardar_asistencia_masiva()
     con una lista de dicts primitivos. El servicio construye internamente
     los DTOs de dominio — esta función no importa ningún modelo de dominio.
     """
-    grupo_id      = _s.get("grupo_id")
+    grupo_id = _s.get("grupo_id")
     asignacion_id = _s.get("asignacion_id")
-    periodo_id    = _s.get("periodo_id")
+    periodo_id = _s.get("periodo_id")
 
     if not grupo_id or not asignacion_id or not periodo_id:
         toast_warning("Contexto incompleto — configura periodo, grupo y asignatura.")
@@ -376,27 +381,31 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
         lista = [
             {
                 "estudiante_id": est.id,
-                "estado":        _s["registros"].get(est.id, _ESTADO_DEFAULT),
-                "observacion":   _s["observaciones"].get(est.id) or None,
+                "estado": _s["registros"].get(est.id, _ESTADO_DEFAULT),
+                "observacion": _s["observaciones"].get(est.id) or None,
             }
             for est in _s["estudiantes"]
         ]
 
         conteo = Container.asistencia_service().guardar_asistencia_masiva(
-            grupo_id      = grupo_id,
-            asignacion_id = asignacion_id,
-            periodo_id    = periodo_id,
-            fecha         = _s["fecha"],
-            lista         = lista,
-            usuario_id    = ctx.usuario_id,
-            anio_id       = ctx.anio_id,
+            grupo_id=grupo_id,
+            asignacion_id=asignacion_id,
+            periodo_id=periodo_id,
+            fecha=_s["fecha"],
+            lista=lista,
+            usuario_id=ctx.usuario_id,
+            anio_id=ctx.anio_id,
         )
 
         _s["pendiente"] = False
         toast_success(f"Asistencia guardada — {conteo} estudiante(s).")
         logger.info(
             "Asistencia guardada: grupo=%s asignacion=%s fecha=%s n=%d usuario=%s",
-            grupo_id, asignacion_id, _s["fecha"], conteo, ctx.usuario_id,
+            grupo_id,
+            asignacion_id,
+            _s["fecha"],
+            conteo,
+            ctx.usuario_id,
         )
 
     except ValueError as exc:
@@ -408,6 +417,7 @@ def _guardar(_s: dict, ctx: SessionContext) -> None:
 
 
 # ── Página ─────────────────────────────────────────────────────────────────────
+
 
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def registro_asistencia_page() -> None:
@@ -483,35 +493,37 @@ def registro_asistencia_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["grupo_id"]      = s["sel_grupo_id"]
+            _s["grupo_id"] = s["sel_grupo_id"]
             _s["asignacion_id"] = s["sel_asignacion_id"]
-            _s["periodo_id"]    = s["sel_periodo_id"]
+            _s["periodo_id"] = s["sel_periodo_id"]
             _cargar_estado(ctx, _s)
             stats_refreshable.refresh()
             grilla_refreshable.refresh()
 
         inline_periodo_grupo_asignatura(
-            _s, on_sel_change,
-            usuario_id     = ctx.usuario_id,
-            institucion_id = ctx.institucion_id,
-            usuario_rol    = ctx.usuario_rol,
-            preselect_periodo = True,
+            _s,
+            on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
         )
 
         with ui.element("div").classes("asis-page"):
-            _toolbar(               # Fecha + acciones masivas + guardar
-                fecha_valor     = str(_s["fecha"]),
-                readonly        = _s["periodo_cerrado"],
-                on_fecha_cambio = on_fecha_cambio,
-                on_marcar_todos = on_marcar_todos,
-                on_guardar      = on_guardar,
+            _toolbar(  # Fecha + acciones masivas + guardar
+                fecha_valor=str(_s["fecha"]),
+                readonly=_s["periodo_cerrado"],
+                on_fecha_cambio=on_fecha_cambio,
+                on_marcar_todos=on_marcar_todos,
+                on_guardar=on_guardar,
             )
-            stats_refreshable()     # Contadores P / FJ / FI / R / E
-            grilla_refreshable()    # Banner cerrado + grilla
+            stats_refreshable()  # Contadores P / FJ / FI / R / E
+            grilla_refreshable()  # Banner cerrado + grilla
 
     app_layout(
-        ctx, contenido,
-        page_titulo = "Asistencia",
+        ctx,
+        contenido,
+        page_titulo="Asistencia",
     )
 
 

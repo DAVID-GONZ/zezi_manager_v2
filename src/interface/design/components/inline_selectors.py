@@ -21,6 +21,7 @@ Restricciones de arquitectura:
   - No usa ui.icon() — icono vía ThemeManager.icono().
   - No CSS inline — todo en styles/components/inline_selectors.css.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,6 +36,7 @@ logger = logging.getLogger("INLINE_SELECTORS")
 
 
 # ─── Lógica pura (testeable sin NiceGUI) ─────────────────────────────────────
+
 
 def _estado_inicial(s: dict) -> None:
     """
@@ -112,13 +114,11 @@ def _seleccion_completa_3d(s: dict) -> bool:
 
 def _seleccion_completa_2d(s: dict) -> bool:
     """True si periodo y grupo están seleccionados."""
-    return (
-        s.get("sel_periodo_id") is not None
-        and s.get("sel_grupo_id") is not None
-    )
+    return s.get("sel_periodo_id") is not None and s.get("sel_grupo_id") is not None
 
 
 # ─── Carga de datos (wrappean servicios) ─────────────────────────────────────
+
 
 def _cargar_periodos(institucion_id: int) -> list:
     """Retorna lista de Periodo del año activo. Vacía si falla."""
@@ -143,6 +143,7 @@ def _cargar_grupos(
     en el periodo. Si usuario_rol == 'profesor', filtra por usuario_id.
     """
     from src.services.asignacion_service import FiltroAsignacionesDTO
+
     try:
         filtro = FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True)
         infos = Container.asignacion_service().listar_con_info(filtro)
@@ -171,6 +172,7 @@ def _cargar_asignaciones(
     para (grupo, periodo). Si usuario_rol == 'profesor', filtra por usuario_id.
     """
     from src.services.asignacion_service import FiltroAsignacionesDTO
+
     try:
         filtro = FiltroAsignacionesDTO(
             grupo_id=grupo_id,
@@ -187,6 +189,7 @@ def _cargar_asignaciones(
 
 
 # ─── Render NiceGUI ───────────────────────────────────────────────────────────
+
 
 def inline_periodo_grupo_asignatura(
     s: dict,
@@ -232,7 +235,6 @@ def inline_periodo_grupo_asignatura(
             _fila.refresh()
 
         with ui.element("div").classes("inline-sel-row"):
-
             # ── Pill Periodo ─────────────────────────────────────────────
             has_p = s["sel_periodo_id"] is not None
             p_cls = "inline-sel-pill sel-active" if has_p else "inline-sel-pill"
@@ -284,9 +286,7 @@ def inline_periodo_grupo_asignatura(
                         ):
                             ui.menu_item(
                                 anombre,
-                                on_click=lambda e, _id=aid, _n=anombre: _handle_asignacion(
-                                    _id, _n
-                                ),
+                                on_click=lambda e, _id=aid, _n=anombre: _handle_asignacion(_id, _n),
                             )
 
     _fila()
@@ -329,7 +329,6 @@ def inline_periodo_grupo(
             _fila.refresh()
 
         with ui.element("div").classes("inline-sel-row"):
-
             # ── Pill Periodo ─────────────────────────────────────────────
             has_p = s["sel_periodo_id"] is not None
             p_cls = "inline-sel-pill sel-active" if has_p else "inline-sel-pill"

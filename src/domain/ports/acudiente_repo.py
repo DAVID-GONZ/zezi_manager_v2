@@ -37,18 +37,21 @@ from ..models.acudiente import Acudiente, EstudianteAcudiente
 
 
 class IAcudienteRepository(ABC):
-
     # =========================================================================
     # Lectura — acudiente
     # =========================================================================
 
     @abstractmethod
-    def listar(self, activos_solo: bool = False, institucion_id: int | None = None) -> list[Acudiente]:
+    def listar(
+        self, activos_solo: bool = False, institucion_id: int | None = None
+    ) -> list[Acudiente]:
         """Retorna todos los acudientes, opcionalmente filtrados por institución y estado."""
         ...
 
     @abstractmethod
-    def buscar_por_documento(self, numero: str, institucion_id: int | None = None) -> Acudiente | None:
+    def buscar_por_documento(
+        self, numero: str, institucion_id: int | None = None
+    ) -> Acudiente | None:
         """Busca un acudiente por documento dentro del scope de institución."""
         ...
 

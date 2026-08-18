@@ -15,8 +15,7 @@ from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
     SqliteConvivenciaRepository,
 )
 from src.infrastructure.db.schema import create_schema
-from src.infrastructure.db.seed import seed_base, _fast_hasher
-
+from src.infrastructure.db.seed import _fast_hasher, seed_base
 
 # ---------------------------------------------------------------------------
 # Fixture local — BD en memoria con schema + seed_base
@@ -131,7 +130,7 @@ def test_listar_plantillas_por_categoria(db_cat):
 
 def test_registrar_observacion_desde_plantilla_incrementa_uso(db_cat):
     """Usar una plantilla debe incrementar su uso_count en 1."""
-    from src.domain.models.convivencia import NuevaObservacionDTO, ObservacionPeriodo
+    from src.domain.models.convivencia import NuevaObservacionDTO
     from src.services.convivencia_service import ConvivenciaService
 
     repo = SqliteConvivenciaRepository(conn=db_cat)

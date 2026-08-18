@@ -6,6 +6,7 @@ Extraído de InfraestructuraService: plantillas de franja + franjas +
 activar/eliminar plantilla. Recibe el mismo IInfraestructuraRepository por
 inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escritura`).
 """
+
 from __future__ import annotations
 
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
@@ -14,7 +15,6 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class FranjaService:
-
     def __init__(self, repo: IInfraestructuraRepository) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
@@ -36,11 +36,13 @@ class FranjaService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -56,6 +58,7 @@ class FranjaService:
         if obj is None:
             raise ValueError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
+
         verificar_pertenencia(obj.institucion_id)
 
     # ── Plantillas de franja (rejilla) ─────────────────────────────────────────
@@ -72,6 +75,7 @@ class FranjaService:
             DIAS_VALIDOS,
             NuevaPlantillaFranjaDTO,
         )
+
         dto = NuevaPlantillaFranjaDTO(
             nombre=nombre,
             jornada=jornada,
@@ -89,17 +93,15 @@ class FranjaService:
         # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
-        return self._repo.listar_plantillas_franja(
-            institucion_id=institucion_actual()
-        )
+
+        return self._repo.listar_plantillas_franja(institucion_id=institucion_actual())
 
     def plantilla_activa(self, jornada: str = "UNICA") -> PlantillaFranja | None:
         """Retorna la plantilla activa de una jornada para la institución del scope."""
         # Scope multi-tenant (paso_32): la plantilla activa es por institución.
         from src.services.contexto_tenant import institucion_actual
-        return self._repo.get_plantilla_activa(
-            jornada, institucion_id=institucion_actual()
-        )
+
+        return self._repo.get_plantilla_activa(jornada, institucion_id=institucion_actual())
 
     @requiere_escritura
     def guardar_franjas(self, plantilla_id: int, filas: list[dict]) -> int:
@@ -108,6 +110,7 @@ class FranjaService:
         orden, hora_inicio, hora_fin, tipo, etiqueta (los DTOs se construyen aquí).
         """
         from src.domain.models.infraestructura import NuevaFranjaDTO
+
         franjas: list[Franja] = []
         for fila in filas:
             dto = NuevaFranjaDTO(

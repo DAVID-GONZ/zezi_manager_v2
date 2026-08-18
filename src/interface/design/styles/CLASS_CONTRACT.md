@@ -27,9 +27,9 @@
 | **Stat card** | `.stat-card-wrapper` | modificador de color: `.primary\|.success\|.warning\|.error\|.danger\|.info`; hijos: `.stat-card-label`, `.stat-card-value`, `.stat-card-subtitle`, `.stat-card-icon-wrap` |
 | **Panel** | `.panel-card` | hijo: `.panel-title`, `.panel-header` |
 | **Period status** | `.period-status-card` | `.period-bar-track`, `.period-bar-fill` + `.warning\|.danger` |
-| **Greeting hero** | `.greeting-hero` | `.greeting-name`, `.greeting-desc`, `.greeting-meta`, `.greeting-role`; animación: `.greeting-hero-animated` |
-| **Quick action** | `.quick-action-card` | `.quick-action-icon`, `.action-label`, `.action-desc` |
-| **Module hub** | `.module-hub-grid` | hijo: `.module-card`, `.module-card-icon`, `.action-label`, `.action-desc` |
+| **Greeting hero** | `.greeting-hero` | `.greeting-hero-inner`, `.greeting-hero-left`, `.greeting-hero-right`, `.greeting-time-row`, `.greeting-time-icon`, `.greeting-saludo`, `.greeting-name`, `.greeting-desc`, `.greeting-badge`, `.greeting-role`, `.greeting-progress-track`, `.greeting-progress-bar`; animación: `.greeting-hero--animated` |
+| **Quick action** | `.quick-action-card` | `.quick-action-icon`, `.action-desc` |
+| **Module hub** | `.module-hub-grid` | hijo: `.portal-module-card` (ver mini-dashboard del portal) |
 
 ## Botones
 
@@ -49,6 +49,19 @@
 
 `.page-header-row` › `.page-header-title` + `.page-header-sub`
 
+## Topbar global (portal_37)
+
+| Componente | Base | Hijos |
+|---|---|---|
+| **Buscador** | `.topbar-search` | `.topbar-search-input` |
+| **Campana** | `.topbar-notif` | `.topbar-notif-badge` |
+
+## Portal — resumen global (portal_37)
+
+| Componente | Base | Variantes / hijos |
+|---|---|---|
+| **Resumen** | `.portal-resumen` | `.portal-resumen-linea`, `.portal-resumen-linea--{warning\|error\|info}`, `.portal-resumen-texto` |
+
 ## Dominio
 
 | Familia | Clases |
@@ -62,6 +75,24 @@
 Escala de espaciado/layout como clases (evitan apilar utilidades atómicas en la vista):
 `.u-mt-{xs\|sm\|md\|lg}`, `.u-mb-*`, `.u-pa-*`, `.u-stack-{xs\|sm}`, `.form-row-{inline\|center\|between\|actions}`,
 `.section-title-{lg\|xl}`, `.text-{primary\|secondary\|success\|warning\|error\|info}`.
+
+## Marketing / landing (portal_36)
+
+| Componente | Base | Hijos / variantes |
+|---|---|---|
+| **Página** | `.mkt-page` | — |
+| **Top-bar** | `.mkt-topbar` | `.mkt-logo-wrap`, `.mkt-logo-name`, `.mkt-nav`, `.mkt-nav-link`, `.mkt-topbar-actions` |
+| **Hero** | `.mkt-hero` | `.mkt-hero-content`, `.mkt-hero-title`, `.mkt-hero-sub` |
+| **Características** | `.mkt-feature-section` | `.mkt-section-title`, `.mkt-feature-grid`, `.mkt-feature-card`, `.mkt-feature-icon`, `.mkt-feature-title`, `.mkt-feature-desc` |
+| **Footer** | `.mkt-footer` | `.mkt-footer-copy` |
+
+## Mini-dashboard del portal (portal_38)
+
+| Componente | Base | Hijos / variantes |
+|---|---|---|
+| **Tarjeta de módulo** | `.portal-module-card` | `.portal-card-header`, `.portal-card-icon`, `.portal-card-title`. Comparte base (elevación, reflejo, ícono flotante) con `.mkt-feature-card` en el bloque ELEVATED CARD de `components/cards.css` |
+| **Sub-sección** | `.portal-subcard` | `.portal-subcard--{recientes\|alertas\|hitos}`, `.portal-card-section-title` |
+| **Ítem de sub-sección** | `.portal-subcard-item` | `.portal-subcard-item--warning`, `.portal-subcard-label`, `.portal-subcard-detalle` |
 
 ## Reglas del contrato
 

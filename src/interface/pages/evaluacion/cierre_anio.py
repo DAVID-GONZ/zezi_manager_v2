@@ -8,6 +8,7 @@ Acceso: admin, director (solo ellos)
 Genera las notas definitivas anuales para todos los estudiantes
 de un grupo. Requiere que todos los periodos estén cerrados.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,8 +26,8 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_danger, btn_icon
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.cierre_service import ContextoAcademicoDTO
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
@@ -43,10 +44,10 @@ def cierre_anio_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────────
     _s: dict = {
-        "grupos":      [],
-        "anio":        None,
-        "grupo_id":    None,
-        "resultado":   [],
+        "grupos": [],
+        "anio": None,
+        "grupo_id": None,
+        "resultado": [],
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
@@ -76,16 +77,14 @@ def cierre_anio_page() -> None:
             toast_warning("No hay año lectivo activo")
             return
 
-        grupo_nombre = next(
-            (g.codigo for g in _s["grupos"] if g.id == grupo_id), str(grupo_id)
-        )
+        grupo_nombre = next((g.codigo for g in _s["grupos"] if g.id == grupo_id), str(grupo_id))
 
         def _ejecutar_cierre() -> None:
             try:
                 ctx_dto = ContextoAcademicoDTO(
                     usuario_id=ctx.usuario_id,
                     anio_id=anio.id,
-                    periodo_id=1,   # requerido por DTO pero no relevante en cierre año
+                    periodo_id=1,  # requerido por DTO pero no relevante en cierre año
                     grupo_id=grupo_id,
                 )
                 resultado = Container.cierre_service().cerrar_anio(
@@ -124,9 +123,7 @@ def cierre_anio_page() -> None:
             "text-base font-semibold mb-2"
         )
         with ui.element("div").classes("w-full"):
-            with ui.element("div").classes(
-                "flex gap-3 p-2 font-semibold text-sm border-b"
-            ):
+            with ui.element("div").classes("flex gap-3 p-2 font-semibold text-sm border-b"):
                 ui.label("Estudiante ID").classes("w-32")
                 ui.label("Asignación ID").classes("w-32")
                 ui.label("Nota anual").classes("w-28 text-right")
@@ -144,15 +141,12 @@ def cierre_anio_page() -> None:
                         "Sí" if c.perdio else "No",
                         variante="error" if c.perdio else "success",
                     )
-                    fecha_str = (
-                        c.fecha_cierre.strftime("%d/%m/%Y") if c.fecha_cierre else "—"
-                    )
+                    fecha_str = c.fecha_cierre.strftime("%d/%m/%Y") if c.fecha_cierre else "—"
                     ui.label(fecha_str).classes("w-36 text-sm text-muted")
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-lg"):
                     ThemeManager.icono(Icons.CLOSE_PERIOD, size=22, color="var(--color-negative)")
@@ -166,9 +160,9 @@ def cierre_anio_page() -> None:
                         status_badge(str(anio.anio), "primary")
                 else:
                     with ui.element("div").classes("form-box border-error bg-error-soft u-mb-lg"):
-                        ui.label("No hay año lectivo activo. Configure uno antes de continuar.").classes(
-                            "text-sm text-error"
-                        )
+                        ui.label(
+                            "No hay año lectivo activo. Configure uno antes de continuar."
+                        ).classes("text-sm text-error")
 
                 grupos_opts = {g.id: g.codigo for g in _s["grupos"]}
                 with ui.row().classes("form-row-center-md"):
@@ -178,18 +172,14 @@ def cierre_anio_page() -> None:
                         label="Grupo *",
                         on_change=lambda e: _s.__setitem__("grupo_id", e.value),
                     ).classes("w-48")
-                    btn_icon("refresh", on_click=lambda: (_cargar_estado()), tooltip="Recargar")
+                    btn_icon("refresh", on_click=lambda: _cargar_estado(), tooltip="Recargar")
 
             # Advertencia prominente
             with ui.element("div").classes("panel-card mt-4"):
-                with ui.element("div").classes(
-                    "form-box border border-error bg-error-soft"
-                ):
+                with ui.element("div").classes("form-box border border-error bg-error-soft"):
                     with ui.row().classes("form-row-center u-mb-sm"):
                         ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")
-                        ui.label("Precauciones importantes").classes(
-                            "font-bold text-error"
-                        )
+                        ui.label("Precauciones importantes").classes("font-bold text-error")
                     ui.label(
                         "1. Todos los periodos del grupo deben estar cerrados antes de ejecutar el cierre anual."
                     ).classes("text-sm text-error mb-1")
@@ -210,7 +200,8 @@ def cierre_anio_page() -> None:
                 tabla_resultado()
 
     app_layout(
-        ctx, contenido,
+        ctx,
+        contenido,
         page_titulo="Evaluación · Cierre de Año",
     )
 

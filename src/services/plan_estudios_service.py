@@ -18,7 +18,6 @@ from src.services.solo_lectura import requiere_escritura
 
 
 class PlanEstudiosService:
-
     def __init__(
         self,
         repo: IInfraestructuraRepository,
@@ -39,11 +38,13 @@ class PlanEstudiosService:
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
+
         scope = institucion_actual()
         if scope is not None:
             return scope
         try:
             from container import Container
+
             return Container.institucion_service().id_por_defecto()
         except Exception:
             return None
@@ -55,13 +56,19 @@ class PlanEstudiosService:
 
     @requiere_escritura
     def guardar_grado(
-        self, numero: int, nombre: str | None,
-        min_estudiantes: int, max_estudiantes: int, horas_semanales: int,
+        self,
+        numero: int,
+        nombre: str | None,
+        min_estudiantes: int,
+        max_estudiantes: int,
+        horas_semanales: int,
     ) -> Grado:
         """Crea o actualiza un grado (upsert por número)."""
         grado = Grado(
-            numero=numero, nombre=nombre or None,
-            min_estudiantes=min_estudiantes, max_estudiantes=max_estudiantes,
+            numero=numero,
+            nombre=nombre or None,
+            min_estudiantes=min_estudiantes,
+            max_estudiantes=max_estudiantes,
             horas_semanales=horas_semanales,
         )
         return self._repo.upsert_grado(grado)
@@ -79,9 +86,7 @@ class PlanEstudiosService:
     # ── Plan de estudios ───────────────────────────────────────────────
     def listar(self) -> list[PlanEstudios]:
         """Lista todo el plan de estudios del tenant activo."""
-        return self._repo.listar_plan_estudios(
-            institucion_id=self._resolver_institucion(None)
-        )
+        return self._repo.listar_plan_estudios(institucion_id=self._resolver_institucion(None))
 
     def por_grado(self, grado: int) -> list[PlanEstudios]:
         """Lista el plan de estudios de un grado del tenant activo."""
@@ -125,9 +130,7 @@ class PlanEstudiosService:
     @requiere_escritura
     def set_horas(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios:
         """Upsert a partir de primitivas (la UI no importa DTOs de dominio)."""
-        dto = NuevoPlanEstudiosDTO(
-            grado=grado, asignatura_id=asignatura_id, horas_semanales=horas
-        )
+        dto = NuevoPlanEstudiosDTO(grado=grado, asignatura_id=asignatura_id, horas_semanales=horas)
         return self.actualizar(dto)
 
     def get_config_grado(
@@ -137,9 +140,7 @@ class PlanEstudiosService:
         inst_id = self._resolver_institucion(institucion_id)
         if inst_id is None:
             return None
-        grado = next(
-            (g for g in self._repo.listar_grados() if g.numero == grado_num), None
-        )
+        grado = next((g for g in self._repo.listar_grados() if g.numero == grado_num), None)
         if grado is None or grado.id is None:
             return None
         return self._repo.get_config_grado(grado.id, inst_id)

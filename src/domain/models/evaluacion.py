@@ -31,7 +31,7 @@ El corazón de este módulo es CalculadorNotas:
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,19 +39,20 @@ from pydantic import BaseModel, Field, field_validator
 # Enumeraciones
 # =============================================================================
 
-class EstadoActividad(str, Enum):
-    BORRADOR  = "borrador"
+
+class EstadoActividad(StrEnum):
+    BORRADOR = "borrador"
     PUBLICADA = "publicada"
-    CERRADA   = "cerrada"
+    CERRADA = "cerrada"
 
 
-class TipoPuntosExtra(str, Enum):
+class TipoPuntosExtra(StrEnum):
     COMPORTAMENTAL = "comportamental"
-    PARTICIPACION  = "participacion"
-    ACADEMICO      = "academico"
+    PARTICIPACION = "participacion"
+    ACADEMICO = "academico"
 
 
-class ModoSIEE(str, Enum):
+class ModoSIEE(StrEnum):
     """
     Define cómo se distribuyen las categorías de evaluación en la institución.
 
@@ -65,15 +66,17 @@ class ModoSIEE(str, Enum):
                          `porcentaje_autonomia_docente`; el docente distribuye
                          libremente ese porcentaje restante con sus propias categorías.
     """
-    LIBRE               = "libre"
-    INSTITUCIONAL_FIJO  = "institucional_fijo"
+
+    LIBRE = "libre"
+    INSTITUCIONAL_FIJO = "institucional_fijo"
     MIXTO_SUBCATEGORIAS = "mixto_subcategorias"
-    MIXTO_AUTONOMIA     = "mixto_autonomia"
+    MIXTO_AUTONOMIA = "mixto_autonomia"
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
+
 
 class ConfiguracionSIEE(BaseModel):
     """
@@ -88,9 +91,10 @@ class ConfiguracionSIEE(BaseModel):
 
     `porcentaje_autonomia_docente` es obligatorio si modo == MIXTO_AUTONOMIA.
     """
-    id:                           int | None  = None
-    anio_id:                      int
-    modo:                         ModoSIEE    = ModoSIEE.LIBRE
+
+    id: int | None = None
+    anio_id: int
+    modo: ModoSIEE = ModoSIEE.LIBRE
     porcentaje_autonomia_docente: float | None = None  # solo para MIXTO_AUTONOMIA
 
     @field_validator("anio_id")
@@ -147,15 +151,16 @@ class Categoria(BaseModel):
       - Son categorías de docente que viven dentro de una institucional
         con `permite_subcategorias=True`.
     """
-    id:                    int | None  = None
-    nombre:                str
-    peso:                  float        # 0 < peso <= 1.0
-    asignacion_id:         int | None  = None
-    periodo_id:            int | None  = None
-    anio_id:               int | None  = None   # solo para institucionales
-    es_institucional:      bool        = False
-    permite_subcategorias: bool        = False
-    categoria_padre_id:    int | None  = None
+
+    id: int | None = None
+    nombre: str
+    peso: float  # 0 < peso <= 1.0
+    asignacion_id: int | None = None
+    periodo_id: int | None = None
+    anio_id: int | None = None  # solo para institucionales
+    es_institucional: bool = False
+    permite_subcategorias: bool = False
+    categoria_padre_id: int | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -165,9 +170,7 @@ class Categoria(BaseModel):
         if not v:
             raise ValueError("El nombre de la categoría no puede estar vacío.")
         if len(v) > 100:
-            raise ValueError(
-                f"El nombre no puede exceder 100 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 100 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("peso")
@@ -210,13 +213,14 @@ class Actividad(BaseModel):
       publicada → visible para los estudiantes; se pueden ingresar notas
       cerrada   → no acepta más notas (el periodo fue cerrado)
     """
-    id:            int | None        = None
-    nombre:        str
-    descripcion:   str | None        = None
-    fecha:         date | None       = None
-    valor_maximo:  float             = 100.0
-    estado:        EstadoActividad   = EstadoActividad.BORRADOR
-    categoria_id:  int
+
+    id: int | None = None
+    nombre: str
+    descripcion: str | None = None
+    fecha: date | None = None
+    valor_maximo: float = 100.0
+    estado: EstadoActividad = EstadoActividad.BORRADOR
+    categoria_id: int
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -226,9 +230,7 @@ class Actividad(BaseModel):
         if not v:
             raise ValueError("El nombre de la actividad no puede estar vacío.")
         if len(v) > 150:
-            raise ValueError(
-                f"El nombre no puede exceder 150 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"El nombre no puede exceder 150 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("valor_maximo")
@@ -236,9 +238,7 @@ class Actividad(BaseModel):
     def validar_valor_maximo(cls, v: float) -> float:
         """El valor máximo de la actividad debe ser positivo."""
         if v <= 0:
-            raise ValueError(
-                f"El valor máximo debe ser positivo (recibido: {v})."
-            )
+            raise ValueError(f"El valor máximo debe ser positivo (recibido: {v}).")
         return v
 
     @field_validator("descripcion", mode="before")
@@ -322,12 +322,13 @@ class Nota(BaseModel):
     valor_maximo de la actividad. El docente puede ingresar 7.5/10
     y el sistema almacena 75.0.
     """
-    id:                  int | None  = None
-    estudiante_id:       int
-    actividad_id:        int
-    valor:               float
-    usuario_registro_id: int | None  = None
-    fecha_registro:      datetime    = Field(default_factory=datetime.now)
+
+    id: int | None = None
+    estudiante_id: int
+    actividad_id: int
+    valor: float
+    usuario_registro_id: int | None = None
+    fecha_registro: datetime = Field(default_factory=datetime.now)
 
     @field_validator("estudiante_id", "actividad_id")
     @classmethod
@@ -342,9 +343,7 @@ class Nota(BaseModel):
     def validar_valor(cls, v: float) -> float:
         """La nota debe estar en el rango 0-100; se redondea a 2 decimales."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @property
@@ -365,15 +364,16 @@ class PuntosExtra(BaseModel):
     El impacto numérico de los puntos sobre la nota definitiva
     lo define el servicio según la configuración institucional.
     """
-    id:                  int | None      = None
-    estudiante_id:       int
-    asignacion_id:       int
-    periodo_id:          int
-    tipo:                TipoPuntosExtra = TipoPuntosExtra.COMPORTAMENTAL
-    positivos:           int             = Field(default=0, ge=0)
-    negativos:           int             = Field(default=0, ge=0)
-    observacion:         str | None      = None
-    fecha_actualizacion: datetime        = Field(default_factory=datetime.now)
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
+    tipo: TipoPuntosExtra = TipoPuntosExtra.COMPORTAMENTAL
+    positivos: int = Field(default=0, ge=0)
+    negativos: int = Field(default=0, ge=0)
+    observacion: str | None = None
+    fecha_actualizacion: datetime = Field(default_factory=datetime.now)
 
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
@@ -407,6 +407,7 @@ class PuntosExtra(BaseModel):
 # Lógica de cálculo — pura, sin SQL, sin NiceGUI
 # =============================================================================
 
+
 class CalculadorNotas:
     """
     Lógica de cálculo de notas definitivas y promedios.
@@ -434,9 +435,9 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_definitiva(
-        notas:       list[Nota] | dict[int, float],
+        notas: list[Nota] | dict[int, float],
         actividades: list[Actividad],
-        categorias:  list[Categoria],
+        categorias: list[Categoria],
     ) -> float:
         """
         Calcula la nota definitiva del periodo.
@@ -460,8 +461,8 @@ class CalculadorNotas:
 
         # Índices para búsqueda O(1)
         cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
-        act_map: dict[int, Actividad] = {a.id: a for a in actividades if a.id}
-        nota_map: dict[int, float]    = CalculadorNotas._to_nota_map(notas)
+        {a.id: a for a in actividades if a.id}
+        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
 
         # Actividades por categoría
         acts_por_cat: dict[int, list[int]] = {}
@@ -478,17 +479,17 @@ class CalculadorNotas:
                 # Categoría sin actividades: su peso cuenta como 0
                 continue
             promedio_cat = sum(nota_map.get(aid, 0.0) for aid in act_ids) / len(act_ids)
-            definitiva  += promedio_cat * cat.peso
+            definitiva += promedio_cat * cat.peso
 
         return round(definitiva, 2)
 
     @staticmethod
     def calcular_definitiva_con_corte(
-        notas:                    list[Nota] | dict[int, float],
-        actividades:              list[Actividad],
-        categorias:               list[Categoria],
-        nota_definitiva_plan:     float,
-        categoria_ids_en_corte:   set[int],
+        notas: list[Nota] | dict[int, float],
+        actividades: list[Actividad],
+        categorias: list[Categoria],
+        nota_definitiva_plan: float,
+        categoria_ids_en_corte: set[int],
     ) -> float:
         """
         Calcula la nota definitiva cuando hay un Plan de Mejoramiento activo.
@@ -515,7 +516,7 @@ class CalculadorNotas:
             return round(nota_definitiva_plan, 2)
 
         cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
-        nota_map: dict[int, float]    = CalculadorNotas._to_nota_map(notas)
+        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
 
         acts_por_cat: dict[int, list[int]] = {}
         for act in actividades:
@@ -523,10 +524,7 @@ class CalculadorNotas:
                 acts_por_cat.setdefault(act.categoria_id, []).append(act.id)
 
         # Solo categorías que NO estuvieron en el corte
-        cats_post_corte = [
-            c for c in categorias
-            if c.id and c.id not in categoria_ids_en_corte
-        ]
+        cats_post_corte = [c for c in categorias if c.id and c.id not in categoria_ids_en_corte]
 
         aporte_post = 0.0
         for cat in cats_post_corte:
@@ -540,9 +538,9 @@ class CalculadorNotas:
 
     @staticmethod
     def calcular_promedio_ajustado(
-        notas:       list[Nota] | dict[int, float],
+        notas: list[Nota] | dict[int, float],
         actividades: list[Actividad],
-        categorias:  list[Categoria],
+        categorias: list[Categoria],
         hasta_fecha: date | None = None,
     ) -> float:
         """
@@ -575,18 +573,14 @@ class CalculadorNotas:
         for act in actividades:
             if act.id is None:
                 continue
-            tiene_fecha   = act.fecha is not None and act.fecha <= corte
-            tiene_nota    = act.id in nota_map
-            tiene_estado  = act.estado in (EstadoActividad.PUBLICADA,
-                                           EstadoActividad.CERRADA)
+            tiene_fecha = act.fecha is not None and act.fecha <= corte
+            tiene_nota = act.id in nota_map
+            tiene_estado = act.estado in (EstadoActividad.PUBLICADA, EstadoActividad.CERRADA)
             if (tiene_fecha or not act.fecha) and tiene_nota and tiene_estado:
                 acts_evaluadas.setdefault(act.categoria_id, []).append(nota_map[act.id])
 
         # Categorías con al menos una actividad evaluada
-        cats_con_datos = [
-            c for c in categorias
-            if c.id and c.id in acts_evaluadas
-        ]
+        cats_con_datos = [c for c in categorias if c.id and c.id in acts_evaluadas]
         if not cats_con_datos:
             return 0.0
 
@@ -598,9 +592,9 @@ class CalculadorNotas:
         promedio = 0.0
         for cat in cats_con_datos:
             valores = acts_evaluadas[cat.id]
-            promedio_cat   = sum(valores) / len(valores)
-            peso_ajustado  = cat.peso / peso_total
-            promedio      += promedio_cat * peso_ajustado
+            promedio_cat = sum(valores) / len(valores)
+            peso_ajustado = cat.peso / peso_total
+            promedio += promedio_cat * peso_ajustado
 
         return round(promedio, 2)
 
@@ -665,10 +659,12 @@ def nivel_desempeno(nota: float) -> str:
 # DTOs
 # =============================================================================
 
+
 class NuevaConfiguracionSIEEDTO(BaseModel):
     """Datos para crear o reemplazar la configuración SIEE de un año."""
-    anio_id:                      int
-    modo:                         ModoSIEE    = ModoSIEE.LIBRE
+
+    anio_id: int
+    modo: ModoSIEE = ModoSIEE.LIBRE
     porcentaje_autonomia_docente: float | None = None
 
     @field_validator("anio_id")
@@ -685,8 +681,7 @@ class NuevaConfiguracionSIEEDTO(BaseModel):
         """Si se define, la autonomía docente debe estar en (0, 1.0]."""
         if v is not None and not (0 < v <= 1.0):
             raise ValueError(
-                f"porcentaje_autonomia_docente debe estar entre 0 y 1.0 "
-                f"(recibido: {v})."
+                f"porcentaje_autonomia_docente debe estar entre 0 y 1.0 (recibido: {v})."
             )
         return v
 
@@ -703,9 +698,10 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
     El servicio las proyecta automáticamente a cada asignación+periodo cuando
     el docente accede por primera vez a su planilla.
     """
-    nombre:                str
-    peso:                  float
-    anio_id:               int
+
+    nombre: str
+    peso: float
+    anio_id: int
     permite_subcategorias: bool = False
 
     @field_validator("nombre", mode="before")
@@ -724,9 +720,7 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
     def validar_peso(cls, v: float) -> float:
         """El peso institucional debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
-            raise ValueError(
-                f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v})."
-            )
+            raise ValueError(f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v}).")
         return round(v, 4)
 
     @field_validator("anio_id")
@@ -750,10 +744,11 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
 
 class NuevaCategoriaDTO(BaseModel):
     """Datos para crear una categoría de evaluación de docente."""
-    nombre:             str
-    peso:               float
-    asignacion_id:      int
-    periodo_id:         int
+
+    nombre: str
+    peso: float
+    asignacion_id: int
+    periodo_id: int
     categoria_padre_id: int | None = None  # solo en modo MIXTO_SUBCATEGORIAS
 
     @field_validator("nombre", mode="before")
@@ -770,9 +765,7 @@ class NuevaCategoriaDTO(BaseModel):
     def validar_peso(cls, v: float) -> float:
         """El peso de la categoría debe estar en (0, 1.0]; se redondea a 4 decimales."""
         if not (0 < v <= 1.0):
-            raise ValueError(
-                f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v})."
-            )
+            raise ValueError(f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v}).")
         return round(v, 4)
 
     def to_categoria(self) -> Categoria:
@@ -782,8 +775,9 @@ class NuevaCategoriaDTO(BaseModel):
 
 class ActualizarCategoriaDTO(BaseModel):
     """Campos actualizables de una categoría."""
-    nombre: str | None  = None
-    peso:   float | None = None
+
+    nombre: str | None = None
+    peso: float | None = None
 
     @field_validator("peso")
     @classmethod
@@ -801,12 +795,13 @@ class ActualizarCategoriaDTO(BaseModel):
 
 class NuevaActividadDTO(BaseModel):
     """Datos para crear una actividad evaluativa."""
-    nombre:       str
+
+    nombre: str
     categoria_id: int
-    descripcion:  str | None   = None
-    fecha:        date | None  = None
-    valor_maximo: float        = 100.0
-    estado:       EstadoActividad = EstadoActividad.BORRADOR
+    descripcion: str | None = None
+    fecha: date | None = None
+    valor_maximo: float = 100.0
+    estado: EstadoActividad = EstadoActividad.BORRADOR
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -832,9 +827,10 @@ class NuevaActividadDTO(BaseModel):
 
 class ActualizarActividadDTO(BaseModel):
     """Campos actualizables de una actividad."""
-    nombre:       str | None   = None
-    descripcion:  str | None   = None
-    fecha:        date | None  = None
+
+    nombre: str | None = None
+    descripcion: str | None = None
+    fecha: date | None = None
     valor_maximo: float | None = None
 
     def aplicar_a(self, actividad: Actividad) -> Actividad:
@@ -847,9 +843,10 @@ class ActualizarActividadDTO(BaseModel):
 
 class RegistrarNotaDTO(BaseModel):
     """Datos para registrar la nota de un único estudiante."""
-    estudiante_id:       int
-    actividad_id:        int
-    valor:               float
+
+    estudiante_id: int
+    actividad_id: int
+    valor: float
     usuario_registro_id: int | None = None
 
     @field_validator("valor")
@@ -873,9 +870,10 @@ class RegistrarNotasMasivasDTO(BaseModel):
     Registra notas para múltiples estudiantes en una misma actividad.
     Operación del ag-grid de la planilla de notas.
     """
-    actividad_id:        int
-    notas:               list[RegistrarNotaDTO] = Field(default_factory=list)
-    usuario_registro_id: int | None             = None
+
+    actividad_id: int
+    notas: list[RegistrarNotaDTO] = Field(default_factory=list)
+    usuario_registro_id: int | None = None
 
     @field_validator("actividad_id")
     @classmethod
@@ -901,13 +899,14 @@ class ResultadoEstudianteDTO(BaseModel):
     Resumen de notas de un estudiante en una asignación.
     Consumido por la planilla de notas y el informe de calificaciones.
     """
-    estudiante_id:      int
-    nombre_completo:    str
-    notas:              dict[int, float]  = Field(default_factory=dict)
+
+    estudiante_id: int
+    nombre_completo: str
+    notas: dict[int, float] = Field(default_factory=dict)
     # {actividad_id: valor}
-    definitiva:         float             = 0.0
-    promedio_ajustado:  float             = 0.0
-    posee_piar:         bool              = False
+    definitiva: float = 0.0
+    promedio_ajustado: float = 0.0
+    posee_piar: bool = False
 
 
 # =============================================================================
@@ -915,26 +914,26 @@ class ResultadoEstudianteDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
-    # Enums
-    "EstadoActividad",
-    "TipoPuntosExtra",
-    "ModoSIEE",
-    # Entidades
-    "ConfiguracionSIEE",
-    "Categoria",
     "Actividad",
-    "Nota",
-    "PuntosExtra",
+    "ActualizarActividadDTO",
+    "ActualizarCategoriaDTO",
     # Lógica pura
     "CalculadorNotas",
+    "Categoria",
+    # Entidades
+    "ConfiguracionSIEE",
+    # Enums
+    "EstadoActividad",
+    "ModoSIEE",
+    "Nota",
+    "NuevaActividadDTO",
+    "NuevaCategoriaDTO",
+    "NuevaCategoriaInstitucionalDTO",
     # DTOs
     "NuevaConfiguracionSIEEDTO",
-    "NuevaCategoriaInstitucionalDTO",
-    "NuevaCategoriaDTO",
-    "ActualizarCategoriaDTO",
-    "NuevaActividadDTO",
-    "ActualizarActividadDTO",
+    "PuntosExtra",
     "RegistrarNotaDTO",
     "RegistrarNotasMasivasDTO",
     "ResultadoEstudianteDTO",
+    "TipoPuntosExtra",
 ]

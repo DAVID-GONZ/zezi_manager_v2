@@ -1,19 +1,36 @@
-/* Overrides de ag-Grid dark movidos a adapter/aggrid.css (capa no portable). */
+/* dark.css — overrides de componente dependientes del tema.
 
-html[data-theme="dark"] .rail-flyout-container {
-  background: var(--color-surface-alt);
-  border-color: var(--color-border);
-  box-shadow: var(--shadow-lg);
-}
+   Overrides de ag-Grid dark movidos a adapter/aggrid.css (capa no portable).
 
-html[data-theme="dark"] .flyout-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
+   M6: este archivo tenía las MISMAS cuatro reglas escritas dos veces —una
+   bajo `html[data-theme="dark"]` (toggle explícito) y otra bajo
+   `@media (prefers-color-scheme: dark) :root:not([data-theme="light"])`
+   (modo auto)—, porque CSS no permite agrupar un selector y una media
+   query. La duplicación era evitable moviendo el VALOR a tokens.css, que
+   ya declara ambas guardias: la regla queda una sola vez, sin guardia, y
+   el token decide qué color resuelve en cada tema.
 
-html[data-theme="dark"] .rail-item.is-active::before {
-  background: var(--ink-700);
-}
+   De las cuatro reglas originales sobreviven cero copias duplicadas:
 
-html[data-theme="dark"] .topbar-logout-btn:hover {
-  color: var(--color-primary) !important;
+   - `.rail-flyout-container`  → era redundante: `border-color` y
+     `box-shadow` repetían el valor de la base (sidebar.css) y el único
+     delta real, `--color-surface-alt`, dejaba el panel del mismo color
+     que su propio hover. Eliminada: el flyout usa `--color-surface` en
+     ambos temas, como el resto de superficies elevadas.
+
+   - `.flyout-item:hover`      → M5: el override `rgba(255,255,255,0.06)`
+     anulaba `--nav-sidebar-hover`, que es justo el token que la base
+     (sidebar.css) introdujo para esto. Eliminado: gana el token.
+
+   - `.rail-item.is-active::before` → único delta genuino de tema
+     (ocre en claro, tinta en oscuro). Ahora vive en `--nav-rail-marker`.
+
+   - `.topbar-logout-btn:hover`→ era redundante: la base (topbar.css) ya
+     declara `color: var(--color-primary) !important`. Eliminada.
+*/
+
+/* Marcador del ítem activo del rail — `--nav-rail-marker` resuelve a
+   --accent-600 en claro y a --ink-700 en oscuro (tokens.css). */
+.rail-item.is-active::before {
+  background: var(--nav-rail-marker);
 }

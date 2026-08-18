@@ -9,6 +9,7 @@ leer variables CSS ni clases. Sus colores se centralizan aquí en el bloque
 `_EC_*`, todos derivados de tokens.py (espejo de :root en tokens.css). Cambiar
 un color aquí implica cambiarlo también en tokens.css.
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -16,8 +17,8 @@ from nicegui import ui
 from src.interface.design.styles.tokens import Colors
 
 # ── PALETA ECHARTS — única excepción al uso de color en Python (ver docstring).
-_EC_LINE  = Colors.INFO             # --color-info      línea + puntos
-_EC_MUTED = Colors.TEXT_SECONDARY   # --color-text-secondary  ejes/etiquetas
+_EC_LINE = Colors.INFO  # --color-info      línea + puntos
+_EC_MUTED = Colors.TEXT_SECONDARY  # --color-text-secondary  ejes/etiquetas
 
 
 def _build_option(
@@ -29,8 +30,10 @@ def _build_option(
     option: dict = {
         "tooltip": {"trigger": "axis"},
         "grid": {
-            "left": "6%", "right": "4%",
-            "top": "22%" if titulo else "10%", "bottom": "12%",
+            "left": "6%",
+            "right": "4%",
+            "top": "22%" if titulo else "10%",
+            "bottom": "12%",
             "containLabel": True,
         },
         "xAxis": {
@@ -43,19 +46,22 @@ def _build_option(
             "type": "value",
             "axisLabel": {"fontSize": 10, "color": _EC_MUTED},
         },
-        "series": [{
-            "type": "line",
-            "data": valores,
-            "smooth": True,
-            "showSymbol": False,
-            "lineStyle": {"color": _EC_LINE, "width": 2},
-            "itemStyle": {"color": _EC_LINE},
-            "areaStyle": {"opacity": 0.12, "color": _EC_LINE},
-        }],
+        "series": [
+            {
+                "type": "line",
+                "data": valores,
+                "smooth": True,
+                "showSymbol": False,
+                "lineStyle": {"color": _EC_LINE, "width": 2},
+                "itemStyle": {"color": _EC_LINE},
+                "areaStyle": {"opacity": 0.12, "color": _EC_LINE},
+            }
+        ],
     }
     if titulo:
         option["title"] = {
-            "text": titulo, "left": "left",
+            "text": titulo,
+            "left": "left",
             "textStyle": {"fontSize": 12, "color": _EC_MUTED},
         }
     return option

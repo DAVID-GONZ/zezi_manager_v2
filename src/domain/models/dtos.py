@@ -19,7 +19,7 @@ Contiene:
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -27,14 +27,16 @@ from pydantic import BaseModel, Field, field_validator
 # Formato de exportación
 # =============================================================================
 
-class FormatoInforme(str, Enum):
+
+class FormatoInforme(StrEnum):
     EXCEL = "excel"
-    PDF   = "pdf"
+    PDF = "pdf"
 
 
 # =============================================================================
 # Contexto académico — reemplaza AppState para operaciones de lectura
 # =============================================================================
+
 
 class ContextoAcademicoDTO(BaseModel):
     """
@@ -47,11 +49,12 @@ class ContextoAcademicoDTO(BaseModel):
     reciben como parámetro. Esto hace que las operaciones sean
     explícitas y testeables sin estado global.
     """
-    usuario_id:    int
-    anio_id:       int
-    periodo_id:    int
-    grupo_id:      int | None    = None
-    asignacion_id: int | None    = None
+
+    usuario_id: int
+    anio_id: int
+    periodo_id: int
+    grupo_id: int | None = None
+    asignacion_id: int | None = None
 
     @field_validator("usuario_id", "anio_id", "periodo_id")
     @classmethod
@@ -78,18 +81,20 @@ class ContextoAcademicoDTO(BaseModel):
 # Informes
 # =============================================================================
 
+
 class InformeNotasDTO(BaseModel):
     """
     Parámetros para generar un informe de calificaciones.
     Consumido por InformeService.generar_notas() y por los exportadores.
     """
-    grupo_id:      int
+
+    grupo_id: int
     asignacion_id: int
-    periodo_id:    int
-    fecha_desde:   date
-    fecha_hasta:   date
-    formato:       FormatoInforme = FormatoInforme.EXCEL
-    incluir_piar:  bool           = True   # marcar estudiantes con PIAR
+    periodo_id: int
+    fecha_desde: date
+    fecha_hasta: date
+    formato: FormatoInforme = FormatoInforme.EXCEL
+    incluir_piar: bool = True  # marcar estudiantes con PIAR
 
     @field_validator("grupo_id", "asignacion_id", "periodo_id")
     @classmethod
@@ -111,12 +116,13 @@ class InformeNotasDTO(BaseModel):
 
 class InformeAsistenciaDTO(BaseModel):
     """Parámetros para generar un informe de asistencia."""
-    grupo_id:      int
+
+    grupo_id: int
     asignacion_id: int
-    periodo_id:    int
-    fecha_desde:   date
-    fecha_hasta:   date
-    formato:       FormatoInforme = FormatoInforme.EXCEL
+    periodo_id: int
+    fecha_desde: date
+    fecha_hasta: date
+    formato: FormatoInforme = FormatoInforme.EXCEL
 
     @field_validator("grupo_id", "asignacion_id", "periodo_id")
     @classmethod
@@ -140,19 +146,21 @@ class InformeAsistenciaDTO(BaseModel):
 # Dashboard
 # =============================================================================
 
+
 class DashboardMetricsDTO(BaseModel):
     """
     Métricas agregadas para el panel principal.
     El DashboardService las calcula con queries GROUP BY;
     la página las muestra directamente sin lógica adicional.
     """
-    grupo_id:               int
-    total_estudiantes:      int  = 0
-    promedio_general:       float = 0.0
-    porcentaje_asistencia:  float = 0.0
-    estudiantes_en_riesgo:  int  = 0
-    actividades_publicadas: int  = 0
-    alertas_pendientes:     int  = 0
+
+    grupo_id: int
+    total_estudiantes: int = 0
+    promedio_general: float = 0.0
+    porcentaje_asistencia: float = 0.0
+    estudiantes_en_riesgo: int = 0
+    actividades_publicadas: int = 0
+    alertas_pendientes: int = 0
 
     @field_validator("promedio_general", "porcentaje_asistencia")
     @classmethod
@@ -161,8 +169,9 @@ class DashboardMetricsDTO(BaseModel):
             raise ValueError(f"El valor debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
-    @field_validator("total_estudiantes", "estudiantes_en_riesgo",
-                     "actividades_publicadas", "alertas_pendientes")
+    @field_validator(
+        "total_estudiantes", "estudiantes_en_riesgo", "actividades_publicadas", "alertas_pendientes"
+    )
     @classmethod
     def validar_no_negativo(cls, v: int) -> int:
         if v < 0:
@@ -181,22 +190,23 @@ class DashboardMetricsDTO(BaseModel):
 # Matrícula masiva
 # =============================================================================
 
+
 class MatriculaMasivaDTO(BaseModel):
     """
     Entrada para carga masiva de estudiantes desde un archivo Excel/CSV.
     El servicio itera sobre `filas` y crea un Estudiante por cada una.
     """
-    grupo_id:       int | None          = None
-    filas:          list[dict]          = Field(default_factory=list)
-    omitir_errores: bool                = True  # continuar si una fila falla
+
+    grupo_id: int | None = None
+    filas: list[dict] = Field(default_factory=list)
+    omitir_errores: bool = True  # continuar si una fila falla
 
     @field_validator("filas")
     @classmethod
     def validar_filas(cls, v: list[dict]) -> list[dict]:
         if len(v) > 5000:
             raise ValueError(
-                f"No se pueden cargar más de 5000 estudiantes por operación "
-                f"(recibido: {len(v)})."
+                f"No se pueden cargar más de 5000 estudiantes por operación (recibido: {len(v)})."
             )
         return v
 
@@ -207,10 +217,11 @@ class MatriculaMasivaDTO(BaseModel):
 
 class MatriculaMasivaResultadoDTO(BaseModel):
     """Resultado de una operación de carga masiva."""
-    total_procesadas:  int         = 0
-    exitosas:          int         = 0
-    fallidas:          int         = 0
-    errores:           list[dict]  = Field(default_factory=list)
+
+    total_procesadas: int = 0
+    exitosas: int = 0
+    fallidas: int = 0
+    errores: list[dict] = Field(default_factory=list)
     # Cada error: {"fila": int, "dato": str, "motivo": str}
 
     @property
@@ -232,18 +243,22 @@ class MatriculaMasivaResultadoDTO(BaseModel):
 # Respuesta genérica de operación
 # =============================================================================
 
+
 class RespuestaOperacionDTO(BaseModel):
     """
     Envuelve el resultado de una operación con metadatos de éxito/error.
     Los servicios la retornan cuando la UI necesita feedback estructurado
     más allá de una excepción.
     """
-    exito:    bool
-    mensaje:  str
-    datos:    dict | None  = None
+
+    exito: bool
+    mensaje: str
+    datos: dict | None = None
 
     @classmethod
-    def ok(cls, mensaje: str = "Operación exitosa", datos: dict | None = None) -> RespuestaOperacionDTO:
+    def ok(
+        cls, mensaje: str = "Operación exitosa", datos: dict | None = None
+    ) -> RespuestaOperacionDTO:
         return cls(exito=True, mensaje=mensaje, datos=datos)
 
     @classmethod

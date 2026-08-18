@@ -4,6 +4,7 @@ NivelacionService
 Orquesta los casos de uso del módulo de Nivelación.
 Sin SQL. Sin lógica de presentación.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -27,15 +28,17 @@ from src.services.solo_lectura import requiere_escritura
 @dataclass(frozen=True)
 class FilaNivelacionDTO:
     """Una fila de la planilla de nivelación con el promedio YA calculado."""
+
     estudiante_id: int
-    nota_previa: float | None              # nota del periodo (bajo desempeño)
-    notas: dict[int, NotaNivelacion]       # {actividad_id: nota}
-    promedio: float | None                 # promedio ponderado precalculado
+    nota_previa: float | None  # nota del periodo (bajo desempeño)
+    notas: dict[int, NotaNivelacion]  # {actividad_id: nota}
+    promedio: float | None  # promedio ponderado precalculado
 
 
 @dataclass(frozen=True)
 class PlanillaNivelacionDTO:
     """Planilla completa de nivelación lista para renderizar (sin cálculo en la vista)."""
+
     actividades: list[ActividadNivelacion] = field(default_factory=list)
     filas: list[FilaNivelacionDTO] = field(default_factory=list)
     suma_pesos: float = 0.0
@@ -60,7 +63,7 @@ class NivelacionService:
         config_repo: IConfiguracionRepository | None = None,
     ) -> None:
         """Inyecta el repo de nivelación, el de cierre y el de configuración (opcional)."""
-        self._repo        = repo
+        self._repo = repo
         self._cierre_repo = cierre_repo
         self._config_repo = config_repo
 
@@ -135,9 +138,7 @@ class NivelacionService:
             ValueError: Si al agregar el nuevo peso la suma supera 1.0.
         """
         # Validar que la suma de pesos existente + nuevo peso no supera 1.0
-        suma_actual = self._repo.suma_pesos_actividades(
-            dto.asignacion_id, dto.periodo_id
-        )
+        suma_actual = self._repo.suma_pesos_actividades(dto.asignacion_id, dto.periodo_id)
         if round(suma_actual + dto.peso, 4) > 1.001:
             raise ValueError(
                 f"Agregar esta actividad (peso={dto.peso:.0%}) supera el 100% "
@@ -195,13 +196,13 @@ class NivelacionService:
         # Verificar que la nivelación no esté cerrada
         cierre = self._repo.get_cierre(nota.asignacion_id, nota.periodo_id)
         if cierre is not None:
-            raise ValueError(
-                "La nivelación ya está cerrada. No se pueden modificar notas."
-            )
-        nota_actualizada = nota.model_copy(update={
-            "valor":      dto.valor,
-            "usuario_id": dto.usuario_id or nota.usuario_id,
-        })
+            raise ValueError("La nivelación ya está cerrada. No se pueden modificar notas.")
+        nota_actualizada = nota.model_copy(
+            update={
+                "valor": dto.valor,
+                "usuario_id": dto.usuario_id or nota.usuario_id,
+            }
+        )
         return self._repo.actualizar_nota(nota_actualizada)
 
     # ------------------------------------------------------------------
@@ -238,9 +239,7 @@ class NivelacionService:
         # 1. ¿Ya cerrada?
         existente = self._repo.get_cierre(asignacion_id, periodo_id)
         if existente is not None:
-            raise ValueError(
-                "La nivelación ya fue cerrada para esta asignación y período."
-            )
+            raise ValueError("La nivelación ya fue cerrada para esta asignación y período.")
 
         # 2. Actividades existentes
         actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
@@ -288,7 +287,8 @@ class NivelacionService:
         """
         actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
         notas = [
-            n for n in self._repo.listar_notas_por_asignacion(asignacion_id, periodo_id)
+            n
+            for n in self._repo.listar_notas_por_asignacion(asignacion_id, periodo_id)
             if n.estudiante_id == estudiante_id
         ]
         return CalculadorNivelacion.nota_definitiva(notas, actividades)
@@ -323,14 +323,17 @@ class NivelacionService:
                     notas_est.append(nota_obj)
             promedio = (
                 CalculadorNivelacion.nota_definitiva(notas_est, actividades)
-                if actividades else None
+                if actividades
+                else None
             )
-            filas.append(FilaNivelacionDTO(
-                estudiante_id=est_id,
-                nota_previa=cierre_map.get(est_id),
-                notas=notas_est_map,
-                promedio=promedio,
-            ))
+            filas.append(
+                FilaNivelacionDTO(
+                    estudiante_id=est_id,
+                    nota_previa=cierre_map.get(est_id),
+                    notas=notas_est_map,
+                    promedio=promedio,
+                )
+            )
 
         return PlanillaNivelacionDTO(
             actividades=actividades,
@@ -341,14 +344,14 @@ class NivelacionService:
 
 
 __all__ = [
-    "NivelacionService",
     # Re-exports para la capa de interfaz
     "ActividadNivelacion",
-    "NotaNivelacion",
-    "CierreNivelacion",
-    "NuevaActividadNivelacionDTO",
     "CalificarNotaNivelacionDTO",
+    "CierreNivelacion",
     "CierrePeriodo",
-    "PlanillaNivelacionDTO",
     "FilaNivelacionDTO",
+    "NivelacionService",
+    "NotaNivelacion",
+    "NuevaActividadNivelacionDTO",
+    "PlanillaNivelacionDTO",
 ]

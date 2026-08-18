@@ -1,6 +1,7 @@
 """
 SqliteAuditoriaRepository — implementación SQLite de IAuditoriaRepository.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -24,7 +25,6 @@ _COLUMNAS_NO_DOMINIO = frozenset({"hash_cadena"})
 
 
 class SqliteAuditoriaRepository(IAuditoriaRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -34,6 +34,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -57,9 +58,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
     def _ultimo_hash(self, conn: sqlite3.Connection, tabla: str) -> str | None:
         """Último `hash_cadena` almacenado en `tabla` (None si está vacía)."""
-        row = conn.execute(
-            f"SELECT hash_cadena FROM {tabla} ORDER BY id DESC LIMIT 1"
-        ).fetchone()
+        row = conn.execute(f"SELECT hash_cadena FROM {tabla} ORDER BY id DESC LIMIT 1").fetchone()
         return row[0] if row is not None else None
 
     @staticmethod
@@ -101,8 +100,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
         with self._get_conn() as conn:
             rows = conn.execute(
-                f"SELECT * FROM {tabla} "
-                "WHERE hash_cadena IS NOT NULL ORDER BY id ASC"
+                f"SELECT * FROM {tabla} WHERE hash_cadena IS NOT NULL ORDER BY id ASC"
             ).fetchall()
 
         secuencia: list[tuple[dict, str]] = [
@@ -245,17 +243,19 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
             params: list[tuple] = []
             for r in registros:
                 hash_cadena = calcular_hash(hash_previo, self._payload_cambio(r))
-                params.append((
-                    r.usuario_id,
-                    r.accion.value,
-                    r.tabla,
-                    r.registro_id,
-                    r.valor_anterior,
-                    r.valor_nuevo,
-                    r.timestamp.isoformat(),
-                    hash_cadena,
-                    r.institucion_id,
-                ))
+                params.append(
+                    (
+                        r.usuario_id,
+                        r.accion.value,
+                        r.tabla,
+                        r.registro_id,
+                        r.valor_anterior,
+                        r.valor_nuevo,
+                        r.timestamp.isoformat(),
+                        hash_cadena,
+                        r.institucion_id,
+                    )
+                )
                 hash_previo = hash_cadena
             conn.executemany(
                 """
@@ -331,9 +331,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
     def get_cambio(self, cambio_id: int) -> RegistroCambio | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM audit_log WHERE id = ?", (cambio_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM audit_log WHERE id = ?", (cambio_id,)).fetchone()
             return self._row_to_cambio(row) if row else None
 
 

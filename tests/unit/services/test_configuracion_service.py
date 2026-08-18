@@ -148,21 +148,21 @@ def _make_service() -> tuple[ConfiguracionService, FakeConfigRepo]:
 
 class TestCrearAnio:
     def test_crea_anio_nuevo(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         dto = NuevaConfiguracionAnioDTO(anio=2025)
         config = svc.crear_anio(dto)
         assert config.id is not None
         assert config.anio == 2025
 
     def test_lanza_si_anio_duplicado(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         dto = NuevaConfiguracionAnioDTO(anio=2025)
         svc.crear_anio(dto)
         with pytest.raises(ValueError, match="2025"):
             svc.crear_anio(dto)
 
     def test_crea_diferentes_anios(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         c1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2024))
         c2 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         assert c1.id != c2.id
@@ -170,7 +170,7 @@ class TestCrearAnio:
 
 class TestActivarAnio:
     def test_activa_anio_existente(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         result = svc.activar_anio(config.id)
         assert result is not None
@@ -183,13 +183,13 @@ class TestActivarAnio:
 
 class TestGetActiva:
     def test_lanza_si_no_hay_activo(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         with pytest.raises(ValueError, match="activo"):
             svc.get_activa()
 
     def test_retorna_config_activa(self):
-        svc, repo = _make_service()
-        config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
+        svc, _repo = _make_service()
+        svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         # config creada con activo=True
         activa = svc.get_activa()
         assert activa.anio == 2025
@@ -197,7 +197,7 @@ class TestGetActiva:
 
 class TestConfigurarNiveles:
     def test_niveles_sin_solapamiento(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         niveles = [
             NuevoNivelDesempenoDTO(anio_id=config.id, nombre="Bajo",   rango_min=0,  rango_max=59),
@@ -208,7 +208,7 @@ class TestConfigurarNiveles:
         assert len(resultado) == 3
 
     def test_lanza_si_rangos_solapados(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         niveles = [
             NuevoNivelDesempenoDTO(anio_id=config.id, nombre="A", rango_min=0,  rango_max=60),
@@ -218,7 +218,7 @@ class TestConfigurarNiveles:
             svc.configurar_niveles(config.id, niveles)
 
     def test_lanza_si_lista_vacia(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         with pytest.raises(ValueError, match="menos un nivel"):
             svc.configurar_niveles(config.id, [])
@@ -226,19 +226,19 @@ class TestConfigurarNiveles:
 
 class TestGetCriterios:
     def test_retorna_none_si_no_existen(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         assert svc.get_criterios(config.id) is None
 
     def test_guarda_y_recupera_criterios(self):
-        svc, repo = _make_service()
+        svc, _repo = _make_service()
         config = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025))
         criterios = CriterioPromocion(
             anio_id=config.id,
             max_asignaturas_perdidas=2,
             nota_minima_habilitacion=60.0,
         )
-        guardados = svc.guardar_criterios(criterios)
+        svc.guardar_criterios(criterios)
         recuperados = svc.get_criterios(config.id)
         assert recuperados is not None
         assert recuperados.max_asignaturas_perdidas == 2

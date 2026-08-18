@@ -11,6 +11,7 @@ Reglas del design system:
   - Colores por variante vía tokens semánticos de tokens.css (NO se redefinen).
   - Icono vía ThemeManager.icono().
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -24,14 +25,14 @@ _VARIANTE_ICONO_COLOR: dict[str, str] = {
     "primary": "var(--color-primary)",
     "success": "var(--color-success)",
     "warning": "var(--color-warning)",
-    "danger":  "var(--color-error)",
-    "info":    "var(--color-info)",
+    "danger": "var(--color-error)",
+    "info": "var(--color-info)",
 }
 
 
 def counter_card(
     titulo: str,
-    valor: str | float | int,
+    valor: str | float,
     icono: str,
     *,
     variante: str = "neutral",

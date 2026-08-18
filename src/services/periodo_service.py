@@ -3,6 +3,7 @@ PeriodoService
 ================
 Orquesta los casos de uso del módulo de Periodos académicos.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -33,9 +34,9 @@ class PeriodoService:
         auditoria: IAuditoriaRepository | None = None,
     ) -> None:
         """Inyecta el repo de periodos y los repos opcionales de configuración y auditoría."""
-        self._repo        = repo
+        self._repo = repo
         self._config_repo = config_repo
-        self._auditoria   = auditoria
+        self._auditoria = auditoria
 
     # ------------------------------------------------------------------
     # Helpers
@@ -53,9 +54,7 @@ class PeriodoService:
         if self._auditoria is None:
             return
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(
-                tabla, datos_nue or {}, registro_id, usuario_id
-            )
+            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
         elif accion == AccionCambio.UPDATE:
             cambio = RegistroCambio.para_actualizacion(
                 tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
@@ -90,16 +89,12 @@ class PeriodoService:
         if self._config_repo is not None:
             config = self._config_repo.get_by_id(dto.anio_id)
             if config is None:
-                raise ValueError(
-                    f"No existe configuración de año con id {dto.anio_id}."
-                )
+                raise ValueError(f"No existe configuración de año con id {dto.anio_id}.")
 
         # Verificar número único en el año
         existente = self._repo.get_por_numero(dto.anio_id, dto.numero)
         if existente is not None:
-            raise ValueError(
-                f"Ya existe el período {dto.numero} en el año {dto.anio_id}."
-            )
+            raise ValueError(f"Ya existe el período {dto.numero} en el año {dto.anio_id}.")
 
         # Verificar suma de pesos
         suma_actual = self._repo.suma_pesos_otros(dto.anio_id)
@@ -112,8 +107,12 @@ class PeriodoService:
         periodo = dto.to_periodo()
         periodo = self._repo.guardar(periodo)
         self._auditar(
-            AccionCambio.CREATE, "periodos", periodo.id,
-            None, periodo.model_dump(mode="json"), None,
+            AccionCambio.CREATE,
+            "periodos",
+            periodo.id,
+            None,
+            periodo.model_dump(mode="json"),
+            None,
         )
         return periodo
 
@@ -129,8 +128,12 @@ class PeriodoService:
         periodo_cerrado = periodo.cerrar(datetime.now())
         self._repo.actualizar(periodo_cerrado)
         self._auditar(
-            AccionCambio.UPDATE, "periodos", periodo_id,
-            datos_ant, periodo_cerrado.model_dump(mode="json"), usuario_id,
+            AccionCambio.UPDATE,
+            "periodos",
+            periodo_id,
+            datos_ant,
+            periodo_cerrado.model_dump(mode="json"),
+            usuario_id,
         )
         return periodo_cerrado
 
@@ -150,9 +153,7 @@ class PeriodoService:
         """Retorna el periodo activo del año. Lanza si no hay activo."""
         periodo = self._repo.get_activo(anio_id)
         if periodo is None:
-            raise ValueError(
-                f"No hay ningún periodo activo para el año {anio_id}."
-            )
+            raise ValueError(f"No hay ningún periodo activo para el año {anio_id}.")
         return periodo
 
     def get_by_id(self, periodo_id: int) -> Periodo:
@@ -189,8 +190,7 @@ class PeriodoService:
         periodo = self._get_periodo_o_lanzar(dto.periodo_id)
         if not periodo.esta_abierto:
             raise ValueError(
-                f"No se puede agregar un hito al periodo '{periodo.nombre}' "
-                "porque ya está cerrado."
+                f"No se puede agregar un hito al periodo '{periodo.nombre}' porque ya está cerrado."
             )
         hito = dto.to_hito()
         return self._repo.guardar_hito(hito)

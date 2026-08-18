@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field, field_validator
 # Entidad de escritura — lo que persiste
 # =============================================================================
 
+
 class Asignacion(BaseModel):
     """
     Pivot docente-asignatura-grupo-periodo.
@@ -41,12 +42,13 @@ class Asignacion(BaseModel):
     y notas. Una asignación inactiva (activo=False) no acepta nuevos datos
     pero mantiene el histórico intacto.
     """
-    id:            int | None = None
-    grupo_id:      int
+
+    id: int | None = None
+    grupo_id: int
     asignatura_id: int
-    usuario_id:    int        # docente
-    periodo_id:    int
-    activo:        bool       = True
+    usuario_id: int  # docente
+    periodo_id: int
+    activo: bool = True
 
     @field_validator("grupo_id", "asignatura_id", "usuario_id", "periodo_id")
     @classmethod
@@ -86,6 +88,7 @@ class Asignacion(BaseModel):
 # Modelo de lectura — lo que muestran las páginas e informes
 # =============================================================================
 
+
 class AsignacionInfo(BaseModel):
     """
     Vista enriquecida de una asignación con nombres resueltos por JOIN.
@@ -99,20 +102,22 @@ class AsignacionInfo(BaseModel):
         info = asignacion_repo.get_info(asignacion_id)
         # info.display_completo → "601 — Matemáticas | Carlos López (P1)"
     """
-    asignacion_id:     int
-    grupo_id:          int
-    grupo_codigo:      str
-    asignatura_id:     int
-    asignatura_nombre: str
-    usuario_id:        int
-    docente_nombre:    str
-    periodo_id:        int
-    periodo_nombre:    str
-    periodo_numero:    int
-    activo:            bool
 
-    @field_validator("grupo_codigo", "asignatura_nombre", "docente_nombre",
-                     "periodo_nombre", mode="before")
+    asignacion_id: int
+    grupo_id: int
+    grupo_codigo: str
+    asignatura_id: int
+    asignatura_nombre: str
+    usuario_id: int
+    docente_nombre: str
+    periodo_id: int
+    periodo_nombre: str
+    periodo_numero: int
+    activo: bool
+
+    @field_validator(
+        "grupo_codigo", "asignatura_nombre", "docente_nombre", "periodo_nombre", mode="before"
+    )
     @classmethod
     def no_vacio(cls, v: str) -> str:
         """Normaliza los nombres resueltos por JOIN; ninguno puede quedar vacío."""
@@ -154,12 +159,14 @@ class AsignacionInfo(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevaAsignacionDTO(BaseModel):
     """Datos necesarios para crear una asignación."""
-    grupo_id:      int
+
+    grupo_id: int
     asignatura_id: int
-    usuario_id:    int
-    periodo_id:    int
+    usuario_id: int
+    periodo_id: int
 
     @field_validator("grupo_id", "asignatura_id", "usuario_id", "periodo_id")
     @classmethod
@@ -176,18 +183,19 @@ class NuevaAsignacionDTO(BaseModel):
 
 class FiltroAsignacionesDTO(BaseModel):
     """Parámetros para listar asignaciones."""
-    usuario_id:    int | None = None   # filtrar por docente
-    grupo_id:      int | None = None
+
+    usuario_id: int | None = None  # filtrar por docente
+    grupo_id: int | None = None
     asignatura_id: int | None = None
-    periodo_id:    int | None = None
+    periodo_id: int | None = None
     # Scope multi-tenant (paso_31, frente B3): None = sin filtro (admin ve
     # todo); un entero filtra por la institución del grupo vía el JOIN a
     # `grupos` (g.institucion_id = ?). No hay columna en `asignaciones`: el
     # scope se hereda transitivamente del grupo.
     institucion_id: int | None = None
-    solo_activas:  bool       = True
-    pagina:        int        = Field(default=1, ge=1)
-    por_pagina:    int        = Field(default=100, ge=1, le=500)
+    solo_activas: bool = True
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=100, ge=1, le=500)
 
 
 # =============================================================================

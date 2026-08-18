@@ -3,6 +3,7 @@ AsistenciaService
 ==================
 Orquesta los casos de uso del módulo de Asistencia.
 """
+
 from __future__ import annotations
 
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
@@ -33,7 +34,7 @@ class AsistenciaService:
         config_repo: IConfiguracionRepository | None = None,
     ) -> None:
         """Inyecta el repo de asistencia y los de alertas y configuración (opcionales)."""
-        self._repo       = repo
+        self._repo = repo
         self._alerta_repo = alerta_repo
         self._config_repo = config_repo
 
@@ -54,30 +55,20 @@ class AsistenciaService:
         if self._alerta_repo is None:
             return
 
-        cfg = self._alerta_repo.get_configuracion(
-            anio_id, TipoAlerta.FALTAS_INJUSTIFICADAS
-        )
+        cfg = self._alerta_repo.get_configuracion(anio_id, TipoAlerta.FALTAS_INJUSTIFICADAS)
         if cfg is None or not cfg.activa:
             return
 
-        conteo = self._repo.contar_faltas_injustificadas(
-            estudiante_id, periodo_id
-        )
+        conteo = self._repo.contar_faltas_injustificadas(estudiante_id, periodo_id)
 
         if conteo < cfg.umbral:
             return
 
-        if self._alerta_repo.existe_pendiente(
-            estudiante_id, TipoAlerta.FALTAS_INJUSTIFICADAS
-        ):
+        if self._alerta_repo.existe_pendiente(estudiante_id, TipoAlerta.FALTAS_INJUSTIFICADAS):
             return
 
         # Determinar nivel
-        nivel = (
-            NivelAlerta.CRITICA
-            if conteo >= cfg.umbral * 2
-            else NivelAlerta.ADVERTENCIA
-        )
+        nivel = NivelAlerta.CRITICA if conteo >= cfg.umbral * 2 else NivelAlerta.ADVERTENCIA
         alerta = Alerta(
             estudiante_id=estudiante_id,
             tipo_alerta=TipoAlerta.FALTAS_INJUSTIFICADAS,
@@ -131,9 +122,7 @@ class AsistenciaService:
             periodo_id = controles[0].periodo_id
             for ctrl in controles:
                 if ctrl.estado == EstadoAsistencia.FALTA_INJUSTIFICADA:
-                    self._verificar_alerta_asistencia(
-                        ctrl.estudiante_id, periodo_id, anio_id
-                    )
+                    self._verificar_alerta_asistencia(ctrl.estudiante_id, periodo_id, anio_id)
 
         return conteo
 
@@ -144,9 +133,7 @@ class AsistenciaService:
         asignacion_id: int | None = None,
     ) -> ResumenAsistenciaDTO:
         """Retorna el resumen de asistencia de un estudiante en un periodo."""
-        return self._repo.resumen_por_estudiante(
-            estudiante_id, periodo_id, asignacion_id
-        )
+        return self._repo.resumen_por_estudiante(estudiante_id, periodo_id, asignacion_id)
 
     def resumen_grupo(
         self,
@@ -165,9 +152,7 @@ class AsistenciaService:
         fecha: object,
     ) -> ControlDiario | None:
         """Retorna el registro de asistencia de un estudiante en una fecha."""
-        return self._repo.get_por_fecha_estudiante(
-            estudiante_id, asignacion_id, fecha
-        )
+        return self._repo.get_por_fecha_estudiante(estudiante_id, asignacion_id, fecha)
 
     def listar_por_grupo_y_fecha(
         self,
@@ -204,7 +189,7 @@ class AsistenciaService:
         controles = self._repo.listar_por_grupo_y_fecha(grupo_id, asignacion_id, fecha)
         return {
             c.estudiante_id: {
-                "estado":      c.estado.value,
+                "estado": c.estado.value,
                 "observacion": c.observacion or "",
             }
             for c in controles
@@ -219,7 +204,7 @@ class AsistenciaService:
         fecha: object,
         lista: list[dict],
         usuario_id: int | None = None,
-        anio_id:    int | None = None,
+        anio_id: int | None = None,
     ) -> int:
         """
         Persiste la asistencia de un grupo a partir de una lista de dicts
@@ -239,22 +224,21 @@ class AsistenciaService:
         """
         items = [
             RegistroAsistenciaItemDTO(
-                estudiante_id = r["estudiante_id"],
-                estado        = EstadoAsistencia(r["estado"]),
-                observacion   = r.get("observacion") or None,
+                estudiante_id=r["estudiante_id"],
+                estado=EstadoAsistencia(r["estado"]),
+                observacion=r.get("observacion") or None,
             )
             for r in lista
         ]
         dto = RegistrarAsistenciaMasivaDTO(
-            grupo_id            = grupo_id,
-            asignacion_id       = asignacion_id,
-            periodo_id          = periodo_id,
-            fecha               = fecha,
-            registros           = items,
-            usuario_registro_id = usuario_id,
+            grupo_id=grupo_id,
+            asignacion_id=asignacion_id,
+            periodo_id=periodo_id,
+            fecha=fecha,
+            registros=items,
+            usuario_registro_id=usuario_id,
         )
         return self.registrar_masivo(dto, usuario_id=usuario_id, anio_id=anio_id)
-
 
     def contar_clases_mes(self, usuario_id: int, anio: int, mes: int) -> int:
         """

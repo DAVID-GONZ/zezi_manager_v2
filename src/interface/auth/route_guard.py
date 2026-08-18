@@ -36,6 +36,7 @@ Decisión del guard (por petición)
 La lógica de decisión vive en `decidir_acceso`, una función pura y testeable
 sin servidor NiceGUI; el wrapper solo traduce su veredicto a navegación/render.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
@@ -47,6 +48,7 @@ from src.domain.models.usuario import Rol
 # ── Sentinels de acceso ───────────────────────────────────────────────────────
 class _Sentinel(Enum):
     """Sentinels de acceso para rutas sin restricción de rol."""
+
     PUBLICO = "publico"
     AUTENTICADO = "autenticado"
 
@@ -59,17 +61,19 @@ AUTENTICADO = _Sentinel.AUTENTICADO
 
 # ── Gate de configuración inicial (mejora_09b) ────────────────────────────────
 # Veredictos del gate:
-GATE_OK     = "ok"      # sin bloqueo
+GATE_OK = "ok"  # sin bloqueo
 GATE_WIZARD = "wizard"  # director sin configurar → /configuracion-inicial
 GATE_ESPERA = "espera"  # no-director sin configurar → /espera-configuracion
 
 # Rutas exentas: nunca redirigidas por el gate (evita redirect-loops).
-_RUTAS_EXENTAS_CONFIG: frozenset[str] = frozenset({
-    "/configuracion-inicial",
-    "/espera-configuracion",
-    "/logout",
-    "/cambiar-password",
-})
+_RUTAS_EXENTAS_CONFIG: frozenset[str] = frozenset(
+    {
+        "/configuracion-inicial",
+        "/espera-configuracion",
+        "/logout",
+        "/cambiar-password",
+    }
+)
 
 
 def decidir_gate_configuracion(
@@ -99,7 +103,7 @@ def decidir_gate_configuracion(
     return GATE_ESPERA
 
 
-def _config_inicial_completa(rol: str | None) -> bool:  # noqa: ARG001
+def _config_inicial_completa(rol: str | None) -> bool:
     """
     Devuelve True si el tenant del usuario ya completó su configuración inicial.
 
@@ -110,9 +114,11 @@ def _config_inicial_completa(rol: str | None) -> bool:  # noqa: ARG001
     """
     try:
         from nicegui import app
+
         if bool(app.storage.user.get("institucion_config_completa", True)):
             return True
         from container import Container
+
         inst_id = app.storage.user.get("institucion_id")
         if inst_id is None:
             return True  # sin tenant → no gatear
@@ -131,6 +137,7 @@ def _modulo_permitido(ruta: str) -> bool:
         from container import Container
         from src.domain.modulos import modulo_de_ruta
         from src.services.contexto_tenant import institucion_actual
+
         m = modulo_de_ruta(ruta)
         if m is None:
             return True
@@ -148,8 +155,8 @@ RolesRuta = frozenset[Rol] | _Sentinel
 
 # Veredictos posibles del guard.
 ACCESO_OK = "ok"
-ACCESO_LOGIN = "login"          # sin sesión → /login
-ACCESO_DENEGADO = "denegado"    # con sesión pero rol no permitido → /inicio
+ACCESO_LOGIN = "login"  # sin sesión → /login
+ACCESO_DENEGADO = "denegado"  # con sesión pero rol no permitido → /inicio
 
 
 # ── Registro único ruta → roles ───────────────────────────────────────────────
@@ -247,6 +254,7 @@ def registrar_pagina(
             return
         if veredicto == ACCESO_DENEGADO:
             from src.interface.design.components import toast_error
+
             toast_error("Acceso no autorizado")
             ui.navigate.to("/inicio")
             return
@@ -270,7 +278,9 @@ def registrar_pagina(
         if autenticado and rol != "admin" and ruta not in _RUTAS_EXENTAS_CONFIG:
             _cfg_completa = _config_inicial_completa(rol)
             _veredicto_cfg = decidir_gate_configuracion(
-                rol=rol, config_completa=_cfg_completa, ruta=ruta,
+                rol=rol,
+                config_completa=_cfg_completa,
+                ruta=ruta,
             )
             if _veredicto_cfg == GATE_WIZARD:
                 ui.navigate.to("/configuracion-inicial")
@@ -294,6 +304,7 @@ def registrar_pagina(
         # Import perezoso: este módulo de dominio/auth no debe arrastrar NiceGUI
         # en import-time, y desde_storage() requiere el contexto de petición.
         from src.interface.context.session_context import SessionContext
+
         SessionContext.desde_storage()
         page_fn(**page_fn_kwargs)
 

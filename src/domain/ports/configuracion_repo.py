@@ -34,7 +34,6 @@ from ..models.configuracion import (
 
 
 class IConfiguracionRepository(ABC):
-
     # =========================================================================
     # ConfiguracionAnio
     # =========================================================================
@@ -61,9 +60,7 @@ class IConfiguracionRepository(ABC):
         ...
 
     @abstractmethod
-    def get_by_anio(
-        self, institucion_id: int | None, anio: int
-    ) -> ConfiguracionAnio | None:
+    def get_by_anio(self, institucion_id: int | None, anio: int) -> ConfiguracionAnio | None:
         """
         Busca la configuración por número de año (ej: 2025), scopeada por
         institución (paso_27). Útil al crear un año nuevo para verificar que
@@ -73,9 +70,7 @@ class IConfiguracionRepository(ABC):
         ...
 
     @abstractmethod
-    def listar(
-        self, institucion_id: int | None = None
-    ) -> list[ConfiguracionAnio]:
+    def listar(self, institucion_id: int | None = None) -> list[ConfiguracionAnio]:
         """
         Retorna las configuraciones anuales ordenadas por año descendente
         (más reciente primero). Si se pasa `institucion_id`, scopea a esa

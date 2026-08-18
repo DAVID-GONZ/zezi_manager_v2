@@ -21,6 +21,7 @@ Diseño (decisión de David):
 Regla de capas: este módulo NO importa interfaz ni infraestructura
 (espejo de ``src/services/solo_lectura.py``). Solo stdlib.
 """
+
 from __future__ import annotations
 
 import time
@@ -34,6 +35,7 @@ BLOQUEO_SEGUNDOS = 300  # 5 minutos
 @dataclass
 class _Estado:
     """Contador de fallos y momento de bloqueo de un username."""
+
     fallos: int = 0
     bloqueado_hasta: float = field(default=0.0)  # epoch segundos; 0 = sin bloqueo
 

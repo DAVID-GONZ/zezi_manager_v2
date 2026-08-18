@@ -28,6 +28,7 @@ calcula `hash_cadena` al insertar llamando a `calcular_hash`, y verifica la
 integridad reconstruyendo la secuencia y delegando en `primer_eslabon_roto`.
 NUNCA hace IO: solo recibe primitivos y devuelve primitivos.
 """
+
 from __future__ import annotations
 
 import hashlib

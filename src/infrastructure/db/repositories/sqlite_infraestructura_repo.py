@@ -39,7 +39,6 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
 class SqliteInfraestructuraRepository(IInfraestructuraRepository):
-
     def __init__(self, conn: sqlite3.Connection | None = None):
         self._conn = conn
 
@@ -49,6 +48,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             yield self._conn
         else:
             from src.infrastructure.db.connection import get_connection
+
             with get_connection() as conn:
                 yield conn
 
@@ -59,8 +59,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def _row_to_escenario(self, row) -> EscenarioHorario:
         d = dict(row)
         d["activo"] = bool(d.get("activo", 0))
-        return EscenarioHorario(**{k: v for k, v in d.items()
-                                   if k in EscenarioHorario.model_fields})
+        return EscenarioHorario(
+            **{k: v for k, v in d.items() if k in EscenarioHorario.model_fields}
+        )
 
     def get_escenario(self, escenario_id: int) -> EscenarioHorario | None:
         with self._get_conn() as conn:
@@ -135,9 +136,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_escenario(self, escenario_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM escenarios_horario WHERE id = ?", (escenario_id,)
-            )
+            cursor = conn.execute("DELETE FROM escenarios_horario WHERE id = ?", (escenario_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -187,13 +186,11 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         d["activa"] = bool(d.get("activa", 0))
         d["dias_activos"] = d["dias_activos"].split(",") if d.get("dias_activos") else []
-        return PlantillaFranja(**{k: v for k, v in d.items()
-                                  if k in PlantillaFranja.model_fields})
+        return PlantillaFranja(**{k: v for k, v in d.items() if k in PlantillaFranja.model_fields})
 
     def _row_to_franja(self, row) -> Franja:
         d = dict(row)
-        return Franja(**{k: v for k, v in d.items()
-                         if k in Franja.model_fields})
+        return Franja(**{k: v for k, v in d.items() if k in Franja.model_fields})
 
     def crear_plantilla_franja(self, p: PlantillaFranja) -> PlantillaFranja:
         with self._get_conn() as conn:
@@ -203,8 +200,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     (nombre, jornada, dias_activos, activa, institucion_id)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (p.nombre, p.jornada, ",".join(p.dias_activos), int(p.activa),
-                 p.institucion_id),
+                (p.nombre, p.jornada, ",".join(p.dias_activos), int(p.activa), p.institucion_id),
             )
             if self._conn is None:
                 conn.commit()
@@ -217,20 +213,15 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_plantilla(row) if row else None
 
-    def listar_plantillas_franja(
-        self, institucion_id: int | None = None
-    ) -> list[PlantillaFranja]:
+    def listar_plantillas_franja(self, institucion_id: int | None = None) -> list[PlantillaFranja]:
         with self._get_conn() as conn:
             if institucion_id is not None:
                 rows = conn.execute(
-                    "SELECT * FROM plantillas_franja "
-                    "WHERE institucion_id = ? ORDER BY nombre",
+                    "SELECT * FROM plantillas_franja WHERE institucion_id = ? ORDER BY nombre",
                     (institucion_id,),
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT * FROM plantillas_franja ORDER BY nombre"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM plantillas_franja ORDER BY nombre").fetchall()
             return [self._row_to_plantilla(r) for r in rows]
 
     def get_plantilla_activa(
@@ -245,8 +236,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT * FROM plantillas_franja "
-                    "WHERE jornada = ? AND activa = 1",
+                    "SELECT * FROM plantillas_franja WHERE jornada = ? AND activa = 1",
                     (jornada,),
                 ).fetchone()
             return self._row_to_plantilla(row) if row else None
@@ -298,9 +288,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_plantilla_franja(self, plantilla_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM plantillas_franja WHERE id = ?", (plantilla_id,)
-            )
+            cursor = conn.execute("DELETE FROM plantillas_franja WHERE id = ?", (plantilla_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -336,8 +324,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     hora_fin = ?, tipo = ?, etiqueta = ?
                 WHERE id = ?
                 """,
-                (f.plantilla_id, f.orden, f.hora_inicio, f.hora_fin,
-                 f.tipo, f.etiqueta, f.id),
+                (f.plantilla_id, f.orden, f.hora_inicio, f.hora_fin, f.tipo, f.etiqueta, f.id),
             )
             if self._conn is None:
                 conn.commit()
@@ -345,18 +332,14 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_franja(self, franja_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM franjas WHERE id = ?", (franja_id,)
-            )
+            cursor = conn.execute("DELETE FROM franjas WHERE id = ?", (franja_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
 
     def reemplazar_franjas(self, plantilla_id: int, franjas: list[Franja]) -> int:
         with self._get_conn() as conn:
-            conn.execute(
-                "DELETE FROM franjas WHERE plantilla_id = ?", (plantilla_id,)
-            )
+            conn.execute("DELETE FROM franjas WHERE plantilla_id = ?", (plantilla_id,))
             filas = [
                 (plantilla_id, f.orden, f.hora_inicio, f.hora_fin, f.tipo, f.etiqueta)
                 for f in franjas
@@ -428,9 +411,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_area(self, area_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM areas_conocimiento WHERE id = ?", (area_id,)
-            )
+            cursor = conn.execute("DELETE FROM areas_conocimiento WHERE id = ?", (area_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -442,8 +423,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def _row_to_asignatura(self, row) -> Asignatura:
         d = dict(row)
         d["bloque_doble"] = bool(d.get("bloque_doble", 0))
-        return Asignatura(**{k: v for k, v in d.items()
-                             if k in Asignatura.model_fields})
+        return Asignatura(**{k: v for k, v in d.items() if k in Asignatura.model_fields})
 
     def get_asignatura(self, asignatura_id: int) -> Asignatura | None:
         with self._get_conn() as conn:
@@ -525,9 +505,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_asignatura(self, asignatura_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM asignaturas WHERE id = ?", (asignatura_id,)
-            )
+            cursor = conn.execute("DELETE FROM asignaturas WHERE id = ?", (asignatura_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -538,9 +516,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def get_grupo(self, grupo_id: int) -> Grupo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM grupos WHERE id = ?", (grupo_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM grupos WHERE id = ?", (grupo_id,)).fetchone()
             if not row:
                 return None
             d = dict(row)
@@ -549,9 +525,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def get_grupo_por_codigo(self, codigo: str) -> Grupo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM grupos WHERE codigo = ?", (codigo,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM grupos WHERE codigo = ?", (codigo,)).fetchone()
             if not row:
                 return None
             d = dict(row)
@@ -573,9 +547,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 condiciones.append("institucion_id = ?")
                 params.append(institucion_id)
             where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
-            rows = conn.execute(
-                f"SELECT * FROM grupos{where} ORDER BY codigo", params
-            ).fetchall()
+            rows = conn.execute(f"SELECT * FROM grupos{where} ORDER BY codigo", params).fetchall()
             resultado = []
             for r in rows:
                 d = dict(r)
@@ -585,9 +557,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "UPDATE grupos SET sala_id = ? WHERE id = ?", (sala_id, grupo_id)
-            )
+            cursor = conn.execute("UPDATE grupos SET sala_id = ? WHERE id = ?", (sala_id, grupo_id))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -641,9 +611,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_grupo(self, grupo_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM grupos WHERE id = ?", (grupo_id,)
-            )
+            cursor = conn.execute("DELETE FROM grupos WHERE id = ?", (grupo_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -668,8 +636,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def _row_to_horario(self, row) -> Horario:
         d = dict(row)
         d["dia_semana"] = DiaSemana(d["dia_semana"])
-        return Horario(**{k: v for k, v in d.items()
-                          if k in Horario.model_fields})
+        return Horario(**{k: v for k, v in d.items() if k in Horario.model_fields})
 
     def _row_to_horario_info(self, row) -> HorarioInfo:
         d = dict(row)
@@ -681,23 +648,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def get_horario(self, horario_id: int) -> Horario | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM horarios WHERE id = ?", (horario_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM horarios WHERE id = ?", (horario_id,)).fetchone()
             if not row:
                 return None
             return self._row_to_horario(row)
 
     def get_info_horario(self, horario_id: int) -> HorarioInfo | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                self._HORARIO_INFO_SQL + " WHERE h.id = ?", (horario_id,)
-            ).fetchone()
+            row = conn.execute(self._HORARIO_INFO_SQL + " WHERE h.id = ?", (horario_id,)).fetchone()
             return self._row_to_horario_info(row) if row else None
 
-    def _get_escenario_activo_por_periodo(
-        self, conn, periodo_id: int
-    ) -> int | None:
+    def _get_escenario_activo_por_periodo(self, conn, periodo_id: int) -> int | None:
         """Resuelve periodo_id → anio_id → escenario activo. Retorna escenario_id o None."""
         row = conn.execute(
             """
@@ -710,44 +671,35 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         ).fetchone()
         return row[0] if row else None
 
-    def listar_horario_grupo(
-        self, grupo_id: int, periodo_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo(self, grupo_id: int, periodo_id: int) -> list[HorarioInfo]:
         with self._get_conn() as conn:
             escenario_id = self._get_escenario_activo_por_periodo(conn, periodo_id)
             if escenario_id is None:
                 return []
             rows = conn.execute(
-                self._HORARIO_INFO_SQL
-                + " WHERE h.grupo_id = ? AND h.escenario_id = ?"
-                  " ORDER BY h.dia_semana, h.hora_inicio",
+                self._HORARIO_INFO_SQL + " WHERE h.grupo_id = ? AND h.escenario_id = ?"
+                " ORDER BY h.dia_semana, h.hora_inicio",
                 (grupo_id, escenario_id),
             ).fetchall()
             return [self._row_to_horario_info(r) for r in rows]
 
-    def listar_horario_docente(
-        self, usuario_id: int, periodo_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_docente(self, usuario_id: int, periodo_id: int) -> list[HorarioInfo]:
         with self._get_conn() as conn:
             escenario_id = self._get_escenario_activo_por_periodo(conn, periodo_id)
             if escenario_id is None:
                 return []
             rows = conn.execute(
-                self._HORARIO_INFO_SQL
-                + " WHERE h.usuario_id = ? AND h.escenario_id = ?"
-                  " ORDER BY h.dia_semana, h.hora_inicio",
+                self._HORARIO_INFO_SQL + " WHERE h.usuario_id = ? AND h.escenario_id = ?"
+                " ORDER BY h.dia_semana, h.hora_inicio",
                 (usuario_id, escenario_id),
             ).fetchall()
             return [self._row_to_horario_info(r) for r in rows]
 
-    def listar_horario_grupo_escenario(
-        self, grupo_id: int, escenario_id: int
-    ) -> list[HorarioInfo]:
+    def listar_horario_grupo_escenario(self, grupo_id: int, escenario_id: int) -> list[HorarioInfo]:
         with self._get_conn() as conn:
             rows = conn.execute(
-                self._HORARIO_INFO_SQL
-                + " WHERE h.grupo_id = ? AND h.escenario_id = ?"
-                  " ORDER BY h.dia_semana, h.hora_inicio",
+                self._HORARIO_INFO_SQL + " WHERE h.grupo_id = ? AND h.escenario_id = ?"
+                " ORDER BY h.dia_semana, h.hora_inicio",
                 (grupo_id, escenario_id),
             ).fetchall()
             return [self._row_to_horario_info(r) for r in rows]
@@ -755,9 +707,8 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def listar_horario_escenario(self, escenario_id: int) -> list[HorarioInfo]:
         with self._get_conn() as conn:
             rows = conn.execute(
-                self._HORARIO_INFO_SQL
-                + " WHERE h.escenario_id = ?"
-                  " ORDER BY h.dia_semana, h.hora_inicio",
+                self._HORARIO_INFO_SQL + " WHERE h.escenario_id = ?"
+                " ORDER BY h.dia_semana, h.hora_inicio",
                 (escenario_id,),
             ).fetchall()
             return [self._row_to_horario_info(r) for r in rows]
@@ -861,9 +812,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_horario(self, horario_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM horarios WHERE id = ?", (horario_id,)
-            )
+            cursor = conn.execute("DELETE FROM horarios WHERE id = ?", (horario_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -924,18 +873,28 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         rows = []
         for h in horarios:
             dia = h.dia_semana.value if hasattr(h.dia_semana, "value") else str(h.dia_semana)
-            hi = h.hora_inicio.strftime("%H:%M") if hasattr(h.hora_inicio, "strftime") else str(h.hora_inicio)
-            hf = h.hora_fin.strftime("%H:%M") if hasattr(h.hora_fin, "strftime") else str(h.hora_fin)
-            rows.append((
-                h.grupo_id,
-                h.asignatura_id,
-                h.usuario_id,
-                getattr(h, "asignacion_id", None),
-                getattr(h, "periodo_id", None),
-                h.escenario_id,
-                dia, hi, hf,
-                getattr(h, "sala", "Aula") or "Aula",
-            ))
+            hi = (
+                h.hora_inicio.strftime("%H:%M")
+                if hasattr(h.hora_inicio, "strftime")
+                else str(h.hora_inicio)
+            )
+            hf = (
+                h.hora_fin.strftime("%H:%M") if hasattr(h.hora_fin, "strftime") else str(h.hora_fin)
+            )
+            rows.append(
+                (
+                    h.grupo_id,
+                    h.asignatura_id,
+                    h.usuario_id,
+                    getattr(h, "asignacion_id", None),
+                    getattr(h, "periodo_id", None),
+                    h.escenario_id,
+                    dia,
+                    hi,
+                    hf,
+                    getattr(h, "sala", "Aula") or "Aula",
+                )
+            )
         with self._get_conn() as conn:
             conn.executemany(
                 """INSERT INTO horarios
@@ -950,9 +909,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_horarios_por_asignacion(self, asignacion_id: int) -> int:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM horarios WHERE asignacion_id = ?", (asignacion_id,)
-            )
+            cursor = conn.execute("DELETE FROM horarios WHERE asignacion_id = ?", (asignacion_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount
@@ -963,9 +920,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def get_logro(self, logro_id: int) -> Logro | None:
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM logros WHERE id = ?", (logro_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM logros WHERE id = ?", (logro_id,)).fetchone()
             return Logro(**dict(row)) if row else None
 
     def listar_logros(self, asignacion_id: int, periodo_id: int) -> list[Logro]:
@@ -1005,9 +960,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def eliminar_logro(self, logro_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM logros WHERE id = ?", (logro_id,)
-            )
+            cursor = conn.execute("DELETE FROM logros WHERE id = ?", (logro_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
@@ -1019,8 +972,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def _row_to_disponibilidad(self, row) -> DisponibilidadDocente:
         d = dict(row)
         d["disponible"] = bool(d.get("disponible", 1))
-        return DisponibilidadDocente(**{k: v for k, v in d.items()
-                                        if k in DisponibilidadDocente.model_fields})
+        return DisponibilidadDocente(
+            **{k: v for k, v in d.items() if k in DisponibilidadDocente.model_fields}
+        )
 
     def upsert_disponibilidad(self, d: DisponibilidadDocente) -> DisponibilidadDocente:
         with self._get_conn() as conn:
@@ -1035,8 +989,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             if self._conn is None:
                 conn.commit()
             row = conn.execute(
-                "SELECT * FROM disponibilidad_docente WHERE id = ?",
-                (cursor.lastrowid,)
+                "SELECT * FROM disponibilidad_docente WHERE id = ?", (cursor.lastrowid,)
             ).fetchone()
             if row:
                 return self._row_to_disponibilidad(row)
@@ -1068,7 +1021,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 (usuario_id, dia, franja_orden),
             ).fetchone()
             if row is None:
-                return True   # R2: no hay fila → disponible por defecto
+                return True  # R2: no hay fila → disponible por defecto
             return bool(row[0])
 
     def limpiar_disponibilidad_docente(self, usuario_id: int) -> int:
@@ -1098,9 +1051,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 conn.commit()
             return count
 
-    def reemplazar_disponibilidad_docente(
-        self, usuario_id: int, slots: list[dict]
-    ) -> int:
+    def reemplazar_disponibilidad_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Borra + recarga la disponibilidad de un docente en una sola transacción."""
         with self._get_conn() as conn:
             conn.execute(
@@ -1160,8 +1111,14 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    c.nombre, c.periodo_id, c.anio_id, c.plantilla_id,
-                    c.estado, grupos_json, pesos_json, restricciones_json,
+                    c.nombre,
+                    c.periodo_id,
+                    c.anio_id,
+                    c.plantilla_id,
+                    c.estado,
+                    grupos_json,
+                    pesos_json,
+                    restricciones_json,
                     c.escenario_destino_id,
                 ),
             )
@@ -1179,9 +1136,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_config(row) if row else None
 
-    def listar_configs_generacion(
-        self, periodo_id: int | None = None
-    ) -> list[ConfigGeneracion]:
+    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
         with self._get_conn() as conn:
             if periodo_id is not None:
                 rows = conn.execute(
@@ -1189,9 +1144,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     (periodo_id,),
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT * FROM config_generacion ORDER BY nombre"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM config_generacion ORDER BY nombre").fetchall()
             return [self._row_to_config(r) for r in rows]
 
     def actualizar_config_generacion(self, c: ConfigGeneracion) -> ConfigGeneracion:
@@ -1209,30 +1162,31 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 WHERE id = ?
                 """,
                 (
-                    c.nombre, c.periodo_id, c.anio_id, c.plantilla_id,
-                    c.estado, grupos_json, pesos_json, restricciones_json,
-                    c.escenario_destino_id, c.id,
+                    c.nombre,
+                    c.periodo_id,
+                    c.anio_id,
+                    c.plantilla_id,
+                    c.estado,
+                    grupos_json,
+                    pesos_json,
+                    restricciones_json,
+                    c.escenario_destino_id,
+                    c.id,
                 ),
             )
             if self._conn is None:
                 conn.commit()
-            row = conn.execute(
-                "SELECT * FROM config_generacion WHERE id = ?", (c.id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM config_generacion WHERE id = ?", (c.id,)).fetchone()
             return self._row_to_config(row)
 
     def eliminar_config_generacion(self, config_id: int) -> bool:
         with self._get_conn() as conn:
-            cursor = conn.execute(
-                "DELETE FROM config_generacion WHERE id = ?", (config_id,)
-            )
+            cursor = conn.execute("DELETE FROM config_generacion WHERE id = ?", (config_id,))
             if self._conn is None:
                 conn.commit()
             return cursor.rowcount > 0
 
-    def cambiar_estado_config(
-        self, config_id: int, nuevo_estado: str
-    ) -> ConfigGeneracion:
+    def cambiar_estado_config(self, config_id: int, nuevo_estado: str) -> ConfigGeneracion:
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM config_generacion WHERE id = ?", (config_id,)
@@ -1241,9 +1195,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 raise ValueError(f"Config {config_id} no existe.")
             config = self._row_to_config(row)
             if not config.puede_transicionar_a(nuevo_estado):
-                raise ValueError(
-                    f"Transición inválida: '{config.estado}' → '{nuevo_estado}'."
-                )
+                raise ValueError(f"Transición inválida: '{config.estado}' → '{nuevo_estado}'.")
             conn.execute(
                 """
                 UPDATE config_generacion
@@ -1279,8 +1231,13 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 VALUES (?, ?, ?, ?, 'borrador', ?, ?, ?, NULL)
                 """,
                 (
-                    nuevo_nombre, orig.periodo_id, orig.anio_id, orig.plantilla_id,
-                    grupos_json, pesos_json, restricciones_json,
+                    nuevo_nombre,
+                    orig.periodo_id,
+                    orig.anio_id,
+                    orig.plantilla_id,
+                    grupos_json,
+                    pesos_json,
+                    restricciones_json,
                 ),
             )
             if self._conn is None:
@@ -1306,9 +1263,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     (institucion_id,),
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT * FROM salas ORDER BY nombre"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM salas ORDER BY nombre").fetchall()
             return [self._row_to_sala(r) for r in rows]
 
     def get_sala(self, sala_id: int) -> Sala | None:
@@ -1319,8 +1274,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def crear_sala(self, sala: Sala) -> Sala:
         with self._get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO salas (nombre, tipo, capacidad, institucion_id) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO salas (nombre, tipo, capacidad, institucion_id) VALUES (?, ?, ?, ?)",
                 (sala.nombre, sala.tipo, sala.capacidad, sala.institucion_id),
             )
             if self._conn is None:
@@ -1369,9 +1323,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def get_ventanas_por_grado(self, grado: int) -> list[VentanaGrupo]:
         with self._get_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM ventanas_grupo WHERE grado = ?", (grado,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM ventanas_grupo WHERE grado = ?", (grado,)).fetchall()
             return [self._row_to_ventana_grupo(r) for r in rows]
 
     def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo:
@@ -1457,7 +1409,14 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             cur = conn.execute(
                 """INSERT INTO franjas_reunion (nombre, docentes_json, dia_semana, franja_orden, modo, institucion_id)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (f.nombre, json.dumps(f.docentes), f.dia_semana, f.franja_orden, f.modo, f.institucion_id),
+                (
+                    f.nombre,
+                    json.dumps(f.docentes),
+                    f.dia_semana,
+                    f.franja_orden,
+                    f.modo,
+                    f.institucion_id,
+                ),
             )
             if self._conn is None:
                 conn.commit()
@@ -1543,14 +1502,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                        min_estudiantes = excluded.min_estudiantes,
                        max_estudiantes = excluded.max_estudiantes,
                        horas_semanales = excluded.horas_semanales""",
-                (grado.numero, grado.nombre, grado.min_estudiantes,
-                 grado.max_estudiantes, grado.horas_semanales),
+                (
+                    grado.numero,
+                    grado.nombre,
+                    grado.min_estudiantes,
+                    grado.max_estudiantes,
+                    grado.horas_semanales,
+                ),
             )
             if self._conn is None:
                 conn.commit()
-            row = conn.execute(
-                "SELECT * FROM grados WHERE numero = ?", (grado.numero,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM grados WHERE numero = ?", (grado.numero,)).fetchone()
             return self._row_to_grado(row)
 
     def eliminar_grado(self, numero: int) -> bool:
@@ -1579,7 +1541,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_plan_estudios(r) for r in rows]
 
-    def get_plan_estudios_por_grado(self, grado: int, institucion_id: int | None = None) -> list[PlanEstudios]:
+    def get_plan_estudios_por_grado(
+        self, grado: int, institucion_id: int | None = None
+    ) -> list[PlanEstudios]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM plan_estudios WHERE grado = ?"
             params: list = [grado]
@@ -1590,7 +1554,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_plan_estudios(r) for r in rows]
 
-    def set_horas_plan(self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None) -> PlanEstudios:
+    def set_horas_plan(
+        self, grado: int, asignatura_id: int, horas: int, institucion_id: int | None = None
+    ) -> PlanEstudios:
         with self._get_conn() as conn:
             if institucion_id is not None:
                 # ON CONFLICT solo funciona con NOT NULL en la clave compuesta
@@ -1601,9 +1567,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                            horas_semanales = excluded.horas_semanales""",
                     (grado, asignatura_id, horas, institucion_id),
                 )
-                sel_sql = (
-                    "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
-                )
+                sel_sql = "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
                 sel_params: list = [grado, asignatura_id, institucion_id]
             else:
                 # SQLite trata NULLs como distintos en UNIQUE → upsert manual.
@@ -1628,14 +1592,10 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     )
                     found_inst_id = None
                 if found_inst_id is not None:
-                    sel_sql = (
-                        "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
-                    )
+                    sel_sql = "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id=?"
                     sel_params = [grado, asignatura_id, found_inst_id]
                 else:
-                    sel_sql = (
-                        "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id IS NULL"
-                    )
+                    sel_sql = "SELECT * FROM plan_estudios WHERE grado=? AND asignatura_id=? AND institucion_id IS NULL"
                     sel_params = [grado, asignatura_id]
             if self._conn is None:
                 conn.commit()
@@ -1652,7 +1612,6 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                 conn.commit()
             return cur.rowcount > 0
 
-
     # =========================================================================
     # ConfiguracionGradoInstitucion (mejora_07-T6)
     # =========================================================================
@@ -1660,7 +1619,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
     def _row_to_config_grado(self, row) -> ConfiguracionGradoInstitucion:
         return ConfiguracionGradoInstitucion(**dict(row))
 
-    def get_config_grado(self, grado_id: int, institucion_id: int) -> ConfiguracionGradoInstitucion | None:
+    def get_config_grado(
+        self, grado_id: int, institucion_id: int
+    ) -> ConfiguracionGradoInstitucion | None:
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM configuracion_grado_institucion WHERE grado_id=? AND institucion_id=?",
@@ -1668,7 +1629,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_config_grado(row) if row else None
 
-    def upsert_config_grado(self, cfg: ConfiguracionGradoInstitucion) -> ConfiguracionGradoInstitucion:
+    def upsert_config_grado(
+        self, cfg: ConfiguracionGradoInstitucion
+    ) -> ConfiguracionGradoInstitucion:
         with self._get_conn() as conn:
             conn.execute(
                 """INSERT INTO configuracion_grado_institucion
@@ -1678,7 +1641,13 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                        min_estudiantes = excluded.min_estudiantes,
                        max_estudiantes = excluded.max_estudiantes,
                        horas_semanales = excluded.horas_semanales""",
-                (cfg.grado_id, cfg.institucion_id, cfg.min_estudiantes, cfg.max_estudiantes, cfg.horas_semanales),
+                (
+                    cfg.grado_id,
+                    cfg.institucion_id,
+                    cfg.min_estudiantes,
+                    cfg.max_estudiantes,
+                    cfg.horas_semanales,
+                ),
             )
             if self._conn is None:
                 conn.commit()

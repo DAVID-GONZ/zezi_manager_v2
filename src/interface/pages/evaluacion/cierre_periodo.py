@@ -15,6 +15,7 @@ Lógica:
   - "Abrir"  = eliminar CierrePeriodo del grupo para esa asignación, dejando
                al docente volver a editar notas.  Requiere motivo.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,8 @@ from src.interface.design.components.buttons import (
     btn_secondary,
 )
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
 
@@ -47,6 +48,7 @@ logger = logging.getLogger("EVALUACION.CIERRE_PERIODO")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _cargar_asigs_grupo(grupo_id: int, periodo_id: int) -> list:
     """Asignaciones del grupo en el periodo, ordenadas por asignatura."""
@@ -90,6 +92,7 @@ def _nombre_usuario(usuario_id: int | None) -> str:
 
 # ── Página ────────────────────────────────────────────────────────────────────
 
+
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
 def cierre_periodo_page() -> None:
     ctx = SessionContext.desde_storage()
@@ -101,13 +104,13 @@ def cierre_periodo_page() -> None:
 
     # ── Estado mutable ────────────────────────────────────────────────────
     _s: dict = {
-        "anio_id":       None,
-        "periodos":      [],
-        "grupos":        [],
-        "periodo_id":    None,
-        "grupo_id":      None,
-        "asignaciones":  [],
-        "estado_cierres": {},   # asignacion_id → list[CierrePeriodo]
+        "anio_id": None,
+        "periodos": [],
+        "grupos": [],
+        "periodo_id": None,
+        "grupo_id": None,
+        "asignaciones": [],
+        "estado_cierres": {},  # asignacion_id → list[CierrePeriodo]
     }
 
     # ── Carga inicial ─────────────────────────────────────────────────────
@@ -141,19 +144,19 @@ def cierre_periodo_page() -> None:
 
     def _ejecutar_cierre_asig(asig_id: int) -> None:
         """Cierra o recalcula UNA asignación."""
-        grupo_id   = _s["grupo_id"]
+        grupo_id = _s["grupo_id"]
         periodo_id = _s["periodo_id"]
-        anio_id    = _s["anio_id"] or 0
+        anio_id = _s["anio_id"] or 0
         if not grupo_id or not periodo_id:
             toast_warning("Selecciona periodo y grupo primero.")
             return
         try:
             ctx_dto = ContextoAcademicoDTO(
-                usuario_id    = ctx.usuario_id,
-                anio_id       = anio_id,
-                periodo_id    = periodo_id,
-                grupo_id      = grupo_id,
-                asignacion_id = asig_id,
+                usuario_id=ctx.usuario_id,
+                anio_id=anio_id,
+                periodo_id=periodo_id,
+                grupo_id=grupo_id,
+                asignacion_id=asig_id,
             )
             cierres = Container.cierre_service().cerrar_periodo(
                 asig_id, periodo_id, ctx_dto, usuario_id=ctx.usuario_id
@@ -172,8 +175,8 @@ def cierre_periodo_page() -> None:
         detalle = (
             "Esta asignación ya tiene definitivas calculadas. "
             "Recalcular reemplazará los valores anteriores con las notas actuales."
-            if ya_cerrado else
-            "Se calcularán las notas definitivas para todos los estudiantes "
+            if ya_cerrado
+            else "Se calcularán las notas definitivas para todos los estudiantes "
             "del grupo usando las categorías y actividades registradas."
         )
         confirm_dialog(
@@ -224,27 +227,25 @@ def cierre_periodo_page() -> None:
             toast_warning("No hay asignaciones para cerrar.")
             return
 
-        ya_cerradas = sum(
-            1 for a in asigs if _s["estado_cierres"].get(a.asignacion_id)
-        )
-        abiertas    = len(asigs) - ya_cerradas
+        ya_cerradas = sum(1 for a in asigs if _s["estado_cierres"].get(a.asignacion_id))
+        abiertas = len(asigs) - ya_cerradas
 
         def _ejecutar_bloque() -> None:
-            ids    = [a.asignacion_id for a in asigs]
-            gid    = _s["grupo_id"]
-            pid    = _s["periodo_id"]
-            anio   = _s["anio_id"] or 0
+            ids = [a.asignacion_id for a in asigs]
+            gid = _s["grupo_id"]
+            pid = _s["periodo_id"]
+            anio = _s["anio_id"] or 0
             ctx_dto = ContextoAcademicoDTO(
-                usuario_id = ctx.usuario_id,
-                anio_id    = anio,
-                periodo_id = pid,
-                grupo_id   = gid,
+                usuario_id=ctx.usuario_id,
+                anio_id=anio,
+                periodo_id=pid,
+                grupo_id=gid,
             )
             try:
                 res = Container.cierre_service().cerrar_grupo(
                     ids, gid, pid, ctx_dto, usuario_id=ctx.usuario_id
                 )
-                ok  = sum(1 for v in res.values() if isinstance(v, list))
+                ok = sum(1 for v in res.values() if isinstance(v, list))
                 err = len(res) - ok
                 msg = f"Cierre en bloque: {ok} asignaciones cerradas."
                 if err:
@@ -298,8 +299,7 @@ def cierre_periodo_page() -> None:
         cerradas = sum(1 for a in asigs if estado.get(a.asignacion_id))
         with ui.row().classes("form-row-between u-mb-lg"):
             ui.label(
-                f"{len(asigs)} asignaturas · {cerradas} cerradas · "
-                f"{len(asigs) - cerradas} abiertas"
+                f"{len(asigs)} asignaturas · {cerradas} cerradas · {len(asigs) - cerradas} abiertas"
             ).classes("text-sm text-muted")
             btn_danger(
                 "Cerrar en bloque",
@@ -314,75 +314,75 @@ def cierre_periodo_page() -> None:
 
             with ui.element("div").classes(
                 "panel-card mb-3" + (" accent-left-success" if cerrado else " accent-left-neutral")
-            ):
-                with ui.row().classes("form-row-between"):
-
-                    # Columna izquierda: info
-                    with ui.element("div").classes("flex-1 min-w-0"):
-                        with ui.row().classes("form-row-center u-mb-xs"):
-                            if cerrado:
-                                ThemeManager.icono("lock", size=18, color="var(--color-success)")
-                                ui.label("CERRADA").classes("text-xs font-bold text-success")
-                            else:
-                                ThemeManager.icono("lock_open", size=18, color="var(--color-text-secondary)")
-                                ui.label("ABIERTA").classes("text-xs font-bold text-muted")
-
-                        ui.label(asig.asignatura_nombre).classes("text-base font-semibold")
-                        ui.label(f"Docente: {asig.docente_nombre}").classes("text-sm text-muted")
-
+            ), ui.row().classes("form-row-between"):
+                # Columna izquierda: info
+                with ui.element("div").classes("flex-1 min-w-0"):
+                    with ui.row().classes("form-row-center u-mb-xs"):
                         if cerrado:
-                            promedios = [c.nota_definitiva for c in cierres]
-                            prom = round(mean(promedios), 1) if promedios else 0.0
-                            fecha_str = (
-                                cierres[0].fecha_cierre.strftime("%d/%m/%Y")
-                                if cierres[0].fecha_cierre else "—"
-                            )
-                            usr_str = _nombre_usuario(cierres[0].usuario_cierre_id)
-
-                            with ui.row().classes("form-row-inline u-mt-sm"):
-                                with ui.element("div").classes("flex-col"):
-                                    ui.label("Promedio del grupo").classes("text-xs text-muted")
-                                    ui.label(f"{prom:.1f}").classes("text-xl font-bold")
-                                with ui.element("div").classes("flex-col"):
-                                    ui.label("Estudiantes").classes("text-xs text-muted")
-                                    ui.label(str(len(cierres))).classes("text-xl font-bold")
-                                with ui.element("div").classes("flex-col"):
-                                    ui.label("Fecha cierre").classes("text-xs text-muted")
-                                    ui.label(fecha_str).classes("text-sm")
-                                with ui.element("div").classes("flex-col"):
-                                    ui.label("Cerrado por").classes("text-xs text-muted")
-                                    ui.label(usr_str).classes("text-sm")
-
-                    # Columna derecha: acciones
-                    with ui.element("div").classes("form-row-center no-shrink"):
-                        if cerrado:
-                            btn_secondary(
-                                "Recalcular",
-                                icon="refresh",
-                                on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
-                                    _abrir_dialog_cierre(aid, nom, True)
-                                ),
-                            )
-                            btn_ghost(
-                                "Abrir",
-                                on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
-                                    _abrir_dialog_reabrir(aid, nom)
-                                ),
-                            )
+                            ThemeManager.icono("lock", size=18, color="var(--color-success)")
+                            ui.label("CERRADA").classes("text-xs font-bold text-success")
                         else:
-                            btn_danger(
-                                "Cerrar",
-                                icon="lock",
-                                on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
-                                    _abrir_dialog_cierre(aid, nom, False)
-                                ),
+                            ThemeManager.icono(
+                                "lock_open", size=18, color="var(--color-text-secondary)"
                             )
+                            ui.label("ABIERTA").classes("text-xs font-bold text-muted")
+
+                    ui.label(asig.asignatura_nombre).classes("text-base font-semibold")
+                    ui.label(f"Docente: {asig.docente_nombre}").classes("text-sm text-muted")
+
+                    if cerrado:
+                        promedios = [c.nota_definitiva for c in cierres]
+                        prom = round(mean(promedios), 1) if promedios else 0.0
+                        fecha_str = (
+                            cierres[0].fecha_cierre.strftime("%d/%m/%Y")
+                            if cierres[0].fecha_cierre
+                            else "—"
+                        )
+                        usr_str = _nombre_usuario(cierres[0].usuario_cierre_id)
+
+                        with ui.row().classes("form-row-inline u-mt-sm"):
+                            with ui.element("div").classes("flex-col"):
+                                ui.label("Promedio del grupo").classes("text-xs text-muted")
+                                ui.label(f"{prom:.1f}").classes("text-xl font-bold")
+                            with ui.element("div").classes("flex-col"):
+                                ui.label("Estudiantes").classes("text-xs text-muted")
+                                ui.label(str(len(cierres))).classes("text-xl font-bold")
+                            with ui.element("div").classes("flex-col"):
+                                ui.label("Fecha cierre").classes("text-xs text-muted")
+                                ui.label(fecha_str).classes("text-sm")
+                            with ui.element("div").classes("flex-col"):
+                                ui.label("Cerrado por").classes("text-xs text-muted")
+                                ui.label(usr_str).classes("text-sm")
+
+                # Columna derecha: acciones
+                with ui.element("div").classes("form-row-center no-shrink"):
+                    if cerrado:
+                        btn_secondary(
+                            "Recalcular",
+                            icon="refresh",
+                            on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
+                                _abrir_dialog_cierre(aid, nom, True)
+                            ),
+                        )
+                        btn_ghost(
+                            "Abrir",
+                            on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
+                                _abrir_dialog_reabrir(aid, nom)
+                            ),
+                        )
+                    else:
+                        btn_danger(
+                            "Cerrar",
+                            icon="lock",
+                            on_click=lambda _, aid=asig.asignacion_id, nom=asig.asignatura_nombre: (
+                                _abrir_dialog_cierre(aid, nom, False)
+                            ),
+                        )
 
     # ── Contenido principal ───────────────────────────────────────────────
 
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
-
             # Panel de selección
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-lg"):
@@ -390,7 +390,7 @@ def cierre_periodo_page() -> None:
                     ui.label("Cierre de Periodo por Asignación").classes("text-xl font-bold")
 
                 periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
-                grupos_opts   = {g.id: g.codigo for g in _s["grupos"] if g.id}
+                grupos_opts = {g.id: g.codigo for g in _s["grupos"] if g.id}
 
                 def _on_periodo(v):
                     _s["periodo_id"] = v
@@ -428,8 +428,9 @@ def cierre_periodo_page() -> None:
                 lista_refreshable()
 
     app_layout(
-        ctx, contenido,
-        page_titulo       = "Evaluación · Cierre de Periodo",
+        ctx,
+        contenido,
+        page_titulo="Evaluación · Cierre de Periodo",
     )
 
 

@@ -4,6 +4,7 @@ status_badge.py — Badges de estado del design system Andes Minimal.
 Implementación: ui.html() en vez de ui.element().text() porque en
 NiceGUI 3.x el método .text() no existe como builder chainable en Element.
 """
+
 from __future__ import annotations
 
 from nicegui import ui
@@ -37,11 +38,11 @@ def badge_asistencia(estado: str) -> ui.html:
         badge_asistencia("FJ")  →  badge amarillo "F. Just."
     """
     etiquetas: dict[str, str] = {
-        "P":  "Presente",
+        "P": "Presente",
         "FJ": "F. Just.",
         "FI": "F. Injust.",
-        "R":  "Retraso",
-        "E":  "Excusa",
+        "R": "Retraso",
+        "E": "Excusa",
     }
     return status_badge(etiquetas.get(estado, estado), variante=estado)
 

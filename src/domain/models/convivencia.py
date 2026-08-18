@@ -34,7 +34,7 @@ Reglas de negocio:
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -45,28 +45,30 @@ from src.domain.models.alerta import NivelAlerta
 # Enumeraciones
 # =============================================================================
 
-class TipoRegistro(str, Enum):
-    FORTALEZA          = "fortaleza"
-    DIFICULTAD         = "dificultad"
-    COMPROMISO         = "compromiso"
+
+class TipoRegistro(StrEnum):
+    FORTALEZA = "fortaleza"
+    DIFICULTAD = "dificultad"
+    COMPROMISO = "compromiso"
     CITACION_ACUDIENTE = "citacion_acudiente"
-    DESCARGO           = "descargo"
+    DESCARGO = "descargo"
 
 
 # Mapa de valores de TipoRegistro a etiquetas legibles para el boletín (convivencia_29).
 # Fuente única de verdad: evita repetir el dict en observaciones.py y en el servicio.
 TIPO_REGISTRO_DISPLAY: dict[str, str] = {
-    "fortaleza":          "Fortaleza",
-    "dificultad":         "Dificultad",
-    "compromiso":         "Compromiso",
+    "fortaleza": "Fortaleza",
+    "dificultad": "Dificultad",
+    "compromiso": "Compromiso",
     "citacion_acudiente": "Citación acudiente",
-    "descargo":           "Descargo",
+    "descargo": "Descargo",
 }
 
 
 # =============================================================================
 # Catálogo de categorías de observación (convivencia_09)
 # =============================================================================
+
 
 class CategoriaObservacion(BaseModel):
     """
@@ -80,22 +82,25 @@ class CategoriaObservacion(BaseModel):
     activa=False oculta la categoría del selector sin eliminar los registros
     históricos que ya la referencien.
     """
-    id:                int | None = None
-    nombre:            str
-    es_comportamental: bool       = False
-    activa:            bool       = True
-    institucion_id:    int | None = None
+
+    id: int | None = None
+    nombre: str
+    es_comportamental: bool = False
+    activa: bool = True
+    institucion_id: int | None = None
 
 
 class NuevaCategoriaDTO(BaseModel):
     """DTO para crear una nueva categoría de observación."""
-    nombre:            str
+
+    nombre: str
     es_comportamental: bool = False
 
 
 # =============================================================================
 # Catálogo de plantillas de observación (convivencia_12)
 # =============================================================================
+
 
 class PlantillaObservacion(BaseModel):
     """
@@ -106,23 +111,26 @@ class PlantillaObservacion(BaseModel):
     `uso_count` se incrementa cada vez que se usa la plantilla.
     `activa=False` oculta la plantilla del selector sin eliminar el historial.
     """
-    id:             int | None = None
-    texto:          str
-    categoria_id:   int | None = None
-    uso_count:      int        = 0
-    activa:         bool       = True
+
+    id: int | None = None
+    texto: str
+    categoria_id: int | None = None
+    uso_count: int = 0
+    activa: bool = True
     institucion_id: int | None = None
 
 
 class NuevaPlantillaDTO(BaseModel):
     """DTO para crear una nueva plantilla de observación."""
-    texto:        str
+
+    texto: str
     categoria_id: int | None = None
 
 
 # =============================================================================
 # Entidades
 # =============================================================================
+
 
 class ObservacionPeriodo(BaseModel):
     """
@@ -131,20 +139,21 @@ class ObservacionPeriodo(BaseModel):
     `es_publica=True` indica que el texto aparecerá en el boletín.
     `es_publica=False` es para notas internas del docente.
     """
-    id:             int | None  = None
-    estudiante_id:  int
-    asignacion_id:  int
-    periodo_id:     int
-    texto:          str
-    es_publica:     bool        = True
-    fecha_registro: datetime    = Field(default_factory=datetime.now)
-    usuario_id:     int | None  = None
+
+    id: int | None = None
+    estudiante_id: int
+    asignacion_id: int
+    periodo_id: int
+    texto: str
+    es_publica: bool = True
+    fecha_registro: datetime = Field(default_factory=datetime.now)
+    usuario_id: int | None = None
     # Campos añadidos en convivencia_11: clasificación por categoría y origen.
     # categoria_id=None → observación libre (sin categoría asignada).
     # origen='libre' → texto ingresado directamente; 'plantilla' → generado
     # desde una plantilla del catálogo (convivencia_12).
-    categoria_id:   int | None  = None
-    origen:         str         = "libre"
+    categoria_id: int | None = None
+    origen: str = "libre"
     # Añadido en convivencia_14: vínculo al RegistroComportamiento creado al
     # promover la observación. None = no promovida aún.
     registro_comportamiento_id: int | None = None
@@ -157,9 +166,7 @@ class ObservacionPeriodo(BaseModel):
         if not v:
             raise ValueError("La observación no puede estar vacía.")
         if len(v) > 2000:
-            raise ValueError(
-                f"La observación no puede exceder 2000 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La observación no puede exceder 2000 caracteres (tiene {len(v)}).")
         return v
 
     def hacer_publica(self) -> ObservacionPeriodo:
@@ -183,17 +190,18 @@ class RegistroComportamiento(BaseModel):
     DESCARGO es la respuesta formal del estudiante ante una falta grave.
     COMPROMISO es un acuerdo entre el estudiante/acudiente y la institución.
     """
-    id:                  int | None      = None
-    estudiante_id:       int
-    grupo_id:            int
-    periodo_id:          int
-    fecha:               date            = Field(default_factory=date.today)
-    tipo:                TipoRegistro
-    descripcion:         str
-    seguimiento:         str | None      = None
-    requiere_firma:      bool            = False
-    acudiente_notificado: bool           = False
-    usuario_registro_id: int | None      = None
+
+    id: int | None = None
+    estudiante_id: int
+    grupo_id: int
+    periodo_id: int
+    fecha: date = Field(default_factory=date.today)
+    tipo: TipoRegistro
+    descripcion: str
+    seguimiento: str | None = None
+    requiere_firma: bool = False
+    acudiente_notificado: bool = False
+    usuario_registro_id: int | None = None
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -203,9 +211,7 @@ class RegistroComportamiento(BaseModel):
         if not v:
             raise ValueError("La descripción del registro no puede estar vacía.")
         if len(v) > 1000:
-            raise ValueError(
-                f"La descripción no puede exceder 1000 caracteres (tiene {len(v)})."
-            )
+            raise ValueError(f"La descripción no puede exceder 1000 caracteres (tiene {len(v)}).")
         return v
 
     @field_validator("seguimiento", mode="before")
@@ -224,9 +230,7 @@ class RegistroComportamiento(BaseModel):
         if isinstance(v, str):
             v = date.fromisoformat(v)
         if v > date.today():
-            raise ValueError(
-                f"La fecha del registro ({v}) no puede ser futura."
-            )
+            raise ValueError(f"La fecha del registro ({v}) no puede ser futura.")
         return v
 
     @model_validator(mode="after")
@@ -284,13 +288,9 @@ class RegistroComportamiento(BaseModel):
             ValueError: Si el registro no requería firma/notificación.
         """
         if not self.requiere_firma:
-            raise ValueError(
-                "Este registro no requiere notificación al acudiente."
-            )
+            raise ValueError("Este registro no requiere notificación al acudiente.")
         if self.acudiente_notificado:
-            raise ValueError(
-                "El acudiente ya fue notificado para este registro."
-            )
+            raise ValueError("El acudiente ya fue notificado para este registro.")
         return self.model_copy(update={"acudiente_notificado": True})
 
     def agregar_seguimiento(self, texto: str) -> RegistroComportamiento:
@@ -313,28 +313,27 @@ class NotaComportamiento(BaseModel):
     No todas las instituciones la usan. Cuando existe, es independiente
     de las notas académicas y puede tener su propio nivel de desempeño.
     """
-    id:            int | None   = None
+
+    id: int | None = None
     estudiante_id: int
-    grupo_id:      int
-    periodo_id:    int
-    valor:         float
-    desempeno_id:  int | None   = None
+    grupo_id: int
+    periodo_id: int
+    valor: float
+    desempeno_id: int | None = None
     # `observacion` es el CONCEPTO NARRATIVO que baja al boletín (Fase 3).
     # Semánticamente equivale al "concepto de comportamiento" que redacta el
     # director de grupo. El nombre del campo se conserva por compat con el
     # repositorio; la vista/DTO consolidado (ConceptoComportamientoDTO) expone
     # este texto como `concepto`.
-    observacion:   str | None   = None
-    usuario_id:    int | None   = None
+    observacion: str | None = None
+    usuario_id: int | None = None
 
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, v: float) -> float:
         """La nota de comportamiento debe estar en 0-100 (redondeada a 2)."""
         if not (0 <= v <= 100):
-            raise ValueError(
-                f"La nota de comportamiento debe estar entre 0 y 100 (recibido: {v})."
-            )
+            raise ValueError(f"La nota de comportamiento debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
     @field_validator("observacion", mode="before")
@@ -360,16 +359,18 @@ class NotaComportamiento(BaseModel):
 # DTOs
 # =============================================================================
 
+
 class NuevaObservacionDTO(BaseModel):
     """Datos para registrar una observación de periodo."""
+
     estudiante_id: int
     asignacion_id: int
-    periodo_id:    int
-    texto:         str
+    periodo_id: int
+    texto: str
     # categoria_id es obligatorio al crear (convivencia_11). Colocado antes
     # de campos con default para que Pydantic no falle en la validación.
-    categoria_id:  int
-    es_publica:    bool = True
+    categoria_id: int
+    es_publica: bool = True
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -390,13 +391,14 @@ class NuevaObservacionDTO(BaseModel):
 
 class NuevoRegistroComportamientoDTO(BaseModel):
     """Datos para crear un registro de comportamiento."""
-    estudiante_id:   int
-    grupo_id:        int
-    periodo_id:      int
-    tipo:            TipoRegistro
-    descripcion:     str
-    requiere_firma:  bool = False
-    fecha:           date = Field(default_factory=date.today)
+
+    estudiante_id: int
+    grupo_id: int
+    periodo_id: int
+    tipo: TipoRegistro
+    descripcion: str
+    requiere_firma: bool = False
+    fecha: date = Field(default_factory=date.today)
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -417,11 +419,12 @@ class NuevoRegistroComportamientoDTO(BaseModel):
 
 class NuevaNotaComportamientoDTO(BaseModel):
     """Datos para registrar la nota de comportamiento de un periodo."""
+
     estudiante_id: int
-    grupo_id:      int
-    periodo_id:    int
-    valor:         float
-    observacion:   str | None = None
+    grupo_id: int
+    periodo_id: int
+    valor: float
+    observacion: str | None = None
 
     @field_validator("valor")
     @classmethod
@@ -452,14 +455,15 @@ class ConceptoComportamientoDTO(BaseModel):
     Cuando el estudiante no tiene nota registrada para el periodo, se emite
     el DTO con `valor=None`, `aprobado=False` y el resto de campos en None.
     """
-    estudiante_id:      int
-    periodo_id:         int
-    grupo_id:           int
-    valor:              float | None = None
-    nivel_nombre:       str   | None = None
-    nivel_descripcion:  str   | None = None
-    concepto:           str   | None = None
-    aprobado:           bool         = False
+
+    estudiante_id: int
+    periodo_id: int
+    grupo_id: int
+    valor: float | None = None
+    nivel_nombre: str | None = None
+    nivel_descripcion: str | None = None
+    concepto: str | None = None
+    aprobado: bool = False
 
 
 class ReporteConvivenciaFilaDTO(BaseModel):
@@ -469,31 +473,34 @@ class ReporteConvivenciaFilaDTO(BaseModel):
     del periodo. Diseñado para presentación (tabla del director de grupo) y
     exportación (PDF / Excel) sin exponer entidades del dominio a la vista.
     """
-    estudiante_id:     int
-    nombre:            str
-    valor:             float | None = None
-    nivel_nombre:      str   | None = None
-    concepto:          str   | None = None
-    observaciones:     list[str]    = Field(default_factory=list)
+
+    estudiante_id: int
+    nombre: str
+    valor: float | None = None
+    nivel_nombre: str | None = None
+    concepto: str | None = None
+    observaciones: list[str] = Field(default_factory=list)
 
 
 class FiltroConvivenciaDTO(BaseModel):
     """Parámetros para consultar registros de comportamiento."""
-    estudiante_id: int | None       = None
-    grupo_id:      int | None       = None
-    periodo_id:    int | None       = None
-    tipo:          TipoRegistro | None = None
-    solo_negativos: bool            = False
-    pagina:        int              = Field(default=1, ge=1)
-    por_pagina:    int              = Field(default=50, ge=1, le=200)
+
+    estudiante_id: int | None = None
+    grupo_id: int | None = None
+    periodo_id: int | None = None
+    tipo: TipoRegistro | None = None
+    solo_negativos: bool = False
+    pagina: int = Field(default=1, ge=1)
+    por_pagina: int = Field(default=50, ge=1, le=200)
 
 
 class NuevaAlertaSeguimientoDTO(BaseModel):
     """DTO para crear una alerta de seguimiento manual (convivencia_16)."""
-    estudiante_id:      int
-    usuario_destino_id: int        # profesor destinatario
-    descripcion:        str
-    nivel:              NivelAlerta = NivelAlerta.ADVERTENCIA
+
+    estudiante_id: int
+    usuario_destino_id: int  # profesor destinatario
+    descripcion: str
+    nivel: NivelAlerta = NivelAlerta.ADVERTENCIA
 
 
 class Seguimiento360DTO(BaseModel):
@@ -504,15 +511,16 @@ class Seguimiento360DTO(BaseModel):
     observaciones públicas del periodo y alertas activas de seguimiento.
     `promedio_notas` es el promedio académico general; None si no está disponible.
     """
-    estudiante_id:        int
-    estudiante_nombre:    str
-    periodo_id:           int
-    nota_comportamiento:  float | None = None
-    concepto:             str | None = None
+
+    estudiante_id: int
+    estudiante_nombre: str
+    periodo_id: int
+    nota_comportamiento: float | None = None
+    concepto: str | None = None
     nivel_comportamiento: str | None = None
-    observaciones:        list[str] = []
-    alertas_activas:      list[str] = []
-    promedio_notas:       float | None = None
+    observaciones: list[str] = []
+    alertas_activas: list[str] = []
+    promedio_notas: float | None = None
 
 
 class PuntoSerieDTO(BaseModel):
@@ -523,9 +531,10 @@ class PuntoSerieDTO(BaseModel):
     de los periodos del año. `valor=None` marca un periodo sin nota registrada
     (hueco en la serie), preservando el eje de periodos completo.
     """
-    periodo_id:     int
+
+    periodo_id: int
     periodo_nombre: str
-    valor:          float | None = None
+    valor: float | None = None
 
 
 class ResumenConvivenciaDTO(BaseModel):
@@ -539,13 +548,14 @@ class ResumenConvivenciaDTO(BaseModel):
     o supera el umbral de alerta configurado (SEGUIMIENTO_REQUERIDO). Si no
     hay configuración de alertas disponible, permanece False.
     """
-    estudiante_id:           int
-    nombre:                  str
-    num_observaciones:       int          = 0
-    num_registros_negativos: int          = 0
-    nota:                    float | None = None
-    nivel_nombre:            str | None   = None
-    supera_umbral:           bool         = False
+
+    estudiante_id: int
+    nombre: str
+    num_observaciones: int = 0
+    num_registros_negativos: int = 0
+    nota: float | None = None
+    nivel_nombre: str | None = None
+    supera_umbral: bool = False
 
 
 # =============================================================================
@@ -553,12 +563,13 @@ class ResumenConvivenciaDTO(BaseModel):
 # =============================================================================
 
 __all__ = [
+    "TIPO_REGISTRO_DISPLAY",
     "CategoriaObservacion",
     "ConceptoComportamientoDTO",
     "FiltroConvivenciaDTO",
     "NotaComportamiento",
-    "NuevaCategoriaDTO",
     "NuevaAlertaSeguimientoDTO",
+    "NuevaCategoriaDTO",
     "NuevaNotaComportamientoDTO",
     "NuevaObservacionDTO",
     "NuevaPlantillaDTO",
@@ -570,6 +581,5 @@ __all__ = [
     "ReporteConvivenciaFilaDTO",
     "ResumenConvivenciaDTO",
     "Seguimiento360DTO",
-    "TIPO_REGISTRO_DISPLAY",
     "TipoRegistro",
 ]

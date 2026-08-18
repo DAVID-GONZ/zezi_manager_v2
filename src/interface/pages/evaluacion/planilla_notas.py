@@ -15,6 +15,7 @@ Vistas:
 La vista activa se controla con dos botones explícitos (no un select).
 La configuración de categorías se delega a /evaluacion/configuracion.
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,10 +40,12 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
-from src.interface.design.components.inline_selectors import inline_periodo_grupo_asignatura
+from src.interface.design.components.inline_selectors import (
+    inline_periodo_grupo_asignatura,
+)
 from src.interface.design.layout import app_layout
-from src.interface.design.theme import ThemeManager
 from src.interface.design.styles.tokens import Icons
+from src.interface.design.theme import ThemeManager
 from src.services.evaluacion_service import (
     EstadoActividad,
     NuevaActividadDTO,
@@ -88,64 +91,62 @@ def planilla_notas_page() -> None:
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVOS
-
     _s: dict = {
         # Alias — actualizados por on_sel_change desde los pills inline
-        "asignacion_id":         None,
-        "periodo_id":            None,
-        "grupo_id":              None,
+        "asignacion_id": None,
+        "periodo_id": None,
+        "grupo_id": None,
         # Claves del inline selector (escritas por inline_periodo_grupo_asignatura)
-        "sel_periodo_id":        None,
-        "sel_periodo_nombre":    "",
-        "sel_grupo_id":          None,
-        "sel_grupo_nombre":      "",
-        "sel_asignacion_id":     None,
+        "sel_periodo_id": None,
+        "sel_periodo_nombre": "",
+        "sel_grupo_id": None,
+        "sel_grupo_nombre": "",
+        "sel_asignacion_id": None,
         "sel_asignacion_nombre": "",
-        "categorias":       [],
-        "actividades":      [],
-        "planilla":         [],
-        "puntos_extra":     {},   # {estudiante_id: PuntosExtra}
-        "mostrar_puntos":   False,
-        "modo":             "planilla",   # "planilla" | "actividades"
-        "corte":            None,   # CortePlan | None
-        "notas_corte":      {},     # {estudiante_id: NotaCortePlan}
+        "categorias": [],
+        "actividades": [],
+        "planilla": [],
+        "puntos_extra": {},  # {estudiante_id: PuntosExtra}
+        "mostrar_puntos": False,
+        "modo": "planilla",  # "planilla" | "actividades"
+        "corte": None,  # CortePlan | None
+        "notas_corte": {},  # {estudiante_id: NotaCortePlan}
         # formulario nueva actividad
-        "act_nombre":       "",
+        "act_nombre": "",
         "act_categoria_id": None,
-        "act_valor_max":    100.0,
-        "act_descripcion":  "",
-        "cargando":         True,   # skeleton mientras carga la planilla inicial
+        "act_valor_max": 100.0,
+        "act_descripcion": "",
+        "cargando": True,  # skeleton mientras carga la planilla inicial
     }
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_datos() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             _s["actividades"] = []
-            _s["categorias"]  = []
-            _s["planilla"]    = []
+            _s["categorias"] = []
+            _s["planilla"] = []
             return
 
         try:
             datos = Container.evaluacion_service().planilla_completa(
                 _s["grupo_id"], asig_id, per_id
             )
-            _s["actividades"]  = datos.actividades
-            _s["categorias"]   = datos.categorias
-            _s["planilla"]     = datos.planilla
+            _s["actividades"] = datos.actividades
+            _s["categorias"] = datos.categorias
+            _s["planilla"] = datos.planilla
             _s["puntos_extra"] = datos.puntos_extra
         except Exception as exc:
             logger.error("Error cargando planilla completa: %s", exc)
-            _s["actividades"]  = []
-            _s["categorias"]   = []
-            _s["planilla"]     = []
+            _s["actividades"] = []
+            _s["categorias"] = []
+            _s["planilla"] = []
             _s["puntos_extra"] = {}
 
         try:
             asig_id = _s["asignacion_id"]
-            per_id  = _s["periodo_id"]
+            per_id = _s["periodo_id"]
             if asig_id and per_id:
                 corte = Container.plan_mejoramiento_service().get_corte(asig_id, per_id)
                 _s["corte"] = corte
@@ -213,7 +214,7 @@ def planilla_notas_page() -> None:
             return
 
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             toast_warning("Contexto incompleto (periodo o asignación no definidos).")
             return
@@ -226,12 +227,15 @@ def planilla_notas_page() -> None:
                 return
             try:
                 cierres = Container.cierre_service().cerrar_periodo(
-                    asignacion_id = asig_id,
-                    periodo_id    = per_id,
-                    ctx           = ctx_academico,
-                    usuario_id    = ctx.usuario_id,
+                    asignacion_id=asig_id,
+                    periodo_id=per_id,
+                    ctx=ctx_academico,
+                    usuario_id=ctx.usuario_id,
                 )
-                toast_success(f"Definitivas guardadas para {len(cierres)} estudiante(s). " "El cierre quedó registrado para auditoría.")
+                toast_success(
+                    f"Definitivas guardadas para {len(cierres)} estudiante(s). "
+                    "El cierre quedó registrado para auditoría."
+                )
                 _cargar_datos()
                 panel_vista.refresh()
             except ValueError as exc:
@@ -241,34 +245,34 @@ def planilla_notas_page() -> None:
                 toast_error("Error al guardar definitivas.")
 
         confirm_dialog(
-            titulo          = "Guardar definitivas del periodo",
-            mensaje         = (
+            titulo="Guardar definitivas del periodo",
+            mensaje=(
                 "Se calculará y registrará la nota definitiva de todos los estudiantes "
                 "del grupo para esta asignación y periodo. "
                 "Las actividades sin nota cuentan como 0. "
                 "El cierre quedará disponible para revisión de administración. "
                 "Solo un rol superior puede reabrir este cierre."
             ),
-            on_confirm      = _ejecutar,
-            texto_confirmar = "Guardar definitivas",
-            texto_cancelar  = "Cancelar",
+            on_confirm=_ejecutar,
+            texto_confirmar="Guardar definitivas",
+            texto_cancelar="Cancelar",
         )
 
     def _guardar_puntos_extra(est_id: int, positivos: int, negativos: int) -> None:
         if not _periodo_abierto():
             raise ValueError("El periodo está cerrado — no se pueden modificar puntos extra.")
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         pe_actual = _s["puntos_extra"].get(est_id)
         pe = PuntosExtra(
-            id            = pe_actual.id if pe_actual else None,
-            estudiante_id = est_id,
-            asignacion_id = asig_id,
-            periodo_id    = per_id,
-            tipo          = TipoPuntosExtra.PARTICIPACION,
-            positivos     = max(0, positivos),
-            negativos     = max(0, negativos),
-            observacion   = pe_actual.observacion if pe_actual else None,
+            id=pe_actual.id if pe_actual else None,
+            estudiante_id=est_id,
+            asignacion_id=asig_id,
+            periodo_id=per_id,
+            tipo=TipoPuntosExtra.PARTICIPACION,
+            positivos=max(0, positivos),
+            negativos=max(0, negativos),
+            observacion=pe_actual.observacion if pe_actual else None,
         )
         saved = Container.evaluacion_service().guardar_puntos_extra(pe, ctx.usuario_id)
         _s["puntos_extra"][est_id] = saved
@@ -276,7 +280,7 @@ def planilla_notas_page() -> None:
     # ── Acciones — actividades ────────────────────────────────────────────────
     def _crear_actividad() -> None:
         asig_id = _s["asignacion_id"]
-        per_id  = _s["periodo_id"]
+        per_id = _s["periodo_id"]
         if not asig_id or not per_id:
             toast_warning("Define el contexto desde la barra superior")
             return
@@ -287,16 +291,16 @@ def planilla_notas_page() -> None:
         # NuevaActividadDTO valida nombre (no vacío) y coacciona los numéricos.
         try:
             dto = NuevaActividadDTO(
-                nombre       = _s["act_nombre"],
-                categoria_id = cat_id,
-                descripcion  = _s["act_descripcion"] or None,
-                valor_maximo = _s["act_valor_max"] or 100.0,
+                nombre=_s["act_nombre"],
+                categoria_id=cat_id,
+                descripcion=_s["act_descripcion"] or None,
+                valor_maximo=_s["act_valor_max"] or 100.0,
             )
             Container.evaluacion_service().agregar_actividad(dto)
             toast_success(f"Actividad '{dto.nombre}' creada")
-            _s["act_nombre"]       = ""
-            _s["act_descripcion"]  = ""
-            _s["act_valor_max"]    = 100.0
+            _s["act_nombre"] = ""
+            _s["act_descripcion"] = ""
+            _s["act_valor_max"] = 100.0
             _s["act_categoria_id"] = None
             _cargar_datos()
             panel_vista.refresh()
@@ -320,13 +324,11 @@ def planilla_notas_page() -> None:
 
     def _cerrar_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Cerrar actividad",
-            mensaje         = (
-                f"¿Cerrar '{nombre}'? Podrás reabrirla después si es necesario."
-            ),
-            on_confirm      = lambda: _ejecutar_cerrar(act_id, nombre),
-            texto_confirmar = "Cerrar actividad",
-            texto_cancelar  = "Cancelar",
+            titulo="Cerrar actividad",
+            mensaje=(f"¿Cerrar '{nombre}'? Podrás reabrirla después si es necesario."),
+            on_confirm=lambda: _ejecutar_cerrar(act_id, nombre),
+            texto_confirmar="Cerrar actividad",
+            texto_cancelar="Cancelar",
         )
 
     def _ejecutar_cerrar(act_id: int, nombre: str) -> None:
@@ -343,13 +345,11 @@ def planilla_notas_page() -> None:
 
     def _reabrir_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Reabrir actividad",
-            mensaje         = (
-                f"¿Reabrir '{nombre}'? Volverá a aceptar registro de notas."
-            ),
-            on_confirm      = lambda: _ejecutar_reabrir(act_id, nombre),
-            texto_confirmar = "Reabrir",
-            texto_cancelar  = "Cancelar",
+            titulo="Reabrir actividad",
+            mensaje=(f"¿Reabrir '{nombre}'? Volverá a aceptar registro de notas."),
+            on_confirm=lambda: _ejecutar_reabrir(act_id, nombre),
+            texto_confirmar="Reabrir",
+            texto_cancelar="Cancelar",
         )
 
     def _ejecutar_reabrir(act_id: int, nombre: str) -> None:
@@ -366,15 +366,15 @@ def planilla_notas_page() -> None:
 
     def _eliminar_actividad(act_id: int, nombre: str) -> None:
         confirm_dialog(
-            titulo          = "Eliminar actividad",
-            mensaje         = (
+            titulo="Eliminar actividad",
+            mensaje=(
                 f"¿Eliminar '{nombre}'? Se borrarán también todas las notas asociadas. "
                 "Esta acción es irreversible."
             ),
-            on_confirm      = lambda: _ejecutar_eliminar(act_id, nombre),
-            variante        = "danger",
-            texto_confirmar = "Eliminar",
-            texto_cancelar  = "Cancelar",
+            on_confirm=lambda: _ejecutar_eliminar(act_id, nombre),
+            variante="danger",
+            texto_confirmar="Eliminar",
+            texto_cancelar="Cancelar",
         )
 
     def _ejecutar_eliminar(act_id: int, nombre: str) -> None:
@@ -391,17 +391,17 @@ def planilla_notas_page() -> None:
 
     # ── Vista: planilla de notas (ag-Grid) ────────────────────────────────────
     def _render_planilla() -> None:
-        planilla        = _s["planilla"]
-        actividades     = _s["actividades"]
-        categorias      = _s["categorias"]
-        puntos_map      = _s["puntos_extra"]   # {est_id: PuntosExtra}
-        mostrar_puntos  = _s["mostrar_puntos"]
+        planilla = _s["planilla"]
+        actividades = _s["actividades"]
+        categorias = _s["categorias"]
+        puntos_map = _s["puntos_extra"]  # {est_id: PuntosExtra}
+        mostrar_puntos = _s["mostrar_puntos"]
         periodo_abierto = _periodo_abierto()
 
         _ESTADO_CORTE_LABELS = {
-            EstadoNotaCorte.SIN_PLAN.value:  "Sin plan",
-            EstadoNotaCorte.EN_PLAN.value:   "En plan",
-            EstadoNotaCorte.APROBADO.value:  "Aprobó",
+            EstadoNotaCorte.SIN_PLAN.value: "Sin plan",
+            EstadoNotaCorte.EN_PLAN.value: "En plan",
+            EstadoNotaCorte.APROBADO.value: "Aprobó",
             EstadoNotaCorte.REPROBADO.value: "Reprobó",
         }
 
@@ -422,137 +422,151 @@ def planilla_notas_page() -> None:
             return
 
         acts_visibles = [
-            a for a in actividades
+            a
+            for a in actividades
             if a.estado in (EstadoActividad.PUBLICADA, EstadoActividad.CERRADA)
         ]
 
         if not periodo_abierto:
             with ui.element("div").classes(
-                "alert-panel-row bg-warning-soft border border-warning-soft "
-                "mb-3 text-warning"
+                "alert-panel-row bg-warning-soft border border-warning-soft mb-3 text-warning"
             ):
                 ThemeManager.icono("lock", size=20)
                 ui.label("Período CERRADO — Modo solo lectura").classes("font-semibold text-sm")
 
         color_rules = {
-            "grade-bajo":     "x != null && x < 60",
-            "grade-basico":   "x != null && x >= 60 && x < 80",
-            "grade-alto":     "x != null && x >= 80 && x < 90",
+            "grade-bajo": "x != null && x < 60",
+            "grade-basico": "x != null && x >= 60 && x < 80",
+            "grade-alto": "x != null && x >= 80 && x < 90",
             "grade-superior": "x != null && x >= 90",
         }
 
-        col_defs = [{
-            "headerName": "Estudiante",
-            "field":      "nombre_completo",
-            "pinned":     "left",
-            "width":      220,
-            "filter":     True,
-            "sortable":   True,
-        }]
+        col_defs = [
+            {
+                "headerName": "Estudiante",
+                "field": "nombre_completo",
+                "pinned": "left",
+                "width": 220,
+                "filter": True,
+                "sortable": True,
+            }
+        ]
 
         for cat in categorias:
             acts_de_cat = [a for a in acts_visibles if a.categoria_id == cat.id]
             children = []
             for act in acts_de_cat:
-                children.append({
-                    "headerName":    act.nombre[:20],
-                    "field":         f"act_{act.id}",
-                    "editable":      periodo_abierto and act.estado == EstadoActividad.PUBLICADA,
-                    "width":         80,
-                    "type":          "numericColumn",
-                    "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
+                children.append(
+                    {
+                        "headerName": act.nombre[:20],
+                        "field": f"act_{act.id}",
+                        "editable": periodo_abierto and act.estado == EstadoActividad.PUBLICADA,
+                        "width": 80,
+                        "type": "numericColumn",
+                        "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
+                        "cellClassRules": color_rules,
+                    }
+                )
+            children.append(
+                {
+                    "headerName": "PROM",
+                    "field": f"cat_avg_{cat.id}",
+                    "editable": False,
+                    "width": 70,
+                    "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
                     "cellClassRules": color_rules,
-                })
-            children.append({
-                "headerName":    "PROM",
-                "field":         f"cat_avg_{cat.id}",
-                "editable":      False,
-                "width":         70,
-                "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
-                "cellClassRules": color_rules,
-            })
-            col_defs.append({
-                "headerName": f"{cat.nombre} ({cat.peso_porcentaje:.0f}%)",
-                "children":   children,
-            })
+                }
+            )
+            col_defs.append(
+                {
+                    "headerName": f"{cat.nombre} ({cat.peso_porcentaje:.0f}%)",
+                    "children": children,
+                }
+            )
 
         # Columna de corte plan de mejoramiento (solo si hay corte activo)
         corte = _s["corte"]
         if corte:
-            col_defs.append({
-                "headerName": "Plan Mejoramiento",
-                "children": [
-                    {
-                        "headerName":    "Corte",
-                        "field":         "corte_nota",
-                        "editable":      False,
-                        "width":         70,
-                        "type":          "numericColumn",
-                        "valueFormatter":"value != null ? Number(value).toFixed(1) : '—'",
-                        "cellClassRules": color_rules,
-                    },
-                    {
-                        "headerName": "Estado",
-                        "field":      "corte_estado",
-                        "editable":   False,
-                        "width":      85,
-                        "cellClass":  "ag-cell-xs",
-                    },
-                ],
-            })
+            col_defs.append(
+                {
+                    "headerName": "Plan Mejoramiento",
+                    "children": [
+                        {
+                            "headerName": "Corte",
+                            "field": "corte_nota",
+                            "editable": False,
+                            "width": 70,
+                            "type": "numericColumn",
+                            "valueFormatter": "value != null ? Number(value).toFixed(1) : '—'",
+                            "cellClassRules": color_rules,
+                        },
+                        {
+                            "headerName": "Estado",
+                            "field": "corte_estado",
+                            "editable": False,
+                            "width": 85,
+                            "cellClass": "ag-cell-xs",
+                        },
+                    ],
+                }
+            )
 
-        col_defs.append({
-            "headerName":    "Definitiva",
-            "field":         "definitiva",
-            "pinned":        "right",
-            "width":         85,
-            "editable":      False,
-            "valueFormatter":"value != null ? Number(value).toFixed(1) : ''",
-            "cellClassRules": color_rules,
-        })
+        col_defs.append(
+            {
+                "headerName": "Definitiva",
+                "field": "definitiva",
+                "pinned": "right",
+                "width": 85,
+                "editable": False,
+                "valueFormatter": "value != null ? Number(value).toFixed(1) : ''",
+                "cellClassRules": color_rules,
+            }
+        )
 
         if mostrar_puntos:
-            col_defs.append({
-                "headerName": "Puntos extra",
-                "children": [
-                    {
-                        "headerName":    "+",
-                        "field":         "pts_pos",
-                        "editable":      periodo_abierto,
-                        "width":         60,
-                        "type":          "numericColumn",
-                        "valueFormatter":"value != null ? value : 0",
-                        "cellClass":     "ag-cell-info",
-                    },
-                    {
-                        "headerName":    "−",
-                        "field":         "pts_neg",
-                        "editable":      periodo_abierto,
-                        "width":         60,
-                        "type":          "numericColumn",
-                        "valueFormatter":"value != null ? value : 0",
-                        "cellClass":     "ag-cell-error",
-                    },
-                    {
-                        "headerName":    "Bal.",
-                        "field":         "pts_bal",
-                        "editable":      False,
-                        "width":         65,
-                        "type":          "numericColumn",
-                        "cellClassRules": {
-                            "pts-positivo": "x != null && x > 0",
-                            "pts-negativo": "x != null && x < 0",
+            col_defs.append(
+                {
+                    "headerName": "Puntos extra",
+                    "children": [
+                        {
+                            "headerName": "+",
+                            "field": "pts_pos",
+                            "editable": periodo_abierto,
+                            "width": 60,
+                            "type": "numericColumn",
+                            "valueFormatter": "value != null ? value : 0",
+                            "cellClass": "ag-cell-info",
                         },
-                    },
-                ],
-            })
+                        {
+                            "headerName": "−",
+                            "field": "pts_neg",
+                            "editable": periodo_abierto,
+                            "width": 60,
+                            "type": "numericColumn",
+                            "valueFormatter": "value != null ? value : 0",
+                            "cellClass": "ag-cell-error",
+                        },
+                        {
+                            "headerName": "Bal.",
+                            "field": "pts_bal",
+                            "editable": False,
+                            "width": 65,
+                            "type": "numericColumn",
+                            "cellClassRules": {
+                                "pts-positivo": "x != null && x > 0",
+                                "pts-negativo": "x != null && x < 0",
+                            },
+                        },
+                    ],
+                }
+            )
 
         row_data = []
         for resultado in planilla:
             row: dict = {
-                "estudiante_id":   resultado.estudiante_id,
+                "estudiante_id": resultado.estudiante_id,
                 "nombre_completo": resultado.nombre_completo,
-                "definitiva":      resultado.definitiva,
+                "definitiva": resultado.definitiva,
             }
             for cat in categorias:
                 acts_de_cat = [a for a in acts_visibles if a.categoria_id == cat.id]
@@ -563,18 +577,22 @@ def planilla_notas_page() -> None:
                 pe = puntos_map.get(resultado.estudiante_id)
                 row["pts_pos"] = pe.positivos if pe else 0
                 row["pts_neg"] = pe.negativos if pe else 0
-                row["pts_bal"] = pe.balance   if pe else 0
+                row["pts_bal"] = pe.balance if pe else 0
             # Datos de corte plan
             nc = _s["notas_corte"].get(resultado.estudiante_id)
-            row["corte_nota"]   = nc.nota_al_corte if nc else None
-            row["corte_estado"] = _ESTADO_CORTE_LABELS.get(nc.estado.value, nc.estado.value) if nc else None
+            row["corte_nota"] = nc.nota_al_corte if nc else None
+            row["corte_estado"] = (
+                _ESTADO_CORTE_LABELS.get(nc.estado.value, nc.estado.value) if nc else None
+            )
             row_data.append(row)
 
-        grid = ui.aggrid({
-            **_build_grid_options(),
-            "columnDefs":                col_defs,
-            "rowData":                   row_data,
-        }).classes("w-full h-grid-default")
+        grid = ui.aggrid(
+            {
+                **_build_grid_options(),
+                "columnDefs": col_defs,
+                "rowData": row_data,
+            }
+        ).classes("w-full h-grid-default")
 
         async def on_cell_edit(e) -> None:
             # Guard: re-verificar periodo en runtime (puede haberse cerrado
@@ -584,10 +602,10 @@ def planilla_notas_page() -> None:
                 panel_vista.refresh()
                 return
 
-            col_id  = e.args.get("colId", "")
+            col_id = e.args.get("colId", "")
             val_raw = e.args.get("newValue")
-            data    = e.args.get("data", {})
-            est_id  = data.get("estudiante_id")
+            data = e.args.get("data", {})
+            est_id = data.get("estudiante_id")
 
             # ── Puntos extra ──────────────────────────────────────────────────
             if col_id in ("pts_pos", "pts_neg"):
@@ -598,8 +616,12 @@ def planilla_notas_page() -> None:
                     panel_vista.refresh()
                     return
                 pe_actual = _s["puntos_extra"].get(est_id)
-                positivos = new_val if col_id == "pts_pos" else (pe_actual.positivos if pe_actual else 0)
-                negativos = new_val if col_id == "pts_neg" else (pe_actual.negativos if pe_actual else 0)
+                positivos = (
+                    new_val if col_id == "pts_pos" else (pe_actual.positivos if pe_actual else 0)
+                )
+                negativos = (
+                    new_val if col_id == "pts_neg" else (pe_actual.negativos if pe_actual else 0)
+                )
                 try:
                     _guardar_puntos_extra(est_id, positivos, negativos)
                     toast_success(f"Pts. extra guardados (+{positivos} / −{negativos})")
@@ -634,15 +656,15 @@ def planilla_notas_page() -> None:
 
             try:
                 dto = RegistrarNotaDTO(
-                    estudiante_id       = est_id,
-                    actividad_id        = act_id,
-                    valor               = new_val,
-                    usuario_registro_id = ctx.usuario_id,
+                    estudiante_id=est_id,
+                    actividad_id=act_id,
+                    valor=new_val,
+                    usuario_registro_id=ctx.usuario_id,
                 )
                 Container.evaluacion_service().registrar_nota(
                     dto,
-                    ctx        = ctx.to_contexto_academico(),
-                    usuario_id = ctx.usuario_id,
+                    ctx=ctx.to_contexto_academico(),
+                    usuario_id=ctx.usuario_id,
                 )
                 toast_success(f"Nota {new_val:.1f} guardada")
             except ValueError as exc:
@@ -659,8 +681,8 @@ def planilla_notas_page() -> None:
     # ── Vista: gestión de actividades ─────────────────────────────────────────
     def _render_actividades() -> None:
         actividades = _s["actividades"]
-        categorias  = _s["categorias"]
-        cat_opts    = {c.id: c.nombre for c in categorias}
+        categorias = _s["categorias"]
+        cat_opts = {c.id: c.nombre for c in categorias}
 
         if not _s["asignacion_id"] or not _s["periodo_id"]:
             with ui.element("div").classes("tablero-empty"):
@@ -727,9 +749,9 @@ def planilla_notas_page() -> None:
                 cat_nombre = cat_opts.get(act.categoria_id, "—")
                 estado_val = act.estado.value if hasattr(act.estado, "value") else str(act.estado)
                 badge_tipo = {
-                    "borrador":  "neutral",
+                    "borrador": "neutral",
                     "publicada": "success",
-                    "cerrada":   "warning",
+                    "cerrada": "warning",
                 }.get(estado_val, "neutral")
 
                 with ui.element("div").classes(
@@ -737,9 +759,7 @@ def planilla_notas_page() -> None:
                 ):
                     ui.label(act.nombre).classes("flex-1 text-sm")
                     ui.label(cat_nombre).classes("w-36 text-sm text-muted")
-                    ui.label(f"{act.valor_maximo:.1f}").classes(
-                        "w-20 text-right font-mono text-sm"
-                    )
+                    ui.label(f"{act.valor_maximo:.1f}").classes("w-20 text-right font-mono text-sm")
                     with ui.element("div").classes("w-24 cell-num-center"):
                         status_badge(estado_val.capitalize(), badge_tipo)
 
@@ -747,31 +767,41 @@ def planilla_notas_page() -> None:
                         if act.estado == EstadoActividad.BORRADOR:
                             btn_icon(
                                 "publish",
-                                on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(aid, an),
+                                on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(
+                                    aid, an
+                                ),
                                 tooltip="Publicar",
                             )
                             btn_icon(
                                 "delete",
-                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
+                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(
+                                    aid, an
+                                ),
                                 tooltip="Eliminar",
                                 variante="danger",
                             )
                         elif act.estado == EstadoActividad.PUBLICADA:
                             btn_icon(
                                 "lock",
-                                on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(aid, an),
+                                on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(
+                                    aid, an
+                                ),
                                 tooltip="Cerrar actividad",
                             )
                             btn_icon(
                                 "delete",
-                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
+                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(
+                                    aid, an
+                                ),
                                 tooltip="Eliminar",
                                 variante="danger",
                             )
                         elif act.estado == EstadoActividad.CERRADA:
                             btn_icon(
                                 "lock_open",
-                                on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(aid, an),
+                                on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(
+                                    aid, an
+                                ),
                                 tooltip="Reabrir actividad",
                             )
 
@@ -779,7 +809,7 @@ def planilla_notas_page() -> None:
     @ui.refreshable
     def barra_vista() -> None:
         """Botones de vista y toggle de puntos extra."""
-        modo           = _s["modo"]
+        modo = _s["modo"]
         mostrar_puntos = _s["mostrar_puntos"]
         with ui.row().classes("gap-2 items-center"):
             # Vista
@@ -851,21 +881,21 @@ def planilla_notas_page() -> None:
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
             _s["asignacion_id"] = s["sel_asignacion_id"]
-            _s["periodo_id"]    = s["sel_periodo_id"]
-            _s["grupo_id"]      = s["sel_grupo_id"]
+            _s["periodo_id"] = s["sel_periodo_id"]
+            _s["grupo_id"] = s["sel_grupo_id"]
             _cargar_datos()
             panel_vista.refresh()
 
         inline_periodo_grupo_asignatura(
-            _s, on_sel_change,
-            usuario_id     = ctx.usuario_id,
-            institucion_id = ctx.institucion_id,
-            usuario_rol    = ctx.usuario_rol,
-            preselect_periodo = True,
+            _s,
+            on_sel_change,
+            usuario_id=ctx.usuario_id,
+            institucion_id=ctx.institucion_id,
+            usuario_rol=ctx.usuario_rol,
+            preselect_periodo=True,
         )
 
         with ui.element("div").classes("page-stack"):
-
             # Cabecera: título + barra de vista + recarga
             with ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center-md"):
@@ -883,8 +913,9 @@ def planilla_notas_page() -> None:
                 panel_vista()
 
     app_layout(
-        ctx, contenido,
-        page_titulo = "Evaluación · Planilla de Notas",
+        ctx,
+        contenido,
+        page_titulo="Evaluación · Planilla de Notas",
     )
 
 

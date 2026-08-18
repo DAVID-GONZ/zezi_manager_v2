@@ -4,6 +4,7 @@ pending_items.py — Lista de ítems pendientes con badges y navegación.
 Componente de presentación puro: recibe lista de PendingItem,
 no llama servicios ni Container.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from src.interface.design.theme import ThemeManager
 @dataclass
 class PendingItem:
     """Un ítem pendiente con conteo, ruta de navegación e icono."""
+
     conteo: int
     label: str
     sublabel: str
@@ -48,11 +50,17 @@ def pending_list(
             return
 
         for item in visibles:
-            with ui.element("div").classes("hito-item quick-action-card").on(
-                "click", lambda r=item.ruta: ui.navigate.to(r)
+            with (
+                ui.element("div")
+                .classes("hito-item quick-action-card")
+                .on("click", lambda r=item.ruta: ui.navigate.to(r))
             ):
-                with ui.element("div").classes("quick-action-icon").style(  # DYNAMIC: bg por item
-                    "background:var(--color-surface-alt)"
+                with (
+                    ui.element("div")
+                    .classes("quick-action-icon")
+                    .style(  # DYNAMIC: bg por item
+                        "background:var(--color-surface-alt)"
+                    )
                 ):
                     ThemeManager.icono(item.icono, size=20, color=item.color)
                 with ui.element("div").classes("hito-text-col"):
