@@ -166,8 +166,8 @@ class Estudiante(BaseModel):
         if isinstance(v, str):
             try:
                 v = date.fromisoformat(v)
-            except ValueError:
-                raise ValueError(f"Formato de fecha inválido: '{v}'. Use YYYY-MM-DD.")
+            except ValueError as e:
+                raise ValueError(f"Formato de fecha inválido: '{v}'. Use YYYY-MM-DD.") from e
         hoy = date.today()
         if v >= hoy:
             raise ValueError("La fecha de nacimiento no puede ser futura.")

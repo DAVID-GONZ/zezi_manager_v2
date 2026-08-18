@@ -191,7 +191,7 @@ class RegistroCambio(BaseModel):
         try:
             json.loads(v)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"valor_anterior/valor_nuevo debe ser JSON válido: {exc}")
+            raise ValueError(f"valor_anterior/valor_nuevo debe ser JSON válido: {exc}") from exc
         return v
 
     # ------------------------------------------------------------------

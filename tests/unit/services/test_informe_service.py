@@ -319,7 +319,7 @@ class TestGenerarBoletinesGrupo:
 
     def test_sin_periodo_ni_anio_lanza(self):
         svc = InformeService(FakeEstadRepo(), FakeExporter(), estudiante_repo=_FakeEstRepo([]))
-        with pytest.raises(ValueError, match="periodo_id|anio_id"):
+        with pytest.raises(ValueError, match=r"periodo_id|anio_id"):
             svc.generar_boletines_grupo(grupo_id=10, formato="excel")
 
     def test_sin_estudiantes_contenido_none(self):

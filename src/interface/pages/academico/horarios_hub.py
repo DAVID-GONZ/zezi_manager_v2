@@ -1242,7 +1242,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     sl = ui.slider(min=0.0, max=2.0, step=0.1, value=float(valor)).props("label")
                     sl.on(
                         "update:model-value",
-                        lambda e, l=vlbl: l.set_text(
+                        lambda e, lbl=vlbl: lbl.set_text(
                             f"{_magnitud_peso(float(e.args))} · {float(e.args):.1f}"
                         ),
                     )

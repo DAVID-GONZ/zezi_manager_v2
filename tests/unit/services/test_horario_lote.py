@@ -398,10 +398,19 @@ def test_ida_vuelta_exportar_y_reanalizar():
     class FakeInfraConBloque:
         def listar_horario_escenario(self, escenario_id):
             class B:
-                id = 1; grupo_id = 10; asignatura_id = 20; usuario_id = 5
-                asignacion_id = 1; escenario_id = 99; grupo_codigo = "10A"
-                asignatura_nombre = "Matemáticas"; docente_nombre = "Prof. A"
-                dia_semana = "lunes"; hora_inicio = "08:00"; hora_fin = "09:00"; sala = "Aula"
+                id = 1
+                grupo_id = 10
+                asignatura_id = 20
+                usuario_id = 5
+                asignacion_id = 1
+                escenario_id = 99
+                grupo_codigo = "10A"
+                asignatura_nombre = "Matemáticas"
+                docente_nombre = "Prof. A"
+                dia_semana = "lunes"
+                hora_inicio = "08:00"
+                hora_fin = "09:00"
+                sala = "Aula"
             return [B()] if escenario_id == 99 else []
 
         def existe_cruce(self, *a, **kw): return False

@@ -307,11 +307,8 @@ class TestCrearBloque:
 
         def existe_cruce_selectivo(*args, usuario_id=None, grupo_id=None, sala=None, excluir_horario_id=None):
             call_count[0] += 1
-            # Primera llamada (docente): no hay cruce
-            if call_count[0] == 1:
-                return False
-            # Segunda llamada (grupo): hay cruce
-            return True
+            # Primera llamada (docente): sin cruce; segunda (grupo): hay cruce
+            return call_count[0] != 1
 
         infra.existe_cruce = existe_cruce_selectivo
         with pytest.raises(ValueError, match="grupo ya tiene"):
@@ -327,9 +324,7 @@ class TestCrearBloque:
 
         def existe_cruce_selectivo(*args, usuario_id=None, grupo_id=None, sala=None, excluir_horario_id=None):
             call_count[0] += 1
-            if call_count[0] <= 2:
-                return False  # docente y grupo sin cruce
-            return True  # sala con cruce
+            return call_count[0] > 2  # primeras 2: docente/grupo sin cruce; 3a+: sala con cruce
 
         infra.existe_cruce = existe_cruce_selectivo
         with pytest.raises(ValueError, match="sala"):

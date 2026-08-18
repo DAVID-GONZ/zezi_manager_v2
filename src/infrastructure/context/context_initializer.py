@@ -35,6 +35,7 @@ Uso en login.py:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 # `SessionContext` se usa solo en anotaciones de tipo de cadena porque
@@ -154,10 +155,8 @@ class ContextInitializer:
 
             # Intento principal: periodo marcado como activo
             periodo = None
-            try:
+            with contextlib.suppress(Exception):
                 periodo = svc.get_activo(ctx.anio_id)
-            except Exception:
-                pass  # puede lanzar si no hay periodo activo
 
             # Fallback: primer periodo no cerrado del año
             if not periodo or not periodo.id:

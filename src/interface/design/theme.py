@@ -18,6 +18,7 @@ Uso de iconos en cualquier página/componente:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 
@@ -137,10 +138,8 @@ class ThemeManager:
         # una constante espejo de `--color-bg` (styles/tokens.css:65) que debe
         # mantenerse en sync con esa variable.
         _NATIVE_BG_MIRROR = _color_bg_native()
-        try:
+        with contextlib.suppress(Exception):  # no-op fuera de ui.run(native=True)
             app.native.window_args["background_color"] = _NATIVE_BG_MIRROR
-        except Exception:
-            pass  # Solo aplica cuando se corre con ui.run(native=True)
 
         logger.info("Design system 'Andes Minimal v2' aplicado")
 

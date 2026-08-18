@@ -96,7 +96,7 @@ def _make_registro(
     acudiente_notificado: bool = False,
     descripcion: str = "desc",
 ) -> RegistroComportamiento:
-    requiere_firma = False if tipo == TipoRegistro.DESCARGO else False
+    requiere_firma = False
     return RegistroComportamiento(
         id=id_,
         estudiante_id=1,

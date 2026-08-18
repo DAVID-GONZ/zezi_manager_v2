@@ -190,16 +190,17 @@ class EvaluacionService:
             )
 
         # Guard MIXTO_SUBCATEGORIAS: si viene padre, verificar que sea válido
-        if cfg.modo == ModoSIEE.MIXTO_SUBCATEGORIAS and dto.categoria_padre_id is not None:
-            if self._siee_repo is not None:
-                padre = self._siee_repo.get_categoria_institucional(dto.categoria_padre_id)
-                if padre is None:
-                    raise ValueError(
-                        f"La categoría padre con id {dto.categoria_padre_id} "
-                        "no es una categoría institucional."
-                    )
-                if not padre.permite_subcategorias:
-                    raise ValueError(f"La categoría '{padre.nombre}' no permite sub-categorías.")
+        if (cfg.modo == ModoSIEE.MIXTO_SUBCATEGORIAS
+                and dto.categoria_padre_id is not None
+                and self._siee_repo is not None):
+            padre = self._siee_repo.get_categoria_institucional(dto.categoria_padre_id)
+            if padre is None:
+                raise ValueError(
+                    f"La categoría padre con id {dto.categoria_padre_id} "
+                    "no es una categoría institucional."
+                )
+            if not padre.permite_subcategorias:
+                raise ValueError(f"La categoría '{padre.nombre}' no permite sub-categorías.")
 
         # Guard de peso disponible
         disponible = self.peso_autonomia_disponible(dto.asignacion_id, dto.periodo_id, anio_id)

@@ -46,7 +46,7 @@ class TestNullExporter:
     # --- pdf ---
 
     def test_pdf_lanza_runtime_error(self):
-        with pytest.raises(RuntimeError, match="weasyprint|reportlab"):
+        with pytest.raises(RuntimeError, match=r"weasyprint|reportlab"):
             NullExporter().exportar_pdf("<p>test</p>")
 
     # --- csv ---

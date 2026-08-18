@@ -297,7 +297,7 @@ def _tabla_periodo(areas: list[dict], page_w: float) -> Table:
     col_w = [w0, w_nota] + [w_asist] * 6
 
     hdrs = ["Área / Asignatura", "Nota", *_HDR_ASIST]
-    table_data: list[list] = [[_p(h, "hdr" if i == 0 else "hdr") for i, h in enumerate(hdrs)]]
+    table_data: list[list] = [[_p(h, "hdr") for h in hdrs]]
     # Override primer encabezado a izquierda
     table_data[0][0] = _p("Área / Asignatura", "hdr_l")
 

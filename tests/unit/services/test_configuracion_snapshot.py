@@ -23,9 +23,8 @@ class FakeConfigRepo(IConfiguracionRepository):
 
     def get_activa(self, institucion_id=None) -> ConfiguracionAnio | None:
         for c in self._data.values():
-            if c.activo:
-                if institucion_id is None or c.institucion_id == institucion_id:
-                    return c
+            if c.activo and (institucion_id is None or c.institucion_id == institucion_id):
+                return c
         return None
 
     def get_by_id(self, anio_id: int) -> ConfiguracionAnio | None:
@@ -33,9 +32,8 @@ class FakeConfigRepo(IConfiguracionRepository):
 
     def get_by_anio(self, institucion_id, anio: int) -> ConfiguracionAnio | None:
         for c in self._data.values():
-            if c.anio == anio:
-                if institucion_id is None or c.institucion_id == institucion_id:
-                    return c
+            if c.anio == anio and (institucion_id is None or c.institucion_id == institucion_id):
+                return c
         return None
 
     def listar(self, institucion_id=None) -> list[ConfiguracionAnio]:

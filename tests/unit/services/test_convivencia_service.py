@@ -558,7 +558,9 @@ class TestConceptoComportamiento:
                 return b"PDF-BYTES"
             def exportar_csv(self, *a, **kw): return b""
 
-        est = _FakeEst(1); est.nombre = "Ana"; est.apellido = "Ruiz"
+        est = _FakeEst(1)
+        est.nombre = "Ana"
+        est.apellido = "Ruiz"
         repo = FakeConvRepo()
         repo._notas[(1, 5)] = NotaComportamiento(
             estudiante_id=1, grupo_id=10, periodo_id=5, valor=80.0,
@@ -584,10 +586,13 @@ class TestConceptoComportamiento:
             def __init__(self): self.html = None
             def exportar_excel(self, *a, **kw): return b""
             def exportar_pdf(self, html, ruta_destino=None):
-                self.html = html; return b"PDF-BYTES"
+                self.html = html
+                return b"PDF-BYTES"
             def exportar_csv(self, *a, **kw): return b""
 
-        est = _FakeEst(1); est.nombre = "Ana"; est.apellido = "Ruiz"
+        est = _FakeEst(1)
+        est.nombre = "Ana"
+        est.apellido = "Ruiz"
         repo = FakeConvRepo()
         exp = _FakeExp()
         svc = ConvivenciaService(

@@ -149,8 +149,8 @@ class ControlDiario(BaseModel):
             raise ValueError(f"Formato de hora inválido: '{v}'. Use HH:MM.")
         try:
             return time(int(partes[0]), int(partes[1]))
-        except ValueError:
-            raise ValueError(f"Hora fuera de rango: '{v}'.")
+        except ValueError as e:
+            raise ValueError(f"Hora fuera de rango: '{v}'.") from e
 
     @model_validator(mode="after")
     def validar_horas(self) -> Self:

@@ -169,7 +169,7 @@ class TestAgregarCategoria:
     def test_lanza_si_peso_supera_100(self):
         svc, _ = _make_svc()
         svc.agregar_categoria(_cat_dto(0.70), _ctx())
-        with pytest.raises(ValueError, match="disponible|100%"):
+        with pytest.raises(ValueError, match=r"disponible|100%"):
             svc.agregar_categoria(_cat_dto(0.50), _ctx())
 
     def test_dos_categorias_distintas(self):
@@ -266,7 +266,7 @@ class TestActualizarCategoria:
         dto2 = NuevaCategoriaDTO(asignacion_id=3, periodo_id=5, nombre="B", peso=0.30)
         c2 = svc.agregar_categoria(dto2, _ctx())
         # Intentar subir c2 a 0.50 haría 0.60 + 0.50 = 1.10
-        with pytest.raises(ValueError, match="disponible|100%"):
+        with pytest.raises(ValueError, match=r"disponible|100%"):
             svc.actualizar_categoria(c2.id, ActualizarCategoriaDTO(peso=0.50))
 
     def test_peso_dto_rechaza_escala_incorrecta(self):

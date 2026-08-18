@@ -765,14 +765,12 @@ class GeneradorHorarioService:
                     continue
                 if aplicar_max_dia_estricto:
                     max_hd = _max_horas_dia(lec.usuario_id)
-                    if max_hd is not None:
-                        if horas_dia_docente.get((lec.usuario_id, dia), 0) + lec.n_horas > max_hd:
-                            motivos["max_dia"] += 1
-                            continue
-                if lec.tipo_sala_req:
-                    if _elegir_sala(lec.tipo_sala_req, dia, franja.orden, lec.n_horas) is None:
-                        motivos["sin_sala"] += 1
+                    if max_hd is not None and horas_dia_docente.get((lec.usuario_id, dia), 0) + lec.n_horas > max_hd:
+                        motivos["max_dia"] += 1
                         continue
+                if lec.tipo_sala_req and _elegir_sala(lec.tipo_sala_req, dia, franja.orden, lec.n_horas) is None:
+                    motivos["sin_sala"] += 1
+                    continue
                 motivos["desconocido"] += 1
             return motivos.most_common(1)[0][0] if motivos else "sin_slots"
 
@@ -930,9 +928,8 @@ class GeneradorHorarioService:
                 return False
             if aplicar_max_dia_estricto:
                 max_hd = _max_horas_dia(lec.usuario_id)
-                if max_hd is not None:
-                    if horas_dia_docente.get((lec.usuario_id, dia), 0) >= max_hd:
-                        return False
+                if max_hd is not None and horas_dia_docente.get((lec.usuario_id, dia), 0) >= max_hd:
+                    return False
             return True
 
         if optimizar and len(colocados) >= 2:

@@ -106,11 +106,11 @@ class TestCategoria:
             Categoria(nombre="   ", peso=0.40, asignacion_id=1, periodo_id=1)
 
     def test_peso_cero_falla(self):
-        with pytest.raises(ValidationError, match="0 .exclusivo."):
+        with pytest.raises(ValidationError, match=r"0 .exclusivo."):
             Categoria(nombre="Cat", peso=0.0, asignacion_id=1, periodo_id=1)
 
     def test_peso_mayor_1_falla(self):
-        with pytest.raises(ValidationError, match="1.0"):
+        with pytest.raises(ValidationError, match=r"1.0"):
             Categoria(nombre="Cat", peso=1.01, asignacion_id=1, periodo_id=1)
 
     def test_peso_limite_valido(self):
