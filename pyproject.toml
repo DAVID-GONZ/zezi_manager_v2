@@ -1,0 +1,55 @@
+﻿[project]
+name = "zeci-manager-v2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "erdantic>=1.2.1",
+    "graphviz>=0.21",
+    "pydeps>=3.0.6",
+    "pylint>=4.0.6",
+    "reportlab>=5.0.0",
+    "ruff>=0.16.0",
+]
+[tool.ruff]
+target-version = "py312"
+line-length = 100  # o 120, el que prefieran
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",      # pycodestyle + pyflakes
+    "UP",                # pyupgrade (usa sintaxis 3.12+)
+    "B",                 # bugbear (bugs comunes)
+    "SIM",               # simplify
+    "I",                 # isort
+    "N",                 # pep8-naming (clases CamelCase, funciones snake_case)
+    "RUF",               # reglas propias de ruff
+    "C4",                # flake8-comprehensions (simplifica list/dict comprehensions)
+    "PIE",               # misc. lints útiles
+    "T20",               # detecta print() olvidados
+    "PTH",               # pathlib en vez de os.path
+]
+ignore = [
+    "E501",              # el formatter se encarga
+    # La UI, los docstrings y los comentarios están en español: tildes, «ñ»,
+    # comillas tipográficas y guiones largos son texto correcto, no caracteres
+    # sospechosos. Sin esto ruff emite ~100 avisos de puro ruido que entierran
+    # los hallazgos reales.
+    "RUF001",            # unicode ambiguo en cadenas
+    "RUF002",            # unicode ambiguo en docstrings
+    "RUF003",            # unicode ambiguo en comentarios
+]
+
+# Reglas que NO son estilo sino defectos: un nombre indefinido o un closure mal
+# capturado revientan en tiempo de ejecución. `init.py` las trata como puerta
+# bloqueante; el resto de reglas se reportan pero no tumban la verificación.
+# Mantener esta lista sincronizada con `_RUFF_BLOQUEANTES` en init.py.
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.per-file-ignores]
+"src/infrastructure/db/seed.py" = ["T20"]   # seed puede tener prints
+"scripts/*" = ["T20"]
+"init.py" = ["T20"]        # init.py vive en la raíz, no en src/
+

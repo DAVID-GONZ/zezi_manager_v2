@@ -124,5 +124,6 @@ AGENTS.md
 init.py
 spec_author.md
 *.toml
+!pyproject.toml
 *.lock
 *.ruff_cache
