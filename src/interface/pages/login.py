@@ -10,6 +10,7 @@ from nicegui import app, ui
 
 from container import Container
 from src.interface.design.components.buttons import btn_primary
+from src.interface.design.components.form_fields import label_above
 from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("LOGIN")
@@ -30,17 +31,21 @@ def login_page() -> None:
 
             # ── Formulario ───────────────────────────────────────────────────
             with ui.column().classes("w-full gap-4"):
-                usuario_input = (
-                    ui.input(label="Usuario", placeholder="usuario")
-                    .classes("w-full andes-input")
-                    .props("outlined")
-                )
+                with ui.column().classes("w-full gap-1"):
+                    label_above("Usuario")
+                    usuario_input = (
+                        ui.input(placeholder="usuario")
+                        .classes("w-full andes-input")
+                        .props("borderless dense")
+                    )
 
-                password_input = (
-                    ui.input(label="Contraseña", placeholder="Contraseña", password=True)
-                    .classes("w-full andes-input")
-                    .props("outlined")
-                )
+                with ui.column().classes("w-full gap-1"):
+                    label_above("Contraseña")
+                    password_input = (
+                        ui.input(placeholder="Contraseña", password=True)
+                        .classes("w-full andes-input")
+                        .props("borderless dense")
+                    )
 
             # ── Toggle de contraseña con ícono del design system ─────────────
             _pwd_visible = [False]

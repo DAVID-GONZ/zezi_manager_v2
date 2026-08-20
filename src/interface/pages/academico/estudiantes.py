@@ -41,6 +41,12 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_select,
+    filter_input,
+    filter_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -760,16 +766,16 @@ def estudiantes_page() -> None:
                     "text-caption text-muted u-mb-sm"
                 )
 
-                sel_destino = ui.select(
-                    label="Grupo destino",
+                sel_destino = field_select(
+                    "Grupo destino",
                     options=opciones,
                     with_input=True,
-                ).classes("w-full")
+                )
 
-                inp_motivo = ui.input(
-                    label="Motivo (requerido si cambia de grado)",
+                inp_motivo = field_input(
+                    "Motivo (requerido si cambia de grado)",
                     placeholder="Ej: promoción, repitencia, corrección de cupo...",
-                ).classes("w-full")
+                )
 
                 # Aviso + confirmación de cambio de grado (se muestra dinámicamente).
                 aviso_box = ui.column().classes("w-full u-mt-sm")
@@ -1023,7 +1029,7 @@ def estudiantes_page() -> None:
                     for g in _s["grupos"]:
                         _grupos_opts[g.id] = g.codigo
 
-                    ui.select(
+                    filter_select(
                         label="Grupo",
                         options=_grupos_opts,
                         value=None,
@@ -1032,9 +1038,10 @@ def estudiantes_page() -> None:
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
-                    ).classes("flex-3")
+                        cls_extra="flex-3",
+                    )
 
-                    ui.select(
+                    filter_select(
                         label="Estado",
                         options={
                             None: "Todos",
@@ -1049,7 +1056,8 @@ def estudiantes_page() -> None:
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
-                    ).classes("flex-3")
+                        cls_extra="flex-3",
+                    )
 
                     ui.checkbox(
                         "Solo con PIAR",
@@ -1062,14 +1070,16 @@ def estudiantes_page() -> None:
                         ),
                     )
 
-                    ui.input(
-                        label="Buscar (nombre / documento)",
+                    filter_input(
+                        label="Buscar",
+                        placeholder="Nombre o documento",
                         on_change=lambda e: (
                             _s.update({"filtro_busqueda": e.value, "filtro_tocado": True}),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
-                    ).classes("flex-4")
+                        cls_extra="flex-4",
+                    )
 
                     btn_primary(
                         "Buscar",

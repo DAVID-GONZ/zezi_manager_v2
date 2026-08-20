@@ -28,6 +28,11 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_select,
+    label_above,
+)
 from src.interface.design.styles.tokens import Icons
 
 # Opciones de catálogo (misma fuente que el dominio: TIPOS_FRANJA / JORNADAS_VALIDAS).
@@ -40,14 +45,20 @@ def _tipo_str(tipo) -> str:
     return tipo if isinstance(tipo, str) else getattr(tipo, "value", str(tipo))
 
 
-def _input_hora(label: str, value: str):
+def _input_hora(label: str, value: str, requerido: bool = False):
     """Campo de hora amigable: máscara HH:MM + selector de reloj emergente.
 
     El usuario puede escribir (la máscara inserta el «:» y limita a dígitos) o
     pulsar el icono de reloj para elegir la hora en un selector visual de 24 h.
     Devuelve el `ui.input` para leer su `.value` ("HH:MM").
     """
-    with ui.input(label, placeholder="07:00", value=value).classes("w-full") as inp:
+    label_above(label.removesuffix(" *"), requerido=requerido)
+    inp = (
+        ui.input(placeholder="07:00", value=value)
+        .classes("andes-input w-full")
+        .props("borderless dense")
+    )
+    with inp:
         inp.props('mask="##:##"')
         with inp.add_slot("append"):
             btn_icon("schedule", on_click=lambda: menu.open())
@@ -61,21 +72,22 @@ def plantilla_form_dialog(on_submit: Callable[[dict], None]) -> None:
     with custom_dialog(max_width="md") as dlg:
         ui.label("Nueva plantilla").classes("font-h3 form-dialog-title")
 
-        in_nombre = ui.input(
-            "Nombre *",
+        in_nombre = field_input(
+            "Nombre",
+            requerido=True,
             placeholder="Ej: Plantilla Jornada Mañana",
-        ).classes("w-full")
-        sel_jornada = ui.select(
+        )
+        sel_jornada = field_select(
+            "Jornada",
             list(JORNADA_OPTS.keys()),
-            label="Jornada",
             value="UNICA",
-        ).classes("w-full")
-        sel_dias = ui.select(
+        )
+        sel_dias = field_select(
+            "Días activos",
             DIAS_VALIDOS,
-            label="Días activos",
             value=[],
             multiple=True,
-        ).classes("w-full")
+        )
 
         def _guardar() -> None:
             datos = {
@@ -113,18 +125,18 @@ def franja_form_dialog(
         ui.label("Editar franja" if es_edicion else "Añadir franja").classes(
             "font-h3 form-dialog-title"
         )
-        in_inicio = _input_hora("Hora inicio *", ini_inicio)
-        in_fin = _input_hora("Hora fin *", ini_fin)
-        sel_tipo = ui.select(
+        in_inicio = _input_hora("Hora inicio", ini_inicio, requerido=True)
+        in_fin = _input_hora("Hora fin", ini_fin, requerido=True)
+        sel_tipo = field_select(
+            "Tipo",
             list(TIPO_FRANJA_OPTS.keys()),
-            label="Tipo",
             value=ini_tipo,
-        ).classes("w-full")
-        in_etiqueta = ui.input(
+        )
+        in_etiqueta = field_input(
             "Etiqueta (opcional)",
             placeholder="Ej: Período 1",
             value=ini_etiqueta,
-        ).classes("w-full")
+        )
 
         def _guardar() -> None:
             datos = {

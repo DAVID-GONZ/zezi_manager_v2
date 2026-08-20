@@ -41,6 +41,12 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import (
+    field_number,
+    field_select,
+    filter_select,
+    inline_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.services.asignacion_service import FiltroAsignacionesDTO, NuevaAsignacionDTO
@@ -393,11 +399,11 @@ def asignaciones_page() -> None:
             cap_txt = f"{carga}/{cap} h" if cap is not None else f"{carga} h · sin tope"
             ui.label(f"Carga actual del docente: {cap_txt}").classes("text-caption text-secondary")
 
-            sel_grupo = ui.select(grupos_opts, label="Grupo *").classes("w-full").props("outlined")
-            sel_asig = (
-                ui.select({}, label="Asignatura del plan (sin docente) *")
-                .classes("w-full")
-                .props("outlined")
+            sel_grupo = field_select("Grupo", grupos_opts, requerido=True)
+            sel_asig = field_select(
+                "Asignatura del plan (sin docente)",
+                {},
+                requerido=True,
             )
 
             def _on_grupo(e) -> None:
@@ -537,11 +543,12 @@ def asignaciones_page() -> None:
             ui.label(f"{horas} h" if horas is not None else "—").classes(
                 "w-16 text-sm text-secondary"
             )
-            ui.select(
+            inline_select(
                 opts,
                 value=cur_uid if cur_uid else 0,
                 on_change=lambda e, aid=asignatura_id: _set_docente(aid, e.value or None),
-            ).classes("w-72").props("dense outlined")
+                cls_extra="w-72",
+            )
             with ui.element("div").classes("w-28"):
                 status_badge("Asignada", variante="success") if activo else status_badge(
                     "Pendiente", variante="warning"
@@ -685,29 +692,23 @@ def asignaciones_page() -> None:
             _barra_progreso(carga, cap, alerta_sobre=True)
 
             # Configuración del tope: máximo base + horas extra
-            with ui.row().classes("form-row-center-md u-mt-sm"):
-                inp_max = (
-                    ui.number(
-                        label="Máx. base (h)",
+            with ui.row().classes("form-row-center-md u-mt-sm items-end"):
+                with ui.element("div").classes("w-32"):
+                    inp_max = field_number(
+                        "Máx. base (h)",
                         value=maxh,
                         min=0,
                         max=60,
                         step=1,
                     )
-                    .classes("w-32")
-                    .props("dense outlined")
-                )
-                inp_extra = (
-                    ui.number(
-                        label="Horas extra",
+                with ui.element("div").classes("w-32"):
+                    inp_extra = field_number(
+                        "Horas extra",
                         value=extra,
                         min=0,
                         max=30,
                         step=1,
                     )
-                    .classes("w-32")
-                    .props("dense outlined")
-                )
                 btn_secondary(
                     "Guardar tope",
                     icon="save",
@@ -825,12 +826,14 @@ def asignaciones_page() -> None:
             with ui.row().classes("form-row-center-md"):
                 periodo_opts = {p.id: p.nombre for p in _s["periodos"]}
                 if periodo_opts:
-                    ui.select(
-                        periodo_opts,
-                        value=_s["periodo_id"],
+                    filter_select(
                         label="Periodo",
+                        options=periodo_opts,
+                        value=_s["periodo_id"],
                         on_change=lambda e: _cambiar_periodo(e.value),
-                    ).classes("w-48").props("dense outlined")
+                        clearable=False,
+                        cls_extra="w-44",
+                    )
                 if es_directivo:
                     with ui.element("div").classes("parrilla-segmento"):
                         for clave, lbl in [("grupo", "Por grupo"), ("docente", "Por docente")]:

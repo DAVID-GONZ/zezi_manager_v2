@@ -36,6 +36,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_primary
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.services.asignacion_service import FiltroAsignacionesDTO
@@ -112,38 +113,42 @@ def consolidado_notas_page() -> None:
             with ui.element("div").classes("form-grid-2"):
                 # Grupo
                 grupos_opts = {g.id: g.nombre or g.codigo for g in _s["grupos"]}
-                ui.select(
+                filter_select(
                     label="Grupo",
                     options=grupos_opts,
                     value=_s["grupo_id"],
                     on_change=lambda e: on_grupo_change(e.value),
-                ).classes("w-full")
+                    clearable=False,
+                )
 
                 # Asignación
                 asig_opts = {a.asignacion_id: a.asignatura_nombre for a in _s["asignaciones"]}
-                ui.select(
+                filter_select(
                     label="Asignación",
                     options=asig_opts,
                     value=_s["asignacion_id"],
                     on_change=lambda e: _s.update({"asignacion_id": e.value}),
-                ).classes("w-full")
+                    clearable=False,
+                )
 
                 # Periodo
                 per_opts = {p.id: getattr(p, "nombre", str(p.id)) for p in _s["periodos"]}
-                ui.select(
+                filter_select(
                     label="Periodo",
                     options=per_opts,
                     value=_s["periodo_id"],
                     on_change=lambda e: _s.update({"periodo_id": e.value}),
-                ).classes("w-full")
+                    clearable=False,
+                )
 
                 # Formato
-                ui.select(
+                filter_select(
                     label="Formato",
                     options={"excel": "Excel (.xlsx)", "pdf": "PDF"},
                     value=_s["formato"],
                     on_change=lambda e: _s.update({"formato": e.value}),
-                ).classes("w-full")
+                    clearable=False,
+                )
 
                 # Fecha desde
                 date_input(

@@ -1,7 +1,7 @@
 """
 src/interface/pages/evaluacion/planilla_notas.py
 =================================================
-Planilla de notas y gestión de actividades.
+Planilla de notas, actividades y categorías docentes.
 Ruta:   /evaluacion/planilla
 Acceso: todos los autenticados
 
@@ -9,11 +9,11 @@ El periodo, grupo y asignación se seleccionan mediante pills inline al
 inicio del contenido. La selección es independiente del topbar.
 
 Vistas:
-  PLANILLA    — ag-Grid de estudiantes × actividades con edición inline de notas.
-  ACTIVIDADES — lista de actividades con CRUD completo y gestión de estado.
+  PLANILLA           — ag-Grid de estudiantes × actividades con edición inline.
+  ACTIVIDADES/CATS   — layout dos columnas: actividades (izq.) y categorías (der.).
 
 La vista activa se controla con dos botones explícitos (no un select).
-La configuración de categorías se delega a /evaluacion/configuracion.
+El corte de Plan de Mejoramiento se gestiona en /evaluacion/configuracion.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
     empty_state,
+    form_dialog,
     skeleton_table,
     status_badge,
     toast_error,
@@ -40,6 +41,11 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    field_select,
+)
 from src.interface.design.components.inline_selectors import (
     inline_periodo_grupo_asignatura,
 )
@@ -47,13 +53,19 @@ from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.services.evaluacion_service import (
+    ActualizarCategoriaDTO,
+    ContextoAcademicoDTO,
     EstadoActividad,
     NuevaActividadDTO,
+    NuevaCategoriaDTO,
     PuntosExtra,
     RegistrarNotaDTO,
     TipoPuntosExtra,
 )
-from src.services.plan_mejoramiento_service import EstadoNotaCorte
+from src.services.plan_mejoramiento_service import (
+    EjecutarCorteDTO,
+    EstadoNotaCorte,
+)
 
 logger = logging.getLogger("EVALUACION.PLANILLA")
 
@@ -108,7 +120,7 @@ def planilla_notas_page() -> None:
         "planilla": [],
         "puntos_extra": {},  # {estudiante_id: PuntosExtra}
         "mostrar_puntos": False,
-        "modo": "planilla",  # "planilla" | "actividades"
+        "modo": "planilla",  # "planilla" | "actividades" | "corte"
         "corte": None,  # CortePlan | None
         "notas_corte": {},  # {estudiante_id: NotaCortePlan}
         # formulario nueva actividad
@@ -116,6 +128,14 @@ def planilla_notas_page() -> None:
         "act_categoria_id": None,
         "act_valor_max": 100.0,
         "act_descripcion": "",
+        # formulario nueva categoría docente
+        "form_cat_nombre": "",
+        "form_cat_peso": 10,   # porcentaje 1–100; se divide al guardar
+        # SIEE / categorías institucionales (cargado una vez en inicio)
+        "anio_id": None,
+        "siee_cfg": None,
+        "cats_inst": [],
+        "peso_disponible": 1.0,  # cacheado; actualizado en _cargar_datos
         "cargando": True,  # skeleton mientras carga la planilla inicial
     }
 
@@ -163,8 +183,23 @@ def planilla_notas_page() -> None:
             _s["corte"] = None
             _s["notas_corte"] = {}
 
+        # Cachear peso disponible — evita DB-call en el render path
+        try:
+            anio_id = _s.get("anio_id")
+            asig_id = _s["asignacion_id"]
+            per_id = _s["periodo_id"]
+            if anio_id and asig_id and per_id:
+                _s["peso_disponible"] = Container.evaluacion_service().peso_autonomia_disponible(
+                    asig_id, per_id, anio_id
+                )
+            else:
+                _s["peso_disponible"] = 1.0
+        except Exception:
+            _s["peso_disponible"] = 1.0
+
     async def _carga_inicial():
-        _cargar_datos()
+        _cargar_siee_cats()   # primero: establece anio_id
+        _cargar_datos()        # segundo: usa anio_id para cachear peso
         _s["cargando"] = False
         barra_vista.refresh()
         panel_vista.refresh()
@@ -276,6 +311,133 @@ def planilla_notas_page() -> None:
         )
         saved = Container.evaluacion_service().guardar_puntos_extra(pe, ctx.usuario_id)
         _s["puntos_extra"][est_id] = saved
+
+    # ── Helpers — SIEE y categorías ──────────────────────────────────────────
+    def _cargar_siee_cats() -> None:
+        try:
+            config = Container.configuracion_service().get_activa()
+            _s["anio_id"] = config.id if config else None
+            if _s["anio_id"]:
+                svc = Container.evaluacion_service()
+                _s["siee_cfg"] = svc.get_configuracion_siee(_s["anio_id"])
+                _s["cats_inst"] = svc.listar_categorias_institucionales(_s["anio_id"])
+        except Exception as exc:
+            logger.error("Error cargando SIEE/cats inst: %s", exc)
+
+    def _ctx_dto() -> ContextoAcademicoDTO | None:
+        anio_id = _s.get("anio_id")
+        per_id = _s["periodo_id"]
+        asig_id = _s["asignacion_id"]
+        if not anio_id or not per_id or not asig_id:
+            return None
+        return ContextoAcademicoDTO(
+            usuario_id=ctx.usuario_id,
+            anio_id=anio_id,
+            periodo_id=per_id,
+            asignacion_id=asig_id,
+        )
+
+    def _peso_disponible_docente() -> float:
+        return _s.get("peso_disponible", 1.0)
+
+    # ── Acciones — categorías docente ─────────────────────────────────────────
+    def _crear_cat_docente() -> None:
+        cdt = _ctx_dto()
+        if not cdt:
+            toast_warning("Selecciona periodo y asignación primero")
+            return
+        try:
+            dto = NuevaCategoriaDTO(
+                nombre=_s["form_cat_nombre"],
+                peso=_s["form_cat_peso"] / 100.0,
+                asignacion_id=_s["asignacion_id"],
+                periodo_id=_s["periodo_id"],
+                categoria_padre_id=None,
+            )
+            Container.evaluacion_service().agregar_categoria(dto, cdt, usuario_id=ctx.usuario_id)
+            toast_success(f"Categoría '{dto.nombre}' creada")
+            _s["form_cat_nombre"] = ""
+            _s["form_cat_peso"] = 10
+            _cargar_datos()
+            panel_vista.refresh()
+        except (PermissionError, ValueError) as exc:
+            toast_warning(str(exc))
+        except Exception as exc:
+            logger.error("Error al crear categoría: %s", exc)
+            toast_error("Error al crear la categoría")
+
+    def _editar_cat_docente(cat) -> None:
+        def _guardar(datos: dict) -> bool | None:
+            try:
+                nuevo_nombre = str(datos.get("nombre", "")).strip() or None
+                if not nuevo_nombre:
+                    toast_warning("El nombre es obligatorio")
+                    return False
+                nuevo_peso = (
+                    float(datos["peso"]) / 100.0 if datos.get("peso") is not None else None
+                )
+                dto_act = ActualizarCategoriaDTO(nombre=nuevo_nombre, peso=nuevo_peso)
+                Container.evaluacion_service().actualizar_categoria(
+                    cat.id, dto_act, usuario_id=ctx.usuario_id
+                )
+                toast_success("Categoría actualizada")
+                _cargar_datos()
+                panel_vista.refresh()
+            except ValueError as exc:
+                toast_warning(str(exc))
+                return False
+            except Exception as exc:
+                logger.error("Error al actualizar categoría: %s", exc)
+                toast_error("Error al actualizar")
+                return False
+
+        form_dialog(
+            titulo="Editar categoría",
+            campos=[
+                {
+                    "key": "nombre",
+                    "label": "Nombre *",
+                    "tipo": "text",
+                    "valor": cat.nombre,
+                    "requerido": True,
+                },
+                {
+                    "key": "peso",
+                    "label": "Peso % *",
+                    "tipo": "number",
+                    "valor": round(cat.peso * 100, 1),
+                    "min": 1,
+                    "max": 100,
+                    "step": 1,
+                    "format": "%.0f",
+                },
+            ],
+            on_submit=_guardar,
+            max_width="max-w-md",
+        )
+
+    def _eliminar_cat_docente(cat) -> None:
+        def _ejecutar() -> None:
+            try:
+                Container.evaluacion_service().eliminar_categoria(
+                    cat.id, usuario_id=ctx.usuario_id
+                )
+                toast_success(f"'{cat.nombre}' eliminada")
+                _cargar_datos()
+                panel_vista.refresh()
+            except ValueError as exc:
+                toast_warning(str(exc))
+            except Exception as exc:
+                logger.error("Error al eliminar categoría: %s", exc)
+                toast_error("Error al eliminar")
+
+        confirm_dialog(
+            titulo="Eliminar categoría",
+            mensaje=f"¿Eliminar '{cat.nombre}'? Esta acción es irreversible.",
+            on_confirm=_ejecutar,
+            variante="danger",
+            texto_confirmar="Eliminar",
+        )
 
     # ── Acciones — actividades ────────────────────────────────────────────────
     def _crear_actividad() -> None:
@@ -678,7 +840,7 @@ def planilla_notas_page() -> None:
         if periodo_abierto:
             grid.on("cellValueChanged", on_cell_edit)
 
-    # ── Vista: gestión de actividades ─────────────────────────────────────────
+    # ── Vista: actividades + categorías (layout 2 columnas) ──────────────────
     def _render_actividades() -> None:
         actividades = _s["actividades"]
         categorias = _s["categorias"]
@@ -692,179 +854,421 @@ def planilla_notas_page() -> None:
                 ).classes("tablero-empty-hint")
             return
 
-        # Enlace a configuración de categorías
-        with ui.row().classes("form-row-center u-mb-lg text-sm text-muted"):
-            ThemeManager.icono("info_outline", size=16)
-            ui.label("Las categorías se configuran en")
-            ui.link(
-                "Configuración de evaluación",
-                target="/evaluacion/configuracion",
-            ).classes("text-primary font-medium")
+        with ui.element("div").classes("flex gap-6 flex-wrap items-start"):
 
-        # Formulario nueva actividad
-        with ui.element("div").classes("bg-subtle form-box u-mb-lg"):
-            ui.label("Nueva actividad").classes("section-subtitle-sm u-mb-md")
-            with ui.row().classes("form-row-inline"):
-                ui.input(
-                    "Nombre *",
-                    placeholder="Ej: Taller 1",
-                ).classes("w-44").bind_value(_s, "act_nombre")
-                ui.select(
-                    cat_opts or {"": "Sin categorías — configúralas primero"},
-                    value=None,
-                    label="Categoría *",
-                    on_change=lambda e: _s.__setitem__("act_categoria_id", e.value),
-                ).classes("w-52")
-                ui.number(
-                    "Valor máximo",
-                    value=100.0,
-                    min=0.1,
-                    step=0.5,
-                ).classes("w-28").bind_value(_s, "act_valor_max")
-                ui.input(
-                    "Descripción",
-                    placeholder="Opcional",
-                ).classes("w-48").bind_value(_s, "act_descripcion")
-                btn_primary("Agregar", icon="add", on_click=_crear_actividad)
+            # ── Columna izquierda: Actividades ────────────────────────────────
+            with ui.element("div").classes("flex-1").style("min-width:360px"):
 
-        # Lista de actividades
-        if not actividades:
-            with ui.element("div").classes("tablero-empty mt-2"):
-                ui.label("Sin actividades para este periodo y asignación.").classes(
-                    "tablero-empty-hint"
+                # Formulario nueva actividad — etiquetas estáticas sobre cada campo
+                with ui.element("div").classes("bg-subtle form-box u-mb-lg"):
+                    with ui.row().classes("items-end gap-3 flex-wrap"):
+
+                        with ui.element("div").classes("flex-1").style("min-width:130px"):
+                            field_input(
+                                "Nombre",
+                                requerido=True,
+                                placeholder="Ej: Taller 1",
+                            ).bind_value(_s, "act_nombre")
+
+                        with ui.element("div").classes("flex-1").style("min-width:150px"):
+                            field_select(
+                                "Categoría",
+                                cat_opts or {"": "Sin categorías — créalas primero →"},
+                                value=None,
+                                requerido=True,
+                                on_change=lambda e: _s.__setitem__("act_categoria_id", e.value),
+                            )
+
+                        with ui.element("div").style("width:96px"):
+                            field_number(
+                                "Val. máx",
+                                value=100.0,
+                                min=0.1,
+                                step=0.5,
+                            ).bind_value(_s, "act_valor_max")
+
+                        with ui.element("div").classes("flex-1").style("min-width:120px"):
+                            field_input(
+                                "Descripción",
+                                placeholder="Opcional",
+                            ).bind_value(_s, "act_descripcion")
+
+                        with ui.element("div").classes("flex-shrink-0").style("padding-bottom:2px"):
+                            btn_primary("Agregar", icon="add", size="sm", on_click=_crear_actividad)
+
+                # Lista de actividades agrupada por categoría
+                if not actividades:
+                    empty_state(
+                        icono="assignment",
+                        titulo="Sin actividades",
+                        descripcion="Crea tus categorías a la derecha y luego agrega actividades con el formulario.",
+                    )
+                else:
+                    acts_por_cat: dict[int, list] = {}
+                    for act in actividades:
+                        acts_por_cat.setdefault(act.categoria_id, []).append(act)
+
+                    for cat in categorias:
+                        acts_cat = acts_por_cat.get(cat.id, [])
+                        if not acts_cat:
+                            continue
+
+                        with ui.element("div").classes("u-mb-lg"):
+                            with ui.row().classes("form-row-center gap-sm u-mb-sm"):
+                                ThemeManager.icono(
+                                    "folder_open", size=16, color="var(--color-primary)"
+                                )
+                                ui.label(cat.nombre).classes("section-subtitle-sm")
+                                ui.label(f"{cat.peso_porcentaje:.0f}%").classes(
+                                    "text-xs text-muted font-mono"
+                                )
+                                ui.element("div").classes("flex-1")
+                                ui.label(
+                                    f"{len(acts_cat)} actividad{'es' if len(acts_cat) != 1 else ''}"
+                                ).classes("text-xs text-muted")
+
+                            with ui.element("div").classes("border-default").style(
+                                "border-radius:var(--radius-lg);overflow:hidden"
+                            ):
+                                for act in acts_cat:
+                                    estado_val = (
+                                        act.estado.value
+                                        if hasattr(act.estado, "value")
+                                        else str(act.estado)
+                                    )
+                                    badge_tipo = {
+                                        "borrador": "neutral",
+                                        "publicada": "success",
+                                        "cerrada": "warning",
+                                    }.get(estado_val, "neutral")
+
+                                    with ui.element("div").classes(
+                                        "flex items-center gap-3 px-3 py-2 border-top-soft row-hover"
+                                    ).style("min-height:44px"):
+                                        ui.label(act.nombre).classes(
+                                            "flex-1 text-sm font-medium"
+                                        )
+                                        if act.descripcion:
+                                            ui.label(act.descripcion).classes(
+                                                "text-xs text-muted text-truncate"
+                                            ).style("max-width:200px")
+                                        ui.label(f"{act.valor_maximo:.0f}").classes(
+                                            "text-xs font-mono text-muted"
+                                        ).tooltip("Valor máximo")
+                                        status_badge(estado_val.capitalize(), badge_tipo)
+                                        with ui.row().classes(
+                                            "form-row-actions no-shrink"
+                                        ).style("width:auto"):
+                                            if act.estado == EstadoActividad.BORRADOR:
+                                                btn_icon(
+                                                    "publish",
+                                                    on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(aid, an),
+                                                    tooltip="Publicar",
+                                                )
+                                                btn_icon(
+                                                    "delete",
+                                                    on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
+                                                    tooltip="Eliminar",
+                                                    variante="danger",
+                                                )
+                                            elif act.estado == EstadoActividad.PUBLICADA:
+                                                btn_icon(
+                                                    "lock",
+                                                    on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(aid, an),
+                                                    tooltip="Cerrar actividad",
+                                                )
+                                                btn_icon(
+                                                    "delete",
+                                                    on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(aid, an),
+                                                    tooltip="Eliminar",
+                                                    variante="danger",
+                                                )
+                                            elif act.estado == EstadoActividad.CERRADA:
+                                                btn_icon(
+                                                    "lock_open",
+                                                    on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(aid, an),
+                                                    tooltip="Reabrir actividad",
+                                                )
+
+            # ── Columna derecha: Categorías propias ───────────────────────────
+            with ui.element("div").classes("panel-card").style(
+                "width:300px;flex-shrink:0"
+            ):
+                siee_cfg = _s.get("siee_cfg")
+                modo_siee = siee_cfg.modo.value if siee_cfg else "libre"
+
+                with ui.row().classes("form-row-center-md u-mb-md"):
+                    ThemeManager.icono("folder", size=18, color="var(--color-primary)")
+                    ui.label("Mis categorías").classes("section-subtitle-sm flex-1")
+
+                # Fallo de carga de configuración SIEE
+                if not _s.get("anio_id"):
+                    with ui.element("div").classes("alert-panel-row text-warning bg-warning-soft"):
+                        ThemeManager.icono("warning", size=16)
+                        ui.label(
+                            "No se pudo cargar la configuración. "
+                            "Recarga la página para intentarlo de nuevo."
+                        ).classes("text-xs")
+                elif modo_siee == "institucional_fijo":
+                    with ui.element("div").classes(
+                        "alert-panel-row text-warning bg-warning-soft"
+                    ):
+                        ThemeManager.icono("info", size=16)
+                        ui.label(
+                            "Categorías gestionadas por administración."
+                        ).classes("text-xs")
+                else:
+                    # Barra de peso disponible
+                    disponible = _peso_disponible_docente()
+                    usado = round((1.0 - disponible) * 100, 1)
+                    total_pct = round(disponible * 100, 1)
+
+                    with ui.element("div").classes("u-mb-md"):
+                        with ui.row().classes("items-center gap-2 u-mb-xs"):
+                            ui.label("Peso disponible:").classes(
+                                "text-xs font-semibold flex-1"
+                            )
+                            ui.label(f"{total_pct:.1f}%").classes(
+                                f"text-xs font-bold {'text-success' if disponible > 0.001 else 'text-faint'}"
+                            )
+                            ui.label(f"(usado: {usado:.1f}%)").classes("text-xs text-muted")
+                        with ui.element("div").classes("progress-bar-track bg-surface-alt"):
+                            ancho_usado = min(100, round(usado))
+                            color_bar = "fill-success" if usado <= 100 else "fill-error"
+                            ui.element("div").classes(f"{color_bar} h-full").style(
+                                f"width:{ancho_usado}%"
+                            )
+
+                    # Formulario nueva categoría — etiquetas estáticas
+                    with ui.element("div").classes("bg-subtle form-box u-mb-md"):
+                        ui.label("Nueva categoría").classes("text-xs font-semibold u-mb-sm")
+                        with ui.row().classes("items-end gap-2"):
+
+                            with ui.element("div").classes("flex-1"):
+                                field_input(
+                                    "Nombre",
+                                    requerido=True,
+                                    placeholder="Ej: Quizzes",
+                                ).bind_value(_s, "form_cat_nombre")
+
+                            with ui.element("div").style("width:72px"):
+                                field_number(
+                                    "Peso %",
+                                    value=10,
+                                    min=1,
+                                    max=100,
+                                    step=1,
+                                    format="%.0f",
+                                ).bind_value(_s, "form_cat_peso")
+
+                            with ui.element("div").classes("flex-shrink-0").style("padding-bottom:2px"):
+                                btn_primary("Agregar", icon="add", size="sm", on_click=_crear_cat_docente)
+
+                    # Lista categorías docente
+                    cats_doc = [c for c in categorias if not c.es_institucional]
+                    if not cats_doc:
+                        ui.label("Sin categorías propias aún.").classes(
+                            "text-empty text-xs"
+                        )
+                    else:
+                        with ui.element("div").classes("w-full"):
+                            for cat in cats_doc:
+                                with ui.element("div").classes("divider-row"):
+                                    with ui.element("div").classes("flex-1 min-w-0"):
+                                        ui.label(cat.nombre).classes(
+                                            "text-sm font-medium text-truncate"
+                                        )
+                                        ui.label(f"{cat.peso_porcentaje:.1f}%").classes(
+                                            "text-xs text-muted font-mono"
+                                        )
+                                    with ui.row().classes("form-row-actions no-shrink"):
+                                        btn_icon(
+                                            "edit",
+                                            on_click=lambda c=cat: _editar_cat_docente(c),
+                                            tooltip="Editar",
+                                        )
+                                        btn_icon(
+                                            "delete",
+                                            on_click=lambda c=cat: _eliminar_cat_docente(c),
+                                            tooltip="Eliminar",
+                                            variante="danger",
+                                        )
+
+    # ── Acción: ejecutar corte ────────────────────────────────────────────────
+    def _ejecutar_corte() -> None:
+        asig_id = _s["asignacion_id"]
+        per_id = _s["periodo_id"]
+        grupo_id = _s["grupo_id"]
+        if not asig_id or not per_id or not grupo_id:
+            toast_warning("Define el contexto desde la barra superior")
+            return
+
+        def _confirmar() -> None:
+            try:
+                dto = EjecutarCorteDTO(
+                    asignacion_id=asig_id,
+                    periodo_id=per_id,
+                    nota_minima_aprobacion=60.0,
+                    usuario_id=ctx.usuario_id,
+                )
+                _corte, notas = Container.plan_mejoramiento_service().ejecutar_corte(
+                    dto, grupo_id
+                )
+                en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+                toast_success(
+                    f"Corte ejecutado: {len(notas)} estudiantes, {en_plan} en plan de mejoramiento."
+                )
+                _cargar_datos()
+                panel_vista.refresh()
+            except ValueError as exc:
+                toast_warning(str(exc))
+            except Exception as exc:
+                logger.error("Error ejecutando corte: %s", exc)
+                toast_error("Error al ejecutar el corte")
+
+        confirm_dialog(
+            titulo="Ejecutar corte de Plan de Mejoramiento",
+            mensaje=(
+                "Se calculará el corte con las notas registradas hasta ahora. "
+                "Los estudiantes con promedio ponderado menor al umbral irán a "
+                "Plan de Mejoramiento. Esta acción no se puede deshacer."
+            ),
+            on_confirm=_confirmar,
+            texto_confirmar="Ejecutar corte",
+            texto_cancelar="Cancelar",
+        )
+
+    # ── Vista: corte de plan de mejoramiento ──────────────────────────────────
+    def _render_corte() -> None:
+        corte = _s["corte"]
+        notas = list(_s["notas_corte"].values())
+
+        if not _s["asignacion_id"] or not _s["periodo_id"]:
+            with ui.element("div").classes("tablero-empty"):
+                ThemeManager.icono("tune", size=32).classes("mb-2")
+                ui.label(
+                    "Configura el periodo y la asignación desde la barra de contexto superior."
+                ).classes("tablero-empty-hint")
+            return
+
+        if corte is None:
+            with ui.element("div").classes("alert-panel-row bg-info-soft border border-info"):
+                ThemeManager.icono("info", size=24, color="var(--color-info)")
+                ui.label(
+                    "No se ha ejecutado el corte para este periodo. "
+                    "Al ejecutar, se generará una nota de corte para cada estudiante "
+                    "con su promedio ponderado actual."
+                ).classes("text-sm text-info flex-1")
+                btn_primary(
+                    "Ejecutar corte",
+                    icon="play_arrow",
+                    on_click=_ejecutar_corte,
                 )
             return
 
-        with ui.element("div").classes("w-full"):
+        # Corte ejecutado — resumen
+        en_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.EN_PLAN)
+        sin_plan = sum(1 for n in notas if n.estado == EstadoNotaCorte.SIN_PLAN)
+        aprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.APROBADO)
+        reprobado = sum(1 for n in notas if n.estado == EstadoNotaCorte.REPROBADO)
+
+        with ui.element("div").classes("form-box bg-success-soft border border-success mb-3"):
+            with ui.row().classes("form-row-center u-mb-sm"):
+                ThemeManager.icono("check_circle", size=24, color="var(--color-success)")
+                ui.label(
+                    f"Corte ejecutado el {corte.fecha_ejecucion.strftime('%d/%m/%Y')}"
+                ).classes("font-semibold text-sm text-success")
+            with ui.row().classes("gap-4 flex-wrap"):
+                ui.label(f"Peso registrado: {corte.peso_registrado * 100:.1f}%").classes("text-sm")
+                ui.label(f"Umbral aprobación: {corte.nota_umbral:.1f}").classes("text-sm")
+
+        with ui.row().classes("form-row-center u-mt-sm flex-wrap gap-2"):
+            with ui.element("div").classes("form-box-sm flex items-center gap-2 bg-subtle"):
+                ui.label(f"Total: {len(notas)}").classes("text-sm font-semibold")
+            with ui.element("div").classes("form-box-sm flex items-center gap-2 bg-error-soft"):
+                ui.label(f"En plan: {en_plan}").classes("text-sm font-semibold text-error")
             with ui.element("div").classes(
-                "flex gap-3 px-3 py-2 font-semibold text-xs text-muted border-b"
+                "form-box-sm flex items-center gap-2 bg-success-soft"
             ):
-                ui.label("Nombre").classes("flex-1")
-                ui.label("Categoría").classes("w-36")
-                ui.label("Val. máx.").classes("w-20 text-right")
-                ui.label("Estado").classes("w-24 text-center")
-                ui.label("").classes("w-28")
-
-            for act in actividades:
-                cat_nombre = cat_opts.get(act.categoria_id, "—")
-                estado_val = act.estado.value if hasattr(act.estado, "value") else str(act.estado)
-                badge_tipo = {
-                    "borrador": "neutral",
-                    "publicada": "success",
-                    "cerrada": "warning",
-                }.get(estado_val, "neutral")
-
+                ui.label(f"Sin plan: {sin_plan}").classes("text-sm font-semibold text-success")
+            if aprobado or reprobado:
                 with ui.element("div").classes(
-                    "flex items-center gap-3 px-3 py-2 border-b row-hover"
+                    "form-box-sm flex items-center gap-2 bg-info-soft"
                 ):
-                    ui.label(act.nombre).classes("flex-1 text-sm")
-                    ui.label(cat_nombre).classes("w-36 text-sm text-muted")
-                    ui.label(f"{act.valor_maximo:.1f}").classes("w-20 text-right font-mono text-sm")
-                    with ui.element("div").classes("w-24 cell-num-center"):
-                        status_badge(estado_val.capitalize(), badge_tipo)
+                    ui.label(f"Aprobó plan: {aprobado}").classes(
+                        "text-sm font-semibold text-info"
+                    )
+                with ui.element("div").classes(
+                    "form-box-sm flex items-center gap-2 bg-warning-soft"
+                ):
+                    ui.label(f"Reprobó plan: {reprobado}").classes(
+                        "text-sm font-semibold text-warning"
+                    )
 
-                    with ui.row().classes("w-28 form-row-actions"):
-                        if act.estado == EstadoActividad.BORRADOR:
-                            btn_icon(
-                                "publish",
-                                on_click=lambda aid=act.id, an=act.nombre: _publicar_actividad(
-                                    aid, an
-                                ),
-                                tooltip="Publicar",
-                            )
-                            btn_icon(
-                                "delete",
-                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(
-                                    aid, an
-                                ),
-                                tooltip="Eliminar",
-                                variante="danger",
-                            )
-                        elif act.estado == EstadoActividad.PUBLICADA:
-                            btn_icon(
-                                "lock",
-                                on_click=lambda aid=act.id, an=act.nombre: _cerrar_actividad(
-                                    aid, an
-                                ),
-                                tooltip="Cerrar actividad",
-                            )
-                            btn_icon(
-                                "delete",
-                                on_click=lambda aid=act.id, an=act.nombre: _eliminar_actividad(
-                                    aid, an
-                                ),
-                                tooltip="Eliminar",
-                                variante="danger",
-                            )
-                        elif act.estado == EstadoActividad.CERRADA:
-                            btn_icon(
-                                "lock_open",
-                                on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(
-                                    aid, an
-                                ),
-                                tooltip="Reabrir actividad",
-                            )
+        with ui.row().classes("items-center gap-2 mt-4"):
+            ui.label(
+                "Para gestionar actividades del plan y hacer seguimiento por estudiante,"
+                " ve a Planes de Mejoramiento."
+            ).classes("text-xs text-muted flex-1")
+            btn_ghost(
+                "Ir a Planes de Mejoramiento",
+                icon="open_in_new",
+                on_click=lambda: ui.navigate.to("/evaluacion/planes"),
+            )
 
     # ── Refreshables ──────────────────────────────────────────────────────────
     @ui.refreshable
     def barra_vista() -> None:
-        """Botones de vista y toggle de puntos extra."""
+        """Toolbar: selector de vista (izq.) + acciones contextuales (der.)."""
         modo = _s["modo"]
         mostrar_puntos = _s["mostrar_puntos"]
-        with ui.row().classes("gap-2 items-center"):
-            # Vista
-            if modo == "planilla":
-                btn_primary(
-                    "Planilla de notas",
+
+        with ui.row().classes("items-center justify-between gap-2 flex-wrap w-full"):
+
+            # ── Grupo izquierdo: selector de modo (segmented tabs) ────────────
+            with ui.element("div").classes(
+                "flex items-center gap-1 bg-subtle rounded-lg"
+            ).style("padding:3px"):
+                (btn_primary if modo == "planilla" else btn_ghost)(
+                    "Planilla",
                     icon="table_chart",
+                    size="sm",
                     on_click=lambda: _cambiar_vista("planilla"),
                 )
-                btn_secondary(
+                (btn_primary if modo == "actividades" else btn_ghost)(
                     "Actividades",
                     icon="assignment",
+                    size="sm",
                     on_click=lambda: _cambiar_vista("actividades"),
                 )
-            else:
-                btn_secondary(
-                    "Planilla de notas",
-                    icon="table_chart",
-                    on_click=lambda: _cambiar_vista("planilla"),
-                )
-                btn_primary(
-                    "Actividades",
-                    icon="assignment",
-                    on_click=lambda: _cambiar_vista("actividades"),
+                (btn_primary if modo == "corte" else btn_ghost)(
+                    "Corte",
+                    icon="assignment_late",
+                    size="sm",
+                    on_click=lambda: _cambiar_vista("corte"),
                 )
 
-            # Separador visual
-            ui.element("div").classes("w-px h-6 bg-muted mx-1")
-
-            # Toggle puntos extra (solo visible en vista planilla)
-            if modo == "planilla":
-                if mostrar_puntos:
-                    btn_primary(
+            # ── Grupo derecho: acciones contextuales ──────────────────────────
+            with ui.row().classes("items-center gap-1"):
+                if modo == "planilla":
+                    (btn_primary if mostrar_puntos else btn_ghost)(
                         "Pts. extra",
                         icon="stars",
+                        size="sm",
                         on_click=_toggle_puntos,
                     )
-                else:
-                    btn_ghost(
-                        "Pts. extra",
-                        icon="stars",
-                        on_click=_toggle_puntos,
+                    ui.element("div").classes("w-px h-5 bg-muted mx-1")
+                    periodo_ok = _periodo_abierto()
+                    btn = btn_secondary(
+                        "Guardar definitivas",
+                        icon="save",
+                        size="sm",
+                        on_click=_guardar_definitivas,
                     )
-
-            # Guardar definitivas — disponible para todos los roles, solo en planilla
-            if modo == "planilla":
-                ui.element("div").classes("w-px h-6 bg-muted mx-1")
-                periodo_ok = _periodo_abierto()
-                btn = btn_secondary(
-                    "Guardar definitivas",
-                    icon="save",
-                    on_click=_guardar_definitivas,
-                )
-                if not periodo_ok:
-                    btn.props("disabled")
+                    if not periodo_ok:
+                        btn.props("disabled")
+                    ui.element("div").classes("w-px h-5 bg-muted mx-1")
+                btn_icon("refresh", on_click=_recargar, tooltip="Recargar datos", size="sm")
 
     @ui.refreshable
     def panel_vista() -> None:
@@ -872,10 +1276,13 @@ def planilla_notas_page() -> None:
         if _s.get("cargando"):
             skeleton_table(rows=15, cols=8)
             return
-        if _s["modo"] == "planilla":
+        modo = _s["modo"]
+        if modo == "planilla":
             _render_planilla()
-        else:
+        elif modo == "actividades":
             _render_actividades()
+        else:
+            _render_corte()
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -896,17 +1303,12 @@ def planilla_notas_page() -> None:
         )
 
         with ui.element("div").classes("page-stack"):
-            # Cabecera: título + barra de vista + recarga
+            # Cabecera: título en fila propia, toolbar en fila separada
             with ui.element("div").classes("panel-card"):
-                with ui.row().classes("form-row-center-md"):
-                    ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
+                with ui.row().classes("items-center gap-2 u-mb-sm"):
+                    ThemeManager.icono(Icons.GRADES, size=20, color="var(--color-primary)")
                     ui.label("Planilla de Notas").classes("section-title-xl")
-                    barra_vista()
-                    btn_icon(
-                        "refresh",
-                        on_click=_recargar,
-                        tooltip="Recargar datos",
-                    )
+                barra_vista()
 
             # Contenido de la vista activa
             with ui.element("div").classes("panel-card mt-4"):

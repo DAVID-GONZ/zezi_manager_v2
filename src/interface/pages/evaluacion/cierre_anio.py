@@ -25,6 +25,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_danger, btn_icon
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -166,12 +167,14 @@ def cierre_anio_page() -> None:
 
                 grupos_opts = {g.id: g.codigo for g in _s["grupos"]}
                 with ui.row().classes("form-row-center-md"):
-                    ui.select(
-                        grupos_opts or {"": "Sin grupos"},
+                    filter_select(
+                        label="Grupo",
+                        options=grupos_opts or {"": "Sin grupos"},
                         value=None,
-                        label="Grupo *",
                         on_change=lambda e: _s.__setitem__("grupo_id", e.value),
-                    ).classes("w-48")
+                        clearable=False,
+                        cls_extra="w-40",
+                    )
                     btn_icon("refresh", on_click=lambda: _cargar_estado(), tooltip="Recargar")
 
             # Advertencia prominente

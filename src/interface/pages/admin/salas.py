@@ -23,6 +23,12 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    field_select,
+    inline_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.services.sala_service import Sala
@@ -241,11 +247,12 @@ def salas_page() -> None:
                         ui.label(g.codigo).classes("font-medium")
                         if g.nombre:
                             ui.label(g.nombre).classes("text-xs text-secondary")
-                    ui.select(
+                    inline_select(
                         sala_opts,
                         value=g.sala_id if g.sala_id in sala_opts else 0,
                         on_change=lambda e, gid=g.id: _asignar_aula(gid, e.value or None),
-                    ).classes("flex-1").props("dense outlined")
+                        cls_extra="flex-1",
+                    )
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
@@ -256,12 +263,17 @@ def salas_page() -> None:
                     ui.label("Salas físicas").classes("text-lg font-bold")
 
                 ui.label("Nueva sala").classes("section-subtitle-sm u-mb-xs")
-                with ui.row().classes("form-row-inline"):
-                    ui.input("Nombre *", placeholder="Sala 101").classes("w-48").bind_value(
-                        _s, "nombre"
-                    )
-                    ui.select(_TIPOS_SALA, label="Tipo").classes("w-40").bind_value(_s, "tipo")
-                    ui.number("Capacidad", min=1).classes("w-24").bind_value(_s, "capacidad")
+                with ui.row().classes("form-row-inline items-end"):
+                    with ui.element("div").classes("w-48"):
+                        field_input(
+                            "Nombre",
+                            requerido=True,
+                            placeholder="Sala 101",
+                        ).bind_value(_s, "nombre")
+                    with ui.element("div").classes("w-40"):
+                        field_select("Tipo", _TIPOS_SALA).bind_value(_s, "tipo")
+                    with ui.element("div").classes("w-24"):
+                        field_number("Capacidad", min=1).bind_value(_s, "capacidad")
                     btn_primary("Crear sala", icon="add", on_click=_crear_sala)
 
                 ui.separator().classes("my-3")

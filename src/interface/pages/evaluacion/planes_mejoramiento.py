@@ -29,6 +29,12 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_danger, btn_ghost, btn_primary
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    filter_select,
+    inline_input,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -437,15 +443,12 @@ def planes_mejoramiento_page() -> None:
                                     f"{valor_actual:.1f}" if valor_actual is not None else "—"
                                 ).classes("text-center cell-mono")
                             else:
-                                inp = (
-                                    ui.input(
-                                        value=str(round(valor_actual, 1))
-                                        if valor_actual is not None
-                                        else "",
-                                        placeholder="0-100",
-                                    )
-                                    .classes("w-16 text-center")
-                                    .props("dense")
+                                inp = inline_input(
+                                    value=str(round(valor_actual, 1))
+                                    if valor_actual is not None
+                                    else "",
+                                    placeholder="0-100",
+                                    cls_extra="w-16 text-center",
                                 )
                                 # Guardar al perder foco
                                 inp.on(
@@ -460,24 +463,29 @@ def planes_mejoramiento_page() -> None:
             # ── Añadir actividad ───────────────────────────────────────────────
             with ui.element("div").classes("mt-4 pt-4 border-top-soft"):
                 ui.label("Añadir actividad al plan").classes("section-subtitle-sm u-mb-md")
-                with ui.row().classes("form-row-inline"):
-                    ui.input(
-                        "Nombre *",
-                        placeholder="Ej: Taller de refuerzo",
-                    ).classes("w-48").bind_value(_s, "form_act_nombre")
-                    ui.number(
-                        "Peso (0-1) *",
-                        value=_s["form_act_peso"],
-                        min=0.01,
-                        max=1.0,
-                        step=0.05,
-                        precision=2,
-                        on_change=lambda e: _s.__setitem__("form_act_peso", e.value),
-                    ).classes("w-32")
-                    ui.input(
-                        "Descripción",
-                        placeholder="Opcional",
-                    ).classes("w-48").bind_value(_s, "form_act_desc")
+                with ui.row().classes("form-row-inline items-end"):
+                    with ui.element("div").classes("w-48"):
+                        field_input(
+                            "Nombre",
+                            requerido=True,
+                            placeholder="Ej: Taller de refuerzo",
+                        ).bind_value(_s, "form_act_nombre")
+                    with ui.element("div").classes("w-32"):
+                        field_number(
+                            "Peso (0-1)",
+                            requerido=True,
+                            value=_s["form_act_peso"],
+                            min=0.01,
+                            max=1.0,
+                            step=0.05,
+                            precision=2,
+                            on_change=lambda e: _s.__setitem__("form_act_peso", e.value),
+                        )
+                    with ui.element("div").classes("w-48"):
+                        field_input(
+                            "Descripción",
+                            placeholder="Opcional",
+                        ).bind_value(_s, "form_act_desc")
                     btn_primary(
                         "Añadir",
                         icon="add",
@@ -510,24 +518,28 @@ def planes_mejoramiento_page() -> None:
                 periodos_opts = {p.id: p.nombre for p in _s["periodos"]}
                 asigs_opts = {a.asignacion_id: a.display_corto for a in _s["asignaciones"]}
                 with ui.row().classes("form-row-center-md"):
-                    ui.select(
-                        periodos_opts or {"": "Sin periodos"},
+                    filter_select(
+                        label="Periodo",
+                        options=periodos_opts or {"": "Sin periodos"},
                         value=_s["periodo_id"],
-                        label="Periodo *",
                         on_change=lambda e: (
                             _s.__setitem__("periodo_id", e.value),
                             _on_selector_cambio(),
                         ),
-                    ).classes("w-48")
-                    ui.select(
-                        asigs_opts or {"": "Sin asignaciones"},
+                        clearable=False,
+                        cls_extra="w-40",
+                    )
+                    filter_select(
+                        label="Asignación",
+                        options=asigs_opts or {"": "Sin asignaciones"},
                         value=_s["asignacion_id"],
-                        label="Asignación *",
                         on_change=lambda e: (
                             _s.__setitem__("asignacion_id", e.value),
                             _on_selector_cambio(),
                         ),
-                    ).classes("w-72")
+                        clearable=False,
+                        cls_extra="w-64",
+                    )
 
                 if not _s["asignacion_id"] or not _s["periodo_id"]:
                     ui.label("Selecciona periodo y asignación para ver los planes.").classes(

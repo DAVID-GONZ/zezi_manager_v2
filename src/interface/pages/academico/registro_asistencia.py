@@ -41,6 +41,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.form_fields import inline_input
 from src.interface.design.components.inline_selectors import (
     inline_periodo_grupo_asignatura,
 )
@@ -260,11 +261,12 @@ def _fila_estudiante(
                         )
 
                 if estado_actual in _REQUIERE_OBS:
-                    ui.input(
+                    inline_input(
                         placeholder="Observación (opcional)",
                         value=obs_actual,
                         on_change=lambda e, eid=est.id: on_obs(eid, e.value),
-                    ).classes("asis-obs-input").props("dense")
+                        cls_extra="asis-obs-input",
+                    )
 
 
 # ── Grilla ─────────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ from nicegui import app, ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components.buttons import btn_primary, btn_secondary
+from src.interface.design.components.form_fields import field_password
 from src.interface.design.components.toast import toast_success
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
@@ -32,23 +33,11 @@ def mi_cuenta_password_page() -> None:
 
                 # Campos
                 with ui.column().classes("w-full gap-4"):
-                    actual_input = (
-                        ui.input(
-                            label="Contraseña actual", password=True, password_toggle_button=True
-                        )
-                        .classes("w-full andes-input")
-                        .props("outlined")
-                    )
+                    actual_input = field_password("Contraseña actual")
 
                     ui.element("div").classes("pwd-separator")
 
-                    nueva_input = (
-                        ui.input(
-                            label="Nueva contraseña", password=True, password_toggle_button=True
-                        )
-                        .classes("w-full andes-input")
-                        .props("outlined")
-                    )
+                    nueva_input = field_password("Nueva contraseña")
 
                     # Medidor de fortaleza
                     with ui.element("div").classes("pwd-strength"):
@@ -69,15 +58,7 @@ def mi_cuenta_password_page() -> None:
                                 ui.label(req)
                             req_items[req] = row
 
-                    confirmar_input = (
-                        ui.input(
-                            label="Confirmar nueva contraseña",
-                            password=True,
-                            password_toggle_button=True,
-                        )
-                        .classes("w-full andes-input")
-                        .props("outlined")
-                    )
+                    confirmar_input = field_password("Confirmar nueva contraseña")
 
                 # Banner de error
                 with ui.row().classes("alert alert--error hidden") as error_container:

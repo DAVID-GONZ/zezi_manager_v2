@@ -40,6 +40,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
@@ -459,25 +460,27 @@ def usuarios_page() -> None:
                         ui.label("Filtros:").classes("text-sm font-semibold")
                         roles_opts = {None: "Todos los roles"}
                         roles_opts.update(_ROLES_OPCIONES)
-                        ui.select(
-                            roles_opts,
-                            value=None,
+                        filter_select(
                             label="Rol",
+                            options=roles_opts,
+                            value=None,
                             on_change=lambda e: (
                                 _s.__setitem__("filtro_rol", e.value),
                                 _on_filtros_cambio(),
                             ),
-                        ).classes("w-44")
+                            cls_extra="w-40",
+                        )
                         if es_admin:
-                            ui.select(
-                                instituciones_opts,
-                                value=None,
+                            filter_select(
                                 label="Institución",
+                                options=instituciones_opts,
+                                value=None,
                                 on_change=lambda e: (
                                     _s.__setitem__("filtro_institucion", e.value),
                                     _on_filtros_cambio(),
                                 ),
-                            ).classes("w-56")
+                                cls_extra="w-52",
+                            )
                         ui.checkbox(
                             "Solo activos",
                             value=_s["filtro_activos"],

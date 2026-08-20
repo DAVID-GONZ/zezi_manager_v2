@@ -28,6 +28,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary, btn_secondary
+from src.interface.design.components.form_fields import field_number, filter_select
 from src.interface.design.layout import app_layout
 
 logger = logging.getLogger("BOLETIN_ANUAL")
@@ -187,21 +188,22 @@ def boletin_anual_page() -> None:
             ui.label("Seleccionar grupo y año").classes("text-subtitle1 text-weight-medium u-mb-md")
             with ui.element("div").classes("form-grid-2"):
                 grupos_opts = {str(g.id): g.nombre or g.codigo for g in _s["grupos"]}
-                ui.select(
+                filter_select(
                     label="Grupo",
                     options=grupos_opts or {"": "Sin grupos"},
                     value=str(_s["grupo_id"]) if _s["grupo_id"] is not None else None,
                     on_change=lambda e: on_grupo_change(e.value),
-                ).classes("w-full")
+                    clearable=False,
+                )
 
-                ui.number(
-                    label="Año lectivo",
+                field_number(
+                    "Año lectivo",
                     value=_s["anio_id"],
                     min=2000,
                     max=2099,
                     precision=0,
                     on_change=lambda e: on_anio_change(int(e.value) if e.value else None),
-                ).classes("w-full")
+                )
 
     @ui.refreshable
     def lista_refreshable() -> None:

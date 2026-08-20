@@ -105,9 +105,9 @@ def configuracion_inicial_page() -> None:
                             ui.label("Nombre oficial").classes("form-field-label")
                             ui.label("*").classes("form-field-req")
                         nombre_i = (
-                            ui.input(placeholder="Nombre oficial de la institución")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         nombre_i.value = getattr(inst, "nombre_oficial", "") or ""
 
@@ -116,9 +116,9 @@ def configuracion_inicial_page() -> None:
                             ui.label("Rector/a").classes("form-field-label")
                             ui.label("*").classes("form-field-req")
                         rector_i = (
-                            ui.input(placeholder="Nombre del rector o rectora")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         rector_i.value = getattr(inst, "rector", "") or ""
 
@@ -127,9 +127,9 @@ def configuracion_inicial_page() -> None:
                             ui.label("Municipio").classes("form-field-label")
                             ui.label("*").classes("form-field-req")
                         municipio_i = (
-                            ui.input(placeholder="Municipio o ciudad")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         municipio_i.value = getattr(inst, "municipio", "") or ""
 
@@ -138,25 +138,25 @@ def configuracion_inicial_page() -> None:
                         dane_i = (
                             ui.input(placeholder="123456789012")
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         dane_i.value = getattr(inst, "codigo_dane", "") or ""
 
                     with ui.element("div").classes("base-form-field-col"):
                         ui.label("Dirección").classes("form-field-label")
                         dir_i = (
-                            ui.input(placeholder="Dirección física")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         dir_i.value = getattr(inst, "direccion", "") or ""
 
                     with ui.element("div").classes("base-form-field-col"):
                         ui.label("Teléfono").classes("form-field-label")
                         tel_i = (
-                            ui.input(placeholder="Número de contacto")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         tel_i.value = getattr(inst, "telefono", "") or ""
 
@@ -165,25 +165,25 @@ def configuracion_inicial_page() -> None:
                         email_i = (
                             ui.input(placeholder="correo@institucion.edu.co")
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         email_i.value = getattr(inst, "email_institucional", "") or ""
 
                     with ui.element("div").classes("base-form-field-col"):
                         ui.label("Resolución de aprobación").classes("form-field-label")
                         resol_i = (
-                            ui.input(placeholder="Número de resolución")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         resol_i.value = getattr(inst, "resolucion_aprobacion", "") or ""
 
                     with ui.element("div").classes("base-form-field-col"):
                         ui.label("Lema institucional").classes("form-field-label")
                         lema_i = (
-                            ui.input(placeholder="Lema o motto")
+                            ui.input()
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
                         lema_i.value = getattr(inst, "lema", "") or ""
 
@@ -194,7 +194,7 @@ def configuracion_inicial_page() -> None:
                         jornada_i = (
                             ui.select(_OPCIONES_JORNADA, value=_jornada_val)
                             .classes("andes-input w-full")
-                            .props("outlined clearable")
+                            .props("borderless dense clearable")
                         )
 
                     with ui.element("div").classes("base-form-field-col"):
@@ -204,7 +204,7 @@ def configuracion_inicial_page() -> None:
                         tipo_i = (
                             ui.select(_OPCIONES_TIPO, value=_tipo_val)
                             .classes("andes-input w-full")
-                            .props("outlined clearable")
+                            .props("borderless dense clearable")
                         )
 
                     with ui.element("div").classes("base-form-field-col"):
@@ -214,7 +214,7 @@ def configuracion_inicial_page() -> None:
                         cal_i = (
                             ui.select(_OPCIONES_CAL, value=_cal_val)
                             .classes("andes-input w-full")
-                            .props("outlined clearable")
+                            .props("borderless dense clearable")
                         )
 
                 def _guardar_paso1() -> None:
@@ -270,7 +270,7 @@ def configuracion_inicial_page() -> None:
                                 format="%.1f",
                             )
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
 
                     with ui.element("div").classes("base-form-field-col"):
@@ -284,7 +284,7 @@ def configuracion_inicial_page() -> None:
                                 format="%.0f",
                             )
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
 
                     with ui.element("div").classes("base-form-field-col"):
@@ -298,7 +298,7 @@ def configuracion_inicial_page() -> None:
                                 format="%.1f",
                             )
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
 
                     with ui.element("div").classes("base-form-field-col"):
@@ -312,7 +312,7 @@ def configuracion_inicial_page() -> None:
                                 format="%.1f",
                             )
                             .classes("andes-input w-full")
-                            .props("outlined")
+                            .props("borderless dense")
                         )
 
                 def _guardar_paso2() -> None:

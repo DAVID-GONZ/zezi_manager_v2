@@ -29,6 +29,7 @@ from nicegui import app, ui
 
 from container import Container
 from src.interface.design.components.buttons import btn_primary
+from src.interface.design.components.form_fields import field_password
 from src.interface.design.theme import ThemeManager
 
 logger = logging.getLogger("CAMBIAR_PASSWORD")
@@ -51,25 +52,9 @@ def cambiar_password_page() -> None:
 
             # ── Formulario ───────────────────────────────────────────────────
             with ui.column().classes("w-full gap-4"):
-                actual_input = (
-                    ui.input(label="Contraseña actual", password=True, password_toggle_button=True)
-                    .classes("w-full andes-input")
-                    .props("outlined")
-                )
-                nueva_input = (
-                    ui.input(label="Nueva contraseña", password=True, password_toggle_button=True)
-                    .classes("w-full andes-input")
-                    .props("outlined")
-                )
-                confirmar_input = (
-                    ui.input(
-                        label="Confirmar nueva contraseña",
-                        password=True,
-                        password_toggle_button=True,
-                    )
-                    .classes("w-full andes-input")
-                    .props("outlined")
-                )
+                actual_input = field_password("Contraseña actual")
+                nueva_input = field_password("Nueva contraseña")
+                confirmar_input = field_password("Confirmar nueva contraseña")
 
                 # ── Requisitos de la contraseña (de la policy, vía servicio) ──
                 # La página NO importa src.domain.*: pide los textos al servicio.

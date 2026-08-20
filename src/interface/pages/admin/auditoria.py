@@ -31,6 +31,7 @@ from src.interface.design.components import (
     toast_success,
 )
 from src.interface.design.components.buttons import btn_icon, btn_secondary
+from src.interface.design.components.form_fields import filter_input, filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.services.auditoria_service import (
@@ -261,14 +262,15 @@ def auditoria_page() -> None:
                 periodo_desde=_periodo_desde,
                 periodo_hasta=_periodo_hasta,
             )
-            ui.input(
+            filter_input(
                 label="Usuario ID",
-                placeholder="(opcional)",
+                placeholder="Opcional",
                 on_change=lambda e: (
                     _s.__setitem__("usuario_id", _a_int(e.value)),
                     _on_filtros_cambio(),
                 ),
-            ).props("dense outlined").classes("w-32")
+                cls_extra="w-32",
+            )
             btn_icon("refresh", on_click=_on_filtros_cambio, tooltip="Recargar")
 
     def _a_int(valor) -> int | None:
@@ -306,25 +308,27 @@ def auditoria_page() -> None:
                     with ui.tab_panel("cambios"):
                         with ui.row().classes("form-row-center-md u-mb-lg"):
                             ui.label("Filtros:").classes("text-sm font-semibold")
-                            ui.input(
+                            filter_input(
                                 label="Tabla",
-                                placeholder="(todas)",
+                                placeholder="Todas",
                                 on_change=lambda e: (
                                     _s.__setitem__("tabla", (e.value or "").strip() or None),
                                     _on_filtros_cambio(),
                                 ),
-                            ).props("dense outlined").classes("w-44")
+                                cls_extra="w-40",
+                            )
                             accion_opts = {None: "Todas las acciones"}
                             accion_opts.update(_ACCIONES_OPCIONES)
-                            ui.select(
-                                accion_opts,
-                                value=None,
+                            filter_select(
                                 label="Acción",
+                                options=accion_opts,
+                                value=None,
                                 on_change=lambda e: (
                                     _s.__setitem__("accion", e.value),
                                     _on_filtros_cambio(),
                                 ),
-                            ).classes("w-44")
+                                cls_extra="w-40",
+                            )
                         tabla_cambios()
 
                     # ── Tab Sesiones ──────────────────────────────────────────
@@ -333,15 +337,16 @@ def auditoria_page() -> None:
                             ui.label("Filtros:").classes("text-sm font-semibold")
                             evento_opts = {None: "Todos los eventos"}
                             evento_opts.update(_EVENTOS_OPCIONES)
-                            ui.select(
-                                evento_opts,
-                                value=None,
+                            filter_select(
                                 label="Tipo de evento",
+                                options=evento_opts,
+                                value=None,
                                 on_change=lambda e: (
                                     _s.__setitem__("tipo_evento", e.value),
                                     _on_filtros_cambio(),
                                 ),
-                            ).classes("w-56")
+                                cls_extra="w-48",
+                            )
                         tabla_sesiones()
 
     app_layout(

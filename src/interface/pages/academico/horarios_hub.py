@@ -48,6 +48,12 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    field_select,
+    filter_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -1186,23 +1192,17 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             titulo = "Editar configuración" if es_edicion else "Nueva configuración de generación"
             ui.label(titulo).classes("font-h3 form-dialog-title")
 
-            in_nombre = (
-                ui.input(
-                    label="Nombre *",
-                    value=nombre_ini,
-                )
-                .classes("andes-input w-full")
-                .props("outlined")
+            in_nombre = field_input(
+                "Nombre",
+                requerido=True,
+                value=nombre_ini,
             )
 
-            sel_plantilla = (
-                ui.select(
-                    options=plantilla_opts,
-                    label="Plantilla *",
-                    value=plantilla_ini,
-                )
-                .classes("andes-input w-full")
-                .props("outlined")
+            sel_plantilla = field_select(
+                "Plantilla",
+                options=plantilla_opts,
+                value=plantilla_ini,
+                requerido=True,
             )
 
             def _nueva_plantilla_desde_config() -> None:
@@ -1214,16 +1214,13 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 "Crear plantilla nueva…", icon=Icons.ADD, on_click=_nueva_plantilla_desde_config
             )
 
-            sel_grupos = (
-                ui.select(
-                    options=grupo_opts,
-                    label="Grupos (vacío = todos)",
-                    value=grupos_ini,
-                    multiple=True,
-                )
-                .classes("andes-input w-full")
-                .props("outlined use-chips")
+            sel_grupos = field_select(
+                "Grupos (vacío = todos)",
+                options=grupo_opts,
+                value=grupos_ini,
+                multiple=True,
             )
+            sel_grupos.props("use-chips")
 
             ui.label("Pesos del motor").classes("font-h3 u-mt-md")
             ui.label(
@@ -1273,38 +1270,29 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             ui.label(
                 "Permite limitar cuántas horas puede tener un docente en un solo día."
             ).classes("text-caption text-muted")
-            with ui.row().classes("form-row-inline u-mt-sm"):
-                sel_modo_minmax = (
-                    ui.select(
+            with ui.row().classes("form-row-inline u-mt-sm items-end"):
+                with ui.element("div").classes("w-48"):
+                    sel_modo_minmax = field_select(
+                        "Modo",
                         {"preferente": "Preferente (coste blando)", "estricta": "Estricta (dura)"},
-                        label="Modo",
                         value=min_max_ini.get("modo", "preferente"),
                     )
-                    .classes("andes-input w-48")
-                    .props("outlined")
-                )
-                in_min_horas = (
-                    ui.number(
-                        label="Mín. horas/día docente",
+                with ui.element("div").classes("w-40"):
+                    in_min_horas = field_number(
+                        "Mín. horas/día docente",
                         value=min_max_ini.get("min", 0),
                         min=0,
                         max=10,
                         step=1,
                     )
-                    .classes("andes-input w-40")
-                    .props("outlined")
-                )
-                in_max_horas = (
-                    ui.number(
-                        label="Máx. horas/día docente",
+                with ui.element("div").classes("w-40"):
+                    in_max_horas = field_number(
+                        "Máx. horas/día docente",
                         value=min_max_ini.get("max", 8),
                         min=1,
                         max=12,
                         step=1,
                     )
-                    .classes("andes-input w-40")
-                    .props("outlined")
-                )
 
             def _guardar() -> None:
                 nombre = str(in_nombre.value or "").strip()
@@ -2226,13 +2214,15 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             if f_areas is not None
                             else list(area_opts)
                         )
-                        ui.select(
+                        filter_select(
                             label="Áreas",
                             options=area_opts,
                             value=area_val,
                             multiple=True,
                             on_change=lambda e: _cambiar_filtro_areas(e.value),
-                        ).classes("w-64")
+                            clearable=False,
+                            cls_extra="w-64",
+                        )
 
                 render_tablero_maestro(
                     datos=datos,
@@ -2283,26 +2273,30 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             if f_areas is not None
                             else list(area_opts)
                         )
-                        ui.select(
+                        filter_select(
                             label="Áreas",
                             options=area_opts,
                             value=area_val,
                             multiple=True,
                             on_change=lambda e: _cambiar_filtro_areas(e.value),
-                        ).classes("w-64")
+                            clearable=False,
+                            cls_extra="w-64",
+                        )
                     dia_opts = {d: d for d in dias_activos}
                     dia_val = (
                         [d for d in f_dias if d in dia_opts]
                         if f_dias is not None
                         else list(dia_opts)
                     )
-                    ui.select(
+                    filter_select(
                         label="Días",
                         options=dia_opts,
                         value=dia_val,
                         multiple=True,
                         on_change=lambda e: _cambiar_filtro_dias(e.value),
-                    ).classes("w-64")
+                        clearable=False,
+                        cls_extra="w-64",
+                    )
 
                 render_parrilla(
                     datos=datos,

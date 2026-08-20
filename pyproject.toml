@@ -39,6 +39,7 @@ ignore = [
     "RUF001",            # unicode ambiguo en cadenas
     "RUF002",            # unicode ambiguo en docstrings
     "RUF003",            # unicode ambiguo en comentarios
+    "N806",              # nombres de variables locales en minúsculas con guiones bajos
 ]
 
 # Reglas que NO son estilo sino defectos: un nombre indefinido o un closure mal

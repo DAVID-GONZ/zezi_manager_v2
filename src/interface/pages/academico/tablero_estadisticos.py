@@ -35,6 +35,7 @@ from nicegui import ui
 from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import skeleton_cards, stat_card
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.components.inline_selectors import (
     inline_periodo_grupo_asignatura,
 )
@@ -1088,19 +1089,24 @@ def tablero_estadisticos_page() -> None:
 
         with ui.row().classes("form-row-center-md u-mb-md"):
             ThemeManager.icono(Icons.FILTER, size=20, clases="text-secondary")
-            ui.select(
+            filter_select(
                 label="Grupo",
                 options=grupos_opts,
                 value=_s.get("drill_grupo_id"),
                 on_change=lambda e: _on_drill_grupo(e.value),
-            ).classes("w-40").props("dense outlined")
+                clearable=False,
+                cls_extra="w-40",
+            )
 
-            ui.select(
+            filter_select(
                 label="Asignatura",
                 options=asig_opts,
                 value=_s.get("drill_asig_id"),
                 on_change=lambda e: _on_drill_asig(e.value),
-            ).classes("w-64").props(f"dense outlined {'disable' if not asig_opts else ''}")
+                clearable=False,
+                disabled=not asig_opts,
+                cls_extra="w-56",
+            )
 
         # ── Tablero detallado ─────────────────────────────────────────────
         if not _s.get("drill_grupo_id") or not _s.get("drill_asig_id"):

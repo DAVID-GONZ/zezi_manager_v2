@@ -27,6 +27,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_secondary
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -411,26 +412,30 @@ def habilitaciones_page() -> None:
                         )
 
                         with ui.row().classes("form-row-inline u-mb-lg"):
-                            ui.select(
-                                periodos_opts,
+                            filter_select(
+                                label="Periodo",
+                                options=periodos_opts,
                                 value=None,
-                                label="Periodo *",
                                 on_change=lambda e: (
                                     _s.__setitem__("nivel_periodo_id", e.value),
                                     _cargar_nivelacion(),
                                     planilla_nivelacion.refresh(),
                                 ),
-                            ).classes("w-40")
-                            ui.select(
-                                asig_opts,
+                                clearable=False,
+                                cls_extra="w-36",
+                            )
+                            filter_select(
+                                label="Asignación",
+                                options=asig_opts,
                                 value=None,
-                                label="Asignación *",
                                 on_change=lambda e: (
                                     _s.__setitem__("nivel_asig_id", e.value),
                                     _cargar_nivelacion(),
                                     planilla_nivelacion.refresh(),
                                 ),
-                            ).classes("w-60")
+                                clearable=False,
+                                cls_extra="w-56",
+                            )
                             btn_icon(
                                 "refresh",
                                 on_click=lambda: (

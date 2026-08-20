@@ -37,6 +37,7 @@ from src.interface.design.components.buttons import (
     btn_primary,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import field_number
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
 from src.services.configuracion_service import (
@@ -683,13 +684,15 @@ def configuracion_sie_page() -> None:
                 "text-xs text-muted mb-3"
             )
             with ui.row().classes("gap-3 items-end"):
-                ui.number(
-                    "Año *",
-                    value=_s["nuevo_anio"],
-                    min=2000,
-                    max=2100,
-                    step=1,
-                ).classes("w-32").bind_value(_s, "nuevo_anio")
+                with ui.element("div").classes("w-32"):
+                    field_number(
+                        "Año",
+                        requerido=True,
+                        value=_s["nuevo_anio"],
+                        min=2000,
+                        max=2100,
+                        step=1,
+                    ).bind_value(_s, "nuevo_anio")
                 btn_primary("Crear año", on_click=_crear_anio, icon="add_circle")
 
     @ui.refreshable

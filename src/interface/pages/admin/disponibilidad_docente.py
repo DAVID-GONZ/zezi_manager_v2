@@ -23,6 +23,7 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.form_fields import field_number, field_select
 from src.interface.design.layout import app_layout
 
 logger = logging.getLogger("ADMIN.DISPONIBILIDAD_DOCENTE")
@@ -198,20 +199,22 @@ def disponibilidad_docente_page() -> None:
             ui.label("Selecciona un docente para ver sus límites.").classes("text-sm text-muted")
             return
 
-        with ui.row().classes("form-row-inline"):
-            with ui.element("div").classes("u-stack-xs"):
-                ui.label("Mín. horas/día").classes("text-sm font-medium")
-                in_min = (
-                    ui.number(value=_s["min_horas_dia"], min=0, max=12, step=1)
-                    .classes("andes-input w-32")
-                    .props("outlined")
+        with ui.row().classes("form-row-inline items-end"):
+            with ui.element("div").classes("w-32"):
+                in_min = field_number(
+                    "Mín. horas/día",
+                    value=_s["min_horas_dia"],
+                    min=0,
+                    max=12,
+                    step=1,
                 )
-            with ui.element("div").classes("u-stack-xs"):
-                ui.label("Máx. horas/día").classes("text-sm font-medium")
-                in_max = (
-                    ui.number(value=_s["max_horas_dia"], min=1, max=12, step=1)
-                    .classes("andes-input w-32")
-                    .props("outlined")
+            with ui.element("div").classes("w-32"):
+                in_max = field_number(
+                    "Máx. horas/día",
+                    value=_s["max_horas_dia"],
+                    min=1,
+                    max=12,
+                    step=1,
                 )
 
             def _guardar_limites() -> None:
@@ -252,12 +255,13 @@ def disponibilidad_docente_page() -> None:
                     _rejilla_disponibilidad.refresh()
                     _panel_limites.refresh()
 
-                ui.select(
-                    docente_opts,
-                    label="Selecciona un docente",
-                    on_change=_on_select_docente,
-                    value=_s["docente_id"],
-                ).classes("andes-input w-72").props("outlined")
+                with ui.element("div").classes("w-72"):
+                    field_select(
+                        "Selecciona un docente",
+                        docente_opts,
+                        value=_s["docente_id"],
+                        on_change=_on_select_docente,
+                    )
 
             # Panel rejilla de disponibilidad
             with ui.element("div").classes("panel-card mt-4"):

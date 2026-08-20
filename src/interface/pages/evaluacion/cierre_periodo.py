@@ -38,6 +38,7 @@ from src.interface.design.components.buttons import (
     btn_icon,
     btn_secondary,
 )
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -403,19 +404,23 @@ def cierre_periodo_page() -> None:
                     lista_refreshable.refresh()
 
                 with ui.row().classes("form-row-center-md"):
-                    ui.select(
-                        periodos_opts or {"": "Sin periodos"},
+                    filter_select(
+                        label="Periodo",
+                        options=periodos_opts or {"": "Sin periodos"},
                         value=_s["periodo_id"],
-                        label="Periodo *",
                         on_change=lambda e: _on_periodo(e.value),
-                    ).classes("w-44").props("outlined dense")
+                        clearable=False,
+                        cls_extra="w-40",
+                    )
 
-                    ui.select(
-                        grupos_opts or {"": "Sin grupos"},
+                    filter_select(
+                        label="Grupo",
+                        options=grupos_opts or {"": "Sin grupos"},
                         value=_s["grupo_id"],
-                        label="Grupo *",
                         on_change=lambda e: _on_grupo(e.value),
-                    ).classes("w-36").props("outlined dense")
+                        clearable=False,
+                        cls_extra="w-32",
+                    )
 
                     btn_icon(
                         "refresh",

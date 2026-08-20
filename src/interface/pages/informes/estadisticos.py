@@ -29,6 +29,7 @@ from container import Container
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import skeleton_table, toast_error, toast_warning
 from src.interface.design.components.buttons import btn_primary, btn_secondary
+from src.interface.design.components.form_fields import filter_select
 from src.interface.design.components.stat_card import stat_card
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import AsistenciaColors, DesempenoColors, Icons
@@ -746,12 +747,14 @@ def estadisticos_page() -> None:
                 ui.label("Configuración del Informe").classes("panel-title")
 
             # Selector de tipo de informe
-            ui.select(
+            filter_select(
                 label="Tipo de Informe",
                 options=_TIPOS_SELECT_OPTS,
                 value=_s["tipo"],
                 on_change=lambda e: on_tipo_change(e.value),
-            ).classes("w-full u-mb-md")
+                clearable=False,
+                cls_extra="u-mb-md",
+            )
 
             tipo = _tipo_activo(_s)
             if not tipo:
@@ -770,34 +773,37 @@ def estadisticos_page() -> None:
                 # keys como strings, rompiendo la comparación de igualdad en Quasar).
                 if "grupo" in filtros_req:
                     grupos_opts = {str(g.id): g.nombre or g.codigo for g in _s["grupos"]}
-                    ui.select(
+                    filter_select(
                         label="Grupo",
                         options=grupos_opts or {"": "Sin grupos"},
                         value=str(_s["grupo_id"]) if _s["grupo_id"] is not None else None,
                         on_change=lambda e: on_grupo_change(e.value),
-                    ).classes("w-full")
+                        clearable=False,
+                    )
 
                 # Selector de Asignatura (depende de Grupo)
                 if "asignatura" in filtros_req:
                     asig_opts = {
                         str(a.asignacion_id): a.asignatura_nombre for a in _s["asignaciones"]
                     }
-                    ui.select(
+                    filter_select(
                         label="Asignatura",
                         options=asig_opts,
                         value=str(_s["asignacion_id"]) if _s["asignacion_id"] is not None else None,
                         on_change=lambda e: on_asignatura_change(e.value),
-                    ).classes("w-full")
+                        clearable=False,
+                    )
 
                 # Selector de Periodo
                 if "periodo" in filtros_req:
                     per_opts = {str(p.id): getattr(p, "nombre", str(p.id)) for p in _s["periodos"]}
-                    ui.select(
+                    filter_select(
                         label="Periodo",
                         options=per_opts,
                         value=str(_s["periodo_id"]) if _s["periodo_id"] is not None else None,
                         on_change=lambda e: on_periodo_change(e.value),
-                    ).classes("w-full")
+                        clearable=False,
+                    )
 
             with ui.row().classes("justify-end u-mt-md"):
                 btn_primary(

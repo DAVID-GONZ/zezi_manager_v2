@@ -32,6 +32,13 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary, btn_secondary
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    field_select,
+    filter_select,
+    inline_number,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 
@@ -346,22 +353,21 @@ def plan_estudios_page() -> None:
             num_opts = {
                 n: f"{n} — {_NOMBRES_GRADO.get(n, n)}" for n in range(1, 14) if n not in usados
             }
-            with ui.row().classes("form-row-inline"):
-                ui.select(num_opts or {None: "Todos creados"}, label="Grado *").classes(
-                    "w-44"
-                ).props("dense outlined").bind_value(_s, "g_numero")
-                ui.input("Nombre (opcional)").classes("w-40").props("dense outlined").bind_value(
-                    _s, "g_nombre"
-                )
-                ui.number("Mín. estud.", min=0).classes("w-28").props("dense outlined").bind_value(
-                    _s, "g_min"
-                )
-                ui.number("Máx. estud.", min=1).classes("w-28").props("dense outlined").bind_value(
-                    _s, "g_max"
-                )
-                ui.number("Horas/sem", min=0).classes("w-28").props("dense outlined").bind_value(
-                    _s, "g_horas"
-                )
+            with ui.row().classes("form-row-inline items-end"):
+                with ui.element("div").classes("w-44"):
+                    field_select(
+                        "Grado",
+                        num_opts or {None: "Todos creados"},
+                        requerido=True,
+                    ).bind_value(_s, "g_numero")
+                with ui.element("div").classes("w-40"):
+                    field_input("Nombre (opcional)").bind_value(_s, "g_nombre")
+                with ui.element("div").classes("w-28"):
+                    field_number("Mín. estud.", min=0).bind_value(_s, "g_min")
+                with ui.element("div").classes("w-28"):
+                    field_number("Máx. estud.", min=1).bind_value(_s, "g_max")
+                with ui.element("div").classes("w-28"):
+                    field_number("Horas/sem", min=0).bind_value(_s, "g_horas")
                 btn_primary("Guardar grado", icon="add", on_click=_guardar_grado)
 
             if _s["grados"]:
@@ -427,16 +433,23 @@ def plan_estudios_page() -> None:
                 for a in _s["asignaturas"]
                 if a.id not in _s["plan_map"] and (f_area is None or a.area_id == f_area)
             }
-            with ui.row().classes("form-row-inline u-mt-sm"):
-                ui.select(
-                    area_opts,
-                    value=_s["vinc_area_id"],
-                    label="Filtrar por área",
-                    on_change=lambda e: (_s.__setitem__("vinc_area_id", e.value), vista.refresh()),
-                ).classes("w-44").props("dense outlined")
-                ui.select(
-                    disponibles or {None: "Sin asignaturas"}, label="Asignatura a vincular"
-                ).classes("w-56").props("dense outlined").bind_value(_s, "vinc_asig_id")
+            with ui.row().classes("form-row-inline u-mt-sm items-end"):
+                with ui.element("div").classes("w-44"):
+                    filter_select(
+                        label="Área",
+                        options=area_opts,
+                        value=_s["vinc_area_id"],
+                        on_change=lambda e: (
+                            _s.__setitem__("vinc_area_id", e.value),
+                            vista.refresh(),
+                        ),
+                        clearable=False,
+                    )
+                with ui.element("div").classes("w-56"):
+                    field_select(
+                        "Asignatura a vincular",
+                        disponibles or {None: "Sin asignaturas"},
+                    ).bind_value(_s, "vinc_asig_id")
                 btn_secondary("Vincular", icon="add_link", on_click=_vincular)
 
             # Tabla de asignaturas vinculadas con horas
@@ -453,10 +466,15 @@ def plan_estudios_page() -> None:
                     for aid in sorted(_s["plan_map"], key=_asig_nombre):
                         with ui.element("div").classes("lista-fila"):
                             ui.label(_asig_nombre(aid)).classes("flex-1 text-sm")
-                            ui.number(value=_s["plan_map"][aid], min=1, max=40, step=1).classes(
-                                "w-28"
-                            ).props("dense outlined debounce=400").on(
-                                "update:model-value", lambda e, a=aid: _set_horas(a, e.args)
+                            inline_number(
+                                value=_s["plan_map"][aid],
+                                min=1,
+                                max=40,
+                                step=1,
+                                cls_extra="w-28",
+                            ).props("debounce=400").on(
+                                "update:model-value",
+                                lambda e, a=aid: _set_horas(a, e.args),
                             )
                             with ui.element("div").classes("w-10 text-right"):
                                 btn_icon(

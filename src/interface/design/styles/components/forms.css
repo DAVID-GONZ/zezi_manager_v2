@@ -26,6 +26,18 @@
   line-height: 1;
 }
 
+/* Wrapper flex-column autoinsertado por los helpers field_*/filter_*
+   cuando se pasa `label`. Garantiza que la etiqueta quede ARRIBA del
+   control aunque el llamador coloque el campo dentro de un ui.row()
+   horizontal. `cls_extra` (p.ej. w-48, flex-3) se aplica AQUÍ, no en
+   el widget interno, que siempre ocupa el 100% del wrapper. */
+.form-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 /* ── .andes-input — control base ────────────────────────── */
 .andes-input { width: 100%; }
 
@@ -45,6 +57,7 @@
   min-height: 38px !important;
   height: 38px !important;
   align-items: center !important;
+  padding: 0 12px !important;
   border-radius: var(--radius-md) !important;
   background: var(--color-surface) !important;
   border: 1.5px solid var(--color-border) !important;
@@ -143,12 +156,14 @@
   align-items: center !important;
 }
 
-/* Input / Select / Textarea nativos — sin padding vertical residual */
+/* Input / Select / Textarea nativos — sin padding horizontal propio (el
+   padding vive en .q-field__control para que el borde envuelva al texto
+   con separación uniforme). */
 .andes-input .q-field__native,
 .andes-input .q-field__input,
 .andes-input .q-field__prefix,
 .andes-input .q-field__suffix {
-  padding: 0 2px !important;
+  padding: 0 !important;
   font-size: var(--font-size-body) !important;
   font-family: var(--font-family) !important;
   color: var(--color-text-primary) !important;

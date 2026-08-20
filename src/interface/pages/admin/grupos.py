@@ -36,6 +36,12 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_number,
+    field_select,
+    inline_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.services.catalogo_academico_service import Grupo
@@ -489,12 +495,12 @@ def grupos_page() -> None:
                             if g_obj and g_obj.director_grupo_id in candidatos
                             else _SIN_DIRECTOR
                         )
-                        ui.select(
+                        inline_select(
                             opciones,
                             value=actual,
-                            label="Director de grupo",
                             on_change=lambda e, gid=fila["id"]: _cambiar_director(gid, e.value),
-                        ).classes("w-56")
+                            cls_extra="w-56",
+                        )
                     else:
                         ui.label("Sin docentes asignados").classes("w-56 text-muted text-sm italic")
                     with ui.row().classes("gap-2 ml-auto"):
@@ -530,24 +536,27 @@ def grupos_page() -> None:
             with ui.element("div").classes("panel-card mt-4"):
                 # Formulario de creación
                 ui.label("Crear nuevo grupo").classes("section-subtitle u-mb-sm")
-                with ui.row().classes("form-row-inline"):
-                    ui.input("Código *", placeholder="601").classes("w-28").bind_value(
-                        _s, "form_codigo"
-                    )
+                with ui.row().classes("form-row-inline items-end"):
+                    with ui.element("div").classes("w-28"):
+                        field_input(
+                            "Código",
+                            requerido=True,
+                            placeholder="601",
+                        ).bind_value(_s, "form_codigo")
                     # Asegura un valor inicial dentro del catálogo
                     _s["form_grado"] = _grado_valido(_s["form_grado"])
-                    ui.select(
-                        _opciones_grado(),
-                        label="Grado",
-                    ).classes("w-40").bind_value(_s, "form_grado")
-                    ui.select(
-                        {v: k for k, v in _JORNADAS.items()},
-                        value="UNICA",
-                        label="Jornada",
-                    ).classes("w-36").bind_value(_s, "form_jornada")
-                    ui.number("Capacidad", value=40, min=1).classes("w-28").bind_value(
-                        _s, "form_capacidad"
-                    )
+                    with ui.element("div").classes("w-40"):
+                        field_select("Grado", _opciones_grado()).bind_value(_s, "form_grado")
+                    with ui.element("div").classes("w-36"):
+                        field_select(
+                            "Jornada",
+                            {v: k for k, v in _JORNADAS.items()},
+                            value="UNICA",
+                        ).bind_value(_s, "form_jornada")
+                    with ui.element("div").classes("w-28"):
+                        field_number("Capacidad", value=40, min=1).bind_value(
+                            _s, "form_capacidad"
+                        )
                     btn_primary("Crear grupo", on_click=_crear_grupo, icon="add").classes("mt-1")
 
             # Tabla de grupos

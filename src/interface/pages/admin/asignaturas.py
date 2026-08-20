@@ -29,6 +29,12 @@ from src.interface.design.components import (
     toast_warning,
 )
 from src.interface.design.components.buttons import btn_icon, btn_primary
+from src.interface.design.components.form_fields import (
+    field_input,
+    field_select,
+    filter_input,
+    filter_select,
+)
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
@@ -292,22 +298,25 @@ def asignaturas_page() -> None:
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
 
-        ui.select(
-            areas_opts,
+        filter_select(
+            label="Área",
+            options=areas_opts,
             value=_s["area_filtro_id"],
-            label="Filtrar por área",
             on_change=lambda e: _on_filtro_change(e.value),
-        ).classes("w-56")
+            cls_extra="w-48",
+        )
 
         def _on_buscar(v) -> None:
             _s["busqueda"] = (v or "").strip().lower()
             tabla_asignaturas.refresh()
 
-        ui.input(
-            placeholder="Buscar por nombre o código…",
+        filter_input(
+            label="Buscar",
+            placeholder="Nombre o código",
             value=_s["busqueda"],
             on_change=lambda e: _on_buscar(e.value),
-        ).props("dense outlined clearable debounce=250").classes("w-64")
+            cls_extra="w-56",
+        ).props("clearable debounce=250")
 
     @ui.refreshable
     def tabla_areas() -> None:
@@ -392,13 +401,15 @@ def asignaturas_page() -> None:
                     ui.label("Áreas de conocimiento").classes("text-lg font-bold")
 
                 ui.label("Nueva área").classes("section-subtitle-sm u-mb-xs")
-                with ui.row().classes("form-row-inline"):
-                    ui.input("Nombre *", placeholder="Matemáticas").classes("w-48").bind_value(
-                        _s, "area_nombre"
-                    )
-                    ui.input("Código", placeholder="MAT").classes("w-28").bind_value(
-                        _s, "area_codigo"
-                    )
+                with ui.row().classes("form-row-inline items-end"):
+                    with ui.element("div").classes("w-48"):
+                        field_input(
+                            "Nombre",
+                            requerido=True,
+                            placeholder="Matemáticas",
+                        ).bind_value(_s, "area_nombre")
+                    with ui.element("div").classes("w-28"):
+                        field_input("Código", placeholder="MAT").bind_value(_s, "area_codigo")
                     btn_primary("Crear área", on_click=_crear_area, icon="add")
 
                 ui.separator().classes("my-3")
@@ -427,17 +438,17 @@ def asignaturas_page() -> None:
                     "Las horas de cada asignatura se definen por grado en «Plan de estudios»."
                 ).classes("text-caption text-secondary mb-1")
                 areas_opts = {a.id: a.nombre for a in _s["areas"]}
-                with ui.row().classes("form-row-inline"):
-                    ui.input("Nombre *", placeholder="Álgebra").classes("w-48").bind_value(
-                        _s, "asig_nombre"
-                    )
-                    ui.input("Código", placeholder="ALG").classes("w-28").bind_value(
-                        _s, "asig_codigo"
-                    )
-                    ui.select(
-                        areas_opts,
-                        label="Área",
-                    ).classes("w-44").bind_value(_s, "asig_area_id")
+                with ui.row().classes("form-row-inline items-end"):
+                    with ui.element("div").classes("w-48"):
+                        field_input(
+                            "Nombre",
+                            requerido=True,
+                            placeholder="Álgebra",
+                        ).bind_value(_s, "asig_nombre")
+                    with ui.element("div").classes("w-28"):
+                        field_input("Código", placeholder="ALG").bind_value(_s, "asig_codigo")
+                    with ui.element("div").classes("w-44"):
+                        field_select("Área", areas_opts).bind_value(_s, "asig_area_id")
                     btn_primary("Crear asignatura", on_click=_crear_asignatura, icon="add")
 
                 ui.separator().classes("my-3")
