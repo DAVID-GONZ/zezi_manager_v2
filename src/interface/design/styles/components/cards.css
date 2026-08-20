@@ -358,41 +358,29 @@
   50%       { transform: scale(1.25); opacity: 0.65; }
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   GREETING HERO — superficie de TINTA, invariante por tema.
-
-   D4: antes mezclaba dos sistemas de color incompatibles — el gradiente
-   y el texto salían de --color-primary* (que se INVIERTE en dark: el
-   fondo pasa a casi-blanco y --color-primary-contrast a casi-negro),
-   mientras los textos secundarios eran rgba(255,255,255,·) FIJO. No
-   existe ningún valor que funcione en ambos temas con esa mezcla.
-
-   Sistema único elegido: el hero es siempre una superficie oscura de la
-   familia primitiva ink-* (que, como paper-*/graphite-*, NO se
-   sobrescribe en dark) y todo su texto sale de la familia paper-*.
-   Ambas son invariantes ⇒ los ratios son idénticos en claro y oscuro.
-
-   Contraste (peor caso = extremo claro del gradiente, --ink-500 #4B50C0):
-     .greeting-name  paper-000 sobre ink-500 .............. 6.55:1
-     .greeting-role  paper-000 sobre badge (veil 10%) ..... 5.23:1
-     .greeting-saludo / .greeting-desc  paper-200 ......... 5.17:1
-   ══════════════════════════════════════════════════════════════════ */
 
 .greeting-hero {
+  /* Claro: tinte índigo muy suave (ink-100 → ink-050) sobre la página.
+     Visible sin saturar; el borde fino termina de separarlo del fondo. */
+  --greeting-hero-bg: linear-gradient(135deg, #E8E9F8 0%, #F3F4FC 100%);
+  --greeting-hero-edge: rgba(46, 49, 146, 0.12);
+  --greeting-hero-text: var(--ink-900);
+  --greeting-hero-muted: var(--ink-500);  /* demotado respecto al focal --ink-900 */
+  --greeting-hero-icon-color: var(--ink-700);
+  --greeting-hero-badge-bg: rgba(46, 49, 146, 0.07);
+  --greeting-hero-badge-border: rgba(46, 49, 146, 0.20);
+  --greeting-hero-progress-bg: rgba(46, 49, 146, 0.14);
+  --greeting-hero-progress-fill: #4B50C0;
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-xl);
   margin-bottom: var(--space-lg);
-  background: linear-gradient(
-    128deg,
-    var(--ink-900) 0%,
-    var(--ink-700) 55%,
-    var(--ink-500) 100%
-  );
+  background: var(--greeting-hero-bg);
+  border: 1px solid rgba(46, 49, 146, 0.12);
   box-shadow: var(--shadow-md);
 }
 
-/* Orbe decorativo superior-derecha */
+/* Orbe decorativo superior-derecha — opacidad suficiente para percibirse en claro */
 .greeting-hero::before {
   content: '';
   position: absolute;
@@ -401,7 +389,7 @@
   width: 300px;
   height: 300px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(46,49,146,0.12) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -414,7 +402,7 @@
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(46,49,146,0.09) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -469,7 +457,7 @@
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--paper-200);
+  color: var(--greeting-hero-muted);
 }
 
 .greeting-name {
@@ -478,14 +466,14 @@
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.025em;
-  color: var(--paper-000);
+  color: var(--greeting-hero-text);
   position: relative;
   z-index: 2;
 }
 
 .greeting-desc {
   font-size: var(--font-size-body);
-  color: var(--paper-200);
+  color: var(--greeting-hero-muted);
   font-weight: 400;
   line-height: 1.5;
   position: relative;
@@ -502,11 +490,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  /* Veladuras decorativas sobre tinta: alfa de blanco, no un color de
-     tema. Son invariantes igual que la superficie, así que el sistema
-     sigue siendo uno solo. 10% mantiene .greeting-role en 5.23:1. */
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: var(--greeting-hero-badge-bg);
+  border: 1px solid var(--greeting-hero-badge-border);
   border-radius: var(--radius-full);
   padding: 7px 16px;
 }
@@ -514,7 +499,7 @@
 .greeting-role {
   font-size: var(--font-size-table);
   font-weight: 600;
-  color: var(--paper-000);
+  color: var(--greeting-hero-muted);  /* subordinado al nombre focal */
   letter-spacing: 0.01em;
 }
 
@@ -526,13 +511,13 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--greeting-hero-progress-bg);
   z-index: 1;
 }
 
 .greeting-progress-bar {
   height: 100%;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--greeting-hero-progress-fill);
   transform-origin: left;
 }
 
@@ -911,6 +896,43 @@
 .unavailable-text {
   font-size: var(--font-size-small);
   color: var(--color-text-disabled);
+}
+
+/* ── Greeting hero — ajuste por tema ───────────────────────────
+   En claro, el hero usa un fondo de tinta muy tenue y texto oscuro.
+   En oscuro, vuelve a la versión profunda con texto claro. */
+:root[data-theme="dark"] .greeting-hero {
+  --greeting-hero-bg: linear-gradient(135deg, rgba(46,49,146,0.98) 0%, rgba(19,22,63,0.98) 100%);
+  --greeting-hero-edge: rgba(139, 144, 240, 0.22);
+  --greeting-hero-text: var(--paper-000);
+  --greeting-hero-muted: #DDE1FF;
+  --greeting-hero-icon-color: var(--paper-000);
+  --greeting-hero-badge-bg: rgba(255, 255, 255, 0.14);
+  --greeting-hero-badge-border: rgba(255, 255, 255, 0.36);
+  --greeting-hero-progress-bg: rgba(139, 144, 240, 0.30);
+  --greeting-hero-progress-fill: #9297D9; /* ink-300 — azul lavanda visible sobre fondo oscuro */
+  border: 1px solid rgba(139, 144, 240, 0.22);
+  box-shadow:
+    0 4px 16px rgba(46, 49, 146, 0.35),
+    0 0 0 1px rgba(139, 144, 240, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .greeting-hero {
+    --greeting-hero-bg: linear-gradient(135deg, rgba(46,49,146,0.98) 0%, rgba(19,22,63,0.98) 100%);
+    --greeting-hero-edge: rgba(139, 144, 240, 0.22);
+    --greeting-hero-text: var(--paper-000);
+    --greeting-hero-muted: #DDE1FF;
+    --greeting-hero-icon-color: var(--paper-000);
+    --greeting-hero-badge-bg: rgba(255, 255, 255, 0.14);
+    --greeting-hero-badge-border: rgba(255, 255, 255, 0.36);
+    --greeting-hero-progress-bg: rgba(139, 144, 240, 0.30);
+    --greeting-hero-progress-fill: var(--ink-300);
+    border: 1px solid rgba(139, 144, 240, 0.22);
+    box-shadow:
+      0 4px 16px rgba(46, 49, 146, 0.35),
+      0 0 0 1px rgba(139, 144, 240, 0.08);
+  }
 }
 
 /* ── Reduced motion — greeting hero ─────────────────────────── */

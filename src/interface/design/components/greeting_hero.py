@@ -7,9 +7,10 @@ de modo que el contenido inferior asciende suavemente sin salto.
 
 Componente de presentación puro: recibe strings, no llama servicios.
 
-El hero es una superficie de tinta invariante por tema (ver el bloque
-GREETING HERO en styles/components/cards.css): sus iconos usan
---color-on-filled, no --color-primary-contrast, que se invierte en dark.
+Los colores vienen de variables --greeting-hero-* definidas en el bloque
+GREETING HERO de cards.css. Claro: fondo índigo visible con texto oscuro
+(ink-900/700). Oscuro: fondo índigo profundo con texto claro (paper-000).
+Los iconos usan --greeting-hero-icon-color que cambia con el tema.
 """
 
 from __future__ import annotations
@@ -75,7 +76,7 @@ def greeting_hero(
             with ui.element("div").classes("greeting-hero-left"):
                 with ui.element("div").classes("greeting-time-row"):
                     with ui.element("div").classes("greeting-time-icon"):
-                        ThemeManager.icono(icono, size=20, color="var(--color-on-filled)")
+                        ThemeManager.icono(icono, size=20, color="var(--greeting-hero-icon-color)")
                     ui.label(saludo).classes("greeting-saludo")
                 ui.label(display_nombre).classes("greeting-name")
                 ui.label(mensaje).classes("greeting-desc")
@@ -84,7 +85,9 @@ def greeting_hero(
             with ui.element("div").classes("greeting-hero-right"):
                 with ui.element("div").classes("greeting-badge"):
                     ThemeManager.icono(
-                        Icons.PROFILE, size=16, color="var(--color-on-filled)"
+                        Icons.PROFILE,
+                        size=16,
+                        color="var(--greeting-hero-icon-color)",
                     )
                     ui.label(etiqueta).classes("greeting-role")
 
@@ -93,4 +96,4 @@ def greeting_hero(
             ui.element("div").classes("greeting-progress-bar")
 
 
-__all__ = ["_saludo_temporal", "greeting_hero"]
+__all__ = ["greeting_hero"]
