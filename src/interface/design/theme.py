@@ -102,6 +102,7 @@ class ThemeManager:
         "adapter/aggrid.css",
         # Estilos específicos de página (cargan al final para poder sobrescribir).
         "pages/wizard_configuracion.css",
+        "pages/buscar.css",
     ]
 
     @classmethod

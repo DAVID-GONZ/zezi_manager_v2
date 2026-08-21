@@ -17,6 +17,7 @@ from src.domain.modulos import Modulo, modulos_con_pagina
 from src.domain.portal_provider import SubItem
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components.buttons import btn_secondary
+from src.interface.design.components.followup_panel import FollowupItem, followup_panel
 from src.interface.design.components.greeting_hero import greeting_hero
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
@@ -250,6 +251,46 @@ def inicio_page() -> None:
     except Exception:
         resumen = ResumenGlobalDTO(lineas=[], total_notificaciones=0)
 
+    def _render_seguimientos() -> None:
+        """Panel de seguimientos pendientes para el profesor (convivencia_19)."""
+        try:
+            alertas = Container.alerta_service().listar_alertas_para_usuario(ctx.usuario_id)
+        except Exception:
+            alertas = []
+        if not alertas:
+            return
+
+        def _nombre_estudiante(est_id: int) -> str:
+            if est_id == 0:
+                return "Estudiante eliminado"
+            try:
+                return Container.estudiante_service().get_by_id(est_id).nombre_completo
+            except Exception:
+                return f"Estudiante #{est_id}"
+
+        items = []
+        for a in alertas:
+            nivel_raw = str(a.nivel).split(".")[-1] if "." in str(a.nivel) else str(a.nivel)
+            nombre_est = _nombre_estudiante(a.estudiante_id)
+            items.append(FollowupItem(
+                id=a.id,
+                descripcion=f"[{nombre_est}] {a.descripcion}",
+                nivel=nivel_raw.lower(),
+                fecha=str(a.fecha_generacion)[:10],
+            ))
+
+        def _on_resolve(alerta_id: int) -> None:
+            try:
+                Container.alerta_service().resolver_alerta(alerta_id, ctx.usuario_id)
+                from src.interface.design.components import toast_success
+                toast_success("Seguimiento marcado como atendido.")
+                ui.navigate.to("/inicio")
+            except Exception:
+                from src.interface.design.components import toast_error
+                toast_error("Error al resolver el seguimiento.")
+
+        followup_panel(items, on_resolve=_on_resolve)
+
     def contenido() -> None:
         nombre_corto = nombre.split()[0] if nombre else "Usuario"
         greeting_hero(
@@ -258,6 +299,11 @@ def inicio_page() -> None:
             mensaje="Bienvenido al portal de gestión docente.",
             nombre_completo=nombre or None,
         )
+
+        # Seguimientos pendientes para profesores (convivencia_19)
+        if rol == "profesor":
+            with contextlib.suppress(Exception):
+                _render_seguimientos()
 
         # Resumen global navegable
         if resumen.lineas:

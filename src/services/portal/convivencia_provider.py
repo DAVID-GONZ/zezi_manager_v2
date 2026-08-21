@@ -49,7 +49,7 @@ class ConvivenciaProvider:
                     SubItem(
                         label=f"{n} alerta{plural} pendiente{plural}",
                         detalle="Revisar en Seguimiento",
-                        ruta_destino="/convivencia/seguimiento",
+                        ruta_destino="/convivencia/alertas",
                         severidad="warning",
                         # El entero real viaja en el DTO; el resumen global lo
                         # suma sin tener que leer el texto del label.

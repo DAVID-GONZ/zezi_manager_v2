@@ -7,12 +7,11 @@
 /* ── Rail principal ─────────────────────────────────────── */
 .andes-rail {
   position: fixed;
-  top: var(--topbar-height);
+  top: 0;
   left: 0;
   bottom: 0;
   width: var(--rail-width);
-  background: var(--nav-sidebar-bg);
-  border-right: 1px solid var(--nav-sidebar-border);
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -46,7 +45,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.125rem;
-  color: var(--nav-sidebar-text);
+  color: var(--ink-700);
   letter-spacing: -0.02em;
 }
 
@@ -67,12 +66,12 @@
 .rail-item:hover,
 .rail-item.is-open {
   background: var(--nav-sidebar-hover);
-  color: var(--color-text-primary);
+  color: var(--accent-800);
 }
 
 .rail-item.is-active {
   background: var(--ink-100);
-  color: var(--ink-700);
+  color: var(--ink-900);
 }
 
 .rail-item.is-active::before {

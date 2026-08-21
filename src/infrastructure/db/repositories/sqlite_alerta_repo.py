@@ -159,6 +159,9 @@ class SqliteAlertaRepository(IAlertaRepository):
         if filtro.nivel is not None:
             sql += " AND nivel = ?"
             params.append(filtro.nivel.value)
+        if filtro.usuario_destino_id is not None:
+            sql += " AND usuario_destino_id = ?"
+            params.append(filtro.usuario_destino_id)
         sql += " ORDER BY CASE nivel WHEN 'critica' THEN 0 WHEN 'advertencia' THEN 1 ELSE 2 END, fecha_generacion DESC"
         offset = (filtro.pagina - 1) * filtro.por_pagina
         sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"

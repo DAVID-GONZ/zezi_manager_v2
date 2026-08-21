@@ -725,6 +725,142 @@
   background: var(--color-info-light);
 }
 
+/* ── Alerta Cards (página centralizada) ──────────────── */
+.alerta-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface);
+  margin-bottom: 8px;
+}
+
+.alerta-card--critica  { border-left-color: var(--color-error); }
+.alerta-card--advertencia { border-left-color: var(--color-warning); }
+.alerta-card--info     { border-left-color: var(--color-info); }
+
+.alerta-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alerta-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.alerta-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.alerta-card-nombre {
+  font-weight: 600;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.alerta-card-meta {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.alerta-card-desc {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.alerta-card-resolucion {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-light);
+  margin-top: 2px;
+}
+
+.alerta-card-obs {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Config Alerta Rows ─────────────────────────────────── */
+.config-alerta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  margin-bottom: 8px;
+}
+
+.config-alerta-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-alerta-label {
+  font-weight: 600;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.config-alerta-hint {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.config-alerta-values {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.config-alerta-umbral {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.config-alerta-badge {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.config-alerta-badge.badge-activa {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.config-alerta-badge.badge-inactiva {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.config-alerta-notif {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.config-alerta-sin {
+  font-size: var(--font-size-small);
+  color: var(--color-text-disabled);
+  font-style: italic;
+}
+
 /* ═══════════════════════════════════════════════════════
    PANEL HEADER — encabezado estándar de panel/card
    ═══════════════════════════════════════════════════════ */

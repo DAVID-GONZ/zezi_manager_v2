@@ -349,6 +349,112 @@ def _impersonation_banner(ctx: SessionContext | None) -> None:
         ).classes("impersonation-exit-btn")
 
 
+def _topbar_search(ctx: SessionContext | None) -> None:
+    """Buscador global del topbar con dropdown inline de resultados rápidos."""
+    import logging
+    _log = logging.getLogger("TOPBAR_SEARCH")
+
+    _state: dict = {"termino": "", "ver": 0}
+
+    search_input = (
+        ui.input(placeholder="Buscar...")
+        .classes("topbar-search")
+        .props("borderless dense")
+    )
+    with search_input.add_slot("prepend"):
+        ThemeManager.icono("search", size=18)
+
+    # Dropdown de resultados — posicionado bajo el topbar-search
+    dropdown = ui.element("div").classes("topbar-search-dropdown hidden")
+
+    @ui.refreshable
+    def _dropdown_content() -> None:
+        resultados = _state.get("resultados")
+        termino = _state.get("termino", "")
+        if not resultados or not resultados.resultados:
+            return
+        for item in resultados.resultados[:15]:
+            with ui.element("div").classes("topbar-search-result-item").on(
+                "click",
+                lambda r=item.ruta: (
+                    _cerrar_dropdown(),
+                    ui.navigate.to(r) if r else None,
+                ),
+            ):
+                with ui.row().classes("items-center gap-2"):
+                    ThemeManager.icono(item.icono or "label", size=16)
+                    with ui.column().classes("gap-0 flex-1"):
+                        ui.label(item.titulo).classes("topbar-search-result-titulo")
+                        if item.subtitulo:
+                            ui.label(item.subtitulo).classes("topbar-search-result-sub")
+        if resultados.limitado:
+            with ui.element("div").classes("topbar-search-footer").on(
+                "click",
+                lambda: (
+                    _cerrar_dropdown(),
+                    ui.navigate.to(f"/buscar?q={termino}"),
+                ),
+            ):
+                ui.label(f'Ver todos los resultados de "{termino}"').classes(
+                    "topbar-search-footer-link"
+                )
+
+    with dropdown:
+        _dropdown_content()
+
+    def _cerrar_dropdown() -> None:
+        dropdown.classes(remove="visible", add="hidden")
+
+    def _abrir_dropdown() -> None:
+        dropdown.classes(remove="hidden", add="visible")
+
+    def _ejecutar_busqueda() -> None:
+        termino = _state.get("termino", "").strip()
+        if len(termino) < 2:
+            _cerrar_dropdown()
+            return
+        if ctx is None:
+            return
+        try:
+            from container import Container
+            resultados = Container.busqueda_service().buscar_rapido(
+                termino,
+                rol=ctx.usuario_rol,
+                usuario_id=ctx.usuario_id,
+                limite_por_tipo=4,
+            )
+            _state["resultados"] = resultados
+            _dropdown_content.refresh()
+            if resultados.resultados:
+                _abrir_dropdown()
+            else:
+                _cerrar_dropdown()
+        except Exception as exc:
+            _log.error("Error en búsqueda rápida '%s': %s", termino, exc)
+            _cerrar_dropdown()
+
+    def _on_input_change(valor: str) -> None:
+        _state["termino"] = (valor or "").strip()
+        ver = _state["ver"] + 1
+        _state["ver"] = ver
+
+        def _debounced_check() -> None:
+            if _state["ver"] == ver:
+                _ejecutar_busqueda()
+
+        ui.timer(0.35, _debounced_check, once=True)
+
+    search_input.on("update:model-value", lambda e: _on_input_change(e.args))
+    search_input.on(
+        "keydown.enter",
+        lambda: (
+            _cerrar_dropdown(),
+            ui.navigate.to(f"/buscar?q={_state.get('termino', '')}"),
+        ),
+    )
+    search_input.on("blur", lambda: ui.timer(0.15, _cerrar_dropdown, once=True))
+
+
 def _topbar(
     ctx: SessionContext | None,
     *,
@@ -362,9 +468,6 @@ def _topbar(
     """Renderiza el topbar claro de la aplicación (surface bg, sin toggle — paso_13a)."""
 
     with ui.row().classes("andes-topbar items-center gap-0"):
-        # ── Brand (decorativo — sin toggle desde paso_12d) ──────────────────
-        ui.element("a").classes("topbar-brand").props('href="/inicio"')
-
         # ── Page info ────────────────────────────────────────────────────────
         if page_titulo:
             with ui.row().classes("topbar-page-info items-center gap-2"):
@@ -392,16 +495,7 @@ def _topbar(
                 ui.html(f'<img src="{logo_url}" alt="Logo institución" class="topbar-logo-img" />')
 
         # ── Buscador global ──────────────────────────────────────────────
-        # TODO(portal): la búsqueda global aún no existe — no hay ruta `/buscar`
-        # ni servicio que la respalde. El input queda DESHABILITADO y lo anuncia
-        # en su placeholder para no simular una función ausente. Cuando el paso
-        # que introduzca la búsqueda registre `/buscar`, revertir esto es quitar
-        # `disable` de los props y volver a cablear `keydown.enter`.
-        with ui.element("div").classes("topbar-search"):
-            ui.input(placeholder="Buscar (próximamente)").classes(
-                "andes-input topbar-search-input"
-            ).props('borderless dense disable title="Búsqueda global — próximamente"')
-            ThemeManager.icono("search", size=18)
+        _topbar_search(ctx)
 
         # ── Campana de notificaciones ────────────────────────────────────
         with ui.element("div").classes("topbar-notif"):

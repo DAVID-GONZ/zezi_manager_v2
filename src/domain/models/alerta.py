@@ -269,6 +269,7 @@ class FiltroAlertasDTO(BaseModel):
     estudiante_id: int | None = None
     tipo_alerta: TipoAlerta | None = None
     nivel: NivelAlerta | None = None
+    usuario_destino_id: int | None = None
     solo_pendientes: bool = True
     pagina: int = Field(default=1, ge=1)
     por_pagina: int = Field(default=50, ge=1, le=200)

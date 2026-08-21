@@ -650,6 +650,19 @@ class Container:
             lambda: AuditoriaService(repo=cls.auditoria_repo()),
         )
 
+    @classmethod
+    def busqueda_service(cls):
+        from src.services.busqueda_service import BusquedaService
+        return cls._get_or_create(
+            "busqueda_service",
+            lambda: BusquedaService(
+                estudiante_svc_provider=cls.estudiante_service,
+                usuario_svc_provider=cls.usuario_service,
+                catalogo_svc_provider=cls.catalogo_academico_service,
+                asignacion_svc_provider=cls.asignacion_service,
+            ),
+        )
+
     # ══════════════════════════════════════════════════════
     # DIAGNÓSTICO
     # ══════════════════════════════════════════════════════
@@ -674,6 +687,7 @@ class Container:
             "preparacion_horario_service",
             "sala_service", "franja_service", "escenario_horario_service",
             "restriccion_generacion_service", "catalogo_academico_service",
+            "busqueda_service",
         ]
         for nombre in metodos:
             try:

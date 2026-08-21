@@ -146,6 +146,10 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.inicio import inicio_page
     registrar_pagina("/inicio", inicio_page, roles=AUTENTICADO)
 
+    # ── Búsqueda global (autenticado — scoping en BusquedaService) ──────────
+    from src.interface.pages.buscar import buscar_page
+    registrar_pagina("/buscar", buscar_page, roles=AUTENTICADO)
+
     # ── Cambio forzado de contraseña (A2 — seguridad_01) ──────────────────────
     # El route_guard fuerza esta ruta cuando la sesión tiene
     # debe_cambiar_password activo. Accesible por cualquier autenticado.
@@ -265,6 +269,8 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.convivencia.plantillas import plantillas_page
     from src.interface.pages.convivencia.reporte_periodo import reporte_periodo_page
     from src.interface.pages.convivencia.seguimiento import seguimiento_page
+    from src.interface.pages.convivencia.alertas import alertas_page
+    from src.interface.pages.convivencia.configuracion_alertas import configuracion_alertas_page
 
     registrar_pagina("/convivencia/observaciones", observaciones_page, roles=_AULA)
     registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)
@@ -275,6 +281,8 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/convivencia/categorias", categorias_page, roles=_AULA)
     registrar_pagina("/convivencia/plantillas", plantillas_page, roles=_AULA)
     registrar_pagina("/convivencia/seguimiento", seguimiento_page, roles=_AULA)
+    registrar_pagina("/convivencia/alertas", alertas_page, roles=_AULA)
+    registrar_pagina("/convivencia/configuracion-alertas", configuracion_alertas_page, roles=_DIR_COORD)
 
     # ── Informes ──────────────────────────────────────────────────────────────
     from src.interface.pages.informes.boletin_anual import boletin_anual_page

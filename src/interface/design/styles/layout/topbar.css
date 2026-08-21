@@ -7,27 +7,16 @@
 .andes-topbar {
   position: fixed;
   top: 0;
-  left: 0;
+  left: var(--rail-width);
   right: 0;
   height: var(--topbar-height);
   background: var(--nav-topbar-bg);           /* var(--color-surface) = blanco */
-  border-bottom: 1px solid var(--nav-topbar-border); /* var(--color-border) */
   display: flex;
   align-items: center;
   padding: 0 var(--space-md);                 /* T3: 0 16px → var(--space-md) */
   z-index: var(--z-index-topbar);             /* T2: 1000 → var(--z-index-topbar) */
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-nav);
   gap: 12px;
-}
-
-/* ── Brand ───────────────────────────────────────────────── */
-.topbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  flex-shrink: 0;
-  min-width: 0;
 }
 
 /* ── Page info ───────────────────────────────────────────── */
@@ -64,14 +53,14 @@
 /* ── User block ──────────────────────────────────────────── */
 .topbar-user-name {
   font-size: var(--font-size-table);          /* T4: 13px → 0.8125rem */
-  font-weight: 500;
-  color: var(--color-text-primary);           /* T1: antes rgba(white,0.85) */
+  font-weight: 600;
+  color: var(--ink-900);
   white-space: nowrap;
 }
 
 .topbar-user-role {
   font-size: var(--font-size-label);          /* T4: 11px → 0.6875rem */
-  color: var(--color-text-secondary);         /* T1: antes rgba(white,0.50) */
+  color: var(--ink-500);
   white-space: nowrap;
 }
 
@@ -129,31 +118,20 @@
   flex-shrink: 0;
 }
 
-/* Botones icon-only del topbar */
-.andes-topbar .q-btn[flat] {
-  color: var(--color-text-secondary);         /* T1: antes rgba(white,0.75) */
-}
-
-.andes-topbar .q-btn[flat]:hover {
-  background: var(--color-surface-alt);       /* T1: antes rgba(white,0.10) */
-  color: var(--color-text-primary);           /* T1: antes rgba(white,0.95) */
-}
-
-/* ══════════════════════════════════════════════════════════════
-   TOPBAR — clases heredadas / compatibilidad
-   ══════════════════════════════════════════════════════════════ */
-
-/* Logout button */
+/* Botones icon-only del topbar — estilo unificado */
+.andes-topbar .q-btn[flat],
 .topbar-logout-btn {
-  color: var(--color-text-secondary) !important; /* T1: antes rgba(white,0.75) */
-  min-width: 34px !important;
-  min-height: 34px !important;
+  color: var(--ink-500);
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s, color 0.15s;
 }
 
+.andes-topbar .q-btn[flat]:hover,
 .topbar-logout-btn:hover {
-  color: var(--color-primary) !important;
-  min-width: 34px !important;
-  min-height: 34px !important;
+  background: var(--ink-050);
+  color: var(--ink-700);
 }
 
 /* ── Bloque de usuario en la topbar (logout + info) ───────── */
@@ -178,24 +156,118 @@
 /* ── Buscador global ─────────────────────────────────────────── */
 
 .topbar-search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  padding: 0 var(--space-sm);
-  height: var(--input-height-sm);
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-full) !important;
+  padding: 0 var(--space-sm) !important;
   min-width: var(--topbar-search-w);
 }
 
-.topbar-search-input {
-  border: none;
-  outline: none;
-  background: transparent;
+/* Quita el underline y padding extra del q-field interno */
+.topbar-search .q-field__control {
+  background: transparent !important;
+  border-radius: var(--radius-full) !important;
+  padding: 0 !important;
+  min-height: var(--input-height-sm) !important;
+  height: var(--input-height-sm) !important;
+}
+
+.topbar-search .q-field__control::before,
+.topbar-search .q-field__control::after {
+  display: none !important;
+}
+
+.topbar-search .q-field__native {
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
-  width: 100%;
+  padding: 0 !important;
+}
+
+.topbar-search .q-field__prepend {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-right: var(--space-xs);
+  color: var(--ink-500);
+}
+
+/* NiceGUI envuelve ui.html() en un <div> — lo convertimos en flex para
+   que el <span> del ícono herede el centrado vertical del prepend. */
+.topbar-search .q-field__prepend > div {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* ── Dropdown de resultados de búsqueda ─────────────────────── */
+
+.topbar-search-dropdown {
+  position: fixed;
+  top: calc(var(--topbar-height) + 4px);
+  min-width: var(--topbar-search-w, 240px);
+  max-width: 360px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: calc(var(--z-index-topbar, 100) + 10);
+  padding: var(--space-xs) 0;
+}
+
+.topbar-search-dropdown.hidden {
+  display: none;
+}
+
+.topbar-search-dropdown.visible {
+  display: block;
+}
+
+.topbar-search-result-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+  gap: var(--space-xs);
+}
+
+.topbar-search-result-item:hover {
+  background: var(--color-bg-hover, var(--color-bg));
+}
+
+.topbar-search-result-titulo {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium, 500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-search-result-sub {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-search-footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  margin-top: var(--space-xs);
+}
+
+.topbar-search-footer:hover {
+  background: var(--color-bg-hover, var(--color-bg));
+}
+
+.topbar-search-footer-link {
+  font-size: var(--font-size-caption);
+  color: var(--color-accent, var(--color-primary));
 }
 
 /* ── Campana de notificaciones ──────────────────────────────── */

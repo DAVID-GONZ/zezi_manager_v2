@@ -85,12 +85,12 @@
   --color-disabled-text:     var(--graphite-500);     /* #6B6B6B */
 
   /* ── Navegación — Sidebar claro ─────────────────────────── */
-  --nav-sidebar-bg:           var(--paper-050);       /* #FAFAF7 */
-  --nav-sidebar-text:         var(--graphite-700);    /* #3D3D3D */
+  --nav-sidebar-bg:           var(--color-surface);   /* igual que topbar */
+  --nav-sidebar-text:         var(--ink-700);         /* #2E3192 — íconos con tinta */
   --nav-sidebar-hover:        var(--ink-100);         /* #E8E9F8 */
   --nav-sidebar-active-bg:    var(--ink-700);         /* #2E3192 */
   --nav-sidebar-active-text:  #FFFFFF;
-  --nav-sidebar-border:       var(--paper-200);       /* #E5E5DE */
+  --nav-sidebar-border:       var(--ink-100);         /* #E8E9F8 — borde tintado */
   /* Marcador del ítem activo del rail. Se re-tinta en dark; tenerlo como
      token evita duplicar la regla bajo las dos guardias de tema. */
   --nav-rail-marker:          var(--accent-600);      /* #B8763A */
@@ -187,6 +187,7 @@
   --shadow-lg:    var(--shadow-neutral-lg);
   --shadow-card:  var(--shadow-neutral-card);
   --shadow-modal: var(--shadow-neutral-modal);
+  --shadow-nav:   0 1px 4px rgba(46, 49, 146, 0.10);
 
   /* ── Componentes (compatibilidad) ────────────────────────── */
   --btn-height: 36px;
@@ -268,11 +269,12 @@
   --shadow-lg:    0 10px 20px rgba(15, 16, 25, 0.60), 0 4px 8px rgba(46, 49, 146, 0.25);
   --shadow-card:  0 2px 6px rgba(15, 16, 25, 0.40);
   --shadow-modal: 0 24px 48px rgba(15, 16, 25, 0.80);
+  --shadow-nav:   0 1px 4px rgba(46, 49, 146, 0.25);
 
   /* Navegación — sidebar oscuro */
-  --nav-sidebar-bg:        #161827;
+  --nav-sidebar-bg:        var(--color-surface);   /* igual que topbar */
   --nav-sidebar-border:    #3A3D5C;
-  --nav-sidebar-text:      #B8BCE8;
+  --nav-sidebar-text:      var(--ink-300);         /* #9297D9 — íconos con color */
   --nav-sidebar-hover:     #252840;
   --nav-sidebar-active-bg: #2E3192;
   --nav-sidebar-active-text: #F0F1FA;
@@ -334,11 +336,12 @@
     --shadow-lg:    0 10px 20px rgba(15, 16, 25, 0.60), 0 4px 8px rgba(46, 49, 146, 0.25);
     --shadow-card:  0 2px 6px rgba(15, 16, 25, 0.40);
     --shadow-modal: 0 24px 48px rgba(15, 16, 25, 0.80);
+    --shadow-nav:   0 1px 4px rgba(46, 49, 146, 0.25);
 
     /* Navegación — sidebar oscuro */
-    --nav-sidebar-bg:        #161827;
+    --nav-sidebar-bg:        var(--color-surface);   /* igual que topbar */
     --nav-sidebar-border:    #3A3D5C;
-    --nav-sidebar-text:      #B8BCE8;
+    --nav-sidebar-text:      var(--ink-300);         /* #9297D9 — íconos con color */
     --nav-sidebar-hover:     #252840;
     --nav-sidebar-active-bg: #2E3192;
     --nav-sidebar-active-text: #F0F1FA;
