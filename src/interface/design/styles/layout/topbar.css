@@ -13,7 +13,7 @@
   background: var(--nav-topbar-bg);           /* var(--color-surface) = blanco */
   display: flex;
   align-items: center;
-  padding: 0 var(--space-md);                 /* T3: 0 16px → var(--space-md) */
+  padding: 0 var(--content-padding);          /* alineado con el padding de las cards */
   z-index: var(--z-index-topbar);             /* T2: 1000 → var(--z-index-topbar) */
   box-shadow: var(--shadow-nav);
   gap: 12px;

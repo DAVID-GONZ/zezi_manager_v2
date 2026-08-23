@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-md) 0;
+  padding: 0 0 var(--space-md);
   gap: 6px;
   z-index: var(--z-index-rail);
   overflow-y: auto;
@@ -27,11 +27,11 @@
 /* ── Marca / monograma ──────────────────────────────────── */
 .rail-brand {
   width: 36px;
-  height: 36px;
+  height: var(--topbar-height);             /* ocupa la zona del topbar (60px) */
   display: flex;
-  align-items: center;
+  align-items: center;                       /* logo centrado dentro del área del topbar */
   justify-content: center;
-  margin-bottom: var(--space-md);
+  margin-bottom: calc(var(--content-padding) - 6px); /* 18px: content-padding menos el gap del flex → primer ítem en 84px */
 }
 
 .rail-logo-img {
