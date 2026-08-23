@@ -49,6 +49,9 @@ from src.interface.design.styles.tokens import Icons
 from src.interface.pages.convivencia._shared_observacion_form import (
     abrir_crear_observacion_dialog,
 )
+from src.interface.presenters.convivencia.notas_convivencia_presenter import (
+    NotasConvivenciaPresenter,
+)
 from src.services.convivencia_service import (
     FiltroConvivenciaDTO,
     NuevaNotaComportamientoDTO,
@@ -218,7 +221,8 @@ def notas_convivencia_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = NotasConvivenciaPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_periodos(_s)
     _refs: dict = {}
 
@@ -584,15 +588,7 @@ def notas_convivencia_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["sel_periodo_id"] = s["sel_periodo_id"]
-            _s["sel_grupo_id"] = s["sel_grupo_id"]
-            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
-            _s["sel_asignacion_nombre"] = s.get("sel_asignacion_nombre", "")
-            _s["sel_estudiante_ids"] = []
-            _s["sel_estudiante_id"] = None
-            _s["observaciones_estudiante"] = []
-            _s["registros_estudiante"] = []
-            _s["cambios_pendientes"] = {}
+            presenter.aplicar_seleccion(s)
             _verificar_periodo(_s)
             if s["sel_grupo_id"]:
                 try:

@@ -33,6 +33,9 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.layout import app_layout
+from src.interface.presenters.admin.catalogo_instituciones_presenter import (
+    CatalogoInstitucionesPresenter,
+)
 from src.reference.divipola import DEPARTAMENTOS, municipios_de
 from src.services.aprovisionamiento_institucion_service import (
     NuevaInstitucionConDirectorDTO,
@@ -68,15 +71,16 @@ def catalogo_instituciones_page() -> None:
     logger.info("Catálogo instituciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {"instituciones": []}
+    presenter = CatalogoInstitucionesPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            _s["instituciones"] = Container.institucion_service().listar_entidades()
+            presenter.set_instituciones(Container.institucion_service().listar_entidades())
         except Exception as exc:
             logger.error("Error al cargar instituciones: %s", exc)
-            _s["instituciones"] = []
+            presenter.set_instituciones([])
 
     _cargar_estado()
 

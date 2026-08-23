@@ -46,11 +46,12 @@ Por cada tarea en `specs/<id>/tasks.md`, en orden:
    grep -n "def <método>" <archivo_del_servicio>
    NO llames a métodos que no existen o cuya firma no has verificado.
 3. Implementar.
-4. Ejecutar la verificación de capa correspondiente (ver §Verificación por capa).
+4. Ejecutar la verificación de capa correspondiente Y la puerta de ruff
+   (ver §Verificación por capa y §Ruff — obligatorio en TODA capa).
 5. Si pasa → marcar [x] en tasks.md. Si falla → corregir antes de marcar.
 ```
 
-**Nunca marcar `[x]` con un test fallando.**
+**Nunca marcar `[x]` con un test fallando ni con la puerta de ruff en rojo.**
 
 ---
 
@@ -136,9 +137,51 @@ python3 -m pytest tests/integration/test_pages.py -q --tb=short 2>/dev/null || e
 
 ---
 
+### Ruff — obligatorio en TODA capa
+
+```bash
+python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9 --output-format concise
+```
+
+Debe salir en **0 errores**, en cualquier capa, después de cada tarea. Estas ocho
+reglas no son estilo: señalan código que revienta en ejecución.
+
+| Regla | Qué caza |
+|---|---|
+| `F821` | nombre indefinido — el handler llama a algo que su cadena de scopes no alcanza |
+| `F811` | redefinición que pisa a la anterior (dos `def` con el mismo nombre) |
+| `F632` | `is` contra un literal — la comparación no hace lo que aparenta |
+| `F702` | `continue` fuera de un bucle |
+| `B006` | argumento por defecto mutable (`def f(x=[])`) |
+| `B008` | llamada en el valor por defecto — se evalúa una sola vez al importar |
+| `B023` | closure que captura la variable del bucle, no su valor |
+| `E9` | error de sintaxis o de IO — el archivo ni siquiera parsea |
+
+Por qué importa, con un caso real: un `F821` en `estudiantes.py` pasó meses sin
+detectarse. `_procesar_csv` llamaba a `tabla_refreshable.refresh()`, pero ese
+refreshable vivía dentro de otra función y el handler no lo alcanzaba. La
+matrícula masiva por CSV **escribía los estudiantes en la base y acto seguido
+reventaba con `NameError`**: datos guardados, UI en error, y el usuario
+reintentando y duplicando la carga.
+
+El resto de reglas configuradas en `pyproject.toml` (`SIM`, `N`, `UP`, `PTH`,
+`RUF012`…) es **informativo y no bloquea**. No las arregles de paso: ensucian el
+diff de tu paso y entierran el cambio real bajo ruido.
+
+**Prohibido** ejecutar `ruff format` o `ruff check --fix` de forma masiva dentro
+de un paso de funcionalidad. Corrige solo los sitios que tu paso toca. Un
+reformateo global va en su propio commit aislado: mezclado con trabajo real
+sepulta ~500 líneas de cambio bajo ~12.000 de ruido y hace la revisión
+imposible. Si crees que el repo necesita un reformateo, dilo en el informe y que
+lo decida el leader.
+
+---
+
 ## Prohibiciones absolutas
 
 - ❌ Tocar archivos fuera del scope del paso activo.
+- ❌ Marcar una tarea `[x]` con la puerta de ruff en rojo (`F821,F811,F632,F702,B006,B008,B023,E9`).
+- ❌ `ruff format` o `ruff check --fix` masivos dentro de un paso de funcionalidad — solo en commit aislado y autorizado por el leader.
 - ❌ Importar modelos de dominio en páginas (`from src.domain.models.*`).
 - ❌ Usar `.dict()` — siempre `model_dump()`.
 - ❌ Usar `ui.icon()` — siempre `ThemeManager.icono()`.
@@ -204,6 +247,9 @@ Si el método no existe → **reportar al leader**. No inventar.
 ## Al terminar todas las tasks
 
 ```bash
+# Puerta de ruff — debe salir en 0
+python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9 --output-format concise
+
 # Suite completa
 ./init.sh
 ```
@@ -225,6 +271,9 @@ Escribir `progress/impl_<id>.md`:
 
 ## Decisiones de diseño tomadas
 <Solo las decisiones dentro del espacio de libertad — composición, clases CSS elegidas, etc.>
+
+## Puerta de ruff
+`python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9` → <0 errores | detalle>
 
 ## Output de ./init.sh
 <output completo>

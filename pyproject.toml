@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "zeci-manager-v2"
 version = "0.1.0"
 description = "Add your description here"
@@ -12,6 +12,16 @@ dependencies = [
     "reportlab>=5.0.0",
     "ruff>=0.16.0",
 ]
+
+[project.optional-dependencies]
+# Entorno de test reproducible desde el propio pyproject:
+#   pip install -e ".[test]"
+test = [
+    "pytest>=9.0",
+    "pytest-asyncio>=1.0",
+    "pytest-cov>=7.0",
+]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100  # o 120, el que prefieran
@@ -42,10 +52,18 @@ ignore = [
     "N806",              # nombres de variables locales en minúsculas con guiones bajos
 ]
 
-# Reglas que NO son estilo sino defectos: un nombre indefinido o un closure mal
-# capturado revientan en tiempo de ejecución. `init.py` las trata como puerta
-# bloqueante; el resto de reglas se reportan pero no tumban la verificación.
-# Mantener esta lista sincronizada con `_RUFF_BLOQUEANTES` en init.py.
+# ---------------------------------------------------------------------------
+# Reglas BLOQUEANTES (puerta de verificación de los agentes)
+# ---------------------------------------------------------------------------
+# No son estilo sino defectos: un nombre indefinido o un closure mal capturado
+# revientan en tiempo de ejecución. El resto de reglas se reporta pero no tumba
+# la verificación.
+#
+#     F821,F811,F632,F702,B006,B008,B023,E9
+#
+# Esta es la fuente de verdad de la lista. Mantener sincronizadas sus copias en:
+#   · `_RUFF_BLOQUEANTES` de init.py (puerta `check_ruff`)
+#   · .claude/agents/leader.md, implementer.md y reviewer.md
 [tool.ruff.format]
 docstring-code-format = true
 
@@ -54,3 +72,50 @@ docstring-code-format = true
 "scripts/*" = ["T20"]
 "init.py" = ["T20"]        # init.py vive en la raíz, no en src/
 
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+# Acotar el descubrimiento a `tests/`: sin esto pytest recorre `.venv` y
+# `.claude/worktrees` y colecciona miles de tests ajenos (numpy, pandas…).
+testpaths = ["tests"]
+# Activa pytest-asyncio sin necesidad de marcar cada test async.
+asyncio_mode = "auto"
+# --strict-markers: un marker mal escrito falla en vez de pasar en silencio.
+# --strict-config: un error en esta sección falla en vez de avisar.
+# -ra: resumen de todo lo que no fue "passed" al final.
+addopts = "--strict-markers --strict-config -ra"
+norecursedirs = [".venv", ".claude", "roadmaps", "build", "dist"]
+markers = [
+    "unit: prueba unitaria pura (sin BD ni UI real)",
+    "integration: toca repositorios SQLite / escenarios multi-tenant",
+    "slow: prueba lenta (estrés, generación combinatoria)",
+    "e2e: flujo de UI real con nicegui.testing (headless)",
+    "browser: flujo de navegador real con Playwright (opt-in)",
+]
+
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/infrastructure/db/seed.py",   # datos de siembra, no lógica a cubrir
+    "src/reference/divipola.py",       # tabla de datos geográficos
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+# Trinquete: solo se aplica cuando se corre con cobertura (modo `completo` del
+# runner o `pytest --cov`). El `pytest` por defecto NO mide cobertura para no
+# ralentizar el día a día. Subir este número a medida que crece la cobertura;
+# nunca bajarlo. Actual medido: ~46 % (arrastrado por la capa UI sin unit-tests).
+fail_under = 45
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "def __repr__",
+]

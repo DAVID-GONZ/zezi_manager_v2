@@ -21,9 +21,7 @@ Refreshables:
 
 from __future__ import annotations
 
-import contextlib
 import logging
-from datetime import date
 
 from nicegui import ui
 
@@ -39,6 +37,7 @@ from src.interface.design.components.buttons import btn_primary
 from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.informes.consolidado_presenter import ConsolidadoInformePresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.informe_service import InformeNotasDTO
 
@@ -46,20 +45,6 @@ logger = logging.getLogger("CONSOLIDADO_NOTAS")
 
 
 # ── Estado ────────────────────────────────────────────────────────────────────
-
-
-def _estado_inicial() -> dict:
-    return {
-        "grupo_id": None,
-        "asignacion_id": None,
-        "periodo_id": None,
-        "fecha_desde": None,
-        "fecha_hasta": None,
-        "formato": "excel",
-        "grupos": [],
-        "asignaciones": [],
-        "periodos": [],
-    }
 
 
 def _cargar_listas(ctx: SessionContext, _s: dict) -> None:
@@ -102,7 +87,8 @@ def consolidado_notas_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = ConsolidadoInformePresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_listas(ctx, _s)
 
     @ui.refreshable
@@ -127,7 +113,7 @@ def consolidado_notas_page() -> None:
                     label="Asignación",
                     options=asig_opts,
                     value=_s["asignacion_id"],
-                    on_change=lambda e: _s.update({"asignacion_id": e.value}),
+                    on_change=lambda e: presenter.set_asignacion(e.value),
                     clearable=False,
                 )
 
@@ -137,7 +123,7 @@ def consolidado_notas_page() -> None:
                     label="Periodo",
                     options=per_opts,
                     value=_s["periodo_id"],
-                    on_change=lambda e: _s.update({"periodo_id": e.value}),
+                    on_change=lambda e: presenter.set_periodo(e.value),
                     clearable=False,
                 )
 
@@ -146,7 +132,7 @@ def consolidado_notas_page() -> None:
                     label="Formato",
                     options={"excel": "Excel (.xlsx)", "pdf": "PDF"},
                     value=_s["formato"],
-                    on_change=lambda e: _s.update({"formato": e.value}),
+                    on_change=lambda e: presenter.set_formato(e.value),
                     clearable=False,
                 )
 
@@ -174,19 +160,15 @@ def consolidado_notas_page() -> None:
                 )
 
     def on_grupo_change(grupo_id) -> None:
-        _s["grupo_id"] = grupo_id
-        _s["asignacion_id"] = None
-        _s["periodo_id"] = None
+        presenter.set_grupo(grupo_id)  # resetea asignación y periodo
         _cargar_listas(ctx, _s)
         filtros_refreshable.refresh()
 
     def on_fecha_desde(valor: str) -> None:
-        with contextlib.suppress(ValueError):
-            _s["fecha_desde"] = date.fromisoformat(valor) if valor else None
+        presenter.set_fecha_desde(valor)
 
     def on_fecha_hasta(valor: str) -> None:
-        with contextlib.suppress(ValueError):
-            _s["fecha_hasta"] = date.fromisoformat(valor) if valor else None
+        presenter.set_fecha_hasta(valor)
 
     def on_generar() -> None:
         if not _s["grupo_id"]:

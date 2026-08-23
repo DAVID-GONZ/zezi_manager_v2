@@ -128,6 +128,36 @@ grep -rE "import (sqlite3|pandas|bcrypt)|from nicegui|from src.(services|interfa
 Test guardarraíl clave (verifica vía AST que el guard mantiene el sync central):
 `tests/unit/interface/auth/test_route_guard.py::test_guard_sincroniza_contexto_central`.
 
+---
+
+### Capa de interfaz — presenters, tautologías y e2e
+
+```bash
+# 1. Presenters PUROS: ningún módulo de presenters/ importa NiceGUI.
+grep -rE "import nicegui|from nicegui" src/interface/presenters/ \
+  && echo "ERROR: presenter importa NiceGUI" || echo "OK"
+python -m pytest tests/unit/interface/presenters/ -q          # llaman al código real
+
+# 2. Anti-tautología: un test de presenter debe IMPORTAR y LLAMAR al presenter,
+#    no reimplementar la lógica. Señal de alarma → revisar a mano:
+grep -rLE "import .*presenter|from .*presenter" tests/unit/interface/presenters/test_*.py \
+  | grep -vE "__init__|test_presenters_puros" && echo "REVISAR: test sin importar su presenter" || echo "OK"
+# (test_presenters_puros.py se excluye: es la guarda de pureza, recorre archivos, no importa un presenter)
+
+# 3. Matriz de guard (lock ruta × rol): toda ruta nueva/cambio de acceso rompe el test.
+python -m pytest tests/unit/interface/auth/test_matriz_rutas_completa.py -q
+
+# 4. e2e headless (guard→página→servicio, sin navegador). NO usa la BD real.
+python scripts/run_tests.py e2e        # == pytest -m e2e
+```
+
+**Regla del harness e2e (NO negociable):** el entrypoint de los tests e2e es
+`tests/e2e/e2e_app.py`, **nunca `main.py`** — el fixture `user` hace
+`runpy.run_path(..., "__main__")`, así que apuntar a `main.py` correría `main()` con
+init de la BD real. `e2e_app.py` fija `connection.DB_PATH` a una BD temporal sembrada
+con `seed_dev` (bcrypt real). Para conducir un control sin texto visible (botón-icono),
+añádele un `mark("<hook-de-test>")` en la página (hook de test, no comportamiento).
+
 ## Cómo verificar trazabilidad R\<n\> ↔ test
 
 Cada requisito en `specs/<paso>/requirements.md` tiene un identificador `R1`, `R2`, etc.
@@ -143,6 +173,21 @@ def test_matricular_documento_duplicado_falla(service):
 ```
 
 El reviewer verifica que ningún `R<n>` del spec quede sin test asociado.
+
+### Deberes adicionales del reviewer (capa de interfaz)
+
+- **Sin lógica de negocio en presenter ni en closures de página.** Cálculos, reglas,
+  umbrales y validaciones van a `services`/`domain`. Rechazar un presenter que aplique
+  reglas de negocio, y una página que embeba lógica en handlers (`docs/conventions.md`
+  §14).
+- **Presenter puro.** Ningún archivo de `presenters/` importa `nicegui` (check arriba).
+  Toda página con estado tiene su presenter espejo; los handlers llaman a métodos del
+  presenter, no escriben view-state directo.
+- **Sin tests-tautología.** Un test de UI debe importar y llamar al código de producción
+  (presenter/servicio), nunca reimplementar la lógica y hacer assert sobre la copia. Si
+  un test no importa lo que dice probar, rechazarlo.
+- **Sin drift de acceso silencioso.** Ruta nueva o cambio de roles → actualizar
+  `ACCESO_ESPERADO` (`test_matriz_rutas_completa.py`) en el mismo commit.
 
 ---
 

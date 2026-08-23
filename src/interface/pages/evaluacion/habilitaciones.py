@@ -31,6 +31,7 @@ from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.evaluacion.habilitaciones_presenter import HabilitacionesPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.nivelacion_service import (
     CalificarNotaNivelacionDTO,
@@ -50,17 +51,8 @@ def habilitaciones_page() -> None:
     logger.info("Habilitaciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable global ─────────────────────────────────────────────────
-    _s: dict = {
-        # datos base
-        "periodos": [],
-        "asignaciones": [],  # solo las del profesor (o todas si es directivo/admin)
-        # nivelación
-        "nivel_periodo_id": None,
-        "nivel_asig_id": None,  # asignación seleccionada en el desplegable
-        "nivel_cierres": [],  # list[CierrePeriodo] bajo desempeño
-        "nivel_cierre": None,  # CierreNivelacion | None (si ya cerrada)
-        "nivel_planilla": None,  # PlanillaNivelacionDTO | None
-    }
+    presenter = HabilitacionesPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos base ───────────────────────────────────────────────────
     def _cargar_base() -> None:
@@ -417,7 +409,7 @@ def habilitaciones_page() -> None:
                                 options=periodos_opts,
                                 value=None,
                                 on_change=lambda e: (
-                                    _s.__setitem__("nivel_periodo_id", e.value),
+                                    presenter.set_nivel_periodo(e.value),
                                     _cargar_nivelacion(),
                                     planilla_nivelacion.refresh(),
                                 ),
@@ -429,7 +421,7 @@ def habilitaciones_page() -> None:
                                 options=asig_opts,
                                 value=None,
                                 on_change=lambda e: (
-                                    _s.__setitem__("nivel_asig_id", e.value),
+                                    presenter.set_nivel_asig(e.value),
                                     _cargar_nivelacion(),
                                     planilla_nivelacion.refresh(),
                                 ),

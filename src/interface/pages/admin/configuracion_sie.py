@@ -40,6 +40,7 @@ from src.interface.design.components.buttons import (
 from src.interface.design.components.form_fields import field_number
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.admin.configuracion_sie_presenter import ConfiguracionSiePresenter
 from src.services.configuracion_service import (
     ActualizarConfiguracionAnioDTO,
     CriterioPromocion,
@@ -79,14 +80,8 @@ def configuracion_sie_page() -> None:
 
     logger.info("Config SIEE: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s: dict = {
-        "config_activa": None,
-        "nuevo_anio": 2026,
-        "niveles": [],
-        "criterios": None,
-        "siee_cfg": None,
-        "cats_inst": [],
-    }
+    presenter = ConfiguracionSiePresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_todo() -> None:
@@ -121,13 +116,7 @@ def configuracion_sie_page() -> None:
 
     _cargar_todo()
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
-    def _anio_id() -> int | None:
-        return _s["config_activa"].id if _s["config_activa"] else None
-
-    def _modo_actual() -> str:
-        cfg = _s["siee_cfg"]
-        return cfg.modo.value if cfg else "libre"
+    # ── Helpers (delegan al presenter) ──────────────────────────────────────
 
     # ── Acciones — año lectivo ────────────────────────────────────────────────
     def _crear_anio() -> None:
@@ -209,7 +198,7 @@ def configuracion_sie_page() -> None:
 
     # ── Acciones — niveles de desempeño ──────────────────────────────────────
     def _restablecer_niveles_default() -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
 
@@ -245,7 +234,7 @@ def configuracion_sie_page() -> None:
         )
 
     def _agregar_nivel() -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
 
@@ -308,7 +297,7 @@ def configuracion_sie_page() -> None:
         )
 
     def _editar_nivel(nivel: NivelDesempeno) -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
 
@@ -372,7 +361,7 @@ def configuracion_sie_page() -> None:
         )
 
     def _eliminar_nivel(nivel: NivelDesempeno) -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
 
@@ -398,7 +387,7 @@ def configuracion_sie_page() -> None:
 
     # ── Acciones — criterios de promoción ─────────────────────────────────────
     def _editar_criterios() -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
         criterios = _s["criterios"]
@@ -470,7 +459,7 @@ def configuracion_sie_page() -> None:
         pct_v = round((cfg.porcentaje_autonomia_docente or 0) * 100, 1) if cfg else 0.0
 
         def _guardar(datos: dict) -> None:
-            anio_id = _anio_id()
+            anio_id = presenter.anio_id()
             if not anio_id:
                 return
             # % autonomía (1-99) → fracción (0-1): conversión de unidad en la frontera.
@@ -521,7 +510,7 @@ def configuracion_sie_page() -> None:
 
     # ── Acciones — categorías institucionales ─────────────────────────────────
     def _crear_cat_institucional() -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         if not anio_id:
             return
 
@@ -580,7 +569,7 @@ def configuracion_sie_page() -> None:
         )
 
     def _editar_cat_institucional(cat) -> None:
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
 
         def _guardar(datos: dict) -> None:
             nuevo_nombre = str(datos.get("nombre", "")).strip() or None
@@ -736,7 +725,7 @@ def configuracion_sie_page() -> None:
     @ui.refreshable
     def panel_niveles() -> None:
         niveles = _s["niveles"]
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center u-mb-lg"):
@@ -792,7 +781,7 @@ def configuracion_sie_page() -> None:
     @ui.refreshable
     def panel_criterios() -> None:
         criterios = _s["criterios"]
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center u-mb-lg"):
@@ -825,7 +814,7 @@ def configuracion_sie_page() -> None:
     @ui.refreshable
     def panel_modo_siee() -> None:
         cfg = _s["siee_cfg"]
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         modo_val = cfg.modo.value if cfg else "libre"
         modo_label = _MODO_LABELS.get(modo_val, modo_val)
         modo_desc = _MODO_DESC.get(modo_val, "")
@@ -857,7 +846,7 @@ def configuracion_sie_page() -> None:
     @ui.refreshable
     def panel_cats_inst() -> None:
         cats_inst = _s["cats_inst"]
-        anio_id = _anio_id()
+        anio_id = presenter.anio_id()
         suma_inst = round(sum(c.peso for c in cats_inst) * 100, 1)
 
         with ui.element("div").classes("panel-card"):

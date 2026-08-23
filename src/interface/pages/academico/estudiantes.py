@@ -50,6 +50,7 @@ from src.interface.design.components.form_fields import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.academico.estudiantes_presenter import EstudiantesPresenter
 from src.services.estudiante_service import (
     ActualizarEstudianteDTO,
     ActualizarPIARDTO,
@@ -97,22 +98,9 @@ def estudiantes_page() -> None:
     # admin no accede a esta ruta, así que aquí basta director/coordinador.
     puede_gestionar = ctx.usuario_rol in ("director", "coordinador")
 
-    # ── Estado mutable de la página ───────────────────────────────────────────
-    _s: dict = {
-        "estudiantes": [],
-        "filtro_grupo_id": None,
-        "filtro_estado": None,
-        "filtro_piar": None,
-        "filtro_busqueda": "",
-        # True una vez el usuario interactúa con cualquier filtro (incl. elegir
-        # "Todos los grupos", que usa None igual que el estado inicial). Permite
-        # distinguir "aún no filtró" de "eligió ver todos".
-        "filtro_tocado": False,
-        "grupos": [],
-        "grupos_ids_docente": None,  # None → sin restricción; list → grupos del docente
-        "config": None,
-        "resultado_masivo": None,
-    }
+    # ── Estado mutable de la página (view-model en el presenter) ──────────────
+    presenter = EstudiantesPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga inicial de datos de soporte ─────────────────────────────────────
     try:
@@ -141,18 +129,10 @@ def estudiantes_page() -> None:
 
     # ── Función de carga de estudiantes ──────────────────────────────────────
 
-    def _hay_filtro_activo() -> bool:
-        """
-        El listado solo se consulta cuando el usuario ha interactuado con los
-        filtros (incl. elegir "Todos los grupos") o hay una búsqueda no vacía.
-        Sin filtro activo la página arranca (y permanece) vacía.
-        """
-        return _s["filtro_tocado"] or bool((_s["filtro_busqueda"] or "").strip())
-
     def _cargar_estudiantes() -> None:
         # Sin filtro activo no consultamos: listado vacío hasta que el usuario filtre.
-        if not _hay_filtro_activo():
-            _s["estudiantes"] = []
+        if not presenter.hay_filtro_activo():
+            presenter.set_estudiantes([])
             return
         try:
             filtro = FiltroEstudiantesDTO(
@@ -163,10 +143,12 @@ def estudiantes_page() -> None:
                 busqueda=_s["filtro_busqueda"] or None,
                 por_pagina=200,
             )
-            _s["estudiantes"] = Container.estudiante_service().listar_resumenes_plano(filtro)
+            presenter.set_estudiantes(
+                Container.estudiante_service().listar_resumenes_plano(filtro)
+            )
         except Exception as exc:
             logger.error("Error cargando estudiantes: %s", exc)
-            _s["estudiantes"] = []
+            presenter.set_estudiantes([])
 
     # NOTA: no se precarga el listado al abrir la página. El estado arranca
     # con estudiantes=[] y solo se consulta cuando el usuario filtra.
@@ -291,7 +273,7 @@ def estudiantes_page() -> None:
             estudiantes = _s["estudiantes"]
 
             # Sin filtro activo: el listado no se ha consultado todavía.
-            if not _hay_filtro_activo():
+            if not presenter.hay_filtro_activo():
                 empty_state(
                     icono=Icons.SEARCH,
                     titulo="Selecciona un grupo para ver los estudiantes",
@@ -1034,7 +1016,7 @@ def estudiantes_page() -> None:
                         options=_grupos_opts,
                         value=None,
                         on_change=lambda e: (
-                            _s.update({"filtro_grupo_id": e.value, "filtro_tocado": True}),
+                            presenter.set_grupo(e.value),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
@@ -1052,7 +1034,7 @@ def estudiantes_page() -> None:
                         },
                         value=None,
                         on_change=lambda e: (
-                            _s.update({"filtro_estado": e.value, "filtro_tocado": True}),
+                            presenter.set_estado(e.value),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
@@ -1062,9 +1044,7 @@ def estudiantes_page() -> None:
                     ui.checkbox(
                         "Solo con PIAR",
                         on_change=lambda e: (
-                            _s.update(
-                                {"filtro_piar": True if e.value else None, "filtro_tocado": True}
-                            ),
+                            presenter.set_piar(e.value),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),
@@ -1074,7 +1054,7 @@ def estudiantes_page() -> None:
                         label="Buscar",
                         placeholder="Nombre o documento",
                         on_change=lambda e: (
-                            _s.update({"filtro_busqueda": e.value, "filtro_tocado": True}),
+                            presenter.set_busqueda(e.value),
                             _cargar_estudiantes(),
                             tabla_refreshable.refresh(),
                         ),

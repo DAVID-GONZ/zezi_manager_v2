@@ -43,6 +43,7 @@ from src.interface.design.components.buttons import btn_icon, btn_primary
 from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.admin.usuarios_presenter import UsuariosPresenter
 from src.services.usuario_service import FiltroUsuariosDTO, NuevoUsuarioDTO
 
 logger = logging.getLogger("ADMIN.USUARIOS")
@@ -86,12 +87,8 @@ def usuarios_page() -> None:
     logger.info("Usuarios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        "usuarios": [],
-        "filtro_rol": None,
-        "filtro_activos": True,
-        "filtro_institucion": None,
-    }
+    presenter = UsuariosPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
@@ -101,10 +98,10 @@ def usuarios_page() -> None:
                 solo_activos=_s["filtro_activos"],
                 institucion_id=_s["filtro_institucion"] if es_admin else None,
             )
-            _s["usuarios"] = Container.usuario_service().listar_resumenes(filtro)
+            presenter.set_usuarios(Container.usuario_service().listar_resumenes(filtro))
         except Exception as exc:
             logger.error("Error al cargar usuarios: %s", exc)
-            _s["usuarios"] = []
+            presenter.set_usuarios([])
 
     _cargar_estado()
 
@@ -407,7 +404,7 @@ def usuarios_page() -> None:
                                     _ver_como(uid, nom, r, inst)
                                 ),
                                 tooltip="Ver como (solo lectura)",
-                            )
+                            ).mark(f"ver-como-{u.usuario}")
                         if gestionable and u.activo:
                             if puede_crear:
                                 btn_icon(
@@ -465,7 +462,7 @@ def usuarios_page() -> None:
                             options=roles_opts,
                             value=None,
                             on_change=lambda e: (
-                                _s.__setitem__("filtro_rol", e.value),
+                                presenter.set_filtro_rol(e.value),
                                 _on_filtros_cambio(),
                             ),
                             cls_extra="w-40",
@@ -476,7 +473,7 @@ def usuarios_page() -> None:
                                 options=instituciones_opts,
                                 value=None,
                                 on_change=lambda e: (
-                                    _s.__setitem__("filtro_institucion", e.value),
+                                    presenter.set_filtro_institucion(e.value),
                                     _on_filtros_cambio(),
                                 ),
                                 cls_extra="w-52",
@@ -485,7 +482,7 @@ def usuarios_page() -> None:
                             "Solo activos",
                             value=_s["filtro_activos"],
                             on_change=lambda e: (
-                                _s.__setitem__("filtro_activos", e.value),
+                                presenter.set_filtro_activos(e.value),
                                 _on_filtros_cambio(),
                             ),
                         )

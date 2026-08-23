@@ -42,6 +42,9 @@ from src.interface.design.components.inline_selectors import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Colors, DesempenoColors, Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.academico.tablero_estadisticos_presenter import (
+    TableroEstadisticosPresenter,
+)
 
 logger = logging.getLogger("TABLERO_ESTADISTICOS")
 
@@ -988,32 +991,8 @@ def tablero_estadisticos_page() -> None:
     es_directivo = ctx.usuario_rol in ("director", "coordinador")
 
     # ── Estado mutable ─────────────────────────────────────────────────────
-    _s: dict = {
-        # Contexto académico activo — alimentado por inline selector
-        "periodo_id": None,
-        "anio_id": None,
-        "grupo_id": None,
-        "asignacion_id": None,
-        # sel_* gestionados por el inline selector
-        "sel_periodo_id": None,
-        "sel_periodo_nombre": "",
-        "sel_grupo_id": None,
-        "sel_grupo_nombre": "",
-        "sel_asignacion_id": None,
-        "sel_asignacion_nombre": "",
-        # Vista institucional
-        "global_data": [],
-        "kpi_grupos": 0,
-        "kpi_promedio": 0.0,
-        "kpi_asistencia": 0.0,
-        "kpi_riesgo": 0,
-        # Drill-down (selectores propios de directivos)
-        "drill_grupo_id": None,
-        "drill_asig_id": None,
-        "drill_asignaciones": [],
-        # skeleton flags
-        "cargando_global": True,
-    }
+    presenter = TableroEstadisticosPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     async def _carga_inicial():
         if es_directivo and _s["periodo_id"]:
@@ -1184,29 +1163,24 @@ def tablero_estadisticos_page() -> None:
     # ── Handlers ────────────────────────────────────────────────────────────
 
     def _on_drill_grupo(grupo_id: int | None) -> None:
-        _s["drill_grupo_id"] = grupo_id
-        _s["drill_asig_id"] = None
+        presenter.set_drill_grupo(grupo_id)  # resetea la asignación del drill
         _cargar_drill_asignaciones(_s)
         drill_refreshable.refresh()
 
     def _on_drill_asig(asig_id: int | None) -> None:
-        _s["drill_asig_id"] = asig_id
+        presenter.set_drill_asig(asig_id)
         drill_refreshable.refresh()
 
     # ── Contenido ────────────────────────────────────────────────────────────
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["periodo_id"] = s["sel_periodo_id"]
-            _s["grupo_id"] = s["sel_grupo_id"]
-            _s["asignacion_id"] = s["sel_asignacion_id"]
+            presenter.aplicar_seleccion(s)  # copia contexto + resetea el drill
             try:
                 cfg = Container.configuracion_service().get_activa()
                 _s["anio_id"] = getattr(cfg, "id", None) if cfg else None
             except Exception:
                 _s["anio_id"] = None
-            _s["drill_grupo_id"] = None
-            _s["drill_asig_id"] = None
             if es_directivo:
                 if _s["periodo_id"]:
                     _cargar_datos_globales(_s)

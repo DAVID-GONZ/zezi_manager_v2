@@ -49,6 +49,7 @@ from src.interface.design.components.form_fields import (
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.admin.asignaciones_presenter import AsignacionesPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO, NuevaAsignacionDTO
 
 # Flujo de configuración del generador de horarios.
@@ -111,22 +112,8 @@ def asignaciones_page() -> None:
 
     logger.info("Asignaciones: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s: dict = {
-        "anio_id": None,
-        "periodos": [],
-        "periodo_id": None,
-        "grupos": [],
-        "docentes": [],
-        "asignaturas": [],
-        "perspectiva": "grupo",  # "grupo" | "docente"
-        "solo_con_cupo": True,  # filtrar docentes sin cupo en los selectores
-        "grupo_sel_id": None,
-        "docente_sel_id": None,
-        "plan": [],  # list[PlanEstudios] del grado del grupo seleccionado
-        "asigns": [],  # AsignacionInfo del grupo+periodo (activas + inactivas)
-        "doc_asigns": [],  # AsignacionInfo activas del docente+periodo
-        "mis_asigns": [],  # AsignacionInfo activas del profesor en sesión
-    }
+    presenter = AsignacionesPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_catalogo() -> None:
@@ -220,9 +207,10 @@ def asignaciones_page() -> None:
             _s["mis_asigns"] = []
 
     def _recargar() -> None:
-        if es_profesor:
+        objetivo = presenter.loader_objetivo(es_profesor)
+        if objetivo == "profesor":
             _cargar_profesor()
-        elif _s["perspectiva"] == "grupo":
+        elif objetivo == "grupo":
             _cargar_grupo()
         else:
             _cargar_docente()
@@ -484,22 +472,22 @@ def asignaciones_page() -> None:
 
     # ── Selectores ───────────────────────────────────────────────────────────────
     def _cambiar_periodo(pid: int) -> None:
-        _s["periodo_id"] = pid
+        presenter.set_periodo(pid)
         _recargar()
         matriz.refresh()
 
     def _cambiar_perspectiva(p: str) -> None:
-        _s["perspectiva"] = p
+        presenter.set_perspectiva(p)
         _recargar()
         matriz.refresh()
 
     def _seleccionar_grupo(gid: int) -> None:
-        _s["grupo_sel_id"] = gid
+        presenter.set_grupo_sel(gid)
         _cargar_grupo()
         matriz.refresh()
 
     def _seleccionar_docente(did: int) -> None:
-        _s["docente_sel_id"] = did
+        presenter.set_docente_sel(did)
         _cargar_docente()
         matriz.refresh()
 
@@ -601,7 +589,7 @@ def asignaciones_page() -> None:
                     "Solo docentes con cupo",
                     value=_s["solo_con_cupo"],
                     on_change=lambda e: (
-                        _s.__setitem__("solo_con_cupo", e.value),
+                        presenter.set_solo_con_cupo(e.value),
                         matriz.refresh(),
                     ),
                 ).props("dense")

@@ -52,6 +52,7 @@ from src.interface.design.components.inline_selectors import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.evaluacion.planilla_notas_presenter import PlanillaNotasPresenter
 from src.services.evaluacion_service import (
     ActualizarCategoriaDTO,
     ContextoAcademicoDTO,
@@ -103,41 +104,8 @@ def planilla_notas_page() -> None:
 
     logger.info("Planilla notas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s: dict = {
-        # Alias — actualizados por on_sel_change desde los pills inline
-        "asignacion_id": None,
-        "periodo_id": None,
-        "grupo_id": None,
-        # Claves del inline selector (escritas por inline_periodo_grupo_asignatura)
-        "sel_periodo_id": None,
-        "sel_periodo_nombre": "",
-        "sel_grupo_id": None,
-        "sel_grupo_nombre": "",
-        "sel_asignacion_id": None,
-        "sel_asignacion_nombre": "",
-        "categorias": [],
-        "actividades": [],
-        "planilla": [],
-        "puntos_extra": {},  # {estudiante_id: PuntosExtra}
-        "mostrar_puntos": False,
-        "modo": "planilla",  # "planilla" | "actividades" | "corte"
-        "corte": None,  # CortePlan | None
-        "notas_corte": {},  # {estudiante_id: NotaCortePlan}
-        # formulario nueva actividad
-        "act_nombre": "",
-        "act_categoria_id": None,
-        "act_valor_max": 100.0,
-        "act_descripcion": "",
-        # formulario nueva categoría docente
-        "form_cat_nombre": "",
-        "form_cat_peso": 10,   # porcentaje 1–100; se divide al guardar
-        # SIEE / categorías institucionales (cargado una vez en inicio)
-        "anio_id": None,
-        "siee_cfg": None,
-        "cats_inst": [],
-        "peso_disponible": 1.0,  # cacheado; actualizado en _cargar_datos
-        "cargando": True,  # skeleton mientras carga la planilla inicial
-    }
+    presenter = PlanillaNotasPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_datos() -> None:
@@ -221,7 +189,7 @@ def planilla_notas_page() -> None:
 
     # ── Cambio de vista ───────────────────────────────────────────────────────
     def _cambiar_vista(modo: str) -> None:
-        _s["modo"] = modo
+        presenter.set_modo(modo)
         barra_vista.refresh()
         panel_vista.refresh()
 
@@ -231,7 +199,7 @@ def planilla_notas_page() -> None:
         panel_vista.refresh()
 
     def _toggle_puntos() -> None:
-        _s["mostrar_puntos"] = not _s["mostrar_puntos"]
+        presenter.toggle_puntos()
         barra_vista.refresh()
         panel_vista.refresh()
 
@@ -356,8 +324,7 @@ def planilla_notas_page() -> None:
             )
             Container.evaluacion_service().agregar_categoria(dto, cdt, usuario_id=ctx.usuario_id)
             toast_success(f"Categoría '{dto.nombre}' creada")
-            _s["form_cat_nombre"] = ""
-            _s["form_cat_peso"] = 10
+            presenter.reset_cat_form()
             _cargar_datos()
             panel_vista.refresh()
         except (PermissionError, ValueError) as exc:
@@ -460,10 +427,7 @@ def planilla_notas_page() -> None:
             )
             Container.evaluacion_service().agregar_actividad(dto)
             toast_success(f"Actividad '{dto.nombre}' creada")
-            _s["act_nombre"] = ""
-            _s["act_descripcion"] = ""
-            _s["act_valor_max"] = 100.0
-            _s["act_categoria_id"] = None
+            presenter.reset_act_form()
             _cargar_datos()
             panel_vista.refresh()
         except ValueError as exc:
@@ -1287,9 +1251,7 @@ def planilla_notas_page() -> None:
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["asignacion_id"] = s["sel_asignacion_id"]
-            _s["periodo_id"] = s["sel_periodo_id"]
-            _s["grupo_id"] = s["sel_grupo_id"]
+            presenter.aplicar_seleccion(s)
             _cargar_datos()
             panel_vista.refresh()
 

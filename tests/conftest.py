@@ -45,6 +45,34 @@ import pytest
 
 logging.disable(logging.CRITICAL)   # silenciar logs durante tests
 
+# Plugin headless de NiceGUI (aporta el fixture `user` para los tests e2e). Debe
+# declararse en el conftest RAÍZ (pytest prohíbe `pytest_plugins` en conftests
+# anidados). Efectos globales inocuos: reubica el storage de NiceGUI a un temp y
+# registra el marker `nicegui_main_file`. El fixture `user` solo se instancia
+# donde se pide (tests/e2e/). Se usa `user_plugin` (no `plugin`) para no exigir
+# selenium.
+pytest_plugins = ["nicegui.testing.user_plugin"]
+
+
+# ---------------------------------------------------------------------------
+# Auto-marcado por ubicación
+# ---------------------------------------------------------------------------
+# Así `-m "not integration"` (modo `rapido` del runner / hook pre-push) excluye
+# de verdad la carpeta integration/, sin tener que decorar cada test a mano.
+# Los tests bajo unit/ reciben `unit`; los de integration/, `integration`.
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        ruta = str(item.fspath).replace("\\", "/")
+        if "/tests/integration/" in ruta:
+            item.add_marker("integration")
+        elif "/tests/unit/" in ruta:
+            item.add_marker("unit")
+        elif "/tests/e2e/" in ruta:
+            item.add_marker("e2e")
+        elif "/tests/browser/" in ruta:
+            item.add_marker("browser")
+
 
 # ---------------------------------------------------------------------------
 # Helpers internos

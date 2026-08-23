@@ -12,6 +12,12 @@ Orquesta el trabajo de ZECI Manager v2.0. **Trabaja únicamente sobre el paso `i
 1. Ejecutar ./init.sh
    └─ Si falla → PARAR. Reportar el error exacto. No continuar.
 
+1b. Puerta de ruff (defectos de corrección, no estilo):
+    python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9 --output-format concise
+    └─ Debe salir en 0. Si el rojo es ANTERIOR al paso activo → PARAR y
+       reportar a David: se arregla en su propio paso, no dentro de este.
+       El resto de reglas de ruff es informativo y no bloquea.
+
 2. Leer step_list.json
    └─ ¿Hay exactamente UN paso con "status": "in_progress"?
         Sí  → ese es el único paso de esta sesión. Continuar con él.
@@ -128,6 +134,12 @@ Para pasos de interfaz (paso_10*), leer además:
   src/interface/pages/inicio.py          ← referencia de página compleja
   src/interface/pages/informes/estadisticos.py + su presenter y test  ← referencia con estado
 
+Puerta de ruff, obligatoria en toda capa y después de cada tarea:
+  python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9
+  Debe salir en 0 — son defectos de ejecución, no estilo. El resto de reglas
+  es informativo. PROHIBIDO `ruff format` o `ruff check --fix` masivos dentro
+  del paso: un reformateo global va en commit aislado y lo autorizo yo.
+
 Reglas duras de interfaz: presenter PURO (sin nicegui) espejando la ruta; la página
 hace `_s = presenter.estado` y delega; nada de lógica de negocio en presenter/página;
 el test del presenter llama al código real (sin tautologías); tests e2e vía
@@ -147,6 +159,8 @@ PASO: <id> — <nombre>
 CAPA: <dominio | infraestructura | servicios | interfaz>
 
 Sigue el protocolo de reviewer.md en el orden exacto.
+Puerta de ruff (`--select F821,F811,F632,F702,B006,B008,B023,E9`) en 0 antes de aprobar, sea cual sea la
+capa; las reglas informativas (SIM, N, UP, PTH…) NO son motivo de rechazo.
 Para pasos de interfaz (paso_10*): ejecutar también las secciones de presenters
 (pureza sin nicegui + test que llama al presenter, anti-tautología, matriz de guard,
 `pytest -m e2e`) y "Verificación de design system" antes de aprobar.
@@ -160,6 +174,8 @@ Rechazado → NO modificar step_list.json. Fallos con comando exacto en progress
 ## Cuándo PARAR y reportar (no intentar resolver)
 
 - `./init.sh` falla con error no relacionado al paso activo.
+- La puerta de ruff (`--select F821,F811,F632,F702,B006,B008,B023,E9`) sale en rojo por código anterior al paso activo.
+- El implementer pide reformatear el repo (`ruff format` masivo): eso es un paso propio, no parte de este.
 - Implementer necesita un archivo fuera del scope.
 - Un método que el implementer quiere llamar no existe en el servicio.
 - Reviewer rechaza el mismo paso dos veces consecutivas.
@@ -170,7 +186,8 @@ Rechazado → NO modificar step_list.json. Fallos con comando exacto en progress
 ## Cierre de sesión
 
 ```
-1. ./init.sh verde
+1. ./init.sh verde + puerta de ruff en 0
+   python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9
 2. Mover resumen de progress/current.md → progress/history.md (append)
 3. Vaciar progress/current.md a la plantilla base
 4. step_list.json refleja el estado real

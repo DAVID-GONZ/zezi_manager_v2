@@ -29,6 +29,7 @@ from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.evaluacion.cierre_anio_presenter import CierreAnioPresenter
 from src.services.cierre_service import ContextoAcademicoDTO
 
 logger = logging.getLogger("EVALUACION.CIERRE_ANIO")
@@ -44,26 +45,22 @@ def cierre_anio_page() -> None:
     logger.info("Cierre año: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        "grupos": [],
-        "anio": None,
-        "grupo_id": None,
-        "resultado": [],
-    }
+    presenter = CierreAnioPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
+            presenter.set_grupos(Container.catalogo_academico_service().listar_grupos())
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
-            _s["grupos"] = []
+            presenter.set_grupos([])
 
         try:
-            _s["anio"] = Container.configuracion_service().get_activa()
+            presenter.set_anio(Container.configuracion_service().get_activa())
         except Exception as exc:
             logger.error("Error cargando año activo: %s", exc)
-            _s["anio"] = None
+            presenter.set_anio(None)
 
     _cargar_estado()
 
@@ -78,7 +75,7 @@ def cierre_anio_page() -> None:
             toast_warning("No hay año lectivo activo")
             return
 
-        grupo_nombre = next((g.codigo for g in _s["grupos"] if g.id == grupo_id), str(grupo_id))
+        grupo_nombre = presenter.grupo_nombre()
 
         def _ejecutar_cierre() -> None:
             try:
@@ -91,7 +88,7 @@ def cierre_anio_page() -> None:
                 resultado = Container.cierre_service().cerrar_anio(
                     grupo_id, anio.id, ctx_dto, usuario_id=ctx.usuario_id
                 )
-                _s["resultado"] = resultado
+                presenter.set_resultado(resultado)
                 toast_success(f"Año cerrado. {len(resultado)} cierres generados.")
                 tabla_resultado.refresh()
             except ValueError as exc:
@@ -171,7 +168,7 @@ def cierre_anio_page() -> None:
                         label="Grupo",
                         options=grupos_opts or {"": "Sin grupos"},
                         value=None,
-                        on_change=lambda e: _s.__setitem__("grupo_id", e.value),
+                        on_change=lambda e: presenter.set_grupo(e.value),
                         clearable=False,
                         cls_extra="w-40",
                     )

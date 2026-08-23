@@ -41,6 +41,7 @@ from src.interface.design.components.form_fields import (
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.admin.plan_estudios_presenter import PlanEstudiosPresenter
 
 logger = logging.getLogger("ADMIN.PLAN_ESTUDIOS")
 
@@ -92,22 +93,8 @@ def plan_estudios_page() -> None:
 
     logger.info("Plan de estudios admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s: dict = {
-        "grados": [],  # list[Grado]
-        "asignaturas": [],
-        "areas": [],
-        "grado_sel": None,  # numero
-        "plan_map": {},  # {asignatura_id: horas} del grado seleccionado
-        # form nuevo grado
-        "g_numero": None,
-        "g_nombre": "",
-        "g_min": 20,
-        "g_max": 40,
-        "g_horas": 30,
-        # vincular asignatura
-        "vinc_area_id": None,
-        "vinc_asig_id": None,
-    }
+    presenter = PlanEstudiosPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga ─────────────────────────────────────────────────────────────────
     def _cargar_catalogo() -> None:
@@ -173,8 +160,7 @@ def plan_estudios_page() -> None:
                 int(_s["g_horas"] or 0),
             )
             toast_success(f"Grado {numero} guardado")
-            _s["g_numero"] = None
-            _s["g_nombre"] = ""
+            presenter.reset_grado_form()
             _cargar_catalogo()
             vista.refresh()
         except ValueError as exc:
@@ -258,8 +244,7 @@ def plan_estudios_page() -> None:
 
     # ── Acciones: plan (vincular / horas) ───────────────────────────────────────
     def _seleccionar_grado(numero: int) -> None:
-        _s["grado_sel"] = numero
-        _s["vinc_asig_id"] = None
+        presenter.set_grado_sel(numero)  # resetea la asignatura a vincular
         _cargar_plan()
         vista.refresh()
 
@@ -270,7 +255,7 @@ def plan_estudios_page() -> None:
             return
         try:
             Container.plan_estudios_service().set_horas(g, aid, 1)
-            _s["vinc_asig_id"] = None
+            presenter.limpiar_vinc()
             _cargar_plan()
             vista.refresh()
         except Exception as exc:

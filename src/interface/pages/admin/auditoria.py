@@ -16,7 +16,6 @@ la realizan otros servicios vía IAuditoriaRepository.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
 from nicegui import ui
 
@@ -34,9 +33,9 @@ from src.interface.design.components.buttons import btn_icon, btn_secondary
 from src.interface.design.components.form_fields import filter_input, filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.admin.auditoria_presenter import AuditoriaPresenter
 from src.services.auditoria_service import (
     AccionCambio,
-    FiltroAuditoriaDTO,
     TipoEventoSesion,
 )
 
@@ -74,66 +73,32 @@ def auditoria_page() -> None:
     except Exception as exc:
         logger.warning("No se pudo obtener el periodo activo: %s", exc)
 
-    # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        # filtros comunes
-        "desde": None,  # str "YYYY-MM-DD" o None
-        "hasta": None,
-        "usuario_id": None,  # int o None
-        "pagina": 1,
-        # filtros específicos de Cambios
-        "tabla": None,
-        "accion": None,  # str enum value o None
-        # filtros específicos de Sesiones
-        "tipo_evento": None,  # str enum value o None
-        # datos cargados
-        "cambios": [],
-        "sesiones": [],
-        # verificación de integridad (encadenamiento por hash — seguridad_03)
-        # None = aún no verificado; dict de primitivos del servicio si ya se corrió.
-        "integridad": None,
-    }
-
-    # ── Helpers de filtro ──────────────────────────────────────────────────────
-    def _parsear_fecha(valor: str | None, fin_de_dia: bool = False) -> datetime | None:
-        if not valor:
-            return None
-        try:
-            base = datetime.strptime(valor, "%Y-%m-%d")
-        except ValueError:
-            return None
-        if fin_de_dia:
-            return base.replace(hour=23, minute=59, second=59)
-        return base
-
-    def _construir_filtro() -> FiltroAuditoriaDTO:
-        return FiltroAuditoriaDTO(
-            usuario_id=_s["usuario_id"],
-            tabla=_s["tabla"] or None,
-            accion=_s["accion"] or None,
-            tipo_evento=_s["tipo_evento"] or None,
-            desde=_parsear_fecha(_s["desde"]),
-            hasta=_parsear_fecha(_s["hasta"], fin_de_dia=True),
-            pagina=_s["pagina"],
-            por_pagina=_POR_PAGINA,
-        )
+    # ── Estado mutable (view-model en el presenter) ───────────────────────────
+    presenter = AuditoriaPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ──────────────────────────────────────────────────────────
     def _cargar_cambios() -> None:
         try:
-            _s["cambios"] = Container.auditoria_service().listar_cambios(_construir_filtro())
+            presenter.set_cambios(
+                Container.auditoria_service().listar_cambios(
+                    presenter.construir_filtro(_POR_PAGINA)
+                )
+            )
         except Exception as exc:
             logger.error("Error al cargar cambios de auditoría: %s", exc)
-            _s["cambios"] = []
+            presenter.set_cambios([])
 
     def _cargar_sesiones() -> None:
         try:
-            _s["sesiones"] = Container.auditoria_service().listar_eventos_sesion(
-                _construir_filtro()
+            presenter.set_sesiones(
+                Container.auditoria_service().listar_eventos_sesion(
+                    presenter.construir_filtro(_POR_PAGINA)
+                )
             )
         except Exception as exc:
             logger.error("Error al cargar eventos de sesión: %s", exc)
-            _s["sesiones"] = []
+            presenter.set_sesiones([])
 
     def _cargar_todo() -> None:
         _cargar_cambios()
@@ -143,7 +108,7 @@ def auditoria_page() -> None:
 
     # ── Refrescos ────────────────────────────────────────────────────────────────
     def _on_filtros_cambio() -> None:
-        _s["pagina"] = 1
+        presenter.reset_pagina()
         _cargar_todo()
         tabla_cambios.refresh()
         tabla_sesiones.refresh()
@@ -249,8 +214,7 @@ def auditoria_page() -> None:
 
     # ── Filtros comunes (rango de fechas + usuario) ─────────────────────────────
     def _on_rango_cambio(desde: str | None, hasta: str | None) -> None:
-        _s["desde"] = desde
-        _s["hasta"] = hasta
+        presenter.set_rango(desde, hasta)
         _on_filtros_cambio()
 
     def _render_filtros_comunes() -> None:
@@ -266,19 +230,12 @@ def auditoria_page() -> None:
                 label="Usuario ID",
                 placeholder="Opcional",
                 on_change=lambda e: (
-                    _s.__setitem__("usuario_id", _a_int(e.value)),
+                    presenter.set_usuario(e.value),
                     _on_filtros_cambio(),
                 ),
                 cls_extra="w-32",
             )
             btn_icon("refresh", on_click=_on_filtros_cambio, tooltip="Recargar")
-
-    def _a_int(valor) -> int | None:
-        try:
-            v = str(valor).strip()
-            return int(v) if v else None
-        except (TypeError, ValueError):
-            return None
 
     # ── Contenido principal ──────────────────────────────────────────────────────
     def contenido() -> None:
@@ -312,7 +269,7 @@ def auditoria_page() -> None:
                                 label="Tabla",
                                 placeholder="Todas",
                                 on_change=lambda e: (
-                                    _s.__setitem__("tabla", (e.value or "").strip() or None),
+                                    presenter.set_tabla(e.value),
                                     _on_filtros_cambio(),
                                 ),
                                 cls_extra="w-40",
@@ -324,7 +281,7 @@ def auditoria_page() -> None:
                                 options=accion_opts,
                                 value=None,
                                 on_change=lambda e: (
-                                    _s.__setitem__("accion", e.value),
+                                    presenter.set_accion(e.value),
                                     _on_filtros_cambio(),
                                 ),
                                 cls_extra="w-40",
@@ -342,7 +299,7 @@ def auditoria_page() -> None:
                                 options=evento_opts,
                                 value=None,
                                 on_change=lambda e: (
-                                    _s.__setitem__("tipo_evento", e.value),
+                                    presenter.set_tipo_evento(e.value),
                                     _on_filtros_cambio(),
                                 ),
                                 cls_extra="w-48",

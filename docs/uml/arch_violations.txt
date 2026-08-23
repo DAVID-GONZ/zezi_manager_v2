@@ -1,4 +1,0 @@
-REPORTE DE VIOLACIONES ARQUITECTURALES — ZECI Manager v2.0
-============================================================
-
-✅ Sin violaciones detectadas.

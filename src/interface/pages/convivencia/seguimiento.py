@@ -57,6 +57,7 @@ from src.interface.design.components.buttons import (
 from src.interface.design.components.inline_selectors import inline_periodo_grupo
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.convivencia.seguimiento_presenter import SeguimientoPresenter
 from src.services.convivencia_service import (
     FiltroConvivenciaDTO,
     NuevaAlertaSeguimientoDTO,
@@ -332,23 +333,22 @@ def seguimiento_page() -> None:
 
     puede_alertas = ctx.usuario_rol in _ROLES_ALERTAS
 
-    _s = _estado_inicial()
+    presenter = SeguimientoPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_anio(_s)
     _cargar_docentes(_s)
 
     # ── Handlers de selección ────────────────────────────────────────────────
 
     def on_estudiante_change(est_id) -> None:
-        _s["sel_estudiante_id"] = est_id
-        _s["sel_seccion"] = "evolucion"
-        _s["resultado_360"] = None
+        presenter.seleccionar_estudiante(est_id)
         _cargar_detalle(_s, ctx)
         _cargar_alertas(_s)
         panel_hub.refresh()
 
     def _set_seccion(sec: str) -> None:
         """Cambia la sección visible del detalle (tabs por botones)."""
-        _s["sel_seccion"] = sec
+        presenter.set_seccion(sec)
         panel_hub.refresh()
 
     # ── Handlers de gestión de observaciones (migrados de observaciones.py) ───
@@ -896,16 +896,8 @@ def seguimiento_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["sel_periodo_id"] = s["sel_periodo_id"]
-            _s["sel_grupo_id"] = s["sel_grupo_id"]
-            _s["sel_grupo_nombre"] = s.get("sel_grupo_nombre", "")
-            # Al cambiar grupo/periodo, limpiar selección de estudiante y detalle.
-            _s["sel_estudiante_id"] = None
-            _s["resultado_360"] = None
-            _s["serie"] = []
-            _s["observaciones_est"] = []
-            _s["registros_est"] = []
-            _s["alertas"] = []
+            # Copia selección y limpia el detalle del estudiante (en el presenter).
+            presenter.aplicar_seleccion(s)
             if s["sel_grupo_id"]:
                 try:
                     _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(

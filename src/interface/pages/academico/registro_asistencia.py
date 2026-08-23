@@ -48,6 +48,9 @@ from src.interface.design.components.inline_selectors import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.academico.registro_asistencia_presenter import (
+    RegistroAsistenciaPresenter,
+)
 
 logger = logging.getLogger("REGISTRO_ASISTENCIA")
 
@@ -441,7 +444,8 @@ def registro_asistencia_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = RegistroAsistenciaPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_estado(ctx, _s)
 
     # ── @ui.refreshable ────────────────────────────────────────────────────
@@ -466,25 +470,22 @@ def registro_asistencia_page() -> None:
         if nueva > date.today():
             toast_warning("No se puede registrar asistencia para fechas futuras.")
             return
-        _s["fecha"] = nueva
+        presenter.set_fecha(nueva)
         _cargar_estado(ctx, _s)
         stats_refreshable.refresh()
         grilla_refreshable.refresh()
 
     def on_estado(estudiante_id: int, nuevo_estado: str) -> None:
-        _s["registros"][estudiante_id] = nuevo_estado
-        _s["pendiente"] = True
+        presenter.marcar(estudiante_id, nuevo_estado)
         stats_refreshable.refresh()
         grilla_refreshable.refresh()
 
     def on_obs(estudiante_id: int, texto: str) -> None:
         # Sin refresh: no interrumpir el foco del input mientras el usuario escribe
-        _s["observaciones"][estudiante_id] = texto
+        presenter.set_obs(estudiante_id, texto)
 
     def on_marcar_todos(estado: str) -> None:
-        for est in _s["estudiantes"]:
-            _s["registros"][est.id] = estado
-        _s["pendiente"] = True
+        presenter.marcar_todos(estado)
         stats_refreshable.refresh()
         grilla_refreshable.refresh()
 
@@ -495,9 +496,7 @@ def registro_asistencia_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["grupo_id"] = s["sel_grupo_id"]
-            _s["asignacion_id"] = s["sel_asignacion_id"]
-            _s["periodo_id"] = s["sel_periodo_id"]
+            presenter.aplicar_seleccion(s)
             _cargar_estado(ctx, _s)
             stats_refreshable.refresh()
             grilla_refreshable.refresh()

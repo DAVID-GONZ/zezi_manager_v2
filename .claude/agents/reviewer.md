@@ -62,7 +62,33 @@ Si no termina completamente verde → **Rechazado**.
 
 ### 3. Verificación por capa
 
-Ejecutar el bloque correspondiente a la capa del paso activo.
+**Siempre, sea cual sea la capa — puerta de ruff (ejecutar ANTES del bloque de capa):**
+
+```bash
+python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9 --output-format concise
+```
+
+Debe salir en **0**. Estas ocho reglas no son estilo: señalan código que revienta
+en ejecución.
+
+| Regla | Qué caza |
+|---|---|
+| `F821` | nombre indefinido — el handler llama a algo que su cadena de scopes no alcanza |
+| `F811` | redefinición que pisa a la anterior (dos `def` con el mismo nombre) |
+| `F632` | `is` contra un literal — la comparación no hace lo que aparenta |
+| `F702` | `continue` fuera de un bucle |
+| `B006` | argumento por defecto mutable (`def f(x=[])`) |
+| `B008` | llamada en el valor por defecto — se evalúa una sola vez al importar |
+| `B023` | closure que captura la variable del bucle, no su valor |
+| `E9` | error de sintaxis o de IO — el archivo ni siquiera parsea |
+
+Cualquier hallazgo aquí → **Rechazado**, con el `archivo:línea` exacto en el
+informe. El resto de reglas de ruff (`SIM`, `N`, `UP`, `PTH`, `RUF012`…) es
+informativo: se puede anotar en «Notas adicionales», pero **no** es motivo de
+rechazo. Tampoco lo es que el implementer no haya reformateado el repo — el
+reformateo masivo está prohibido dentro de un paso.
+
+Ejecutar además el bloque correspondiente a la capa del paso activo.
 
 #### Dominio
 
@@ -122,6 +148,11 @@ python3 -m pytest tests/unit/services/ -v --tb=short
 #### Interfaz (`paso_10*`)
 
 ```bash
+# Handlers frágiles — closures de bucle, defaults evaluados al importar y
+# nombres que la cadena de scopes del handler no puede resolver.
+python -m ruff check src/interface/ --select B023,B008,F821
+# Sustituye al viejo grep de __setitem__, que daba ~9 falsos positivos.
+
 # Sin imports de dominio, infraestructura ni BD
 grep -r "from src\.domain\.models\|from src\.infrastructure\|from src\.db\|fetch_df" \
      src/interface/pages/ --include="*.py" && echo "FALLO" || echo "OK"
@@ -361,6 +392,7 @@ Devolver: `"Rechazado. Ver progress/review_<id>.md para los fallos."`
 - ❌ No sugiere cómo arreglar — reporta qué falló y qué se esperaba.
 - ❌ No edita código para que pase los checks.
 - ❌ No aprueba "con advertencias" — o pasa todo o rechaza.
+- ❌ No rechaza por reglas informativas de ruff (`SIM117`, `N806`, `E702`…) — solo por las ocho bloqueantes.
 - ❌ No evalúa si el diseño visual "es bonito" — evalúa si respeta las convenciones.
 - ✅ Sí puede reconocer decisiones creativas válidas dentro del espacio permitido
       (composición de secciones, elección de clases CSS existentes, granularidad de refreshables)

@@ -22,6 +22,9 @@ from src.interface.design.components import (
 )
 from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.interface.design.layout import app_layout
+from src.interface.presenters.convivencia.configuracion_alertas_presenter import (
+    ConfiguracionAlertasPresenter,
+)
 from src.services.alerta_service import ConfiguracionAlerta, TipoAlerta
 
 logger = logging.getLogger("CONVIVENCIA.CONFIG_ALERTAS")
@@ -62,29 +65,23 @@ def configuracion_alertas_page() -> None:
 
     logger.info("Config alertas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s: dict = {
-        "anio_id": None,
-        "anio_nombre": "",
-        "configs": {},
-    }
+    presenter = ConfiguracionAlertasPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     def _cargar() -> None:
         try:
             config_anio = Container.configuracion_service().get_activa(ctx.institucion_id)
             if config_anio:
-                _s["anio_id"] = config_anio.id
-                _s["anio_nombre"] = str(config_anio.anio)
+                presenter.set_anio(config_anio.id, str(config_anio.anio))
                 configs_list = Container.alerta_service().listar_configuraciones(
                     config_anio.id, solo_activas=False
                 )
-                _s["configs"] = {str(c.tipo_alerta): c for c in configs_list}
+                presenter.set_configs({str(c.tipo_alerta): c for c in configs_list})
             else:
-                _s["anio_id"] = None
-                _s["configs"] = {}
+                presenter.limpiar()
         except Exception as exc:
             logger.error("Error cargando config alertas: %s", exc)
-            _s["anio_id"] = None
-            _s["configs"] = {}
+            presenter.limpiar()
 
     _cargar()
 

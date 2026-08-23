@@ -45,6 +45,9 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_danger, btn_icon, btn_primary
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.convivencia.configuracion_convivencia_presenter import (
+    ConfiguracionConvivenciaPresenter,
+)
 from src.services.convivencia_service import NuevaCategoriaDTO, NuevaPlantillaDTO
 
 logger = logging.getLogger("CONFIG_CONVIVENCIA")
@@ -111,7 +114,8 @@ def configuracion_convivencia_page() -> None:
     rol = getattr(ctx, "usuario_rol", None)
     es_directivo = rol in _ROLES_DIRECTIVOS
 
-    _s = _estado_inicial()
+    presenter = ConfiguracionConvivenciaPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_estado(_s)
 
     # ── Handlers: categorías (solo dir/coord) ─────────────────────────────────
@@ -232,7 +236,7 @@ def configuracion_convivencia_page() -> None:
                     "key": "categoria_id",
                     "label": "Categoría",
                     "tipo": "select",
-                    "opciones": _opciones_categorias(_s),
+                    "opciones": presenter.opciones_categorias(),
                     "valor": None,
                 },
             ],
@@ -257,7 +261,7 @@ def configuracion_convivencia_page() -> None:
                     "key": "categoria_id",
                     "label": "Categoría",
                     "tipo": "select",
-                    "opciones": _opciones_categorias(_s),
+                    "opciones": presenter.opciones_categorias(),
                     "valor": getattr(plantilla, "categoria_id", None),
                 },
             ],
@@ -341,7 +345,7 @@ def configuracion_convivencia_page() -> None:
         ctx_actual = SessionContext.desde_storage() or ctx
         categorias = _s["categorias"]
         plantillas = _s["plantillas"]
-        nombres_cat = _cat_nombre_por_id(_s)
+        nombres_cat = presenter.cat_nombre_por_id()
 
         def contenido_pagina() -> None:
             with ui.element("div").classes("page-stack"):

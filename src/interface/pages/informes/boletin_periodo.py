@@ -30,23 +30,12 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_icon, btn_primary, btn_secondary
 from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
+from src.interface.presenters.informes.boletin_presenter import BoletinPresenter
 
 logger = logging.getLogger("BOLETIN_PERIODO")
 
 
 # ── Estado ────────────────────────────────────────────────────────────────────
-
-
-def _estado_inicial() -> dict:
-    return {
-        "grupo_id": None,
-        "periodo_id": None,
-        "grupos": [],
-        "periodos": [],
-        "estudiantes": [],
-        "todas_asignaciones_docente": [],
-        "generando": False,
-    }
 
 
 def _cargar_grupos(ctx: SessionContext, _s: dict) -> None:
@@ -194,7 +183,9 @@ def boletin_periodo_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = BoletinPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
+    _s.update({"periodo_id": None, "periodos": []})  # campos propios del boletín por periodo
     _cargar_grupos(ctx, _s)
     _cargar_periodos(ctx, _s)
     if _s["grupo_id"]:
@@ -305,13 +296,13 @@ def boletin_periodo_page() -> None:
                         )
 
     def on_grupo_change(grupo_id) -> None:
-        _s["grupo_id"] = int(grupo_id) if grupo_id is not None else None
+        presenter.set_grupo(grupo_id)
         _cargar_estudiantes(_s)
         filtros_refreshable.refresh()
         lista_refreshable.refresh()
 
     def on_periodo_change(periodo_id) -> None:
-        _s["periodo_id"] = int(periodo_id) if periodo_id is not None else None
+        _s["periodo_id"] = presenter.a_int(periodo_id)
         lista_refreshable.refresh()
 
     def contenido() -> None:

@@ -38,6 +38,9 @@ from src.interface.design.components.form_fields import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.evaluacion.planes_mejoramiento_presenter import (
+    PlanesMejoramientoPresenter,
+)
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.plan_mejoramiento_service import (
     CalificarNotaPlanDTO,
@@ -70,24 +73,8 @@ def planes_mejoramiento_page() -> None:
     es_directivo = ctx.usuario_rol in _ROLES_DIRECTIVOS
 
     # ── Estado mutable ─────────────────────────────────────────────────────────
-    _s: dict = {
-        "periodos": [],
-        "asignaciones": [],
-        "periodo_id": None,
-        "asignacion_id": None,
-        "grupo_id": None,
-        "corte": None,  # CortePlan | None
-        "notas_corte": [],  # list[NotaCortePlan] — todos los estudiantes
-        "actividades_plan": [],  # list[ActividadPlan]
-        # formulario nueva actividad
-        "form_act_nombre": "",
-        "form_act_peso": 0.20,
-        "form_act_desc": "",
-        # Mapa estudiante_id → nombre (cargado junto con notas_corte)
-        "nombres_est": {},
-        # Notas por actividad plan: {actividad_plan_id: {estudiante_id: NotaActividadPlan}}
-        "notas_act": {},
-    }
+    presenter = PlanesMejoramientoPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga de datos ─────────────────────────────────────────────────────────
     def _cargar_estado_inicial() -> None:
@@ -164,10 +151,8 @@ def planes_mejoramiento_page() -> None:
             _s["nombres_est"] = {}
 
     def _on_selector_cambio() -> None:
-        # Determinar grupo_id a partir de la asignación seleccionada
-        asig_id = _s["asignacion_id"]
-        asig_info = next((a for a in _s["asignaciones"] if a.asignacion_id == asig_id), None)
-        _s["grupo_id"] = asig_info.grupo_id if asig_info else None
+        # Grupo derivado de la asignación seleccionada (lógica en el presenter).
+        _s["grupo_id"] = presenter.grupo_de_asignacion(_s["asignacion_id"])
         _cargar_corte()
         panel_corte.refresh()
         panel_estudiantes.refresh()
@@ -201,9 +186,7 @@ def planes_mejoramiento_page() -> None:
             )
             Container.plan_mejoramiento_service().agregar_actividad(dto, ctx.usuario_id)
             toast_success("Actividad añadida")
-            _s["form_act_nombre"] = ""
-            _s["form_act_peso"] = 0.20
-            _s["form_act_desc"] = ""
+            presenter.reset_actividad_form()
             _cargar_corte()
             panel_actividades.refresh()
         except ValueError as exc:

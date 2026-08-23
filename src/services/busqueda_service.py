@@ -15,7 +15,8 @@ Delega a los servicios existentes que ya aplican scoping multi-tenant.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from src.domain.models.busqueda import (
     ResultadoBusquedaDTO,
@@ -25,7 +26,6 @@ from src.domain.models.busqueda import (
 from src.domain.models.usuario import FiltroUsuariosDTO, Rol
 
 if TYPE_CHECKING:
-    from src.domain.models.estudiante import FiltroEstudiantesDTO
     from src.services.asignacion_service import AsignacionService
     from src.services.catalogo_academico_service import CatalogoAcademicoService
     from src.services.estudiante_service import EstudianteService
@@ -38,7 +38,23 @@ _ICONO: dict[TipoResultadoBusqueda, str] = {
     TipoResultadoBusqueda.ASIGNATURA: "book",
 }
 
-_TERMINO_MINIMO = 2
+TERMINO_MINIMO = 2
+
+
+def tipos_buscables(rol: str) -> list[TipoResultadoBusqueda]:
+    """Tipos de entidad que un rol puede buscar (RBAC de la búsqueda global).
+
+    Fuente ÚNICA de esta regla de negocio: la usan tanto el servicio (para decidir
+    qué entidades consultar) como la UI (para pintar las pestañas). Orden estable
+    ESTUDIANTE → USUARIO → GRUPO → ASIGNATURA.
+    """
+    tipos = [TipoResultadoBusqueda.ESTUDIANTE]
+    if rol in (Rol.ADMIN, Rol.DIRECTOR):
+        tipos.append(TipoResultadoBusqueda.USUARIO)
+    tipos.append(TipoResultadoBusqueda.GRUPO)
+    if rol in (Rol.ADMIN, Rol.DIRECTOR, Rol.COORDINADOR):
+        tipos.append(TipoResultadoBusqueda.ASIGNATURA)
+    return tipos
 
 
 class BusquedaService:
@@ -70,7 +86,7 @@ class BusquedaService:
     ) -> ResultadosBusquedaDTO:
         """Búsqueda rápida para el dropdown del topbar. Máx `limite_por_tipo` por entidad."""
         termino = termino.strip()
-        if len(termino) < _TERMINO_MINIMO:
+        if len(termino) < TERMINO_MINIMO:
             return ResultadosBusquedaDTO(termino=termino)
 
         resultados: list[ResultadoBusquedaDTO] = []
@@ -100,7 +116,7 @@ class BusquedaService:
     ) -> ResultadosBusquedaDTO:
         """Búsqueda paginada para la página /buscar con todos los resultados."""
         termino = termino.strip()
-        if len(termino) < _TERMINO_MINIMO:
+        if len(termino) < TERMINO_MINIMO:
             return ResultadosBusquedaDTO(termino=termino)
 
         todos: list[ResultadoBusquedaDTO] = []
@@ -138,13 +154,14 @@ class BusquedaService:
             grupos_ids_docente = list({a.grupo_id for a in asignaciones})
 
         resultados: list[tuple[TipoResultadoBusqueda, list[ResultadoBusquedaDTO]]] = []
+        permitidos = set(tipos_buscables(rol))  # fuente única del RBAC de tipos
 
         resultados.append((
             TipoResultadoBusqueda.ESTUDIANTE,
             self._buscar_estudiantes(termino, rol=rol, grupos_ids=grupos_ids_docente),
         ))
 
-        if rol in (Rol.ADMIN, Rol.DIRECTOR):
+        if TipoResultadoBusqueda.USUARIO in permitidos:
             resultados.append((
                 TipoResultadoBusqueda.USUARIO,
                 self._buscar_usuarios(termino),
@@ -155,7 +172,7 @@ class BusquedaService:
             self._buscar_grupos(termino, rol=rol, grupos_ids=grupos_ids_docente),
         ))
 
-        if rol in (Rol.ADMIN, Rol.DIRECTOR, Rol.COORDINADOR):
+        if TipoResultadoBusqueda.ASIGNATURA in permitidos:
             resultados.append((
                 TipoResultadoBusqueda.ASIGNATURA,
                 self._buscar_asignaturas(termino),

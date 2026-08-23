@@ -37,6 +37,59 @@ autorización van por `registrar_pagina`**, no por un `@ui.page` con guard inlin
 
 ---
 
+## 0.5. Presenter — view-model de la página (OBLIGATORIO con estado)
+
+Toda página con estado mutable tiene un **presenter puro** que espeja la ruta de la
+página: `pages/admin/salas.py` → `presenters/admin/salas_presenter.py`; página en la
+raíz de `pages/` → presenter en la raíz de `presenters/`. Ver `docs/conventions.md`
+§2 y §14.
+
+El presenter contiene tres cosas y **nada de negocio**:
+
+1. **Estado** (`self.estado`, el antiguo dict `_s`).
+2. **Transiciones**: qué pasa al cambiar un selector — coerción a int, cascada de
+   reseteos, flags. Nada de `nicegui`, nada de `Container`.
+3. **Consultas/mapeos de vista**: `filtros_completos()`, `resumen(datos)` → tarjetas.
+   Los NÚMEROS y umbrales de esos mapeos los calcula el **backend**; el presenter solo
+   formatea (ver el split de referencia en `docs/conventions.md` §14).
+
+```python
+# src/interface/presenters/informes/estadisticos_presenter.py  (PURO — sin nicegui)
+class EstadisticosPresenter:
+    def __init__(self, tipos_map: dict) -> None:
+        self._tipos = tipos_map
+        self.estado: dict = estado_inicial()
+
+    def set_grupo(self, grupo_id) -> None:          # transición
+        self.estado["grupo_id"] = int(grupo_id) if grupo_id is not None else None
+        self.estado["asignacion_id"] = None          # cascada de reseteo
+        self._limpiar_datos()
+
+    def filtros_completos(self) -> bool: ...          # consulta de vista pura
+```
+
+```python
+# src/interface/pages/informes/estadisticos.py  (adaptador fino)
+presenter = EstadisticosPresenter(_TIPOS_MAP)
+_s = presenter.estado                                 # misma referencia
+def on_grupo_change(grupo_id):
+    presenter.set_grupo(grupo_id)                     # decisión → presenter
+    _cargar_asignaciones(ctx, _s)                     # carga (Container) → página
+    filtros_refreshable.refresh()                     # render/refresh → página
+```
+
+**Su test llama al presenter real** (no reimplementa la lógica): un
+`tests/unit/interface/presenters/<...>_presenter.py` que instancia el presenter y
+verifica transiciones y mapeos. Esto **mata las tautologías** (tests que copiaban la
+lógica del handler y hacían assert sobre la copia). La guarda
+`tests/unit/interface/presenters/test_presenters_puros.py` verifica que ningún
+presenter importe `nicegui`.
+
+**Páginas sin estado** (render puro, o helpers como `parrilla_widget.py`) NO llevan
+presenter: se testean sus funciones puras directamente.
+
+---
+
 ## 1. Estructura de un archivo de página
 
 ```python
@@ -149,22 +202,38 @@ __all__ = ["<nombre>_page"]
 
 ---
 
-## 2. Gestión de estado con `_s`
+## 2. Gestión de estado con `_s` — vía presenter
 
 **Siempre un dict mutable**, nunca variables sueltas. Las closures de NiceGUI capturan por referencia — el dict permite mutación sin `nonlocal`.
 
-```python
-# ✅
-_s: dict = {"registros": {}, "periodo_cerrado": False}
-def handler():
-    _s["registros"][id] = valor  # funciona
+**El dict lo posee un presenter** (ver §0.5). La página hace `_s = presenter.estado`
+(misma referencia) para que `bind_value` y los `refreshables` sigan leyendo `_s`, y las
+**transiciones** (mutaciones con lógica) pasan por métodos del presenter, no por
+escritura directa en los handlers:
 
-# ❌
+```python
+# ✅ El estado lo posee el presenter; el handler llama a una transición
+presenter = RegistroAsistenciaPresenter()
+_s = presenter.estado
+def on_estado(est_id, estado):
+    presenter.marcar(est_id, estado)   # coerción/flag pendiente viven en el presenter
+    grilla_refreshable.refresh()
+
+# ❌ Lógica de estado embebida en el handler de la página
+def on_estado(est_id, estado):
+    _s["registros"][est_id] = estado
+    _s["pendiente"] = True             # ← esto es view-state; va al presenter
+
+# ❌ Variables sueltas
 periodo_cerrado = False
 def handler():
     nonlocal periodo_cerrado   # frágil
-    periodo_cerrado = True
 ```
+
+> La **carga de datos** (llamadas a `Container.*`) puede seguir escribiendo `_s[...]`
+> en la página (o pasar por setters del presenter). Lo que NUNCA se queda en la página
+> son las **decisiones de view-state** (coerción a int, cascadas de reseteo, flags,
+> `filtros_completos`, mapeo a tarjetas): eso es el presenter.
 
 ---
 

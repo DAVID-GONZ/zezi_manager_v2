@@ -1,8 +1,0 @@
-@startuml classes_class_context_init
-set namespaceSeparator none
-class "ContextInitializer" as context.context_initializer.ContextInitializer {
-  contexto_es_valido(ctx: SessionContext) -> bool
-  inicializar(ctx: SessionContext) -> SessionContext
-  refrescar_si_invalido(ctx: SessionContext) -> SessionContext
-}
-@enduml

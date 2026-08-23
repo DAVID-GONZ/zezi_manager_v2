@@ -56,6 +56,7 @@ from src.interface.design.components.toast import (
     toast_warning,
 )
 from src.interface.design.layout import app_layout
+from src.interface.presenters.institucion.hub_institucion_presenter import HubInstitucionPresenter
 from src.services.institucion_service import ActualizarInstitucionDTO
 from src.services.preferencias_institucion_service import ActualizarPreferenciaDTO
 
@@ -191,7 +192,8 @@ def hub_institucion_page() -> None:
     inst_id = ctx.institucion_id
     logger.info("Hub institucional: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    _s = _estado_inicial()
+    presenter = HubInstitucionPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
     _cargar_estado(inst_id, _s)
 
     # ── Sección Identidad ─────────────────────────────────────────────────────

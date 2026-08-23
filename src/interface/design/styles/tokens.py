@@ -61,7 +61,7 @@ class Colors:
 
     # Navegación — Sidebar claro, topbar claro (paso_13a)
     SIDEBAR_BG = "#FAFAF7"  # paper-050
-    SIDEBAR_TEXT = "#3D3D3D"  # graphite-700
+    SIDEBAR_TEXT = "#2E3192"  # ink-700 (espejo de --nav-sidebar-text)
     SIDEBAR_HOVER = "#E8E9F8"  # ink-100
     SIDEBAR_ACTIVE = "#2E3192"  # ink-700
     SIDEBAR_ACTIVE_BG = "#2E3192"  # ink-700

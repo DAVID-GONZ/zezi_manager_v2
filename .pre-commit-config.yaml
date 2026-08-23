@@ -1,0 +1,43 @@
+# Automatización LOCAL de calidad (sin CI en la nube).
+#
+# Instalar una vez:
+#     pip install pre-commit
+#     pre-commit install --install-hooks          # hooks de pre-commit
+#     pre-commit install --hook-type pre-push      # hook de pre-push (pytest)
+#
+# A partir de ahí:
+#   - en cada `git commit`  → ruff (format+lint) + higiene de archivos.
+#   - en cada `git push`    → suite rápida de pytest (bloquea si hay rojo).
+#
+# Ejecutar manualmente sobre todo el repo:  pre-commit run --all-files
+repos:
+  # ── Higiene de archivos (previene, entre otras, la reaparición del BOM que
+  #    dejaba a pytest sin arrancar) ──────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: fix-byte-order-marker      # quita el BOM UTF-8 (causa raíz del bloqueo)
+      - id: check-toml                 # pyproject.toml siempre parseable
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # ── Ruff: formato + lint (usa la config de [tool.ruff] del pyproject) ───────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: [--fix]
+
+  # ── pytest en pre-push: no dejar subir el suite en rojo ─────────────────────
+  #    Corre solo la batería rápida (sin slow ni integration) para no penalizar
+  #    el push; el suite completo con cobertura se corre aparte (run_tests.py).
+  - repo: local
+    hooks:
+      - id: pytest-rapido
+        name: pytest (rápido, pre-push)
+        entry: python scripts/run_tests.py rapido
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

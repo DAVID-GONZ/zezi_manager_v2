@@ -81,19 +81,29 @@ def test_topbar_no_navega_a_ruta_no_registrada():
     assert not huerfanas, f"layout.py navega a rutas no registradas: {huerfanas}"
 
 
-def test_buscador_topbar_declarado_no_disponible():
-    """D2 — mientras no exista la busqueda, el input va deshabilitado."""
+def test_buscador_topbar_operativo_navega_a_buscar():
+    """D2 — el buscador global del topbar ya está implementado y navega a `/buscar`.
+
+    Historia: este guard verificaba que el input estuviera deshabilitado mientras
+    `/buscar` no existiera. El sistema de búsqueda ya se entregó, así que ahora el
+    invariante es el inverso: el buscador está cableado a `/buscar`, que debe estar
+    registrada en el guard (no puede ser un enlace muerto).
+    """
+    from src.interface.auth import roles_de_ruta
+
     fuente = _fuente("src", "interface", "design", "layout.py")
-    bloque = fuente.split("Buscador global")[1].split("Campana de notificaciones")[0]
-    assert "disable" in bloque, "el buscador debe estar deshabilitado hasta que exista /buscar"
+    bloque = fuente.split("def _topbar_search")[1].split("\ndef ")[0]
+    assert "/buscar" in bloque, "el buscador del topbar debe navegar a /buscar"
+    assert roles_de_ruta("/buscar") is not None, "/buscar navegada pero no registrada en el guard"
 
 
-def test_buscador_topbar_usa_el_patron_de_input_del_repo():
-    """D5 — el input del topbar se estila como los demas: andes-input + borderless."""
+def test_buscador_topbar_oculta_chrome_de_quasar():
+    """D5 — el input del buscador oculta el chrome de Quasar (props borderless) y usa
+    la clase del repo `topbar-search`, en vez del estilo por defecto de Quasar."""
     fuente = _fuente("src", "interface", "design", "layout.py")
-    bloque = fuente.split("Buscador global")[1].split("Campana de notificaciones")[0]
-    assert "andes-input" in bloque, "falta la clase andes-input (chrome de Quasar visible)"
+    bloque = fuente.split("def _topbar_search")[1].split("\ndef ")[0]
     assert "borderless" in bloque, "falta props borderless (chrome de Quasar visible)"
+    assert "topbar-search" in bloque, "falta la clase topbar-search del input del buscador"
 
 
 # ── D6: los items clicables del portal son alcanzables por teclado ─────────

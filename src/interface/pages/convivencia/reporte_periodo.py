@@ -39,6 +39,7 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_primary, btn_secondary
 from src.interface.design.components.inline_selectors import inline_periodo_grupo
 from src.interface.design.layout import app_layout
+from src.interface.presenters.convivencia.reporte_periodo_presenter import ReportePeriodoPresenter
 
 logger = logging.getLogger("REPORTE_PERIODO_CONVIVENCIA")
 
@@ -221,7 +222,8 @@ def reporte_periodo_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = ReportePeriodoPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_reporte(_s)
     _cargar_kpis(_s)
 
@@ -322,10 +324,7 @@ def reporte_periodo_page() -> None:
     # ── Contenido principal (selector FUERA del refreshable) ────────────────
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["grupo_id"] = s["sel_grupo_id"]
-            _s["periodo_id"] = s["sel_periodo_id"]
-            _s["sel_grupo_nombre"] = s.get("sel_grupo_nombre", "")
-            _s["sel_periodo_nombre"] = s.get("sel_periodo_nombre", "")
+            presenter.aplicar_seleccion(s)
             _cargar_reporte(_s)
             _cargar_kpis(_s)
             cuerpo.refresh()

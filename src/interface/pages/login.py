@@ -37,6 +37,7 @@ def login_page() -> None:
                         ui.input(placeholder="usuario")
                         .classes("w-full andes-input")
                         .props("borderless dense")
+                        .mark("login-usuario")
                     )
 
                 with ui.column().classes("w-full gap-1"):
@@ -45,6 +46,7 @@ def login_page() -> None:
                         ui.input(placeholder="Contraseña", password=True)
                         .classes("w-full andes-input")
                         .props("borderless dense")
+                        .mark("login-password")
                     )
 
             # ── Toggle de contraseña con ícono del design system ─────────────
@@ -255,8 +257,10 @@ def login_page() -> None:
             password_input.on("keydown", lambda _: password_input.props(remove="error"))
 
             # Botón instanciado mediante la fábrica
-            login_btn = btn_primary("Iniciar sesión", on_click=intentar_login, size="lg").classes(
-                "w-full u-mt-lg"
+            login_btn = (
+                btn_primary("Iniciar sesión", on_click=intentar_login, size="lg")
+                .classes("w-full u-mt-lg")
+                .mark("login-submit")
             )
 
             # ── Pie ──────────────────────────────────────────────────────────

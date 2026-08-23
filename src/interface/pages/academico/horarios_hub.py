@@ -68,6 +68,7 @@ from src.interface.pages.academico.plantilla_editor_widget import (
     render_franjas_editor,
     render_plantilla_preview,
 )
+from src.interface.presenters.academico.horarios_hub_presenter import HorariosHubPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.franja_service import DiaSemana
 
@@ -197,50 +198,8 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     if _dia_hoy_es not in _DIAS_BASE:
         _dia_hoy_es = "Lunes"
 
-    _s: dict = {
-        # Sección activa
-        "seccion": seccion_inicial,
-        # Shared / visualizar-editar
-        "config": None,
-        "anio_id": None,
-        "periodo_id": None,
-        "grupos": [],
-        "docentes": [],
-        "escenarios": [],
-        "escenario_sel": None,
-        "bloques": [],
-        "asignaciones": [],
-        "parrilla_perspectiva": "Grupo",
-        "parrilla_eje_sel": None,
-        "parrilla_filtro_areas": None,
-        "parrilla_filtro_dias": None,
-        "parrilla_modo": "Por entidad",
-        "parrilla_dia_maestro": None,
-        "grupo_id": None,
-        # Carga masiva
-        "lote_reporte": None,
-        "lote_filas_raw": [],
-        # Generar (gen_ prefix)
-        "gen_configs": [],
-        "gen_config_sel": None,
-        "gen_plantillas": [],
-        "gen_plantilla_sel": None,
-        "gen_franjas_sel": [],
-        "gen_resultado": None,
-        "gen_datos_preview": None,
-        "gen_perspectiva": "Grupo",
-        "gen_eje_sel": None,
-        "gen_generando": False,
-        "gen_anio_id": None,
-        "gen_periodo_id": None,
-        "gen_error_contexto": None,
-        "gen_tab": "generacion",
-        # Docente (doc_ prefix)
-        "doc_vista_grid": "semana",
-        "doc_dia_sel": _dia_hoy_es,
-        "doc_parrilla_datos": {"dias": [], "franjas": [], "celdas": []},
-        "doc_asignaciones": [],
-    }
+    presenter = HorariosHubPresenter(seccion_inicial, _dia_hoy_es)
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga inicial shared ──────────────────────────────────────────────────
     try:
@@ -307,7 +266,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         except Exception:
             _tab_q = None
         if _tab_q in ("plantillas", "generacion"):
-            _s["gen_tab"] = _tab_q
+            presenter.set_gen_tab(_tab_q)
 
     # =========================================================================
     # Load functions — shared / visualizar-editar
@@ -867,11 +826,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         )
 
     def _cambiar_modo(valor: str) -> None:
-        _s["parrilla_modo"] = valor
+        presenter.set_parrilla_modo(valor)
         parrilla_unificada_refreshable.refresh()
 
     def _cambiar_perspectiva(valor: str) -> None:
-        _s["parrilla_perspectiva"] = valor
+        presenter.set_parrilla_perspectiva(valor)
         _s["parrilla_eje_sel"] = None
         parrilla_unificada_refreshable.refresh()
 
@@ -1143,7 +1102,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         _gen_guardar_franjas(filas)
 
     def _gen_cambiar_tab(valor: str) -> None:
-        _s["gen_tab"] = valor
+        presenter.set_gen_tab(valor)
         gen_refreshable.refresh()
 
     def _gen_seleccionar_config(config_id: int | None) -> None:
@@ -1480,7 +1439,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     # =========================================================================
 
     def _cambiar_seccion(sec: str) -> None:
-        _s["seccion"] = sec
+        presenter.set_seccion(sec)
         hub_refreshable.refresh()
 
     # =========================================================================

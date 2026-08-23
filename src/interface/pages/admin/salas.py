@@ -31,6 +31,7 @@ from src.interface.design.components.form_fields import (
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.admin.salas_presenter import SalasPresenter
 from src.services.sala_service import Sala
 
 logger = logging.getLogger("ADMIN.SALAS")
@@ -53,32 +54,29 @@ def salas_page() -> None:
 
     logger.info("Salas admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        "salas": [],
-        "grupos": [],
-        "nombre": "",
-        "tipo": "aula",
-        "capacidad": 30,
-    }
+    # ── Estado mutable (view-model en el presenter) ───────────────────────────
+    presenter = SalasPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_salas() -> None:
         try:
-            _s["salas"] = Container.sala_service().listar_salas()
+            presenter.set_salas(Container.sala_service().listar_salas())
         except Exception as exc:
             logger.error("Error cargando salas: %s", exc)
-            _s["salas"] = []
+            presenter.set_salas([])
 
     def _cargar_grupos() -> None:
         try:
-            _s["grupos"] = sorted(
-                Container.catalogo_academico_service().listar_grupos(),
-                key=lambda g: g.codigo,
+            presenter.set_grupos(
+                sorted(
+                    Container.catalogo_academico_service().listar_grupos(),
+                    key=lambda g: g.codigo,
+                )
             )
         except Exception as exc:
             logger.error("Error cargando grupos: %s", exc)
-            _s["grupos"] = []
+            presenter.set_grupos([])
 
     _cargar_salas()
     _cargar_grupos()
@@ -94,9 +92,7 @@ def salas_page() -> None:
             )
             Container.sala_service().crear_sala(sala)
             toast_success(f"Sala '{sala.nombre}' creada")
-            _s["nombre"] = ""
-            _s["tipo"] = "aula"
-            _s["capacidad"] = 30
+            presenter.reset_form()
             _cargar_salas()
             tabla_salas.refresh()
             tabla_grupos_aula.refresh()

@@ -26,6 +26,7 @@ from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.convivencia.alertas_presenter import AlertasPresenter
 from src.services.alerta_service import FiltroAlertasDTO, NivelAlerta, TipoAlerta
 
 logger = logging.getLogger("CONVIVENCIA.ALERTAS")
@@ -88,13 +89,8 @@ def alertas_page() -> None:
     logger.info("Alertas: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
     es_directivo = ctx.usuario_rol in ("director", "coordinador", "admin")
 
-    _s: dict = {
-        "alertas": [],
-        "filtro_tipo": None,
-        "filtro_nivel": None,
-        "solo_pendientes": True,
-        "nombres": {},
-    }
+    presenter = AlertasPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     def _cargar() -> None:
         try:
@@ -104,12 +100,12 @@ def alertas_page() -> None:
                 solo_pendientes=_s["solo_pendientes"],
                 usuario_destino_id=None if es_directivo else ctx.usuario_id,
             )
-            _s["alertas"] = Container.alerta_service().listar_alertas(filtro)
+            presenter.set_alertas(Container.alerta_service().listar_alertas(filtro))
             for a in _s["alertas"]:
                 _resolver_nombre(a.estudiante_id, _s["nombres"])
         except Exception as exc:
             logger.error("Error cargando alertas: %s", exc)
-            _s["alertas"] = []
+            presenter.set_alertas([])
 
     _cargar()
 
@@ -118,15 +114,15 @@ def alertas_page() -> None:
         panel_alertas.refresh()
 
     def _on_tipo_change(e) -> None:
-        _s["filtro_tipo"] = e.value if e.value else None
+        presenter.set_tipo(e.value)
         _on_filtro_change()
 
     def _on_nivel_change(e) -> None:
-        _s["filtro_nivel"] = e.value if e.value else None
+        presenter.set_nivel(e.value)
         _on_filtro_change()
 
     def _on_pendientes_change(e) -> None:
-        _s["solo_pendientes"] = e.value
+        presenter.set_pendientes(e.value)
         _on_filtro_change()
 
     def _resolver(alerta_id: int, datos: dict) -> bool | None:
@@ -187,10 +183,9 @@ def alertas_page() -> None:
     def panel_alertas() -> None:
         alertas = _s["alertas"]
 
-        # KPIs
-        total = len(alertas)
-        criticas = sum(1 for a in alertas if str(a.nivel).lower() in ("critica", "nivelalerta.critica"))
-        pendientes = sum(1 for a in alertas if not a.resuelta)
+        # KPIs (cálculo en el presenter)
+        k = AlertasPresenter.kpis(alertas)
+        total, criticas, pendientes = k["total"], k["criticas"], k["pendientes"]
 
         with ui.element("div").classes("stats-row"):
             counter_card("Total", total, icono="notifications")
@@ -207,8 +202,7 @@ def alertas_page() -> None:
 
         # Lista de alertas
         for alerta in alertas:
-            nivel_raw = str(alerta.nivel).split(".")[-1] if "." in str(alerta.nivel) else str(alerta.nivel)
-            nivel = nivel_raw.lower()
+            nivel = AlertasPresenter.nivel_clave(alerta.nivel)
             color = _NIVEL_COLOR.get(nivel, "var(--color-info)")
             icono = _NIVEL_ICONO.get(nivel, "info")
             tipo_label = _TIPO_DISPLAY.get(str(alerta.tipo_alerta).split(".")[-1] if "." in str(alerta.tipo_alerta) else str(alerta.tipo_alerta), str(alerta.tipo_alerta))

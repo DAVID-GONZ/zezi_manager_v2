@@ -33,8 +33,18 @@ from src.interface.design.components.form_fields import filter_select
 from src.interface.design.components.stat_card import stat_card
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import AsistenciaColors, DesempenoColors, Icons
+from src.interface.presenters.informes.estadisticos_presenter import EstadisticosPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.informe_service import FormatoInforme
+
+# Mapa clave-semántica → token de icono, para las tarjetas de resumen que produce
+# EstadisticosPresenter.resumen (el presenter no depende del design system).
+_ICONO_STAT = {
+    "students": Icons.STUDENTS,
+    "grades": Icons.GRADES,
+    "check": Icons.CHECK,
+    "warning": Icons.WARNING,
+}
 
 logger = logging.getLogger("ESTADISTICOS")
 
@@ -215,21 +225,6 @@ _EC_PIE_OPTIONS: dict = {
 # ── Estado ────────────────────────────────────────────────────────────────────
 
 
-def _estado_inicial() -> dict:
-    return {
-        "tipo": None,  # str | None — uno de los 9 IDs de tipo
-        "grupo_id": None,
-        "asignacion_id": None,
-        "periodo_id": None,
-        "grupos": [],
-        "asignaciones": [],
-        "periodos": [],
-        "todas_asignaciones_docente": [],  # solo usado cuando rol == "profesor"
-        "datos": None,  # list | dict | None
-        "datos_listos": False,
-    }
-
-
 # ── Helpers de carga ──────────────────────────────────────────────────────────
 
 
@@ -294,22 +289,6 @@ def _cargar_periodos(ctx: SessionContext, _s: dict) -> None:
         _s["periodos"] = []
 
 
-def _tipo_activo(_s: dict) -> dict | None:
-    return _TIPOS_MAP.get(_s["tipo"])
-
-
-def _filtros_completos(_s: dict) -> bool:
-    tipo = _tipo_activo(_s)
-    if not tipo:
-        return False
-    filtros = tipo["filtros"]
-    if "grupo" in filtros and not _s["grupo_id"]:
-        return False
-    if "asignatura" in filtros and not _s["asignacion_id"]:
-        return False
-    return not ("periodo" in filtros and not _s["periodo_id"])
-
-
 def _cargar_datos(ctx: SessionContext, _s: dict) -> None:
     svc = Container.estadisticos_service()
     tipo = _s["tipo"]
@@ -361,73 +340,23 @@ def _nombre_archivo(_s: dict) -> str:
 
 
 def _render_stats_summary(_s: dict) -> None:
-    """Renderiza tarjetas de estadísticos resumidos según el tipo de informe."""
-    datos = _s["datos"]
-    tipo = _s["tipo"]
-    if not datos:
-        return
+    """Renderiza tarjetas de estadísticos resumidos según el tipo de informe.
 
-    stats: list[tuple[str, str, str, str]] = []  # (titulo, valor, icono, variante)
-
-    if tipo in ("consolidado_notas", "ranking_grupo") and isinstance(datos, list) and datos:
-        prom_field = "promedio_periodo" if "promedio_periodo" in datos[0] else "promedio"
-        n = len(datos)
-        promedios = [float(r.get(prom_field, 0) or 0) for r in datos]
-        promedio_grupal = sum(promedios) / n if n else 0
-        aprobados = sum(1 for p in promedios if p >= 60)
-        stats = [
-            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
-            ("Promedio grupal", f"{promedio_grupal:.1f}", Icons.GRADES, "info"),
-            (
-                "Aprobados",
-                f"{aprobados} ({aprobados * 100 // n if n else 0}%)",
-                Icons.CHECK,
-                "success",
-            ),
-            ("Reprobados", str(n - aprobados), Icons.WARNING, "danger"),
-        ]
-        if tipo == "ranking_grupo":
-            mejor = max(promedios) if promedios else 0
-            menor = min(promedios) if promedios else 0
-            stats.append(("Mejor nota", f"{mejor:.1f}", Icons.GRADES, "success"))
-            stats.append(("Menor nota", f"{menor:.1f}", Icons.WARNING, "danger"))
-
-    elif tipo == "consolidado_asistencia" and isinstance(datos, list) and datos:
-        n = len(datos)
-        porcentajes = [float(r.get("porcentaje", 0) or 0) for r in datos]
-        pct_prom = sum(porcentajes) / n if n else 0
-        bajo_70 = sum(1 for p in porcentajes if p < 70)
-        stats = [
-            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
-            ("% Asistencia prom.", f"{pct_prom:.1f}%", Icons.CHECK, "success"),
-            ("Bajo 70%", str(bajo_70), Icons.WARNING, "danger"),
-        ]
-
-    elif tipo == "consolidado_anual" and isinstance(datos, list) and datos:
-        n = len(datos)
-        defs = [float(r.get("definitiva", 0) or 0) for r in datos]
-        prom = sum(defs) / n if n else 0
-        promovidos = sum(1 for r in datos if str(r.get("estado", "")).lower() == "promovido")
-        stats = [
-            ("Estudiantes", str(n), Icons.STUDENTS, "primary"),
-            ("Definitiva prom.", f"{prom:.1f}", Icons.GRADES, "info"),
-            ("Promovidos", str(promovidos), Icons.CHECK, "success"),
-            ("Reprobados", str(n - promovidos), Icons.WARNING, "danger"),
-        ]
-
-    elif isinstance(datos, dict):
-        total = sum(datos.values()) if datos else 0
-        stats = [("Total registros", str(total), Icons.GRADES, "primary")]
-
-    elif isinstance(datos, list):
-        stats = [("Total registros", str(len(datos)), Icons.GRADES, "primary")]
-
-    if not stats:
+    El cálculo de las métricas vive en `EstadisticosPresenter.resumen` (puro y
+    testeado); aquí solo se mapea la clave de icono al token de diseño y se pinta.
+    """
+    metricas = EstadisticosPresenter.resumen(_s["tipo"], _s["datos"])
+    if not metricas:
         return
 
     with ui.element("div").classes("stats-summary-row"):
-        for titulo, valor, icono, variante in stats:
-            stat_card(titulo=titulo, valor=valor, icono=icono, variante=variante)
+        for m in metricas:
+            stat_card(
+                titulo=m.titulo,
+                valor=m.valor,
+                icono=_ICONO_STAT.get(m.icono, ""),
+                variante=m.variante,
+            )
 
 
 def _render_consolidado_notas(datos: list[dict]) -> None:
@@ -725,7 +654,8 @@ def estadisticos_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = EstadisticosPresenter(_TIPOS_MAP)
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _s["cargando_preview"] = False
 
     # Cargar datos iniciales
@@ -756,7 +686,7 @@ def estadisticos_page() -> None:
                 cls_extra="u-mb-md",
             )
 
-            tipo = _tipo_activo(_s)
+            tipo = presenter.tipo_activo()
             if not tipo:
                 return
 
@@ -810,7 +740,7 @@ def estadisticos_page() -> None:
                     "Previsualizar",
                     icon=Icons.GRADES,
                     on_click=on_previsualizar,
-                    disabled=not _filtros_completos(_s),
+                    disabled=not presenter.filtros_completos(),
                 )
 
     @ui.refreshable
@@ -837,7 +767,7 @@ def estadisticos_page() -> None:
                 )
                 return
 
-            tipo_info = _tipo_activo(_s)
+            tipo_info = presenter.tipo_activo()
             if not tipo_info:
                 return
 
@@ -855,47 +785,35 @@ def estadisticos_page() -> None:
                     )
 
     # ── Handlers de eventos ──────────────────────────────────────────────────
+    # La lógica de estado (coerción, cascada de reseteos, limpiar datos) vive en
+    # EstadisticosPresenter; aquí solo quedan los efectos de UI (carga + refresh).
 
-    def _limpiar_datos() -> None:
-        _s["datos"] = None
-        _s["datos_listos"] = False
+    def _refrescar_todo() -> None:
+        filtros_refreshable.refresh()
+        preview_refreshable.refresh()
+        export_refreshable.refresh()
 
     def on_tipo_change(nuevo_tipo: str | None) -> None:
-        _s["tipo"] = nuevo_tipo
-        _s["asignacion_id"] = None
-        _s["periodo_id"] = None
-        _limpiar_datos()
-        filtros_refreshable.refresh()
-        preview_refreshable.refresh()
-        export_refreshable.refresh()
+        presenter.set_tipo(nuevo_tipo)
+        _refrescar_todo()
 
     def on_grupo_change(grupo_id) -> None:
-        _s["grupo_id"] = int(grupo_id) if grupo_id is not None else None
-        _s["asignacion_id"] = None
-        _limpiar_datos()
+        presenter.set_grupo(grupo_id)
         _cargar_asignaciones(ctx, _s)
-        filtros_refreshable.refresh()
-        preview_refreshable.refresh()
-        export_refreshable.refresh()
+        _refrescar_todo()
 
     def on_asignatura_change(asignacion_id) -> None:
-        _s["asignacion_id"] = int(asignacion_id) if asignacion_id is not None else None
-        _limpiar_datos()
-        filtros_refreshable.refresh()
-        preview_refreshable.refresh()
-        export_refreshable.refresh()
+        presenter.set_asignacion(asignacion_id)
+        _refrescar_todo()
 
     def on_periodo_change(periodo_id) -> None:
-        _s["periodo_id"] = int(periodo_id) if periodo_id is not None else None
-        _limpiar_datos()
-        filtros_refreshable.refresh()
-        preview_refreshable.refresh()
-        export_refreshable.refresh()
+        presenter.set_periodo(periodo_id)
+        _refrescar_todo()
 
     async def on_previsualizar() -> None:
         import asyncio
 
-        if not _filtros_completos(_s):
+        if not presenter.filtros_completos():
             toast_warning("Completa todos los filtros requeridos.")
             return
         _s["cargando_preview"] = True

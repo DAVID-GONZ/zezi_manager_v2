@@ -573,7 +573,12 @@ class TestTrasladar:
 
     def test_aislamiento_institucion(self):
         # Grupo destino de OTRA institución → rechazado al verificar pertenencia.
-        from src.services.contexto_tenant import usar_institucion
+        # El rechazo es una OperacionFueraDeInstitucionError (PermissionError),
+        # no un ValueError: es una violación de aislamiento tenant, no de validación.
+        from src.services.contexto_tenant import (
+            OperacionFueraDeInstitucionError,
+            usar_institucion,
+        )
         grupos = {
             10: _FakeGrupo(10, "6A", 6, institucion_id=1),
             30: _FakeGrupo(30, "6C", 6, institucion_id=2),
@@ -585,7 +590,7 @@ class TestTrasladar:
         with usar_institucion(1):
             est = svc.matricular(NuevoEstudianteDTO(
                 numero_documento="T8", nombre="Ana", apellido="Ocho", grupo_id=10))
-            with pytest.raises(ValueError):
+            with pytest.raises(OperacionFueraDeInstitucionError):
                 svc.trasladar(est.id, 30, motivo="x", actor_rol="director")
 
     def test_notas_siguen_al_estudiante_tras_traslado(self):

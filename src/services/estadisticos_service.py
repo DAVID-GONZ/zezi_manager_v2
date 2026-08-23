@@ -57,6 +57,96 @@ class PendientesDocenteDTO:
         )
 
 
+# ---------------------------------------------------------------------------
+# Resumen de consolidados (lógica de negocio: umbrales de aprobación/asistencia)
+# ---------------------------------------------------------------------------
+
+# Umbrales de negocio (no de presentación): definen qué cuenta como aprobado y
+# como asistencia suficiente. Viven en el backend para reusarse desde cualquier
+# consumidor (esta UI, un futuro endpoint del API, el frontend Vue).
+UMBRAL_APROBACION = 60.0
+UMBRAL_ASISTENCIA = 70.0
+
+
+@dataclass(frozen=True)
+class ResumenConsolidadoDTO:
+    """Números agregados de un consolidado, ya clasificados por `clase`.
+
+    Es lógica de dominio (aplica los umbrales de aprobación/asistencia); NO sabe
+    de tarjetas, formato ni iconos — de eso se encarga la capa de presentación.
+    `clase` discrimina qué campos son significativos, para que el presentador no
+    tenga que re-derivar el tipo desde los datos crudos.
+    """
+
+    clase: str  # "notas" | "ranking" | "asistencia" | "anual" | "generico"
+    n: int = 0
+    promedio_grupal: float = 0.0
+    aprobados: int = 0
+    reprobados: int = 0
+    mejor: float = 0.0
+    menor: float = 0.0
+    pct_asistencia_prom: float = 0.0
+    bajo_umbral_asistencia: int = 0
+    definitiva_prom: float = 0.0
+    promovidos: int = 0
+    total_registros: int = 0
+
+
+def resumen_consolidado(tipo: str | None, datos) -> ResumenConsolidadoDTO | None:
+    """Calcula los números de resumen de un consolidado. `None` si no hay datos.
+
+    Función pura (sin repos): recibe el consolidado ya cargado y devuelve las
+    métricas agregadas aplicando los umbrales de negocio.
+    """
+    if not datos:
+        return None
+
+    if tipo in ("consolidado_notas", "ranking_grupo") and isinstance(datos, list):
+        prom_field = "promedio_periodo" if "promedio_periodo" in datos[0] else "promedio"
+        promedios = [float(r.get(prom_field, 0) or 0) for r in datos]
+        n = len(datos)
+        aprobados = sum(1 for p in promedios if p >= UMBRAL_APROBACION)
+        return ResumenConsolidadoDTO(
+            clase="ranking" if tipo == "ranking_grupo" else "notas",
+            n=n,
+            promedio_grupal=sum(promedios) / n if n else 0,
+            aprobados=aprobados,
+            reprobados=n - aprobados,
+            mejor=max(promedios) if promedios else 0,
+            menor=min(promedios) if promedios else 0,
+        )
+
+    if tipo == "consolidado_asistencia" and isinstance(datos, list):
+        porcentajes = [float(r.get("porcentaje", 0) or 0) for r in datos]
+        n = len(datos)
+        return ResumenConsolidadoDTO(
+            clase="asistencia",
+            n=n,
+            pct_asistencia_prom=sum(porcentajes) / n if n else 0,
+            bajo_umbral_asistencia=sum(1 for p in porcentajes if p < UMBRAL_ASISTENCIA),
+        )
+
+    if tipo == "consolidado_anual" and isinstance(datos, list):
+        defs = [float(r.get("definitiva", 0) or 0) for r in datos]
+        n = len(datos)
+        promovidos = sum(1 for r in datos if str(r.get("estado", "")).lower() == "promovido")
+        return ResumenConsolidadoDTO(
+            clase="anual",
+            n=n,
+            definitiva_prom=sum(defs) / n if n else 0,
+            promovidos=promovidos,
+            reprobados=n - promovidos,
+        )
+
+    if isinstance(datos, dict):
+        return ResumenConsolidadoDTO(clase="generico", total_registros=sum(datos.values()))
+
+    if isinstance(datos, list):
+        return ResumenConsolidadoDTO(clase="generico", total_registros=len(datos))
+
+    return None
+
+
 class EstadisticosService:
     """
     Orquesta los casos de uso del módulo de Estadísticas.

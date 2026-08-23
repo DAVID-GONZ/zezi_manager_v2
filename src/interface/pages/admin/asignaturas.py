@@ -38,6 +38,7 @@ from src.interface.design.components.form_fields import (
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.admin.asignaturas_presenter import AsignaturasPresenter
 from src.services.catalogo_academico_service import AreaConocimiento, Asignatura
 
 logger = logging.getLogger("ADMIN.ASIGNATURAS")
@@ -61,37 +62,26 @@ def asignaturas_page() -> None:
     logger.info("Asignaturas admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        "areas": [],
-        "asignaturas": [],
-        "area_filtro_id": None,
-        "busqueda": "",
-        # formulario área
-        "area_nombre": "",
-        "area_codigo": "",
-        # formulario asignatura
-        "asig_nombre": "",
-        "asig_codigo": "",
-        "asig_area_id": None,
-    }
+    presenter = AsignaturasPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_areas() -> None:
         try:
-            _s["areas"] = Container.catalogo_academico_service().listar_areas()
+            presenter.set_areas(Container.catalogo_academico_service().listar_areas())
         except Exception as exc:
             logger.error("Error al cargar áreas: %s", exc)
-            _s["areas"] = []
+            presenter.set_areas([])
 
     def _cargar_asignaturas() -> None:
         try:
             area_id = _s["area_filtro_id"] if _s["area_filtro_id"] else None
-            _s["asignaturas"] = Container.catalogo_academico_service().listar_asignaturas(
-                area_id=area_id
+            presenter.set_asignaturas(
+                Container.catalogo_academico_service().listar_asignaturas(area_id=area_id)
             )
         except Exception as exc:
             logger.error("Error al cargar asignaturas: %s", exc)
-            _s["asignaturas"] = []
+            presenter.set_asignaturas([])
 
     _cargar_areas()
     _cargar_asignaturas()
@@ -114,8 +104,7 @@ def asignaturas_page() -> None:
             )
             Container.catalogo_academico_service().guardar_area(area)
             toast_success(f"Área '{area.nombre}' creada")
-            _s["area_nombre"] = ""
-            _s["area_codigo"] = ""
+            presenter.reset_area_form()
             _cargar_areas()
             _cargar_asignaturas()
             tabla_areas.refresh()
@@ -204,9 +193,7 @@ def asignaturas_page() -> None:
             )
             Container.catalogo_academico_service().guardar_asignatura(asig)
             toast_success(f"Asignatura '{asig.nombre}' creada")
-            _s["asig_nombre"] = ""
-            _s["asig_codigo"] = ""
-            _s["asig_area_id"] = None
+            presenter.reset_asig_form()
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
         except ValueError as exc:
@@ -294,7 +281,7 @@ def asignaturas_page() -> None:
             areas_opts[a.id] = a.nombre
 
         def _on_filtro_change(v) -> None:
-            _s["area_filtro_id"] = v
+            presenter.set_area_filtro(v)
             _cargar_asignaturas()
             tabla_asignaturas.refresh()
 
@@ -307,7 +294,7 @@ def asignaturas_page() -> None:
         )
 
         def _on_buscar(v) -> None:
-            _s["busqueda"] = (v or "").strip().lower()
+            presenter.set_busqueda(v)
             tabla_asignaturas.refresh()
 
         filter_input(
@@ -343,10 +330,8 @@ def asignaturas_page() -> None:
 
     @ui.refreshable
     def tabla_asignaturas() -> None:
-        asigs = _s["asignaturas"]
+        asigs = presenter.filtrar(_s["asignaturas"])
         q = _s["busqueda"]
-        if q:
-            asigs = [a for a in asigs if q in a.nombre.lower() or q in (a.codigo or "").lower()]
         if not asigs:
             if q:
                 empty_state(

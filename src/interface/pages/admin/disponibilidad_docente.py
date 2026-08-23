@@ -10,7 +10,6 @@ Acceso: admin, director, coordinador
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from nicegui import ui
 
@@ -25,6 +24,9 @@ from src.interface.design.components import (
 from src.interface.design.components.buttons import btn_ghost, btn_primary
 from src.interface.design.components.form_fields import field_number, field_select
 from src.interface.design.layout import app_layout
+from src.interface.presenters.admin.disponibilidad_docente_presenter import (
+    DisponibilidadDocentePresenter,
+)
 
 logger = logging.getLogger("ADMIN.DISPONIBILIDAD_DOCENTE")
 
@@ -39,24 +41,16 @@ def disponibilidad_docente_page() -> None:
     logger.info("Disponibilidad docente: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict[str, Any] = {
-        "docentes": [],
-        "docente_id": None,
-        "franjas": [],  # franjas lectivas de la plantilla activa
-        "dias_activos": [],
-        "disponibilidad": {},  # dict[(dia, orden), bool] — True=disponible
-        "min_horas_dia": 0,
-        "max_horas_dia": 8,
-        "plantilla_ok": True,
-    }
+    presenter = DisponibilidadDocentePresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga inicial ─────────────────────────────────────────────────────────
     def _cargar_docentes() -> None:
         try:
-            _s["docentes"] = Container.usuario_service().listar_docentes()
+            presenter.set_docentes(Container.usuario_service().listar_docentes())
         except Exception as exc:
             logger.error("Error cargando docentes: %s", exc)
-            _s["docentes"] = []
+            presenter.set_docentes([])
 
     def _cargar_plantilla() -> None:
         try:
@@ -110,7 +104,7 @@ def disponibilidad_docente_page() -> None:
 
     # ── Acciones ──────────────────────────────────────────────────────────────
     def _toggle_celda(clave: tuple) -> None:
-        _s["disponibilidad"][clave] = not _s["disponibilidad"].get(clave, True)
+        presenter.toggle_slot(clave)
         _rejilla_disponibilidad.refresh()
 
     def _marcar_todo_disponible() -> None:
@@ -249,7 +243,7 @@ def disponibilidad_docente_page() -> None:
                 docente_opts = {d.id: d.nombre_completo for d in _s["docentes"]}
 
                 def _on_select_docente(e) -> None:
-                    _s["docente_id"] = e.value
+                    presenter.set_docente(e.value)
                     if e.value:
                         _cargar_disponibilidad_docente(e.value)
                     _rejilla_disponibilidad.refresh()

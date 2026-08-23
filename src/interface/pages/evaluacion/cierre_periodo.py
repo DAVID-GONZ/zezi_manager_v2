@@ -42,6 +42,7 @@ from src.interface.design.components.form_fields import filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.evaluacion.cierre_periodo_presenter import CierrePeriodoPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.cierre_service import ContextoAcademicoDTO
 
@@ -104,15 +105,8 @@ def cierre_periodo_page() -> None:
     logger.info("Cierre periodo: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────
-    _s: dict = {
-        "anio_id": None,
-        "periodos": [],
-        "grupos": [],
-        "periodo_id": None,
-        "grupo_id": None,
-        "asignaciones": [],
-        "estado_cierres": {},  # asignacion_id → list[CierrePeriodo]
-    }
+    presenter = CierrePeriodoPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     # ── Carga inicial ─────────────────────────────────────────────────────
     def _cargar_listas() -> None:
@@ -394,12 +388,12 @@ def cierre_periodo_page() -> None:
                 grupos_opts = {g.id: g.codigo for g in _s["grupos"] if g.id}
 
                 def _on_periodo(v):
-                    _s["periodo_id"] = v
+                    presenter.set_periodo(v)
                     _recargar_asignaciones()
                     lista_refreshable.refresh()
 
                 def _on_grupo(v):
-                    _s["grupo_id"] = v
+                    presenter.set_grupo(v)
                     _recargar_asignaciones()
                     lista_refreshable.refresh()
 

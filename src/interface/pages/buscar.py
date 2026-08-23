@@ -24,6 +24,8 @@ from src.interface.design.components import empty_state, toast_error
 from src.interface.design.components.buttons import btn_ghost
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.buscar_presenter import BuscarPresenter
+from src.services.busqueda_service import tipos_buscables
 
 logger = logging.getLogger("BUSCAR")
 
@@ -41,29 +43,8 @@ _LABEL_POR_TIPO: dict[str, str] = {
     TipoResultadoBusqueda.ASIGNATURA: "Asignaturas",
 }
 
-_TIPOS_POR_ROL: dict[str, list[str]] = {
-    "admin": [
-        TipoResultadoBusqueda.ESTUDIANTE,
-        TipoResultadoBusqueda.USUARIO,
-        TipoResultadoBusqueda.GRUPO,
-        TipoResultadoBusqueda.ASIGNATURA,
-    ],
-    "director": [
-        TipoResultadoBusqueda.ESTUDIANTE,
-        TipoResultadoBusqueda.USUARIO,
-        TipoResultadoBusqueda.GRUPO,
-        TipoResultadoBusqueda.ASIGNATURA,
-    ],
-    "coordinador": [
-        TipoResultadoBusqueda.ESTUDIANTE,
-        TipoResultadoBusqueda.GRUPO,
-        TipoResultadoBusqueda.ASIGNATURA,
-    ],
-    "profesor": [
-        TipoResultadoBusqueda.ESTUDIANTE,
-        TipoResultadoBusqueda.GRUPO,
-    ],
-}
+# NOTA: qué tipos puede buscar cada rol (RBAC) vive en el BACKEND
+# (`busqueda_service.tipos_buscables`), fuente única compartida con el servicio.
 
 _POR_PAGINA = 20
 
@@ -83,14 +64,10 @@ def buscar_page() -> None:
     except Exception:
         pass
 
-    tipos_visibles = _TIPOS_POR_ROL.get(ctx.usuario_rol, [])
+    tipos_visibles = tipos_buscables(ctx.usuario_rol)
 
-    _s: dict = {
-        "termino": termino_inicial.strip(),
-        "tipo_filtro": None,  # None = Todos
-        "pagina": 1,
-        "resultados": None,  # None = no buscado aún
-    }
+    presenter = BuscarPresenter(termino_inicial)
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     def contenido() -> None:
 
@@ -116,13 +93,11 @@ def buscar_page() -> None:
                 )
 
         def _on_termino_change(valor) -> None:
-            texto = str(valor or "").strip()
-            _s["termino"] = texto
-            _s["pagina"] = 1
+            presenter.set_termino(valor)
             _cargar_resultados()
             try:
                 ui.run_javascript(
-                    f"window.history.replaceState(null, '', '/buscar?q={texto}')"
+                    f"window.history.replaceState(null, '', '/buscar?q={_s['termino']}')"
                 )
             except Exception:
                 pass
@@ -131,8 +106,7 @@ def buscar_page() -> None:
         with ui.row().classes("buscar-tabs gap-2 mb-4"):
 
             def _on_tab(tipo_valor: str | None) -> None:
-                _s["tipo_filtro"] = tipo_valor
-                _s["pagina"] = 1
+                presenter.set_tab(tipo_valor)
                 _cargar_resultados()
 
             ui.button(
@@ -158,7 +132,7 @@ def buscar_page() -> None:
             termino = (_s["termino"] or "").strip()
 
             if resultado is None:
-                if termino and len(termino) < 2:
+                if termino and not presenter.termino_buscable():
                     empty_state(
                         icono="search",
                         titulo="Escribe al menos 2 caracteres",
@@ -183,14 +157,8 @@ def buscar_page() -> None:
                 )
                 return
 
-            # Totales
-            tipo_filtro = _s["tipo_filtro"]
-            if tipo_filtro:
-                count = resultado.total_por_tipo.get(tipo_filtro, 0)
-                total_txt = f"{count} resultado{'s' if count != 1 else ''}"
-            else:
-                total = sum(resultado.total_por_tipo.values())
-                total_txt = f"{total} resultado{'s' if total != 1 else ''}"
+            # Totales (formato en el presenter)
+            total_txt = presenter.total_texto(resultado)
 
             with ui.row().classes("buscar-totales items-center mb-3"):
                 ui.label(total_txt).classes("buscar-total-label")
@@ -244,35 +212,37 @@ def buscar_page() -> None:
                         )
 
         def _cargar_resultados() -> None:
-            termino = (_s["termino"] or "").strip()
-            if len(termino) < 2:
-                _s["resultados"] = None
+            if not presenter.termino_buscable():
+                presenter.set_resultados(None)
                 tabla_resultados.refresh()
                 return
+            termino = _s["termino"]
             try:
                 svc = Container.busqueda_service()
                 tipo_filtro = _s["tipo_filtro"]
                 tipo_enum = TipoResultadoBusqueda(tipo_filtro) if tipo_filtro else None
-                _s["resultados"] = svc.buscar_completo(
-                    termino,
-                    rol=ctx.usuario_rol,
-                    usuario_id=ctx.usuario_id,
-                    tipo_filtro=tipo_enum,
-                    pagina=_s["pagina"],
-                    por_pagina=_POR_PAGINA,
+                presenter.set_resultados(
+                    svc.buscar_completo(
+                        termino,
+                        rol=ctx.usuario_rol,
+                        usuario_id=ctx.usuario_id,
+                        tipo_filtro=tipo_enum,
+                        pagina=_s["pagina"],
+                        por_pagina=_POR_PAGINA,
+                    )
                 )
             except Exception as exc:
                 logger.error("Error en búsqueda '%s': %s", termino, exc)
                 toast_error("Error al realizar la búsqueda.")
-                _s["resultados"] = None
+                presenter.set_resultados(None)
             tabla_resultados.refresh()
 
         def _paginar(pagina: int) -> None:
-            _s["pagina"] = pagina
+            presenter.set_pagina(pagina)
             _cargar_resultados()
 
-        # Ejecutar búsqueda inicial si viene un término en la URL
-        if _s["termino"] and len(_s["termino"]) >= 2:
+        # Ejecutar búsqueda inicial si viene un término válido en la URL
+        if presenter.termino_buscable():
             _cargar_resultados()
 
         tabla_resultados()

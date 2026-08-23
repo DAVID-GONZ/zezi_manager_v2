@@ -54,6 +54,7 @@ from src.interface.design.styles.tokens import Icons
 from src.interface.pages.convivencia._shared_observacion_form import (
     abrir_crear_observacion_dialog,
 )
+from src.interface.presenters.convivencia.observaciones_presenter import ObservacionesPresenter
 from src.services.convivencia_service import NuevoRegistroComportamientoDTO
 
 logger = logging.getLogger("OBSERVACIONES")
@@ -170,7 +171,8 @@ def observaciones_page() -> None:
         ui.navigate.to("/login")
         return
 
-    _s = _estado_inicial()
+    presenter = ObservacionesPresenter()
+    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
     _cargar_periodos(_s)
 
     _refs: dict = {}
@@ -459,11 +461,7 @@ def observaciones_page() -> None:
 
     def contenido() -> None:
         def on_sel_change(s: dict) -> None:
-            _s["sel_periodo_id"] = s["sel_periodo_id"]
-            _s["sel_grupo_id"] = s["sel_grupo_id"]
-            _s["sel_asignacion_id"] = s["sel_asignacion_id"]
-            _s["sel_asignacion_nombre"] = s.get("sel_asignacion_nombre", "")
-            _s["sel_estudiante_ids"] = []
+            presenter.aplicar_seleccion(s)
             if s["sel_grupo_id"]:
                 try:
                     _s["estudiantes"] = Container.estudiante_service().listar_por_grupo(

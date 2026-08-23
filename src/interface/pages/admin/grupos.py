@@ -44,6 +44,7 @@ from src.interface.design.components.form_fields import (
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
+from src.interface.presenters.admin.grupos_presenter import GruposPresenter
 from src.services.catalogo_academico_service import Grupo
 
 logger = logging.getLogger("ADMIN.GRUPOS")
@@ -67,27 +68,13 @@ def grupos_page() -> None:
     logger.info("Grupos admin: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
     # ── Estado mutable ────────────────────────────────────────────────────────
-    _s: dict = {
-        "grupos": [],
-        "grados": [],
-        "cargando": False,
-        # formulario crear
-        "form_codigo": "",
-        "form_grado": 1,
-        "form_jornada": "UNICA",
-        "form_capacidad": 40,
-        # edición
-        "edit_id": None,
-        "edit_codigo": "",
-        "edit_grado": 1,
-        "edit_jornada": "UNICA",
-        "edit_capacidad": 40,
-    }
+    presenter = GruposPresenter()
+    _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_estado() -> None:
         try:
-            _s["grupos"] = Container.catalogo_academico_service().listar_grupos()
+            presenter.set_grupos(Container.catalogo_academico_service().listar_grupos())
         except Exception as exc:
             logger.error("Error al cargar grupos: %s", exc)
             _s["grupos"] = []
@@ -140,10 +127,7 @@ def grupos_page() -> None:
             )
             Container.catalogo_academico_service().guardar_grupo(grupo)
             toast_success(f"Grupo {grupo.codigo} creado")
-            _s["form_codigo"] = ""
-            _s["form_grado"] = _grado_valido(None)
-            _s["form_jornada"] = "UNICA"
-            _s["form_capacidad"] = 40
+            presenter.reset_create_form(_grado_valido(None))
             _cargar_estado()
             tabla.refresh()
         except ValueError as exc:
