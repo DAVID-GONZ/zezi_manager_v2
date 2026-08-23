@@ -1,0 +1,11 @@
+[
+  {
+    "id": "convivencia_26_rutas_rail",
+    "nombre": "Rutas rail — redirect comportamiento y semántica de navegación",
+    "status": "done",
+    "destino_v2": "src/interface/design/layout.py, main.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Rail semántico con /seguimiento→_AULA; comportamiento→redirect. Épica 21-26 completa."
+  }
+]

@@ -87,7 +87,8 @@ venv.bak/
 .idea/
 *.swp
 *.swo
-.claude/
+.claude/*
+!.claude/agents/
 .gemini/
 __pycache__/
 
@@ -127,3 +128,4 @@ spec_author.md
 !pyproject.toml
 *.lock
 *.ruff_cache
+!step_list.json
