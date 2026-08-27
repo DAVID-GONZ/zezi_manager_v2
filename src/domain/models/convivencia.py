@@ -66,6 +66,81 @@ TIPO_REGISTRO_DISPLAY: dict[str, str] = {
 
 
 # =============================================================================
+# Catálogo de tipos de situación — Ley 1620 / Decreto 1965 (convivencia_34)
+# =============================================================================
+
+
+class TipoSituacion(BaseModel):
+    """
+    Clasificación de gravedad de una situación de convivencia (Tipo I/II/III).
+    Catálogo configurable por institución.
+    """
+
+    id: int | None = None
+    nombre: str
+    nivel: int = 1
+    descripcion: str | None = None
+    protocolo: str | None = None
+    activa: bool = True
+    institucion_id: int | None = None
+
+
+class NuevoTipoSituacionDTO(BaseModel):
+    """DTO para crear o editar un tipo de situación."""
+
+    nombre: str
+    nivel: int = 1
+    descripcion: str | None = None
+    protocolo: str | None = None
+
+    @field_validator("nivel")
+    @classmethod
+    def validar_nivel(cls, v: int) -> int:
+        if not (1 <= v <= 3):
+            raise ValueError("El nivel debe ser 1, 2 o 3.")
+        return v
+
+
+# =============================================================================
+# Catálogo de medidas pedagógicas — Decreto 1965 (convivencia_36)
+# =============================================================================
+
+
+class MedidaPedagogica(BaseModel):
+    """
+    Medida pedagógica o correctiva aplicable a una situación de convivencia.
+    Catálogo configurable por institución (Art. 43-44 Decreto 1965).
+
+    `nivel_minimo` indica desde qué tipo de situación (1, 2 o 3) la medida
+    es aplicable. Filtra las opciones del selector en el formulario de registro.
+    `activa=False` oculta la medida del selector sin eliminar los registros
+    históricos que ya la referencien.
+    """
+
+    id: int | None = None
+    nombre: str
+    descripcion: str | None = None
+    nivel_minimo: int = 1
+    activa: bool = True
+    institucion_id: int | None = None
+
+
+class NuevaMedidaPedagogicaDTO(BaseModel):
+    """DTO para crear o editar una medida pedagógica."""
+
+    nombre: str
+    descripcion: str | None = None
+    nivel_minimo: int = 1
+
+    @field_validator("nivel_minimo")
+    @classmethod
+    def validar_nivel(cls, v: int) -> int:
+        if not (1 <= v <= 3):
+            raise ValueError("El nivel minimo debe ser 1, 2 o 3.")
+        return v
+
+
+# =============================================================================
 # Catálogo de categorías de observación (convivencia_09)
 # =============================================================================
 
@@ -178,6 +253,47 @@ class ObservacionPeriodo(BaseModel):
         return self.model_copy(update={"es_publica": False})
 
 
+class EntradaSeguimiento(BaseModel):
+    """
+    Entrada cronológica del historial de seguimiento de un registro de comportamiento.
+
+    Cada llamada a `agregar_entrada_seguimiento` crea una nueva fila sin borrar
+    las anteriores, garantizando la trazabilidad exigida por el Art. 26 Ley 1620.
+    """
+
+    id: int | None = None
+    registro_id: int
+    fecha: datetime = Field(default_factory=datetime.now)
+    texto: str
+    usuario_id: int | None = None
+    usuario_nombre: str | None = None  # solo lectura, resuelto en repo
+
+    @field_validator("texto", mode="before")
+    @classmethod
+    def validar_texto(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El texto de seguimiento no puede estar vacío.")
+        if len(v) > 2000:
+            raise ValueError(f"El texto no puede exceder 2000 caracteres (tiene {len(v)}).")
+        return v
+
+
+class NuevaEntradaSeguimientoDTO(BaseModel):
+    """DTO para agregar una entrada al historial de seguimiento."""
+
+    registro_id: int
+    texto: str
+
+    @field_validator("texto", mode="before")
+    @classmethod
+    def validar_texto(cls, v: str) -> str:
+        v = str(v).strip()
+        if not v:
+            raise ValueError("El texto no puede estar vacío.")
+        return v
+
+
 class RegistroComportamiento(BaseModel):
     """
     Evento puntual de convivencia registrado por un docente o directivo.
@@ -202,6 +318,9 @@ class RegistroComportamiento(BaseModel):
     requiere_firma: bool = False
     acudiente_notificado: bool = False
     usuario_registro_id: int | None = None
+    tipo_situacion_id: int | None = None
+    # Medida pedagógica aplicada (convivencia_36). Siempre opcional.
+    medida_id: int | None = None
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -346,13 +465,9 @@ class NotaComportamiento(BaseModel):
         return v if v else None
 
     @property
-    def aprobado(self, nota_minima: float = 60.0) -> bool:
-        """
-        Indica si la nota de comportamiento es aprobatoria.
-        La nota mínima se pasa como parámetro porque es configurable
-        por institución (configuracion_anio.nota_minima_aprobacion).
-        """
-        return self.valor >= nota_minima
+    def aprobado(self) -> bool:
+        """True si la nota de comportamiento supera el mínimo institucional base (60)."""
+        return self.valor >= 60.0
 
 
 # =============================================================================
@@ -399,6 +514,8 @@ class NuevoRegistroComportamientoDTO(BaseModel):
     descripcion: str
     requiere_firma: bool = False
     fecha: date = Field(default_factory=date.today)
+    tipo_situacion_id: int | None = None
+    medida_id: int | None = None
 
     @field_validator("descripcion", mode="before")
     @classmethod
@@ -480,6 +597,12 @@ class ReporteConvivenciaFilaDTO(BaseModel):
     nivel_nombre: str | None = None
     concepto: str | None = None
     observaciones: list[str] = Field(default_factory=list)
+    desglose_por_tipo: dict[str, int] | None = None
+    fortalezas: int = 0
+    dificultades: int = 0
+    compromisos: int = 0
+    citaciones: int = 0
+    descargos: int = 0
 
 
 class FiltroConvivenciaDTO(BaseModel):
@@ -491,7 +614,7 @@ class FiltroConvivenciaDTO(BaseModel):
     tipo: TipoRegistro | None = None
     solo_negativos: bool = False
     pagina: int = Field(default=1, ge=1)
-    por_pagina: int = Field(default=50, ge=1, le=200)
+    por_pagina: int | None = Field(default=50, ge=1, le=200)
 
 
 class NuevaAlertaSeguimientoDTO(BaseModel):
@@ -566,14 +689,19 @@ __all__ = [
     "TIPO_REGISTRO_DISPLAY",
     "CategoriaObservacion",
     "ConceptoComportamientoDTO",
+    "EntradaSeguimiento",
+    "NuevaEntradaSeguimientoDTO",
     "FiltroConvivenciaDTO",
+    "MedidaPedagogica",
     "NotaComportamiento",
     "NuevaAlertaSeguimientoDTO",
     "NuevaCategoriaDTO",
+    "NuevaMedidaPedagogicaDTO",
     "NuevaNotaComportamientoDTO",
     "NuevaObservacionDTO",
     "NuevaPlantillaDTO",
     "NuevoRegistroComportamientoDTO",
+    "NuevoTipoSituacionDTO",
     "ObservacionPeriodo",
     "PlantillaObservacion",
     "PuntoSerieDTO",
@@ -582,4 +710,5 @@ __all__ = [
     "ResumenConvivenciaDTO",
     "Seguimiento360DTO",
     "TipoRegistro",
+    "TipoSituacion",
 ]

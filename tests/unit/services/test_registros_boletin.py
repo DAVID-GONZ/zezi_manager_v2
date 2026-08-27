@@ -87,6 +87,20 @@ class _FakeConvRepo(IConvivenciaRepository):
     def guardar_plantilla(self, p): return p
     def actualizar_plantilla(self, p): return p
     def incrementar_uso_plantilla(self, pid): pass
+    def listar_tipos_situacion(self, solo_activas=True, institucion_id=None): return []
+    def get_tipo_situacion(self, tipo_situacion_id): return None
+    def guardar_tipo_situacion(self, ts): return ts
+    def actualizar_tipo_situacion(self, ts): return ts
+    def listar_entradas_seguimiento(self, registro_id): return []
+    def guardar_entrada_seguimiento(self, entrada): return entrada
+    def listar_medidas(self, solo_activas=True, institucion_id=None): return []
+    def get_medida(self, medida_id): return None
+    def guardar_medida(self, m): return m
+    def actualizar_medida(self, m): return m
+    def resolver_nombres_usuario(self, usuario_ids): return {}
+    def resolver_nombres_asignatura(self, asignacion_ids): return {}
+    def resolver_grupo_grado(self, grupo_id): return {"grupo_codigo": "", "grupo_nombre": "", "grado_nombre": ""}
+    def resolver_acudiente_principal(self, estudiante_id): return {}
 
 
 def _make_registro(

@@ -29,6 +29,8 @@ CLAVES_CONOCIDAS: frozenset[str] = frozenset(
         "registros_boletin_dificultad_requiere_notificacion",
         "registros_boletin_incluye_descargo",
         "registros_boletin_dedup_observaciones",
+        # Clasificación de situación (convivencia_34)
+        "tipo_situacion_obligatorio",
     }
 )
 
@@ -78,7 +80,7 @@ class PreferenciasInstitucionService:
 
 
 def _inferir_categoria(clave: str) -> CategoriaPreferencia:
-    if clave.startswith(("modulo_", "registros_boletin_")):
+    if clave.startswith(("modulo_", "registros_boletin_", "tipo_situacion")):
         return CategoriaPreferencia.CONVIVENCIA
     if clave.startswith("color_"):
         return CategoriaPreferencia.APARIENCIA
@@ -90,6 +92,7 @@ def _inferir_tipo(clave: str) -> TipoValor:
         "registros_boletin_dificultad_requiere_notificacion",
         "registros_boletin_incluye_descargo",
         "registros_boletin_dedup_observaciones",
+        "tipo_situacion_obligatorio",
     ):
         return TipoValor.BOOL
     if clave == "registros_boletin_tipos":

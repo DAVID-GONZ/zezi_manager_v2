@@ -179,7 +179,7 @@ def consolidado_asistencia_page() -> None:
             )
             contenido_bytes = Container.informe_service().generar_asistencia(dto)
             ext = "xlsx" if _s["formato"] == "excel" else "pdf"
-            ui.download(content=contenido_bytes, filename=f"asistencia_grupo{_s['grupo_id']}.{ext}")
+            ui.download(src=contenido_bytes, filename=f"asistencia_grupo{_s['grupo_id']}.{ext}")
             toast_success("Informe generado.")
         except ValueError as exc:
             toast_error(f"Exportador no disponible: {exc}")

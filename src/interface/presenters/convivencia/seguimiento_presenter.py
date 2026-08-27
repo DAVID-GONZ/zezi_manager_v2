@@ -27,6 +27,8 @@ class SeguimientoPresenter:
             "registros_est": [],
             "resultado_360": None,
             "alertas": [],
+            "entradas_seguimiento": [],  # list[EntradaSeguimiento] del registro seleccionado
+            "sel_registro_id": None,     # registro actualmente expandido en timeline
         }
 
     def aplicar_seleccion(self, seleccion: dict) -> None:
@@ -45,6 +47,9 @@ class SeguimientoPresenter:
     def set_seccion(self, seccion: str) -> None:
         self.estado["sel_seccion"] = seccion
 
+    def set_entradas_seguimiento(self, entradas: list) -> None:
+        self.estado["entradas_seguimiento"] = list(entradas)
+
     def _reset_detalle(self) -> None:
         self.estado["sel_estudiante_id"] = None
         self.estado["resultado_360"] = None
@@ -52,6 +57,8 @@ class SeguimientoPresenter:
         self.estado["observaciones_est"] = []
         self.estado["registros_est"] = []
         self.estado["alertas"] = []
+        self.estado["entradas_seguimiento"] = []
+        self.estado["sel_registro_id"] = None
 
 
 __all__ = ["SeguimientoPresenter"]

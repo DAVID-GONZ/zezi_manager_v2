@@ -16,7 +16,7 @@ Flujo:
   2. Carga de grupos: dir/coord ve todos; profesor solo los que dirige.
   3. Carga de periodos del año activo.
   4. Si no autorizado sobre el grupo → empty_state y sin acciones.
-  5. Autorizado → tabla por estudiante (nota, nivel, concepto, #obs).
+  5. Autorizado → tabla por estudiante (nota comport., desempeño, registros, concepto, #obs).
   6. Botones "Exportar PDF" / "Exportar Excel" via `Container.exporter_service()`.
 """
 
@@ -59,14 +59,27 @@ _COL_DEFS = [
         "sortable": True,
         "pinned": "left",
     },
-    {"headerName": "Nota", "field": "nota", "width": 100, "type": "numericColumn"},
-    {"headerName": "Nivel", "field": "nivel", "width": 140},
-    {"headerName": "Concepto", "field": "concepto", "flex": 2},
+    {"headerName": "Nota comport.", "field": "nota", "width": 110, "type": "numericColumn"},
+    {"headerName": "Desempeño", "field": "nivel", "width": 140},
+    {"headerName": "Fortalezas", "field": "fortalezas", "width": 100, "type": "numericColumn"},
+    {"headerName": "Dificultades", "field": "dificultades", "width": 105, "type": "numericColumn"},
+    {"headerName": "Compromisos", "field": "compromisos", "width": 110, "type": "numericColumn"},
+    {"headerName": "Citaciones", "field": "citaciones", "width": 100, "type": "numericColumn"},
+    {"headerName": "Descargos", "field": "descargos", "width": 100, "type": "numericColumn"},
+    {
+        "headerName": "Concepto de comportamiento",
+        "field": "concepto",
+        "flex": 2,
+        "wrapText": True,
+        "autoHeight": True,
+        "cellClass": "cell-multiline",
+    },
     {"headerName": "# Obs.", "field": "num_obs", "width": 90, "type": "numericColumn"},
     {
         "headerName": "Observaciones",
         "field": "observaciones",
         "flex": 3,
+        "wrapText": True,
         "autoHeight": True,
         "cellClass": "cell-multiline",
     },
@@ -167,8 +180,13 @@ def _filas_grilla(_s: dict) -> list[dict]:
         out.append(
             {
                 "estudiante": f.nombre,
-                "nota": f.valor,  # None = celda vacía; "" rompe numericColumn
+                "nota": f.valor,
                 "nivel": f.nivel_nombre or "",
+                "fortalezas": f.fortalezas,
+                "dificultades": f.dificultades,
+                "compromisos": f.compromisos,
+                "citaciones": f.citaciones,
+                "descargos": f.descargos,
                 "concepto": f.concepto or "",
                 "observaciones": "\n".join(
                     f"{i + 1}. {obs}" for i, obs in enumerate(f.observaciones)
@@ -203,6 +221,8 @@ def _exportar(_s: dict, formato: str) -> None:
             int(_s["periodo_id"]),
             formato,
             titulo=titulo,
+            grupo=_grupo_nombre(_s),
+            periodo=_periodo_nombre(_s),
         )
         ui.download(src=contenido, filename=f"{_slug_descarga(_s)}.{ext}")
     except NotImplementedError:

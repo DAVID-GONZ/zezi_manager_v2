@@ -8,27 +8,34 @@ from __future__ import annotations
 
 
 class ConfiguracionConvivenciaPresenter:
-    """View-model de configuración de convivencia: categorías + plantillas."""
+    """View-model de configuración de convivencia: categorías + plantillas + tipos_situacion."""
 
     def __init__(self) -> None:
         self.estado: dict = {
             "categorias": [],
             "plantillas": [],
+            "tipos_situacion": [],
             "editando_cat": None,
             "editando_plt": None,
+            "editando_tipo": None,
             "sel_cat": None,
             "sel_plt": None,
+            "sel_tipo": None,
         }
 
     def reset_selecciones(self) -> None:
         self.estado["sel_cat"] = None
         self.estado["sel_plt"] = None
+        self.estado["sel_tipo"] = None
 
     def set_categorias(self, categorias) -> None:
         self.estado["categorias"] = list(categorias)
 
     def set_plantillas(self, plantillas) -> None:
         self.estado["plantillas"] = list(plantillas)
+
+    def set_tipos_situacion(self, tipos) -> None:
+        self.estado["tipos_situacion"] = list(tipos)
 
     def opciones_categorias(self) -> dict:
         """{None: 'Sin categoría', cat_id: nombre} — solo categorías activas."""

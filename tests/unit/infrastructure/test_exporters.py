@@ -10,7 +10,10 @@ import pytest
 from src.domain.ports.service_ports import IExporterService
 from src.infrastructure.exporters.exporter_factory import crear_exporter
 from src.infrastructure.exporters.null_exporter import NullExporter
-from src.infrastructure.exporters.openpyxl_exporter import OpenpyxlExporter
+from src.infrastructure.exporters.openpyxl_exporter import (
+    OpenpyxlExporter,
+    generar_reporte_convivencia_grupo_excel,
+)
 from src.infrastructure.exporters.pdf_exporter import WeasyPrintExporter
 
 # ---------------------------------------------------------------------------
@@ -234,3 +237,87 @@ class TestCrearExporter:
         resultado = exporter.exportar_excel(DATOS_SIMPLES)
         wb = openpyxl.load_workbook(io.BytesIO(resultado))
         assert wb is not None
+
+
+# ===========================================================================
+# Reporte de convivencia por grupo (Excel enriquecido)
+# ===========================================================================
+
+_FILA_CONV = {
+    "estudiante": "García López, María",
+    "nota": 85.0,
+    "nivel": "Superior",
+    "fortalezas": 2,
+    "dificultades": 1,
+    "compromisos": 0,
+    "citaciones": 0,
+    "descargos": 0,
+    "concepto": "Buen comportamiento.",
+    "observaciones": "1. Participación activa",
+    "num_obs": 1,
+}
+
+
+class TestReporteConvivenciaGrupoExcel:
+    def test_genera_xlsx_valido_con_dos_hojas(self):
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[_FILA_CONV], titulo="Reporte", grupo="5A", periodo="P1",
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        assert "Reporte" in wb.sheetnames
+        assert "Estadísticos" in wb.sheetnames
+
+    def test_membrete_presente(self):
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[_FILA_CONV], titulo="Reporte", grupo="5A", periodo="P1",
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        ws = wb["Reporte"]
+        assert ws.cell(1, 1).value == "INSTITUCIÓN EDUCATIVA ZECI"
+
+    def test_estadisticos_membrete(self):
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[_FILA_CONV], titulo="Reporte", grupo="5A", periodo="P1",
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        ws2 = wb["Estadísticos"]
+        assert "ESTADÍSTICOS" in (ws2.cell(1, 1).value or "")
+
+    def test_sin_filas_genera_xlsx_valido(self):
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[], titulo="Vacío", grupo="X", periodo="P1",
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        assert "Reporte" in wb.sheetnames
+
+    def test_con_desglose_cols(self):
+        fila = {**_FILA_CONV, "Tipo I": 3, "Tipo II": 1}
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[fila], titulo="R", grupo="G", periodo="P",
+            desglose_cols=["Tipo I", "Tipo II"],
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        ws = wb["Reporte"]
+        headers = [ws.cell(6, c).value for c in range(1, 15)]
+        assert "Tipo I" in headers
+        assert "Tipo II" in headers
+
+    def test_multiples_estudiantes_con_graficos(self):
+        filas = [
+            {**_FILA_CONV, "estudiante": "Est 1", "nota": 90.0, "nivel": "Superior"},
+            {**_FILA_CONV, "estudiante": "Est 2", "nota": 65.0, "nivel": "Bajo"},
+            {**_FILA_CONV, "estudiante": "Est 3", "nota": None, "nivel": ""},
+        ]
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=filas, titulo="R", grupo="G", periodo="P",
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(resultado))
+        ws2 = wb["Estadísticos"]
+        assert len(ws2._charts) >= 1
+
+    def test_nota_none_no_rompe(self):
+        fila = {**_FILA_CONV, "nota": None, "nivel": ""}
+        resultado = generar_reporte_convivencia_grupo_excel(
+            filas=[fila], titulo="R", grupo="G", periodo="P",
+        )
+        assert isinstance(resultado, bytes) and len(resultado) > 0

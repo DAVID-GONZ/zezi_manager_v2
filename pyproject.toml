@@ -62,7 +62,7 @@ ignore = [
 #     F821,F811,F632,F702,B006,B008,B023,E9
 #
 # Esta es la fuente de verdad de la lista. Mantener sincronizadas sus copias en:
-#   · `_RUFF_BLOQUEANTES` de init.py (puerta `check_ruff`)
+#   · `_RUFF_BLOQUEANTES` de scripts/init.py (puerta `check_ruff`)
 #   · .claude/agents/leader.md, implementer.md y reviewer.md
 [tool.ruff.format]
 docstring-code-format = true
@@ -70,7 +70,6 @@ docstring-code-format = true
 [tool.ruff.lint.per-file-ignores]
 "src/infrastructure/db/seed.py" = ["T20"]   # seed puede tener prints
 "scripts/*" = ["T20"]
-"init.py" = ["T20"]        # init.py vive en la raíz, no en src/
 
 # ---------------------------------------------------------------------------
 # pytest

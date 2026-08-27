@@ -251,7 +251,7 @@ Si el método no existe → **reportar al leader**. No inventar.
 python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9 --output-format concise
 
 # Suite completa
-./init.sh
+python scripts/init.py
 ```
 
 Escribir `progress/impl_<id>.md`:
@@ -275,7 +275,7 @@ Escribir `progress/impl_<id>.md`:
 ## Puerta de ruff
 `python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9` → <0 errores | detalle>
 
-## Output de ./init.sh
+## Output de python scripts/init.py
 <output completo>
 ```
 

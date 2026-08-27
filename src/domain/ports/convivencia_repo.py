@@ -29,11 +29,14 @@ from abc import ABC, abstractmethod
 
 from ..models.convivencia import (
     CategoriaObservacion,
+    EntradaSeguimiento,
     FiltroConvivenciaDTO,
+    MedidaPedagogica,
     NotaComportamiento,
     ObservacionPeriodo,
     PlantillaObservacion,
     RegistroComportamiento,
+    TipoSituacion,
 )
 
 
@@ -291,4 +294,105 @@ class IConvivenciaRepository(ABC):
         Incrementa en 1 el uso_count de la plantilla indicada.
         Operación atómica (UPDATE SET uso_count = uso_count + 1).
         """
+        ...
+
+    # =========================================================================
+    # Catálogo de tipos de situación — Ley 1620 (convivencia_34)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_tipos_situacion(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[TipoSituacion]:
+        """Retorna tipos de situación, opcionalmente filtrados por institución y estado."""
+        ...
+
+    @abstractmethod
+    def get_tipo_situacion(self, tipo_situacion_id: int) -> TipoSituacion | None:
+        """Retorna un tipo de situación por ID, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def guardar_tipo_situacion(self, tipo_situacion: TipoSituacion) -> TipoSituacion:
+        """Guarda un nuevo tipo de situación. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def actualizar_tipo_situacion(self, tipo_situacion: TipoSituacion) -> TipoSituacion:
+        """Actualiza nombre/nivel/descripción/protocolo/activa de un tipo existente."""
+        ...
+
+    # =========================================================================
+    # Entradas de seguimiento (convivencia_35)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_entradas_seguimiento(self, registro_id: int) -> list[EntradaSeguimiento]:
+        """Retorna todas las entradas de seguimiento de un registro, ordenadas por fecha ASC."""
+        ...
+
+    def listar_entradas_seguimiento_batch(
+        self, registro_ids: list[int],
+    ) -> dict[int, list[EntradaSeguimiento]]:
+        """Retorna entradas de seguimiento para múltiples registros en una sola consulta."""
+        result: dict[int, list[EntradaSeguimiento]] = {}
+        for rid in registro_ids:
+            entries = self.listar_entradas_seguimiento(rid)
+            if entries:
+                result[rid] = entries
+        return result
+
+    @abstractmethod
+    def guardar_entrada_seguimiento(self, entrada: EntradaSeguimiento) -> EntradaSeguimiento:
+        """Guarda una nueva entrada de seguimiento. Retorna la entidad con id asignado."""
+        ...
+
+    # =========================================================================
+    # Catálogo de medidas pedagógicas (convivencia_36)
+    # =========================================================================
+
+    @abstractmethod
+    def listar_medidas(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[MedidaPedagogica]:
+        """Retorna medidas pedagógicas, opcionalmente filtradas por institución y estado."""
+        ...
+
+    @abstractmethod
+    def get_medida(self, medida_id: int) -> MedidaPedagogica | None:
+        """Retorna una medida pedagógica por ID, o None si no existe."""
+        ...
+
+    @abstractmethod
+    def guardar_medida(self, medida: MedidaPedagogica) -> MedidaPedagogica:
+        """Guarda una nueva medida pedagógica. Retorna la entidad con id asignado."""
+        ...
+
+    @abstractmethod
+    def actualizar_medida(self, medida: MedidaPedagogica) -> MedidaPedagogica:
+        """Actualiza nombre/descripcion/nivel_minimo/activa de una medida existente."""
+        ...
+
+    # =========================================================================
+    # Lookup auxiliar
+    # =========================================================================
+
+    @abstractmethod
+    def resolver_nombres_usuario(self, usuario_ids: list[int]) -> dict[int, str]:
+        """Devuelve {usuario_id: nombre_completo} para los IDs dados."""
+        ...
+
+    @abstractmethod
+    def resolver_nombres_asignatura(self, asignacion_ids: list[int]) -> dict[int, str]:
+        """Devuelve {asignacion_id: nombre_asignatura} via JOIN asignaciones→asignaturas."""
+        ...
+
+    @abstractmethod
+    def resolver_grupo_grado(self, grupo_id: int) -> dict:
+        """Devuelve {grupo_codigo, grupo_nombre, grado_nombre} para un grupo_id."""
+        ...
+
+    @abstractmethod
+    def resolver_acudiente_principal(self, estudiante_id: int) -> dict:
+        """Devuelve datos del acudiente principal del estudiante, o dict vacío."""
         ...

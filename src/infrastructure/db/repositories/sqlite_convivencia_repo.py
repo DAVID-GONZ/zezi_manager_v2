@@ -9,12 +9,15 @@ from contextlib import contextmanager
 
 from src.domain.models.convivencia import (
     CategoriaObservacion,
+    EntradaSeguimiento,
     FiltroConvivenciaDTO,
+    MedidaPedagogica,
     NotaComportamiento,
     ObservacionPeriodo,
     PlantillaObservacion,
     RegistroComportamiento,
     TipoRegistro,
+    TipoSituacion,
 )
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 
@@ -49,6 +52,8 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         d["tipo"] = TipoRegistro(d["tipo"])
         d["requiere_firma"] = bool(d["requiere_firma"])
         d["acudiente_notificado"] = bool(d["acudiente_notificado"])
+        d.setdefault("tipo_situacion_id", None)
+        d.setdefault("medida_id", None)
         return RegistroComportamiento(**d)
 
     def _row_to_nota(self, row: sqlite3.Row) -> NotaComportamiento:
@@ -229,8 +234,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
     ) -> list[RegistroComportamiento]:
         sql, params = self._build_filtro_sql(filtro, institucion_id)
         sql += " ORDER BY rc.fecha DESC, rc.id DESC"
-        offset = (filtro.pagina - 1) * filtro.por_pagina
-        sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
+        if filtro.por_pagina is not None:
+            offset = (filtro.pagina - 1) * filtro.por_pagina
+            sql += f" LIMIT {filtro.por_pagina} OFFSET {offset}"
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
             return [self._row_to_registro(r) for r in rows]
@@ -252,8 +258,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                 INSERT INTO registro_comportamiento
                     (estudiante_id, grupo_id, periodo_id, fecha, tipo,
                      descripcion, seguimiento, requiere_firma,
-                     acudiente_notificado, usuario_registro_id)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                     acudiente_notificado, usuario_registro_id, tipo_situacion_id,
+                     medida_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     registro.estudiante_id,
@@ -266,6 +273,8 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                     int(registro.requiere_firma),
                     int(registro.acudiente_notificado),
                     registro.usuario_registro_id,
+                    registro.tipo_situacion_id,
+                    registro.medida_id,
                 ),
             )
             if self._conn is None:
@@ -279,13 +288,17 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                 UPDATE registro_comportamiento SET
                     seguimiento          = ?,
                     requiere_firma       = ?,
-                    acudiente_notificado = ?
+                    acudiente_notificado = ?,
+                    tipo_situacion_id    = ?,
+                    medida_id            = ?
                 WHERE id = ?
                 """,
                 (
                     registro.seguimiento,
                     int(registro.requiere_firma),
                     int(registro.acudiente_notificado),
+                    registro.tipo_situacion_id,
+                    registro.medida_id,
                     registro.id,
                 ),
             )
@@ -527,6 +540,291 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
             )
             if self._conn is None:
                 conn.commit()
+
+    # ------------------------------------------------------------------
+    # Tipos de situación (convivencia_34)
+    # ------------------------------------------------------------------
+
+    def _row_to_tipo_situacion(self, row: sqlite3.Row) -> TipoSituacion:
+        d = dict(row)
+        d["activa"] = bool(d["activa"])
+        return TipoSituacion(**d)
+
+    def listar_tipos_situacion(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[TipoSituacion]:
+        sql = "SELECT * FROM tipos_situacion WHERE 1=1"
+        params: list = []
+        if solo_activas:
+            sql += " AND activa = 1"
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
+        sql += " ORDER BY nivel, nombre"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_tipo_situacion(r) for r in rows]
+
+    def get_tipo_situacion(self, tipo_situacion_id: int) -> TipoSituacion | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM tipos_situacion WHERE id = ?",
+                (tipo_situacion_id,),
+            ).fetchone()
+            return self._row_to_tipo_situacion(row) if row else None
+
+    def guardar_tipo_situacion(self, tipo_situacion: TipoSituacion) -> TipoSituacion:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO tipos_situacion
+                    (nombre, nivel, descripcion, protocolo, activa, institucion_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    tipo_situacion.nombre,
+                    tipo_situacion.nivel,
+                    tipo_situacion.descripcion,
+                    tipo_situacion.protocolo,
+                    int(tipo_situacion.activa),
+                    tipo_situacion.institucion_id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return tipo_situacion.model_copy(update={"id": cursor.lastrowid})
+
+    def actualizar_tipo_situacion(self, tipo_situacion: TipoSituacion) -> TipoSituacion:
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                UPDATE tipos_situacion
+                SET nombre = ?, nivel = ?, descripcion = ?, protocolo = ?, activa = ?
+                WHERE id = ?
+                """,
+                (
+                    tipo_situacion.nombre,
+                    tipo_situacion.nivel,
+                    tipo_situacion.descripcion,
+                    tipo_situacion.protocolo,
+                    int(tipo_situacion.activa),
+                    tipo_situacion.id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return tipo_situacion
+
+    # ------------------------------------------------------------------
+    # Entradas de seguimiento (convivencia_35)
+    # ------------------------------------------------------------------
+
+    def _row_to_entrada_seguimiento(self, row: sqlite3.Row) -> EntradaSeguimiento:
+        d = dict(row)
+        return EntradaSeguimiento(
+            id=d["id"],
+            registro_id=d["registro_id"],
+            fecha=d["fecha"],
+            texto=d["texto"],
+            usuario_id=d.get("usuario_id"),
+            usuario_nombre=d.get("usuario_nombre"),
+        )
+
+    def listar_entradas_seguimiento(self, registro_id: int) -> list[EntradaSeguimiento]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT es.id, es.registro_id, es.fecha, es.texto, es.usuario_id,
+                       (u.nombre_completo) AS usuario_nombre
+                FROM entradas_seguimiento es
+                LEFT JOIN usuarios u ON u.id = es.usuario_id
+                WHERE es.registro_id = ?
+                ORDER BY es.fecha ASC
+                """,
+                (registro_id,),
+            ).fetchall()
+            return [self._row_to_entrada_seguimiento(r) for r in rows]
+
+    def listar_entradas_seguimiento_batch(
+        self, registro_ids: list[int],
+    ) -> dict[int, list[EntradaSeguimiento]]:
+        if not registro_ids:
+            return {}
+        with self._get_conn() as conn:
+            placeholders = ",".join("?" * len(registro_ids))
+            rows = conn.execute(
+                f"""
+                SELECT es.id, es.registro_id, es.fecha, es.texto, es.usuario_id,
+                       (u.nombre_completo) AS usuario_nombre
+                FROM entradas_seguimiento es
+                LEFT JOIN usuarios u ON u.id = es.usuario_id
+                WHERE es.registro_id IN ({placeholders})
+                ORDER BY es.fecha ASC
+                """,
+                registro_ids,
+            ).fetchall()
+            result: dict[int, list[EntradaSeguimiento]] = {}
+            for r in rows:
+                entry = self._row_to_entrada_seguimiento(r)
+                result.setdefault(entry.registro_id, []).append(entry)
+            return result
+
+    def guardar_entrada_seguimiento(self, entrada: EntradaSeguimiento) -> EntradaSeguimiento:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO entradas_seguimiento (registro_id, fecha, texto, usuario_id)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    entrada.registro_id,
+                    entrada.fecha.isoformat() if entrada.fecha else None,
+                    entrada.texto,
+                    entrada.usuario_id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return entrada.model_copy(update={"id": cursor.lastrowid})
+
+
+    # ------------------------------------------------------------------
+    # Catálogo de medidas pedagógicas (convivencia_36)
+    # ------------------------------------------------------------------
+
+    def _row_to_medida(self, row: sqlite3.Row) -> MedidaPedagogica:
+        d = dict(row)
+        d["activa"] = bool(d["activa"])
+        return MedidaPedagogica(**d)
+
+    def listar_medidas(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[MedidaPedagogica]:
+        sql = "SELECT * FROM medidas_pedagogicas WHERE 1=1"
+        params: list = []
+        if solo_activas:
+            sql += " AND activa = 1"
+        if institucion_id is not None:
+            sql += " AND institucion_id = ?"
+            params.append(institucion_id)
+        sql += " ORDER BY nivel_minimo, nombre"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_medida(r) for r in rows]
+
+    def get_medida(self, medida_id: int) -> MedidaPedagogica | None:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM medidas_pedagogicas WHERE id = ?",
+                (medida_id,),
+            ).fetchone()
+            return self._row_to_medida(row) if row else None
+
+    def guardar_medida(self, medida: MedidaPedagogica) -> MedidaPedagogica:
+        with self._get_conn() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO medidas_pedagogicas
+                    (nombre, descripcion, nivel_minimo, activa, institucion_id)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    medida.nombre,
+                    medida.descripcion,
+                    medida.nivel_minimo,
+                    int(medida.activa),
+                    medida.institucion_id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return medida.model_copy(update={"id": cursor.lastrowid})
+
+    def actualizar_medida(self, medida: MedidaPedagogica) -> MedidaPedagogica:
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                UPDATE medidas_pedagogicas
+                SET nombre = ?, descripcion = ?, nivel_minimo = ?, activa = ?
+                WHERE id = ?
+                """,
+                (
+                    medida.nombre,
+                    medida.descripcion,
+                    medida.nivel_minimo,
+                    int(medida.activa),
+                    medida.id,
+                ),
+            )
+            if self._conn is None:
+                conn.commit()
+            return medida
+
+
+    # ------------------------------------------------------------------
+    # Lookup auxiliar
+    # ------------------------------------------------------------------
+
+    def resolver_nombres_usuario(self, usuario_ids: list[int]) -> dict[int, str]:
+        if not usuario_ids:
+            return {}
+        placeholders = ",".join("?" for _ in usuario_ids)
+        sql = f"SELECT id, nombre_completo FROM usuarios WHERE id IN ({placeholders})"
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, usuario_ids).fetchall()
+            return {row["id"]: row["nombre_completo"] for row in rows}
+
+    def resolver_nombres_asignatura(self, asignacion_ids: list[int]) -> dict[int, str]:
+        if not asignacion_ids:
+            return {}
+        placeholders = ",".join("?" for _ in asignacion_ids)
+        sql = (
+            f"SELECT a.id, asig.nombre FROM asignaciones a "
+            f"JOIN asignaturas asig ON asig.id = a.asignatura_id "
+            f"WHERE a.id IN ({placeholders})"
+        )
+        with self._get_conn() as conn:
+            rows = conn.execute(sql, asignacion_ids).fetchall()
+            return {row["id"]: row["nombre"] for row in rows}
+
+    def resolver_grupo_grado(self, grupo_id: int) -> dict:
+        sql = (
+            "SELECT g.codigo, g.nombre, g.grado, gr.nombre AS grado_nombre "
+            "FROM grupos g "
+            "LEFT JOIN grados gr ON gr.numero = g.grado "
+            "WHERE g.id = ?"
+        )
+        with self._get_conn() as conn:
+            row = conn.execute(sql, (grupo_id,)).fetchone()
+            if not row:
+                return {"grupo_codigo": "", "grupo_nombre": "", "grado_nombre": ""}
+            return {
+                "grupo_codigo": row["codigo"] or "",
+                "grupo_nombre": row["nombre"] or row["codigo"] or "",
+                "grado_nombre": row["grado_nombre"] or (f"Grado {row['grado']}" if row["grado"] else ""),
+            }
+
+    def resolver_acudiente_principal(self, estudiante_id: int) -> dict:
+        sql = (
+            "SELECT a.nombre_completo, a.parentesco, a.celular, a.email, "
+            "       a.direccion, a.numero_documento "
+            "FROM acudientes a "
+            "JOIN estudiante_acudiente ea ON ea.acudiente_id = a.id "
+            "WHERE ea.estudiante_id = ? AND ea.es_principal = 1 AND a.activo = 1 "
+            "LIMIT 1"
+        )
+        with self._get_conn() as conn:
+            row = conn.execute(sql, (estudiante_id,)).fetchone()
+            if not row:
+                return {}
+            return {
+                "nombre": row["nombre_completo"] or "",
+                "parentesco": row["parentesco"] or "",
+                "celular": row["celular"] or "",
+                "email": row["email"] or "",
+                "direccion": row["direccion"] or "",
+                "documento": row["numero_documento"] or "",
+            }
 
 
 __all__ = ["SqliteConvivenciaRepository"]

@@ -181,19 +181,18 @@ def buscar_page() -> None:
                 ruta = item.ruta
                 with ui.element("div").classes("buscar-result-item").on(
                     "click", lambda r=ruta: ui.navigate.to(r) if r else None
-                ):
-                    with ui.row().classes("items-center gap-3"):
-                        ThemeManager.icono(
-                            _ICONO_POR_TIPO.get(tipo_str, "label"), size=20
-                        )
-                        with ui.column().classes("gap-0 flex-1 buscar-result-text"):
-                            ui.label(item.titulo).classes("buscar-result-titulo")
-                            if item.subtitulo:
-                                ui.label(item.subtitulo).classes(
-                                    "buscar-result-subtitulo"
-                                )
-                        if ruta:
-                            ThemeManager.icono("chevron_right", size=16)
+                ), ui.row().classes("items-center gap-3"):
+                    ThemeManager.icono(
+                        _ICONO_POR_TIPO.get(tipo_str, "label"), size=20
+                    )
+                    with ui.column().classes("gap-0 flex-1 buscar-result-text"):
+                        ui.label(item.titulo).classes("buscar-result-titulo")
+                        if item.subtitulo:
+                            ui.label(item.subtitulo).classes(
+                                "buscar-result-subtitulo"
+                            )
+                    if ruta:
+                        ThemeManager.icono("chevron_right", size=16)
 
             # Paginación
             if resultado.limitado or _s["pagina"] > 1:

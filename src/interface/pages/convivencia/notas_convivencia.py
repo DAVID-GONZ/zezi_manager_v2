@@ -170,14 +170,16 @@ def _cargar_notas(_s: dict) -> None:
         _s["notas"] = []
 
 
-def _cargar_asignaciones_grupo(_s: dict) -> None:
+def _cargar_asignaciones_grupo(_s: dict, *, docente_id: int | None = None) -> None:
     """Carga las asignaciones del grupo activo; usado para el dropdown de asignatura."""
     grupo_id = _s["sel_grupo_id"]
     if not grupo_id:
         _s["asignaciones_grupo"] = []
         return
     try:
-        _s["asignaciones_grupo"] = Container.asignacion_service().listar_por_grupo(int(grupo_id))
+        _s["asignaciones_grupo"] = Container.asignacion_service().listar_por_grupo(
+            int(grupo_id), usuario_id=docente_id,
+        )
     except Exception as exc:
         logger.warning("Error cargando asignaciones del grupo: %s", exc)
         _s["asignaciones_grupo"] = []
@@ -524,6 +526,9 @@ def notas_convivencia_page() -> None:
                 "field": "observacion_boletin",
                 "flex": 2,
                 "editable": editable,
+                "wrapText": True,
+                "autoHeight": True,
+                "cellClass": "cell-multiline",
             },
         ]
         grid_rows = _construir_filas_grid(_s)
@@ -598,7 +603,9 @@ def notas_convivencia_page() -> None:
                 except Exception as exc:
                     logger.warning("Error cargando estudiantes: %s", exc)
                     _s["estudiantes"] = []
-                _cargar_asignaciones_grupo(_s)
+                _cargar_asignaciones_grupo(
+                    _s, docente_id=ctx.usuario_id if ctx.usuario_rol == "profesor" else None,
+                )
             else:
                 _s["estudiantes"] = []
                 _s["asignaciones_grupo"] = []

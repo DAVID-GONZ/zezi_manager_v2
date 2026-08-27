@@ -380,13 +380,12 @@ def _topbar_search(ctx: SessionContext | None) -> None:
                     _cerrar_dropdown(),
                     ui.navigate.to(r) if r else None,
                 ),
-            ):
-                with ui.row().classes("items-center gap-2"):
-                    ThemeManager.icono(item.icono or "label", size=16)
-                    with ui.column().classes("gap-0 flex-1"):
-                        ui.label(item.titulo).classes("topbar-search-result-titulo")
-                        if item.subtitulo:
-                            ui.label(item.subtitulo).classes("topbar-search-result-sub")
+            ), ui.row().classes("items-center gap-2"):
+                ThemeManager.icono(item.icono or "label", size=16)
+                with ui.column().classes("gap-0 flex-1"):
+                    ui.label(item.titulo).classes("topbar-search-result-titulo")
+                    if item.subtitulo:
+                        ui.label(item.subtitulo).classes("topbar-search-result-sub")
         if resultados.limitado:
             with ui.element("div").classes("topbar-search-footer").on(
                 "click",

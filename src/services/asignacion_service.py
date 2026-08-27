@@ -493,9 +493,15 @@ class AsignacionService:
         self,
         grupo_id: int,
         solo_activas: bool = True,
+        usuario_id: int | None = None,
     ) -> list[AsignacionInfo]:
-        """Retorna las asignaciones de un grupo con info completa (scopeado)."""
-        filtro = FiltroAsignacionesDTO(grupo_id=grupo_id, solo_activas=solo_activas)
+        """Retorna las asignaciones de un grupo con info completa (scopeado).
+
+        Si se pasa usuario_id, filtra solo las asignaciones de ese docente.
+        """
+        filtro = FiltroAsignacionesDTO(
+            grupo_id=grupo_id, solo_activas=solo_activas, usuario_id=usuario_id,
+        )
         return self._repo.listar_info(self._con_scope(filtro))
 
 

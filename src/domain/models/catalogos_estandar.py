@@ -32,6 +32,33 @@ CATEGORIAS_BASE_CO: list[tuple[str, bool]] = [
     ("Responsabilidad y actitud", False),
 ]
 
+TIPOS_SITUACION_CO: list[tuple[str, int, str]] = [
+    (
+        "Tipo I - Conflictos manejados inadecuadamente",
+        1,
+        "Situaciones esporadicas que inciden negativamente en el clima escolar "
+        "y que en ningun caso generan danos al cuerpo o a la salud fisica o "
+        "mental de los involucrados.",
+    ),
+    (
+        "Tipo II - Agresion escolar o acoso",
+        2,
+        "Situaciones de agresion escolar, acoso escolar (bullying) y "
+        "ciberacoso que no revistan las caracteristicas de la comision de "
+        "un delito y que cumplan con cualquiera de las siguientes "
+        "caracteristicas: a) que se presenten de manera repetida o "
+        "sistematica; b) que causen danos al cuerpo o a la salud (fisica "
+        "o mental) sin generar incapacidad alguna.",
+    ),
+    (
+        "Tipo III - Presuntos delitos",
+        3,
+        "Situaciones de agresion escolar que sean constitutivas de presuntos "
+        "delitos contra la libertad, integridad y formacion sexual, u otro "
+        "delito establecido en la ley penal colombiana vigente.",
+    ),
+]
+
 PREF_DEFAULTS: list[tuple[str, str, str | None, str]] = [
     ("academicas", "nota_minima_aprobacion_default", "60.0", "float"),
     ("academicas", "nota_minima_escala_default", "0.0", "float"),
@@ -43,4 +70,21 @@ PREF_DEFAULTS: list[tuple[str, str, str | None, str]] = [
     ("apariencia", "color_secundario", "#8B90F0", "str"),
 ]
 
-__all__ = ["AREAS_ESTANDAR_CO", "CATEGORIAS_BASE_CO", "PREF_DEFAULTS"]
+MEDIDAS_PEDAGOGICAS_CO: list[tuple[str, str, int]] = [
+    ("Dialogo pedagogico", "Conversacion formativa con el estudiante", 1),
+    ("Amonestacion verbal", "Llamado de atencion verbal con registro en el observador", 1),
+    ("Amonestacion escrita", "Registro formal escrito en el observador del estudiante", 1),
+    ("Compromiso de convivencia", "Acuerdo firmado por estudiante y acudiente", 1),
+    ("Citacion a acudiente", "Convocatoria formal al representante legal", 2),
+    ("Remision a orientacion escolar", "Derivacion al profesional de apoyo psicosocial", 2),
+    ("Matricula condicional", "Continuidad sujeta a cumplimiento de compromisos", 3),
+    ("No renovacion de matricula", "Decision del Comite de Convivencia Escolar", 3),
+]
+
+__all__ = [
+    "AREAS_ESTANDAR_CO",
+    "CATEGORIAS_BASE_CO",
+    "MEDIDAS_PEDAGOGICAS_CO",
+    "PREF_DEFAULTS",
+    "TIPOS_SITUACION_CO",
+]

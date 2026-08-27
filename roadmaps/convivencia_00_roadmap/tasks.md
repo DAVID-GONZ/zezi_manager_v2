@@ -86,5 +86,14 @@ Hoy existe **un solo módulo "Convivencia"** (1 modelo `convivencia.py`, 1 puert
   - Objetivo: el dashboard (`inicio.py`) muestra las alertas de seguimiento dirigidas al profesor (reutilizar panel de alertas / "Tus pendientes").
   - criterio_done: el profesor ve en inicio las alertas de seguimiento que le fueron dirigidas; `init.py` verde.
 
+### Fase 6 — Clasificación legal + bitácora de seguimiento *(toca BD → puerta de aprobación)*
+- **convivencia_34_tipos_situacion** ✍️ — Catálogo configurable de tipos de situación (I/II/III per Decreto 1965, personalizables por institución). Tabla `tipos_situacion` + FK nullable en `registro_comportamiento` + preferencia `tipo_situacion_obligatorio` configurable por institución. Incluye fix del bug `NotaComportamiento.aprobado`.
+- **convivencia_35_entradas_seguimiento** ✍️ — Tabla hija `entradas_seguimiento` para bitácora cronológica de seguimiento por registro (reemplaza la semántica destructiva del campo único `seguimiento`). Migración de datos existentes. Timeline en UI.
+- **convivencia_36_medidas_pedagogicas** ✍️ — Catálogo configurable de medidas pedagógicas/correctivas con `nivel_minimo` que filtra por tipo de situación. FK nullable en `registro_comportamiento`.
+
+### Fase 7 — Observador del Estudiante + integración con reportes
+- **convivencia_37_observador_estudiante** ✍️ — Transformación de `/convivencia/observaciones` en doble propósito: arriba vista cronológica del observador (timeline + exportar PDF/Excel), abajo formulario de creación. PDF en formato narrativo (fechas en negrita, texto corrido, seguimiento indentado). Nuevo archivo `observador_pdf.py`.
+- **convivencia_38_integracion_reportes_convivencia** ✍️ — Integración de `tipo_situacion` y `medida` en boletines (PDF/Excel) y reporte de grupo (desglose por tipo de situación).
+
 ## criterio_done (del roadmap)
-Este documento existe como plan maestro aprobado; las specs de la **Fase 1** (convivencia_01..03) están redactadas y listas para la puerta de aprobación. Las fases 2–5 se expanden a `tasks.md` completos just-in-time, en orden, cada una respetando su puerta de aprobación cuando toque modelo/esquema.
+Este documento existe como plan maestro aprobado; las specs de la **Fase 1** (convivencia_01..03) están redactadas y listas para la puerta de aprobación. Las fases 2–5 se expanden a `tasks.md` completos just-in-time, en orden, cada una respetando su puerta de aprobación cuando toque modelo/esquema. Las **Fases 6–7** (convivencia_34..38) tienen specs completas redactadas 2026-08-24; todas tocan schema → puerta de aprobación antes de implementar.

@@ -69,6 +69,8 @@ class PreferenciasDTO(BaseModel):
     registros_boletin_dificultad_requiere_notificacion: bool = True
     registros_boletin_incluye_descargo: bool = False
     registros_boletin_dedup_observaciones: bool = True
+    # Clasificación de situación obligatoria al registrar comportamiento (convivencia_34).
+    tipo_situacion_obligatorio: bool = False
 
 
 class ActualizarPreferenciaDTO(BaseModel):

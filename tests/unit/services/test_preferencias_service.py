@@ -76,3 +76,31 @@ def test_get_dto_sobrescribe_defaults_con_bd():
     svc, _ = _make_service(prefs=[pref])
     dto = svc.get_dto(1)
     assert dto.numero_periodos_default == 3
+
+
+def test_tipo_situacion_obligatorio_es_clave_conocida():
+    """tipo_situacion_obligatorio debe ser aceptada por el servicio (convivencia_34)."""
+    from unittest.mock import MagicMock
+    repo = MagicMock()
+    pref_guardada = PreferenciaInstitucion(
+        id=10, institucion_id=1, categoria=CategoriaPreferencia.CONVIVENCIA,
+        clave="tipo_situacion_obligatorio", valor="true", tipo_valor=TipoValor.BOOL,
+    )
+    repo.get.return_value = None
+    repo.set.return_value = pref_guardada
+    svc = PreferenciasInstitucionService(repo)
+    resultado = svc.set(1, ActualizarPreferenciaDTO(clave="tipo_situacion_obligatorio", valor="true"))
+    assert resultado.clave == "tipo_situacion_obligatorio"
+
+
+def test_tipo_situacion_obligatorio_default_es_false():
+    """PreferenciasDTO tiene tipo_situacion_obligatorio=False por defecto."""
+    svc, _ = _make_service()
+    dto = svc.get_dto(1)
+    assert dto.tipo_situacion_obligatorio is False
+
+
+def test_tipo_situacion_obligatorio_categoria_es_convivencia():
+    """tipo_situacion_obligatorio debe categorizarse como CONVIVENCIA."""
+    from src.services.preferencias_institucion_service import _inferir_categoria
+    assert _inferir_categoria("tipo_situacion_obligatorio") == CategoriaPreferencia.CONVIVENCIA

@@ -50,10 +50,10 @@ else:
 
 ---
 
-### 2. Tests automáticos (`./init.sh`)
+### 2. Tests automáticos (`python scripts/init.py`)
 
 ```bash
-./init.sh
+python scripts/init.py
 ```
 
 Si no termina completamente verde → **Rechazado**.

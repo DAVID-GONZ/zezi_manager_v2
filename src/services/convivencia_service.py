@@ -13,14 +13,19 @@ from src.domain.models.alerta import Alerta, FiltroAlertasDTO, NivelAlerta, Tipo
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
+    EntradaSeguimiento,
     FiltroConvivenciaDTO,
+    MedidaPedagogica,
     NotaComportamiento,
     NuevaAlertaSeguimientoDTO,
     NuevaCategoriaDTO,
+    NuevaEntradaSeguimientoDTO,
+    NuevaMedidaPedagogicaDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevaPlantillaDTO,
     NuevoRegistroComportamientoDTO,
+    NuevoTipoSituacionDTO,
     ObservacionPeriodo,
     PlantillaObservacion,
     PuntoSerieDTO,
@@ -29,6 +34,7 @@ from src.domain.models.convivencia import (
     ResumenConvivenciaDTO,
     Seguimiento360DTO,
     TipoRegistro,
+    TipoSituacion,
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
@@ -180,6 +186,9 @@ class ConvivenciaService:
         estudiante_id: int,
         periodo_id: int,
         excluir_ids: set[int] | None = None,
+        *,
+        _tipos_map: dict[int, str] | None = None,
+        _medidas_map: dict[int, str] | None = None,
     ) -> list[dict]:
         """Registros de comportamiento del estudiante en el periodo que deben
         aparecer en el boletín, aplicando la política configurada por tenant.
@@ -198,9 +207,23 @@ class ConvivenciaService:
         tipos = set(prefs.registros_boletin_tipos)
         if not prefs.registros_boletin_incluye_descargo:
             tipos.discard("descargo")
-        filtro = FiltroConvivenciaDTO(estudiante_id=estudiante_id, periodo_id=periodo_id)
+        filtro = FiltroConvivenciaDTO(
+            estudiante_id=estudiante_id, periodo_id=periodo_id, por_pagina=None,
+        )
         regs = self._repo.listar_registros(filtro)
         excluir = excluir_ids or set()
+
+        tipos_map = _tipos_map if _tipos_map is not None else {
+            t.id: t.nombre
+            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            if t.id is not None
+        }
+        medidas_map = _medidas_map if _medidas_map is not None else {
+            m.id: m.nombre
+            for m in self._repo.listar_medidas(solo_activas=False)
+            if m.id is not None
+        }
+
         resultado: list[dict] = []
         for r in regs:
             if r.tipo.value not in tipos:
@@ -218,6 +241,12 @@ class ConvivenciaService:
                     "fecha": str(r.fecha),
                     "tipo": TIPO_REGISTRO_DISPLAY.get(r.tipo.value, r.tipo.value),
                     "descripcion": r.descripcion,
+                    "tipo_situacion": tipos_map.get(r.tipo_situacion_id)
+                    if getattr(r, "tipo_situacion_id", None) is not None
+                    else None,
+                    "medida": medidas_map.get(r.medida_id)
+                    if getattr(r, "medida_id", None) is not None
+                    else None,
                 }
             )
         resultado.sort(key=lambda d: d["fecha"])
@@ -398,9 +427,22 @@ class ConvivenciaService:
             )
 
         # ── Registros de comportamiento (convivencia_29) ──────────
+        _tipos_map = {
+            t.id: t.nombre
+            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            if t.id is not None
+        }
+        _medidas_map = {
+            m.id: m.nombre
+            for m in self._repo.listar_medidas(solo_activas=False)
+            if m.id is not None
+        }
         registros_anual: list[dict] = []
         for p in periodos:
-            regs_p = self._registros_informables_periodo(estudiante_id, p.id, excluir_ids_anual)
+            regs_p = self._registros_informables_periodo(
+                estudiante_id, p.id, excluir_ids_anual,
+                _tipos_map=_tipos_map, _medidas_map=_medidas_map,
+            )
             registros_anual.extend(regs_p)
         registros_anual.sort(key=lambda d: d["fecha"])
 
@@ -562,6 +604,9 @@ class ConvivenciaService:
         el estudiante (si hay repositorio de alertas y anio_id disponibles).
         """
         self._verificar_autorizacion(usuario_rol, usuario_id, dto.grupo_id)
+        prefs = self._get_prefs_convivencia()
+        if prefs.tipo_situacion_obligatorio and dto.tipo_situacion_id is None:
+            raise ValueError("La clasificacion de situacion es obligatoria.")
         registro = dto.to_registro(usuario_id=usuario_id)
         registro = self._repo.guardar_registro(registro)
 
@@ -594,6 +639,31 @@ class ConvivenciaService:
         return self._repo.actualizar_registro(registro_notificado)
 
     @requiere_escritura
+    def agregar_entrada_seguimiento(
+        self,
+        dto: NuevaEntradaSeguimientoDTO,
+        usuario_id: int | None = None,
+        usuario_rol: str | None = None,
+    ) -> EntradaSeguimiento:
+        """Agrega una entrada al historial cronológico de seguimiento (R2, R3, R5, R6)."""
+        registro = self._get_registro_o_lanzar(dto.registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
+        entrada = EntradaSeguimiento(
+            registro_id=dto.registro_id,
+            texto=dto.texto,
+            usuario_id=usuario_id,
+        )
+        entrada = self._repo.guardar_entrada_seguimiento(entrada)
+        # Denormalización R3: actualizar campo legacy con el texto de la última entrada.
+        registro_actualizado = registro.agregar_seguimiento(dto.texto)
+        self._repo.actualizar_registro(registro_actualizado)
+        return entrada
+
+    def listar_entradas_seguimiento(self, registro_id: int) -> list[EntradaSeguimiento]:
+        """Retorna entradas de seguimiento de un registro, orden cronológico ASC."""
+        return self._repo.listar_entradas_seguimiento(registro_id)
+
+    @requiere_escritura
     def agregar_seguimiento(
         self,
         registro_id: int,
@@ -601,11 +671,10 @@ class ConvivenciaService:
         usuario_id: int | None = None,
         usuario_rol: str | None = None,
     ) -> RegistroComportamiento:
-        """Agrega o actualiza el texto de seguimiento de un registro."""
-        registro = self._get_registro_o_lanzar(registro_id)
-        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
-        registro_con_seguimiento = registro.agregar_seguimiento(texto)
-        return self._repo.actualizar_registro(registro_con_seguimiento)
+        """Método legacy — delega en agregar_entrada_seguimiento (R8)."""
+        dto = NuevaEntradaSeguimientoDTO(registro_id=registro_id, texto=texto)
+        self.agregar_entrada_seguimiento(dto, usuario_id=usuario_id, usuario_rol=usuario_rol)
+        return self._get_registro_o_lanzar(registro_id)
 
     def listar_registros(
         self,
@@ -839,7 +908,7 @@ class ConvivenciaService:
 
         # Registros negativos por estudiante (1 consulta).
         registros = self._repo.listar_registros(
-            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id)
+            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None)
         )
         negativos_por_est: dict[int, int] = {}
         for reg in registros:
@@ -920,6 +989,32 @@ class ConvivenciaService:
             c.estudiante_id: c for c in self.listar_conceptos_grupo(grupo_id, periodo_id)
         }
 
+        tipos_situacion = self._repo.listar_tipos_situacion(solo_activas=False)
+        tipos_map = {t.id: t.nombre for t in tipos_situacion if t.id is not None}
+        hay_tipos = bool(tipos_map)
+
+        todos_registros = self._repo.listar_registros(
+            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None)
+        )
+        regs_neg_por_est: dict[int, list] = {}
+        conteos_tipo_por_est: dict[int, dict[str, int]] = {}
+        _TIPO_A_CONTEO = {
+            "fortaleza": "fortalezas", "dificultad": "dificultades",
+            "compromiso": "compromisos", "citacion_acudiente": "citaciones",
+            "descargo": "descargos",
+        }
+        for reg in todos_registros:
+            if getattr(reg, "es_negativo", False):
+                regs_neg_por_est.setdefault(reg.estudiante_id, []).append(reg)
+            tipo_v = reg.tipo.value if hasattr(reg.tipo, "value") else str(reg.tipo)
+            conteos = conteos_tipo_por_est.setdefault(reg.estudiante_id, {
+                "fortalezas": 0, "dificultades": 0, "compromisos": 0,
+                "citaciones": 0, "descargos": 0,
+            })
+            clave = _TIPO_A_CONTEO.get(tipo_v)
+            if clave:
+                conteos[clave] += 1
+
         filas: list[ReporteConvivenciaFilaDTO] = []
         for est in estudiantes:
             est_id = getattr(est, "id", None)
@@ -933,6 +1028,16 @@ class ConvivenciaService:
             nombre = f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip() or str(
                 est_id
             )
+
+            desglose: dict[str, int] | None = None
+            if hay_tipos:
+                desglose = {nombre: 0 for nombre in tipos_map.values()}
+                for reg in regs_neg_por_est.get(est_id, []):
+                    ts_id = getattr(reg, "tipo_situacion_id", None)
+                    tipo_nombre = tipos_map.get(ts_id, "Sin clasificar") if ts_id is not None else "Sin clasificar"
+                    desglose[tipo_nombre] = desglose.get(tipo_nombre, 0) + 1
+
+            ct = conteos_tipo_por_est.get(est_id, {})
             filas.append(
                 ReporteConvivenciaFilaDTO(
                     estudiante_id=est_id,
@@ -941,6 +1046,12 @@ class ConvivenciaService:
                     nivel_nombre=concepto.nivel_nombre if concepto else None,
                     concepto=concepto.concepto if concepto else None,
                     observaciones=textos_obs,
+                    desglose_por_tipo=desglose,
+                    fortalezas=ct.get("fortalezas", 0),
+                    dificultades=ct.get("dificultades", 0),
+                    compromisos=ct.get("compromisos", 0),
+                    citaciones=ct.get("citaciones", 0),
+                    descargos=ct.get("descargos", 0),
                 )
             )
         return filas
@@ -954,9 +1065,14 @@ class ConvivenciaService:
     # la página no participa en esa decisión.
     _COLUMNAS_REPORTE_PERIODO: tuple[tuple[str, str], ...] = (
         ("estudiante", "Estudiante"),
-        ("nota", "Nota"),
-        ("nivel", "Nivel"),
-        ("concepto", "Concepto"),
+        ("nota", "Nota comport."),
+        ("nivel", "Desempeño"),
+        ("fortalezas", "Fortalezas"),
+        ("dificultades", "Dificultades"),
+        ("compromisos", "Compromisos"),
+        ("citaciones", "Citaciones"),
+        ("descargos", "Descargos"),
+        ("concepto", "Concepto de comportamiento"),
         ("observaciones", "Observaciones"),
     )
 
@@ -965,13 +1081,35 @@ class ConvivenciaService:
         fila: ReporteConvivenciaFilaDTO,
     ) -> dict:
         """Aplana un DTO a un dict con las columnas del reporte."""
-        return {
+        d: dict = {
             "estudiante": fila.nombre,
             "nota": "" if fila.valor is None else fila.valor,
             "nivel": fila.nivel_nombre or "",
+            "fortalezas": fila.fortalezas,
+            "dificultades": fila.dificultades,
+            "compromisos": fila.compromisos,
+            "citaciones": fila.citaciones,
+            "descargos": fila.descargos,
             "concepto": fila.concepto or "",
             "observaciones": "\n".join(fila.observaciones) if fila.observaciones else "",
         }
+        if fila.desglose_por_tipo is not None:
+            for tipo_nombre, conteo in fila.desglose_por_tipo.items():
+                d[tipo_nombre] = conteo
+        return d
+
+    @staticmethod
+    def _desglose_cols_de_filas(filas: list[ReporteConvivenciaFilaDTO]) -> list[str]:
+        """Recopila los nombres de tipo de desglose en orden de aparición."""
+        seen: set[str] = set()
+        cols: list[str] = []
+        for fila in filas:
+            if fila.desglose_por_tipo:
+                for nombre in fila.desglose_por_tipo:
+                    if nombre not in seen:
+                        cols.append(nombre)
+                        seen.add(nombre)
+        return cols
 
     def _reporte_periodo_a_html(
         self,
@@ -979,7 +1117,9 @@ class ConvivenciaService:
         titulo: str,
     ) -> str:
         """HTML compacto del reporte para el exporter PDF (puerto HTML → PDF)."""
-        heads_html = "".join(f"<th>{h}</th>" for _, h in self._COLUMNAS_REPORTE_PERIODO)
+        desglose_cols = self._desglose_cols_de_filas(filas)
+        columnas = list(self._COLUMNAS_REPORTE_PERIODO) + [(n, n) for n in desglose_cols]
+        heads_html = "".join(f"<th>{h}</th>" for _, h in columnas)
         if not filas:
             cuerpo = "<p>Sin datos.</p>"
         else:
@@ -987,8 +1127,8 @@ class ConvivenciaService:
             for fila in filas:
                 d = self._fila_a_dict_exportacion(fila)
                 cells = "".join(
-                    f"<td>{str(d[k]).replace(chr(10), '<br/>')}</td>"
-                    for k, _ in self._COLUMNAS_REPORTE_PERIODO
+                    f"<td>{str(d.get(k, '')).replace(chr(10), '<br/>')}</td>"
+                    for k, _ in columnas
                 )
                 filas_html.append(f"<tr>{cells}</tr>")
             cuerpo = (
@@ -1010,6 +1150,7 @@ class ConvivenciaService:
         periodo_id: int,
         formato: str,
         titulo: str = "Reporte de convivencia",
+        **kwargs,
     ) -> bytes:
         """
         Genera el reporte de periodo del grupo y lo exporta a `formato`
@@ -1037,13 +1178,174 @@ class ConvivenciaService:
             raise ValueError(f"Formato no soportado: {formato!r}. Usa 'excel' o 'pdf'.")
 
         filas = self.reporte_periodo_grupo(grupo_id, periodo_id)
+        desglose_cols = self._desglose_cols_de_filas(filas)
+        filas_dict = [self._fila_a_dict_exportacion(f) for f in filas]
+        for fd, fila in zip(filas_dict, filas):
+            fd["num_obs"] = len(fila.observaciones)
+
+        grupo_nombre = kwargs.get("grupo", "")
+        periodo_nombre = kwargs.get("periodo", "")
 
         if formato_norm == "excel":
-            datos = [self._fila_a_dict_exportacion(f) for f in filas]
-            return self._exporter.exportar_excel(datos, nombre_hoja=titulo[:31])
+            from src.infrastructure.exporters.openpyxl_exporter import (
+                generar_reporte_convivencia_grupo_excel,
+            )
 
-        html = self._reporte_periodo_a_html(filas, titulo=titulo)
-        return self._exporter.exportar_pdf(html)
+            return generar_reporte_convivencia_grupo_excel(
+                filas=filas_dict,
+                titulo=titulo,
+                grupo=grupo_nombre,
+                periodo=periodo_nombre,
+                desglose_cols=desglose_cols,
+            )
+
+        from src.infrastructure.exporters.boletin_pdf import (
+            generar_reporte_convivencia_grupo_pdf,
+        )
+
+        return generar_reporte_convivencia_grupo_pdf(
+            filas=filas_dict,
+            titulo=titulo,
+            grupo=grupo_nombre,
+            periodo=periodo_nombre,
+            desglose_cols=desglose_cols,
+        )
+
+    # ------------------------------------------------------------------
+    # Catálogo de tipos de situación — Ley 1620 (convivencia_34)
+    # ------------------------------------------------------------------
+
+    def listar_tipos_situacion(self, solo_activas: bool = True) -> list[TipoSituacion]:
+        """Retorna los tipos de situación activos del tenant activo."""
+        from src.services.contexto_tenant import institucion_actual
+
+        return self._repo.listar_tipos_situacion(
+            solo_activas=solo_activas, institucion_id=institucion_actual()
+        )
+
+    @requiere_escritura
+    def crear_tipo_situacion(
+        self,
+        dto: NuevoTipoSituacionDTO,
+        usuario_rol: str | None = None,
+    ) -> TipoSituacion:
+        """Crea un tipo de situación. Solo director y coordinador."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+        inst_id = self._resolver_institucion(None)
+        tipo = TipoSituacion(
+            nombre=dto.nombre,
+            nivel=dto.nivel,
+            descripcion=dto.descripcion,
+            protocolo=dto.protocolo,
+            institucion_id=inst_id,
+        )
+        return self._repo.guardar_tipo_situacion(tipo)
+
+    @requiere_escritura
+    def actualizar_tipo_situacion(
+        self,
+        tipo_id: int,
+        dto: NuevoTipoSituacionDTO,
+        usuario_rol: str | None = None,
+    ) -> TipoSituacion:
+        """Actualiza nombre/nivel/descripción/protocolo de un tipo existente."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+        tipo = self._repo.get_tipo_situacion(tipo_id)
+        if tipo is None:
+            raise ValueError(f"Tipo de situacion con id {tipo_id} no existe.")
+        actualizado = tipo.model_copy(
+            update={
+                "nombre": dto.nombre,
+                "nivel": dto.nivel,
+                "descripcion": dto.descripcion,
+                "protocolo": dto.protocolo,
+            }
+        )
+        return self._repo.actualizar_tipo_situacion(actualizado)
+
+    @requiere_escritura
+    def desactivar_tipo_situacion(
+        self,
+        tipo_id: int,
+        usuario_rol: str | None = None,
+    ) -> TipoSituacion:
+        """Desactiva un tipo de situación (activa=False) sin eliminarlo."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+        tipo = self._repo.get_tipo_situacion(tipo_id)
+        if tipo is None:
+            raise ValueError(f"Tipo de situacion con id {tipo_id} no existe.")
+        desactivado = tipo.model_copy(update={"activa": False})
+        return self._repo.actualizar_tipo_situacion(desactivado)
+
+    # ------------------------------------------------------------------
+    # Catálogo de medidas pedagógicas (convivencia_36)
+    # ------------------------------------------------------------------
+
+    def listar_medidas_pedagogicas(self, solo_activas: bool = True) -> list[MedidaPedagogica]:
+        """Retorna las medidas pedagógicas del tenant activo."""
+        from src.services.contexto_tenant import institucion_actual
+
+        return self._repo.listar_medidas(
+            solo_activas=solo_activas, institucion_id=institucion_actual()
+        )
+
+    @requiere_escritura
+    def crear_medida_pedagogica(
+        self,
+        dto: NuevaMedidaPedagogicaDTO,
+        usuario_rol: str | None = None,
+    ) -> MedidaPedagogica:
+        """Crea una medida pedagógica. Solo director y coordinador."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+        inst_id = self._resolver_institucion(None)
+        medida = MedidaPedagogica(
+            nombre=dto.nombre,
+            descripcion=dto.descripcion,
+            nivel_minimo=dto.nivel_minimo,
+            institucion_id=inst_id,
+        )
+        return self._repo.guardar_medida(medida)
+
+    @requiere_escritura
+    def actualizar_medida_pedagogica(
+        self,
+        medida_id: int,
+        dto: NuevaMedidaPedagogicaDTO,
+        usuario_rol: str | None = None,
+    ) -> MedidaPedagogica:
+        """Actualiza nombre/descripcion/nivel_minimo de una medida existente."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+        medida = self._repo.get_medida(medida_id)
+        if medida is None:
+            raise ValueError(f"Medida pedagogica con id {medida_id} no existe.")
+        actualizada = medida.model_copy(
+            update={
+                "nombre": dto.nombre,
+                "descripcion": dto.descripcion,
+                "nivel_minimo": dto.nivel_minimo,
+            }
+        )
+        return self._repo.actualizar_medida(actualizada)
+
+    @requiere_escritura
+    def desactivar_medida_pedagogica(
+        self,
+        medida_id: int,
+        usuario_rol: str | None = None,
+    ) -> MedidaPedagogica:
+        """Desactiva una medida pedagógica (activa=False) sin eliminarla."""
+        if usuario_rol not in ("director", "coordinador"):
+            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+        medida = self._repo.get_medida(medida_id)
+        if medida is None:
+            raise ValueError(f"Medida pedagogica con id {medida_id} no existe.")
+        desactivada = medida.model_copy(update={"activa": False})
+        return self._repo.actualizar_medida(desactivada)
 
     # ------------------------------------------------------------------
     # Catálogo de categorías de observación (convivencia_09 / _10)
@@ -1494,6 +1796,322 @@ class ConvivenciaService:
             alertas_activas=alertas_activas,
             promedio_notas=None,
         )
+
+    # ------------------------------------------------------------------
+    # Observador del estudiante (convivencia_37)
+    # ------------------------------------------------------------------
+
+    def observador_estudiante(
+        self,
+        estudiante_id: int,
+        anio_id: int,
+        periodo_id: int | None = None,
+    ) -> dict:
+        """Consolida el observador del estudiante como dict estructurado.
+
+        Requiere estudiante_svc_provider y periodo_svc_provider.
+
+        Claves del resultado:
+          estudiante  — datos identificatorios del estudiante
+          institucion — datos del membrete
+          anio        — nombre/id del año lectivo
+          periodo     — nombre del periodo filtrado, o None si es anual
+          entradas    — lista cronológica ASC (observaciones + registros)
+          resumen     — totales (fortalezas, dificultades, compromisos,
+                        citaciones, descargos, num_observaciones,
+                        notas_por_periodo)
+        """
+        from datetime import datetime
+
+        if self._estudiante_svc_provider is None or self._periodo_svc_provider is None:
+            raise RuntimeError(
+                "ConvivenciaService requiere estudiante_svc_provider y "
+                "periodo_svc_provider para generar el observador del estudiante."
+            )
+
+        # ── Datos del estudiante ────────────────────────────────────────
+        _GENERO_DISPLAY = {"M": "Masculino", "F": "Femenino", "OTRO": "Otro"}
+        _PARENTESCO_DISPLAY = {
+            "padre": "Padre", "madre": "Madre", "abuelo": "Abuelo",
+            "abuela": "Abuela", "tio": "Tío", "tia": "Tía",
+            "hermano": "Hermano", "hermana": "Hermana",
+            "tutor_legal": "Tutor legal", "otro": "Otro",
+        }
+        try:
+            est = self._estudiante_svc_provider().get_by_id(estudiante_id)
+            nombre_est = (
+                f"{getattr(est, 'apellido', '')} {getattr(est, 'nombre', '')}".strip()
+                or str(estudiante_id)
+            )
+            grupo_id_est = getattr(est, "grupo_id", None)
+            grupo_grado = (
+                self._repo.resolver_grupo_grado(grupo_id_est) if grupo_id_est else {}
+            )
+            fecha_nac = getattr(est, "fecha_nacimiento", None)
+            genero_raw = getattr(est, "genero", None)
+            genero_str = _GENERO_DISPLAY.get(str(genero_raw), "") if genero_raw else ""
+            direccion_est = getattr(est, "direccion", None) or ""
+
+            acudiente_data = self._repo.resolver_acudiente_principal(estudiante_id)
+            if acudiente_data:
+                parentesco_raw = acudiente_data.get("parentesco", "")
+                acudiente_data["parentesco_display"] = _PARENTESCO_DISPLAY.get(parentesco_raw, parentesco_raw)
+
+            estudiante_data: dict = {
+                "id": estudiante_id,
+                "nombre": nombre_est,
+                "apellido": getattr(est, "apellido", ""),
+                "primer_nombre": getattr(est, "nombre", ""),
+                "documento": getattr(est, "documento_display", None) or str(estudiante_id),
+                "grupo": grupo_grado.get("grupo_nombre", ""),
+                "grado": grupo_grado.get("grado_nombre", ""),
+                "fecha_nacimiento": fecha_nac,
+                "genero": genero_str,
+                "direccion": direccion_est,
+                "acudiente": acudiente_data,
+            }
+        except Exception:
+            estudiante_data = {
+                "id": estudiante_id,
+                "nombre": str(estudiante_id),
+                "apellido": "",
+                "primer_nombre": "",
+                "documento": str(estudiante_id),
+                "grupo": "",
+                "grado": "",
+                "fecha_nacimiento": None,
+                "genero": "",
+                "direccion": "",
+                "acudiente": {},
+            }
+
+        # ── Periodos del año ───────────────────────────────────────────
+        periodos = self._periodo_svc_provider().listar_por_anio(anio_id)
+        periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
+
+        # ── Catálogos (lookup sin N+1) ─────────────────────────────────
+        tipos_sit_map: dict[int, str] = {
+            t.id: t.nombre
+            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            if t.id is not None
+        }
+        medidas_map: dict[int, str] = {
+            m.id: m.nombre
+            for m in self._repo.listar_medidas(solo_activas=False)
+            if m.id is not None
+        }
+        cat_map: dict[int, str] = {
+            c.id: c.nombre
+            for c in self._repo.listar_categorias(solo_activas=False)
+            if c.id is not None
+        }
+
+        # ── Observaciones públicas ─────────────────────────────────────
+        obs_list = self._repo.listar_observaciones_por_estudiante(
+            estudiante_id, periodo_id, solo_publicas=True
+        )
+        valid_periodo_ids = set(periodo_nombre_map.keys())
+        if periodo_id is None:
+            obs_list = [o for o in obs_list if o.periodo_id in valid_periodo_ids]
+
+        # ── Registros de comportamiento ───────────────────────────────
+        filtro = FiltroConvivenciaDTO(
+            estudiante_id=estudiante_id,
+            periodo_id=periodo_id,
+            por_pagina=None,
+        )
+        registros = self._repo.listar_registros(filtro)
+        if periodo_id is None:
+            registros = [r for r in registros if r.periodo_id in valid_periodo_ids]
+
+        # ── Entradas de seguimiento por registro (batch) ──────────────
+        reg_ids = [reg.id for reg in registros if reg.id is not None]
+        seguimiento_map: dict[int, list] = self._repo.listar_entradas_seguimiento_batch(reg_ids)
+
+        # ── Notas de comportamiento ────────────────────────────────────
+        notas_est = {
+            n.periodo_id: n for n in self._repo.listar_notas_por_estudiante(estudiante_id)
+        }
+
+        # ── Resolver nombres de usuario (batch) ──────────────────────
+        all_user_ids: set[int] = set()
+        for obs in obs_list:
+            if obs.usuario_id:
+                all_user_ids.add(obs.usuario_id)
+        for reg in registros:
+            if reg.usuario_registro_id:
+                all_user_ids.add(reg.usuario_registro_id)
+        for seg_list in seguimiento_map.values():
+            for se in seg_list:
+                if se.usuario_id:
+                    all_user_ids.add(se.usuario_id)
+        nombres_usuario = self._repo.resolver_nombres_usuario(list(all_user_ids))
+
+        # ── Resolver nombres de asignatura (batch) ────────────────────
+        asig_ids = list({obs.asignacion_id for obs in obs_list if obs.asignacion_id})
+        asig_nombre_map = self._repo.resolver_nombres_asignatura(asig_ids)
+
+        def _nombre_usuario(uid: int | None) -> str:
+            if not uid:
+                return "—"
+            return nombres_usuario.get(uid, f"Usuario #{uid}")
+
+        # ── Construir lista unificada ─────────────────────────────────
+        entradas: list[dict] = []
+
+        for obs in obs_list:
+            cat_nombre = cat_map.get(obs.categoria_id) if obs.categoria_id else None
+            asig_nombre = asig_nombre_map.get(obs.asignacion_id)
+            entradas.append(
+                {
+                    "fecha": obs.fecha_registro,
+                    "tipo": "observacion",
+                    "subtipo": "publica" if obs.es_publica else "privada",
+                    "tipo_situacion": None,
+                    "descripcion": obs.texto,
+                    "medida": None,
+                    "responsable": _nombre_usuario(obs.usuario_id),
+                    "categoria": cat_nombre,
+                    "asignatura": asig_nombre,
+                    "seguimiento_entries": [],
+                    "periodo": periodo_nombre_map.get(obs.periodo_id, ""),
+                }
+            )
+
+        for reg in registros:
+            seg_entries = seguimiento_map.get(reg.id or 0, [])
+            seg_dicts = [
+                {
+                    "fecha": se.fecha,
+                    "texto": se.texto,
+                    "responsable": se.usuario_nombre
+                    or _nombre_usuario(se.usuario_id),
+                }
+                for se in seg_entries
+            ]
+            fecha_reg: datetime = datetime.combine(reg.fecha, datetime.min.time())
+            entradas.append(
+                {
+                    "fecha": fecha_reg,
+                    "tipo": "registro",
+                    "subtipo": reg.tipo.value,
+                    "tipo_situacion": tipos_sit_map.get(reg.tipo_situacion_id)
+                    if reg.tipo_situacion_id
+                    else None,
+                    "descripcion": reg.descripcion,
+                    "medida": medidas_map.get(reg.medida_id) if reg.medida_id else None,
+                    "responsable": _nombre_usuario(reg.usuario_registro_id),
+                    "categoria": None,
+                    "asignatura": None,
+                    "seguimiento_entries": seg_dicts,
+                    "periodo": periodo_nombre_map.get(reg.periodo_id, ""),
+                }
+            )
+
+        entradas.sort(key=lambda e: e["fecha"] or datetime.min)
+
+        # ── Resumen estadístico ───────────────────────────────────────
+        conteos: dict[str, int] = {
+            "fortalezas": 0,
+            "dificultades": 0,
+            "compromisos": 0,
+            "citaciones": 0,
+            "descargos": 0,
+        }
+        for reg in registros:
+            tipo_v = reg.tipo.value
+            if tipo_v == "fortaleza":
+                conteos["fortalezas"] += 1
+            elif tipo_v == "dificultad":
+                conteos["dificultades"] += 1
+            elif tipo_v == "compromiso":
+                conteos["compromisos"] += 1
+            elif tipo_v == "citacion_acudiente":
+                conteos["citaciones"] += 1
+            elif tipo_v == "descargo":
+                conteos["descargos"] += 1
+
+        notas_por_periodo: dict[str, float | None] = {
+            p.nombre: (notas_est[p.id].valor if p.id in notas_est else None)
+            for p in periodos
+        }
+
+        resumen: dict = {
+            **conteos,
+            "num_observaciones": len(obs_list),
+            "notas_por_periodo": notas_por_periodo,
+        }
+
+        # ── Datos de la institución ────────────────────────────────────
+        institucion_data: dict = {
+            "nombre": "Institución Educativa",
+            "DANE": "",
+            "rector": "",
+            "municipio": "",
+            "direccion": "",
+            "telefono": "",
+            "resolucion": "",
+        }
+        try:
+            if self._configuracion_svc_provider is not None:
+                cfg = self._configuracion_svc_provider().get_activa()
+                if cfg is not None:
+                    institucion_data["nombre"] = getattr(cfg, "nombre_institucion", None) or "Institución Educativa"
+                    institucion_data["DANE"] = getattr(cfg, "dane_code", None) or ""
+                    institucion_data["rector"] = getattr(cfg, "rector", None) or ""
+                    institucion_data["municipio"] = getattr(cfg, "municipio", None) or ""
+                    institucion_data["direccion"] = getattr(cfg, "direccion", None) or ""
+                    institucion_data["telefono"] = getattr(cfg, "telefono_institucion", None) or ""
+                    institucion_data["resolucion"] = getattr(cfg, "resolucion_aprobacion", None) or ""
+        except Exception:
+            pass
+
+        periodo_nombre = periodo_nombre_map.get(periodo_id) if periodo_id else None
+
+        return {
+            "estudiante": estudiante_data,
+            "institucion": institucion_data,
+            "anio": str(anio_id),
+            "periodo": periodo_nombre,
+            "entradas": entradas,
+            "resumen": resumen,
+        }
+
+    def exportar_observador(
+        self,
+        estudiante_id: int,
+        anio_id: int,
+        formato: str,
+        periodo_id: int | None = None,
+    ) -> bytes:
+        """Genera el observador del estudiante y lo exporta a PDF o Excel.
+
+        Args:
+            estudiante_id, anio_id: contexto del observador.
+            formato: "pdf" | "excel".
+            periodo_id: si se provee, filtra el observador a ese periodo.
+
+        Returns:
+            Bytes del archivo listo para descarga.
+
+        Raises:
+            RuntimeError: si los providers requeridos no están disponibles.
+            ValueError:   si el formato no es soportado.
+        """
+        formato_norm = (formato or "").strip().lower()
+        if formato_norm not in ("pdf", "excel"):
+            raise ValueError(f"Formato no soportado: {formato!r}. Usa 'pdf' o 'excel'.")
+
+        datos = self.observador_estudiante(estudiante_id, anio_id, periodo_id)
+
+        if formato_norm == "pdf":
+            from src.infrastructure.exporters.observador_pdf import generar_observador_pdf
+
+            return generar_observador_pdf(datos)
+
+        from src.infrastructure.exporters.observador_excel import generar_observador_excel
+
+        return generar_observador_excel(datos)
 
 
 __all__ = [

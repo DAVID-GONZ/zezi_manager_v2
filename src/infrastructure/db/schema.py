@@ -788,6 +788,29 @@ SCHEMA: list[str] = [
     """,
     # 8. ASISTENCIA Y CONVIVENCIA
     """
+    CREATE TABLE IF NOT EXISTS tipos_situacion (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre         TEXT    NOT NULL,
+        nivel          INTEGER NOT NULL DEFAULT 1 CHECK(nivel BETWEEN 1 AND 3),
+        descripcion    TEXT,
+        protocolo      TEXT,
+        activa         BOOLEAN NOT NULL DEFAULT 1,
+        institucion_id INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS medidas_pedagogicas (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre         TEXT    NOT NULL,
+        descripcion    TEXT,
+        nivel_minimo   INTEGER NOT NULL DEFAULT 1 CHECK(nivel_minimo BETWEEN 1 AND 3),
+        activa         BOOLEAN NOT NULL DEFAULT 1,
+        institucion_id INTEGER REFERENCES instituciones(id),
+        UNIQUE(institucion_id, nombre)
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS categorias_observacion (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre            TEXT    NOT NULL,
@@ -878,11 +901,26 @@ SCHEMA: list[str] = [
         requiere_firma          BOOLEAN  NOT NULL DEFAULT 0,
         acudiente_notificado    BOOLEAN  NOT NULL DEFAULT 0,
         usuario_registro_id     INTEGER,
+        -- Clasificación legal Ley 1620 (convivencia_34): NULL = sin clasificar.
+        tipo_situacion_id       INTEGER REFERENCES tipos_situacion(id) ON DELETE SET NULL,
+        -- Medida pedagógica asociada (convivencia_36): NULL = sin medida asignada.
+        medida_id               INTEGER REFERENCES medidas_pedagogicas(id) ON DELETE SET NULL,
 
         FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id) ON DELETE CASCADE,
         FOREIGN KEY(grupo_id)            REFERENCES grupos(id)      ON DELETE CASCADE,
         FOREIGN KEY(periodo_id)          REFERENCES periodos(id)    ON DELETE CASCADE,
         FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)   ON DELETE SET NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS entradas_seguimiento (
+        id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+        registro_id INTEGER  NOT NULL,
+        fecha       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        texto       TEXT     NOT NULL,
+        usuario_id  INTEGER,
+        FOREIGN KEY(registro_id) REFERENCES registro_comportamiento(id) ON DELETE CASCADE,
+        FOREIGN KEY(usuario_id)  REFERENCES usuarios(id) ON DELETE SET NULL
     )
     """,
     """
@@ -1275,6 +1313,10 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_ctrl_asignacion     ON control_diario(asignacion_id)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_periodo        ON control_diario(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_ctrl_estado         ON control_diario(estado)",
+    # tipos_situacion (convivencia_34)
+    "CREATE INDEX IF NOT EXISTS idx_tipos_situacion_inst ON tipos_situacion(institucion_id)",
+    # medidas_pedagogicas (convivencia_36)
+    "CREATE INDEX IF NOT EXISTS idx_medidas_inst ON medidas_pedagogicas(institucion_id)",
     # categorias_observacion (convivencia_09)
     "CREATE INDEX IF NOT EXISTS ix_categorias_obs_activa ON categorias_observacion(activa)",
     # plantillas_observacion (convivencia_12)
@@ -1287,6 +1329,10 @@ INDICES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_comp_estudiante     ON registro_comportamiento(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_comp_periodo        ON registro_comportamiento(periodo_id)",
     "CREATE INDEX IF NOT EXISTS idx_comp_tipo           ON registro_comportamiento(tipo)",
+    "CREATE INDEX IF NOT EXISTS idx_comp_tipo_situacion ON registro_comportamiento(tipo_situacion_id)",
+    # entradas_seguimiento
+    "CREATE INDEX IF NOT EXISTS idx_seg_registro ON entradas_seguimiento(registro_id)",
+    "CREATE INDEX IF NOT EXISTS idx_seg_fecha    ON entradas_seguimiento(fecha)",
     # alertas
     "CREATE INDEX IF NOT EXISTS idx_alertas_est         ON alertas(estudiante_id)",
     "CREATE INDEX IF NOT EXISTS idx_alertas_tipo        ON alertas(tipo_alerta)",
@@ -1464,14 +1510,10 @@ def init_db(db_path: Path | None = None) -> bool:
     Inicializa el esquema completo de la base de datos.
 
     Ejecuta en orden:
-      1. CREATE TABLE IF NOT EXISTS  — idempotente (única fuente de verdad)
-      2. CREATE INDEX IF NOT EXISTS  — idempotente
+      1. CREATE TABLE IF NOT EXISTS   — idempotente (única fuente de verdad)
+      2. CREATE INDEX IF NOT EXISTS   — idempotente
       3. CREATE TRIGGER IF NOT EXISTS — idempotente
       4. PRAGMA integrity_check
-
-    El proyecto es pre-producción: no se migran BDs viejas (la de desarrollo se
-    recrea). No hay ALTER TABLE ni rebuilds aquí — el CREATE TABLE trae el
-    esquema completo (institucion_id + uniques compuestos + columnas de escala).
 
     Args:
         db_path: Ruta opcional a la BD. Si es None usa la configurada en connection.py.

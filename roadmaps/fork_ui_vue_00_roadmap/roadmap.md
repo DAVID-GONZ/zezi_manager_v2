@@ -100,7 +100,7 @@ de render** (Python → componentes Vue).
 ## Qué NO cambia en el fork (activos que transfieren)
 
 | Activo | Estado |
-|---|---|
+| --- | --- |
 | `styles/tokens.css` + dark mode + a11y hooks | Copiar tal cual |
 | CSS core semántico (badges, cards, alerts, stat-cards, page-header, layout) | Copiar + reproducir clases del contrato |
 | `tokens.ts` / `tokens.json` | Generados desde Python; consumir |
@@ -110,7 +110,7 @@ de render** (Python → componentes Vue).
 ## Qué se reescribe
 
 | Elemento | Motivo |
-|---|---|
+| --- | --- |
 | Capa `styles/adapter/*` + secciones in-situ | Estilaban el DOM de Quasar/ag-Grid, inexistente en Vue |
 | Inputs/formularios (`.andes-input .q-field__*`) | Reescritura contra `<input>` nativo / headless |
 | `ThemeManager.icono()`, `render_logo()` | Componentes `<Icon>`/`<Logo>` de Vue |

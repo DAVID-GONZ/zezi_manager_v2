@@ -69,9 +69,17 @@ def abrir_crear_observacion_dialog(
         toast_warning("No hay asignaturas disponibles para el grupo activo.")
         return
 
-    # Opciones de asignatura: {asignacion_id: nombre_asignatura}
-    opciones_asig = {
-        getattr(a, "asignacion_id", None): getattr(a, "asignatura_nombre", "") for a in asignaciones
+    # Opciones de asignatura: {asignatura_id: nombre} — sin duplicados por periodo
+    opciones_asig: dict[int, str] = {}
+    for a in asignaciones:
+        aid = getattr(a, "asignatura_id", None)
+        if aid is not None and aid not in opciones_asig:
+            opciones_asig[aid] = getattr(a, "asignatura_nombre", "")
+
+    # Índice para resolver asignatura_id+periodo → asignacion_id al guardar
+    _asig_index = {
+        (getattr(a, "asignatura_id", None), getattr(a, "periodo_id", None)): getattr(a, "asignacion_id", None)
+        for a in asignaciones
     }
 
     # Opciones de categoría: {id: nombre}
@@ -89,7 +97,7 @@ def abrir_crear_observacion_dialog(
 
     campos = [
         {
-            "key": "asignacion_id",
+            "key": "asignatura_id",
             "label": "Asignatura",
             "tipo": "select",
             "opciones": opciones_asig,
@@ -125,7 +133,7 @@ def abrir_crear_observacion_dialog(
     _periodo_id = periodo_id
 
     def _on_submit(datos: dict) -> bool | None:
-        asignacion_id = datos.get("asignacion_id")
+        asignatura_id = datos.get("asignatura_id")
         categoria_id = datos.get("categoria_id")
         texto = str(datos.get("texto", "")).strip()
         es_publica = bool(datos.get("es_publica", True))
@@ -136,8 +144,13 @@ def abrir_crear_observacion_dialog(
         if not categoria_id:
             toast_warning("Selecciona una categoría.")
             return False
-        if not asignacion_id:
+        if not asignatura_id:
             toast_warning("Selecciona una asignatura.")
+            return False
+
+        asignacion_id = _asig_index.get((asignatura_id, _periodo_id))
+        if not asignacion_id:
+            toast_warning("No se encontró asignación para esa asignatura en el periodo activo.")
             return False
 
         exitos = 0

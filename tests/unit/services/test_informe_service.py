@@ -92,6 +92,13 @@ class FakeConvivenciaRepo:
     def listar_registros(self, filtro, institucion_id=None):
         return self._registros
 
+    # Añadido en convivencia_38: tipos y medidas requeridos por _registros_informables_periodo.
+    def listar_tipos_situacion(self, solo_activas=True, institucion_id=None):
+        return []
+
+    def listar_medidas(self, solo_activas=True, institucion_id=None):
+        return []
+
 
 class FakeEstadRepo(IEstadisticosRepository):
     def calcular_metricas_dashboard(self, g, p, nota_minima=60.0) -> DashboardMetricsDTO:

@@ -16,7 +16,7 @@ nuevo contexto de producción multi-usuario en la nube.
 ## Lo que ya está resuelto (no se toca, solo se verifica)
 
 | Control | Ubicación | Épico |
-|---|---|---|
+| --- | --- | --- |
 | Hash bcrypt rounds=12 | `bcrypt_auth_service.py` | seguridad_01 |
 | Política de contraseñas | `domain/policies/password_policy.py` | seguridad_01 |
 | Cambio forzado de password | `route_guard.py` + `SessionContext` | seguridad_01 |
@@ -35,7 +35,7 @@ nuevo contexto de producción multi-usuario en la nube.
 ## Criterio de niveles
 
 | Nivel | Significado |
-|---|---|
+| --- | --- |
 | **N0 — Bloqueante** | Sin esto la app NO puede ir a producción. |
 | **N1 — Primer mes** | Sin esto la app es vulnerable poco después de estar live. |
 | **N2 — Con API REST** | Aplica cuando se completen las Fases 3–4 del `backend_00` roadmap. |
@@ -45,7 +45,7 @@ nuevo contexto de producción multi-usuario en la nube.
 ## Criterio de dificultad
 
 | Dificultad | Significado |
-|---|---|
+| --- | --- |
 | **Infra** | Solo configuración de servidor/proxy; cero código Python. |
 | **Config** | Variables de entorno y arranque; mínimo código Python. |
 | **Código-Bajo** | Cambios de código confinados a un módulo; riesgo de regresión bajo. |
@@ -60,7 +60,7 @@ nuevo contexto de producción multi-usuario en la nube.
 Sin estos ítems el deploy **no debe ocurrir**.
 
 | ID | Nombre | Dificultad | Spec |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S01 | TLS + reverse proxy | Infra | `seguridad_web_01_tls_proxy` |
 | S02 | Secretos y configuración de producción | Config | `seguridad_web_02_secretos_config` |
 | S03 | Cookies de sesión seguras | Código-Bajo | `seguridad_web_03_cookies_sesion` |
@@ -84,7 +84,7 @@ Sin estos ítems el deploy **no debe ocurrir**.
 Deben completarse dentro del primer mes de estar live.
 
 | ID | Nombre | Dificultad | Spec |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S08 | Content Security Policy ajustada a NiceGUI/Quasar | Código-Alto | `seguridad_web_08_csp_nicegui` |
 | S09 | Logging de seguridad y alertas | Código-Bajo | `seguridad_web_09_logging_alertas` |
 | S10 | Backups automatizados y plan de rollback | Infra | `seguridad_web_10_backup_rollback` |
@@ -106,7 +106,7 @@ Deben completarse dentro del primer mes de estar live.
 No aplican antes de que exista `backend_12_fastapi_mount` completado.
 
 | ID | Nombre | Dificultad | Spec |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S12 | CORS para API REST | Config | `seguridad_web_12_cors_api` |
 | S13 | Autenticación de API (JWT / API keys) | Código-Alto | `seguridad_web_13_jwt_api` |
 | S14 | Rate limiting de API | Código-Bajo | `seguridad_web_14_ratelimit_api` |
@@ -127,7 +127,7 @@ No aplican antes de que exista `backend_12_fastapi_mount` completado.
 No aplican antes de que exista `backend_10_nicegui_native` completado.
 
 | ID | Nombre | Dificultad | Spec |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S15 | PWA service worker seguro | Código-Bajo | `seguridad_web_15_pwa_sw` |
 | S16 | WebView2: origen restringido y APIs nativas | Código-Bajo | `seguridad_web_16_webview2` |
 | S17 | Actualización segura del .exe | Código-Alto | `seguridad_web_17_exe_actualizacion` |
@@ -146,7 +146,7 @@ No aplican antes de que exista `backend_10_nicegui_native` completado.
 No tienen fecha de "done"; son prácticas que se mantienen indefinidamente.
 
 | ID | Nombre | Dificultad | Spec |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | S18 | Rotación periódica de secretos | Proceso | `seguridad_web_18_rotacion_secretos` |
 | S19 | Pen testing y auditoría externa | Externo | `seguridad_web_19_pentest_auditoria` |
 
@@ -191,7 +191,7 @@ completarse en paralelo a las Fases 0 y 1 del backend.
 ## Estimación de esfuerzo
 
 | Fase | Esfuerzo neto | Observaciones |
-|---|---|---|
+| --- | --- | --- |
 | N0 (S01–S07) | 2–4 días | S01/S02/S04/S06 son horas; S05 es el más costoso |
 | N1 (S08–S11) | 3–6 días | S08 puede llevar más por iteración en CSP |
 | N2 (S12–S14) | 2–4 días | Depende de alcance de la API |

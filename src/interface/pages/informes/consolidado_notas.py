@@ -197,7 +197,7 @@ def consolidado_notas_page() -> None:
             contenido_bytes = Container.informe_service().generar_notas(dto)
             extension = "xlsx" if _s["formato"] == "excel" else "pdf"
             filename = f"consolidado_notas_grupo{_s['grupo_id']}.{extension}"
-            ui.download(content=contenido_bytes, filename=filename)
+            ui.download(src=contenido_bytes, filename=filename)
             toast_success("Informe generado correctamente.")
         except ValueError as exc:
             toast_error(f"Exportador no disponible: {exc}")

@@ -61,6 +61,7 @@ from src.interface.presenters.convivencia.seguimiento_presenter import Seguimien
 from src.services.convivencia_service import (
     FiltroConvivenciaDTO,
     NuevaAlertaSeguimientoDTO,
+    NuevaEntradaSeguimientoDTO,
     NuevaObservacionDTO,
 )
 
@@ -115,6 +116,8 @@ def _estado_inicial() -> dict:
         "registros_est": [],  # list[RegistroComportamiento]
         "resultado_360": None,
         "alertas": [],  # list[Alerta] del estudiante
+        "entradas_seguimiento": [],  # list[EntradaSeguimiento] del registro expandido
+        "sel_registro_id": None,     # id del registro cuya timeline está abierta
     }
 
 
@@ -445,6 +448,63 @@ def seguimiento_page() -> None:
             variante="danger",
         )
 
+    # ── Handlers de seguimiento (timeline) ──────────────────────────────────
+
+    def _cargar_entradas_seguimiento(registro_id: int) -> None:
+        try:
+            _s["entradas_seguimiento"] = Container.convivencia_service().listar_entradas_seguimiento(
+                registro_id
+            )
+        except Exception as exc:
+            logger.error("Error cargando entradas de seguimiento: %s", exc)
+            _s["entradas_seguimiento"] = []
+
+    def _abrir_timeline(registro_id: int) -> None:
+        if _s["sel_registro_id"] == registro_id:
+            _s["sel_registro_id"] = None
+            _s["entradas_seguimiento"] = []
+        else:
+            _s["sel_registro_id"] = registro_id
+            _cargar_entradas_seguimiento(registro_id)
+        panel_hub.refresh()
+
+    def _abrir_nueva_entrada(registro_id: int) -> None:
+        def _guardar(datos: dict) -> bool | None:
+            texto = str(datos.get("texto", "")).strip()
+            if not texto:
+                toast_warning("El texto no puede estar vacío.")
+                return False
+            try:
+                dto = NuevaEntradaSeguimientoDTO(registro_id=registro_id, texto=texto)
+                Container.convivencia_service().agregar_entrada_seguimiento(
+                    dto, usuario_id=ctx.usuario_id, usuario_rol=ctx.usuario_rol
+                )
+                toast_success("Seguimiento agregado.")
+                _cargar_entradas_seguimiento(registro_id)
+                panel_hub.refresh()
+            except PermissionError as exc:
+                toast_error(f"Sin permiso: {exc}")
+            except Exception as exc:
+                logger.error("Error agregando seguimiento: %s", exc, exc_info=True)
+                toast_error(f"Error: {exc}")
+            return None
+
+        form_dialog(
+            titulo="Agregar seguimiento",
+            campos=[
+                {
+                    "key": "texto",
+                    "label": "Texto del seguimiento",
+                    "tipo": "textarea",
+                    "placeholder": "Describe la acción tomada...",
+                    "requerido": True,
+                }
+            ],
+            on_submit=_guardar,
+            texto_submit="Guardar",
+            max_width="max-w-lg",
+        )
+
     # ── Handlers Alertas + Vista 360° (solo dir/coord) ───────────────────────
 
     def _ver_360() -> None:
@@ -755,6 +815,8 @@ def seguimiento_page() -> None:
                 )
             else:
                 for fila in filas_reg:
+                    reg_id = fila["id"]
+                    timeline_abierta = _s["sel_registro_id"] == reg_id
                     with ui.element("div").classes("config-list-row"):
                         ui.label(fila["fecha"]).classes("text-xs-meta")
                         with ui.element("div").classes("config-col-badge"):
@@ -762,6 +824,45 @@ def seguimiento_page() -> None:
                                 f"badge {fila['tipo_badge_class']}"
                             )
                         ui.label(_texto_truncado(fila["descripcion"])).classes("config-col-name")
+                        with ui.element("div").classes("config-col-actions"):
+                            btn_ghost(
+                                "",
+                                icon="history" if not timeline_abierta else "expand_less",
+                                size="sm",
+                                on_click=lambda _rid=reg_id: _abrir_timeline(_rid),
+                            )
+                            btn_ghost(
+                                "Seguimiento",
+                                icon="add_comment",
+                                size="sm",
+                                on_click=lambda _rid=reg_id: _abrir_nueva_entrada(_rid),
+                            )
+                    if timeline_abierta:
+                        _render_timeline_seguimiento(reg_id)
+
+    def _render_timeline_seguimiento(registro_id: int) -> None:
+        entradas = _s["entradas_seguimiento"]
+        with ui.element("div").classes("seg-timeline"):
+            if not entradas:
+                ui.label("Sin entradas de seguimiento aún.").classes("text-xs-meta")
+            else:
+                for entrada in entradas:
+                    fecha_raw = getattr(entrada, "fecha", None)
+                    fecha_str = ""
+                    if fecha_raw is not None:
+                        try:
+                            from datetime import datetime as _dt
+
+                            if isinstance(fecha_raw, str):
+                                fecha_raw = _dt.fromisoformat(fecha_raw)
+                            fecha_str = fecha_raw.strftime("%d/%m/%Y %H:%M")
+                        except Exception:
+                            fecha_str = str(fecha_raw)[:16]
+                    autor = getattr(entrada, "usuario_nombre", None) or "—"
+                    with ui.element("div").classes("seg-timeline-entry"):
+                        ui.label(fecha_str).classes("seg-timeline-fecha")
+                        ui.label(getattr(entrada, "texto", "")).classes("seg-timeline-texto")
+                        ui.label(f"— {autor}").classes("text-xs-meta")
 
     def _render_acciones_obs(fila: dict, es_comp_map: dict) -> None:
         btn_ghost(

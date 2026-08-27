@@ -9,7 +9,7 @@ Orquesta el trabajo de ZECI Manager v2.0. **Trabaja únicamente sobre el paso `i
 ## Protocolo de arranque (obligatorio, en este orden)
 
 ```
-1. Ejecutar ./init.sh
+1. Ejecutar python scripts/init.py
    └─ Si falla → PARAR. Reportar el error exacto. No continuar.
 
 1b. Puerta de ruff (defectos de corrección, no estilo):
@@ -173,7 +173,7 @@ Rechazado → NO modificar step_list.json. Fallos con comando exacto en progress
 
 ## Cuándo PARAR y reportar (no intentar resolver)
 
-- `./init.sh` falla con error no relacionado al paso activo.
+- `python scripts/init.py` falla con error no relacionado al paso activo.
 - La puerta de ruff (`--select F821,F811,F632,F702,B006,B008,B023,E9`) sale en rojo por código anterior al paso activo.
 - El implementer pide reformatear el repo (`ruff format` masivo): eso es un paso propio, no parte de este.
 - Implementer necesita un archivo fuera del scope.
@@ -186,7 +186,7 @@ Rechazado → NO modificar step_list.json. Fallos con comando exacto en progress
 ## Cierre de sesión
 
 ```
-1. ./init.sh verde + puerta de ruff en 0
+1. python scripts/init.py verde (incluye puerta de ruff)
    python -m ruff check . --select F821,F811,F632,F702,B006,B008,B023,E9
 2. Mover resumen de progress/current.md → progress/history.md (append)
 3. Vaciar progress/current.md a la plantilla base

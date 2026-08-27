@@ -259,8 +259,10 @@ def registrar_rutas_ui() -> None:
     registrar_pagina("/evaluacion/cierre-anio", cierre_anio_page, roles=_DIR_COORD)
 
     # ── Convivencia ───────────────────────────────────────────────────────────
+    from src.interface.pages.convivencia.alertas import alertas_page
     from src.interface.pages.convivencia.categorias import categorias_page
     from src.interface.pages.convivencia.comportamiento import comportamiento_page
+    from src.interface.pages.convivencia.configuracion_alertas import configuracion_alertas_page
     from src.interface.pages.convivencia.configuracion_convivencia import (
         configuracion_convivencia_page,
     )
@@ -269,8 +271,6 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.convivencia.plantillas import plantillas_page
     from src.interface.pages.convivencia.reporte_periodo import reporte_periodo_page
     from src.interface.pages.convivencia.seguimiento import seguimiento_page
-    from src.interface.pages.convivencia.alertas import alertas_page
-    from src.interface.pages.convivencia.configuracion_alertas import configuracion_alertas_page
 
     registrar_pagina("/convivencia/observaciones", observaciones_page, roles=_AULA)
     registrar_pagina("/convivencia/comportamiento", comportamiento_page, roles=_AULA)

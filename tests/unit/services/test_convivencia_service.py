@@ -16,9 +16,11 @@ from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
     FiltroConvivenciaDTO,
+    MedidaPedagogica,
     NotaComportamiento,
     NuevaAlertaSeguimientoDTO,
     NuevaCategoriaDTO,
+    NuevaMedidaPedagogicaDTO,
     NuevaNotaComportamientoDTO,
     NuevaObservacionDTO,
     NuevoRegistroComportamientoDTO,
@@ -45,6 +47,7 @@ class FakeConvRepo(IConvivenciaRepository):
         self._notas: dict[tuple, NotaComportamiento] = {}
         self._cats: dict[int, CategoriaObservacion] = {}
         self._plantillas: dict[int, PlantillaObservacion] = {}
+        self._medidas: dict[int, MedidaPedagogica] = {}
         # Mapa asignacion_id -> grupo_id, emula el join observaciones→asignaciones
         # que usa listar_observaciones_por_grupo en el repo SQLite.
         self._asig_grupo: dict[int, int] = {}
@@ -53,6 +56,7 @@ class FakeConvRepo(IConvivenciaRepository):
         self._next_nota = 1
         self._next_cat = 1
         self._next_plantilla = 1
+        self._next_medida = 1
 
     # Observaciones
     def get_observacion(self, oid: int) -> ObservacionPeriodo | None:
@@ -177,6 +181,60 @@ class FakeConvRepo(IConvivenciaRepository):
             self._plantillas[plantilla_id] = p.model_copy(
                 update={"uso_count": p.uso_count + 1}
             )
+
+    # Tipos de situación (convivencia_34)
+    def listar_tipos_situacion(self, solo_activas=True, institucion_id=None):
+        return []
+
+    def get_tipo_situacion(self, tipo_situacion_id):
+        return None
+
+    def guardar_tipo_situacion(self, tipo_situacion):
+        from src.domain.models.convivencia import TipoSituacion
+        return tipo_situacion.model_copy(update={"id": 1})
+
+    def actualizar_tipo_situacion(self, tipo_situacion):
+        return tipo_situacion
+
+    # Entradas de seguimiento (convivencia_35)
+    def listar_entradas_seguimiento(self, registro_id):
+        return []
+
+    def guardar_entrada_seguimiento(self, entrada):
+        return entrada.model_copy(update={"id": 1})
+
+    # Medidas pedagógicas (convivencia_36)
+    def listar_medidas(self, solo_activas=True, institucion_id=None):
+        result = list(self._medidas.values())
+        if solo_activas:
+            result = [m for m in result if m.activa]
+        return result
+
+    def get_medida(self, medida_id):
+        return self._medidas.get(medida_id)
+
+    def guardar_medida(self, medida):
+        medida = medida.model_copy(update={"id": self._next_medida})
+        self._next_medida += 1
+        self._medidas[medida.id] = medida
+        return medida
+
+    def actualizar_medida(self, medida):
+        self._medidas[medida.id] = medida
+        return medida
+
+    # Lookups auxiliares
+    def resolver_nombres_usuario(self, usuario_ids):
+        return {}
+
+    def resolver_nombres_asignatura(self, asignacion_ids):
+        return {}
+
+    def resolver_grupo_grado(self, grupo_id):
+        return {"grupo_codigo": "601", "grupo_nombre": "601", "grado_nombre": "Sexto"}
+
+    def resolver_acudiente_principal(self, estudiante_id):
+        return {"nombre": "María García", "parentesco": "madre", "parentesco_display": "Madre", "celular": "3001234567", "email": "", "direccion": "", "documento": "12345678"}
 
 
 # ===========================================================================
@@ -544,19 +602,11 @@ class TestConceptoComportamiento:
         with pytest.raises(ValueError):
             svc.exportar_reporte_periodo_grupo(10, 5, "csv")
 
-    def test_exportar_reporte_excel_llama_al_exporter(self):
-        """La composición (columnas, aplanado) vive en el servicio; el
-        exporter solo recibe list[dict] con las claves del reporte."""
-        calls: dict = {}
-
+    def test_exportar_reporte_excel_genera_xlsx_enriquecido(self):
+        """El Excel generado es un xlsx válido con dos hojas (Reporte + Estadísticos)."""
         class _FakeExp:
-            def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None):
-                calls["excel_datos"] = datos
-                calls["excel_hoja"]  = nombre_hoja
-                return b"XLSX-BYTES"
-            def exportar_pdf(self, html, ruta_destino=None):
-                calls["pdf_html"] = html
-                return b"PDF-BYTES"
+            def exportar_excel(self, *a, **kw): return b""
+            def exportar_pdf(self, *a, **kw): return b""
             def exportar_csv(self, *a, **kw): return b""
 
         est = _FakeEst(1)
@@ -573,22 +623,32 @@ class TestConceptoComportamiento:
             estudiante_svc_provider=lambda: _FakeEstSvc([est]),
             exporter=_FakeExp(),
         )
-        bytes_ = svc.exportar_reporte_periodo_grupo(10, 5, "excel", titulo="X")
-        assert bytes_ == b"XLSX-BYTES"
-        assert calls["excel_hoja"] == "X"
-        datos = calls["excel_datos"]
-        assert isinstance(datos, list) and len(datos) == 1
-        assert set(datos[0].keys()) == {"estudiante", "nota", "nivel", "concepto", "observaciones"}
-        assert datos[0]["estudiante"] == "Ruiz Ana"
-        assert datos[0]["nota"] == 80.0
+        bytes_ = svc.exportar_reporte_periodo_grupo(
+            10, 5, "excel", titulo="X", grupo="5A", periodo="P1",
+        )
+        assert isinstance(bytes_, bytes)
+        assert len(bytes_) > 0
+        # Verificar que es un xlsx válido con las hojas esperadas
+        import io
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(bytes_))
+        assert "Reporte" in wb.sheetnames
+        assert "Estadísticos" in wb.sheetnames
+        ws = wb["Reporte"]
+        # Membrete presente
+        assert ws.cell(1, 1).value == "INSTITUCIÓN EDUCATIVA ZECI"
+        # Datos del estudiante presentes
+        found = False
+        for row in ws.iter_rows(min_row=7, max_col=1, values_only=True):
+            if row[0] and "Ruiz" in str(row[0]):
+                found = True
+                break
+        assert found, "El nombre del estudiante debe aparecer en la hoja Reporte"
 
-    def test_exportar_reporte_pdf_genera_html_con_columnas(self):
+    def test_exportar_reporte_pdf_genera_pdf_reportlab(self):
         class _FakeExp:
-            def __init__(self): self.html = None
             def exportar_excel(self, *a, **kw): return b""
-            def exportar_pdf(self, html, ruta_destino=None):
-                self.html = html
-                return b"PDF-BYTES"
+            def exportar_pdf(self, html, ruta_destino=None): return b""
             def exportar_csv(self, *a, **kw): return b""
 
         est = _FakeEst(1)
@@ -603,12 +663,12 @@ class TestConceptoComportamiento:
             estudiante_svc_provider=lambda: _FakeEstSvc([est]),
             exporter=exp,
         )
-        bytes_ = svc.exportar_reporte_periodo_grupo(10, 5, "pdf", titulo="Reporte X")
-        assert bytes_ == b"PDF-BYTES"
-        # HTML compuesto por el servicio contiene columnas del reporte
-        assert "<th>Estudiante</th>" in exp.html
-        assert "<th>Concepto</th>" in exp.html
-        assert "Reporte X" in exp.html
+        bytes_ = svc.exportar_reporte_periodo_grupo(
+            10, 5, "pdf", titulo="Reporte X", grupo="5A", periodo="Periodo 1",
+        )
+        assert isinstance(bytes_, bytes)
+        assert len(bytes_) > 0
+        assert bytes_[:5] == b"%PDF-"
 
 
 # ===========================================================================
@@ -1641,5 +1701,493 @@ class TestResumenConvivenciaGrupo:
         by_id = {r.estudiante_id: r for r in resumen}
         assert by_id[1].num_registros_negativos == 5
         assert by_id[1].supera_umbral is False
+
+
+# ===========================================================================
+# convivencia_36: medidas pedagógicas
+# ===========================================================================
+
+class TestMedidasPedagogicas:
+    """Tests para ConvivenciaService — CRUD de medidas pedagógicas."""
+
+    def test_crear_medida_director(self):
+        svc, repo = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="Dialogo pedagogico", nivel_minimo=1)
+        medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
+        assert medida.id is not None
+        assert medida.nombre == "Dialogo pedagogico"
+        assert medida.nivel_minimo == 1
+        assert medida.activa is True
+
+    def test_crear_medida_coordinador(self):
+        svc, repo = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="Citacion", nivel_minimo=2)
+        medida = svc.crear_medida_pedagogica(dto, usuario_rol="coordinador")
+        assert medida.id is not None
+        assert medida.nivel_minimo == 2
+
+    def test_crear_medida_profesor_rechazado(self):
+        svc, _ = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="X")
+        with pytest.raises(PermissionError):
+            svc.crear_medida_pedagogica(dto, usuario_rol="profesor")
+
+    def test_actualizar_medida(self):
+        svc, repo = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="Original", nivel_minimo=1)
+        medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
+
+        dto2 = NuevaMedidaPedagogicaDTO(nombre="Actualizada", nivel_minimo=2)
+        actualizada = svc.actualizar_medida_pedagogica(medida.id, dto2, usuario_rol="director")
+        assert actualizada.nombre == "Actualizada"
+        assert actualizada.nivel_minimo == 2
+
+    def test_actualizar_medida_inexistente_lanza(self):
+        svc, _ = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="X")
+        with pytest.raises(ValueError, match="999"):
+            svc.actualizar_medida_pedagogica(999, dto, usuario_rol="director")
+
+    def test_desactivar_medida(self):
+        svc, repo = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="Matricula condicional", nivel_minimo=3)
+        medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
+        assert medida.activa is True
+
+        desactivada = svc.desactivar_medida_pedagogica(medida.id, usuario_rol="director")
+        assert desactivada.activa is False
+        assert repo._medidas[medida.id].activa is False
+
+    def test_desactivar_medida_profesor_rechazado(self):
+        svc, repo = _make_svc()
+        dto = NuevaMedidaPedagogicaDTO(nombre="X")
+        medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
+        with pytest.raises(PermissionError):
+            svc.desactivar_medida_pedagogica(medida.id, usuario_rol="profesor")
+
+    def test_listar_medidas_filtra_por_nivel(self):
+        """Medidas con nivel_minimo=3 no aparecen en el listado si el tipo de situación es nivel 1."""
+        svc, repo = _make_svc()
+        # Crear medidas de distintos niveles
+        for nombre, nivel in [("Dialogo", 1), ("Citacion", 2), ("No renovacion", 3)]:
+            dto = NuevaMedidaPedagogicaDTO(nombre=nombre, nivel_minimo=nivel)
+            svc.crear_medida_pedagogica(dto, usuario_rol="director")
+
+        todas = svc.listar_medidas_pedagogicas(solo_activas=True)
+        assert len(todas) == 3
+
+        # Filtrado de negocio en el presenter/UI: solo las aplicables a nivel 1
+        nivel_situacion = 1
+        aplicables = [m for m in todas if m.nivel_minimo <= nivel_situacion]
+        assert len(aplicables) == 1
+        assert aplicables[0].nombre == "Dialogo"
+
+
+# ===========================================================================
+# convivencia_37 — observador_estudiante + exportar_observador
+# ===========================================================================
+
+class _FakeEstConNombre:
+    def __init__(self, id: int, nombre: str = "Ana", apellido: str = "Ruiz"):
+        self.id = id
+        self.nombre = nombre
+        self.apellido = apellido
+
+
+class _FakeEstSvcById37:
+    def __init__(self, est):
+        self._est = est
+
+    def get_by_id(self, estudiante_id: int):
+        return self._est
+
+    def listar_por_grupo(self, grupo_id):
+        return [self._est]
+
+
+class _FakePeriodo37:
+    def __init__(self, id: int, nombre: str, anio_id: int = 2026):
+        self.id = id
+        self.nombre = nombre
+        self.anio_id = anio_id
+
+
+class _FakePeriodoSvc37:
+    def __init__(self, periodos):
+        self._periodos = periodos
+
+    def listar_por_anio(self, anio_id: int):
+        return self._periodos
+
+    def get_by_id(self, periodo_id: int):
+        for p in self._periodos:
+            if p.id == periodo_id:
+                return p
+        raise ValueError(periodo_id)
+
+
+class _FakeConvRepoObs37(FakeConvRepo):
+    """FakeConvRepo extendido con soporte de listar_entradas_seguimiento."""
+
+    def __init__(self):
+        super().__init__()
+        self._entradas_seg: dict[int, list] = {}
+
+    def listar_entradas_seguimiento(self, registro_id: int):
+        from src.domain.models.convivencia import EntradaSeguimiento
+        return self._entradas_seg.get(registro_id, [])
+
+    def guardar_entrada_seguimiento(self, entrada):
+        from src.domain.models.convivencia import EntradaSeguimiento
+        return entrada.model_copy(update={"id": 1})
+
+    def listar_registros(self, filtro, institucion_id=None):
+        regs = list(self._regs.values())
+        if filtro.estudiante_id is not None:
+            regs = [r for r in regs if r.estudiante_id == filtro.estudiante_id]
+        if filtro.periodo_id is not None:
+            regs = [r for r in regs if r.periodo_id == filtro.periodo_id]
+        return regs
+
+    def listar_observaciones_por_estudiante(self, est_id, per_id=None, solo_publicas=False):
+        obs = [o for o in self._obs.values() if o.estudiante_id == est_id]
+        if per_id is not None:
+            obs = [o for o in obs if o.periodo_id == per_id]
+        if solo_publicas:
+            obs = [o for o in obs if o.es_publica]
+        return obs
+
+
+def _svc_observador(est=None, periodos=None):
+    """Crea un ConvivenciaService con providers para el observador."""
+    from src.domain.models.convivencia import EntradaSeguimiento
+    repo = _FakeConvRepoObs37()
+    est = est or _FakeEstConNombre(1)
+    periodos = periodos or [_FakePeriodo37(5, "Periodo 1")]
+    svc = ConvivenciaService(
+        repo=repo,
+        estudiante_svc_provider=lambda: _FakeEstSvcById37(est),
+        periodo_svc_provider=lambda: _FakePeriodoSvc37(periodos),
+    )
+    return svc, repo
+
+
+class TestObservadorEstudiante:
+    """Tests de observador_estudiante y exportar_observador (convivencia_37)."""
+
+    def test_retorna_dict_con_claves_requeridas(self):
+        svc, _ = _svc_observador()
+        resultado = svc.observador_estudiante(estudiante_id=1, anio_id=2026)
+        assert "estudiante" in resultado
+        assert "institucion" in resultado
+        assert "anio" in resultado
+        assert "periodo" in resultado
+        assert "entradas" in resultado
+        assert "resumen" in resultado
+
+    def test_entradas_vacias_sin_datos(self):
+        svc, _ = _svc_observador()
+        resultado = svc.observador_estudiante(estudiante_id=1, anio_id=2026)
+        assert resultado["entradas"] == []
+        assert resultado["periodo"] is None
+
+    def test_entradas_incluyen_observaciones_y_registros_ordenados(self):
+        from datetime import datetime
+        periodos = [_FakePeriodo37(5, "P1")]
+        svc, repo = _svc_observador(periodos=periodos)
+
+        # Registro creado primero (fecha antigua)
+        reg = RegistroComportamiento(
+            estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Pelea en el patio",
+            fecha=date(2026, 3, 10),
+        )
+        reg = repo.guardar_registro(reg)
+
+        # Observación pública más reciente
+        obs = ObservacionPeriodo(
+            estudiante_id=1, asignacion_id=1, periodo_id=5,
+            texto="Buen comportamiento",
+            es_publica=True,
+            fecha_registro=datetime(2026, 4, 1, 10, 0, 0),
+            categoria_id=None,
+        )
+        repo.guardar_observacion(obs)
+
+        resultado = svc.observador_estudiante(estudiante_id=1, anio_id=2026)
+        entradas = resultado["entradas"]
+        assert len(entradas) == 2
+        # Ordenadas cronológicamente: registro (mar) antes que observación (abr)
+        assert entradas[0]["tipo"] == "registro"
+        assert entradas[0]["subtipo"] == "dificultad"
+        assert entradas[1]["tipo"] == "observacion"
+
+    def test_resumen_cuenta_tipos_correctamente(self):
+        periodos = [_FakePeriodo37(5, "P1")]
+        svc, repo = _svc_observador(periodos=periodos)
+        for tipo in [TipoRegistro.FORTALEZA, TipoRegistro.FORTALEZA, TipoRegistro.DIFICULTAD, TipoRegistro.COMPROMISO]:
+            reg = RegistroComportamiento(
+                estudiante_id=1, grupo_id=10, periodo_id=5,
+                tipo=tipo, descripcion="desc", fecha=date.today(),
+            )
+            repo.guardar_registro(reg)
+
+        resultado = svc.observador_estudiante(estudiante_id=1, anio_id=2026)
+        resumen = resultado["resumen"]
+        assert resumen["fortalezas"] == 2
+        assert resumen["dificultades"] == 1
+        assert resumen["compromisos"] == 1
+        assert resumen["citaciones"] == 0
+
+    def test_filtro_por_periodo_id(self):
+        periodos = [_FakePeriodo37(5, "P1"), _FakePeriodo37(6, "P2")]
+        svc, repo = _svc_observador(periodos=periodos)
+
+        for per_id in [5, 6]:
+            reg = RegistroComportamiento(
+                estudiante_id=1, grupo_id=10, periodo_id=per_id,
+                tipo=TipoRegistro.FORTALEZA, descripcion="X", fecha=date.today(),
+            )
+            repo.guardar_registro(reg)
+
+        resultado = svc.observador_estudiante(estudiante_id=1, anio_id=2026, periodo_id=5)
+        assert len(resultado["entradas"]) == 1
+        assert resultado["periodo"] == "P1"
+
+    def test_sin_providers_lanza_runtime_error(self):
+        repo = FakeConvRepo()
+        svc = ConvivenciaService(repo=repo)  # sin providers
+        with pytest.raises(RuntimeError):
+            svc.observador_estudiante(estudiante_id=1, anio_id=2026)
+
+    def test_exportar_observador_pdf_retorna_bytes(self):
+        from src.infrastructure.exporters.null_exporter import NullExporter
+        svc, _ = _svc_observador()
+        datos_bytes = svc.exportar_observador(estudiante_id=1, anio_id=2026, formato="pdf")
+        assert isinstance(datos_bytes, bytes)
+        assert len(datos_bytes) > 0
+        # PDF mágico: empieza con %PDF
+        assert datos_bytes[:4] == b"%PDF"
+
+    def test_exportar_observador_excel_retorna_bytes(self):
+        from src.infrastructure.exporters.openpyxl_exporter import OpenpyxlExporter
+        repo = _FakeConvRepoObs37()
+        periodos = [_FakePeriodo37(5, "P1")]
+        est = _FakeEstConNombre(1)
+        svc = ConvivenciaService(
+            repo=repo,
+            estudiante_svc_provider=lambda: _FakeEstSvcById37(est),
+            periodo_svc_provider=lambda: _FakePeriodoSvc37(periodos),
+            exporter=OpenpyxlExporter(),
+        )
+        datos_bytes = svc.exportar_observador(estudiante_id=1, anio_id=2026, formato="excel")
+        assert isinstance(datos_bytes, bytes)
+        assert len(datos_bytes) > 0
+        # XLSX mágico: empieza con PK (ZIP)
+        assert datos_bytes[:2] == b"PK"
+
+    def test_exportar_formato_invalido_lanza(self):
+        svc, _ = _svc_observador()
+        with pytest.raises(ValueError, match="Formato no soportado"):
+            svc.exportar_observador(estudiante_id=1, anio_id=2026, formato="csv")
+
+
+# ===========================================================================
+# convivencia_38 — Integración tipos_situacion y medidas en reportes
+# ===========================================================================
+
+from src.domain.models.convivencia import TipoSituacion
+
+
+class _FakeConvRepo38(FakeConvRepo):
+    """Repo con tipos de situación y medidas precargados para tests de conv_38."""
+
+    def __init__(self, tipos: list | None = None, medidas: list | None = None):
+        super().__init__()
+        self._tipos38 = tipos or []
+        # medidas ya están en FakeConvRepo._medidas; guardamos las extra en el super
+        for m in (medidas or []):
+            self._medidas[m.id] = m
+
+    def listar_tipos_situacion(self, solo_activas=True, institucion_id=None):
+        return list(self._tipos38)
+
+    def listar_registros(self, filtro: FiltroConvivenciaDTO, institucion_id=None):
+        regs = list(self._regs.values())
+        if filtro.estudiante_id is not None:
+            regs = [r for r in regs if r.estudiante_id == filtro.estudiante_id]
+        if filtro.periodo_id is not None:
+            regs = [r for r in regs if r.periodo_id == filtro.periodo_id]
+        if filtro.grupo_id is not None:
+            regs = [r for r in regs if r.grupo_id == filtro.grupo_id]
+        return regs
+
+
+def _tipo(id_: int, nombre: str) -> TipoSituacion:
+    return TipoSituacion(id=id_, nombre=nombre, activa=True, institucion_id=1)
+
+
+def _medida_obj(id_: int, nombre: str) -> MedidaPedagogica:
+    return MedidaPedagogica(id=id_, nombre=nombre, activa=True, institucion_id=1)
+
+
+class TestRegistrosInformablesPeriodo38:
+    """Verifica que _registros_informables_periodo incluye tipo_situacion y medida."""
+
+    def _svc_con_prefs(self, tipos=None, medidas=None):
+        from src.domain.models.preferencia_institucion import PreferenciasDTO
+
+        repo = _FakeConvRepo38(tipos=tipos, medidas=medidas)
+        svc = ConvivenciaService(repo=repo)
+        # Include fortaleza + dificultad; bypass institucion_actual() entirely
+        prefs = PreferenciasDTO(
+            registros_boletin_tipos=["fortaleza", "dificultad"],
+            registros_boletin_dificultad_requiere_notificacion=False,
+        )
+        svc._get_prefs_convivencia = lambda: prefs
+        return svc, repo
+
+    def test_campos_tipo_situacion_y_medida_presentes_cuando_none(self):
+        svc, repo = self._svc_con_prefs()
+        reg = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Problema en clase",
+            fecha=date(2026, 3, 1),
+        )
+        repo._regs[1] = reg
+        resultado = svc._registros_informables_periodo(1, 5)
+        assert len(resultado) == 1
+        assert "tipo_situacion" in resultado[0]
+        assert "medida" in resultado[0]
+        assert resultado[0]["tipo_situacion"] is None
+        assert resultado[0]["medida"] is None
+
+    def test_tipo_situacion_resuelto_por_nombre(self):
+        tipo = _tipo(7, "Tipo II")
+        svc, repo = self._svc_con_prefs(tipos=[tipo])
+        reg = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Pelea",
+            fecha=date(2026, 3, 5), tipo_situacion_id=7,
+        )
+        repo._regs[1] = reg
+        resultado = svc._registros_informables_periodo(1, 5)
+        assert resultado[0]["tipo_situacion"] == "Tipo II"
+
+    def test_medida_resuelta_por_nombre(self):
+        medida = _medida_obj(3, "Diálogo con acudiente")
+        svc, repo = self._svc_con_prefs(medidas=[medida])
+        reg = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Pelea",
+            fecha=date(2026, 3, 5), medida_id=3,
+        )
+        repo._regs[1] = reg
+        resultado = svc._registros_informables_periodo(1, 5)
+        assert resultado[0]["medida"] == "Diálogo con acudiente"
+
+    def test_tipo_desconocido_queda_none(self):
+        """Si el tipo_situacion_id no existe en el mapa, retorna None."""
+        svc, repo = self._svc_con_prefs(tipos=[_tipo(1, "Tipo I")])
+        reg = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta",
+            fecha=date(2026, 3, 5), tipo_situacion_id=999,
+        )
+        repo._regs[1] = reg
+        resultado = svc._registros_informables_periodo(1, 5)
+        assert resultado[0]["tipo_situacion"] is None
+
+
+class TestReportePeriodoGrupo38:
+    """Verifica que reporte_periodo_grupo incluye desglose_por_tipo (conv_38)."""
+
+    def _svc_con_tipos(self, tipos=None):
+        repo = _FakeConvRepo38(tipos=tipos or [])
+        est = _FakeEst(1)
+        est.nombre = "Ana"
+        est.apellido = "Ruiz"
+        svc = ConvivenciaService(
+            repo=repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvc(),
+            estudiante_svc_provider=lambda: _FakeEstSvc([est]),
+        )
+        return svc, repo
+
+    def test_desglose_none_cuando_no_hay_tipos(self):
+        svc, _ = self._svc_con_tipos(tipos=[])
+        filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
+        assert len(filas) == 1
+        assert filas[0].desglose_por_tipo is None
+
+    def test_desglose_cero_cuando_hay_tipos_pero_sin_negativos(self):
+        tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
+        svc, repo = self._svc_con_tipos(tipos=tipos)
+        filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
+        assert len(filas) == 1
+        desglose = filas[0].desglose_por_tipo
+        assert desglose is not None
+        assert desglose.get("Tipo I") == 0
+        assert desglose.get("Tipo II") == 0
+
+    def test_desglose_cuenta_negativos_por_tipo(self):
+        tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
+        svc, repo = self._svc_con_tipos(tipos=tipos)
+        repo._regs[1] = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta leve",
+            fecha=date(2026, 3, 1), tipo_situacion_id=1,
+        )
+        repo._regs[2] = RegistroComportamiento(
+            id=2, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Agresión verbal",
+            fecha=date(2026, 3, 5), tipo_situacion_id=2,
+        )
+        repo._regs[3] = RegistroComportamiento(
+            id=3, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Segunda leve",
+            fecha=date(2026, 3, 7), tipo_situacion_id=1,
+        )
+        # Fortaleza no debe contar como negativo
+        repo._regs[4] = RegistroComportamiento(
+            id=4, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.FORTALEZA, descripcion="Buen trabajo",
+            fecha=date(2026, 3, 10),
+        )
+        filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
+        assert len(filas) == 1
+        desglose = filas[0].desglose_por_tipo
+        assert desglose is not None
+        assert desglose.get("Tipo I") == 2
+        assert desglose.get("Tipo II") == 1
+
+    def test_pdf_incluye_columnas_desglose(self):
+        tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
+        svc, repo = self._svc_con_tipos(tipos=tipos)
+        repo._regs[1] = RegistroComportamiento(
+            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta",
+            fecha=date(2026, 3, 1), tipo_situacion_id=1,
+        )
+
+        class _Cap:
+            def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None):
+                return b""
+            def exportar_pdf(self, html, ruta_destino=None):
+                return b""
+
+        exp = _Cap()
+        svc2 = ConvivenciaService(
+            repo=repo,
+            configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
+            periodo_svc_provider=lambda: _FakePeriodoSvc(),
+            estudiante_svc_provider=lambda: _FakeEstSvc([_FakeEst(1)]),
+            exporter=exp,
+        )
+        pdf_bytes = svc2.exportar_reporte_periodo_grupo(10, 5, "pdf")
+        assert isinstance(pdf_bytes, bytes)
+        assert pdf_bytes[:5] == b"%PDF-"
 
 

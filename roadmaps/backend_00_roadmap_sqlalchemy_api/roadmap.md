@@ -5,6 +5,7 @@
 La estrategia tiene **dos etapas claras** con un fork de por medio:
 
 ### Etapa A — App NiceGUI completamente funcional + backend sólido
+
 1. Terminar toda la funcionalidad pendiente con NiceGUI (app completa, usable).
 2. Consolidar la base de tests.
 3. Migrar a SQLAlchemy Core para doble backend (SQLite local / Postgres nube).
@@ -13,18 +14,20 @@ La estrategia tiene **dos etapas claras** con un fork de por medio:
 6. Design system portable (tokens JSON, CSS desacoplado, contratos de componentes).
 
 ### Etapa B — Fork para comercialización
-7. **Fork del proyecto** → front Vue que consume la API ya probada.
+
+1. **Fork del proyecto** → front Vue que consume la API ya probada.
    Tres productos del mismo fork:
    - **App web** (navegador, online-offline con PWA/Service Worker).
    - **App WebView2** (empaquetada para escritorio, con SQLite local).
    - **Versión navegador** (la misma PWA desplegada en la nube).
-8. **App Android** — desarrollo posterior, consume la misma API REST.
+2. **App Android** — desarrollo posterior, consume la misma API REST.
 
 ### Decisión de stack técnico para la Etapa B (2026-07-27)
 
 Evaluadas las opciones (Vue, React, Svelte, Next.js, Nest.js), se elige:
 
 **Frontend web: Vue 3 + Vite + Composition API**
+
 - Curva de aprendizaje baja desde Python/NiceGUI (refs reactivos ≈ modelo mental similar).
 - Ecosistema maduro de componentes UI (Naive UI o PrimeVue — evaluar contra tokens Aula Serena).
 - Documentación oficial traducida al español.
@@ -32,24 +35,28 @@ Evaluadas las opciones (Vue, React, Svelte, Next.js, Nest.js), se elige:
 - PWA offline con `vite-plugin-pwa` (Service Worker + precache automático).
 
 **Escritorio: Tauri v2**
+
 - Usa WebView2 nativo de Windows (ya preinstalado en Windows 10/11).
 - Bundle ~3MB (vs. ~80MB de Electron).
 - Plugin oficial de SQLite para la versión local offline.
 - Mismo código Vue, empaquetado diferente.
 
 **Android: Capacitor (Ionic)**
+
 - Envuelve la misma PWA Vue en contenedor nativo.
 - Acceso a APIs nativas (notificaciones push, almacenamiento, cámara).
 - SQLite local vía `@capacitor-community/sqlite`.
 - Un solo código fuente → web + Android + iOS.
 
 **Librerías complementarias decididas:**
+
 - Vue Router (navegación).
 - Pinia (estado global, reemplaza Vuex).
 - VueUse (utilidades reactivas: `useOnline`, `useLocalStorage`, etc.).
 - Axios o fetch nativo para consumir la API REST.
 
 **Descartados y por qué:**
+
 - **React / Next.js** — Mayor complejidad (hooks, re-renders, JSX) sin beneficio
   para un dev solo con background Python. Next.js añade SSR innecesario para un
   dashboard privado detrás de login.
@@ -77,11 +84,13 @@ zeci-vue/
 ```
 
 Builds:
+
 - `npm run build` → web (PWA desplegable).
 - `npm run tauri build` → `.exe` WebView2 (~3MB).
 - `npx cap sync && npx cap build android` → APK.
 
 ### Principios confirmados
+
 - **Todo en modo desarrollo.** No hay datos de producción. La BD se recrea desde
   `create_all()` + seed. No hay migración de datos en este roadmap.
 - **Alembic queda fuera.** Se introduce como paso previo al primer despliegue real
@@ -96,6 +105,7 @@ Builds:
 ## Estado actual (revisión de 2026-07-27)
 
 ### Lo que juega a favor
+
 - **Arquitectura hexagonal real**: `src/domain/ports/*_repo.py` (interfaces) +
   `src/infrastructure/db/repositories/sqlite_*` (adaptadores). Servicios y UI nunca
   tocan SQLite directo. `container.py` es el único punto de cableado.
@@ -108,6 +118,7 @@ Builds:
   componente/dominio.
 
 ### Deuda de acoplamiento a SQLite
+
 - **Schema como strings DDL de SQLite** en `schema.py` (56 `AUTOINCREMENT`, tipos
   laxos). No portable a Postgres tal cual.
 - **SQL crudo pegado al dialecto** en repos: ~624 placeholders `?`, ~105
@@ -120,6 +131,7 @@ Builds:
 ---
 
 ## Reglas duras (leader.md / CLAUDE.md)
+
 - Todo código en `src/` lo escribe el subagente `implementer`; verifica el `reviewer`.
 - No `.dict()` (usar `model_dump()`); no importar `src.infrastructure.db` fuera de
   infraestructura; repos solo vía `Container`.
@@ -248,7 +260,7 @@ Objetivo: tokens y contratos en formato que Vue pueda consumir en la Etapa B.
 - **backend_18b_split_repos** 🕓 — Dividir el monorepo en repositorios independientes:
 
   | Repo | Contenido | Ciclo de release |
-  |---|---|---|
+  | --- | --- | --- |
   | `zeci-api` | Dominio, servicios, repos SQLAlchemy, API REST, auth JWT, event bus, NiceGUI (uso propio), seeds, tests Python | Deploy al servidor (Railway/VPS) |
   | `zeci-vue` | Componentes Vue, vistas, stores Pinia, PWA, `src-tauri/`, `capacitor.config.ts` | Build → 3 artefactos (PWA, .exe, APK) |
   | `zeci-tokens` (opcional) | `tokens.json` + scripts de generación (→ CSS, → TS, → Python) | Paquete consumido por los otros dos |
@@ -434,7 +446,7 @@ sincroniza con la API cuando hay red.
 ## Estimación de esfuerzo total
 
 | Fase | Enfocado | Calendario* |
-|---|---|---|
+| --- | --- | --- |
 | **ETAPA A** | | |
 | 0 — Completar NiceGUI | (tiene sus propios roadmaps) | |
 | 1 — Harness dual | 3–6 días | 1–2 semanas |

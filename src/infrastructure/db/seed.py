@@ -1890,6 +1890,52 @@ def _plan_para_grado(grado: int) -> list[tuple]:
     return _PLAN_MEDIA if grado >= 10 else _PLAN_BASICA
 
 
+def _migrate_entradas_seguimiento(conn: sqlite3.Connection) -> None:
+    """Migración idempotente (convivencia_35): datos legacy de seguimiento → entradas_seguimiento."""
+    conn.execute("""
+        INSERT INTO entradas_seguimiento (registro_id, texto, usuario_id, fecha)
+        SELECT rc.id, rc.seguimiento, rc.usuario_registro_id,
+               COALESCE(rc.fecha, CURRENT_TIMESTAMP)
+        FROM registro_comportamiento rc
+        WHERE rc.seguimiento IS NOT NULL
+          AND rc.id NOT IN (SELECT registro_id FROM entradas_seguimiento)
+    """)
+
+
+def _migrate_tipo_situacion(conn: sqlite3.Connection) -> None:
+    """Migración idempotente (convivencia_34): columna tipo_situacion_id + seed de tipos por institución."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(registro_comportamiento)").fetchall()}
+    if "tipo_situacion_id" not in existing:
+        conn.execute(
+            "ALTER TABLE registro_comportamiento ADD COLUMN tipo_situacion_id INTEGER REFERENCES tipos_situacion(id) ON DELETE SET NULL"
+        )
+    from src.domain.models.catalogos_estandar import TIPOS_SITUACION_CO
+
+    for (inst_id,) in conn.execute("SELECT id FROM instituciones").fetchall():
+        for nombre, nivel, descripcion in TIPOS_SITUACION_CO:
+            conn.execute(
+                "INSERT OR IGNORE INTO tipos_situacion(nombre, nivel, descripcion, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
+                (nombre, nivel, descripcion, inst_id),
+            )
+
+
+def _migrate_medida_pedagogica(conn: sqlite3.Connection) -> None:
+    """Migración idempotente (convivencia_36): columna medida_id + seed de medidas por institución."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(registro_comportamiento)").fetchall()}
+    if "medida_id" not in existing:
+        conn.execute(
+            "ALTER TABLE registro_comportamiento ADD COLUMN medida_id INTEGER REFERENCES medidas_pedagogicas(id) ON DELETE SET NULL"
+        )
+    from src.domain.models.catalogos_estandar import MEDIDAS_PEDAGOGICAS_CO
+
+    for (inst_id,) in conn.execute("SELECT id FROM instituciones").fetchall():
+        for nombre, descripcion, nivel_minimo in MEDIDAS_PEDAGOGICAS_CO:
+            conn.execute(
+                "INSERT OR IGNORE INTO medidas_pedagogicas(nombre, descripcion, nivel_minimo, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
+                (nombre, descripcion, nivel_minimo, inst_id),
+            )
+
+
 def _seed_plan_estudios(
     conn: sqlite3.Connection,
     asignatura_ids: dict[str, int],
@@ -1964,6 +2010,16 @@ def seed_base(
     # Plantillas de observación por defecto (convivencia_12).
     # Debe correr DESPUÉS de _seed_categorias para que los IDs existan.
     plantilla_ids = _seed_plantillas(conn)
+
+    # Tipos de situación por defecto — Ley 1620 (convivencia_34).
+    # Debe correr DESPUÉS de _seed_institucion para que la institución exista.
+    _migrate_tipo_situacion(conn)
+
+    # Migrar datos legacy de seguimiento a entradas_seguimiento (convivencia_35).
+    _migrate_entradas_seguimiento(conn)
+
+    # Medidas pedagógicas por defecto — Art. 43-44 Decreto 1965 (convivencia_36).
+    _migrate_medida_pedagogica(conn)
 
     result.counts = {
         "niveles_desempeno": len(result.nivel_ids),
