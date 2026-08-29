@@ -87,7 +87,6 @@ venv.bak/
 .idea/
 *.swp
 *.swo
-.claude/*
 .gemini/
 __pycache__/
 
@@ -112,13 +111,10 @@ extract_docs.py
 scratch.py
 step_list.json
 init.sh 
-CHECKLIST.md
 CONVENTIONS.md
 TASK_LIST.md
-AGENTS.md
 progress/
 README.md
-AGENTS.md
 init.py
 *.toml
 !pyproject.toml
