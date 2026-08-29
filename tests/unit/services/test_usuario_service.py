@@ -83,10 +83,10 @@ class FakeUsuarioRepo(IUsuarioRepository):
     def listar_resumenes(self, filtro: FiltroUsuariosDTO) -> list[UsuarioResumenDTO]:
         return []
 
-    def listar_docentes_info(self, periodo_id=None, solo_activos=True) -> list[DocenteInfoDTO]:
+    def listar_docentes_info(self, periodo_id=None, solo_activos=True, institucion_id=None) -> list[DocenteInfoDTO]:
         return []
 
-    def get_docente_info(self, uid: int) -> DocenteInfoDTO | None:
+    def get_docente_info(self, uid: int, periodo_id=None, institucion_id=None) -> DocenteInfoDTO | None:
         return None
 
     def listar_asignaciones_docente(self, uid: int, periodo_id=None):

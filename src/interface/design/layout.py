@@ -154,17 +154,25 @@ NAV_ITEMS: list[dict] = [
         "rol": ["admin", "director"],
     },
     {
-        "label": "Administración",
-        "icon": "settings",
-        "rol": ["admin", "director"],
+        "label": "Dirección",
+        "icon": "supervisor_account",
+        "rol": ["director"],
         "children": [
-            {"label": "Usuarios", "icon": "badge", "ruta": "/admin/usuarios"},
-            {"label": "Instituciones", "icon": "apartment", "ruta": "/admin/instituciones"},
+            {"label": "Equipo docente", "icon": "badge", "ruta": "/director/equipo"},
             {
                 "label": "Configuración institucional",
                 "icon": "settings",
                 "ruta": "/institucion/configuracion",
             },
+        ],
+    },
+    {
+        "label": "Administración",
+        "icon": "settings",
+        "rol": ["admin"],
+        "children": [
+            {"label": "Usuarios", "icon": "badge", "ruta": "/admin/usuarios"},
+            {"label": "Instituciones", "icon": "apartment", "ruta": "/admin/instituciones"},
             {"label": "Auditoría", "icon": "history", "ruta": "/admin/auditoria"},
             {"label": "Diagnóstico", "icon": "monitor_heart", "ruta": "/diagnostico"},
         ],

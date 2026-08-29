@@ -21,9 +21,11 @@ class _HTMLTableParser(HTMLParser):
         self.headers: list[str] = []
         self.rows: list[list[str]] = []
         self.meta: dict[str, str] = {}
+        self.vertical_cols: list[bool] = []
         self._current_row: list[str] = []
         self._cell: str = ""
         self._in_h1 = self._in_th = self._in_td = False
+        self._th_is_vertical = False
 
     def handle_starttag(self, tag: str, attrs) -> None:
         attrs_dict = dict(attrs)
@@ -37,6 +39,7 @@ class _HTMLTableParser(HTMLParser):
         elif tag == "th":
             self._in_th = True
             self._cell = ""
+            self._th_is_vertical = "v" in (attrs_dict.get("class", "").split())
         elif tag == "td":
             self._in_td = True
             self._cell = ""
@@ -49,6 +52,7 @@ class _HTMLTableParser(HTMLParser):
         elif tag == "th":
             self._in_th = False
             self.headers.append(self._cell.strip())
+            self.vertical_cols.append(self._th_is_vertical)
         elif tag == "td":
             self._in_td = False
             self._current_row.append(self._cell.strip())
@@ -66,11 +70,10 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
     """
     Convierte HTML simple (tabla + título) a PDF via reportlab.
 
-    Mejoras v2:
     - Membrete con institución, tipo de informe, grupo, periodo y fecha.
-    - Columnas proporcionales: primera columna 35%, resto reparten el 65%,
-      con mínimo de 1.5 cm por columna numérica.
-    - Paragraph() en todas las celdas para habilitar word-wrap.
+    - Columnas anchas para texto, estrechas para datos numéricos.
+    - Encabezados verticales (rotados 90°) en columnas estrechas cuando
+      hay >5 columnas, evitando el apilamiento de letras.
     """
     import io
     from datetime import date as _date
@@ -82,13 +85,40 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
         getSampleStyleSheet,
     )
     from reportlab.lib.units import cm
+    from reportlab.pdfbase.pdfmetrics import stringWidth
     from reportlab.platypus import (
+        Flowable,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
     )
+
+    class _RotatedText(Flowable):
+        """Flowable que dibuja texto rotado 90° (lectura de abajo hacia arriba)."""
+
+        def __init__(self, text: str, font_name: str = "Helvetica-Bold",
+                     font_size: float = 7, text_color=None):
+            super().__init__()
+            self.text = text
+            self.font_name = font_name
+            self.font_size = font_size
+            self.text_color = text_color
+            self.width = font_size + 6
+            self.height = stringWidth(text, font_name, font_size) + 8
+
+        def wrap(self, avail_width, avail_height):
+            return self.width, self.height
+
+        def draw(self):
+            self.canv.saveState()
+            self.canv.rotate(90)
+            self.canv.setFont(self.font_name, self.font_size)
+            if self.text_color:
+                self.canv.setFillColor(self.text_color)
+            self.canv.drawString(2, -(self.font_size + 1), self.text)
+            self.canv.restoreState()
 
     parser = _HTMLTableParser()
     parser.feed(html_content)
@@ -110,7 +140,7 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
     story: list = []
 
     # ── Membrete ──────────────────────────────────────────────────────────────
-    page_w = page_size[0] - 3 * cm  # ancho útil (márgenes L + R = 3 cm)
+    page_w = page_size[0] - 3 * cm
     fecha_str = _date.today().strftime("%d/%m/%Y")
 
     grupo = parser.meta.get("report-grupo", "")
@@ -143,7 +173,7 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
         fontSize=8,
         leading=11,
         textColor=colors.HexColor("#555555"),
-        alignment=2,  # RIGHT
+        alignment=2,
     )
 
     membrete_data = [
@@ -171,22 +201,32 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
 
     # ── Tabla de datos ────────────────────────────────────────────────────────
     if parser.headers:
-        # Columnas proporcionales
-        if len(parser.headers) > 2:
-            col_w_nombre = page_w * 0.35
-            col_w_resto = (page_w - col_w_nombre) / (len(parser.headers) - 1)
-            col_w_resto = max(col_w_resto, 1.5 * cm)
-            col_widths = [col_w_nombre] + [col_w_resto] * (len(parser.headers) - 1)
-        else:
-            col_widths = [page_w / len(parser.headers)] * len(parser.headers)
+        has_vertical = any(parser.vertical_cols)
 
-        # Reescalar si el total supera el ancho útil (evita desbordamiento de márgenes)
+        if has_vertical:
+            n_wide = sum(1 for v in parser.vertical_cols if not v)
+            n_narrow = sum(1 for v in parser.vertical_cols if v)
+            w_narrow = 1.4 * cm
+            w_wide_total = page_w - n_narrow * w_narrow
+            w_wide = w_wide_total / max(n_wide, 1)
+            w_wide = max(w_wide, 3 * cm)
+            col_widths = [
+                w_narrow if parser.vertical_cols[i] else w_wide
+                for i in range(num_cols)
+            ]
+        elif num_cols > 2:
+            col_w_nombre = page_w * 0.35
+            col_w_resto = (page_w - col_w_nombre) / (num_cols - 1)
+            col_w_resto = max(col_w_resto, 1.5 * cm)
+            col_widths = [col_w_nombre] + [col_w_resto] * (num_cols - 1)
+        else:
+            col_widths = [page_w / num_cols] * num_cols
+
         total_w = sum(col_widths)
         if total_w > page_w:
             factor = page_w / total_w
             col_widths = [w * factor for w in col_widths]
 
-        # Estilos de celdas con Paragraph para word-wrap
         cell_style_normal = ParagraphStyle(
             "CellNormal",
             parent=styles["Normal"],
@@ -206,33 +246,41 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
             txt = "—" if text is None or str(text).strip().lower() == "none" else str(text)
             return Paragraph(txt, style)
 
-        table_data = [[_wrap(h, cell_style_header) for h in parser.headers]] + [
+        header_row = []
+        for i, h in enumerate(parser.headers):
+            if has_vertical and i < len(parser.vertical_cols) and parser.vertical_cols[i]:
+                header_row.append(
+                    _RotatedText(h, font_size=7, text_color=colors.white)
+                )
+            else:
+                header_row.append(_wrap(h, cell_style_header))
+
+        table_data = [header_row] + [
             [_wrap(c, cell_style_normal) for c in row] for row in parser.rows
         ]
 
+        ts_cmds = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2B6CB0")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            (
+                "ROWBACKGROUNDS",
+                (0, 1),
+                (-1, -1),
+                [colors.white, colors.HexColor("#f5f5f5")],
+            ),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
+            ("VALIGN", (0, 1), (-1, -1), "MIDDLE"),
+            ("VALIGN", (0, 0), (-1, 0), "BOTTOM"),
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+
         tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2B6CB0")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    (
-                        "ROWBACKGROUNDS",
-                        (0, 1),
-                        (-1, -1),
-                        [colors.white, colors.HexColor("#f5f5f5")],
-                    ),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                    ("ALIGN", (0, 0), (0, -1), "LEFT"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ]
-            )
-        )
+        tbl.setStyle(TableStyle(ts_cmds))
         story.append(tbl)
     else:
         story.append(Paragraph("No hay datos para mostrar.", styles["Normal"]))

@@ -160,7 +160,7 @@ def generar_observador_excel(datos: dict) -> bytes:
     nombre_est = est.get("nombre", "Estudiante")
     ws.title = f"Observador_{nombre_est}"[:31]
 
-    _set_col_widths(ws, [6, 15, 14, 14, 14, 40, 14, 8, 16])
+    _set_col_widths(ws, [5, 14, 12, 12, 12, 50, 14, 7, 14])
 
     row = 1
 
@@ -458,8 +458,11 @@ def generar_observador_excel(datos: dict) -> bytes:
 
         col = 1
         for val in notas.values():
-            display = f"{val:.1f}" if val is not None else "—"
-            cell = ws.cell(row, col, display)
+            if val is not None:
+                cell = ws.cell(row, col, float(val))
+                cell.number_format = "0.0"
+            else:
+                cell = ws.cell(row, col, "—")
             cell.font = Font(bold=True, size=11, color=_AZUL)
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = _THIN_BORDER

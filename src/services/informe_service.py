@@ -206,12 +206,16 @@ class InformeService:
     def generar_notas(
         self,
         dto: InformeNotasDTO,
+        contexto: dict | None = None,
     ) -> bytes:
         """
         Genera el informe de notas en el formato especificado (Excel o PDF).
 
         Obtiene los datos del consolidado y los exporta al formato indicado.
         Retorna el contenido como bytes para descarga directa.
+
+        ``contexto`` puede traer grupo_nombre / periodo_nombre / asignatura_nombre
+        para el membrete del PDF.
 
         Lanza:
             ValueError: Si no hay exportador configurado.
@@ -229,7 +233,7 @@ class InformeService:
                 datos,
                 titulo=f"Informe de Notas — Periodo {dto.periodo_id}",
             )
-            return exporter.exportar_pdf(html)
+            return exporter.exportar_pdf(self._inyectar_meta_html(html, contexto))
 
     # ------------------------------------------------------------------
     # Informe de asistencia
@@ -250,11 +254,15 @@ class InformeService:
     def generar_asistencia(
         self,
         dto: InformeAsistenciaDTO,
+        contexto: dict | None = None,
     ) -> bytes:
         """
         Genera el informe de asistencia en el formato especificado.
 
         Retorna el contenido como bytes para descarga directa.
+
+        ``contexto`` puede traer grupo_nombre / periodo_nombre para el
+        membrete del PDF.
 
         Lanza:
             ValueError: Si no hay exportador configurado.
@@ -272,7 +280,7 @@ class InformeService:
                 datos,
                 titulo=f"Informe de Asistencia — Periodo {dto.periodo_id}",
             )
-            return exporter.exportar_pdf(html)
+            return exporter.exportar_pdf(self._inyectar_meta_html(html, contexto))
 
     # ------------------------------------------------------------------
     # Informe anual consolidado
@@ -550,12 +558,49 @@ class InformeService:
         import io as _io
 
         import openpyxl as _xl
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+        from openpyxl.utils import get_column_letter
 
         wb = _xl.Workbook()
         ws = wb.active
         ws.title = nombre[:31]
+
+        hdr_font = Font(bold=True, color="FFFFFF", size=9)
+        hdr_fill = PatternFill(fill_type="solid", fgColor="2B6CB0")
+        hdr_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin_border = Border(
+            left=Side(style="thin", color="CBD5E0"),
+            right=Side(style="thin", color="CBD5E0"),
+            top=Side(style="thin", color="CBD5E0"),
+            bottom=Side(style="thin", color="CBD5E0"),
+        )
+
+        max_cols = 0
         for fila in filas:
             ws.append(fila if fila else [""])
+            if fila:
+                max_cols = max(max_cols, len(fila))
+
+        if filas:
+            for cell in ws[1]:
+                cell.font = hdr_font
+                cell.fill = hdr_fill
+                cell.alignment = hdr_align
+
+        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=max_cols or 1):
+            for cell in row:
+                cell.border = thin_border
+
+        for col_idx in range(1, (max_cols or 1) + 1):
+            max_len = 0
+            for row in ws.iter_rows(min_col=col_idx, max_col=col_idx):
+                for cell in row:
+                    val = str(cell.value) if cell.value is not None else ""
+                    longest = max((len(line) for line in val.split("\n")), default=0)
+                    if longest > max_len:
+                        max_len = longest
+            ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 4, 50)
+
         buf = _io.BytesIO()
         wb.save(buf)
         return buf.getvalue()
@@ -897,6 +942,11 @@ class InformeService:
         html = self._datos_a_html(filas, titulo=titulo)
         return exporter.exportar_pdf(self._inyectar_meta_html(html, contexto))
 
+    _ENCABEZADOS_ANCHOS = frozenset({
+        "Estudiante", "Documento", "Asignatura", "Área", "Concepto",
+        "Observaciones", "Estado", "Nivel de Desempeño", "Periodo", "Semana",
+    })
+
     @staticmethod
     def _datos_a_html(datos: list[dict], titulo: str = "Informe") -> str:
         if not datos:
@@ -906,6 +956,7 @@ class InformeService:
             )
 
         encabezados = list(datos[0].keys())
+        usar_vertical = len(encabezados) > 5
 
         def _celda(val) -> str:
             if val is None:
@@ -917,7 +968,23 @@ class InformeService:
             "<tr>" + "".join(f"<td>{_celda(fila.get(col))}</td>" for col in encabezados) + "</tr>"
             for fila in datos
         )
-        encabezados_html = "".join(f"<th>{col}</th>" for col in encabezados)
+
+        if usar_vertical:
+            ths = []
+            for col in encabezados:
+                if col in InformeService._ENCABEZADOS_ANCHOS:
+                    ths.append(f"<th>{col}</th>")
+                else:
+                    ths.append(f'<th class="v">{col}</th>')
+            encabezados_html = "".join(ths)
+        else:
+            encabezados_html = "".join(f"<th>{col}</th>" for col in encabezados)
+
+        css_vertical = (
+            "th.v { writing-mode: vertical-rl; transform: rotate(180deg); "
+            "white-space: nowrap; height: 120px; font-size: 9px; padding: 4px 2px; "
+            "min-width: 28px; }"
+        ) if usar_vertical else ""
 
         return (
             f"<html><head><meta charset='utf-8'>"
@@ -926,8 +993,10 @@ class InformeService:
             f"h1 {{ font-size: 15px; color: #2B3674; margin-bottom: 8px; }}"
             f"table {{ border-collapse: collapse; width: 100%; }}"
             f"th {{ background-color: #2B6CB0; color: white; padding: 6px 8px; text-align: center; }}"
-            f"td {{ border: 1px solid #ddd; padding: 4px 8px; }}"
+            f"td {{ border: 1px solid #ddd; padding: 4px 8px; text-align: center; }}"
+            f"td:first-child {{ text-align: left; }}"
             f"tr:nth-child(even) {{ background-color: #f5f5f5; }}"
+            f"{css_vertical}"
             f"</style></head>"
             f"<body>"
             f"<h1>{titulo}</h1>"
@@ -979,20 +1048,39 @@ def merge_excels(excel_list: list[tuple[str, bytes]]) -> bytes:
     if not excel_list:
         raise ValueError("No hay archivos Excel para fusionar.")
 
+    import copy
     import io
 
     import openpyxl
+    from openpyxl.utils import get_column_letter
 
     wb_dest = openpyxl.Workbook()
-    wb_dest.remove(wb_dest.active)  # elimina la hoja vacía por defecto
+    wb_dest.remove(wb_dest.active)
 
     for nombre_hoja, excel_bytes in excel_list:
         wb_src = openpyxl.load_workbook(io.BytesIO(excel_bytes))
         ws_src = wb_src.active
         nombre_safe = nombre_hoja[:31]
         ws_dest = wb_dest.create_sheet(title=nombre_safe)
-        for row in ws_src.iter_rows(values_only=True):
-            ws_dest.append(list(row))
+
+        for mr in ws_src.merged_cells.ranges:
+            ws_dest.merge_cells(str(mr))
+
+        for row in ws_src.iter_rows():
+            for cell in row:
+                dest_cell = ws_dest.cell(row=cell.row, column=cell.column, value=cell.value)
+                if cell.has_style:
+                    dest_cell.font = copy.copy(cell.font)
+                    dest_cell.fill = copy.copy(cell.fill)
+                    dest_cell.border = copy.copy(cell.border)
+                    dest_cell.alignment = copy.copy(cell.alignment)
+                    dest_cell.number_format = cell.number_format
+
+        for col_letter, dim in ws_src.column_dimensions.items():
+            ws_dest.column_dimensions[col_letter].width = dim.width
+
+        for row_num, dim in ws_src.row_dimensions.items():
+            ws_dest.row_dimensions[row_num].height = dim.height
 
     buf = io.BytesIO()
     wb_dest.save(buf)

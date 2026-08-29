@@ -17,6 +17,7 @@ html[data-theme="dark"] .ag-theme-balham .ag-root-wrapper,
 html[data-theme="dark"] .ag-theme-balham .ag-body-viewport {
   background: var(--color-surface);
   color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
 
 html[data-theme="dark"] .ag-theme-balham .ag-header,
@@ -26,13 +27,78 @@ html[data-theme="dark"] .ag-theme-balham .ag-header-cell {
   border-color: var(--color-border);
 }
 
+html[data-theme="dark"] .ag-theme-balham .ag-header-cell-label {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-row {
+  color: var(--color-text-primary);
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-row-odd {
+  background: var(--color-surface-alt);
+}
+
 html[data-theme="dark"] .ag-theme-balham .ag-row:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.09) !important;
 }
 
 html[data-theme="dark"] .ag-theme-balham .ag-row-selected,
 html[data-theme="dark"] .ag-theme-balham .ag-row-focus {
-  background: rgba(46, 49, 146, 0.14);
+  background: rgba(139, 144, 240, 0.22) !important;
+}
+
+html[data-theme="dark"] .ag-theme-balham .ag-cell {
+  color: var(--color-text-primary);
+  border-color: var(--color-border) !important;
+}
+
+/* ── Mirror para OS-auto dark (sin toggle explícito) ──────────── */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .ag-theme-balham,
+  html:not([data-theme="light"]) .ag-theme-balham .ag-root-wrapper,
+  html:not([data-theme="light"]) .ag-theme-balham .ag-body-viewport {
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-header,
+  html:not([data-theme="light"]) .ag-theme-balham .ag-header-cell {
+    background: var(--color-surface-alt);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-header-cell-label {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-row {
+    color: var(--color-text-primary);
+    border-color: var(--color-border) !important;
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-row-odd {
+    background: var(--color-surface-alt);
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-row:hover {
+    background: rgba(255, 255, 255, 0.09) !important;
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-row-selected,
+  html:not([data-theme="light"]) .ag-theme-balham .ag-row-focus {
+    background: rgba(139, 144, 240, 0.22) !important;
+  }
+
+  html:not([data-theme="light"]) .ag-theme-balham .ag-cell {
+    color: var(--color-text-primary);
+    border-color: var(--color-border) !important;
+  }
 }
 
 /* ── Wrapper de ag-grid con altura por viewport ─────────────────────

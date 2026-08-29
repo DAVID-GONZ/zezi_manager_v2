@@ -40,6 +40,7 @@ RUTAS_REQUERIDAS = {
     "/institucion/configuracion",
     "/admin/usuarios",
     "/admin/auditoria",
+    "/director/equipo",
 }
 
 
@@ -58,12 +59,9 @@ def test_navitems_preserva_rutas():
     assert not faltantes, f"Rutas perdidas: {faltantes}"
 
 
-def test_navitems_grupos_raiz_seis():
-    # 5 items con label + 1 divider + 1 item Administración = 7 entradas
-    # pero "grupos visibles" depende del rol; este test cuenta entradas top-level
-    # que NO son divider.
+def test_navitems_grupos_raiz_siete():
     no_dividers = [i for i in NAV_ITEMS if "divider" not in i]
-    assert len(no_dividers) == 6, f"Esperados 6 grupos raíz, hay {len(no_dividers)}"
+    assert len(no_dividers) == 7, f"Esperados 7 grupos raíz, hay {len(no_dividers)}"
 
 
 def test_navitems_filtro_profesor():
@@ -90,6 +88,7 @@ def test_navitems_admin_es_plataforma():
     assert "Académico" not in labels
     assert "Evaluación" not in labels
     assert "Informes" not in labels
+    assert "Dirección" not in labels
     assert "Inicio" in labels
     assert "Administración" in labels
 
@@ -104,24 +103,24 @@ def test_navitems_admin_es_plataforma():
 
 
 def test_navitems_director_hereda_institucional():
-    """director conserva acceso institucional/académico y ve Configuración
-    institucional dentro de Administración; NO ve Auditoría (admin exclusivo)."""
+    """director conserva acceso institucional/académico y ve Dirección con
+    Equipo docente y Configuración institucional; NO ve Administración (admin)."""
     from src.interface.design.layout import _usuario_puede_ver
 
     visibles = [i for i in NAV_ITEMS if _usuario_puede_ver(i, "director")]
     labels = [i.get("label") for i in visibles]
     assert "Aula" in labels
     assert "Académico" in labels
-    assert "Administración" in labels
+    assert "Dirección" in labels
+    assert "Administración" not in labels
 
-    admin_grupo = next(i for i in NAV_ITEMS if i.get("label") == "Administración")
+    dir_grupo = next(i for i in NAV_ITEMS if i.get("label") == "Dirección")
     hijos_dir = [
-        c["label"] for c in admin_grupo["children"]
+        c["label"] for c in dir_grupo["children"]
         if _usuario_puede_ver(c, "director")
     ]
+    assert "Equipo docente" in hijos_dir
     assert "Configuración institucional" in hijos_dir
-    assert "Usuarios" in hijos_dir
-    assert "Auditoría" not in hijos_dir
 
 
 # ── paso_35: fuente única — sin drift entre NAV y registro ────────────────────

@@ -192,6 +192,49 @@
   font-size: 18px !important;
 }
 
+/* ── Select dropdown popup — dark mode ──────────────────────────────────
+   .q-menu flota fuera de .andes-input; Quasar no conoce nuestros tokens.
+   Se estila aquí para que el popup use la paleta propia en modo oscuro. */
+:root[data-theme="dark"] .q-menu {
+  background: var(--color-surface-high) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
+}
+:root[data-theme="dark"] .q-menu .q-item {
+  color: var(--color-text-primary) !important;
+}
+:root[data-theme="dark"] .q-menu .q-item--clickable:hover {
+  background: rgba(139, 144, 240, 0.13) !important;
+}
+:root[data-theme="dark"] .q-menu .q-item--active {
+  background: rgba(139, 144, 240, 0.22) !important;
+  color: var(--color-primary) !important;
+}
+:root[data-theme="dark"] .q-menu .q-separator {
+  background: var(--color-border) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .q-menu {
+    background: var(--color-surface-high) !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
+  }
+  :root:not([data-theme="light"]) .q-menu .q-item {
+    color: var(--color-text-primary) !important;
+  }
+  :root:not([data-theme="light"]) .q-menu .q-item--clickable:hover {
+    background: rgba(139, 144, 240, 0.13) !important;
+  }
+  :root:not([data-theme="light"]) .q-menu .q-item--active {
+    background: rgba(139, 144, 240, 0.22) !important;
+    color: var(--color-primary) !important;
+  }
+  :root:not([data-theme="light"]) .q-menu .q-separator {
+    background: var(--color-border) !important;
+  }
+}
+
 /* Ícono de tooltip en etiquetas de campo */
 .form-field-tooltip-icon {
   font-size: var(--font-size-body);

@@ -20,6 +20,20 @@ from src.domain.ports.service_ports import IExporterService
 
 from .null_exporter import _csv_bytes
 
+# Bins del histograma de notas — sincronizar con boletin_pdf.py
+_NOTA_BINS = [(60, "<60"), (70, "60-69"), (80, "70-79"), (90, "80-89"), (float("inf"), "90-100")]
+
+
+def _clasificar_notas(notas: list[float]) -> tuple[list[str], list[int]]:
+    labels = [b[1] for b in _NOTA_BINS]
+    counts = [0] * len(_NOTA_BINS)
+    for n in notas:
+        for i, (umbral, _) in enumerate(_NOTA_BINS):
+            if n < umbral:
+                counts[i] += 1
+                break
+    return labels, counts
+
 _HEADER_FILL = PatternFill(fill_type="solid", fgColor="2B6CB0")
 _HEADER_FONT = Font(bold=True, color="FFFFFF", size=9)
 _HEADER_ALIGN = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -97,12 +111,14 @@ class OpenpyxlExporter(IExporterService):
                     elif isinstance(valor, int):
                         cell.alignment = _RIGHT_ALIGN
 
-            # Auto-ancho de columnas
+            # Auto-ancho de columnas (usa la línea más larga, no el total)
             for col_idx, header in enumerate(headers, 1):
-                max_len = max(
-                    len(str(header)),
-                    max((len(str(fila.get(header, ""))) for fila in datos), default=0),
-                )
+                max_len = len(str(header))
+                for fila in datos:
+                    val = str(fila.get(header, ""))
+                    longest_line = max((len(line) for line in val.split("\n")), default=0)
+                    if longest_line > max_len:
+                        max_len = longest_line
                 ws.column_dimensions[get_column_letter(col_idx)].width = min(
                     max_len + 4, _MAX_COL_WIDTH
                 )
@@ -270,7 +286,7 @@ def generar_reporte_convivencia_grupo_excel(
         "observaciones": 40,
     }
     for col_idx, (key, header) in enumerate(all_cols, 1):
-        w = col_widths.get(key, 12)
+        w = col_widths.get(key, max(len(header) + 4, 14))
         ws.column_dimensions[get_column_letter(col_idx)].width = w
 
     # Congelar paneles (encabezado visible al hacer scroll)
@@ -466,19 +482,7 @@ def generar_reporte_convivencia_grupo_excel(
     # ── Histograma de notas ──
     hist_row = reg_row_start + 4
     ws2.cell(hist_row, 5, "DISTRIBUCIÓN DE NOTAS").font = _SUBTITLE_FONT
-    bin_labels = ["<60", "60-69", "70-79", "80-89", "90-100"]
-    counts = [0, 0, 0, 0, 0]
-    for n in notas:
-        if n < 60:
-            counts[0] += 1
-        elif n < 70:
-            counts[1] += 1
-        elif n < 80:
-            counts[2] += 1
-        elif n < 90:
-            counts[3] += 1
-        else:
-            counts[4] += 1
+    bin_labels, counts = _clasificar_notas(notas)
 
     for ci, (label, cnt) in enumerate(zip(bin_labels, counts), 5):
         ws2.cell(hist_row + 1, ci, label).font = _SMALL_FONT

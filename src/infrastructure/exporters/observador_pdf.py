@@ -325,7 +325,7 @@ def _tabla_registros(entradas: list, page_w: float) -> list:
         1.8 * cm,           # Periodo
         1.8 * cm,           # Tipo
         1.6 * cm,           # Situación
-        page_w - 13.3 * cm, # Descripción (flex)
+        page_w - 12.3 * cm, # Descripción (flex)
         1.8 * cm,           # Medida
         0.9 * cm,           # Seg.
         1.8 * cm,           # Registrado por

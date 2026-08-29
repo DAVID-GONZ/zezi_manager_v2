@@ -287,7 +287,9 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def get_grupo_por_codigo(self, codigo: str) -> Grupo | None:
+    def get_grupo_por_codigo(
+        self, codigo: str, institucion_id: int | None = None
+    ) -> Grupo | None:
         """
         Busca un grupo por su código (ej. '601', '1101').
         Útil para importaciones masivas y formularios con código manual.

@@ -482,8 +482,14 @@ class UsuarioService:
         self,
         periodo_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
-        """Retorna los docentes con su carga académica calculada."""
-        return self._repo.listar_docentes_info(periodo_id=periodo_id, solo_activos=True)
+        """Retorna los docentes con su carga académica calculada (scoped por tenant)."""
+        from src.services.contexto_tenant import institucion_actual
+
+        return self._repo.listar_docentes_info(
+            periodo_id=periodo_id,
+            solo_activos=True,
+            institucion_id=institucion_actual(),
+        )
 
     @staticmethod
     def _aplicar_scope(filtro: FiltroUsuariosDTO) -> FiltroUsuariosDTO:
@@ -548,7 +554,9 @@ class UsuarioService:
         Cuenta usuarios por rol (incluye inactivos en el total) y expone el
         número de activos. No muta nada.
         """
-        todos = self._repo.listar_resumenes(FiltroUsuariosDTO(solo_activos=False, por_pagina=200))
+        todos = self._repo.listar_resumenes(
+            self._aplicar_scope(FiltroUsuariosDTO(solo_activos=False, por_pagina=200))
+        )
         por_rol: dict[str, int] = {}
         activos = 0
         for u in todos:

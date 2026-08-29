@@ -31,8 +31,8 @@ class FakeRepoAuth(IUsuarioRepository):
     def existe_usuario(self, u): return False
     def listar_filtrado(self, f): return []
     def listar_resumenes(self, f): return []
-    def listar_docentes_info(self, periodo_id=None, solo_activos=True): return []
-    def get_docente_info(self, uid, periodo_id=None): return None
+    def listar_docentes_info(self, periodo_id=None, solo_activos=True, institucion_id=None): return []
+    def get_docente_info(self, uid, periodo_id=None, institucion_id=None): return None
     def listar_asignaciones_docente(self, uid, periodo_id=None): return []
     def guardar(self, u): return u
     def actualizar(self, u): return u

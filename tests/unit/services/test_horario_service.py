@@ -101,7 +101,7 @@ class FakeInfraRepo(IInfraestructuraRepository):
     def actualizar_asignatura(self, a): return a
     def eliminar_asignatura(self, asignatura_id): return False
     def get_grupo(self, grupo_id): return None
-    def get_grupo_por_codigo(self, codigo): return None
+    def get_grupo_por_codigo(self, codigo, institucion_id=None): return None
     def listar_grupos(self, grado=None, institucion_id=None): return []
     def guardar_grupo(self, g): return g
     def asignar_sala_a_grupo(self, *a): return True

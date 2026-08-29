@@ -122,6 +122,7 @@ class IUsuarioRepository(ABC):
         self,
         periodo_id: int | None = None,
         solo_activos: bool = True,
+        institucion_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
         """
         Retorna los docentes con su carga académica calculada por JOIN.
@@ -136,6 +137,7 @@ class IUsuarioRepository(ABC):
         self,
         usuario_id: int,
         periodo_id: int | None = None,
+        institucion_id: int | None = None,
     ) -> DocenteInfoDTO | None:
         """
         Retorna la vista estadística de un docente específico.

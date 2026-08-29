@@ -129,7 +129,10 @@ def resumen_consolidado(tipo: str | None, datos) -> ResumenConsolidadoDTO | None
     if tipo == "consolidado_anual" and isinstance(datos, list):
         defs = [float(r.get("definitiva", 0) or 0) for r in datos]
         n = len(datos)
-        promovidos = sum(1 for r in datos if str(r.get("estado", "")).lower() == "promovido")
+        promovidos = sum(
+            1 for r in datos
+            if str(r.get("estado_promocion") or r.get("estado", "")).lower() == "promovido"
+        )
         return ResumenConsolidadoDTO(
             clase="anual",
             n=n,

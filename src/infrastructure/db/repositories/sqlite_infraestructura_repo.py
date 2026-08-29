@@ -523,9 +523,19 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             d["jornada"] = Jornada(d["jornada"]) if d.get("jornada") else Jornada.UNICA
             return Grupo(**d)
 
-    def get_grupo_por_codigo(self, codigo: str) -> Grupo | None:
+    def get_grupo_por_codigo(
+        self, codigo: str, institucion_id: int | None = None
+    ) -> Grupo | None:
         with self._get_conn() as conn:
-            row = conn.execute("SELECT * FROM grupos WHERE codigo = ?", (codigo,)).fetchone()
+            if institucion_id is not None:
+                row = conn.execute(
+                    "SELECT * FROM grupos WHERE codigo = ? AND institucion_id = ?",
+                    (codigo, institucion_id),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM grupos WHERE codigo = ?", (codigo,)
+                ).fetchone()
             if not row:
                 return None
             d = dict(row)

@@ -186,9 +186,11 @@ def registrar_rutas_ui() -> None:
     from src.interface.pages.admin.plan_estudios import plan_estudios_page
     from src.interface.pages.admin.salas import salas_page
     from src.interface.pages.admin.usuarios import usuarios_page
+    from src.interface.pages.director.gestion_usuarios import gestion_usuarios_page
     from src.interface.pages.institucion.hub_institucion import hub_institucion_page
 
-    registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN_DIRECTOR)
+    registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN)
+    registrar_pagina("/director/equipo", gestion_usuarios_page, roles=_DIRECTOR)
     registrar_pagina("/admin/instituciones", catalogo_instituciones_page, roles=_ADMIN)
     registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
     registrar_pagina("/diagnostico", diagnostico_page, roles=_ADMIN)

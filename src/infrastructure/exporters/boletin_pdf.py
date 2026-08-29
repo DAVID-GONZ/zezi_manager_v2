@@ -39,6 +39,20 @@ _GRIS_LINEA = colors.HexColor("#CBD5E0")
 _GRIS_TEXTO = colors.HexColor("#374151")
 _BLANCO = colors.white
 
+# Bins del histograma de notas — sincronizar con openpyxl_exporter.py
+_NOTA_BINS = [(60, "<60"), (70, "60-69"), (80, "70-79"), (90, "80-89"), (float("inf"), "90-100")]
+
+
+def _clasificar_notas(notas: list[float]) -> tuple[list[str], list[int]]:
+    labels = [b[1] for b in _NOTA_BINS]
+    counts = [0] * len(_NOTA_BINS)
+    for n in notas:
+        for i, (umbral, _) in enumerate(_NOTA_BINS):
+            if n < umbral:
+                counts[i] += 1
+                break
+    return labels, counts
+
 # ── Estilos ───────────────────────────────────────────────────────────────────
 
 _ss = getSampleStyleSheet()
@@ -160,8 +174,8 @@ def _nota(n) -> str:
         return str(n)
 
 
-def _pct(presentes: int, fi: int, retrasos: int) -> str:
-    total = presentes + fi + retrasos
+def _pct(presentes: int, fi: int, fj: int, retrasos: int, excusas: int) -> str:
+    total = presentes + fi + fj + retrasos + excusas
     if total == 0:
         return "—"
     return f"{round(presentes / total * 100)}%"
@@ -339,7 +353,7 @@ def _tabla_periodo(areas: list[dict], page_w: float) -> Table:
                 _p(str(fj), "cell_c"),
                 _p(str(r), "cell_c"),
                 _p(str(e), "cell_c"),
-                _p(_pct(p, fi, r), "cell_c"),
+                _p(_pct(p, fi, fj, r, e), "cell_c"),
             ]
             table_data.append(row)
             if row_idx % 2 == 0:
@@ -420,7 +434,7 @@ def _tabla_anual(
             cells_periodo = [_p(_nota(notas_p.get(per["id"])), "cell_c") for per in periodos]
             definitiva = asig.get("definitiva")
             row = (
-                [_p(f"  {asig['nombre']}", "cell"), *cells_periodo, _p(_nota(definitiva), "cell_bold_c"), _p(str(p), "cell_c"), _p(str(fi), "cell_c"), _p(str(fj), "cell_c"), _p(str(r), "cell_c"), _p(str(e), "cell_c"), _p(_pct(p, fi, r), "cell_c")]
+                [_p(f"  {asig['nombre']}", "cell"), *cells_periodo, _p(_nota(definitiva), "cell_bold_c"), _p(str(p), "cell_c"), _p(str(fi), "cell_c"), _p(str(fj), "cell_c"), _p(str(r), "cell_c"), _p(str(e), "cell_c"), _p(_pct(p, fi, fj, r, e), "cell_c")]
             )
             table_data.append(row)
             if row_idx % 2 == 0:
@@ -894,19 +908,7 @@ def _estadisticos_grupo(filas: list[dict], page_w: float) -> list:
     d_hist = Drawing(hist_w, hist_h)
 
     if notas:
-        bin_labels = ["<60", "60-69", "70-79", "80-89", "90-100"]
-        counts = [0] * 5
-        for n in notas:
-            if n < 60:
-                counts[0] += 1
-            elif n < 70:
-                counts[1] += 1
-            elif n < 80:
-                counts[2] += 1
-            elif n < 90:
-                counts[3] += 1
-            else:
-                counts[4] += 1
+        bin_labels, counts = _clasificar_notas(notas)
 
         bc = VerticalBarChart()
         bc.x = 1.2 * cm
@@ -1165,7 +1167,7 @@ def generar_reporte_convivencia_grupo_pdf(
     all_cols = base_cols + extra_cols + text_cols
 
     # Anchos: estudiante flexible, numéricos fijos, texto flexible
-    n_num = 6 + len(desglose_cols)  # nota, desempeño no son numéricos puros pero pequeños
+    n_num = 5 + len(desglose_cols)
     w_num = 1.0 * cm
     w_desemp = 1.8 * cm
     w_nota = 1.0 * cm
@@ -1176,7 +1178,7 @@ def generar_reporte_convivencia_grupo_pdf(
     w_obs = w_text * 0.40
 
     col_widths = [w_est, w_nota, w_desemp]
-    col_widths += [w_num] * 6
+    col_widths += [w_num] * 5
     col_widths += [w_num] * len(desglose_cols)
     col_widths += [w_concepto, w_obs]
 
@@ -1240,9 +1242,7 @@ def generar_reporte_convivencia_grupo_pdf(
             "compromisos": fila.get("compromisos", 0),
             "citaciones": fila.get("citaciones", 0),
             "descargos": fila.get("descargos", 0),
-            "num_obs": len(fila.get("observaciones", "").split("\n"))
-            if fila.get("observaciones")
-            else 0,
+            "num_obs": fila.get("num_obs", 0),
         })
     story.extend(_estadisticos_grupo(filas_stats, page_w))
 

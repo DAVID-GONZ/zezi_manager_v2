@@ -56,9 +56,9 @@ ACCESO_ESPERADO: dict[str, object] = {
     "/admin/auditoria": _ADMIN,
     "/admin/instituciones": _ADMIN,
     "/diagnostico": _ADMIN,
-    # ── admin + director ──
-    "/admin/usuarios": frozenset({"admin", "director"}),
+    "/admin/usuarios": _ADMIN,
     # ── Solo director ──
+    "/director/equipo": _DIR,
     "/admin/asignaturas": _DIR,
     "/admin/configuracion": _DIR,
     "/admin/salas": _DIR,

@@ -88,7 +88,6 @@ venv.bak/
 *.swp
 *.swo
 .claude/*
-!.claude/agents/
 .gemini/
 __pycache__/
 
@@ -112,18 +111,15 @@ scripts/*
 extract_docs.py
 scratch.py
 step_list.json
-init.sh
-CLAUDE.md   
+init.sh 
 CHECKLIST.md
 CONVENTIONS.md
 TASK_LIST.md
 AGENTS.md
 progress/
 README.md
-CHECKPOINTS.md
 AGENTS.md
 init.py
-spec_author.md
 *.toml
 !pyproject.toml
 *.lock
