@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..models.tenant import TenantScope
 from ..models.acudiente import Acudiente, EstudianteAcudiente
 
 
@@ -43,16 +44,28 @@ class IAcudienteRepository(ABC):
 
     @abstractmethod
     def listar(
-        self, activos_solo: bool = False, institucion_id: int | None = None
+        self, institucion_id: TenantScope, activos_solo: bool = False
     ) -> list[Acudiente]:
-        """Retorna todos los acudientes, opcionalmente filtrados por institución y estado."""
+        """
+        Retorna todos los acudientes, opcionalmente filtrados por institución y estado.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
         ...
 
     @abstractmethod
     def buscar_por_documento(
-        self, numero: str, institucion_id: int | None = None
+        self, numero: str, institucion_id: TenantScope
     ) -> Acudiente | None:
-        """Busca un acudiente por documento dentro del scope de institución."""
+        """
+        Busca un acudiente por documento dentro del scope de institución.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → acota al tenant
+          - "*"  → cross-tenant (admin)
+        """
         ...
 
     @abstractmethod

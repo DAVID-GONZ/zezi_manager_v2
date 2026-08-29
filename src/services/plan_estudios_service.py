@@ -14,6 +14,7 @@ from src.domain.models.infraestructura import (
     PlanEstudios,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -52,7 +53,8 @@ class PlanEstudiosService:
     # ── Grados ofrecidos ───────────────────────────────────────────────
     def listar_grados(self) -> list[Grado]:
         """Lista los grados ofrecidos (delegado al repositorio)."""
-        return self._repo.listar_grados()
+        scope = institucion_actual() or "*"
+        return self._repo.listar_grados(scope)
 
     @requiere_escritura
     def guardar_grado(
@@ -80,18 +82,19 @@ class PlanEstudiosService:
 
     def horas_objetivo(self, grado: int) -> int:
         """Total de horas semanales objetivo declarado para el grado (0 si no existe)."""
-        g = next((x for x in self._repo.listar_grados() if x.numero == grado), None)
+        scope = institucion_actual() or "*"
+        g = next((x for x in self._repo.listar_grados(scope) if x.numero == grado), None)
         return g.horas_semanales if g else 0
 
     # ── Plan de estudios ───────────────────────────────────────────────
     def listar(self) -> list[PlanEstudios]:
         """Lista todo el plan de estudios del tenant activo."""
-        return self._repo.listar_plan_estudios(institucion_id=self._resolver_institucion(None))
+        return self._repo.listar_plan_estudios(institucion_id=self._resolver_institucion(None) or "*")
 
     def por_grado(self, grado: int) -> list[PlanEstudios]:
         """Lista el plan de estudios de un grado del tenant activo."""
         return self._repo.get_plan_estudios_por_grado(
-            grado, institucion_id=self._resolver_institucion(None)
+            grado, institucion_id=self._resolver_institucion(None) or "*"
         )
 
     def horas_por_grado(self, grado: int) -> int:
@@ -140,7 +143,8 @@ class PlanEstudiosService:
         inst_id = self._resolver_institucion(institucion_id)
         if inst_id is None:
             return None
-        grado = next((g for g in self._repo.listar_grados() if g.numero == grado_num), None)
+        scope = institucion_actual() or "*"
+        grado = next((g for g in self._repo.listar_grados(scope) if g.numero == grado_num), None)
         if grado is None or grado.id is None:
             return None
         return self._repo.get_config_grado(grado.id, inst_id)

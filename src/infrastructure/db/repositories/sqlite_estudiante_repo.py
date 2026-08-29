@@ -19,6 +19,7 @@ from src.domain.models.estudiante import (
     TipoMovimiento,
 )
 from src.domain.models.piar import PIAR
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 
 
@@ -76,23 +77,22 @@ class SqliteEstudianteRepository(IEstudianteRepository):
             return self._row_to_estudiante(row) if row else None
 
     def get_by_documento(
-        self, numero_documento: str, institucion_id: int | None = None
+        self, numero_documento: str, institucion_id: TenantScope
     ) -> Estudiante | None:
         sql = "SELECT * FROM estudiantes WHERE numero_documento = ?"
         params: list = [numero_documento.upper()]
-        # Multi-tenant (paso_30): el documento es único POR institución; al
-        # acotar al tenant evitamos colisiones cruzadas entre instituciones.
-        if institucion_id is not None:
+        # TenantScope: int → acota por institución; "*" → cross-tenant (sin filtro).
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         with self._get_conn() as conn:
             row = conn.execute(sql, params).fetchone()
             return self._row_to_estudiante(row) if row else None
 
-    def existe_documento(self, numero_documento: str, institucion_id: int | None = None) -> bool:
+    def existe_documento(self, numero_documento: str, institucion_id: TenantScope) -> bool:
         sql = "SELECT 1 FROM estudiantes WHERE numero_documento = ?"
         params: list = [numero_documento.upper()]
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         with self._get_conn() as conn:
@@ -184,13 +184,13 @@ class SqliteEstudianteRepository(IEstudianteRepository):
     def listar_por_grupo(
         self,
         grupo_id: int,
+        institucion_id: TenantScope,
         solo_activos: bool = True,
-        institucion_id: int | None = None,
     ) -> list[Estudiante]:
         sql = "SELECT * FROM estudiantes WHERE grupo_id = ?"
         params: list = [grupo_id]
-        # Multi-tenant (paso_30): scope opcional por institución.
-        if institucion_id is not None:
+        # TenantScope: int → filtra por institución; "*" → cross-tenant.
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         if solo_activos:
@@ -203,12 +203,12 @@ class SqliteEstudianteRepository(IEstudianteRepository):
     def contar_por_grupo(
         self,
         grupo_id: int,
+        institucion_id: TenantScope,
         solo_activos: bool = True,
-        institucion_id: int | None = None,
     ) -> int:
         sql = "SELECT COUNT(*) FROM estudiantes WHERE grupo_id = ?"
         params: list = [grupo_id]
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         if solo_activos:

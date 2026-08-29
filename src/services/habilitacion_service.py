@@ -22,6 +22,7 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
+from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -184,7 +185,9 @@ class HabilitacionService:
         de lo contrario cuenta todas las pendientes. Usado por el dashboard
         institucional del directivo.
         """
+        scope = institucion_actual() or "*"
         filtro = FiltroHabilitacionesDTO(
+            institucion_id=scope,
             periodo_id=periodo_id,
             estado=EstadoHabilitacion.PENDIENTE,
             por_pagina=200,

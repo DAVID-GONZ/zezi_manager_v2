@@ -69,7 +69,7 @@ class SalaService:
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_salas(institucion_id=institucion_actual())
+        return self._repo.listar_salas(institucion_id=institucion_actual() or "*")
 
     def get_sala(self, sala_id: int) -> Sala | None:
         """Retorna una sala por id (delegado al repositorio)."""

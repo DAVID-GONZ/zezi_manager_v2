@@ -56,7 +56,8 @@ class PlanMejoramientoService:
         if self._plan_repo.get_corte(dto.asignacion_id, dto.periodo_id) is not None:
             raise ValueError("Ya existe un corte para esta asignación en este periodo")
 
-        estudiantes = self._est_repo.listar_por_grupo(grupo_id)
+        from src.services.contexto_tenant import institucion_actual
+        estudiantes = self._est_repo.listar_por_grupo(grupo_id, institucion_actual() or "*")
         if not estudiantes:
             raise ValueError("No hay estudiantes en el grupo")
 

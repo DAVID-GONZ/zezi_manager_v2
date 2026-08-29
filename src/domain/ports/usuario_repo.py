@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..models.tenant import TenantScope
 from ..models.usuario import (
     AsignacionDocenteInfoDTO,
     DocenteInfoDTO,
@@ -120,15 +121,19 @@ class IUsuarioRepository(ABC):
     @abstractmethod
     def listar_docentes_info(
         self,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
         solo_activos: bool = True,
-        institucion_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
         """
         Retorna los docentes con su carga académica calculada por JOIN.
         Si periodo_id es None, agrega la carga de todos los periodos activos.
         Es la query principal del grid de gestión de docentes.
         Ordenados por nombre_completo.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -136,12 +141,16 @@ class IUsuarioRepository(ABC):
     def get_docente_info(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
-        institucion_id: int | None = None,
     ) -> DocenteInfoDTO | None:
         """
         Retorna la vista estadística de un docente específico.
         None si el usuario no existe o no es docente.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -149,12 +158,17 @@ class IUsuarioRepository(ABC):
     def listar_asignaciones_docente(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
     ) -> list[AsignacionDocenteInfoDTO]:
         """
         Retorna el detalle de las asignaciones de un docente, con la
         comparativa de horas teóricas vs. horas programadas en horario.
         Usado en el perfil de docente y en el modal de asignaciones.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 

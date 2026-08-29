@@ -455,7 +455,7 @@ class GeneradorHorarioService:
 
         sala_grupo_nombre: dict[int, str] = {}
         grado_de_grupo: dict[int, int | None] = {}
-        for g in self._infra.listar_grupos(institucion_id=institucion_actual()):
+        for g in self._infra.listar_grupos(institucion_id=institucion_actual() or "*"):
             grado_de_grupo[g.id] = g.grado
             sid_g = getattr(g, "sala_id", None)
             if sid_g and sid_g in sala_nombre_map:

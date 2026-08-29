@@ -61,13 +61,25 @@ class SessionContext:
     def desde_storage(cls) -> SessionContext | None:
         """
         Construye el contexto desde app.storage.user de NiceGUI.
-        Retorna None si no hay sesión activa.
+        Retorna None si no hay sesión activa o si no hay contexto de UI.
 
         Choke point único de activación del modo solo lectura: cada página y
         cada handler que relee el contexto pasa por aquí, de modo que el flag
         global de la capa de servicios queda sincronizado en la task actual.
+
+        Los handlers de SocketIO/asyncio pueden dispararse fuera del contexto de
+        render de NiceGUI, y `app.storage.user` lanza RuntimeError en ese caso.
+        Ese caso NO es un error funcional: simplemente significa que la task
+        actual no tiene sesión de UI asociada y el contexto debe quedarse sin
+        sincronizar.
         """
-        storage = app.storage.user
+        try:
+            storage = app.storage.user
+        except RuntimeError as exc:
+            if "can only be used within a UI context" not in str(exc):
+                raise
+            return None
+
         if not storage.get("autenticado"):
             # Sesión cerrada: el contexto deja de imponer solo lectura ni scope.
             cls._sincronizar_solo_lectura(False)

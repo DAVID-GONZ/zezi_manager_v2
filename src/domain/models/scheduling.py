@@ -74,6 +74,24 @@ def colorear_aristas_bipartito(
         grado_a[ai] += 1
         grado_b[bi] += 1
 
+    def _kuhn(
+        a_node: int,
+        visitados: set[int],
+        adj: dict[int, list[int]],
+        match_b: list[int],
+        match_a: list[int],
+    ) -> bool:
+        for ei in adj[a_node]:
+            bi2 = edges[ei][1]
+            if bi2 in visitados:
+                continue
+            visitados.add(bi2)
+            if match_b[bi2] == -1 or _kuhn(edges[match_b[bi2]][0], visitados, adj, match_b, match_a):
+                match_b[bi2] = ei
+                match_a[a_node] = ei
+                return True
+        return False
+
     import sys as _sys
 
     limite_previo = _sys.getrecursionlimit()
@@ -89,20 +107,8 @@ def colorear_aristas_bipartito(
             match_b = [-1] * size  # nodo B -> índice de arista emparejada
             match_a = [-1] * size  # nodo A -> índice de arista emparejada
 
-            def _kuhn(a_node: int, visitados: set[int]) -> bool:
-                for ei in adj[a_node]:
-                    bi2 = edges[ei][1]
-                    if bi2 in visitados:
-                        continue
-                    visitados.add(bi2)
-                    if match_b[bi2] == -1 or _kuhn(edges[match_b[bi2]][0], visitados):
-                        match_b[bi2] = ei
-                        match_a[a_node] = ei
-                        return True
-                return False
-
             for a_node in range(size):
-                _kuhn(a_node, set())
+                _kuhn(a_node, set(), adj, match_b, match_a)
 
             matched = {match_a[a] for a in range(size) if match_a[a] != -1}
             nuevos: list[int] = []

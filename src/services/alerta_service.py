@@ -17,6 +17,7 @@ from src.domain.models.alerta import (
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
+from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -103,7 +104,8 @@ class AlertaService:
         nivel: NivelAlerta | None = None,
     ) -> int:
         """Cuenta las alertas pendientes del sistema o de un estudiante."""
-        return self._repo.contar_pendientes(estudiante_id, nivel)
+        scope = institucion_actual() or "*"
+        return self._repo.contar_pendientes(scope, estudiante_id, nivel)
 
     def resolver_alerta(
         self,

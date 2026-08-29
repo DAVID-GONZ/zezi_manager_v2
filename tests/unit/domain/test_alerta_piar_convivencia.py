@@ -558,7 +558,7 @@ class TestNotaComportamiento:
 class TestFiltros:
 
     def test_filtro_alertas_defecto(self):
-        f = FiltroAlertasDTO()
+        f = FiltroAlertasDTO(institucion_id="*")
         assert f.solo_pendientes is True
         assert f.pagina == 1
 

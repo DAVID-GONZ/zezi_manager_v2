@@ -81,7 +81,7 @@ class CatalogoAcademicoService:
         """Lista las áreas del tenant activo (o todas si admin/sin sesión)."""
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_areas(institucion_id=institucion_actual())
+        return self._repo.listar_areas(institucion_id=institucion_actual() or "*")
 
     @requiere_escritura
     def guardar_area(self, area: AreaConocimiento) -> AreaConocimiento:
@@ -118,7 +118,7 @@ class CatalogoAcademicoService:
         # id_por_defecto aquí: admin debe ver todas las instituciones.
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_asignaturas(area_id=area_id, institucion_id=institucion_actual())
+        return self._repo.listar_asignaturas(area_id=area_id, institucion_id=institucion_actual() or "*")
 
     @requiere_escritura
     def guardar_asignatura(self, asignatura: Asignatura) -> Asignatura:
@@ -158,7 +158,7 @@ class CatalogoAcademicoService:
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_grupos(grado=grado, institucion_id=institucion_actual())
+        return self._repo.listar_grupos(grado=grado, institucion_id=institucion_actual() or "*")
 
     @requiere_escritura
     def guardar_grupo(self, grupo: Grupo) -> Grupo:

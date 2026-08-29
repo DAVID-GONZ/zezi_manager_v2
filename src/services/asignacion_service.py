@@ -112,7 +112,9 @@ class AsignacionService:
         """
         if self._infra_repo is None:
             return 0
-        grupos = self._infra_repo.listar_grupos(grado=grado)
+        from src.services.contexto_tenant import institucion_actual
+
+        grupos = self._infra_repo.listar_grupos(grado=grado, institucion_id=institucion_actual() or "*")
         n = 0
         for g in grupos:
             activas = self._repo.listar(
@@ -482,7 +484,7 @@ class AsignacionService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_por_docente(
-            usuario_id, periodo_id, institucion_id=institucion_actual()
+            usuario_id, institucion_actual() or "*", periodo_id
         )
 
     def get_by_id(self, asignacion_id: int) -> Asignacion:

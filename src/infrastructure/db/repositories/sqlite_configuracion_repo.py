@@ -14,6 +14,7 @@ from src.domain.models.configuracion import (
     CriterioPromocion,
     NivelDesempeno,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 
 
@@ -35,17 +36,17 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
     # ConfiguracionAnio
     # =========================================================================
 
-    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio | None:
+    def get_activa(self, institucion_id: TenantScope) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
-            if institucion_id is None:
-                row = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE activo = 1 LIMIT 1"
-                ).fetchone()
-            else:
+            if isinstance(institucion_id, int):
                 row = conn.execute(
                     "SELECT * FROM configuracion_anio "
                     "WHERE institucion_id = ? AND activo = 1 LIMIT 1",
                     (institucion_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio WHERE activo = 1 LIMIT 1"
                 ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
@@ -56,29 +57,29 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
             ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def get_by_anio(self, institucion_id: int | None, anio: int) -> ConfiguracionAnio | None:
+    def get_by_anio(self, institucion_id: TenantScope, anio: int) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
-            if institucion_id is None:
-                row = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE anio = ?", (anio,)
-                ).fetchone()
-            else:
+            if isinstance(institucion_id, int):
                 row = conn.execute(
                     "SELECT * FROM configuracion_anio WHERE institucion_id = ? AND anio = ?",
                     (institucion_id, anio),
                 ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM configuracion_anio WHERE anio = ?", (anio,)
+                ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
-    def listar(self, institucion_id: int | None = None) -> list[ConfiguracionAnio]:
+    def listar(self, institucion_id: TenantScope) -> list[ConfiguracionAnio]:
         with self._get_conn() as conn:
-            if institucion_id is None:
-                rows = conn.execute(
-                    "SELECT * FROM configuracion_anio ORDER BY anio DESC"
-                ).fetchall()
-            else:
+            if isinstance(institucion_id, int):
                 rows = conn.execute(
                     "SELECT * FROM configuracion_anio WHERE institucion_id = ? ORDER BY anio DESC",
                     (institucion_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM configuracion_anio ORDER BY anio DESC"
                 ).fetchall()
             return [ConfiguracionAnio(**dict(r)) for r in rows]
 

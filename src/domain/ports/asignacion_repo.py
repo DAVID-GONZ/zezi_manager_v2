@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..models.tenant import TenantScope
 from ..models.asignacion import (
     Asignacion,
     AsignacionInfo,
@@ -100,15 +101,16 @@ class IAsignacionRepository(ABC):
         self,
         grupo_id: int,
         periodo_id: int,
+        institucion_id: TenantScope,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         """
         Retorna todas las asignaciones de un grupo en un periodo.
         Usado para generar el horario completo del grupo y el boletín.
 
-        `institucion_id` (paso_31): None = sin filtro; un entero restringe a
-        las asignaciones cuyo grupo pertenece a esa institución (scope tenant).
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → restringe a las asignaciones cuyo grupo es de esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -116,17 +118,18 @@ class IAsignacionRepository(ABC):
     def listar_por_docente(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         """
         Retorna todas las asignaciones de un docente.
         Si periodo_id es None, retorna de todos los periodos.
         Usado para la vista de carga académica del docente.
 
-        `institucion_id` (paso_31): None = sin filtro; un entero restringe a
-        las asignaciones cuyo grupo pertenece a esa institución (scope tenant).
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → restringe a las asignaciones cuyo grupo es de esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 

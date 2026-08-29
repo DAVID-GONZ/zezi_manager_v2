@@ -15,7 +15,7 @@ Patrones de uso principales:
 
   Resolver alertas de un estudiante:
     alertas = repo.listar_alertas(FiltroAlertasDTO(
-        estudiante_id=est_id, solo_pendientes=True
+        institucion_id=scope, estudiante_id=est_id, solo_pendientes=True
     ))
     for a in alertas:
         repo.resolver_alerta(a.id, usuario_id=uid, observacion="Citado y atendido")
@@ -40,6 +40,7 @@ from ..models.alerta import (
     NivelAlerta,
     TipoAlerta,
 )
+from ..models.tenant import TenantScope
 
 
 class IAlertaRepository(ABC):
@@ -116,6 +117,7 @@ class IAlertaRepository(ABC):
     @abstractmethod
     def contar_pendientes(
         self,
+        institucion_id: TenantScope,
         estudiante_id: int | None = None,
         nivel: NivelAlerta | None = None,
     ) -> int:
@@ -123,6 +125,10 @@ class IAlertaRepository(ABC):
         Cuenta las alertas pendientes. Si estudiante_id es None,
         cuenta todas las alertas pendientes del sistema.
         Usado para mostrar el badge de notificaciones en el dashboard.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por estudiantes de esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 

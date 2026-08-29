@@ -7,6 +7,7 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
+from src.domain.models.tenant import TenantScope
 from src.domain.models.usuario import (
     AsignacionDocenteInfoDTO,
     DocenteInfoDTO,
@@ -143,14 +144,14 @@ class SqliteUsuarioRepository(IUsuarioRepository):
 
     def listar_docentes_info(
         self,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
         solo_activos: bool = True,
-        institucion_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
         periodo_filter_a = "AND a.periodo_id = ?" if periodo_id else ""
         periodo_filter_h = "AND h.periodo_id = ?" if periodo_id else ""
         activos_filter = "AND u.activo = 1" if solo_activos else ""
-        institucion_filter = "AND u.institucion_id = ?" if institucion_id is not None else ""
+        institucion_filter = "AND u.institucion_id = ?" if isinstance(institucion_id, int) else ""
         sql = f"""
             SELECT
                 u.id, u.usuario, u.nombre_completo, u.email,
@@ -174,7 +175,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
         if periodo_id:
             params.append(periodo_id)
             params.append(periodo_id)
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             params.append(institucion_id)
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
@@ -188,12 +189,12 @@ class SqliteUsuarioRepository(IUsuarioRepository):
     def get_docente_info(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
-        institucion_id: int | None = None,
     ) -> DocenteInfoDTO | None:
         periodo_filter_a = "AND a.periodo_id = ?" if periodo_id else ""
         periodo_filter_h = "AND h.periodo_id = ?" if periodo_id else ""
-        institucion_filter = "AND u.institucion_id = ?" if institucion_id is not None else ""
+        institucion_filter = "AND u.institucion_id = ?" if isinstance(institucion_id, int) else ""
         sql = f"""
             SELECT
                 u.id, u.usuario, u.nombre_completo, u.email,
@@ -217,7 +218,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             params.append(periodo_id)
             params.append(periodo_id)
         params.append(usuario_id)
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             params.append(institucion_id)
         with self._get_conn() as conn:
             row = conn.execute(sql, params).fetchone()
@@ -230,6 +231,7 @@ class SqliteUsuarioRepository(IUsuarioRepository):
     def listar_asignaciones_docente(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
     ) -> list[AsignacionDocenteInfoDTO]:
         sql = """
@@ -254,6 +256,9 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             WHERE a.usuario_id = ?
         """
         params: list = [usuario_id]
+        if institucion_id != "*":
+            sql += " AND g.institucion_id = ?"
+            params.append(institucion_id)
         if periodo_id is not None:
             sql += " AND a.periodo_id = ?"
             params.append(periodo_id)

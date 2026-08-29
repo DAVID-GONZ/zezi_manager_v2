@@ -202,6 +202,7 @@ class ConvivenciaService:
         (ya aparecen como observación pública y duplicarlos no aporta valor).
         """
         from src.domain.models.convivencia import TIPO_REGISTRO_DISPLAY
+        from src.services.contexto_tenant import institucion_actual
 
         prefs = self._get_prefs_convivencia()
         tipos = set(prefs.registros_boletin_tipos)
@@ -210,17 +211,18 @@ class ConvivenciaService:
         filtro = FiltroConvivenciaDTO(
             estudiante_id=estudiante_id, periodo_id=periodo_id, por_pagina=None,
         )
-        regs = self._repo.listar_registros(filtro)
+        _scope = institucion_actual() or "*"
+        regs = self._repo.listar_registros(filtro, institucion_id=_scope)
         excluir = excluir_ids or set()
 
         tipos_map = _tipos_map if _tipos_map is not None else {
             t.id: t.nombre
-            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            for t in self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
             if t.id is not None
         }
         medidas_map = _medidas_map if _medidas_map is not None else {
             m.id: m.nombre
-            for m in self._repo.listar_medidas(solo_activas=False)
+            for m in self._repo.listar_medidas(institucion_id=_scope, solo_activas=False)
             if m.id is not None
         }
 
@@ -262,7 +264,9 @@ class ConvivenciaService:
         Orden: activas A-Z → inactivas → "Sin categoría".
         Items incluyen fecha, autor y texto (para boletín de periodo).
         """
-        categorias = self._repo.listar_categorias(solo_activas=False)
+        from src.services.contexto_tenant import institucion_actual
+
+        categorias = self._repo.listar_categorias(institucion_id=institucion_actual() or "*", solo_activas=False)
         cat_map = {c.id: c for c in categorias if c.id is not None}
 
         obs_por_cat: dict[int | None, list[dict]] = {}
@@ -382,7 +386,10 @@ class ConvivenciaService:
             concepto = ultimo_con_nota.observacion
 
         # ── Observaciones públicas agrupadas por categoría ─────────
-        categorias = self._repo.listar_categorias(solo_activas=False)
+        from src.services.contexto_tenant import institucion_actual
+
+        _scope = institucion_actual() or "*"
+        categorias = self._repo.listar_categorias(institucion_id=_scope, solo_activas=False)
         cat_map = {c.id: c for c in categorias if c.id is not None}
 
         obs_por_cat: dict[int | None, list[dict]] = {}
@@ -429,12 +436,12 @@ class ConvivenciaService:
         # ── Registros de comportamiento (convivencia_29) ──────────
         _tipos_map = {
             t.id: t.nombre
-            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            for t in self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
             if t.id is not None
         }
         _medidas_map = {
             m.id: m.nombre
-            for m in self._repo.listar_medidas(solo_activas=False)
+            for m in self._repo.listar_medidas(institucion_id=_scope, solo_activas=False)
             if m.id is not None
         }
         registros_anual: list[dict] = []
@@ -472,7 +479,9 @@ class ConvivenciaService:
         if cfg is None or not cfg.activa:
             return
 
-        conteo = self._repo.contar_registros(filtro)
+        from src.services.contexto_tenant import institucion_actual
+
+        conteo = self._repo.contar_registros(filtro, institucion_id=institucion_actual() or "*")
         if conteo < cfg.umbral:
             return
 
@@ -688,7 +697,7 @@ class ConvivenciaService:
         """
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_registros(filtro, institucion_id=institucion_actual())
+        return self._repo.listar_registros(filtro, institucion_id=institucion_actual() or "*")
 
     @requiere_escritura
     def eliminar_registro(
@@ -907,8 +916,11 @@ class ConvivenciaService:
         estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
 
         # Registros negativos por estudiante (1 consulta).
+        from src.services.contexto_tenant import institucion_actual
+
         registros = self._repo.listar_registros(
-            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None)
+            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None),
+            institucion_id=institucion_actual() or "*",
         )
         negativos_por_est: dict[int, int] = {}
         for reg in registros:
@@ -989,12 +1001,16 @@ class ConvivenciaService:
             c.estudiante_id: c for c in self.listar_conceptos_grupo(grupo_id, periodo_id)
         }
 
-        tipos_situacion = self._repo.listar_tipos_situacion(solo_activas=False)
+        from src.services.contexto_tenant import institucion_actual
+
+        _scope = institucion_actual() or "*"
+        tipos_situacion = self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
         tipos_map = {t.id: t.nombre for t in tipos_situacion if t.id is not None}
         hay_tipos = bool(tipos_map)
 
         todos_registros = self._repo.listar_registros(
-            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None)
+            FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None),
+            institucion_id=_scope,
         )
         regs_neg_por_est: dict[int, list] = {}
         conteos_tipo_por_est: dict[int, dict[str, int]] = {}
@@ -1220,7 +1236,7 @@ class ConvivenciaService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_tipos_situacion(
-            solo_activas=solo_activas, institucion_id=institucion_actual()
+            solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
         )
 
     @requiere_escritura
@@ -1289,7 +1305,7 @@ class ConvivenciaService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_medidas(
-            solo_activas=solo_activas, institucion_id=institucion_actual()
+            solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
         )
 
     @requiere_escritura
@@ -1359,7 +1375,7 @@ class ConvivenciaService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_categorias(
-            solo_activas=solo_activas, institucion_id=institucion_actual()
+            solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
         )
 
     @requiere_escritura
@@ -1413,7 +1429,7 @@ class ConvivenciaService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas(
-            categoria_id=categoria_id, solo_activas=False, institucion_id=institucion_actual()
+            categoria_id=categoria_id, solo_activas=False, institucion_id=institucion_actual() or "*"
         )
 
     @requiere_escritura
@@ -1480,7 +1496,7 @@ class ConvivenciaService:
         from src.services.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas(
-            categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual()
+            categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual() or "*"
         )
 
     @requiere_escritura
@@ -1571,7 +1587,11 @@ class ConvivenciaService:
         Retorna las plantillas activas más usadas, opcionalmente filtradas
         por categoría. Limitado a `limite` resultados (default 5).
         """
-        return self._repo.listar_plantillas(categoria_id=categoria_id, solo_activas=True)[:limite]
+        from src.services.contexto_tenant import institucion_actual
+
+        return self._repo.listar_plantillas(
+            categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual() or "*"
+        )[:limite]
 
     # ------------------------------------------------------------------
     # Promoción a comportamiento (convivencia_14)
@@ -1776,7 +1796,11 @@ class ConvivenciaService:
         alertas_activas: list[str] = []
         if self._alerta_repo is not None:
             try:
+                from src.services.contexto_tenant import institucion_actual as _ia
+
+                _scope = _ia() or "*"
                 filtro_alertas = FiltroAlertasDTO(
+                    institucion_id=_scope,
                     estudiante_id=estudiante_id,
                     solo_pendientes=True,
                 )
@@ -1890,19 +1914,22 @@ class ConvivenciaService:
         periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
 
         # ── Catálogos (lookup sin N+1) ─────────────────────────────────
+        from src.services.contexto_tenant import institucion_actual
+
+        _scope = institucion_actual() or "*"
         tipos_sit_map: dict[int, str] = {
             t.id: t.nombre
-            for t in self._repo.listar_tipos_situacion(solo_activas=False)
+            for t in self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
             if t.id is not None
         }
         medidas_map: dict[int, str] = {
             m.id: m.nombre
-            for m in self._repo.listar_medidas(solo_activas=False)
+            for m in self._repo.listar_medidas(institucion_id=_scope, solo_activas=False)
             if m.id is not None
         }
         cat_map: dict[int, str] = {
             c.id: c.nombre
-            for c in self._repo.listar_categorias(solo_activas=False)
+            for c in self._repo.listar_categorias(institucion_id=_scope, solo_activas=False)
             if c.id is not None
         }
 
@@ -1920,7 +1947,7 @@ class ConvivenciaService:
             periodo_id=periodo_id,
             por_pagina=None,
         )
-        registros = self._repo.listar_registros(filtro)
+        registros = self._repo.listar_registros(filtro, institucion_id=_scope)
         if periodo_id is None:
             registros = [r for r in registros if r.periodo_id in valid_periodo_ids]
 

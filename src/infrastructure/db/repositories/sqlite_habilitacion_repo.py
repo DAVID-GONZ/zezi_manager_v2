@@ -16,6 +16,7 @@ from src.domain.models.habilitacion import (
     PlanMejoramiento,
     TipoHabilitacion,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
 
 
@@ -65,6 +66,9 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
     ) -> list[Habilitacion]:
         sql = "SELECT * FROM habilitaciones WHERE 1=1"
         params: list = []
+        if filtro.institucion_id != "*":
+            sql += " AND estudiante_id IN (SELECT id FROM estudiantes WHERE institucion_id = ?)"
+            params.append(filtro.institucion_id)
         if filtro.estudiante_id is not None:
             sql += " AND estudiante_id = ?"
             params.append(filtro.estudiante_id)
@@ -232,6 +236,7 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
     def listar_planes_por_seguimiento(
         self,
         fecha_limite: date,
+        institucion_id: TenantScope,
         solo_activos: bool = True,
     ) -> list[PlanMejoramiento]:
         sql = """
@@ -240,6 +245,9 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
               AND fecha_seguimiento <= ?
         """
         params: list = [fecha_limite.isoformat()]
+        if institucion_id != "*":
+            sql += " AND estudiante_id IN (SELECT id FROM estudiantes WHERE institucion_id = ?)"
+            params.append(institucion_id)
         if solo_activos:
             sql += " AND estado = 'activo'"
         sql += " ORDER BY fecha_seguimiento, id"

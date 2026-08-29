@@ -24,6 +24,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Self
 
+from .tenant import TenantScope
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # =============================================================================
@@ -266,6 +268,7 @@ class ResolverAlertaDTO(BaseModel):
 class FiltroAlertasDTO(BaseModel):
     """Parámetros para listar alertas."""
 
+    institucion_id: TenantScope  # obligatorio — sin default, fail-fast
     estudiante_id: int | None = None
     tipo_alerta: TipoAlerta | None = None
     nivel: NivelAlerta | None = None

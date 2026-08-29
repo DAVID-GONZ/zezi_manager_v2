@@ -15,6 +15,7 @@ from src.domain.models.alerta import (
     NivelAlerta,
     TipoAlerta,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.alerta_repo import IAlertaRepository
 
 
@@ -150,6 +151,9 @@ class SqliteAlertaRepository(IAlertaRepository):
         params: list = []
         if filtro.solo_pendientes:
             sql += " AND resuelta = 0"
+        if filtro.institucion_id != "*":
+            sql += " AND estudiante_id IN (SELECT id FROM estudiantes WHERE institucion_id = ?)"
+            params.append(filtro.institucion_id)
         if filtro.estudiante_id is not None:
             sql += " AND estudiante_id = ?"
             params.append(filtro.estudiante_id)
@@ -171,11 +175,15 @@ class SqliteAlertaRepository(IAlertaRepository):
 
     def contar_pendientes(
         self,
+        institucion_id: TenantScope,
         estudiante_id: int | None = None,
         nivel: NivelAlerta | None = None,
     ) -> int:
         sql = "SELECT COUNT(*) FROM alertas WHERE resuelta = 0"
         params: list = []
+        if institucion_id != "*":
+            sql += " AND estudiante_id IN (SELECT id FROM estudiantes WHERE institucion_id = ?)"
+            params.append(institucion_id)
         if estudiante_id is not None:
             sql += " AND estudiante_id = ?"
             params.append(estudiante_id)

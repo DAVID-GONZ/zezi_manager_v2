@@ -126,39 +126,8 @@ _SECCION_META = {
 # ---------------------------------------------------------------------------
 
 
-def _texto_error(exc: Exception) -> str:
-    """Mensaje legible para mostrar en un toast a partir de una excepción.
-
-    Las validaciones de dominio se construyen con Pydantic, cuyo
-    ``ValidationError`` envuelve el mensaje útil con ruido técnico (tipo,
-    valor de entrada, URL de documentación). Aquí se extrae solo el/los
-    mensaje(s) del validador, sin el prefijo «Value error,».
-    """
-    errores = getattr(exc, "errors", None)
-    if callable(errores):
-        try:
-            mensajes = [
-                str(e.get("msg", "")).split("Value error, ", 1)[-1].strip() for e in exc.errors()
-            ]
-            mensajes = [m for m in mensajes if m]
-            if mensajes:
-                return " · ".join(mensajes)
-        except Exception:
-            pass
-    return str(exc)
-
-
-def _magnitud_peso(v: float) -> str:
-    """Traduce un peso 0.0–2.0 a una magnitud entendible para el usuario."""
-    if v <= 0.0:
-        return "Ignorar"
-    if v < 0.8:
-        return "Bajo"
-    if v < 1.4:
-        return "Medio"
-    if v < 2.0:
-        return "Alto"
-    return "Máximo"
+# _texto_error y _magnitud_peso ahora son HorariosHubPresenter.texto_error / magnitud_peso
+# Los alias _texto_error/_magnitud_peso se asignan en horarios_hub_page() para no cambiar los call sites.
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +169,10 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     presenter = HorariosHubPresenter(seccion_inicial, _dia_hoy_es)
     _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
+
+    # Alias locales para las utilidades del presenter (evitan cambiar call sites)
+    _texto_error = presenter.texto_error
+    _magnitud_peso = presenter.magnitud_peso
 
     # ── Carga inicial shared ──────────────────────────────────────────────────
     try:
@@ -382,7 +355,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     # =========================================================================
 
     def _gen_mapa_plantillas() -> dict:
-        return {p.id: p.nombre for p in _s["gen_plantillas"] if getattr(p, "id", None) is not None}
+        return presenter.mapa_plantillas()
 
     def _gen_cargar_plantillas() -> None:
         try:
@@ -480,13 +453,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     # =========================================================================
 
     def _toggle_vista_doc(valor: str) -> None:
-        # Refresca toda la rama docente: el selector de día vive fuera de la
-        # grilla y debe aparecer/ocultarse al cambiar de vista.
-        _s["doc_vista_grid"] = valor
+        presenter.set_doc_vista(valor)
         hub_refreshable.refresh()
 
     def _cambiar_dia_doc(dia: str) -> None:
-        _s["doc_dia_sel"] = dia
+        presenter.set_doc_dia(dia)
         hub_refreshable.refresh()
 
     def _seleccionar_escenario(esc) -> None:
@@ -831,23 +802,22 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _cambiar_perspectiva(valor: str) -> None:
         presenter.set_parrilla_perspectiva(valor)
-        _s["parrilla_eje_sel"] = None
         parrilla_unificada_refreshable.refresh()
 
     def _cambiar_eje(valor) -> None:
-        _s["parrilla_eje_sel"] = valor
+        presenter.set_parrilla_eje(valor)
         parrilla_unificada_refreshable.refresh()
 
     def _cambiar_dia_maestro(valor: str) -> None:
-        _s["parrilla_dia_maestro"] = valor
+        presenter.set_dia_maestro(valor)
         parrilla_unificada_refreshable.refresh()
 
     def _cambiar_filtro_areas(valores) -> None:
-        _s["parrilla_filtro_areas"] = set(valores) if valores else None
+        presenter.set_filtro_areas(valores)
         parrilla_unificada_refreshable.refresh()
 
     def _cambiar_filtro_dias(valores) -> None:
-        _s["parrilla_filtro_dias"] = set(valores) if valores else None
+        presenter.set_filtro_dias(valores)
         parrilla_unificada_refreshable.refresh()
 
     def _editar_color_area(area: dict) -> None:
@@ -888,14 +858,12 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             if bid is None:
                 return
             with ui.menu() as menu:
-                with ui.menu_item(on_click=lambda: (menu.close(), _abrir_dialog_editar(bid))):
-                    with ui.row().classes("items-center gap-2"):
-                        ThemeManager.icono(Icons.EDIT)
-                        ui.label("Editar")
-                with ui.menu_item(on_click=lambda: (menu.close(), _confirmar_eliminar(bid))):
-                    with ui.row().classes("items-center gap-2"):
-                        ThemeManager.icono(Icons.DELETE)
-                        ui.label("Eliminar")
+                with ui.menu_item(on_click=lambda: (menu.close(), _abrir_dialog_editar(bid))), ui.row().classes("items-center gap-2"):
+                    ThemeManager.icono(Icons.EDIT)
+                    ui.label("Editar")
+                with ui.menu_item(on_click=lambda: (menu.close(), _confirmar_eliminar(bid))), ui.row().classes("items-center gap-2"):
+                    ThemeManager.icono(Icons.DELETE)
+                    ui.label("Eliminar")
             menu.open()
         else:
             grupo_id = ctx_celda.get("grupo_id")
@@ -916,7 +884,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         gen_refreshable.refresh()
 
     def _gen_plantilla_en_uso(plantilla_id: int) -> list:
-        return [c for c in _s["gen_configs"] if getattr(c, "plantilla_id", None) == plantilla_id]
+        return presenter.plantillas_en_uso(plantilla_id)
 
     def _gen_plantilla_generable(plantilla_id: int | None) -> tuple[bool, str]:
         try:
@@ -996,16 +964,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             toast_error("No se pudo activar la plantilla")
 
     def _gen_filas_franjas_actuales() -> list[dict]:
-        return [
-            {
-                "orden": f.orden,
-                "hora_inicio": f.hora_inicio,
-                "hora_fin": f.hora_fin,
-                "tipo": f.tipo if isinstance(f.tipo, str) else f.tipo.value,
-                "etiqueta": f.etiqueta,
-            }
-            for f in _s["gen_franjas_sel"]
-        ]
+        return presenter.filas_franjas_actuales()
 
     def _gen_guardar_franjas(filas: list[dict]) -> bool:
         p = _s.get("gen_plantilla_sel")
@@ -1106,13 +1065,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         gen_refreshable.refresh()
 
     def _gen_seleccionar_config(config_id: int | None) -> None:
-        if config_id is None:
-            _s["gen_config_sel"] = None
-        else:
-            _s["gen_config_sel"] = next((c for c in _s["gen_configs"] if c.id == config_id), None)
-        _s["gen_resultado"] = None
-        _s["gen_datos_preview"] = None
-        _s["gen_eje_sel"] = None
+        presenter.seleccionar_gen_config(config_id, _s["gen_configs"])
         gen_refreshable.refresh()
 
     def _gen_config_dialog(config: Any | None = None) -> None:
@@ -1342,12 +1295,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         )
 
     def _gen_cambiar_perspectiva(valor: str) -> None:
-        _s["gen_perspectiva"] = valor
-        _s["gen_eje_sel"] = None
+        presenter.set_gen_perspectiva(valor)
         gen_refreshable.refresh()
 
     def _gen_cambiar_eje(valor) -> None:
-        _s["gen_eje_sel"] = valor
+        presenter.set_gen_eje(valor)
         gen_refreshable.refresh()
 
     def _gen_generar_config() -> None:
@@ -1539,7 +1491,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             sel = _s.get("gen_config_sel")
             sel_id = getattr(sel, "id", None) if sel else None
 
-            with ui.element("div").classes("overflow-auto"):
+            with ui.element("div").classes("overflow-auto"):  # noqa: SIM117
                 with ui.element("table").classes("gen-config-table"):
                     with ui.element("thead"), ui.element("tr"):
                         for col in ("Nombre", "Plantilla", "Grupos", "Estado", "Acciones"):
@@ -1564,33 +1516,34 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                     ui.label(str(grupo_count) if grupo_count else "Todos")
                                 with ui.element("td"):
                                     status_badge(badge_txt, variante=badge_var)
-                                with ui.element("td"):
-                                    with ui.element("div").classes("gen-config-acciones"):
-                                        btn_secondary(
-                                            "Seleccionar",
-                                            size="sm",
-                                            icon=Icons.CHECK,
-                                            on_click=lambda _, c=config: _gen_seleccionar_config(
-                                                c.id
-                                            ),
-                                        )
-                                        btn_ghost(
-                                            "Editar",
-                                            size="sm",
-                                            icon=Icons.EDIT,
-                                            on_click=lambda _, c=config: _gen_config_dialog(c),
-                                        )
-                                        btn_ghost(
-                                            "Duplicar",
-                                            size="sm",
-                                            icon="content_copy",
-                                            on_click=lambda _, c=config: _gen_duplicar_config(c.id),
-                                        )
-                                        btn_danger(
-                                            "Eliminar",
-                                            size="sm",
-                                            icon=Icons.DELETE,
-                                            on_click=lambda _, c=config: _gen_eliminar_config(c),
+                                with ui.element("td"), ui.element("div").classes(
+                                    "gen-config-acciones"
+                                ):
+                                    btn_secondary(
+                                        "Seleccionar",
+                                        size="sm",
+                                        icon=Icons.CHECK,
+                                        on_click=lambda _, c=config: _gen_seleccionar_config(
+                                            c.id
+                                        ),
+                                    )
+                                    btn_ghost(
+                                        "Editar",
+                                        size="sm",
+                                        icon=Icons.EDIT,
+                                        on_click=lambda _, c=config: _gen_config_dialog(c),
+                                    )
+                                    btn_ghost(
+                                        "Duplicar",
+                                        size="sm",
+                                        icon="content_copy",
+                                        on_click=lambda _, c=config: _gen_duplicar_config(c.id),
+                                    )
+                                    btn_danger(
+                                        "Eliminar",
+                                        size="sm",
+                                        icon=Icons.DELETE,
+                                        on_click=lambda _, c=config: _gen_eliminar_config(c),
                                         )
 
     def _gen_render_resultado(resultado: Any) -> None:
@@ -1911,28 +1864,29 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 ui.label(
                     f"Análisis: {reporte.validas} válidas, {reporte.invalidas} con error"
                 ).classes("text-sm text-muted u-mb-xs")
-                with ui.element("div").classes("overflow-auto"):
-                    with ui.element("table").classes("table-mini-xs"):
-                        with ui.element("thead"), ui.element("tr"):
-                            for col in ("#", "Estado", "Resumen", "Motivo"):
-                                with ui.element("th").classes(
-                                    "border px-2 py-1 text-left bg-surface-alt"
-                                ):
-                                    ui.label(str(col))
-                        with ui.element("tbody"):
-                            for f in reporte.filas:
-                                with ui.element("tr"):
-                                    with ui.element("td").classes("form-box-sm"):
-                                        ui.label(str(f.indice + 1))
-                                    with ui.element("td").classes("form-box-sm"):
-                                        status_badge(
-                                            "OK" if f.ok else "Error",
-                                            variante="success" if f.ok else "danger",
-                                        )
-                                    with ui.element("td").classes("form-box-sm"):
-                                        ui.label(str(f.resumen))
-                                    with ui.element("td").classes("form-box-sm"):
-                                        ui.label(str(f.motivo or ""))
+                with ui.element("div").classes("overflow-auto"), ui.element(
+                    "table"
+                ).classes("table-mini-xs"):
+                    with ui.element("thead"), ui.element("tr"):
+                        for col in ("#", "Estado", "Resumen", "Motivo"):
+                            with ui.element("th").classes(
+                                "border px-2 py-1 text-left bg-surface-alt"
+                            ):
+                                ui.label(str(col))
+                    with ui.element("tbody"):
+                        for f in reporte.filas:
+                            with ui.element("tr"):
+                                with ui.element("td").classes("form-box-sm"):
+                                    ui.label(str(f.indice + 1))
+                                with ui.element("td").classes("form-box-sm"):
+                                    status_badge(
+                                        "OK" if f.ok else "Error",
+                                        variante="success" if f.ok else "danger",
+                                    )
+                                with ui.element("td").classes("form-box-sm"):
+                                    ui.label(str(f.resumen))
+                                with ui.element("td").classes("form-box-sm"):
+                                    ui.label(str(f.motivo or ""))
                 with ui.row().classes("gap-2 u-mt-sm"):
                     if reporte.todo_ok:
                         btn_primary(
@@ -2065,12 +2019,12 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     with (
                         ui.element("div")
                         .classes(chip_cls)
-                        .on("click", lambda _, e=esc: _seleccionar_escenario(e))
+                        .on("click", lambda _, e=esc: _seleccionar_escenario(e)),
+                        ui.row().classes("items-center gap-1"),
                     ):
-                        with ui.row().classes("items-center gap-1"):
-                            ui.label(esc.nombre)
-                            if esc.activo:
-                                status_badge("Activo", variante="success")
+                        ui.label(esc.nombre)
+                        if esc.activo:
+                            status_badge("Activo", variante="success")
 
             if sel and editable:
                 with ui.row().classes("gap-2 u-mt-sm flex-wrap"):
@@ -2352,10 +2306,9 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 f"{dia_sel}, {fecha_dia.day} de "
                 f"{_MESES_ES[fecha_dia.month - 1]} de {fecha_dia.year}"
             )
-            with ui.element("div").classes("panel-card"):
-                with ui.row().classes("items-center gap-2"):
-                    ThemeManager.icono(Icons.SCHEDULE, size=18)
-                    ui.label(encabezado).classes("text-subtitle1 font-semibold")
+            with ui.element("div").classes("panel-card"), ui.row().classes("items-center gap-2"):
+                ThemeManager.icono(Icons.SCHEDULE, size=18)
+                ui.label(encabezado).classes("text-subtitle1 font-semibold")
             render_parrilla(
                 datos,
                 perspectiva="Docente",
@@ -2381,17 +2334,16 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         # Control segmentado del hub. Con una sola sección visible (docente) es
         # redundante: solo se visualiza, así que se omite.
         if len(_secciones_visibles) > 1:
-            with ui.element("div").classes("parrilla-toolbar"):
-                with ui.element("div").classes("parrilla-segmento"):
-                    for sec in _secciones_visibles:
-                        lbl, icon = _SECCION_META[sec]
-                        activo = _s["seccion"] == sec
-                        cls = "parrilla-seg-btn" + (" parrilla-seg-btn-activo" if activo else "")
-                        btn = ui.element("div").classes(cls)
-                        btn.on("click", lambda _, s=sec: _cambiar_seccion(s))
-                        with btn:
-                            ThemeManager.icono(icon, size=14)
-                            ui.label(lbl)
+            with ui.element("div").classes("parrilla-toolbar"), ui.element("div").classes("parrilla-segmento"):
+                for sec in _secciones_visibles:
+                    lbl, icon = _SECCION_META[sec]
+                    activo = _s["seccion"] == sec
+                    cls = "parrilla-seg-btn" + (" parrilla-seg-btn-activo" if activo else "")
+                    btn = ui.element("div").classes(cls)
+                    btn.on("click", lambda _, s=sec: _cambiar_seccion(s))
+                    with btn:
+                        ThemeManager.icono(icon, size=14)
+                        ui.label(lbl)
 
         sec = _s["seccion"]
         if sec == "preparar":

@@ -53,6 +53,7 @@ coverage.xml
 cover/
 /.nicegui
 .nicegui/*
+.ruff_cache/
 
 
 # Translations
@@ -89,6 +90,8 @@ venv.bak/
 *.swo
 .gemini/
 __pycache__/
+# Claude Code worktrees
+.claude/worktrees/
 
 # Databases
 *.db
@@ -121,3 +124,4 @@ init.py
 *.lock
 *.ruff_cache
 !step_list.json
+/agent*

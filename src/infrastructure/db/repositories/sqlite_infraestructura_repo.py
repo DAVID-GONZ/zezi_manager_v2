@@ -35,6 +35,7 @@ from src.domain.models.infraestructura import (
     Sala,
     VentanaGrupo,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
@@ -213,9 +214,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_plantilla(row) if row else None
 
-    def listar_plantillas_franja(self, institucion_id: int | None = None) -> list[PlantillaFranja]:
+    def listar_plantillas_franja(self, institucion_id: TenantScope) -> list[PlantillaFranja]:
         with self._get_conn() as conn:
-            if institucion_id is not None:
+            if isinstance(institucion_id, int):
                 rows = conn.execute(
                     "SELECT * FROM plantillas_franja WHERE institucion_id = ? ORDER BY nombre",
                     (institucion_id,),
@@ -225,10 +226,10 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             return [self._row_to_plantilla(r) for r in rows]
 
     def get_plantilla_activa(
-        self, jornada: str, institucion_id: int | None = None
+        self, jornada: str, institucion_id: TenantScope
     ) -> PlantillaFranja | None:
         with self._get_conn() as conn:
-            if institucion_id is not None:
+            if isinstance(institucion_id, int):
                 row = conn.execute(
                     "SELECT * FROM plantillas_franja "
                     "WHERE jornada = ? AND activa = 1 AND institucion_id = ?",
@@ -368,11 +369,11 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return AreaConocimiento(**dict(row)) if row else None
 
-    def listar_areas(self, institucion_id: int | None = None) -> list[AreaConocimiento]:
+    def listar_areas(self, institucion_id: TenantScope) -> list[AreaConocimiento]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM areas_conocimiento WHERE 1=1"
             params: list = []
-            if institucion_id is not None:
+            if isinstance(institucion_id, int):
                 sql += " AND institucion_id = ?"
                 params.append(institucion_id)
             sql += " ORDER BY nombre"
@@ -434,18 +435,18 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def listar_asignaturas(
         self,
+        institucion_id: TenantScope,
         area_id: int | None = None,
-        institucion_id: int | None = None,
     ) -> list[Asignatura]:
         with self._get_conn() as conn:
             condiciones: list[str] = []
             params: list = []
+            if isinstance(institucion_id, int):
+                condiciones.append("institucion_id = ?")
+                params.append(institucion_id)
             if area_id is not None:
                 condiciones.append("area_id = ?")
                 params.append(area_id)
-            if institucion_id is not None:
-                condiciones.append("institucion_id = ?")
-                params.append(institucion_id)
             where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
             rows = conn.execute(
                 f"SELECT * FROM asignaturas{where} ORDER BY nombre", params
@@ -544,18 +545,18 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
 
     def listar_grupos(
         self,
+        institucion_id: TenantScope,
         grado: int | None = None,
-        institucion_id: int | None = None,
     ) -> list[Grupo]:
         with self._get_conn() as conn:
             condiciones: list[str] = []
             params: list = []
+            if isinstance(institucion_id, int):
+                condiciones.append("institucion_id = ?")
+                params.append(institucion_id)
             if grado is not None:
                 condiciones.append("grado = ?")
                 params.append(grado)
-            if institucion_id is not None:
-                condiciones.append("institucion_id = ?")
-                params.append(institucion_id)
             where = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
             rows = conn.execute(f"SELECT * FROM grupos{where} ORDER BY codigo", params).fetchall()
             resultado = []
@@ -1146,15 +1147,29 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_config(row) if row else None
 
-    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
+    def listar_configs_generacion(
+        self,
+        institucion_id: TenantScope,
+        periodo_id: int | None = None,
+    ) -> list[ConfigGeneracion]:
+        sql = "SELECT * FROM config_generacion WHERE 1=1"
+        params: list = []
+        if periodo_id is not None:
+            sql += " AND periodo_id = ?"
+            params.append(periodo_id)
+        if institucion_id != "*":
+            # Filtra por grupos que pertenecen a la institución (grupos_json es array JSON de IDs)
+            sql += (
+                " AND EXISTS ("
+                "SELECT 1 FROM json_each(grupos_json) j"
+                " JOIN grupos g ON g.id = CAST(j.value AS INTEGER)"
+                " WHERE g.institucion_id = ?"
+                ")"
+            )
+            params.append(institucion_id)
+        sql += " ORDER BY nombre"
         with self._get_conn() as conn:
-            if periodo_id is not None:
-                rows = conn.execute(
-                    "SELECT * FROM config_generacion WHERE periodo_id = ? ORDER BY nombre",
-                    (periodo_id,),
-                ).fetchall()
-            else:
-                rows = conn.execute("SELECT * FROM config_generacion ORDER BY nombre").fetchall()
+            rows = conn.execute(sql, params).fetchall()
             return [self._row_to_config(r) for r in rows]
 
     def actualizar_config_generacion(self, c: ConfigGeneracion) -> ConfigGeneracion:
@@ -1265,9 +1280,9 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         return Sala(**{k: v for k, v in d.items() if k in Sala.model_fields})
 
-    def listar_salas(self, institucion_id: int | None = None) -> list[Sala]:
+    def listar_salas(self, institucion_id: TenantScope) -> list[Sala]:
         with self._get_conn() as conn:
-            if institucion_id is not None:
+            if isinstance(institucion_id, int):
                 rows = conn.execute(
                     "SELECT * FROM salas WHERE institucion_id = ? ORDER BY nombre",
                     (institucion_id,),
@@ -1319,9 +1334,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d["franjas_permitidas"] = json.loads(d.get("franjas_permitidas", "[]"))
         return VentanaGrupo(**{k: v for k, v in d.items() if k in VentanaGrupo.model_fields})
 
-    def listar_ventanas_grupo(self) -> list[VentanaGrupo]:
+    def listar_ventanas_grupo(self, institucion_id: TenantScope) -> list[VentanaGrupo]:
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM ventanas_grupo").fetchall()
+            if institucion_id == "*":
+                rows = conn.execute("SELECT * FROM ventanas_grupo").fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT vg.* FROM ventanas_grupo vg"
+                    " JOIN grupos g ON g.id = vg.grupo_id"
+                    " WHERE g.institucion_id = ?",
+                    (institucion_id,),
+                ).fetchall()
             return [self._row_to_ventana_grupo(r) for r in rows]
 
     def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]:
@@ -1396,11 +1419,11 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d["docentes"] = json.loads(d.pop("docentes_json", "[]"))
         return FranjaReunion(**{k: v for k, v in d.items() if k in FranjaReunion.model_fields})
 
-    def listar_franjas_reunion(self, institucion_id: int | None = None) -> list[FranjaReunion]:
+    def listar_franjas_reunion(self, institucion_id: TenantScope) -> list[FranjaReunion]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM franjas_reunion WHERE 1=1"
             params: list = []
-            if institucion_id is not None:
+            if isinstance(institucion_id, int):
                 sql += " AND institucion_id = ?"
                 params.append(institucion_id)
             sql += " ORDER BY dia_semana, franja_orden"
@@ -1483,9 +1506,17 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             ).fetchone()
             return self._row_to_limites_docente(row)
 
-    def listar_limites_docente(self) -> list[LimitesDocente]:
+    def listar_limites_docente(self, institucion_id: TenantScope) -> list[LimitesDocente]:
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM limites_docente").fetchall()
+            if institucion_id == "*":
+                rows = conn.execute("SELECT * FROM limites_docente").fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT ld.* FROM limites_docente ld"
+                    " JOIN usuarios u ON u.id = ld.usuario_id"
+                    " WHERE u.institucion_id = ?",
+                    (institucion_id,),
+                ).fetchall()
             return [self._row_to_limites_docente(r) for r in rows]
 
     # =========================================================================
@@ -1496,9 +1527,19 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         return Grado(**{k: v for k, v in d.items() if k in Grado.model_fields})
 
-    def listar_grados(self) -> list[Grado]:
+    def listar_grados(self, institucion_id: TenantScope) -> list[Grado]:
         with self._get_conn() as conn:
-            rows = conn.execute("SELECT * FROM grados ORDER BY numero").fetchall()
+            if institucion_id == "*":
+                rows = conn.execute("SELECT * FROM grados ORDER BY numero").fetchall()
+            else:
+                # Filtra por grados habilitados en la institución
+                rows = conn.execute(
+                    "SELECT g.* FROM grados g"
+                    " JOIN configuracion_grado_institucion c ON c.grado_id = g.id"
+                    " WHERE c.institucion_id = ?"
+                    " ORDER BY g.numero",
+                    (institucion_id,),
+                ).fetchall()
             return [self._row_to_grado(r) for r in rows]
 
     def upsert_grado(self, grado: Grado) -> Grado:
@@ -1540,11 +1581,11 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
         d = dict(row)
         return PlanEstudios(**{k: v for k, v in d.items() if k in PlanEstudios.model_fields})
 
-    def listar_plan_estudios(self, institucion_id: int | None = None) -> list[PlanEstudios]:
+    def listar_plan_estudios(self, institucion_id: TenantScope) -> list[PlanEstudios]:
         with self._get_conn() as conn:
             sql = "SELECT * FROM plan_estudios WHERE 1=1"
             params: list = []
-            if institucion_id is not None:
+            if institucion_id != "*":
                 sql += " AND institucion_id = ?"
                 params.append(institucion_id)
             sql += " ORDER BY grado, asignatura_id"

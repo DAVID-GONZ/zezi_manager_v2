@@ -19,6 +19,7 @@ from src.domain.models.infraestructura import (
     VentanaGrupo,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -106,7 +107,8 @@ class RestriccionGeneracionService:
 
     def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
         """Lista las configs de generación, opcionalmente de un periodo (delegado al repositorio)."""
-        return self._repo.listar_configs_generacion(periodo_id)
+        scope = institucion_actual() or "*"
+        return self._repo.listar_configs_generacion(scope, periodo_id)
 
     def get_config_generacion(self, config_id: int) -> ConfigGeneracion | None:
         """Retorna una config de generación por id (delegado al repositorio)."""
@@ -144,7 +146,8 @@ class RestriccionGeneracionService:
 
     def listar_ventanas_grupo(self) -> list[VentanaGrupo]:
         """Lista todas las ventanas de grupo (delegado al repositorio)."""
-        return self._repo.listar_ventanas_grupo()
+        scope = institucion_actual() or "*"
+        return self._repo.listar_ventanas_grupo(scope)
 
     def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]:
         """Lista las ventanas de un grupo (delegado al repositorio)."""
@@ -186,7 +189,7 @@ class RestriccionGeneracionService:
         """Lista las franjas de reunión del tenant activo."""
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_franjas_reunion(institucion_id=institucion_actual())
+        return self._repo.listar_franjas_reunion(institucion_id=institucion_actual() or "*")
 
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None:
         """Retorna una franja de reunión por id (delegado al repositorio)."""
@@ -247,7 +250,8 @@ class RestriccionGeneracionService:
 
     def listar_limites_docente(self) -> list[LimitesDocente]:
         """Lista los límites diarios de todos los docentes (delegado al repositorio)."""
-        return self._repo.listar_limites_docente()
+        scope = institucion_actual() or "*"
+        return self._repo.listar_limites_docente(scope)
 
 
 __all__ = ["RestriccionGeneracionService"]

@@ -12,6 +12,7 @@ from src.domain.models.asignacion import (
     AsignacionInfo,
     FiltroAsignacionesDTO,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 
 
@@ -167,17 +168,16 @@ class SqliteAsignacionRepository(IAsignacionRepository):
         self,
         grupo_id: int,
         periodo_id: int,
+        institucion_id: TenantScope,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         sql = self._INFO_SQL + " WHERE a.grupo_id = ? AND a.periodo_id = ?"
         params: list = [grupo_id, periodo_id]
         if solo_activas:
             sql += " AND a.activo = 1"
-        # Scope multi-tenant (paso_31): defensa en profundidad — el grupo ya
-        # acota el tenant, pero si el caller pasa institucion_id se exige la
-        # coincidencia (evita filtrar un grupo de otra institución).
-        if institucion_id is not None:
+        # TenantScope: int → defensa en profundidad (coincidencia de institución);
+        # "*" → cross-tenant (admin).
+        if isinstance(institucion_id, int):
             sql += " AND g.institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY s.nombre"
@@ -188,9 +188,9 @@ class SqliteAsignacionRepository(IAsignacionRepository):
     def listar_por_docente(
         self,
         usuario_id: int,
+        institucion_id: TenantScope,
         periodo_id: int | None = None,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[AsignacionInfo]:
         sql = self._INFO_SQL + " WHERE a.usuario_id = ?"
         params: list = [usuario_id]
@@ -199,10 +199,8 @@ class SqliteAsignacionRepository(IAsignacionRepository):
             params.append(periodo_id)
         if solo_activas:
             sql += " AND a.activo = 1"
-        # Scope multi-tenant (paso_31): un docente puede pertenecer a una
-        # institución, pero si el caller pasa institucion_id se restringe a las
-        # asignaciones cuyo grupo es de esa institución.
-        if institucion_id is not None:
+        # TenantScope: int → restringe a la institución del grupo; "*" → admin.
+        if isinstance(institucion_id, int):
             sql += " AND g.institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY g.codigo, s.nombre"

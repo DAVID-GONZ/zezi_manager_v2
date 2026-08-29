@@ -78,7 +78,7 @@ class ConfiguracionService:
         si falta, la institución por defecto (#1).
         """
         institucion_id = self._resolver_institucion(dto.institucion_id)
-        if self._repo.get_by_anio(institucion_id, dto.anio) is not None:
+        if self._repo.get_by_anio(institucion_id or "*", dto.anio) is not None:
             raise ValueError(
                 f"Ya existe una configuración para el año {dto.anio} en esta institución."
             )
@@ -172,7 +172,7 @@ class ConfiguracionService:
         Lanza ValueError si no hay año activo en ese scope.
         """
         institucion_id = self._resolver_institucion(institucion_id)
-        config = self._repo.get_activa(institucion_id)
+        config = self._repo.get_activa(institucion_id or "*")
         if config is None:
             raise ValueError(
                 "No hay ningún año lectivo activo. Configure y active un año antes de operar."

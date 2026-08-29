@@ -342,6 +342,10 @@ def main() -> None:
     registrar_rutas_internas(app)
     registrar_rutas_ui()
 
+    # 4b. Re-sincronizar ContextVars de tenant en cada event handler de NiceGUI
+    from src.interface.context.event_context import instalar_interceptor_tenant
+    instalar_interceptor_tenant()
+
     # 5. Arrancar NiceGUI
     ui.run(
         host=settings.HOST,

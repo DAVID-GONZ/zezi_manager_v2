@@ -497,8 +497,9 @@ class InformeService:
         if self._estudiante_repo is None:
             raise ValueError("InformeService no tiene estudiante_repo configurado.")
 
+        from src.services.contexto_tenant import institucion_actual
         fmt = FormatoInforme(formato)
-        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id)
+        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*")
 
         pdfs: list[bytes] = []
         hojas: list[tuple[str, bytes]] = []
@@ -697,8 +698,9 @@ class InformeService:
             FiltroConvivenciaDTO,
         )
 
+        from src.services.contexto_tenant import institucion_actual
         estudiantes = sorted(
-            self._estudiante_repo.listar_por_grupo(grupo_id),
+            self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*"),
             key=lambda e: f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".lower(),
         )
         est_nombre = {
@@ -727,8 +729,11 @@ class InformeService:
 
             # Batch: registros del grupo en el periodo
             try:
+                from src.services.contexto_tenant import institucion_actual
+
                 regs_all = _repo.listar_registros(
-                    FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id)
+                    FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id),
+                    institucion_id=institucion_actual() or "*",
                 )
             except Exception:
                 regs_all = []
@@ -831,10 +836,14 @@ class InformeService:
                     len(_repo.listar_observaciones_por_estudiante(est.id, p.id, solo_publicas=True))
                     for p in periodos
                 )
+                from src.services.contexto_tenant import institucion_actual
+
+                _inst_scope = institucion_actual() or "*"
                 reg_cnt = sum(
                     len(
                         _repo.listar_registros(
-                            FiltroConvivenciaDTO(estudiante_id=est.id, periodo_id=p.id)
+                            FiltroConvivenciaDTO(estudiante_id=est.id, periodo_id=p.id),
+                            institucion_id=_inst_scope,
                         )
                     )
                     for p in periodos

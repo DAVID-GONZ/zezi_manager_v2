@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..models.tenant import TenantScope
 from ..models.configuracion import (
     ConfiguracionAnio,
     CriterioPromocion,
@@ -39,14 +40,13 @@ class IConfiguracionRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio | None:
+    def get_activa(self, institucion_id: TenantScope) -> ConfiguracionAnio | None:
         """
         Retorna la configuración del año lectivo activo.
 
-        Multi-tenant (paso_27): si se pasa `institucion_id`, el scope es
-        WHERE institucion_id = ? AND activo = 1. Si es None, devuelve el
-        primer año activo sin filtrar por institución (compatibilidad con
-        callers single-tenant que aún no resuelven el tenant).
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → WHERE institucion_id = ? AND activo = 1
+          - "*"  → primer año activo sin filtrar por institución (admin)
 
         Retorna None si no hay ningún año marcado como activo en ese scope.
         Es el método más llamado del sistema: casi todas las operaciones
@@ -60,21 +60,26 @@ class IConfiguracionRepository(ABC):
         ...
 
     @abstractmethod
-    def get_by_anio(self, institucion_id: int | None, anio: int) -> ConfiguracionAnio | None:
+    def get_by_anio(self, institucion_id: TenantScope, anio: int) -> ConfiguracionAnio | None:
         """
         Busca la configuración por número de año (ej: 2025), scopeada por
-        institución (paso_27). Útil al crear un año nuevo para verificar que
-        no exista ya en esa institución. Si `institucion_id` es None, busca
-        sin filtrar por institución.
+        institución (paso_27).
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → scope a esa institución
+          - "*"  → busca sin filtrar por institución (admin)
         """
         ...
 
     @abstractmethod
-    def listar(self, institucion_id: int | None = None) -> list[ConfiguracionAnio]:
+    def listar(self, institucion_id: TenantScope) -> list[ConfiguracionAnio]:
         """
         Retorna las configuraciones anuales ordenadas por año descendente
-        (más reciente primero). Si se pasa `institucion_id`, scopea a esa
-        institución (paso_27); si es None, retorna todas.
+        (más reciente primero).
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → scopea a esa institución
+          - "*"  → retorna todas (admin)
         """
         ...
 

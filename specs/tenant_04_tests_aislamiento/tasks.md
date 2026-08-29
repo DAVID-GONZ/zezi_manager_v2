@@ -8,6 +8,7 @@
 
 Tras instalar el interceptor (tenant_01) y hacer las firmas obligatorias
 (tenant_02, tenant_03), necesitamos tests que:
+
 1. Verifiquen aislamiento con 2 instituciones reales.
 2. Cubran el caso del ContextVar en None (simular event handler pre-fix).
 3. Impidan regresion si alguien agrega un metodo de listado sin scope.
@@ -25,6 +26,7 @@ tests/integration/test_tenant_e2e.py                 (NUEVO, opcional)
 ### T1 — Fixture de 2 instituciones con datos aislados  [ ]
 
 Crear fixture reutilizable (en conftest o en el archivo de test):
+
 - Institucion A (id=1) con: 2 profesores, 3 estudiantes, 1 grupo, 1 config_anio.
 - Institucion B (id=2) con: 2 profesores, 3 estudiantes, 1 grupo, 1 config_anio.
 - Los datos NO deben solaparse (nombres distintos, documentos distintos).
@@ -47,6 +49,7 @@ def test_director_institucion_A_no_ve_usuarios_B(db_2_instituciones):
 ```
 
 Tests minimos:
+
 - `test_listar_resumenes_scopeado`
 - `test_listar_docentes_scopeado`
 - `test_crear_usuario_asigna_institucion_correcta`
@@ -56,6 +59,7 @@ Tests minimos:
 ### T3 — Tests de aislamiento por servicio (estudiante, asignacion, convivencia)  [ ]
 
 Misma mecanica que T2 pero para:
+
 - `estudiante_service.listar_resumenes` — solo estudiantes del tenant.
 - `asignacion_service.listar_info` — solo asignaciones del tenant.
 - `convivencia_service.listar_categorias` — solo categorias del tenant.
@@ -115,6 +119,7 @@ def test_solo_lectura_se_resincroniza():
 ### T7 — Test estructural: grep de regresion  [ ]
 
 Test que ejecuta un grep sobre `src/infrastructure/db/repositories/`:
+
 - Busca el patron `def listar_.*institucion_id.*= None`.
 - Debe retornar 0 coincidencias.
 - Si alguien agrega un metodo con default None, el test falla.
@@ -133,6 +138,7 @@ def test_ningun_listar_con_default_none():
 ```
 
 ## Criterio de done
+
 - [ ] Fixture de 2 instituciones funcionando
 - [ ] Tests de aislamiento por servicio (usuario, estudiante, asignacion, convivencia, config)
 - [ ] Test de admin cross-tenant verde

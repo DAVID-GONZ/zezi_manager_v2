@@ -94,7 +94,9 @@ def alertas_page() -> None:
 
     def _cargar() -> None:
         try:
+            _scope = ctx.institucion_id if ctx.institucion_id is not None else "*"
             filtro = FiltroAlertasDTO(
+                institucion_id=_scope,
                 tipo_alerta=TipoAlerta(_s["filtro_tipo"]) if _s["filtro_tipo"] else None,
                 nivel=NivelAlerta(_s["filtro_nivel"]) if _s["filtro_nivel"] else None,
                 solo_pendientes=_s["solo_pendientes"],

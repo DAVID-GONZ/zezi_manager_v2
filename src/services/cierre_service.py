@@ -161,7 +161,8 @@ class CierreService:
         actividades = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
 
         # Obtener estudiantes del grupo
-        estudiantes = self._estudiante_repo.listar_por_grupo(ctx.grupo_id, solo_activos=True)
+        from src.services.contexto_tenant import institucion_actual
+        estudiantes = self._estudiante_repo.listar_por_grupo(ctx.grupo_id, institucion_actual() or "*", solo_activos=True)
 
         cierres: list[CierrePeriodo] = []
         for est in estudiantes:
@@ -223,7 +224,7 @@ class CierreService:
         config = self._config_repo.get_by_id(anio_id)
         nota_minima = config.nota_minima_aprobacion if config else 60.0
 
-        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id, solo_activos=True)
+        estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*", solo_activos=True)
 
         cierres_anio: list[CierreAnio] = []
 

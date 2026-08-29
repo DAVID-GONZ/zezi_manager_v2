@@ -19,6 +19,7 @@ from src.domain.models.convivencia import (
     TipoRegistro,
     TipoSituacion,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 
 _TIPOS_NEGATIVOS = ("dificultad", "citacion_acudiente")
@@ -193,7 +194,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
     def _build_filtro_sql(
         self,
         filtro: FiltroConvivenciaDTO,
-        institucion_id: int | None = None,
+        institucion_id: TenantScope,
         *,
         select: str = "rc.*",
     ) -> tuple[str, list]:
@@ -203,10 +204,10 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         # ya scopeadas por estudiante/grupo.
         params: list = []
         join = ""
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             join = " JOIN grupos g ON g.id = rc.grupo_id"
         sql = f"SELECT {select} FROM registro_comportamiento rc{join} WHERE 1=1"
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND g.institucion_id = ?"
             params.append(institucion_id)
         if filtro.estudiante_id is not None:
@@ -230,7 +231,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
     def listar_registros(
         self,
         filtro: FiltroConvivenciaDTO,
-        institucion_id: int | None = None,
+        institucion_id: TenantScope,
     ) -> list[RegistroComportamiento]:
         sql, params = self._build_filtro_sql(filtro, institucion_id)
         sql += " ORDER BY rc.fecha DESC, rc.id DESC"
@@ -244,7 +245,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
     def contar_registros(
         self,
         filtro: FiltroConvivenciaDTO,
-        institucion_id: int | None = None,
+        institucion_id: TenantScope,
     ) -> int:
         sql, params = self._build_filtro_sql(filtro, institucion_id, select="COUNT(*)")
         with self._get_conn() as conn:
@@ -395,13 +396,13 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         return CategoriaObservacion(**d)
 
     def listar_categorias(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[CategoriaObservacion]:
         sql = "SELECT * FROM categorias_observacion WHERE 1=1"
         params: list = []
         if solo_activas:
             sql += " AND activa = 1"
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY nombre"
@@ -466,9 +467,9 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
 
     def listar_plantillas(
         self,
+        institucion_id: TenantScope,
         categoria_id: int | None = None,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[PlantillaObservacion]:
         sql = "SELECT * FROM plantillas_observacion WHERE 1=1"
         params: list = []
@@ -477,7 +478,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         if categoria_id is not None:
             sql += " AND categoria_id = ?"
             params.append(categoria_id)
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY uso_count DESC"
@@ -551,13 +552,13 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         return TipoSituacion(**d)
 
     def listar_tipos_situacion(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[TipoSituacion]:
         sql = "SELECT * FROM tipos_situacion WHERE 1=1"
         params: list = []
         if solo_activas:
             sql += " AND activa = 1"
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY nivel, nombre"
@@ -698,13 +699,13 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         return MedidaPedagogica(**d)
 
     def listar_medidas(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[MedidaPedagogica]:
         sql = "SELECT * FROM medidas_pedagogicas WHERE 1=1"
         params: list = []
         if solo_activas:
             sql += " AND activa = 1"
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY nivel_minimo, nombre"

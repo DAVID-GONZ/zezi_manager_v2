@@ -48,6 +48,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .tenant import TenantScope
+
 # =============================================================================
 # Enumeraciones
 # =============================================================================
@@ -561,6 +563,7 @@ class CerrarPlanMejoramientoDTO(BaseModel):
 class FiltroHabilitacionesDTO(BaseModel):
     """Parámetros para listar habilitaciones."""
 
+    institucion_id: TenantScope  # obligatorio — sin default, fail-fast
     estudiante_id: int | None = None
     asignacion_id: int | None = None
     periodo_id: int | None = None

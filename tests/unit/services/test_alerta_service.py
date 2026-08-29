@@ -54,7 +54,7 @@ class FakeAlertaRepo(IAlertaRepository):
     def listar_alertas(self, filtro: FiltroAlertasDTO) -> list[Alerta]:
         return list(self._alertas.values())
 
-    def contar_pendientes(self, est_id=None, nivel=None) -> int:
+    def contar_pendientes(self, institucion_id, est_id=None, nivel=None) -> int:
         return sum(1 for a in self._alertas.values() if not a.resuelta)
 
     def existe_pendiente(self, est_id: int, tipo: TipoAlerta) -> bool:

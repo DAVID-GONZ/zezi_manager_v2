@@ -23,6 +23,7 @@ from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
+from src.services.contexto_tenant import institucion_actual
 
 logger = logging.getLogger("ESTADISTICOS_SERVICE")
 
@@ -229,7 +230,7 @@ class EstadisticosService:
         from src.services.contexto_tenant import institucion_actual
 
         filas: list[dict] = []
-        for g in self._infra_repo.listar_grupos(institucion_id=institucion_actual()):
+        for g in self._infra_repo.listar_grupos(institucion_id=institucion_actual() or "*"):
             if not g.id:
                 continue
             try:
@@ -281,7 +282,7 @@ class EstadisticosService:
 
         try:
             asignaciones = self._asignacion_repo.listar_por_docente(
-                usuario_id, periodo_id, solo_activas=True
+                usuario_id, institucion_actual() or "*", periodo_id, solo_activas=True
             )
         except Exception:
             return PendientesDocenteDTO()
@@ -329,7 +330,7 @@ class EstadisticosService:
             vistos: set[int] = set()
             for grupo_id in grupos_ids:
                 try:
-                    estudiantes = self._est_repo.listar_por_grupo(grupo_id, solo_activos=True)
+                    estudiantes = self._est_repo.listar_por_grupo(grupo_id, institucion_actual() or "*", solo_activos=True)
                 except Exception:
                     continue
                 for est in estudiantes:
@@ -337,7 +338,8 @@ class EstadisticosService:
                         continue
                     vistos.add(est.id)
                     with contextlib.suppress(Exception):
-                        alertas += self._alerta_repo.contar_pendientes(est.id)
+                        _scope = institucion_actual() or "*"
+                        alertas += self._alerta_repo.contar_pendientes(_scope, est.id)
 
         return PendientesDocenteDTO(
             actividades_sin_calificar=sin_calificar,
@@ -539,7 +541,7 @@ class EstadisticosService:
             actividades = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
 
             # ── 3. Estudiantes del grupo ──────────────────────────────
-            estudiantes = self._est_repo.listar_por_grupo(grupo_id)
+            estudiantes = self._est_repo.listar_por_grupo(grupo_id, institucion_actual() or "*")
             est_ids = [e.id for e in estudiantes if e.id]
 
             if not est_ids:

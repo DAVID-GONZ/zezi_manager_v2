@@ -41,6 +41,7 @@ from ..models.habilitacion import (
     PlanMejoramiento,
     TipoHabilitacion,
 )
+from ..models.tenant import TenantScope
 
 
 class IHabilitacionRepository(ABC):
@@ -155,12 +156,17 @@ class IHabilitacionRepository(ABC):
     def listar_planes_por_seguimiento(
         self,
         fecha_limite: date,
+        institucion_id: TenantScope,
         solo_activos: bool = True,
     ) -> list[PlanMejoramiento]:
         """
         Retorna planes cuya fecha_seguimiento es menor o igual a fecha_limite.
         Usado para el job de alertas de planes vencidos o próximos a vencer.
         Si solo_activos=True, filtra planes con estado=ACTIVO.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por estudiantes de esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 

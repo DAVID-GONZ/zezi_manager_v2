@@ -13,6 +13,7 @@ from src.domain.models.acudiente import (
     Parentesco,
     TipoDocumentoAcudiente,
 )
+from src.domain.models.tenant import TenantScope
 from src.domain.ports.acudiente_repo import IAcudienteRepository
 
 
@@ -46,13 +47,13 @@ class SqliteAcudienteRepository(IAcudienteRepository):
     # ------------------------------------------------------------------
 
     def listar(
-        self, activos_solo: bool = False, institucion_id: int | None = None
+        self, institucion_id: TenantScope, activos_solo: bool = False
     ) -> list[Acudiente]:
         sql = "SELECT * FROM acudientes WHERE 1=1"
         params: list = []
         if activos_solo:
             sql += " AND activo = 1"
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " ORDER BY nombre_completo"
@@ -61,11 +62,11 @@ class SqliteAcudienteRepository(IAcudienteRepository):
             return [self._row_to_acudiente(r) for r in rows]
 
     def buscar_por_documento(
-        self, numero: str, institucion_id: int | None = None
+        self, numero: str, institucion_id: TenantScope
     ) -> Acudiente | None:
         sql = "SELECT * FROM acudientes WHERE numero_documento = ?"
         params: list = [numero.upper()]
-        if institucion_id is not None:
+        if isinstance(institucion_id, int):
             sql += " AND institucion_id = ?"
             params.append(institucion_id)
         sql += " LIMIT 1"

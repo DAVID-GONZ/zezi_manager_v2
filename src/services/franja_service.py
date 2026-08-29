@@ -94,14 +94,14 @@ class FranjaService:
         # director → su institución.
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_plantillas_franja(institucion_id=institucion_actual())
+        return self._repo.listar_plantillas_franja(institucion_id=institucion_actual() or "*")
 
     def plantilla_activa(self, jornada: str = "UNICA") -> PlantillaFranja | None:
         """Retorna la plantilla activa de una jornada para la institución del scope."""
         # Scope multi-tenant (paso_32): la plantilla activa es por institución.
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.get_plantilla_activa(jornada, institucion_id=institucion_actual())
+        return self._repo.get_plantilla_activa(jornada, institucion_id=institucion_actual() or "*")
 
     @requiere_escritura
     def guardar_franjas(self, plantilla_id: int, filas: list[dict]) -> int:

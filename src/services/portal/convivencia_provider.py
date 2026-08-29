@@ -34,13 +34,9 @@ class ConvivenciaProvider:
         ]
 
     def alertas(self, ctx: PortalContext) -> list[SubItem]:
-        # TODO(multitenant): este conteo NO está acotado por institución y no
-        # puede estarlo todavía. `AlertaService.contar_pendientes()` sólo admite
-        # (estudiante_id, nivel) y `sqlite_alerta_repo.contar_pendientes` hace
-        # `COUNT(*) FROM alertas` sin filtro de tenant porque la tabla `alertas`
-        # no tiene columna `institucion_id`. Acotarlo exige migración de esquema
-        # + parámetro nuevo en el puerto `alerta_repo`. No se simula el scope
-        # aquí: deuda declarada, no deuda oculta.
+        # tenant_02: AlertaService.contar_pendientes() resuelve el scope internamente
+        # a través de contexto_tenant.institucion_actual(). El TODO de deuda ya está
+        # saldado: el repo filtra por institución via JOIN a estudiantes.
         try:
             n = self._alerta_svc().contar_pendientes()
             if n > 0:

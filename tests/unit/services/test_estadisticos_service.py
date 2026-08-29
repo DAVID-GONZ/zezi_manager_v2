@@ -138,7 +138,8 @@ class _FakeInfraRepo:
     def __init__(self, grupos):
         self._grupos = grupos
     def listar_grupos(self, grado=None, institucion_id=None):
-        if institucion_id is None:
+        # None or "*" → cross-tenant (sin filtro de institución)
+        if institucion_id is None or institucion_id == "*":
             return self._grupos
         return [g for g in self._grupos
                 if getattr(g, "institucion_id", None) == institucion_id]
@@ -224,7 +225,7 @@ class _FakeEstRepo:
 class _FakeAlertaRepo:
     def __init__(self, pendientes_por_est):
         self._p = pendientes_por_est
-    def contar_pendientes(self, estudiante_id, nivel=None):
+    def contar_pendientes(self, institucion_id, estudiante_id=None, nivel=None):
         return self._p.get(estudiante_id, 0)
 
 

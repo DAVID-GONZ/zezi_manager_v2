@@ -520,6 +520,6 @@ class TestPlanMejoramiento:
             )
 
     def test_filtro_habilitaciones_defecto(self):
-        f = FiltroHabilitacionesDTO()
+        f = FiltroHabilitacionesDTO(institucion_id="*")
         assert f.pagina == 1
         assert f.por_pagina == 50

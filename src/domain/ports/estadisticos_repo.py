@@ -43,6 +43,9 @@ from ..models.dtos import DashboardMetricsDTO
 
 
 class IEstadisticosRepository(ABC):
+    # Seguridad tenant: grupo_id pertenece a exactamente una institución.
+    # El caller (servicio) valida que el grupo esté en el tenant del usuario.
+
     # =========================================================================
     # Métricas de dashboard
     # =========================================================================
@@ -96,7 +99,12 @@ class IEstadisticosRepository(ABC):
         self,
         grupo_id: int,
     ) -> int:
-        """Número de alertas no resueltas de los estudiantes del grupo."""
+        """Número de alertas no resueltas de los estudiantes del grupo.
+
+        No requiere `institucion_id`: grupo_id pertenece a exactamente una institución,
+        por lo que el filtro de tenant es implícito. El caller (servicio) valida que
+        el grupo pertenezca al tenant del usuario antes de llamar este método.
+        """
         ...
 
     # =========================================================================

@@ -48,6 +48,7 @@ from ..models.infraestructura import (
     Sala,
     VentanaGrupo,
 )
+from ..models.tenant import TenantScope
 
 
 class IInfraestructuraRepository(ABC):
@@ -126,23 +127,26 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_plantillas_franja(self, institucion_id: int | None = None) -> list[PlantillaFranja]:
+    def listar_plantillas_franja(self, institucion_id: TenantScope) -> list[PlantillaFranja]:
         """
         Retorna las plantillas de franja, ordenadas por nombre.
 
-        Multi-tenant (paso_32): si `institucion_id` es None devuelve todas
-        (admin / arranque); si es un id concreto filtra por esa institución.
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
     @abstractmethod
     def get_plantilla_activa(
-        self, jornada: str, institucion_id: int | None = None
+        self, jornada: str, institucion_id: TenantScope
     ) -> PlantillaFranja | None:
         """
         Retorna la plantilla activa de la jornada indicada, o None.
 
-        Multi-tenant (paso_32): filtra por institución si se indica.
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -202,9 +206,14 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_areas(self, institucion_id: int | None = None) -> list[AreaConocimiento]:
-        """Retorna todas las áreas de conocimiento, ordenadas por nombre.
-        Si `institucion_id` es None, retorna todas (admin/cross-tenant)."""
+    def listar_areas(self, institucion_id: TenantScope) -> list[AreaConocimiento]:
+        """
+        Retorna todas las áreas de conocimiento, ordenadas por nombre.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
         ...
 
     @abstractmethod
@@ -248,14 +257,16 @@ class IInfraestructuraRepository(ABC):
     @abstractmethod
     def listar_asignaturas(
         self,
+        institucion_id: TenantScope,
         area_id: int | None = None,
-        institucion_id: int | None = None,
     ) -> list[Asignatura]:
         """
         Retorna asignaturas, opcionalmente filtradas por área y/o institución.
-        Si `institucion_id` se pasa, aplica `WHERE institucion_id = ?` (scope
-        multi-tenant — paso_29); None = sin filtro de institución (admin ve
-        todo). Ordenadas por nombre.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → WHERE institucion_id = ? (scope multi-tenant)
+          - "*"  → sin filtro de institución (admin ve todo)
+        Ordenadas por nombre.
         """
         ...
 
@@ -299,14 +310,16 @@ class IInfraestructuraRepository(ABC):
     @abstractmethod
     def listar_grupos(
         self,
+        institucion_id: TenantScope,
         grado: int | None = None,
-        institucion_id: int | None = None,
     ) -> list[Grupo]:
         """
         Retorna grupos, opcionalmente filtrados por grado y/o institución.
-        Si `institucion_id` se pasa, aplica `WHERE institucion_id = ?` (scope
-        multi-tenant — paso_29); None = sin filtro (admin ve todo). Ordenados
-        por código.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → WHERE institucion_id = ? (scope multi-tenant)
+          - "*"  → sin filtro de institución (admin ve todo)
+        Ordenados por código.
         """
         ...
 
@@ -557,8 +570,12 @@ class IInfraestructuraRepository(ABC):
         ...
 
     @abstractmethod
-    def listar_configs_generacion(self, periodo_id: int | None = None) -> list[ConfigGeneracion]:
-        """Retorna configs, opcionalmente filtradas por periodo."""
+    def listar_configs_generacion(
+        self,
+        institucion_id: TenantScope,
+        periodo_id: int | None = None,
+    ) -> list[ConfigGeneracion]:
+        """Retorna configs, opcionalmente filtradas por periodo e institución."""
         ...
 
     @abstractmethod
@@ -592,12 +609,13 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_salas(self, institucion_id: int | None = None) -> list[Sala]:
+    def listar_salas(self, institucion_id: TenantScope) -> list[Sala]:
         """
         Retorna las salas ordenadas por nombre.
 
-        Multi-tenant (paso_32): si `institucion_id` es None devuelve todas
-        (admin / arranque); si es un id concreto filtra por esa institución.
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -618,7 +636,7 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_ventanas_grupo(self) -> list[VentanaGrupo]: ...
+    def listar_ventanas_grupo(self, institucion_id: TenantScope) -> list[VentanaGrupo]: ...
 
     @abstractmethod
     def get_ventanas_por_grupo(self, grupo_id: int) -> list[VentanaGrupo]: ...
@@ -650,7 +668,15 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_franjas_reunion(self, institucion_id: int | None = None) -> list[FranjaReunion]: ...
+    def listar_franjas_reunion(self, institucion_id: TenantScope) -> list[FranjaReunion]:
+        """
+        Retorna las franjas de reunión.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
+        ...
 
     @abstractmethod
     def get_franja_reunion(self, franja_id: int) -> FranjaReunion | None: ...
@@ -675,14 +701,14 @@ class IInfraestructuraRepository(ABC):
     def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente: ...
 
     @abstractmethod
-    def listar_limites_docente(self) -> list[LimitesDocente]: ...
+    def listar_limites_docente(self, institucion_id: TenantScope) -> list[LimitesDocente]: ...
 
     # =========================================================================
     # Grados (paso_19)
     # =========================================================================
 
     @abstractmethod
-    def listar_grados(self) -> list[Grado]: ...
+    def listar_grados(self, institucion_id: TenantScope) -> list[Grado]: ...
 
     @abstractmethod
     def upsert_grado(self, grado: Grado) -> Grado: ...
@@ -695,12 +721,28 @@ class IInfraestructuraRepository(ABC):
     # =========================================================================
 
     @abstractmethod
-    def listar_plan_estudios(self, institucion_id: int | None = None) -> list[PlanEstudios]: ...
+    def listar_plan_estudios(self, institucion_id: TenantScope) -> list[PlanEstudios]:
+        """
+        Retorna el plan de estudios.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
+        ...
 
     @abstractmethod
     def get_plan_estudios_por_grado(
-        self, grado: int, institucion_id: int | None = None
-    ) -> list[PlanEstudios]: ...
+        self, grado: int, institucion_id: TenantScope
+    ) -> list[PlanEstudios]:
+        """
+        Retorna el plan de estudios de un grado.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
+        ...
 
     @abstractmethod
     def set_horas_plan(

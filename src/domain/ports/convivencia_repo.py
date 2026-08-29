@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..models.tenant import TenantScope
 from ..models.convivencia import (
     CategoriaObservacion,
     EntradaSeguimiento,
@@ -123,15 +124,15 @@ class IConvivenciaRepository(ABC):
     def listar_registros(
         self,
         filtro: FiltroConvivenciaDTO,
-        institucion_id: int | None = None,
+        institucion_id: TenantScope,
     ) -> list[RegistroComportamiento]:
         """
         Retorna una lista paginada de registros que cumplen con los criterios
         del filtro (estudiante, grupo, periodo, tipo, etc.).
 
-        Multi-tenant (paso_32): cuando el listado cruza grupos (sin grupo ni
-        estudiante en el filtro), `institucion_id` lo acota a una institución
-        vía join a `grupos`. None = sin acotar (admin / arranque).
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → acota a esa institución vía JOIN a grupos
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -139,13 +140,15 @@ class IConvivenciaRepository(ABC):
     def contar_registros(
         self,
         filtro: FiltroConvivenciaDTO,
-        institucion_id: int | None = None,
+        institucion_id: TenantScope,
     ) -> int:
         """
         Retorna la cantidad total de registros que cumplen con el filtro,
         útil para paginación o métricas.
 
-        Multi-tenant (paso_32): acota por institución igual que listar_registros.
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → acota a esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -217,12 +220,15 @@ class IConvivenciaRepository(ABC):
 
     @abstractmethod
     def listar_categorias(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[CategoriaObservacion]:
         """
         Retorna la lista de categorías de observación.
         Si solo_activas=True (default), excluye las categorías desactivadas.
-        Si institucion_id no es None, filtra por esa institución.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -254,16 +260,19 @@ class IConvivenciaRepository(ABC):
     @abstractmethod
     def listar_plantillas(
         self,
+        institucion_id: TenantScope,
         categoria_id: int | None = None,
         solo_activas: bool = True,
-        institucion_id: int | None = None,
     ) -> list[PlantillaObservacion]:
         """
         Retorna la lista de plantillas de observación.
         Si categoria_id no es None, filtra por esa categoría.
         Si solo_activas=True (default), excluye las plantillas desactivadas.
-        Si institucion_id no es None, filtra por esa institución.
         Ordena por uso_count DESC (las más usadas primero).
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
         """
         ...
 
@@ -302,9 +311,15 @@ class IConvivenciaRepository(ABC):
 
     @abstractmethod
     def listar_tipos_situacion(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[TipoSituacion]:
-        """Retorna tipos de situación, opcionalmente filtrados por institución y estado."""
+        """
+        Retorna tipos de situación, opcionalmente filtrados por institución y estado.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
         ...
 
     @abstractmethod
@@ -353,9 +368,15 @@ class IConvivenciaRepository(ABC):
 
     @abstractmethod
     def listar_medidas(
-        self, solo_activas: bool = True, institucion_id: int | None = None
+        self, institucion_id: TenantScope, solo_activas: bool = True
     ) -> list[MedidaPedagogica]:
-        """Retorna medidas pedagógicas, opcionalmente filtradas por institución y estado."""
+        """
+        Retorna medidas pedagógicas, opcionalmente filtradas por institución y estado.
+
+        `institucion_id` es obligatorio (TenantScope):
+          - int  → filtra por esa institución
+          - "*"  → cross-tenant (admin)
+        """
         ...
 
     @abstractmethod
