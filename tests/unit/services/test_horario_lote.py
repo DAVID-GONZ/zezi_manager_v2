@@ -447,3 +447,58 @@ def test_ida_vuelta_exportar_y_reanalizar():
     svc2 = HorarioService(FakeInfraVacio(), asig_repo, usuario_repo)
     reporte = svc2.analizar_lote(escenario_id=100, periodo_id=1, filas=filas_exp)
     assert reporte.todo_ok, [f.motivo for f in reporte.filas if not f.ok]
+
+
+def test_lote_rechaza_intervalo_invalido():
+    """El análisis rechaza horas fuera de rango o con fin no posterior al inicio."""
+    asignacion = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    svc = _make_service(
+        asignaciones=[asignacion],
+        asignaturas=[_asignatura(ASIGNATURA_ID_A)],
+    )
+
+    reporte = svc.analizar_lote(
+        ESCENARIO_ID,
+        PERIODO_ID,
+        [_fila(ASIG_ID_A, hi="09:00", hf="08:00")],
+    )
+
+    assert not reporte.todo_ok
+    assert "Horario inválido" in reporte.filas[0].motivo
+
+
+def test_lote_rechaza_asignacion_de_otro_periodo():
+    """Una fila no puede colocar una asignación que no pertenece al período."""
+    asignacion = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    svc = _make_service(
+        asignaciones=[asignacion],
+        asignaturas=[_asignatura(ASIGNATURA_ID_A)],
+    )
+
+    reporte = svc.analizar_lote(
+        ESCENARIO_ID,
+        periodo_id=PERIODO_ID + 1,
+        filas=[_fila(ASIG_ID_A)],
+    )
+
+    assert not reporte.todo_ok
+    assert reporte.filas[0].motivo == "La asignación no pertenece al período indicado."
+
+
+def test_lote_normaliza_horas_antes_de_persistir():
+    """El mismo intervalo validado se persiste en formato canónico HH:MM."""
+    asignacion = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    svc = _make_service(
+        asignaciones=[asignacion],
+        asignaturas=[_asignatura(ASIGNATURA_ID_A)],
+    )
+
+    resultado = svc.aplicar_lote(
+        ESCENARIO_ID,
+        PERIODO_ID,
+        [_fila(ASIG_ID_A, hi="8:0", hf="9:5")],
+    )
+
+    assert resultado.creados == 1
+    assert svc._infra.guardados[0].hora_inicio == time(8, 0)
+    assert svc._infra.guardados[0].hora_fin == time(9, 5)

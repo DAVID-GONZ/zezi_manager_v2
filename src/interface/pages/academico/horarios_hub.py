@@ -1066,6 +1066,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
     def _gen_seleccionar_config(config_id: int | None) -> None:
         presenter.seleccionar_gen_config(config_id, _s["gen_configs"])
+        _s["gen_error"] = None
         gen_refreshable.refresh()
 
     def _gen_config_dialog(config: Any | None = None) -> None:
@@ -1238,8 +1239,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             restricciones=restricciones,
                         )
                         toast_success("Configuración actualizada")
+                        dlg.close()
+                        _gen_cargar_configs()
+                        gen_refreshable.refresh()
                     else:
-                        infra.crear_config_generacion(
+                        nuevo = infra.crear_config_generacion(
                             nombre=nombre,
                             periodo_id=_s["gen_periodo_id"],
                             anio_id=_s["gen_anio_id"],
@@ -1249,9 +1253,9 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             restricciones=restricciones,
                         )
                         toast_success("Configuración creada")
-                    dlg.close()
-                    _gen_cargar_configs()
-                    gen_refreshable.refresh()
+                        dlg.close()
+                        _gen_cargar_configs()
+                        _gen_seleccionar_config(nuevo.id)
                 except Exception as exc:
                     logger.error("Error guardando configuración de generación: %s", exc)
                     toast_error("No se pudo guardar la configuración")
@@ -1302,6 +1306,12 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         presenter.set_gen_eje(valor)
         gen_refreshable.refresh()
 
+    def _gen_iniciar_generacion(config) -> None:
+        """Selecciona la config dada e inicia la generación en un solo clic."""
+        presenter.seleccionar_gen_config(config.id, _s["gen_configs"])
+        _s["gen_error"] = None
+        _gen_generar_config()
+
     def _gen_generar_config() -> None:
         config = _s.get("gen_config_sel")
         if not config or getattr(config, "id", None) is None:
@@ -1316,7 +1326,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         async def _trabajo_coro() -> None:
             resultado = None
-            error = False
+            error_msg: str | None = None
             try:
                 loop = asyncio.get_event_loop()
                 resultado = await loop.run_in_executor(
@@ -1329,19 +1339,33 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 )
             except Exception as exc:
                 logger.error("Error ejecutando generador: %s", exc)
-                error = True
+                error_msg = _texto_error(exc)
 
             _s["gen_generando"] = False
+            _s["gen_error"] = error_msg
             if client.has_socket_connection and not client.is_deleted:
                 try:
                     with client:
-                        if error:
-                            toast_error("Error al generar el horario")
+                        if error_msg:
+                            toast_error(f"Error al generar: {error_msg}")
                         else:
                             _s["gen_resultado"] = resultado
                             _s["gen_eje_sel"] = None
                             _gen_cargar_configs()
                             _gen_cargar_preview()
+                            # El escenario se crea en segundo plano; la parrilla principal
+                            # conservaba el escenario previo hasta recargar la página.
+                            if getattr(resultado, "escenario_id", None):
+                                _cargar_escenarios()
+                                generado = next(
+                                    (e for e in _s["escenarios"] if e.id == resultado.escenario_id),
+                                    None,
+                                )
+                                if generado:
+                                    _s["escenario_sel"] = generado
+                                    _cargar_bloques_escenario()
+                                    escenarios_refreshable.refresh()
+                                    parrilla_unificada_refreshable.refresh()
                             if getattr(resultado, "valido", False):
                                 toast_success("Generación completada")
                             else:
@@ -1495,7 +1519,8 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 with ui.element("table").classes("gen-config-table"):
                     with ui.element("thead"), ui.element("tr"):
                         for col in ("Nombre", "Plantilla", "Grupos", "Estado", "Acciones"):
-                            ui.element("th").text = col
+                            with ui.element("th"):
+                                ui.label(col)
                     with ui.element("tbody"):
                         for config in _s["gen_configs"]:
                             grupo_count = len(getattr(config, "grupos", []) or [])
@@ -1506,26 +1531,34 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             badge_txt, badge_var = _ESTADO_BADGE.get(
                                 estado, (estado.title(), "neutral")
                             )
+                            es_sel = config.id == sel_id
+                            esta_generando = es_sel and _s["gen_generando"]
                             fila_cls = "gen-config-row"
-                            if config.id == sel_id:
+                            if es_sel:
                                 fila_cls += " gen-config-sel"
                             with ui.element("tr").classes(fila_cls):
-                                ui.element("td").text = getattr(config, "nombre", "")
-                                ui.element("td").text = str(plantilla_nombre)
+                                with ui.element("td"):
+                                    ui.label(getattr(config, "nombre", "")).classes("font-semibold")
+                                with ui.element("td"):
+                                    ui.label(str(plantilla_nombre))
                                 with ui.element("td"):
                                     ui.label(str(grupo_count) if grupo_count else "Todos")
                                 with ui.element("td"):
-                                    status_badge(badge_txt, variante=badge_var)
+                                    if esta_generando:
+                                        with ui.row().classes("items-center gap-1"):
+                                            ui.spinner(size="xs")
+                                            ui.label("Generando…").classes("text-xs text-muted")
+                                    else:
+                                        status_badge(badge_txt, variante=badge_var)
                                 with ui.element("td"), ui.element("div").classes(
                                     "gen-config-acciones"
                                 ):
-                                    btn_secondary(
-                                        "Seleccionar",
+                                    btn_primary(
+                                        "Generar",
                                         size="sm",
-                                        icon=Icons.CHECK,
-                                        on_click=lambda _, c=config: _gen_seleccionar_config(
-                                            c.id
-                                        ),
+                                        icon="play_arrow",
+                                        on_click=lambda _, c=config: _gen_iniciar_generacion(c),
+                                        disabled=_s["gen_generando"],
                                     )
                                     btn_ghost(
                                         "Editar",
@@ -1544,7 +1577,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                         size="sm",
                                         icon=Icons.DELETE,
                                         on_click=lambda _, c=config: _gen_eliminar_config(c),
-                                        )
+                                    )
 
     def _gen_render_resultado(resultado: Any) -> None:
         total = int(getattr(resultado, "total_requeridos", 0) or 0)
@@ -1560,6 +1593,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             else 0
         )
         costo_final = float(getattr(metricas, "costo_final", 0.0) or 0.0) if metricas else 0.0
+        total_slots = int(getattr(resultado, "total_slots", 0) or 0)
+        grupos_proc = int(getattr(resultado, "grupos_procesados", 0) or 0)
+        metodo = str(getattr(resultado, "metodo_usado", "") or "")
+        budget_out = bool(getattr(resultado, "presupuesto_agotado", False))
+        demanda_grp = dict(getattr(resultado, "demanda_por_grupo", {}) or {})
 
         with ui.row().classes("items-center gap-2 u-mb-sm"):
             ui.label("Resultado de la generación").classes("text-subtitle2 font-semibold")
@@ -1578,10 +1616,29 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 (f"{pct}%", "% Colocado"),
                 (str(huecos), "Huecos"),
                 (f"{costo_final:.1f}", "Costo final"),
+                (str(total_slots), "Slots disp."),
+                (str(grupos_proc), "Grupos"),
+                (metodo or "—", "Método"),
             ]:
                 with ui.element("div").classes("parrilla-metrica"):
                     ui.label(_val).classes("parrilla-metrica-valor")
                     ui.label(_lbl).classes("parrilla-metrica-label")
+
+        if budget_out or (demanda_grp and total_slots > 0):
+            with ui.element("div").classes("u-mt-sm"):
+                if budget_out:
+                    status_badge(
+                        "Presupuesto agotado — resultado puede ser subóptimo",
+                        variante="warning",
+                    )
+                sin_holgura = [
+                    g for g, d in demanda_grp.items() if d >= total_slots
+                ]
+                if sin_holgura:
+                    status_badge(
+                        f"Sin holgura: {len(sin_holgura)} grupo(s) con demanda >= slots",
+                        variante="warning",
+                    )
 
         incidencias = list(getattr(resultado, "incidencias", []) or [])
         if incidencias:
@@ -1686,6 +1743,19 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 with ui.element("div").classes("gen-loading"):
                     ui.spinner(size="lg")
                     ui.label("Generando horario… esto puede tardar unos segundos.")
+                return
+
+            gen_error = _s.get("gen_error")
+            if gen_error:
+                with ui.element("div").classes("u-mt-sm"):
+                    with ui.row().classes("items-center gap-2 u-mb-xs"):
+                        ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")
+                        ui.label("Error en la última generación").classes("text-sm font-semibold")
+                    ui.label(gen_error).classes("text-sm text-secondary u-mb-xs")
+                    ui.label(
+                        "Posibles causas: plantilla sin franjas válidas, sin asignaciones "
+                        "en el periodo o grupos sin docentes asignados."
+                    ).classes("text-xs text-muted")
                 return
 
             if not resultado:

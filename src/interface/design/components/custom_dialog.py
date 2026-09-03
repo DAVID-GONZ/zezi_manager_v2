@@ -63,7 +63,8 @@ def custom_dialog(
 
     ancho_cls = _MAX_WIDTHS.get(max_width, _MAX_WIDTHS["md"])
     with dlg, ui.card().classes(f"andes-card form-dialog-card {ancho_cls}"):
-        yield dlg
+        with ui.element("div").classes("form-dialog-body"):
+            yield dlg
 
 
 __all__ = ["custom_dialog"]

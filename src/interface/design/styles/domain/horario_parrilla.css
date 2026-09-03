@@ -396,6 +396,37 @@ html[data-theme="dark"] .parrilla-segmento { background: var(--color-surface-alt
 html[data-theme="dark"] .parrilla-metrica { background: var(--color-surface-alt); }
 
 /* ═══════════════════════════════════════════════════════════════
+   Grid de cobertura (anillo + barras) — responsive
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .cobertura-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Asignaciones — resumen compacto (reemplaza anillo+barras)
+   ═══════════════════════════════════════════════════════════════ */
+.asig-resumen-compacto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0 0;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Asignaciones — columnas de la tabla plan de estudios
+   ═══════════════════════════════════════════════════════════════ */
+.asig-col-nombre   { flex: 1 1 0; min-width: 0; }
+.asig-col-horas    { width: 56px; flex-shrink: 0; }
+.asig-col-docente  { flex: 2 1 0; min-width: 180px; }
+.asig-col-estado   { width: 96px; flex-shrink: 0; text-align: center; }
+.asig-col-accion   { width: 40px; flex-shrink: 0; text-align: right; }
+
+/* ═══════════════════════════════════════════════════════════════
    Etiquetas de contexto (semántica de chips / filtros)
    ═══════════════════════════════════════════════════════════════ */
 .parrilla-chips-label {

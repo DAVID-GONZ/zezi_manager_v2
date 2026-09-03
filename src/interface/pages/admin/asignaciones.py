@@ -232,17 +232,6 @@ def asignaciones_page() -> None:
     def _activo_por_materia() -> dict:
         return {a.asignatura_id: a for a in _s["asigns"] if a.activo}
 
-    def _horas(grupo_id: int, asignatura_id: int) -> int:
-        return Container.asignacion_service().horas_de_asignacion(grupo_id, asignatura_id)
-
-    def _completitud_grupo(g) -> tuple[int, int]:
-        """(horas del plan ya asignadas, total del plan) para un grupo+periodo."""
-        try:
-            c = Container.asignacion_service().completitud_grupo(g.id, g.grado, _s["periodo_id"])
-        except Exception:
-            return (0, 0)
-        return (c.horas_asignadas, c.horas_totales)
-
     def _materias_sin_docente(grupo_id: int) -> dict:
         """{asignatura_id: 'Nombre (Nh)'} del plan del grupo sin docente asignado."""
         g = next((x for x in _s["grupos"] if x.id == grupo_id), None)
@@ -357,7 +346,10 @@ def asignaciones_page() -> None:
         if not did:
             return
         # Grupos anotados con su completitud del plan (incompletos primero).
-        compl = {g.id: _completitud_grupo(g) for g in _s["grupos"]}
+        compl_dtos = Container.asignacion_service().completitud_grupos_bulk(
+            _s["grupos"], _s["periodo_id"]
+        )
+        compl = {gid: (c.horas_asignadas, c.horas_totales) for gid, c in compl_dtos.items()}
 
         def _orden(g):
             a, t = compl[g.id]
@@ -493,23 +485,20 @@ def asignaciones_page() -> None:
 
     # ── Fila de materia (Por grupo, con selector inline) ──────────────────────────
     def _fila_materia(
-        nombre: str, horas, asignatura_id: int, activo, fuera_plan: bool = False
+        nombre: str,
+        horas,
+        asignatura_id: int,
+        activo,
+        fuera_plan: bool = False,
+        cupos: dict | None = None,
     ) -> None:
-        # Construir opciones de docente con su cupo (carga/cap) y filtrar los que
-        # no tienen cupo para estas horas (salvo el actualmente asignado).
-        h = horas or 0
         cur_uid = activo.usuario_id if activo else None
-        cupos = Container.asignacion_service().docentes_con_cupo(
-            asignatura_id=asignatura_id,
-            grupo_id=_s["grupo_sel_id"],
-            horas=h,
-            periodo_id=_s["periodo_id"],
-            docente_ids=[d.id for d in _s["docentes"]],
-            usuario_actual_id=cur_uid,
-        )
         opts: dict = {0: "— Sin asignar —"}
         for d in _s["docentes"]:
-            c = cupos[d.id]
+            c = cupos[d.id] if cupos else None
+            if c is None:
+                opts[d.id] = d.nombre_completo
+                continue
             if c.cap_efectivo is None:
                 etiqueta = f"{d.nombre_completo} · {c.carga_actual}h"
             else:
@@ -524,24 +513,24 @@ def asignaciones_page() -> None:
             if d:
                 opts[cur_uid] = d.nombre_completo
         with ui.element("div").classes("lista-fila"):
-            with ui.element("div").classes("flex-1"):
+            with ui.element("div").classes("asig-col-nombre"):
                 ui.label(nombre).classes("text-sm font-medium")
                 if fuera_plan:
                     ui.label("Fuera del plan").classes("text-xs text-warning")
             ui.label(f"{horas} h" if horas is not None else "—").classes(
-                "w-16 text-sm text-secondary"
+                "asig-col-horas text-sm text-secondary"
             )
-            inline_select(
-                opts,
-                value=cur_uid if cur_uid else 0,
-                on_change=lambda e, aid=asignatura_id: _set_docente(aid, e.value or None),
-                cls_extra="w-72",
-            )
-            with ui.element("div").classes("w-28"):
+            with ui.element("div").classes("asig-col-docente"):
+                inline_select(
+                    opts,
+                    value=cur_uid if cur_uid else 0,
+                    on_change=lambda e, aid=asignatura_id: _set_docente(aid, e.value or None),
+                )
+            with ui.element("div").classes("asig-col-estado"):
                 status_badge("Asignada", variante="success") if activo else status_badge(
                     "Pendiente", variante="warning"
                 )
-            with ui.element("div").classes("w-10 text-right"):
+            with ui.element("div").classes("asig-col-accion"):
                 if activo:
                     btn_icon(
                         "link_off",
@@ -569,73 +558,84 @@ def asignaciones_page() -> None:
         total_horas = sum(p.horas_semanales for p in plan)
         horas_asignadas = sum(p.horas_semanales for p in plan if p.asignatura_id in activo_map)
         restantes = total_horas - horas_asignadas
+        extras = [a for a in _s["asigns"] if a.activo and a.asignatura_id not in plan_ids]
+
+        # Pre-computar cupos de todos los docentes para todas las materias
+        # en una sola pasada (elimina el N+1 de docentes_con_cupo por fila).
+        svc = Container.asignacion_service()
+        docente_ids = [d.id for d in _s["docentes"]]
+        all_horas: dict[int, int] = {p.asignatura_id: p.horas_semanales for p in plan}
+        for a in extras:
+            all_horas.setdefault(a.asignatura_id, 0)
+        activo_uid_map: dict[int, int | None] = {
+            aid: ac.usuario_id for aid, ac in activo_map.items()
+        }
+        for a in extras:
+            activo_uid_map.setdefault(a.asignatura_id, a.usuario_id)
+        cargas = svc.cargas_docentes_bulk(_s["periodo_id"], docente_ids, _s["grupos"])
+        caps = svc.caps_docentes(docente_ids)
+        all_cupos = svc.cupos_para_plan(
+            all_horas, _s["periodo_id"], docente_ids,
+            activo_uid_map, cargas=cargas, caps=caps,
+        )
 
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-between"):
                 with ui.element("div"):
-                    ui.label(f"{grupo.codigo} · {grupo.nombre}").classes(
+                    grado_txt = f" · Grado {grupo.grado}" if grupo.grado is not None else ""
+                    ui.label(f"{grupo.codigo} · {grupo.nombre}{grado_txt}").classes(
                         "text-subtitle1 font-semibold"
                     )
-                    grado_txt = f"Grado {grupo.grado}" if grupo.grado is not None else "Sin grado"
-                    ui.label(grado_txt).classes("text-xs text-secondary")
-                with ui.row().classes("items-center gap-2"):
                     if plan:
-                        var = "success" if cubiertas == len(plan) else "warning"
-                        status_badge(f"{cubiertas}/{len(plan)} materias asignadas", variante=var)
-                        status_badge(f"{horas_asignadas}/{total_horas} h del plan", variante="info")
+                        sub = f"{cubiertas}/{len(plan)} materias · {horas_asignadas}/{total_horas} h"
+                        if restantes > 0:
+                            sub += f" · faltan {restantes} h"
+                        cls_sub = "text-xs text-warning" if restantes > 0 else "text-xs text-secondary"
+                        ui.label(sub).classes(cls_sub)
+                    else:
+                        ui.label(
+                            "Sin plan de estudios. Defínelo en «Plan de estudios» o agrega materias."
+                        ).classes("text-xs text-warning")
+                with ui.row().classes("items-center gap-2"):
+                    ui.switch(
+                        "Solo con cupo",
+                        value=_s["solo_con_cupo"],
+                        on_change=lambda e: (
+                            presenter.set_solo_con_cupo(e.value),
+                            matriz.refresh(),
+                        ),
+                    ).props("dense")
                     btn_secondary("Agregar materia", icon="add", on_click=_agregar_fuera_plan)
-            with ui.row().classes("items-center gap-2 u-mt-xs"):
-                ui.switch(
-                    "Solo docentes con cupo",
-                    value=_s["solo_con_cupo"],
-                    on_change=lambda e: (
-                        presenter.set_solo_con_cupo(e.value),
-                        matriz.refresh(),
-                    ),
-                ).props("dense")
-                ui.label("Los selectores muestran carga/cupo de cada docente.").classes(
-                    "text-xs text-secondary"
-                )
-            if plan:
-                # Barra de cobertura (avance del plan) + horas restantes
-                _barra_progreso(horas_asignadas, total_horas, alerta_sobre=False)
-                if restantes > 0:
-                    ui.label(
-                        f"Faltan {restantes} h por asignar para completar el plan del grado."
-                    ).classes("text-xs text-warning u-mt-xs")
-                else:
-                    ui.label("Plan del grado completo ✓").classes("text-xs text-success u-mt-xs")
-            else:
-                ui.label(
-                    "Este grado no tiene plan de estudios. Defínelo en «Plan de estudios» "
-                    "o usa «Agregar materia»."
-                ).classes("text-xs text-secondary u-mt-sm")
 
         if plan:
-            with ui.element("div").classes("panel-card u-mt-sm"):
+            with ui.element("div").classes("panel-card u-mt-xs"):
                 ui.label("Plan de estudios del grado").classes(
                     "text-subtitle2 font-semibold u-mb-sm"
                 )
                 with ui.element("div").classes("lista-head"):
-                    ui.label("Asignatura").classes("flex-1")
-                    ui.label("Horas").classes("w-16")
-                    ui.label("Docente").classes("w-60")
-                    ui.label("Estado").classes("w-28")
-                    ui.label("").classes("w-10")
+                    ui.label("Asignatura").classes("asig-col-nombre")
+                    ui.label("Horas").classes("asig-col-horas")
+                    ui.label("Docente").classes("asig-col-docente")
+                    ui.label("Estado").classes("asig-col-estado")
+                    ui.element("div").classes("asig-col-accion")
                 for p in plan:
                     _fila_materia(
                         asig_nombre.get(p.asignatura_id, f"#{p.asignatura_id}"),
                         p.horas_semanales,
                         p.asignatura_id,
                         activo_map.get(p.asignatura_id),
+                        cupos=all_cupos.get(p.asignatura_id),
                     )
 
-        extras = [a for a in _s["asigns"] if a.activo and a.asignatura_id not in plan_ids]
         if extras:
-            with ui.element("div").classes("panel-card u-mt-sm"):
+            with ui.element("div").classes("panel-card u-mt-xs"):
                 ui.label("Materias fuera del plan").classes("text-subtitle2 font-semibold u-mb-sm")
                 for a in extras:
-                    _fila_materia(a.asignatura_nombre, None, a.asignatura_id, a, fuera_plan=True)
+                    _fila_materia(
+                        a.asignatura_nombre, None, a.asignatura_id, a,
+                        fuera_plan=True,
+                        cupos=all_cupos.get(a.asignatura_id),
+                    )
 
     # ── Render: Por docente ───────────────────────────────────────────────────────
     def _render_por_docente() -> None:
@@ -650,7 +650,13 @@ def asignaciones_page() -> None:
 
         asigns = _s["doc_asigns"]
         grupo_nombre = {g.id: g.codigo for g in _s["grupos"]}
-        carga = Container.asignacion_service().carga_docente(docente.id, _s["periodo_id"])
+
+        # Pre-computar horas en bulk para todas las asignaciones del docente
+        svc = Container.asignacion_service()
+        pares = {(a.grupo_id, a.asignatura_id) for a in asigns}
+        horas_map = svc.horas_bulk(pares, _s["grupos"])
+        carga = sum(horas_map.get((a.grupo_id, a.asignatura_id), 0) for a in asigns)
+
         try:
             usuario = Container.usuario_service().get_by_id(docente.id)
         except Exception:
@@ -676,11 +682,9 @@ def asignaciones_page() -> None:
                         status_badge(f"{carga} h · sin tope", variante="neutral")
                     btn_secondary("Asignar materia", icon="add", on_click=_agregar_a_docente)
 
-            # Barra de carga (vs tope efectivo = máximo + extra)
             _barra_progreso(carga, cap, alerta_sobre=True)
 
-            # Configuración del tope: máximo base + horas extra
-            with ui.row().classes("form-row-center-md u-mt-sm items-end"):
+            with ui.row().classes("form-row-center-md u-mt-xs items-end"):
                 with ui.element("div").classes("w-32"):
                     inp_max = field_number(
                         "Máx. base (h)",
@@ -709,7 +713,6 @@ def asignaciones_page() -> None:
                         f"Tope efectivo: {cap} h ({maxh or 0} base + {extra or 0} extra)"
                     ).classes("text-xs text-secondary")
 
-            # Mensajes semánticos de sobrecarga
             if cap is not None and carga > cap:
                 ui.label(
                     f"⚠ Sobrecarga: {carga - cap} h por encima del tope efectivo. "
@@ -720,7 +723,7 @@ def asignaciones_page() -> None:
                     "text-xs text-warning u-mt-xs"
                 )
 
-        with ui.element("div").classes("panel-card u-mt-sm"):
+        with ui.element("div").classes("panel-card u-mt-xs"):
             if not asigns:
                 empty_state(
                     icono="assignment_ind",
@@ -736,14 +739,13 @@ def asignaciones_page() -> None:
             for a in sorted(
                 asigns, key=lambda x: (grupo_nombre.get(x.grupo_id, ""), x.asignatura_nombre)
             ):
+                h = horas_map.get((a.grupo_id, a.asignatura_id), 0)
                 with ui.element("div").classes("lista-fila"):
                     ui.label(grupo_nombre.get(a.grupo_id, str(a.grupo_id))).classes(
                         "w-24 cell-mono"
                     )
                     ui.label(a.asignatura_nombre).classes("flex-1 text-sm")
-                    ui.label(f"{_horas(a.grupo_id, a.asignatura_id)} h").classes(
-                        "w-16 text-sm text-secondary"
-                    )
+                    ui.label(f"{h} h").classes("w-16 text-sm text-secondary")
                     with ui.element("div").classes("w-10 text-right"):
                         btn_icon(
                             "link_off",
@@ -757,10 +759,15 @@ def asignaciones_page() -> None:
     # ── Render: tablero del profesor (solo lectura) ────────────────────────────────
     def _render_profesor_board() -> None:
         asigns = _s["mis_asigns"]
-        asvc = Container.asignacion_service()
         grupo_nombre = {g.id: g.codigo for g in _s["grupos"]}
         grupo_full = {g.id: g for g in _s["grupos"]}
-        total_horas = sum(asvc.horas_de_asignacion(a.grupo_id, a.asignatura_id) for a in asigns)
+
+        # Pre-computar horas en bulk
+        svc = Container.asignacion_service()
+        pares = {(a.grupo_id, a.asignatura_id) for a in asigns}
+        horas_map = svc.horas_bulk(pares, _s["grupos"])
+
+        total_horas = sum(horas_map.get((a.grupo_id, a.asignatura_id), 0) for a in asigns)
         n_grupos = len({a.grupo_id for a in asigns})
         n_materias = len({a.asignatura_id for a in asigns})
 
@@ -787,7 +794,7 @@ def asignaciones_page() -> None:
         with ui.element("div").classes("form-row-center-md u-mt-sm"):
             for gid in sorted(por_grupo, key=lambda g: grupo_nombre.get(g, "")):
                 items = sorted(por_grupo[gid], key=lambda x: x.asignatura_nombre)
-                sub = sum(asvc.horas_de_asignacion(gid, a.asignatura_id) for a in items)
+                sub = sum(horas_map.get((gid, a.asignatura_id), 0) for a in items)
                 g = grupo_full.get(gid)
                 with ui.element("div").classes("panel-card w-64"):
                     with ui.row().classes("items-center justify-between"):
@@ -799,17 +806,64 @@ def asignaciones_page() -> None:
                                 ui.label(g.nombre).classes("text-xs text-secondary")
                         status_badge(f"{sub} h", variante="info")
                     for a in items:
+                        h = horas_map.get((gid, a.asignatura_id), 0)
                         with ui.row().classes("divider-row form-row-between"):
                             ui.label(a.asignatura_nombre).classes("text-sm")
-                            ui.label(f"{asvc.horas_de_asignacion(gid, a.asignatura_id)} h").classes(
-                                "text-xs text-secondary"
-                            )
+                            ui.label(f"{h} h").classes("text-xs text-secondary")
+
+    # ── Resumen de cobertura compacto (directivos) ─────────────────────────────
+    def _render_resumen_compacto(compl: dict, cargas: dict, caps: dict) -> None:
+        """Métricas de cobertura en una sola línea compacta."""
+        docente_ids = [d.id for d in _s["docentes"]]
+        total_plan = sum(c.horas_totales for c in compl.values())
+        total_asignadas = sum(c.horas_asignadas for c in compl.values())
+        pct = round(total_asignadas / total_plan * 100) if total_plan else 0
+
+        total_carga = sum(cargas.get(did, 0) for did in docente_ids)
+        caps_validos = {did: c for did, c in caps.items() if c is not None}
+        total_cap = sum(caps_validos.values()) if caps_validos else 0
+
+        grupos_completos = sum(1 for c in compl.values() if c.completo)
+        grupos_con_plan = sum(1 for c in compl.values() if c.horas_totales > 0)
+
+        with ui.element("div").classes("asig-resumen-compacto"):
+            if pct == 100 and total_plan > 0:
+                status_badge("Completo", variante="success")
+            elif total_plan > 0:
+                status_badge(f"{pct}%", variante="warning")
+            ui.label(f"{total_asignadas}/{total_plan} h").classes(
+                "text-sm font-semibold"
+            )
+            ui.label(f"{grupos_completos}/{grupos_con_plan} grupos").classes(
+                "text-sm text-secondary"
+            )
+            if caps_validos:
+                cls = (
+                    "text-sm text-secondary"
+                    if total_carga <= total_cap
+                    else "text-sm text-error"
+                )
+                ui.label(f"{total_carga}/{total_cap} h carga docente").classes(cls)
 
     # ── Matriz (controles + dispatch) ───────────────────────────────────────────────
     # Los controles viven DENTRO del refreshable para que su estado activo
     # (toggle de perspectiva, chip seleccionado) se actualice al interactuar.
     @ui.refreshable
     def matriz() -> None:
+        pid = _s["periodo_id"]
+
+        # Pre-computar completitud y capacidad (directivos) — se reutiliza en
+        # resumen de cobertura y en los indicadores de los pills.
+        compl: dict = {}
+        cargas_pre: dict = {}
+        caps_pre: dict = {}
+        if es_directivo and pid and _s["grupos"]:
+            svc = Container.asignacion_service()
+            compl = svc.completitud_grupos_bulk(_s["grupos"], pid)
+            d_ids = [d.id for d in _s["docentes"]]
+            cargas_pre = svc.cargas_docentes_bulk(pid, d_ids, _s["grupos"])
+            caps_pre = svc.caps_docentes(d_ids)
+
         with ui.element("div").classes("panel-card"):
             with ui.row().classes("form-row-center-md"):
                 periodo_opts = {p.id: p.nombre for p in _s["periodos"]}
@@ -840,26 +894,57 @@ def asignaciones_page() -> None:
                 ui.label("Grupo").classes("parrilla-chips-label u-mt-sm")
                 with ui.element("div").classes("parrilla-chips"):
                     for g in _s["grupos"]:
+                        c_data = compl.get(g.id)
+                        completo = c_data.completo if c_data and c_data.horas_totales > 0 else False
+                        tiene_plan = c_data and c_data.horas_totales > 0 if c_data else False
                         cls = "parrilla-chip" + (
                             " parrilla-chip-activo" if g.id == _s["grupo_sel_id"] else ""
                         )
-                        chip = ui.element("div").classes(cls)
+                        dot_bg = (
+                            "var(--color-success)" if completo
+                            else "var(--color-warning)" if tiene_plan
+                            else "var(--color-text-secondary)"
+                        )
+                        chip = ui.element("div").classes(cls).style(
+                            f"border-bottom:3px solid {dot_bg};"
+                        )
                         chip.on("click", lambda _, gid=g.id: _seleccionar_grupo(gid))
                         with chip:
                             ui.label(g.codigo)
+                            if tiene_plan and not completo:
+                                ui.html(
+                                    f'<span class="text-xs text-secondary"'
+                                    f' style="margin-left:var(--space-xs);">'
+                                    f'{c_data.faltantes}h</span>'
+                                )
             elif es_directivo:
                 ui.label("Docente").classes("parrilla-chips-label u-mt-sm")
                 with ui.element("div").classes("parrilla-chips"):
                     for d in _s["docentes"]:
+                        carga = cargas_pre.get(d.id, 0)
+                        cap = caps_pre.get(d.id)
+                        if cap is None:
+                            dot_bg = "var(--color-text-secondary)"
+                        elif carga > cap:
+                            dot_bg = "var(--color-error)"
+                        elif carga >= cap * 0.85:
+                            dot_bg = "var(--color-warning)"
+                        else:
+                            dot_bg = "var(--color-success)"
                         cls = "parrilla-chip" + (
                             " parrilla-chip-activo" if d.id == _s["docente_sel_id"] else ""
                         )
-                        chip = ui.element("div").classes(cls)
+                        chip = ui.element("div").classes(cls).style(
+                            f"border-bottom:3px solid {dot_bg};"
+                        )
                         chip.on("click", lambda _, did=d.id: _seleccionar_docente(did))
                         with chip:
                             ui.label(d.nombre_completo)
 
-        if not _s["periodo_id"]:
+            if es_directivo and compl:
+                _render_resumen_compacto(compl, cargas_pre, caps_pre)
+
+        if not pid:
             empty_state(
                 icono=Icons.PERIODS,
                 titulo="Sin periodo activo",

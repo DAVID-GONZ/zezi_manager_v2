@@ -1,4 +1,5 @@
 """Tests unitarios para AsignacionService."""
+
 from __future__ import annotations
 
 import pytest
@@ -15,6 +16,7 @@ from src.services.asignacion_service import AsignacionService
 # ===========================================================================
 # Fake
 # ===========================================================================
+
 
 class FakeAsignacionRepo(IAsignacionRepository):
     def __init__(self):
@@ -35,8 +37,10 @@ class FakeAsignacionRepo(IAsignacionRepository):
 
     def existe(self, grupo_id: int, asignatura_id: int, usuario_id: int, periodo_id: int) -> bool:
         return any(
-            a.grupo_id == grupo_id and a.asignatura_id == asignatura_id
-            and a.usuario_id == usuario_id and a.periodo_id == periodo_id
+            a.grupo_id == grupo_id
+            and a.asignatura_id == asignatura_id
+            and a.usuario_id == usuario_id
+            and a.periodo_id == periodo_id
             for a in self._asigs.values()
         )
 
@@ -71,14 +75,13 @@ def _make_svc() -> tuple[AsignacionService, FakeAsignacionRepo]:
 
 
 def _dto(usuario_id: int = 1) -> NuevaAsignacionDTO:
-    return NuevaAsignacionDTO(
-        grupo_id=10, asignatura_id=20, usuario_id=usuario_id, periodo_id=5
-    )
+    return NuevaAsignacionDTO(grupo_id=10, asignatura_id=20, usuario_id=usuario_id, periodo_id=5)
 
 
 # ===========================================================================
 # Tests
 # ===========================================================================
+
 
 class TestCrearAsignacion:
     def test_crea_asignacion_nueva(self):
@@ -137,8 +140,10 @@ class TestReasignarDocente:
 # Group 1 — swap atómico, cupo y cobertura del plan
 # ===========================================================================
 
+
 class _FilterAsignRepo(FakeAsignacionRepo):
     """Repo que respeta el filtro (grupo/asignatura/usuario/periodo/activas)."""
+
     def listar(self, f: FiltroAsignacionesDTO) -> list[Asignacion]:
         out = []
         for a in self._asigs.values():
@@ -169,6 +174,7 @@ class _FakeUsuario:
 class _FakeUsuarioRepo:
     def __init__(self, caps: dict):
         self._caps = caps
+
     def get_by_id(self, uid):
         return _FakeUsuario(uid, self._caps.get(uid))
 
@@ -182,11 +188,14 @@ class _FakePlan:
 class _FakePlanSvc:
     def __init__(self, por_grado_map: dict):
         self._m = por_grado_map
+
     def por_grado(self, grado):
         return self._m.get(grado, [])
+
     def horas_de(self, grado, aid):
-        return next((p.horas_semanales for p in self._m.get(grado, [])
-                     if p.asignatura_id == aid), 0)
+        return next(
+            (p.horas_semanales for p in self._m.get(grado, []) if p.asignatura_id == aid), 0
+        )
 
 
 def _svc_completo(caps=None, plan_map=None):
@@ -229,6 +238,16 @@ class TestAsignarDocenteAMateria:
         assert a3.id == a1.id and a3.activo
 
 
+class _CountingRepo(_FilterAsignRepo):
+    def __init__(self):
+        super().__init__()
+        self.list_calls = 0
+
+    def listar(self, f: FiltroAsignacionesDTO) -> list[Asignacion]:
+        self.list_calls += 1
+        return super().listar(f)
+
+
 class TestDocentesConCupo:
     def test_sin_tope_siempre_con_cupo(self):
         svc, _ = _svc_completo(caps={1: None})
@@ -240,18 +259,44 @@ class TestDocentesConCupo:
         svc, _ = _svc_completo(caps={1: 10}, plan_map=plan)
         # plan_svc sin infra_repo: horas_de_asignacion usa fallback 0, así que
         # forzamos carga simulando una asignación existente del docente
-        svc.crear_asignacion(NuevaAsignacionDTO(grupo_id=99, asignatura_id=20,
-                                                usuario_id=1, periodo_id=5))
+        svc.crear_asignacion(
+            NuevaAsignacionDTO(grupo_id=99, asignatura_id=20, usuario_id=1, periodo_id=5)
+        )
         cupos = svc.docentes_con_cupo(20, 10, horas=99, periodo_id=5, docente_ids=[1])
         assert cupos[1].cap_efectivo == 10
+
+    def test_docentes_con_cupo_usa_una_lectura_por_periodo(self):
+        repo = _CountingRepo()
+        svc = AsignacionService(
+            repo,
+            usuario_repo=_FakeUsuarioRepo({1: 10, 2: 10, 3: 10}),
+            infra_repo=None,
+            plan_svc=_FakePlanSvc({7: [_FakePlan(20, 5)]}),
+        )
+        for uid in (1, 2, 3):
+            repo.guardar(
+                Asignacion(
+                    grupo_id=10,
+                    asignatura_id=20,
+                    usuario_id=uid,
+                    periodo_id=5,
+                    activo=True,
+                )
+            )
+
+        cupos = svc.docentes_con_cupo(20, 10, horas=3, periodo_id=5, docente_ids=[1, 2, 3])
+
+        assert len(cupos) == 3
+        assert repo.list_calls == 1
 
 
 class TestCompletitud:
     def test_completitud_y_pendientes(self):
         plan = {7: [_FakePlan(20, 4), _FakePlan(21, 3)]}
         svc, _ = _svc_completo(plan_map=plan)
-        svc.crear_asignacion(NuevaAsignacionDTO(grupo_id=10, asignatura_id=20,
-                                                usuario_id=1, periodo_id=5))
+        svc.crear_asignacion(
+            NuevaAsignacionDTO(grupo_id=10, asignatura_id=20, usuario_id=1, periodo_id=5)
+        )
         c = svc.completitud_grupo(10, grado=7, periodo_id=5)
         assert c.horas_totales == 7 and c.horas_asignadas == 4
         assert not c.completo and c.faltantes == 3

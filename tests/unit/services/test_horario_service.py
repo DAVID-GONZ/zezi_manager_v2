@@ -20,6 +20,7 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.horario_service import HorarioService
+from src.services.solo_lectura import OperacionSoloLecturaError, activar_solo_lectura
 
 # ===========================================================================
 # Fake repos
@@ -392,6 +393,18 @@ class TestActualizarBloque:
             1, dia="Martes", hora_inicio="08:00", hora_fin="09:00", sala="Aula"
         )
         assert result.dia_semana == DiaSemana.MARTES
+
+    def test_mover_bloque_bloqueado_en_solo_lectura(self):
+        """Mover un bloque es una mutación y respeta el guard central."""
+        svc, infra, asig = _make_service()
+        asig._asigs[ASIG_ID] = _make_asignacion()
+        infra._horarios[1] = _make_horario(id_=1)
+        activar_solo_lectura(True)
+        try:
+            with pytest.raises(OperacionSoloLecturaError):
+                svc.mover_bloque(1, "Martes", "08:00", "09:00")
+        finally:
+            activar_solo_lectura(False)
 
 
 class TestDisponibilidad:

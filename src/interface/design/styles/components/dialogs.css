@@ -94,6 +94,9 @@
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* ── Variantes de acento — borde superior de color ───────── */

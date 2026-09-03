@@ -25,12 +25,16 @@ Lógica pura: sin NiceGUI, sin src.db, sin instanciación de repos.
 
 from __future__ import annotations
 
+import logging
+
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import (
     BloqueGeneradoDTO,
     MetricasCalidadDTO,
     ResultadoGeneracionDTO,
 )
+
+logger = logging.getLogger("GENERADOR_HORARIO")
 
 # ---------------------------------------------------------------------------
 # Catálogo de pesos del motor (parámetros del optimizador).
@@ -492,8 +496,8 @@ class GeneradorHorarioService:
 
         # Config restricciones min_max_diario
         config_minmax = (config.restricciones or {}).get("min_max_diario", {})
-        config_max_dia_global: int | None = config_minmax.get("max_horas_dia")
-        config_min_dia_global: int | None = config_minmax.get("min_horas_dia")
+        config_max_dia_global: int | None = config_minmax.get("max")
+        config_min_dia_global: int | None = config_minmax.get("min")
         config_modo_minmax: str = config_minmax.get("modo", "preferente")
         aplicar_max_dia_estricto: bool = bool(limites_por_docente) or (
             config_modo_minmax == "estricta" and config_max_dia_global is not None
@@ -736,16 +740,23 @@ class GeneradorHorarioService:
         def _diagnosticar_no_colocado(lec: _Leccion) -> str:
             from collections import Counter
 
-            motivos: Counter[str] = Counter()
+            motivos_reales: Counter[str] = Counter()
+            slots_grupo_llenos = 0
+            total_slots_chequeados = 0
             for dia, franja in _slots_para_lec(lec):
                 ordenes = _ordenes_n(franja.orden, lec.n_horas)
                 if ordenes is None:
-                    motivos["sin_consecutividad"] += 1
+                    motivos_reales["sin_consecutividad"] += 1
+                    total_slots_chequeados += 1
+                    continue
+                total_slots_chequeados += 1
+                if (lec.grupo_id, dia, ordenes[0]) in ocupado_grupo:
+                    slots_grupo_llenos += 1
                     continue
                 causa_slot: str | None = None
                 for o in ordenes:
                     if (lec.grupo_id, dia, o) in ocupado_grupo:
-                        causa_slot = "grupo_ocupado"
+                        causa_slot = "grupo_ocupado_parcial"
                         break
                     if (lec.usuario_id, dia, o) in ocupado_docente:
                         causa_slot = "docente_ocupado"
@@ -757,22 +768,26 @@ class GeneradorHorarioService:
                         causa_slot = "reunion_bloqueada"
                         break
                 if causa_slot is not None:
-                    motivos[causa_slot] += 1
+                    motivos_reales[causa_slot] += 1
                     continue
                 tope = _carga_max(lec.usuario_id)
                 if tope is not None and carga_docente.get(lec.usuario_id, 0) + lec.n_horas > tope:
-                    motivos["tope_carga"] += 1
+                    motivos_reales["tope_carga"] += 1
                     continue
                 if aplicar_max_dia_estricto:
                     max_hd = _max_horas_dia(lec.usuario_id)
                     if max_hd is not None and horas_dia_docente.get((lec.usuario_id, dia), 0) + lec.n_horas > max_hd:
-                        motivos["max_dia"] += 1
+                        motivos_reales["max_dia"] += 1
                         continue
                 if lec.tipo_sala_req and _elegir_sala(lec.tipo_sala_req, dia, franja.orden, lec.n_horas) is None:
-                    motivos["sin_sala"] += 1
+                    motivos_reales["sin_sala"] += 1
                     continue
-                motivos["desconocido"] += 1
-            return motivos.most_common(1)[0][0] if motivos else "sin_slots"
+                motivos_reales["desconocido"] += 1
+            if motivos_reales:
+                return motivos_reales.most_common(1)[0][0]
+            if slots_grupo_llenos == total_slots_chequeados and total_slots_chequeados > 0:
+                return "grupo_saturado"
+            return "sin_slots"
 
         def _backtrack(idx: int) -> bool:
             if idx >= len(lecciones_ordenadas):
@@ -871,6 +886,8 @@ class GeneradorHorarioService:
                     construido_por_coloreo = True
                 else:
                     todas = _backtrack(0)
+
+        budget_exhausted = not construido_por_coloreo and presupuesto[0] <= 0
 
         if not construido_por_coloreo and not todas:
             colocadas_ids = {id(c[0]) for c in colocados}
@@ -982,6 +999,15 @@ class GeneradorHorarioService:
                     nxt_o = orden_siguiente[cur_franja.orden]
                     cur_franja = franja_by_orden[nxt_o]
 
+        if construido_por_coloreo:
+            metodo = "konig"
+        elif not todas:
+            metodo = "backtrack+greedy"
+        else:
+            metodo = "backtrack"
+
+        n_grupos_procesados = len({a.grupo_id for a in asignaciones})
+
         resultado = ResultadoGeneracionDTO(
             total_requeridos=total_requeridos,
             colocados=len(bloques),
@@ -991,10 +1017,17 @@ class GeneradorHorarioService:
             metricas=metricas,
             causas=causas,
             relajadas=relajadas,
+            total_slots=len(slots),
+            grupos_procesados=n_grupos_procesados,
+            demanda_por_grupo={str(k): v for k, v in demanda_grupo.items()},
+            metodo_usado=metodo,
+            presupuesto_agotado=budget_exhausted,
         )
 
         # --- Resolver escenario destino --------------------------------
         if crear_escenario:
+            if config.escenario_destino_id is not None:
+                self._infraestructura.eliminar_escenario(config.escenario_destino_id)
             escenario = self._infraestructura.crear_escenario_simple(
                 config.anio_id,
                 nombre=f"Generado {config.nombre}",
@@ -1026,12 +1059,18 @@ class GeneradorHorarioService:
 
         if filas:
             reporte = self._horario.analizar_lote(escenario_id, config.periodo_id, filas)
-            resultado.valido = reporte.todo_ok
+            # El oráculo solo certifica que los bloques colocados no se cruzan.
+            # Un horario parcial nunca es apto para persistir/activar.
+            resultado.valido = reporte.todo_ok and resultado.no_colocados == 0
             for f in reporte.filas:
                 if not f.ok:
                     resultado.incidencias.append(
                         f"Oráculo rechazó fila {f.indice}: {f.motivo or 'motivo desconocido'}."
                     )
+            if resultado.no_colocados:
+                resultado.incidencias.append(
+                    f"Resultado parcial: faltan {resultado.no_colocados} bloque(s); no se persistió."
+                )
         else:
             resultado.valido = False
 
@@ -1044,6 +1083,20 @@ class GeneradorHorarioService:
         self._infra.actualizar_config_generacion(config_actualizada)
         if config.puede_transicionar_a("generado"):
             self._infra.cambiar_estado_config(config_id, "generado")
+
+        logger.info(
+            "Generacion config=%d: requeridos=%d colocados=%d slots=%d "
+            "grupos=%d metodo=%s presupuesto_agotado=%s valido=%s causas=%s",
+            config_id,
+            resultado.total_requeridos,
+            resultado.colocados,
+            resultado.total_slots,
+            resultado.grupos_procesados,
+            resultado.metodo_usado,
+            resultado.presupuesto_agotado,
+            resultado.valido,
+            resultado.causas,
+        )
 
         return resultado
 

@@ -96,12 +96,117 @@ class AsignacionService:
             return (asig.horas_semanales or 0) if asig else 0
         return 0
 
+    def horas_bulk(
+        self,
+        pares: set[tuple[int, int]],
+        grupos: list | None = None,
+    ) -> dict[tuple[int, int], int]:
+        """Horas semanales para múltiples (grupo_id, asignatura_id) en una pasada.
+
+        Agrupa por grado y consulta cada plan una sola vez, eliminando el N+1
+        de llamar horas_de_asignacion por cada asignación individual.
+
+        ``grupos`` (opcional): lista de objetos Grupo ya cargados para evitar
+        consultas individuales de get_grupo.
+        """
+        if not pares:
+            return {}
+        if not self._plan_svc or not self._infra_repo:
+            return {p: 0 for p in pares}
+
+        grupo_ids_necesarios = {g for g, _ in pares}
+        if grupos:
+            grupo_grado: dict[int, int | None] = {
+                g.id: g.grado for g in grupos if g.id in grupo_ids_necesarios
+            }
+        else:
+            grupo_grado = {}
+            for gid in grupo_ids_necesarios:
+                g = self._infra_repo.get_grupo(gid)
+                grupo_grado[gid] = g.grado if g else None
+
+        grados_unicos = {gr for gr in grupo_grado.values() if gr is not None}
+        plan_por_grado: dict[int, dict[int, int]] = {}
+        for grado in grados_unicos:
+            items = self._plan_svc.por_grado(grado)
+            plan_por_grado[grado] = {p.asignatura_id: p.horas_semanales for p in items}
+
+        asig_ids_fallback: set[int] = set()
+        for gid, aid in pares:
+            grado = grupo_grado.get(gid)
+            if grado is None or aid not in plan_por_grado.get(grado, {}):
+                asig_ids_fallback.add(aid)
+        asig_horas_global: dict[int, int] = {}
+        for aid in asig_ids_fallback:
+            asig = self._infra_repo.get_asignatura(aid)
+            asig_horas_global[aid] = (asig.horas_semanales or 0) if asig else 0
+
+        result: dict[tuple[int, int], int] = {}
+        for gid, aid in pares:
+            grado = grupo_grado.get(gid)
+            if grado is not None and aid in plan_por_grado.get(grado, {}):
+                result[(gid, aid)] = plan_por_grado[grado][aid]
+            else:
+                result[(gid, aid)] = asig_horas_global.get(aid, 0)
+        return result
+
+    def _cargas_docentes_periodo(
+        self, periodo_id: int, docente_ids: list[int] | None = None
+    ) -> dict[int, int]:
+        """Cargas activas por docente para un periodo, en una sola lectura del repo."""
+        docentes = set(docente_ids) if docente_ids else None
+        activas = self._repo.listar(
+            FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True, por_pagina=500)
+        )
+        cargas: dict[int, int] = {}
+        for a in activas:
+            if docentes is not None and a.usuario_id not in docentes:
+                continue
+            cargas[a.usuario_id] = cargas.get(a.usuario_id, 0) + self.horas_de_asignacion(
+                a.grupo_id, a.asignatura_id
+            )
+        return cargas
+
+    def cargas_docentes_bulk(
+        self,
+        periodo_id: int,
+        docente_ids: list[int] | None = None,
+        grupos: list | None = None,
+    ) -> dict[int, int]:
+        """Cargas de docentes en un periodo, calculadas en una sola pasada.
+
+        Usa horas_bulk en vez de horas_de_asignacion individual.
+        """
+        activas = self._repo.listar(
+            FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True, por_pagina=500)
+        )
+        pares = {(a.grupo_id, a.asignatura_id) for a in activas}
+        horas_map = self.horas_bulk(pares, grupos)
+
+        docentes_set = set(docente_ids) if docente_ids else None
+        cargas: dict[int, int] = {}
+        for a in activas:
+            if docentes_set is not None and a.usuario_id not in docentes_set:
+                continue
+            cargas[a.usuario_id] = cargas.get(a.usuario_id, 0) + horas_map.get(
+                (a.grupo_id, a.asignatura_id), 0
+            )
+        return cargas
+
+    def caps_docentes(self, docente_ids: list[int]) -> dict[int, int | None]:
+        """Tope efectivo (carga_maxima_efectiva) de cada docente, una query por
+        docente pero ejecutada una sola vez por render (no una vez por fila)."""
+        if not self._usuario_repo:
+            return {did: None for did in docente_ids}
+        caps: dict[int, int | None] = {}
+        for did in docente_ids:
+            u = self._usuario_repo.get_by_id(did)
+            caps[did] = u.carga_maxima_efectiva if u else None
+        return caps
+
     def carga_docente(self, usuario_id: int, periodo_id: int) -> int:
         """Suma de horas semanales asignadas (activas) a un docente en un periodo."""
-        activas = self._repo.listar(
-            FiltroAsignacionesDTO(usuario_id=usuario_id, periodo_id=periodo_id, solo_activas=True)
-        )
-        return sum(self.horas_de_asignacion(a.grupo_id, a.asignatura_id) for a in activas)
+        return self._cargas_docentes_periodo(periodo_id, [usuario_id]).get(usuario_id, 0)
 
     @requiere_escritura
     def desactivar_por_grado_asignatura(
@@ -114,7 +219,9 @@ class AsignacionService:
             return 0
         from src.services.contexto_tenant import institucion_actual
 
-        grupos = self._infra_repo.listar_grupos(grado=grado, institucion_id=institucion_actual() or "*")
+        grupos = self._infra_repo.listar_grupos(
+            grado=grado, institucion_id=institucion_actual() or "*"
+        )
         n = 0
         for g in grupos:
             activas = self._repo.listar(
@@ -214,14 +321,18 @@ class AsignacionService:
         El docente actualmente asignado (`usuario_actual_id`) no suma las horas
         nuevas (ya las tiene) y siempre se considera con cupo.
         """
+        cargas = self._cargas_docentes_periodo(periodo_id, docente_ids)
+        caps: dict[int, int | None] = {}
+        if self._usuario_repo is not None:
+            for did in docente_ids:
+                u = self._usuario_repo.get_by_id(did)
+                caps[did] = u.carga_maxima_efectiva if u else None
+
         out: dict[int, CupoDocenteDTO] = {}
         for did in docente_ids:
             es_actual = did == usuario_actual_id
-            carga = self.carga_docente(did, periodo_id)
-            cap = None
-            if self._usuario_repo is not None:
-                u = self._usuario_repo.get_by_id(did)
-                cap = u.carga_maxima_efectiva if u else None
+            carga = cargas.get(did, 0)
+            cap = caps.get(did)
             if cap is None:
                 tiene_cupo = True
             else:
@@ -236,6 +347,52 @@ class AsignacionService:
             )
         return out
 
+    def cupos_para_plan(
+        self,
+        plan_horas: dict[int, int],
+        periodo_id: int,
+        docente_ids: list[int],
+        activo_por_materia: dict[int, int | None],
+        cargas: dict[int, int] | None = None,
+        caps: dict[int, int | None] | None = None,
+        grupos: list | None = None,
+    ) -> dict[int, dict[int, CupoDocenteDTO]]:
+        """Calcula cupos de todos los docentes para todas las materias de un
+        plan en una sola pasada.
+
+        Retorna ``{asignatura_id: {docente_id: CupoDocenteDTO}}``.
+
+        ``cargas`` y ``caps`` opcionales: si se pasan, se reutilizan (evitan
+        recalcular cuando la vista ya los tiene).
+        """
+        if cargas is None:
+            cargas = self.cargas_docentes_bulk(periodo_id, docente_ids, grupos)
+        if caps is None:
+            caps = self.caps_docentes(docente_ids)
+
+        result: dict[int, dict[int, CupoDocenteDTO]] = {}
+        for aid, horas in plan_horas.items():
+            cur_uid = activo_por_materia.get(aid)
+            cupos: dict[int, CupoDocenteDTO] = {}
+            for did in docente_ids:
+                es_actual = did == cur_uid
+                carga = cargas.get(did, 0)
+                cap = caps.get(did)
+                if cap is None:
+                    tiene_cupo = True
+                else:
+                    proyectado = carga + (0 if es_actual else (horas or 0))
+                    tiene_cupo = proyectado <= cap
+                cupos[did] = CupoDocenteDTO(
+                    usuario_id=did,
+                    carga_actual=carga,
+                    cap_efectivo=cap,
+                    tiene_cupo=tiene_cupo or es_actual,
+                    es_actual=es_actual,
+                )
+            result[aid] = cupos
+        return result
+
     # ------------------------------------------------------------------
     # Cobertura del plan de estudios (cálculo hoy en la vista)
     # ------------------------------------------------------------------
@@ -249,17 +406,59 @@ class AsignacionService:
         plan = {p.asignatura_id: p.horas_semanales for p in self._plan_svc.por_grado(grado)}
         total = sum(plan.values())
         asigns = self._repo.listar(
-            FiltroAsignacionesDTO(grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True)
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True, por_pagina=500
+            )
         )
         asignadas = sum(plan.get(a.asignatura_id, 0) for a in asigns)
         return CompletitudGrupoDTO(asignadas, total)
+
+    def completitud_grupos_bulk(
+        self,
+        grupos: list,
+        periodo_id: int,
+    ) -> dict[int, CompletitudGrupoDTO]:
+        """Completitud de todos los grupos en una sola pasada.
+
+        Agrupa los planes por grado (una query por grado único) y lee todas
+        las asignaciones activas del periodo en una sola query.
+        """
+        if not self._plan_svc:
+            return {g.id: CompletitudGrupoDTO(0, 0) for g in grupos}
+
+        grado_plan: dict[int, dict[int, int]] = {}
+        for g in grupos:
+            if g.grado is not None and g.grado not in grado_plan:
+                items = self._plan_svc.por_grado(g.grado)
+                grado_plan[g.grado] = {p.asignatura_id: p.horas_semanales for p in items}
+
+        activas = self._repo.listar(
+            FiltroAsignacionesDTO(periodo_id=periodo_id, solo_activas=True, por_pagina=500)
+        )
+        por_grupo: dict[int, list[Asignacion]] = {}
+        for a in activas:
+            por_grupo.setdefault(a.grupo_id, []).append(a)
+
+        result: dict[int, CompletitudGrupoDTO] = {}
+        for g in grupos:
+            if g.grado is None or g.grado not in grado_plan:
+                result[g.id] = CompletitudGrupoDTO(0, 0)
+                continue
+            plan = grado_plan[g.grado]
+            total = sum(plan.values())
+            grupo_asigns = por_grupo.get(g.id, [])
+            asignadas = sum(plan.get(a.asignatura_id, 0) for a in grupo_asigns)
+            result[g.id] = CompletitudGrupoDTO(asignadas, total)
+        return result
 
     def materias_sin_docente(self, grupo_id: int, grado: int | None, periodo_id: int) -> list[int]:
         """IDs de asignaturas del plan del grado sin docente activo en el grupo."""
         if grado is None or self._plan_svc is None:
             return []
         asigns = self._repo.listar(
-            FiltroAsignacionesDTO(grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True)
+            FiltroAsignacionesDTO(
+                grupo_id=grupo_id, periodo_id=periodo_id, solo_activas=True, por_pagina=500
+            )
         )
         ya = {a.asignatura_id for a in asigns}
         return [
@@ -483,9 +682,7 @@ class AsignacionService:
         """
         from src.services.contexto_tenant import institucion_actual
 
-        return self._repo.listar_por_docente(
-            usuario_id, institucion_actual() or "*", periodo_id
-        )
+        return self._repo.listar_por_docente(usuario_id, institucion_actual() or "*", periodo_id)
 
     def get_by_id(self, asignacion_id: int) -> Asignacion:
         """Retorna una asignación por id. Lanza si no existe."""
@@ -502,7 +699,9 @@ class AsignacionService:
         Si se pasa usuario_id, filtra solo las asignaciones de ese docente.
         """
         filtro = FiltroAsignacionesDTO(
-            grupo_id=grupo_id, solo_activas=solo_activas, usuario_id=usuario_id,
+            grupo_id=grupo_id,
+            solo_activas=solo_activas,
+            usuario_id=usuario_id,
         )
         return self._repo.listar_info(self._con_scope(filtro))
 

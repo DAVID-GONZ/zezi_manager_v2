@@ -186,7 +186,7 @@ class FakeEstudianteRepo(IEstudianteRepository):
     def __init__(self, estudiantes: list[Estudiante] | None = None):
         self._ests = {e.id: e for e in (estudiantes or [])}
 
-    def listar_por_grupo(self, grupo_id, solo_activos=True): return list(self._ests.values())
+    def listar_por_grupo(self, grupo_id, institucion_id, solo_activos=True): return list(self._ests.values())
     def get_by_id(self, eid): return self._ests.get(eid)
     def guardar(self, e): return e
     def actualizar(self, e): return e

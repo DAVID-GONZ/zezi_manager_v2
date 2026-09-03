@@ -395,6 +395,26 @@ def test_gate_marca_valido():
     assert horario.aplicado is not None
 
 
+def test_resultado_parcial_no_es_valido_ni_se_persiste():
+    """El oráculo no convierte un horario incompleto en un resultado activable."""
+    asignaturas = {5: Asignatura(id=5, nombre="Mate", horas_semanales=3)}
+    asig_infos = [_asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5)]
+    svc, _infra, horario, _ = _build(
+        _config(),
+        _plantilla(["Lunes"]),
+        [_franja(1, "07:00", "07:55")],
+        asig_infos,
+        asignaturas,
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 2
+    assert res.valido is False
+    assert horario.aplicado is None
+    assert any("Resultado parcial" in incidencia for incidencia in res.incidencias)
+
+
 # ===========================================================================
 # Tests paso_15d — coste blando + mejora local
 # ===========================================================================
@@ -760,11 +780,11 @@ def test_franja_reunion_preferente_no_bloquea():
 
 
 def test_max_horas_dia_estricta_por_config():
-    """config.restricciones min_max_diario max_horas_dia=1 modo estricta → max 1h/día/docente."""
+    """config.restricciones min_max_diario max=1 modo estricta → max 1h/día/docente."""
     config = ConfigGeneracion(
         id=1, nombre="Config Test", periodo_id=PERIODO_ID,
         anio_id=ANIO_ID, plantilla_id=PLANTILLA_ID, estado="borrador",
-        restricciones={"min_max_diario": {"max_horas_dia": 1, "modo": "estricta"}},
+        restricciones={"min_max_diario": {"max": 1, "modo": "estricta"}},
     )
     asignaturas = {5: Asignatura(id=5, nombre="Mate", horas_semanales=3)}
     asig_infos = [_asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5)]
@@ -1015,5 +1035,5 @@ def test_diagnostico_causa_grupo_ocupado():
     res = svc.generar(1)
 
     assert res.no_colocados == 1, f"Se esperaba 1 no colocado: {res.no_colocados}"
-    assert res.causas.get("grupo_ocupado", 0) >= 1, \
-        f"Causa 'grupo_ocupado' no registrada: {res.causas}"
+    assert res.causas.get("grupo_saturado", 0) >= 1, \
+        f"Causa 'grupo_saturado' no registrada: {res.causas}"

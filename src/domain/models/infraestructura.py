@@ -763,6 +763,11 @@ class ResultadoGeneracionDTO(BaseModel):
     metricas: MetricasCalidadDTO | None = None
     causas: dict[str, int] = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
     relajadas: list[str] = Field(default_factory=list)  # restricciones relajadas por infactibilidad
+    total_slots: int = 0
+    grupos_procesados: int = 0
+    demanda_por_grupo: dict[str, int] = Field(default_factory=dict)
+    metodo_usado: str = ""
+    presupuesto_agotado: bool = False
 
 
 # =============================================================================

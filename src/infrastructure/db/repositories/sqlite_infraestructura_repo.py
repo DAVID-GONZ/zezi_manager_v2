@@ -1158,13 +1158,14 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             sql += " AND periodo_id = ?"
             params.append(periodo_id)
         if institucion_id != "*":
-            # Filtra por grupos que pertenecen a la institución (grupos_json es array JSON de IDs)
+            # grupos_json='[]' significa "aplica a todos los grupos" → siempre visible.
+            # Solo cuando hay grupos explícitos se filtra por institución.
             sql += (
-                " AND EXISTS ("
+                " AND (grupos_json IN ('[]', 'null') OR grupos_json IS NULL OR EXISTS ("
                 "SELECT 1 FROM json_each(grupos_json) j"
                 " JOIN grupos g ON g.id = CAST(j.value AS INTEGER)"
                 " WHERE g.institucion_id = ?"
-                ")"
+                "))"
             )
             params.append(institucion_id)
         sql += " ORDER BY nombre"
