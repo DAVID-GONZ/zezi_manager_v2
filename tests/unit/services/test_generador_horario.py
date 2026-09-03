@@ -1037,3 +1037,133 @@ def test_diagnostico_causa_grupo_ocupado():
     assert res.no_colocados == 1, f"Se esperaba 1 no colocado: {res.no_colocados}"
     assert res.causas.get("grupo_saturado", 0) >= 1, \
         f"Causa 'grupo_saturado' no registrada: {res.causas}"
+
+
+# ===========================================================================
+# T9 — König como semilla + reparación por intercambio
+#
+# Regresión del fallo real: 12 grupos * 30h = 360h con la capacidad exacta,
+# 3 celdas de indisponibilidad y topes diarios. El motor daba 333/360 con 27
+# "docente_ocupado" pese a existir solución. Causa: una sola celda vetada
+# desactivaba König y el backtracking agotaba el presupuesto, tras lo cual el
+# voraz first-fit arrancaba desde una rejilla VACÍA.
+# ===========================================================================
+
+def test_coloreo_sobrevive_a_una_indisponibilidad():
+    """Una celda vetada ya no tumba el coloreo: siembra y se repara.
+
+    Los grupos estan saturados (4h en 4 slots), asi que no hay ningun hueco
+    libre y la unica jugada posible es permutar. El docente 3 si tiene holgura
+    (2 lecciones en 4 slots), que es lo que hace satisfacible el veto: si un
+    docente tuviera grado igual al numero de slots ocupariara todos por
+    definicion y ninguna indisponibilidad seria satisfacible.
+    """
+    asignaturas = {
+        5: Asignatura(id=5, nombre="Mate", horas_semanales=2),
+        6: Asignatura(id=6, nombre="Lengua", horas_semanales=2),
+    }
+    asig_infos = [
+        _asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5),
+        _asig_info(11, grupo_id=1, usuario_id=4, asignatura_id=6),
+        _asig_info(12, grupo_id=2, usuario_id=5, asignatura_id=5),
+        _asig_info(13, grupo_id=2, usuario_id=4, asignatura_id=6),
+    ]
+    franjas = [_franja(1, "07:00", "07:55"), _franja(2, "08:00", "08:55")]
+    svc, infra, *_ = _build(
+        _config(), _plantilla(["Lunes", "Martes"]), franjas, asig_infos, asignaturas,
+        no_disponibles={(3, "Lunes", 1)},
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 0, f"Horario incompleto: {res.incidencias}"
+    assert res.metodo_usado == "konig", f"No se usó el coloreo: {res.metodo_usado}"
+    for b in res.bloques:
+        assert infra.es_disponible(b.usuario_id, b.dia_semana, b.franja_orden), (
+            f"Bloque en franja vetada: docente {b.usuario_id} {b.dia_semana}/{b.franja_orden}"
+        )
+
+
+def test_limite_diario_no_desactiva_el_coloreo():
+    """Con LimitesDocente el motor ya no cae al backtracking: König + reparación."""
+    ld = LimitesDocente(id=1, usuario_id=3, min_horas_dia=0, max_horas_dia=2)
+    asignaturas = {5: Asignatura(id=5, nombre="Mate", horas_semanales=3)}
+    asig_infos = [_asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5)]
+    svc, *_ = _build(
+        _config(), _plantilla(DIAS_3), FRANJAS_3, asig_infos, asignaturas,
+        limites_docente=[ld],
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 0, f"Horario incompleto: {res.incidencias}"
+    assert res.metodo_usado == "konig", f"No se usó el coloreo: {res.metodo_usado}"
+    # 3h con tope de 2h/día: la reparación las reparte en días distintos.
+    por_dia: dict[str, int] = {}
+    for b in res.bloques:
+        por_dia[b.dia_semana] = por_dia.get(b.dia_semana, 0) + 1
+    assert max(por_dia.values()) <= 2, f"Tope diario violado: {por_dia}"
+
+
+def test_reparacion_respeta_la_propiedad_del_coloreo():
+    """`reparar_coloreo` nunca introduce un choque de grupo ni de docente."""
+    from src.domain.models.scheduling import colorear_aristas_bipartito, reparar_coloreo
+
+    # 3 grupos x 3 docentes en 4 colores: cada nodo tiene grado 3, luego a
+    # todos les queda un color libre y los vetos son satisfacibles.
+    aristas = [(g, d) for g in (1, 2, 3) for d in (10, 20, 30)]
+    colores = colorear_aristas_bipartito(aristas, 4)
+    assert all(c is not None for c in colores)
+
+    reparado, viol = reparar_coloreo(
+        aristas, colores, 4, [0, 0, 1, 1],
+        vetos_duros=frozenset({(10, 0), (20, 1)}),
+        semilla=3,
+    )
+
+    assert viol["indisponibilidad"] == 0, f"No resolvió los vetos: {viol}"
+    vistos_g: set = set()
+    vistos_d: set = set()
+    for (g, d), color in zip(aristas, reparado, strict=True):
+        assert (g, color) not in vistos_g, f"Choque de grupo en color {color}"
+        assert (d, color) not in vistos_d, f"Choque de docente en color {color}"
+        vistos_g.add((g, color))
+        vistos_d.add((d, color))
+
+
+def test_reparacion_nunca_empeora_la_entrada():
+    """Sin movimiento posible que mejore, devuelve el estado inicial intacto."""
+    from src.domain.models.scheduling import reparar_coloreo
+
+    aristas = [(1, 10), (1, 20)]
+    reparado, viol = reparar_coloreo(aristas, [0, 1], 2, [0, 0], max_intentos=500)
+
+    assert reparado == [0, 1]
+    assert viol == {
+        "indisponibilidad": 0,
+        "reunion": 0,
+        "exceso_max_dia": 0,
+        "deficit_min_dia": 0,
+    }
+
+
+def test_voraz_conserva_el_mejor_parcial_del_backtracking():
+    """Con ventanas de grupo (König inactivo) no se pierde lo ya colocado.
+
+    La ventana deja 2 franjas utiles para 3 horas: una queda fuera, pero las
+    otras dos deben aparecer igual. Antes, al fallar el DFS, `colocados` se
+    vaciaba y el voraz reconstruia desde cero.
+    """
+    ventanas = [VentanaGrupo(id=1, grupo_id=1, franjas_permitidas=[1, 2])]
+    asignaturas = {5: Asignatura(id=5, nombre="Mate", horas_semanales=3)}
+    asig_infos = [_asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5)]
+    svc, *_ = _build(
+        _config(), _plantilla(["Lunes"]), FRANJAS_3, asig_infos, asignaturas,
+        ventanas_grupo=ventanas,
+    )
+
+    res = svc.generar(1)
+
+    assert res.colocados == 2, f"Se perdieron colocaciones válidas: {res.colocados}"
+    assert res.no_colocados == 1
+    assert {b.franja_orden for b in res.bloques} == {1, 2}

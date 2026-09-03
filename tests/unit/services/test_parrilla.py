@@ -244,11 +244,13 @@ def test_franjas_desde_plantilla_activa():
         id=7, nombre="Jornada Única", jornada="UNICA",
         dias_activos=["Lunes", "Martes", "Miércoles"], activa=True,
     )
+    # Las horas de la plantilla deben cubrir las del bloque (07:00-08:00): una
+    # plantilla que no las cubre no describe estos datos y no se usa.
     infra._franjas = [
         Franja(id=1, plantilla_id=7, orden=1, hora_inicio="07:00",
-               hora_fin="07:55", tipo="lectiva", etiqueta="1ª"),
-        Franja(id=2, plantilla_id=7, orden=2, hora_inicio="07:55",
-               hora_fin="08:25", tipo="descanso", etiqueta="Descanso"),
+               hora_fin="08:00", tipo="lectiva", etiqueta="1ª"),
+        Franja(id=2, plantilla_id=7, orden=2, hora_inicio="08:00",
+               hora_fin="08:30", tipo="descanso", etiqueta="Descanso"),
     ]
     infra._bloques = [_bloque(1)]
 
@@ -258,6 +260,38 @@ def test_franjas_desde_plantilla_activa():
     assert datos["franjas"][1]["lectiva"] is False
     # días vienen de la plantilla, en orden canónico
     assert datos["dias"] == ["Lunes", "Martes", "Miércoles"]
+
+
+def test_franjas_ignoran_plantilla_que_no_cubre_los_bloques():
+    """Una plantilla con otras horas no se usa: la rejilla se deriva de los bloques.
+
+    Regresión: `datos_parrilla` pedía siempre la plantilla activa de jornada
+    "UNICA". Un escenario generado con una plantilla de otra jornada pintaba una
+    rejilla cuyas horas no coincidían con ningún bloque y la parrilla salía
+    vacía pese a tener todos sus bloques.
+    """
+    infra = FakeInfraRepo()
+    infra._plantilla = PlantillaFranja(
+        id=7, nombre="Jornada Única", jornada="UNICA",
+        dias_activos=["Lunes", "Martes", "Miércoles"], activa=True,
+    )
+    infra._franjas = [
+        Franja(id=1, plantilla_id=7, orden=1, hora_inicio="07:00",
+               hora_fin="07:55", tipo="lectiva", etiqueta="1ª"),
+    ]
+    # El bloque va de 07:00 a 08:00: la plantilla activa NO lo cubre.
+    infra._bloques = [_bloque(1, hi=time(7, 0), hf=time(8, 0))]
+
+    datos = _svc(infra).datos_parrilla(ESC_ID)
+
+    franjas = datos["franjas"]
+    assert [(f["hora_inicio"], f["hora_fin"]) for f in franjas] == [("07:00", "08:00")], (
+        f"La rejilla no describe los bloques: {franjas}"
+    )
+    horas_filas = {(f["hora_inicio"], f["hora_fin"]) for f in franjas}
+    assert all(
+        (c["hora_inicio"], c["hora_fin"]) in horas_filas for c in datos["celdas"]
+    ), "Hay celdas que no encajan en ninguna fila de la rejilla"
 
 
 def test_celdas_una_por_bloque():

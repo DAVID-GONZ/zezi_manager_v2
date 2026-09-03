@@ -359,18 +359,49 @@ class HorarioService:
                 }
             )
 
-        # --- Franjas: desde la plantilla activa "UNICA", o derivadas de bloques ---
+        # --- Franjas: de la plantilla que encaja con los bloques del escenario ---
         # Multi-tenant (paso_32, T5): `self._infra` es el repo (sin scope). La
         # parrilla es de un grupo/escenario ya scopeado, así que la rejilla de
-        # franjas debe venir de la plantilla activa de la MISMA institución.
+        # franjas debe venir de una plantilla de la MISMA institución.
+        #
+        # Antes se pedía siempre la plantilla activa de jornada "UNICA". Un
+        # escenario generado con una plantilla de otra jornada (o de otro horario
+        # de timbres) pintaba una rejilla cuyas horas no coincidían con las de
+        # ningún bloque: la parrilla salía VACÍA aunque el escenario tuviera sus
+        # 360 bloques. La rejilla tiene que describir los datos que muestra, así
+        # que se elige la plantilla cuyas franjas cubren las horas de los bloques.
         franjas: list[dict] = []
         plantilla = None
+
+        def _cubre(candidata) -> bool:
+            """¿Las franjas de la plantilla cubren todas las horas de los bloques?"""
+            if candidata is None or candidata.id is None:
+                return False
+            if not pares_horas:
+                return True
+            horas_plantilla = {
+                (fr.hora_inicio, fr.hora_fin) for fr in self._infra.listar_franjas(candidata.id)
+            }
+            return pares_horas <= horas_plantilla
+
+        inst = institucion_actual()
         try:
-            plantilla = self._infra.get_plantilla_activa(
-                "UNICA", institucion_id=institucion_actual()
-            )
+            activa = self._infra.get_plantilla_activa("UNICA", institucion_id=inst)
         except (LookupError, ValueError, TypeError):
-            plantilla = None
+            activa = None
+        if _cubre(activa):
+            plantilla = activa
+        else:
+            # Buscar entre las plantillas de la institución la que sí encaje.
+            try:
+                candidatas = self._infra.listar_plantillas_franja(inst if inst is not None else "*")
+            except (LookupError, ValueError, TypeError):
+                candidatas = []
+            # Con varias compatibles, gana la activa.
+            for cand in sorted(candidatas, key=lambda p: not getattr(p, "activa", False)):
+                if _cubre(cand):
+                    plantilla = cand
+                    break
 
         if plantilla is not None and plantilla.id is not None:
             franjas_plantilla = self._infra.listar_franjas(plantilla.id)

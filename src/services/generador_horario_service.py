@@ -293,7 +293,7 @@ class GeneradorHorarioService:
         Parámetros opcionales (default None/0 = sin efecto):
           skip_lec_fn:       fn(lec)->bool; True → omite la lección
           slots_para_lec_fn: fn(lec)->list; slots filtrados por ventana
-          extra_check_fn:    fn(lec,dia,franja)->bool; checks adicionales
+          extra_check_fn:    fn(lec,dia,franja,dia_actual)->bool; checks extra
           horas_dia_docente: dict[(uid,dia),int] mutable; tracking diario
           n_dias_total:      días activos de la plantilla (para dia_libre T7)
         """
@@ -333,7 +333,7 @@ class GeneradorHorarioService:
                         continue
                     if not es_disponible_fn(lec.usuario_id, dia2, franja2.orden):
                         continue
-                    if extra_check_fn and not extra_check_fn(lec, dia2, franja2):
+                    if extra_check_fn and not extra_check_fn(lec, dia2, franja2, dia_act):
                         continue
 
                     colocados[i] = (lec, dia2, franja2)
@@ -439,6 +439,65 @@ class GeneradorHorarioService:
             _slots_n_cache[n] = result
             return result
 
+        # --- Disponibilidad del docente en memoria (T9) ---------------
+        # `es_disponible` del repo consulta SQLite en CADA llamada, y se invoca
+        # dentro del bucle caliente del backtracking: eran cientos de miles de
+        # round-trips por corrida. Memoizar por (docente, día, orden) deja el
+        # coste en n_docentes * n_slots consultas como mucho.
+        _disp_cache: dict[tuple, bool] = {}
+        _disp_precargados: set[int] = set()
+        _disp_huerfanas = [0]
+        _listar_disp = getattr(self._infra, "listar_disponibilidad_docente", None)
+
+        def _precargar_disp(usuario_id: int) -> bool:
+            """Trae en UNA consulta todos los vetos del docente.
+
+            Cada `es_disponible` del repo abre su propia conexión (~2 ms), así
+            que resolver los 30 slots de un docente uno a uno costaba más que
+            todo el resto del motor junto. Devuelve False si el repo no ofrece
+            la consulta en lote (fakes de test), para caer al camino de siempre.
+            """
+            if not callable(_listar_disp):
+                return False
+            if usuario_id in _disp_precargados:
+                return True
+            vetos: set[tuple[str, int]] = set()
+            for fila in _listar_disp(usuario_id) or []:
+                if getattr(fila, "disponible", True):
+                    continue
+                vetos.add((fila.dia_semana, fila.franja_orden))
+                # Un veto sobre un día o una franja que no existen en la
+                # plantilla no restringe nada; hasta ahora se ignoraba en
+                # silencio y parecía aplicado.
+                if fila.dia_semana not in dias or fila.franja_orden not in franja_by_orden:
+                    _disp_huerfanas[0] += 1
+            for dia_p, franja_p in slots:
+                _disp_cache[(usuario_id, dia_p, franja_p.orden)] = (
+                    dia_p,
+                    franja_p.orden,
+                ) not in vetos
+            _disp_precargados.add(usuario_id)
+            return True
+
+        def _es_disponible(usuario_id: int, dia: str, orden: int) -> bool:
+            clave = (usuario_id, dia, orden)
+            valor = _disp_cache.get(clave)
+            if valor is None:
+                if _precargar_disp(usuario_id):
+                    valor = _disp_cache.get(clave)
+                if valor is None:
+                    valor = bool(self._infra.es_disponible(usuario_id, dia, orden))
+                    _disp_cache[clave] = valor
+            return valor
+
+        _asignatura_cache: dict[int, object] = {}
+
+        def _get_asignatura(asignatura_id: int):
+            """Memoiza el catálogo: ~140 asignaciones comparten ~20 asignaturas."""
+            if asignatura_id not in _asignatura_cache:
+                _asignatura_cache[asignatura_id] = self._infra.get_asignatura(asignatura_id)
+            return _asignatura_cache[asignatura_id]
+
         # --- Cargar restricciones T5/T6 via infraestructura_service ---
 
         # Salas (T5)
@@ -540,9 +599,7 @@ class GeneradorHorarioService:
         def _slots_disponibles_docente(usuario_id: int) -> int:
             if usuario_id not in slots_disp_docente:
                 n = sum(
-                    1
-                    for (dia, franja) in slots
-                    if self._infra.es_disponible(usuario_id, dia, franja.orden)
+                    1 for (dia, franja) in slots if _es_disponible(usuario_id, dia, franja.orden)
                 )
                 slots_disp_docente[usuario_id] = n
             return slots_disp_docente[usuario_id]
@@ -565,7 +622,7 @@ class GeneradorHorarioService:
         hay_bloque_doble = False
 
         for a in asignaciones:
-            asignatura = self._infra.get_asignatura(a.asignatura_id)
+            asignatura = _get_asignatura(a.asignatura_id)
             horas = _horas_de(a.grupo_id, a.asignatura_id, asignatura)
             total_requeridos += horas
             demanda_grupo[a.grupo_id] = demanda_grupo.get(a.grupo_id, 0) + horas
@@ -610,6 +667,17 @@ class GeneradorHorarioService:
         lecciones_ordenadas: list[_Leccion] = []
         for _, lecciones, _a in grupos_asig:
             lecciones_ordenadas.extend(lecciones)
+
+        # Filas de disponibilidad que apuntan a un día o una franja que no
+        # existen en la plantilla: no restringen nada y hasta ahora se ignoraban
+        # en silencio, dando la falsa impresión de que el veto estaba aplicado.
+        for uid in docentes_involucrados:
+            _precargar_disp(uid)
+        if _disp_huerfanas[0]:
+            incidencias.append(
+                f"Aviso: {_disp_huerfanas[0]} restricción(es) de disponibilidad apuntan a un "
+                "día o una franja que no existe en la plantilla; no se aplican."
+            )
 
         # --- T8: Pre-vuelo de cotas O(n) — detecta infactibilidad antes de backtrack ---
         for g, demanda in demanda_grupo.items():
@@ -679,7 +747,7 @@ class GeneradorHorarioService:
                     return False
                 if (lec.usuario_id, dia, o) in ocupado_docente:
                     return False
-                if not self._infra.es_disponible(lec.usuario_id, dia, o):
+                if not _es_disponible(lec.usuario_id, dia, o):
                     return False
                 if (lec.usuario_id, dia, o) in bloqueadas_reunion:
                     return False
@@ -727,6 +795,61 @@ class GeneradorHorarioService:
                     ocupado_sala.discard((sid, dia, o))
             colocados.pop()
 
+        def _desocupar(lec: _Leccion, dia: str, franja) -> None:
+            """Como `_quitar`, pero para una lección cualquiera de `colocados`.
+
+            `_quitar` hace `colocados.pop()` porque el backtracking es una pila;
+            la reparación por desplazamiento necesita sacar del medio.
+            """
+            ordenes = _ordenes_n(franja.orden, lec.n_horas) or []
+            for o in ordenes:
+                ocupado_grupo.discard((lec.grupo_id, dia, o))
+                ocupado_docente.discard((lec.usuario_id, dia, o))
+            carga_docente[lec.usuario_id] = max(
+                0, carga_docente.get(lec.usuario_id, 0) - lec.n_horas
+            )
+            k_dia = (lec.usuario_id, dia)
+            horas_dia_docente[k_dia] = max(0, horas_dia_docente.get(k_dia, 0) - lec.n_horas)
+            sid = lec_sala.pop(id(lec), None)
+            if sid:
+                for o in ordenes:
+                    ocupado_sala.discard((sid, dia, o))
+            for pos, (otra, _d, _f) in enumerate(colocados):
+                if otra is lec:
+                    del colocados[pos]
+                    break
+
+        def _colocar_por_desplazamiento(lec: _Leccion) -> bool:
+            """Libera un slot moviendo otra lección del mismo grupo.
+
+            Cadena de expulsión de profundidad 1. Cuando un grupo ya tiene todas
+            sus franjas ocupadas no queda ningún hueco libre y la única jugada
+            posible es permutar — que es justo lo que el voraz first-fit nunca
+            intentaba, y de ahí los "docente_ocupado" en instancias factibles.
+            """
+            if lec.n_horas != 1:
+                return False
+            ocupadas = {
+                (d, f.orden): (otra, d, f)
+                for (otra, d, f) in colocados
+                if otra.grupo_id == lec.grupo_id and otra.n_horas == 1
+            }
+            for dia, franja in _slots_para_lec(lec):
+                actual = ocupadas.get((dia, franja.orden))
+                if actual is None:
+                    continue
+                otra, dia_o, franja_o = actual
+                _desocupar(otra, dia_o, franja_o)
+                if _puede_colocar(lec, dia, franja):
+                    _colocar(lec, dia, franja)
+                    for dia2, franja2 in _slots_para_lec(otra):
+                        if _puede_colocar(otra, dia2, franja2):
+                            _colocar(otra, dia2, franja2)
+                            return True
+                    _quitar(lec, dia, franja)  # lec es el último colocado
+                _colocar(otra, dia_o, franja_o)
+            return False
+
         def _reset_estado() -> None:
             ocupado_grupo.clear()
             ocupado_docente.clear()
@@ -761,7 +884,7 @@ class GeneradorHorarioService:
                     if (lec.usuario_id, dia, o) in ocupado_docente:
                         causa_slot = "docente_ocupado"
                         break
-                    if not self._infra.es_disponible(lec.usuario_id, dia, o):
+                    if not _es_disponible(lec.usuario_id, dia, o):
                         causa_slot = "sin_disponibilidad"
                         break
                     if (lec.usuario_id, dia, o) in bloqueadas_reunion:
@@ -789,7 +912,14 @@ class GeneradorHorarioService:
                 return "grupo_saturado"
             return "sin_slots"
 
+        # Mejor parcial visto por el DFS. Sin esto, al agotar el presupuesto la
+        # pila se desenrolla llamando `_quitar` en cada nivel y `colocados` queda
+        # VACÍO: se tiraba todo el trabajo y el voraz arrancaba de cero.
+        mejor_parcial: list[tuple[_Leccion, str, object]] = []
+
         def _backtrack(idx: int) -> bool:
+            if len(colocados) > len(mejor_parcial):
+                mejor_parcial[:] = colocados
             if idx >= len(lecciones_ordenadas):
                 return True
             if presupuesto[0] <= 0:
@@ -812,43 +942,103 @@ class GeneradorHorarioService:
         construido_por_coloreo = False
 
         def _coloreo_activable() -> bool:
+            """¿Puede König construir la solución base?
+
+            Solo bloquean las restricciones que un coloreo no sabe representar
+            (un color = una franja suelta) o que ninguna reparación posterior
+            podría arreglar por falta material de cupo. La indisponibilidad del
+            docente, las franjas de reunión y los topes diarios YA NO bloquean:
+            König siembra y `reparar_coloreo` los corrige por intercambio.
+
+            Antes bastaba UNA celda vetada para tumbar el único algoritmo
+            completo del motor y caer al backtracking, que en instancias reales
+            agota el presupuesto sin llegar a ninguna parte.
+            """
             if n_slots == 0:
                 return False
-            # Restricciones nuevas que impiden el coloreo bipartito simple.
-            # Las salas ya NO impiden el coloreo: se asignan best-effort tras
-            # colocar (las que no obtengan sala quedan pendientes de asignar).
+            # Una macro-lección ocupa varias franjas seguidas: no es un color.
             if hay_bloque_doble:
                 return False
+            # Una ventana de grupo restringe QUÉ colores valen, y el coloreo es
+            # ciego a la identidad del color.
             if franjas_perm_grupo:
                 return False
-            if bloqueadas_reunion:
-                return False
-            if aplicar_max_dia_estricto:
-                return False
+            # König exige grado máximo <= nº de colores en ambos lados.
             if demanda_grupo and max(demanda_grupo.values()) > n_slots:
+                return False
+            if demanda_docente and max(demanda_docente.values()) > n_slots:
                 return False
             for uid in docentes_involucrados:
                 tope = _carga_max(uid)
                 if tope is not None and demanda_docente.get(uid, 0) > tope:
                     return False
-            for uid in docentes_involucrados:
-                if not all(
-                    self._infra.es_disponible(uid, dia, franja.orden) for (dia, franja) in slots
-                ):
-                    return False
             return True
 
+        viol_coloreo: dict[str, int] = {}
+
         def _intentar_coloreo() -> bool:
-            """Coloreo de aristas bipartito (König): óptimo y completo si es
-            activable. Devuelve True si colocó TODAS las lecciones."""
+            """Coloreo de aristas bipartito (König) + reparación por intercambio.
+
+            König coloca SIEMPRE todas las lecciones sin choques de grupo ni de
+            docente, pero es ciego a disponibilidad, reunión y topes diarios;
+            `reparar_coloreo` corrige eso permutando lecciones dentro de la fila
+            de cada grupo. Devuelve True solo si el resultado respeta la
+            disponibilidad declarada, que el motor no relaja nunca.
+            """
             if not _coloreo_activable():
                 return False
-            from src.domain.models.scheduling import colorear_aristas_bipartito
+            from src.domain.models.scheduling import (
+                colorear_aristas_bipartito,
+                reparar_coloreo,
+            )
 
             aristas = [(lec.grupo_id, lec.usuario_id) for lec in lecciones_ordenadas]
             colores = colorear_aristas_bipartito(aristas, n_slots)
             if not all(c is not None for c in colores):
                 return False
+
+            vetos_duros: set[tuple[int, int]] = set()
+            vetos_blandos: set[tuple[int, int]] = set()
+            for uid in docentes_involucrados:
+                for color, (dia_c, franja_c) in enumerate(slots):
+                    if not _es_disponible(uid, dia_c, franja_c.orden):
+                        vetos_duros.add((uid, color))
+                    if (uid, dia_c, franja_c.orden) in bloqueadas_reunion:
+                        vetos_blandos.add((uid, color))
+
+            max_por_dia: dict[int, int] = {}
+            if aplicar_max_dia_estricto:
+                for uid in docentes_involucrados:
+                    tope_dia = _max_horas_dia(uid)
+                    if tope_dia is not None:
+                        max_por_dia[uid] = tope_dia
+            min_por_dia: dict[int, int] = {}
+            for uid in docentes_involucrados:
+                piso_dia = _min_horas_dia(uid)
+                if piso_dia:
+                    min_por_dia[uid] = piso_dia
+
+            idx_dia = {d: i for i, d in enumerate(dias)}
+            dia_de_color = [idx_dia[d] for (d, _f) in slots]
+
+            colores, viol = reparar_coloreo(
+                aristas,
+                colores,
+                n_slots,
+                dia_de_color,
+                vetos_duros=frozenset(vetos_duros),
+                vetos_blandos=frozenset(vetos_blandos),
+                max_por_dia=max_por_dia,
+                min_por_dia=min_por_dia,
+            )
+            # La disponibilidad del docente es dura: si la reparación no llega a
+            # satisfacerla, se cede el turno al backtracking antes que persistir
+            # un horario que pone a un docente donde declaró no estar.
+            if viol["indisponibilidad"]:
+                return False
+
+            viol_coloreo.clear()
+            viol_coloreo.update(viol)
             _reset_estado()
             for lec, color in zip(lecciones_ordenadas, colores, strict=False):
                 dia, franja = slots[color]
@@ -887,9 +1077,37 @@ class GeneradorHorarioService:
                 else:
                     todas = _backtrack(0)
 
+        if construido_por_coloreo and viol_coloreo:
+            exceso = viol_coloreo.get("exceso_max_dia", 0)
+            if exceso:
+                if "max_horas_dia_estricta" not in relajadas:
+                    relajadas.append("max_horas_dia_estricta")
+                causas["max_dia"] = causas.get("max_dia", 0) + exceso
+                incidencias.append(
+                    f"Aviso: {exceso} hora(s) por encima del tope diario de algún docente; "
+                    "era la única forma de completar el horario."
+                )
+            reunion = viol_coloreo.get("reunion", 0)
+            if reunion:
+                if "franjas_reunion_estricta" not in relajadas:
+                    relajadas.append("franjas_reunion_estricta")
+                causas["reunion_bloqueada"] = causas.get("reunion_bloqueada", 0) + reunion
+                incidencias.append(
+                    f"Aviso: {reunion} bloque(s) caen en una franja de reunión estricta; "
+                    "era la única forma de completar el horario."
+                )
+
         budget_exhausted = not construido_por_coloreo and presupuesto[0] <= 0
 
         if not construido_por_coloreo and not todas:
+            # Recuperar el mejor parcial del DFS antes de rellenar: al agotarse
+            # el presupuesto `colocados` queda vacío y arrancar de cero tira
+            # cientos de colocaciones ya validadas.
+            if len(mejor_parcial) > len(colocados):
+                _reset_estado()
+                for lec_p, dia_p, franja_p in mejor_parcial:
+                    _colocar(lec_p, dia_p, franja_p)
+
             colocadas_ids = {id(c[0]) for c in colocados}
             for lec in lecciones_ordenadas:
                 if id(lec) in colocadas_ids:
@@ -900,6 +1118,8 @@ class GeneradorHorarioService:
                         _colocar(lec, dia, franja)
                         ubicada = True
                         break
+                if not ubicada:
+                    ubicada = _colocar_por_desplazamiento(lec)
                 if not ubicada:
                     causa = _diagnosticar_no_colocado(lec)
                     causas[causa] = causas.get(causa, 0) + 1
@@ -940,13 +1160,22 @@ class GeneradorHorarioService:
         def _skip_lec(lec):
             return lec.n_horas > 1 or bool(lec.tipo_sala_req)
 
-        def _extra_check(lec, dia, franja):
+        def _extra_check(lec, dia, franja, dia_origen=None):
             if (lec.usuario_id, dia, franja.orden) in bloqueadas_reunion:
                 return False
             if aplicar_max_dia_estricto:
                 max_hd = _max_horas_dia(lec.usuario_id)
                 if max_hd is not None and horas_dia_docente.get((lec.usuario_id, dia), 0) >= max_hd:
                     return False
+            # No deshacer el piso diario que la reparación acaba de conseguir:
+            # vaciar el día de origen por debajo del mínimo reintroduce los
+            # avisos "docente X tiene 2h el Jueves (mínimo esperado 3h)".
+            if dia_origen is not None and dia_origen != dia:
+                min_hd = _min_horas_dia(lec.usuario_id)
+                if min_hd:
+                    quedan = horas_dia_docente.get((lec.usuario_id, dia_origen), 0) - 1
+                    if 0 < quedan < min_hd:
+                        return False
             return True
 
         if optimizar and len(colocados) >= 2:
@@ -957,7 +1186,7 @@ class GeneradorHorarioService:
                 ocupado_docente,
                 pesos,
                 orden_a_idx,
-                self._infra.es_disponible,
+                _es_disponible,
                 skip_lec_fn=_skip_lec,
                 slots_para_lec_fn=_slots_para_lec,
                 extra_check_fn=_extra_check,
