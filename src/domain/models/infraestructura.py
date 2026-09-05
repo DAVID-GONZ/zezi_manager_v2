@@ -501,11 +501,24 @@ class Franja(BaseModel):
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
     def normalizar_hora(cls, v: str) -> str:
-        """Normaliza la hora 'HH:MM' (strip); no puede quedar vacía."""
+        """Normaliza 'H:MM' -> 'HH:MM' (pad con 0); rechaza lo que no parsee
+        como HH:MM. T15 (horario_01): antes solo hacía strip y comparaba las
+        horas lexicográficamente sin normalizar ('7:00' >= '07:00' es True),
+        lo que rompía la invariante hora_inicio < hora_fin con horas sin
+        padding."""
         v = str(v).strip()
         if not v:
             raise ValueError("La hora no puede estar vacía.")
-        return v
+        partes = v.split(":")
+        if len(partes) != 2:
+            raise ValueError(f"Hora inválida: '{v}'. Use el formato HH:MM.")
+        try:
+            hora, minuto = int(partes[0]), int(partes[1])
+        except ValueError as exc:
+            raise ValueError(f"Hora inválida: '{v}'. Use el formato HH:MM.") from exc
+        if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+            raise ValueError(f"Hora fuera de rango: '{v}'.")
+        return f"{hora:02d}:{minuto:02d}"
 
     @field_validator("tipo", mode="before")
     @classmethod
@@ -1212,6 +1225,9 @@ class FilaReporteDTO(BaseModel):
 
 class ReporteLoteDTO(BaseModel):
     filas: list[FilaReporteDTO] = []
+    # Cruces de sala detectados con salas_bloquean=False (paso_17 T1): no
+    # invalidan la fila, pero se listan para que la UI los muestre.
+    avisos: list[str] = []
 
     @property
     def validas(self) -> int:

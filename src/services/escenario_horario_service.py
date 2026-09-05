@@ -90,5 +90,27 @@ class EscenarioHorarioService:
         """Lista todos los bloques de un escenario (delegado al repositorio)."""
         return self._repo.listar_horario_escenario(escenario_id)
 
+    def contar_bloques(self, escenario_id: int) -> int:
+        """Número de bloques horarios persistidos en un escenario.
+
+        DEUDA (horario_01 T6): el puerto solo expone conteos acotados
+        (`contar_bloques_asignacion`, `contar_bloques_docente`); no hay un
+        `COUNT(*)` por escenario, así que aquí se traen las filas y se cuentan
+        en memoria. Cuando se añada la consulta de conteo al repositorio,
+        sustituir por la delegación directa sin cambiar esta firma.
+        """
+        if not escenario_id:
+            return 0
+        return len(self._repo.listar_horario_escenario(escenario_id))
+
+    def tiene_bloques(self, escenario_id: int) -> bool:
+        """¿El escenario tiene al menos un bloque persistido?
+
+        Un escenario `"generado"` pero vacío no es activable (principio P3 de
+        `horario_01_validacion_generacion`): activarlo desactivaría el horario
+        real del año lectivo sin poner nada en su lugar.
+        """
+        return self.contar_bloques(escenario_id) > 0
+
 
 __all__ = ["EscenarioHorarioService"]

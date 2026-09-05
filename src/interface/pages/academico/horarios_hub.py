@@ -71,6 +71,7 @@ from src.interface.pages.academico.plantilla_editor_widget import (
 from src.interface.presenters.academico.horarios_hub_presenter import HorariosHubPresenter
 from src.services.asignacion_service import FiltroAsignacionesDTO
 from src.services.franja_service import DiaSemana
+from src.services.generador_horario_service import CAUSA_INFO
 
 logger = logging.getLogger("HORARIOS_HUB")
 
@@ -958,6 +959,9 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 (p for p in _s["gen_plantillas"] if p.id == plantilla.id), plantilla
             )
             toast_success(f"Plantilla '{plantilla.nombre}' activada")
+            # T13.6 — la plantilla activa mueve varias puertas de preparación.
+            _prep_invalidar()
+            preparacion_refreshable.refresh()
             gen_refreshable.refresh()
         except Exception as exc:
             logger.error("Error activando plantilla: %s", exc)
@@ -974,6 +978,10 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             Container.franja_service().guardar_franjas(p.id, filas)
             _gen_cargar_franjas_sel()
             toast_success("Franjas guardadas")
+            # T13.6 — las franjas cambian los cupos de la checklist. También
+            # cubre a _gen_eliminar_franja, que guarda a través de aquí.
+            _prep_invalidar()
+            preparacion_refreshable.refresh()
             gen_refreshable.refresh()
             return True
         except ValueError as exc:
@@ -984,14 +992,46 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             toast_error("No se pudieron guardar las franjas")
             return False
 
+    def _hora_a_minutos(texto: str) -> int | None:
+        """'HH:MM' → minutos desde medianoche; None si no parsea.
+
+        Solo sirve para dar respuesta inmediata en el diálogo de franjas
+        (T15.3). La regla de verdad sigue viviendo en el validador de `Franja`
+        y en `FranjaService.guardar_franjas` (solapes y unicidad de orden).
+        """
+        partes = str(texto or "").strip().split(":")
+        if len(partes) != 2:
+            return None
+        try:
+            hora, minuto = int(partes[0]), int(partes[1])
+        except ValueError:
+            return None
+        if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+            return None
+        return hora * 60 + minuto
+
+    def _franja_intervalo_invalido(datos: dict) -> bool:
+        """Avisa y devuelve True si la franja no tiene horas o inicio >= fin."""
+        if not datos.get("hora_inicio") or not datos.get("hora_fin"):
+            toast_warning("La hora de inicio y fin son obligatorias")
+            return True
+        inicio = _hora_a_minutos(datos["hora_inicio"])
+        fin = _hora_a_minutos(datos["hora_fin"])
+        if inicio is None or fin is None:
+            toast_warning("Usa el formato HH:MM para las horas de la franja")
+            return True
+        if inicio >= fin:
+            toast_warning("La hora de inicio debe ser anterior a la hora de fin")
+            return True
+        return False
+
     def _gen_agregar_franja() -> None:
         if _s.get("gen_plantilla_sel") is None:
             toast_warning("Selecciona o crea una plantilla primero")
             return
 
         def _submit(datos: dict) -> bool | None:
-            if not datos.get("hora_inicio") or not datos.get("hora_fin"):
-                toast_warning("La hora de inicio y fin son obligatorias")
+            if _franja_intervalo_invalido(datos):
                 return False
             siguiente = max((f.orden for f in _s["gen_franjas_sel"]), default=0) + 1
             filas = _gen_filas_franjas_actuales()
@@ -1014,8 +1054,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             return
 
         def _submit(datos: dict) -> bool | None:
-            if not datos.get("hora_inicio") or not datos.get("hora_fin"):
-                toast_warning("La hora de inicio y fin son obligatorias")
+            if _franja_intervalo_invalido(datos):
                 return False
             filas = []
             for f in _s["gen_franjas_sel"]:
@@ -1067,6 +1106,8 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _gen_seleccionar_config(config_id: int | None) -> None:
         presenter.seleccionar_gen_config(config_id, _s["gen_configs"])
         _s["gen_error"] = None
+        # T13.6 — la checklist se evalúa contra la config seleccionada (T8).
+        preparacion_refreshable.refresh()
         gen_refreshable.refresh()
 
     def _gen_config_dialog(config: Any | None = None) -> None:
@@ -1206,6 +1247,14 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         max=12,
                         step=1,
                     )
+            # T16.3 — acoplamiento no evidente del motor: basta que UN docente
+            # tenga límites propios registrados para que el tope diario deje de
+            # ser una preferencia.
+            ui.label(
+                "Nota: si algún docente tiene límites de horas diarias propios, el tope "
+                "diario pasa a ser una restricción dura para todos los docentes que "
+                "tengan esos límites, aunque aquí elijas «Preferente»."
+            ).classes("text-caption text-muted u-mt-xs")
 
             def _guardar() -> None:
                 nombre = str(in_nombre.value or "").strip()
@@ -1215,20 +1264,35 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 pesos_ext = {k: round(float(sliders_extra[k].value), 1) for k in sliders_extra}
                 pesos_completo = {**pesos, **pesos_ext}
 
-                infra = Container.restriccion_generacion_service()
-                restricciones = infra.construir_restricciones(
-                    in_min_horas.value or 0,
-                    in_max_horas.value if in_max_horas.value is not None else 8,
-                    sel_modo_minmax.value,
-                )
-
                 if not nombre:
                     toast_warning("El nombre de la configuración es obligatorio")
                     return
                 if not plantilla_id:
                     toast_warning("Selecciona una plantilla")
                     return
+
+                # T14.2 — los spinners permiten min=10 / max=1 y
+                # `construir_restricciones` lanza ValueError desde T14.1. Se
+                # comprueba ANTES de llamar al servicio (y la llamada pasa
+                # dentro del try, como defensa en profundidad): antes la
+                # excepción escapaba del handler y el diálogo se quedaba mudo.
                 try:
+                    min_h = int(in_min_horas.value or 0)
+                    max_h = int(in_max_horas.value if in_max_horas.value is not None else 8)
+                except (TypeError, ValueError):
+                    toast_warning("Las horas mínima y máxima por día deben ser números enteros.")
+                    return
+                if min_h > max_h:
+                    toast_warning(
+                        f"min_horas_dia ({min_h}) no puede ser mayor que max_horas_dia ({max_h})."
+                    )
+                    return
+
+                infra = Container.restriccion_generacion_service()
+                try:
+                    restricciones = infra.construir_restricciones(
+                        min_h, max_h, sel_modo_minmax.value
+                    )
                     if es_edicion:
                         infra.actualizar_config_generacion(
                             config.id,
@@ -1241,6 +1305,10 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         toast_success("Configuración actualizada")
                         dlg.close()
                         _gen_cargar_configs()
+                        # T13.6 — plantilla, grupos y restricciones cambian las
+                        # puertas que se evalúan contra esta config.
+                        _prep_invalidar()
+                        preparacion_refreshable.refresh()
                         gen_refreshable.refresh()
                     else:
                         nuevo = infra.crear_config_generacion(
@@ -1255,7 +1323,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                         toast_success("Configuración creada")
                         dlg.close()
                         _gen_cargar_configs()
+                        _prep_invalidar()
+                        # _gen_seleccionar_config ya refresca preparación y gen.
                         _gen_seleccionar_config(nuevo.id)
+                except ValueError as exc:
+                    toast_warning(_texto_error(exc))
                 except Exception as exc:
                     logger.error("Error guardando configuración de generación: %s", exc)
                     toast_error("No se pudo guardar la configuración")
@@ -1319,6 +1391,25 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
             return
         if _s["gen_generando"]:
             return
+
+        # T13.5 — el estado puede haber cambiado entre el render y el clic (otra
+        # pestaña, otro usuario). Se revalida con datos frescos y, si aparece una
+        # puerta dura roja, se aborta sin llegar a llamar al motor.
+        _prep_invalidar()
+        reporte_prev, error_prev = _prep_reporte(config.id)
+        if reporte_prev:
+            bloqueante = _prep_bloqueante(reporte_prev)
+            if bloqueante is not None:
+                toast_warning(
+                    f"No se puede generar: {bloqueante.titulo} — {bloqueante.detalle}"
+                )
+                preparacion_refreshable.refresh()
+                return
+        elif error_prev:
+            toast_warning(f"No se pudo verificar la preparación: {error_prev}")
+            preparacion_refreshable.refresh()
+            return
+
         _s["gen_generando"] = True
         gen_refreshable.refresh()
 
@@ -1370,6 +1461,10 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                 toast_success("Generación completada")
                             else:
                                 toast_warning("Generación parcial: revisa las incidencias")
+                        # T13.6 — el estado de la config y del escenario destino
+                        # cambian con la corrida: la checklist se recalcula.
+                        _prep_invalidar()
+                        preparacion_refreshable.refresh()
                         gen_refreshable.refresh()
                 except Exception as exc:
                     logger.warning(
@@ -1383,7 +1478,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
 
         background_tasks.create(_trabajo_coro())
 
-    def _gen_activar_escenario(config: Any, escenario_id: int) -> None:
+    def _gen_activar_escenario(config: Any, escenario_id: int, n_bloques: int = 0) -> None:
         def _confirmar() -> None:
             try:
                 Container.escenario_horario_service().activar_escenario(escenario_id)
@@ -1402,9 +1497,13 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 logger.error("Error activando escenario: %s", exc)
                 toast_error("No se pudo activar el escenario")
 
+        detalle_bloques = f" Se activarán {n_bloques} bloque(s)." if n_bloques else ""
         confirm_dialog(
             titulo="Activar escenario",
-            mensaje="Al activar este escenario se desactivarán los demás del año lectivo. ¿Continuar?",
+            mensaje=(
+                "Al activar este escenario se desactivarán los demás del año lectivo."
+                f"{detalle_bloques} ¿Continuar?"
+            ),
             on_confirm=_confirmar,
             variante="info",
             texto_confirmar="Activar",
@@ -1417,6 +1516,138 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     def _cambiar_seccion(sec: str) -> None:
         presenter.set_seccion(sec)
         hub_refreshable.refresh()
+
+    # =========================================================================
+    # Preparación (T13) — reporte de puertas compartido por «Preparar» y «Generar»
+    # =========================================================================
+
+    # Memoiza el reporte por config_id dentro de una misma interacción: el panel
+    # embebido, los badges de la tabla y el gating del botón lo consultan varias
+    # veces en el mismo render y `validar_config` recorre todos los repos.
+    # `_prep_invalidar()` lo descarta tras cualquier cambio que pueda mover una
+    # puerta (franjas, plantilla activa, configuración, generación).
+    _prep_cache: dict[Any, tuple[list, str | None]] = {}
+
+    def _prep_invalidar() -> None:
+        """Descarta el reporte memoizado: la próxima lectura lo recalcula."""
+        _prep_cache.clear()
+
+    def _prep_plantilla_fallback() -> int:
+        """Plantilla a evaluar cuando no hay configuración seleccionada."""
+        try:
+            if _s.get("gen_plantilla_sel"):
+                return _s["gen_plantilla_sel"].id
+            plantillas = Container.franja_service().listar_plantillas()
+            activas = [p for p in plantillas if getattr(p, "activa", False)]
+            if activas:
+                return activas[0].id
+            if plantillas:
+                return plantillas[0].id
+        except Exception as exc:
+            logger.error("Error obteniendo plantilla para preparar: %s", exc)
+        return 0
+
+    def _prep_config_id() -> int | None:
+        config = _s.get("gen_config_sel")
+        return getattr(config, "id", None) if config else None
+
+    def _prep_reporte(config_id: int | None) -> tuple[list, str | None]:
+        """Reporte de preparación (T8): contra la ConfigGeneracion concreta si
+        hay una seleccionada — así la checklist mide el año, el periodo, la
+        plantilla y el filtro de grupos que el motor va a ejecutar — y contra el
+        año/periodo/plantilla sueltos solo como respaldo.
+
+        `rol` se propaga para que el servicio retire los `fix_ruta` de /admin/*
+        que este usuario no puede abrir (T12.1).
+        """
+        if config_id in _prep_cache:
+            return _prep_cache[config_id]
+        reporte: list = []
+        error: str | None = None
+        try:
+            svc = Container.preparacion_horario_service()
+            if config_id is not None:
+                reporte = svc.validar_config(config_id, rol=rol)
+            elif _s["anio_id"] and _s["periodo_id"]:
+                reporte = svc.validar(
+                    _s["anio_id"], _s["periodo_id"], _prep_plantilla_fallback(), rol=rol
+                )
+            else:
+                error = "No hay año o periodo activo configurado."
+        except Exception as exc:
+            logger.error("Error en validación de preparación: %s", exc)
+            error = _texto_error(exc)
+        _prep_cache[config_id] = (reporte, error)
+        return reporte, error
+
+    def _prep_bloqueante(reporte: list):
+        """Primera puerta dura en rojo — la que explica por qué no se genera."""
+        return next((p for p in reporte if p.severidad == "dura" and not p.ok), None)
+
+    def _prep_duras_rojas(config_id: int) -> int | None:
+        """Nº de puertas duras en rojo de una config; None si no se pudo evaluar."""
+        reporte, error = _prep_reporte(config_id)
+        if error or not reporte:
+            return None
+        return sum(1 for p in reporte if p.severidad == "dura" and not p.ok)
+
+    def _render_puertas(reporte: list, *, compacto: bool) -> None:
+        """Render de las puertas de preparación (T13.1).
+
+        `compacto=True` (panel embebido en «Generar»): resumen «N de M puertas
+        OK» y solo las puertas en rojo/ámbar. `compacto=False` (sección
+        «Preparar»): la checklist completa.
+        """
+        total = len(reporte)
+        n_ok = sum(1 for p in reporte if p.ok)
+        puertas = [p for p in reporte if not p.ok] if compacto else list(reporte)
+
+        if compacto:
+            todo_ok = n_ok == total
+            with ui.row().classes("items-center gap-2"):
+                ThemeManager.icono(
+                    "check_circle" if todo_ok else Icons.WARNING,
+                    size=18,
+                    color=("var(--color-success)" if todo_ok else "var(--color-warning)"),
+                )  # DYNAMIC: color según el estado global de la checklist
+                ui.label(f"{n_ok} de {total} puertas OK").classes("text-sm font-semibold")
+            if not puertas:
+                ui.label(
+                    "Sin puertas pendientes: la configuración está lista para generar."
+                ).classes("text-xs text-secondary")
+                return
+
+        for puerta in puertas:
+            _color = (
+                "var(--color-success)"
+                if puerta.ok
+                else (
+                    "var(--color-error)"
+                    if puerta.severidad == "dura"
+                    else "var(--color-warning)"
+                )
+            )
+            _icono = (
+                "check_circle"
+                if puerta.ok
+                else ("cancel" if puerta.severidad == "dura" else "warning")
+            )
+            with ui.row().classes("divider-row"):
+                ThemeManager.icono(
+                    _icono, size=20, color=_color
+                )  # DYNAMIC: color según estado de la puerta
+                with ui.element("div").classes("flex-1"):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.label(puerta.titulo).classes("font-semibold text-sm")
+                        if puerta.severidad == "advertencia":
+                            status_badge("advertencia", variante="warning")
+                    ui.label(puerta.detalle).classes("text-xs text-secondary")
+                if not puerta.ok and puerta.fix_ruta:
+                    btn_ghost(
+                        "Corregir",
+                        icon="arrow_forward",
+                        on_click=lambda _, r=puerta.fix_ruta: ui.navigate.to(r),
+                    )
 
     # =========================================================================
     # Render helpers — generar
@@ -1549,7 +1780,17 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                             ui.spinner(size="xs")
                                             ui.label("Generando…").classes("text-xs text-muted")
                                     else:
-                                        status_badge(badge_txt, variante=badge_var)
+                                        with ui.row().classes("items-center gap-1 flex-wrap"):
+                                            status_badge(badge_txt, variante=badge_var)
+                                            # T13.3 — puertas duras en rojo de ESTA
+                                            # config (None = no se pudo evaluar).
+                                            n_rojas = _prep_duras_rojas(config.id)
+                                            if n_rojas:
+                                                status_badge(
+                                                    f"{n_rojas} bloqueo(s)", variante="error"
+                                                )
+                                            elif n_rojas == 0:
+                                                status_badge("Listo", variante="success")
                                 with ui.element("td"), ui.element("div").classes(
                                     "gen-config-acciones"
                                 ):
@@ -1641,12 +1882,90 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     )
 
         incidencias = list(getattr(resultado, "incidencias", []) or [])
-        if incidencias:
+        causas = dict(getattr(resultado, "causas", {}) or {})
+        relajadas = list(getattr(resultado, "relajadas", []) or [])
+
+        # T7: las líneas "No colocado: ..." se repiten una por bloque y ya
+        # están resumidas abajo agrupadas por causa (con su conteo); el resto
+        # de avisos (PRE-VUELO, rechazos del oráculo, resultado parcial, etc.)
+        # no tiene contraparte en `causas` y se muestra tal cual.
+        detalle_incidencias = [
+            t for t in incidencias if not str(t).startswith("No colocado:")
+        ]
+
+        # P1: los cruces de sala que el oráculo relajado devuelve como aviso
+        # ("Fila N: sala 'X' ya ocupada en ese horario (no bloquea).") no son un
+        # error — se separan de «Otros avisos» y se pintan como informativos.
+        def _es_aviso_sala(texto: str) -> bool:
+            return " sala '" in texto and "(no bloquea)" in texto
+
+        avisos_sala = [t for t in detalle_incidencias if _es_aviso_sala(str(t))]
+        detalle_incidencias = [t for t in detalle_incidencias if not _es_aviso_sala(str(t))]
+
+        if relajadas:
+            with ui.row().classes("items-center gap-2 u-mt-sm"):
+                ThemeManager.icono(Icons.INFO, size=18, color="var(--color-info)")
+                ui.label(
+                    "Restricciones relajadas para completar el horario: "
+                    + ", ".join(relajadas)
+                ).classes("text-sm text-secondary")
+
+        if causas:
             with ui.element("div").classes("gen-incidencias u-mt-md"):
                 with ui.row().classes("items-center gap-2"):
                     ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
-                    ui.label(f"Incidencias ({len(incidencias)})").classes("text-sm font-semibold")
-                for texto in incidencias:
+                    ui.label(
+                        f"Bloques no colocados por causa ({sum(causas.values())})"
+                    ).classes("text-sm font-semibold")
+                for causa, cuenta in sorted(causas.items(), key=lambda kv: -kv[1]):
+                    etiqueta, fix_ruta = CAUSA_INFO.get(
+                        causa, (causa.replace("_", " ").capitalize(), None)
+                    )
+                    # P1: la sala nunca bloquea la colocación — "sala_pendiente"
+                    # es informativo, no un error real.
+                    es_informativa = causa == "sala_pendiente"
+                    with ui.row().classes("items-center gap-2 gen-incidencia-item"):
+                        ThemeManager.icono(
+                            Icons.INFO if es_informativa else Icons.WARNING,
+                            size=16,
+                            color=(
+                                "var(--color-info)"
+                                if es_informativa
+                                else "var(--color-warning)"
+                            ),
+                        )
+                        ui.label(f"{etiqueta} ({cuenta})").classes("flex-1 text-sm")
+                        if fix_ruta:
+                            btn_ghost(
+                                "Corregir",
+                                icon="arrow_forward",
+                                size="sm",
+                                on_click=lambda _, r=fix_ruta: ui.navigate.to(r),
+                            )
+
+        if avisos_sala:
+            with ui.element("div").classes("gen-incidencias gen-incidencias--info u-mt-md"):
+                with ui.row().classes("items-center gap-2"):
+                    ThemeManager.icono(Icons.INFO, size=18, color="var(--color-info)")
+                    ui.label(f"Avisos de sala ({len(avisos_sala)})").classes(
+                        "text-sm font-semibold"
+                    )
+                ui.label(
+                    "La sala nunca invalida el horario: estos bloques quedaron colocados "
+                    "y solo hay que revisar el espacio asignado."
+                ).classes("text-xs text-secondary")
+                for texto in avisos_sala:
+                    with ui.element("div").classes("gen-incidencia-item"):
+                        ui.label(str(texto))
+
+        if detalle_incidencias:
+            with ui.element("div").classes("gen-incidencias u-mt-md"):
+                with ui.row().classes("items-center gap-2"):
+                    ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
+                    ui.label(f"Otros avisos ({len(detalle_incidencias)})").classes(
+                        "text-sm font-semibold"
+                    )
+                for texto in detalle_incidencias:
                     with ui.element("div").classes("gen-incidencia-item"):
                         ui.label(str(texto))
 
@@ -1700,9 +2019,6 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
         escenario_id = getattr(resultado, "escenario_id", None) if resultado else None
         escenario_destino = getattr(config, "escenario_destino_id", None)
         valido = bool(getattr(resultado, "valido", False)) if resultado else False
-        generable, motivo_no_generable = _gen_plantilla_generable(
-            getattr(config, "plantilla_id", None)
-        )
 
         with ui.element("div").classes("panel-card u-mt-md"):
             with ui.element("div").classes("gen-section-head"):
@@ -1710,20 +2026,59 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     ui.label(getattr(config, "nombre", "")).classes("text-subtitle1 font-semibold")
                     status_badge(badge_txt, variante=badge_var)
                 with ui.row().classes("gap-2 flex-wrap"):
-                    btn_primary(
-                        "Generar horario",
-                        icon="play_arrow",
-                        on_click=_gen_generar_config,
-                        disabled=_s["gen_generando"] or not generable,
-                    )
                     puede_activar_resultado = bool(escenario_id) and valido
-                    puede_activar_config = bool(escenario_destino) and estado == "generado"
+                    # T6: "generado" no basta — el escenario destino debe tener
+                    # bloques reales (una generación vacía no debe ser activable).
+                    destino_con_bloques = False
+                    if escenario_destino:
+                        try:
+                            destino_con_bloques = bool(
+                                Container.escenario_horario_service().tiene_bloques(
+                                    escenario_destino
+                                )
+                            )
+                        except Exception as exc:
+                            logger.warning(
+                                "No se pudo comprobar si el escenario %s tiene bloques: %s",
+                                escenario_destino,
+                                exc,
+                            )
+                    puede_activar_config = (
+                        bool(escenario_destino) and estado == "generado" and destino_con_bloques
+                    )
+                    escenario_destino_vacio = (
+                        bool(escenario_destino)
+                        and estado == "generado"
+                        and not destino_con_bloques
+                        and not puede_activar_resultado
+                    )
                     if puede_activar_resultado or puede_activar_config:
                         target = escenario_id if puede_activar_resultado else escenario_destino
+                        # T6.4 — la confirmación indica cuántos bloques se activan:
+                        # del resultado en pantalla cuando viene de él, y del
+                        # servicio para el escenario destino (0 ⇒ no se menciona).
+                        n_bloques_activar = 0
+                        if puede_activar_resultado:
+                            n_bloques_activar = int(getattr(resultado, "colocados", 0) or 0)
+                        else:
+                            try:
+                                n_bloques_activar = (
+                                    Container.escenario_horario_service().contar_bloques(
+                                        escenario_destino
+                                    )
+                                )
+                            except Exception as exc:
+                                logger.warning(
+                                    "No se pudieron contar los bloques del escenario %s: %s",
+                                    escenario_destino,
+                                    exc,
+                                )
                         btn_secondary(
                             "Activar este escenario",
                             icon="check_circle",
-                            on_click=lambda c=config, e=target: _gen_activar_escenario(c, e),
+                            on_click=lambda c=config, e=target, n=n_bloques_activar: (
+                                _gen_activar_escenario(c, e, n)
+                            ),
                         )
                         btn_ghost(
                             "Ver en horarios",
@@ -1731,13 +2086,18 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                             on_click=lambda e=target: ui.navigate.to(f"/horarios?escenario={e}"),
                         )
 
-            if not generable:
+            if escenario_destino_vacio:
                 with ui.row().classes("items-center gap-2 u-mt-sm"):
                     ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
                     ui.label(
-                        f"No se puede generar: {motivo_no_generable} "
-                        "Ajusta la plantilla en la pestaña «Plantillas»."
+                        "El escenario generado no tiene bloques todavía; no se puede "
+                        "activar. Genera de nuevo o ajusta la configuración."
                     ).classes("text-sm text-warning")
+
+            # T13/P5 — la advertencia vive donde se toma la decisión: el panel de
+            # preparación y el botón «Generar horario» se renderizan juntos y se
+            # recalculan juntos.
+            preparacion_refreshable()
 
             if _s["gen_generando"]:
                 with ui.element("div").classes("gen-loading"):
@@ -1771,38 +2131,11 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
     # =========================================================================
 
     def _render_preparar() -> None:
-        anio_id = _s["anio_id"]
-        periodo_id = _s["periodo_id"]
-
-        # Intentar obtener plantilla_id desde la config seleccionada o la plantilla activa
-        plantilla_id: int = 0
-        try:
-            if _s.get("gen_plantilla_sel"):
-                plantilla_id = _s["gen_plantilla_sel"].id
-            elif _s.get("gen_config_sel"):
-                plantilla_id = getattr(_s["gen_config_sel"], "plantilla_id", 0) or 0
-            else:
-                plantillas = Container.franja_service().listar_plantillas()
-                activas = [p for p in plantillas if getattr(p, "activa", False)]
-                if activas:
-                    plantilla_id = activas[0].id
-                elif plantillas:
-                    plantilla_id = plantillas[0].id
-        except Exception as exc:
-            logger.error("Error obteniendo plantilla para preparar: %s", exc)
-
-        # Ejecutar validadores
-        reporte = []
-        error_validacion = None
-        if anio_id and periodo_id:
-            try:
-                svc = Container.preparacion_horario_service()
-                reporte = svc.validar(anio_id, periodo_id, plantilla_id)
-            except Exception as exc:
-                logger.error("Error en validación de preparación: %s", exc)
-                error_validacion = str(exc)
-        else:
-            error_validacion = "No hay año o periodo activo configurado."
+        # T8 — si hay una configuración seleccionada, la checklist se evalúa
+        # contra ELLA (su año, periodo, plantilla y filtro de grupos); si no,
+        # contra el año/periodo/plantilla sueltos como respaldo.
+        config_id = _prep_config_id()
+        reporte, error_validacion = _prep_reporte(config_id)
 
         puede_gen = (
             Container.preparacion_horario_service().puede_generar(reporte) if reporte else False
@@ -1814,7 +2147,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                 btn_ghost(
                     "Actualizar",
                     icon="refresh",
-                    on_click=lambda: hub_refreshable.refresh(),
+                    on_click=lambda: (_prep_invalidar(), hub_refreshable.refresh()),
                 )
 
             if error_validacion:
@@ -1825,37 +2158,7 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                     "Selecciona un año y periodo activo para ver el estado de preparación."
                 ).classes("text-sm text-secondary")
             else:
-                for puerta in reporte:
-                    _color = (
-                        "var(--color-success)"
-                        if puerta.ok
-                        else (
-                            "var(--color-error)"
-                            if puerta.severidad == "dura"
-                            else "var(--color-warning)"
-                        )
-                    )
-                    _icono = (
-                        "check_circle"
-                        if puerta.ok
-                        else ("cancel" if puerta.severidad == "dura" else "warning")
-                    )
-                    with ui.row().classes("divider-row"):
-                        ThemeManager.icono(
-                            _icono, size=20, color=_color
-                        )  # DYNAMIC: color según estado de la puerta
-                        with ui.element("div").classes("flex-1"):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.label(puerta.titulo).classes("font-semibold text-sm")
-                                if puerta.severidad == "advertencia":
-                                    status_badge("advertencia", variante="warning")
-                            ui.label(puerta.detalle).classes("text-xs text-secondary")
-                        if not puerta.ok and puerta.fix_ruta:
-                            btn_ghost(
-                                "Corregir",
-                                icon="arrow_forward",
-                                on_click=lambda _, r=puerta.fix_ruta: ui.navigate.to(r),
-                            )
+                _render_puertas(reporte, compacto=False)
 
                 with ui.row().classes("u-mt-md"):
                     if puede_gen:
@@ -2310,6 +2613,89 @@ def horarios_hub_page(seccion_inicial: str = "visualizar") -> None:
                                 )
                             ui.label(a["area_nombre"]).classes("parrilla-leyenda-label")
                         item.on("click", lambda _, ar=a: _editar_color_area(ar))
+
+    @ui.refreshable
+    def preparacion_refreshable() -> None:
+        """Panel de preparación compacto + botón «Generar horario» (T13, P5).
+
+        Se renderiza dentro de `_gen_render_detalle`, de modo que la checklist y
+        el botón que dispara el motor se recalculan en el mismo refresh: el
+        gating del botón y el motivo que se muestra no pueden desincronizarse.
+        """
+        config = _s.get("gen_config_sel")
+        if not config:
+            return
+        config_id = getattr(config, "id", None)
+        reporte, error = _prep_reporte(config_id)
+        # El presenter solo guarda el view-model (T13.7): el cómputo de las
+        # puertas vive en PreparacionHorarioService.
+        presenter.set_prep_reporte(reporte, error, config_id)
+
+        puede_gen = (
+            Container.preparacion_horario_service().puede_generar(reporte) if reporte else False
+        )
+        bloqueante = _prep_bloqueante(reporte)
+        generable, motivo_no_generable = _gen_plantilla_generable(
+            getattr(config, "plantilla_id", None)
+        )
+
+        with ui.element("div").classes("u-mt-sm"):
+            with ui.row().classes("form-row-between"):
+                ui.label("Estado de preparación").classes("text-subtitle2 font-semibold")
+                btn_ghost(
+                    "Actualizar",
+                    icon=Icons.REFRESH,
+                    size="sm",
+                    on_click=lambda: (
+                        _prep_invalidar(),
+                        preparacion_refreshable.refresh(),
+                    ),
+                )
+            if error:
+                ui.label(error).classes("text-xs text-secondary")
+            if reporte:
+                _render_puertas(reporte, compacto=True)
+
+        if not generable:
+            with ui.row().classes("items-center gap-2 u-mt-sm"):
+                ThemeManager.icono(Icons.WARNING, size=18, color="var(--color-warning)")
+                ui.label(
+                    f"No se puede generar: {motivo_no_generable} "
+                    "Ajusta la plantilla en la pestaña «Plantillas»."
+                ).classes("text-sm text-warning")
+
+        with ui.row().classes("items-center gap-2 flex-wrap u-mt-sm"):
+            btn_primary(
+                "Generar horario",
+                icon="play_arrow",
+                on_click=_gen_generar_config,
+                disabled=_s["gen_generando"] or not generable or not puede_gen,
+            )
+
+        # T13.4 — deshabilitado por preparación: el motivo concreto, no un
+        # texto genérico. El `fix_ruta` ya viene filtrado por rol (T12.1).
+        if generable and not puede_gen:
+            if bloqueante is not None:
+                with ui.row().classes("items-center gap-2 u-mt-xs"):
+                    ThemeManager.icono(
+                        "cancel", size=18, color="var(--color-error)"
+                    )  # DYNAMIC: la puerta dura que bloquea la generación
+                    with ui.element("div").classes("flex-1"):
+                        ui.label(f"Bloqueado por «{bloqueante.titulo}»").classes(
+                            "text-sm font-semibold text-error"
+                        )
+                        ui.label(bloqueante.detalle).classes("text-xs text-secondary")
+                    if bloqueante.fix_ruta:
+                        btn_ghost(
+                            "Corregir",
+                            icon="arrow_forward",
+                            size="sm",
+                            on_click=lambda _, r=bloqueante.fix_ruta: ui.navigate.to(r),
+                        )
+            elif not error:
+                ui.label(
+                    "No se pudo evaluar el estado de preparación; pulsa «Actualizar»."
+                ).classes("text-xs text-secondary u-mt-xs")
 
     @ui.refreshable
     def gen_refreshable() -> None:

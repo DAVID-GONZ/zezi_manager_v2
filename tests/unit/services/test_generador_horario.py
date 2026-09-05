@@ -20,6 +20,7 @@ from src.domain.models.infraestructura import (
     EscenarioHorario,
     Franja,
     FranjaReunion,
+    Grupo,
     LimitesDocente,
     PlantillaFranja,
     Sala,
@@ -50,6 +51,7 @@ class FakeInfraRepo:
         franjas: list[Franja],
         asignaturas: dict[int, Asignatura],
         no_disponibles: set | None = None,
+        grupos: list | None = None,
     ):
         self._config = config
         self._plantilla = plantilla
@@ -57,6 +59,7 @@ class FakeInfraRepo:
         self._asignaturas = asignaturas
         # set de (usuario_id, dia, franja_orden) NO disponibles
         self._no_disponibles = no_disponibles or set()
+        self._grupos = grupos or []
         self.config_actualizada = None
         self.estado_cambiado = None
 
@@ -73,7 +76,7 @@ class FakeInfraRepo:
         return self._asignaturas.get(asignatura_id)
 
     def listar_grupos(self, grado=None, institucion_id=None):
-        return []
+        return list(self._grupos)
 
     def es_disponible(self, usuario_id, dia, franja_orden):
         return (usuario_id, dia, franja_orden) not in self._no_disponibles
@@ -150,6 +153,10 @@ class FakeHorarioService:
     """
     Oráculo: reimplementa la verificación mínima de cruces sobre el lote.
     Usa el FakeAsignacionRepo para resolver grupo_id/usuario_id de cada fila.
+
+    Incorpora la regla de sala del oráculo real (SALAS_NO_EXCLUSIVAS +
+    `salas_bloquean`, paso_17 T1) para que los tests que ejercitan esa
+    relajación sean fidedignos frente a src.services.horario_service.
     """
 
     def __init__(self, asignacion_repo, usuario_service, asignaturas):
@@ -158,43 +165,62 @@ class FakeHorarioService:
         self._asignaturas = asignaturas
         self.aplicado = None
 
-    def analizar_lote(self, escenario_id, periodo_id, filas):
+    def analizar_lote(self, escenario_id, periodo_id, filas, salas_bloquean=True):
         from src.domain.models.infraestructura import (
             FilaReporteDTO,
             ReporteLoteDTO,
         )
+        from src.services.horario_service import SALAS_NO_EXCLUSIVAS
+
         vistos_grupo: set = set()
         vistos_docente: set = set()
+        vistos_sala: set = set()
         conteo_doc: dict = {}
         resultado = []
+        avisos: list[str] = []
         for i, fila in enumerate(filas):
             asig = self._asig.get_by_id(int(fila["asignacion_id"]))
             ok, motivo = True, None
             dia = fila["dia_semana"]
             hi = fila["hora_inicio"]
+            sala = str(fila.get("sala") or "Aula")
             clave_g = (asig.grupo_id, dia, hi)
             clave_d = (asig.usuario_id, dia, hi)
+            clave_s = (sala, dia, hi)
+
             if clave_g in vistos_grupo:
                 ok, motivo = False, "Cruce: grupo ocupado."
             elif clave_d in vistos_docente:
                 ok, motivo = False, "Cruce: docente ocupado."
             else:
-                tope = self._usuario.carga_horaria_max(asig.usuario_id)
-                usado = conteo_doc.get(asig.usuario_id, 0)
-                if tope is not None and usado + 1 > tope:
-                    ok, motivo = False, "Tope docente."
+                if sala not in SALAS_NO_EXCLUSIVAS and clave_s in vistos_sala:
+                    if salas_bloquean:
+                        ok, motivo = False, f"Cruce: sala '{sala}' ya ocupada."
+                    else:
+                        avisos.append(f"Fila {i}: sala '{sala}' ya ocupada (no bloquea).")
+                if ok:
+                    tope = self._usuario.carga_horaria_max(asig.usuario_id)
+                    usado = conteo_doc.get(asig.usuario_id, 0)
+                    if tope is not None and usado + 1 > tope:
+                        ok, motivo = False, "Tope docente."
             if ok:
                 vistos_grupo.add(clave_g)
                 vistos_docente.add(clave_d)
+                if sala not in SALAS_NO_EXCLUSIVAS:
+                    vistos_sala.add(clave_s)
                 conteo_doc[asig.usuario_id] = conteo_doc.get(asig.usuario_id, 0) + 1
             resultado.append(FilaReporteDTO(indice=i, ok=ok, motivo=motivo))
-        return ReporteLoteDTO(filas=resultado)
+        return ReporteLoteDTO(filas=resultado, avisos=avisos)
 
-    def aplicar_lote(self, escenario_id, periodo_id, filas, solo_validas=False):
+    def aplicar_lote(
+        self, escenario_id, periodo_id, filas, solo_validas=False, salas_bloquean=True
+    ):
         from src.domain.models.infraestructura import (
             ResultadoLoteDTO,
         )
-        reporte = self.analizar_lote(escenario_id, periodo_id, filas)
+        reporte = self.analizar_lote(
+            escenario_id, periodo_id, filas, salas_bloquean=salas_bloquean
+        )
         self.aplicado = filas
         creados = sum(1 for f in reporte.filas if f.ok)
         return ResultadoLoteDTO(
@@ -247,8 +273,8 @@ def _plantilla(dias):
 def _build(config, plantilla, franjas, asig_infos, asignaturas,
            cargas=None, no_disponibles=None,
            salas=None, ventanas_grupo=None, limites_docente=None,
-           franjas_reunion=None):
-    infra = FakeInfraRepo(config, plantilla, franjas, asignaturas, no_disponibles)
+           franjas_reunion=None, grupos=None):
+    infra = FakeInfraRepo(config, plantilla, franjas, asignaturas, no_disponibles, grupos)
     asig_repo = FakeAsignacionRepo(asig_infos)
     usuario = FakeUsuarioService(cargas)
     infraestructura = FakeInfraestructuraService(
@@ -983,9 +1009,11 @@ def test_prevuelo_docente_insuficiente():
 
     res = svc.generar(1)
 
+    # T7: el mensaje usa el nombre del docente (AsignacionInfo.docente_nombre),
+    # no el id crudo.
     prevuelo_msgs = [i for i in res.incidencias if i.startswith("PRE-VUELO")]
-    assert any("docente 3" in m for m in prevuelo_msgs), \
-        f"No se encontró PRE-VUELO para docente 3: {res.incidencias}"
+    assert any("Docente 3" in m for m in prevuelo_msgs), \
+        f"No se encontró PRE-VUELO para Docente 3: {res.incidencias}"
 
 
 def test_prevuelo_grupo_insuficiente():
@@ -1167,3 +1195,208 @@ def test_voraz_conserva_el_mejor_parcial_del_backtracking():
     assert res.colocados == 2, f"Se perdieron colocaciones válidas: {res.colocados}"
     assert res.no_colocados == 1
     assert {b.franja_orden for b in res.bloques} == {1, 2}
+
+
+# ===========================================================================
+# horario_01_validacion_generacion — T17: regresión T1/T4/T5
+# ===========================================================================
+
+def test_sala_faltante_no_invalida_el_horario():
+    """Caso E1 (T1): 3 grupos con materia 'laboratorio' y 1 sola sala real.
+
+    Con un único slot disponible los 3 grupos comparten forzosamente el mismo
+    (día, franja); solo uno consigue la sala real y los otros dos quedan con
+    sala='Por asignar' en el mismo horario. Antes del fix, el oráculo trataba
+    'Por asignar' como una sala exclusiva y marcaba un cruce falso entre esos
+    dos, invalidando un horario perfectamente colocado.
+    """
+    salas = [Sala(id=1, nombre="Lab Química", tipo="laboratorio", capacidad=30)]
+    asignaturas = {
+        5: Asignatura(
+            id=5, nombre="Lab", horas_semanales=1, tipo_sala_requerido="laboratorio"
+        ),
+    }
+    asig_infos = [
+        _asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5),
+        _asig_info(11, grupo_id=2, usuario_id=4, asignatura_id=5),
+        _asig_info(12, grupo_id=3, usuario_id=5, asignatura_id=5),
+    ]
+    plantilla_1slot = _plantilla(["Lunes"])
+    franjas_1slot = [_franja(1, "07:00", "07:55")]
+    svc, _infra, horario, _infraestructura = _build(
+        _config(), plantilla_1slot, franjas_1slot, asig_infos, asignaturas,
+        salas=salas,
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 0, f"No todos colocados: {res.incidencias}"
+    assert res.valido is True, f"Debe ser válido pese a la sala faltante: {res.incidencias}"
+    assert res.causas.get("sala_pendiente", 0) == 2, res.causas
+    assert horario.aplicado is not None, "El lote debe persistirse cuando valido=True"
+
+
+def test_sin_asignaciones_no_crea_escenario():
+    """Caso E2 (T4/T5): sin asignaciones activas no se crea escenario ni se
+    transiciona la config; el resultado trae una incidencia explícita."""
+    svc, infra, horario, infraestructura = _build(
+        _config(), _plantilla(DIAS_3), FRANJAS_3, [], {},
+    )
+
+    res = svc.generar(1)
+
+    assert res.escenario_id is None
+    assert res.valido is False
+    assert res.incidencias, "Debe explicar por qué no hay nada que generar."
+    assert any("No hay asignaciones activas" in inc for inc in res.incidencias)
+    assert infra.estado_cambiado is None, "No debe transicionar la config sin bloques."
+    assert infra.config_actualizada is None, "No debe tocar la config sin bloques."
+    assert infraestructura.creados == [], "No debe crear ningún escenario sin bloques."
+    assert horario.aplicado is None
+
+
+def test_resultado_invalido_siempre_tiene_incidencias():
+    """Invariante de T4: not resultado.valido ⇒ len(resultado.incidencias) > 0."""
+    # Caso 1: sin asignaciones en absoluto.
+    svc1, *_ = _build(_config(), _plantilla(DIAS_3), FRANJAS_3, [], {})
+    res1 = svc1.generar(1)
+    assert res1.valido is False
+    assert len(res1.incidencias) > 0
+
+    # Caso 2: slots insuficientes → resultado parcial, inválido.
+    asignaturas = {5: Asignatura(id=5, nombre="Mate", horas_semanales=3)}
+    asig_infos = [_asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5)]
+    svc2, *_ = _build(
+        _config(), _plantilla(["Lunes"]), [_franja(1, "07:00", "07:55")],
+        asig_infos, asignaturas,
+    )
+    res2 = svc2.generar(1)
+    assert res2.valido is False
+    assert len(res2.incidencias) > 0
+
+    # Caso 3: grupos filtrados que no tienen ninguna asignación activa.
+    svc3, *_ = _build(_config(grupos=[99]), _plantilla(DIAS_3), FRANJAS_3, [], {})
+    res3 = svc3.generar(1)
+    assert res3.valido is False
+    assert len(res3.incidencias) > 0
+    assert any("seleccionados no tienen asignaciones activas" in i for i in res3.incidencias)
+
+
+# ===========================================================================
+# horario_01_validacion_generacion — T2: aula base ocupada no se reasigna
+# ===========================================================================
+
+def test_sala_base_no_se_reasigna_a_laboratorio():
+    """`_elegir_sala` ya no elige una sala que es el aula base ocupada de otro
+    grupo, aunque esa sala esté tipificada como el tipo requerido (caso real:
+    un salón multiuso que a la vez es el homeroom de un grupo).
+
+    Con un único slot en la plantilla, el grupo 1 (clase normal, sin tipo de
+    sala) y el grupo 2 (laboratorio) quedan forzados al mismo (día, franja).
+    La única sala del sistema es a la vez tipo 'laboratorio' Y el aula base
+    del grupo 1: antes del fix, `ocupado_sala` no sabía que esa sala estaba
+    ocupada por el grupo 1 y se la asignaba igual al laboratorio del grupo 2.
+    """
+    salas = [Sala(id=1, nombre="Aula Multiuso", tipo="laboratorio", capacidad=30)]
+    grupos = [
+        Grupo(id=1, codigo="G1", sala_id=1),  # aula base = la única sala real
+        Grupo(id=2, codigo="G2"),
+    ]
+    asignaturas = {
+        5: Asignatura(id=5, nombre="Sociales", horas_semanales=1),  # sin tipo_sala_req
+        6: Asignatura(
+            id=6, nombre="Lab Física", horas_semanales=1, tipo_sala_requerido="laboratorio"
+        ),
+    }
+    asig_infos = [
+        _asig_info(10, grupo_id=1, usuario_id=3, asignatura_id=5),
+        _asig_info(11, grupo_id=2, usuario_id=4, asignatura_id=6),
+    ]
+    plantilla_1slot = _plantilla(["Lunes"])
+    franjas_1slot = [_franja(1, "07:00", "07:55")]
+    svc, *_ = _build(
+        _config(), plantilla_1slot, franjas_1slot, asig_infos, asignaturas,
+        salas=salas, grupos=grupos,
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 0, res.incidencias
+    bloque_g1 = next(b for b in res.bloques if b.grupo_id == 1)
+    bloque_lab = next(b for b in res.bloques if b.grupo_id == 2)
+    # El grupo 1 usa su aula propia (contabilidad normal, sin cambios).
+    assert bloque_g1.sala == "Aula Multiuso"
+    # El laboratorio NO puede reutilizar esa misma sala en el mismo slot: al
+    # ser la única sala del tipo requerido y estar ocupada como aula base,
+    # queda "Por asignar" en vez de robarle el salón al grupo 1.
+    assert bloque_lab.sala_id is None, (
+        f"El laboratorio reutilizó el aula base ocupada del grupo 1: "
+        f"sala_id={bloque_lab.sala_id}"
+    )
+    assert bloque_lab.sala == "Por asignar"
+    assert res.causas.get("sala_pendiente", 0) == 1
+
+
+def test_ocupacion_de_sala_es_un_conteo_no_un_set():
+    """Regresión: `ocupado_sala` debe contar, no marcar presencia.
+
+    Escenario: la única sala del sistema está tipificada como 'laboratorio' Y es
+    a la vez el aula base del grupo 1. El laboratorio del grupo 2 la toma en
+    (Lunes, franja 1); después una clase normal del grupo 1 se coloca en ese
+    mismo slot y marca la misma clave. Cuando el backtracking retira esa clase
+    normal, un `set` borraba la marca entera y la sala quedaba «libre» pese a
+    que el laboratorio del grupo 2 seguía dentro: el siguiente laboratorio la
+    elegía y se persistían dos clases en la misma habitación a la misma hora.
+
+    La ventana de grupo (permisiva, no restringe nada) desactiva el camino de
+    König para forzar el backtracking, que es donde vive el `_quitar` que
+    destapa el defecto.
+    """
+    salas = [Sala(id=1, nombre="Aula Multiuso", tipo="laboratorio", capacidad=30)]
+    grupos = [
+        Grupo(id=1, codigo="G1", sala_id=1),  # aula base = la única sala real
+        Grupo(id=2, codigo="G2"),
+    ]
+    asignaturas = {
+        5: Asignatura(
+            id=5, nombre="Lab Física", horas_semanales=1, tipo_sala_requerido="laboratorio"
+        ),
+        6: Asignatura(id=6, nombre="Sociales", horas_semanales=1),  # sin tipo de sala
+        7: Asignatura(
+            id=7, nombre="Lab Química", horas_semanales=1, tipo_sala_requerido="laboratorio"
+        ),
+    }
+    asig_infos = [
+        _asig_info(10, grupo_id=2, usuario_id=4, asignatura_id=5),  # lab que toma la sala
+        _asig_info(11, grupo_id=1, usuario_id=3, asignatura_id=6),  # clase normal en su aula
+        _asig_info(12, grupo_id=1, usuario_id=6, asignatura_id=7),  # lab que la reclama
+    ]
+    # El docente 6 tiene reunión estricta en la franja 2: su laboratorio solo
+    # cabe en la franja 1, así que la clase normal del grupo 1 tiene que
+    # retroceder de la franja 1 a la 2 (ahí ocurre el `_quitar` crítico).
+    reunion = FranjaReunion(
+        id=1, nombre="Reunión de área", docentes=[6],
+        dia_semana="Lunes", franja_orden=2, modo="estricta",
+    )
+    # Ventana permisiva: no recorta ningún slot, solo desactiva König.
+    ventana = VentanaGrupo(id=1, grupo_id=2, franjas_permitidas=[1, 2])
+    plantilla = _plantilla(["Lunes"])
+    franjas = [_franja(1, "07:00", "07:55"), _franja(2, "08:00", "08:55")]
+
+    svc, *_ = _build(
+        _config(), plantilla, franjas, asig_infos, asignaturas,
+        salas=salas, grupos=grupos, franjas_reunion=[reunion],
+        ventanas_grupo=[ventana],
+    )
+
+    res = svc.generar(1)
+
+    assert res.no_colocados == 0, res.incidencias
+    reservas = [
+        (b.sala_id, b.dia_semana, b.franja_orden) for b in res.bloques if b.sala_id
+    ]
+    assert len(reservas) == len(set(reservas)), (
+        f"Una sala quedó reservada dos veces en el mismo slot: {reservas}"
+    )
+    # El segundo laboratorio no roba la sala ocupada: queda pendiente de asignar.
+    assert res.causas.get("sala_pendiente", 0) == 1, res.causas

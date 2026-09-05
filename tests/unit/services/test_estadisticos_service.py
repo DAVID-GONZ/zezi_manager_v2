@@ -181,7 +181,9 @@ class _AsigInfo:
 class _FakeAsignacionRepo:
     def __init__(self, asignaciones):
         self._asigs = asignaciones
-    def listar_por_docente(self, usuario_id, periodo_id=None, solo_activas=True):
+    # Espeja la firma real del puerto (IAsignacionRepository.listar_por_docente):
+    # tras la migración multi-tenant `institucion_id` es un posicional obligatorio.
+    def listar_por_docente(self, usuario_id, institucion_id, periodo_id=None, solo_activas=True):
         return self._asigs
 
 
@@ -218,7 +220,8 @@ class _Est:
 class _FakeEstRepo:
     def __init__(self, por_grupo):
         self._por_grupo = por_grupo
-    def listar_por_grupo(self, grupo_id, solo_activos=True):
+    # Espeja IEstudianteRepository.listar_por_grupo (institucion_id posicional).
+    def listar_por_grupo(self, grupo_id, institucion_id, solo_activos=True):
         return self._por_grupo.get(grupo_id, [])
 
 

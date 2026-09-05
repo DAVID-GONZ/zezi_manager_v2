@@ -9,6 +9,8 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.solo_lectura import requiere_escritura
@@ -108,6 +110,10 @@ class FranjaService:
         """
         Reemplaza el set de franjas de una plantilla. `filas` son dicts con claves
         orden, hora_inicio, hora_fin, tipo, etiqueta (los DTOs se construyen aquí).
+
+        T15 (horario_01): antes de persistir, exige que `orden` sea único y que
+        ningún par de franjas tenga intervalos [hora_inicio, hora_fin) solapados
+        (las horas ya llegan normalizadas 'HH:MM' por el validador del modelo).
         """
         from src.domain.models.infraestructura import NuevaFranjaDTO
 
@@ -122,6 +128,24 @@ class FranjaService:
                 etiqueta=fila.get("etiqueta"),
             )
             franjas.append(dto.to_franja())
+
+        ordenes = [f.orden for f in franjas]
+        duplicados = sorted({o for o in ordenes if ordenes.count(o) > 1})
+        if duplicados:
+            raise ValueError(
+                f"Hay franjas con 'orden' duplicado: {duplicados}. Cada franja debe "
+                "tener un orden único."
+            )
+
+        franjas_por_hora = sorted(franjas, key=lambda f: f.hora_inicio)
+        for anterior, siguiente in pairwise(franjas_por_hora):
+            if anterior.hora_fin > siguiente.hora_inicio:
+                raise ValueError(
+                    f"Las franjas se solapan: orden {anterior.orden} "
+                    f"({anterior.hora_inicio}-{anterior.hora_fin}) con orden "
+                    f"{siguiente.orden} ({siguiente.hora_inicio}-{siguiente.hora_fin})."
+                )
+
         return self._repo.reemplazar_franjas(plantilla_id, franjas)
 
     def listar_franjas(self, plantilla_id: int) -> list[Franja]:

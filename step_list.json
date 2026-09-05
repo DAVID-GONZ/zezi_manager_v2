@@ -43,5 +43,14 @@
     "operacion": "crear+modificar",
     "sdd": true,
     "descripcion": "Fase 1C aislamiento multi-tenant. Suite de tests que verifica aislamiento end-to-end: fixture de 2 instituciones, tests por servicio (usuario/estudiante/asignacion/convivencia/config), admin cross-tenant, regresion ContextVar=None, solo_lectura, y test estructural grep."
+  },
+  {
+    "id": "horario_01_validacion_generacion",
+    "nombre": "Validacion de datos y preparacion interactiva del generador de horarios",
+    "status": "in_progress",
+    "destino_v2": "src/services/generador_horario_service.py, src/services/horario_service.py, src/services/preparacion_horario_service.py, src/services/restriccion_generacion_service.py, src/services/franja_service.py, src/services/sala_service.py, src/services/escenario_horario_service.py, src/domain/models/infraestructura.py, src/interface/presenters/academico/horarios_hub_presenter.py, src/interface/pages/academico/horarios_hub.py, container.py, tests/unit/services/test_generador_horario.py, tests/unit/services/test_preparacion_horario.py, tests/unit/services/test_horario_lote.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Cierra la auditoria del 2026-09-03. Las salas dejan de invalidar el horario via el oraculo (P1); ninguna corrida termina sin incidencias ni deja un escenario vacio activable (P2/P3); la checklist de preparacion pasa a medir la ConfigGeneracion real y las asignaciones activas en vez del catalogo y del plan en abstracto (P4); y el panel de puertas se embebe en la seccion Generar con recalculo en tiempo real y gating del boton (P5). 19 tareas."
   }
 ]

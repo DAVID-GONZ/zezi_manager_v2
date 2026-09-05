@@ -2,7 +2,9 @@
 Tests unitarios para HorarioService.analizar_lote / aplicar_lote.
 
 Usa FakeRepos en memoria. No toca la BD.
-Cubre los 6 casos especificados en paso_14f.
+Cubre los 6 casos especificados en paso_14f +
+los 4 tests de T19 (horario_01_validacion_generacion): SALAS_NO_EXCLUSIVAS y
+salas_bloquean relajan cruces de sala para el generador sin tocar docente/grupo.
 """
 from __future__ import annotations
 
@@ -274,7 +276,7 @@ def _bloque_existente(
 
 
 # ===========================================================================
-# Tests
+# Tests — paso_14f (tests originales)
 # ===========================================================================
 
 class TestAnalizarLote:
@@ -502,3 +504,112 @@ def test_lote_normaliza_horas_antes_de_persistir():
     assert resultado.creados == 1
     assert svc._infra.guardados[0].hora_inicio == time(8, 0)
     assert svc._infra.guardados[0].hora_fin == time(9, 5)
+
+
+# ===========================================================================
+# Tests — T19 horario_01 (SALAS_NO_EXCLUSIVAS + salas_bloquean)
+# ===========================================================================
+
+def test_cruce_sala_no_bloquea_cuando_salas_bloquean_false():
+    """Dos filas solapadas con la MISMA sala real: con salas_bloquean=False
+    (uso del generador) no invalida el lote, pero deja constancia en avisos."""
+    asignacion_a = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    asignacion_b = _asig(ASIG_ID_B, USUARIO_ID + 1, GRUPO_ID_B, ASIGNATURA_ID_B)
+    asignatura_a = _asignatura(ASIGNATURA_ID_A, horas=5)
+    asignatura_b = _asignatura(ASIGNATURA_ID_B, horas=5)
+    svc = _make_service(
+        asignaciones=[asignacion_a, asignacion_b],
+        asignaturas=[asignatura_a, asignatura_b],
+    )
+    filas = [
+        _fila(ASIG_ID_A, "Lunes", "07:00", "07:55", sala="Lab Química"),
+        _fila(ASIG_ID_B, "Lunes", "07:00", "07:55", sala="Lab Química"),
+    ]
+
+    reporte = svc.analizar_lote(ESCENARIO_ID, PERIODO_ID, filas, salas_bloquean=False)
+
+    assert reporte.todo_ok is True, [f.motivo for f in reporte.filas if not f.ok]
+    assert reporte.avisos, "El cruce de sala relajado debe quedar registrado en avisos."
+
+
+def test_por_asignar_nunca_es_cruce():
+    """'Por asignar' no es una sala exclusiva: dos filas solapadas con esa
+    sala son válidas incluso con salas_bloquean=True (default)."""
+    asignacion_a = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    asignacion_b = _asig(ASIG_ID_B, USUARIO_ID + 1, GRUPO_ID_B, ASIGNATURA_ID_B)
+    asignatura_a = _asignatura(ASIGNATURA_ID_A, horas=5)
+    asignatura_b = _asignatura(ASIGNATURA_ID_B, horas=5)
+    svc = _make_service(
+        asignaciones=[asignacion_a, asignacion_b],
+        asignaturas=[asignatura_a, asignatura_b],
+    )
+    filas = [
+        _fila(ASIG_ID_A, "Lunes", "07:00", "07:55", sala="Por asignar"),
+        _fila(ASIG_ID_B, "Lunes", "07:00", "07:55", sala="Por asignar"),
+    ]
+
+    reporte = svc.analizar_lote(ESCENARIO_ID, PERIODO_ID, filas, salas_bloquean=True)
+
+    assert reporte.todo_ok is True, [f.motivo for f in reporte.filas if not f.ok]
+    assert reporte.avisos == []
+
+
+def test_cruce_sala_real_sigue_bloqueando_en_carga_masiva():
+    """Sin pasar salas_bloquean (default True, carga masiva manual del hub):
+    dos filas con la misma sala real solapadas siguen invalidando el lote."""
+    asignacion_a = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    asignacion_b = _asig(ASIG_ID_B, USUARIO_ID + 1, GRUPO_ID_B, ASIGNATURA_ID_B)
+    asignatura_a = _asignatura(ASIGNATURA_ID_A, horas=5)
+    asignatura_b = _asignatura(ASIGNATURA_ID_B, horas=5)
+    svc = _make_service(
+        asignaciones=[asignacion_a, asignacion_b],
+        asignaturas=[asignatura_a, asignatura_b],
+    )
+    filas = [
+        _fila(ASIG_ID_A, "Lunes", "07:00", "07:55", sala="Lab Química"),
+        _fila(ASIG_ID_B, "Lunes", "07:00", "07:55", sala="Lab Química"),
+    ]
+
+    reporte = svc.analizar_lote(ESCENARIO_ID, PERIODO_ID, filas)
+
+    assert reporte.todo_ok is False
+    assert not reporte.filas[1].ok
+    assert "sala" in (reporte.filas[1].motivo or "").lower()
+
+
+def test_cruce_docente_y_grupo_siguen_siendo_duros():
+    """La relajación de salas (salas_bloquean=False) no contagia a los cruces
+    duros de docente y de grupo: siguen invalidando el lote."""
+    # Mismo docente en 2 filas solapadas, salas distintas.
+    asignacion_a = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    asignacion_b = _asig(ASIG_ID_B, USUARIO_ID, GRUPO_ID_B, ASIGNATURA_ID_B)
+    asignatura_a = _asignatura(ASIGNATURA_ID_A, horas=5)
+    asignatura_b = _asignatura(ASIGNATURA_ID_B, horas=5)
+    svc = _make_service(
+        asignaciones=[asignacion_a, asignacion_b],
+        asignaturas=[asignatura_a, asignatura_b],
+    )
+    filas = [
+        _fila(ASIG_ID_A, "Lunes", "07:00", "07:55", sala="Sala A"),
+        _fila(ASIG_ID_B, "Lunes", "07:00", "07:55", sala="Sala B"),
+    ]
+    reporte = svc.analizar_lote(ESCENARIO_ID, PERIODO_ID, filas, salas_bloquean=False)
+    assert reporte.todo_ok is False
+    assert not reporte.filas[1].ok
+    assert "docente" in (reporte.filas[1].motivo or "").lower()
+
+    # Mismo grupo en 2 filas solapadas, salas distintas.
+    asignacion_c = _asig(ASIG_ID_A, USUARIO_ID, GRUPO_ID_A, ASIGNATURA_ID_A)
+    asignacion_d = _asig(ASIG_ID_B, USUARIO_ID + 1, GRUPO_ID_A, ASIGNATURA_ID_B)
+    svc2 = _make_service(
+        asignaciones=[asignacion_c, asignacion_d],
+        asignaturas=[asignatura_a, asignatura_b],
+    )
+    filas2 = [
+        _fila(ASIG_ID_A, "Lunes", "07:00", "07:55", sala="Sala A"),
+        _fila(ASIG_ID_B, "Lunes", "07:00", "07:55", sala="Sala B"),
+    ]
+    reporte2 = svc2.analizar_lote(ESCENARIO_ID, PERIODO_ID, filas2, salas_bloquean=False)
+    assert reporte2.todo_ok is False
+    assert not reporte2.filas[1].ok
+    assert "grupo" in (reporte2.filas[1].motivo or "").lower()

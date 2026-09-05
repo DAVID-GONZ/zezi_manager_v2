@@ -51,6 +51,10 @@ class HorariosHubPresenter:
             "gen_periodo_id": None,
             "gen_error_contexto": None,
             "gen_tab": "generacion",
+            # Preparación embebida en "Generar" (prep_ prefix, T13)
+            "prep_reporte": [],
+            "prep_error": None,
+            "prep_config_id": None,
             # Docente (doc_ prefix)
             "doc_vista_grid": "semana",
             "doc_dia_sel": dia_hoy_es,
@@ -181,6 +185,18 @@ class HorariosHubPresenter:
         self.estado["gen_resultado"] = None
         self.estado["gen_datos_preview"] = None
         self.estado["gen_eje_sel"] = None
+
+    def set_prep_reporte(
+        self, reporte: list, error: str | None, config_id: int | None
+    ) -> None:
+        """Guarda el view-model del panel de preparación (T13).
+
+        El cómputo de las puertas vive en `PreparacionHorarioService`
+        (`validar_config` / `validar`); la página solo orquesta esa llamada y
+        el presenter se limita a conservar el resultado para el render."""
+        self.estado["prep_reporte"] = reporte
+        self.estado["prep_error"] = error
+        self.estado["prep_config_id"] = config_id
 
 
 __all__ = ["HorariosHubPresenter"]

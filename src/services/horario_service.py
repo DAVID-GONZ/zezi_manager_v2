@@ -39,6 +39,12 @@ COLUMNAS_HORARIO = [
     "sala",
 ]
 
+# Valores de "sala" que NO representan un espacio físico exclusivo: no deben
+# generar cruce en el oráculo aunque coincidan en día/hora. "Aula" es el
+# genérico legacy; "Por asignar" es lo que usa el generador cuando una clase
+# con tipo_sala_requerido no consiguió una sala real (paso_17 T1).
+SALAS_NO_EXCLUSIVAS: frozenset[str] = frozenset({"", "Aula", "Por asignar"})
+
 
 def _dia_str(dia) -> str:
     return dia.value if hasattr(dia, "value") else str(dia)
@@ -582,12 +588,19 @@ class HorarioService:
         escenario_id: int,
         periodo_id: int,
         filas: list[dict],
+        salas_bloquean: bool = True,
     ) -> ReporteLoteDTO:
         """Analiza un lote de filas como escenario virtual (sin persistir):
         valida asignación, campos obligatorios, cruces (docente/grupo/sala) y
-        topes de materia y docente, y devuelve un reporte fila por fila."""
+        topes de materia y docente, y devuelve un reporte fila por fila.
+
+        `salas_bloquean=False` (paso_17 T1, usado por el generador): un cruce
+        de sala NO invalida la fila (ok sigue True); se registra como aviso
+        en `ReporteLoteDTO.avisos`. Los cruces de docente y grupo siguen
+        siendo duros siempre, sin importar este parámetro."""
         resultado: list[FilaReporteDTO] = []
         virtual: list[dict] = []
+        avisos: list[str] = []
 
         existentes = self._infra.listar_horario_escenario(escenario_id)
         for b in existentes:
@@ -687,10 +700,14 @@ class HorarioService:
                     ok = False
                     motivo = "Cruce: el grupo ya tiene bloque en ese horario."
                     break
-                if sala != "Aula" and v.get("sala") == sala:
-                    ok = False
-                    motivo = f"Cruce: sala '{sala}' ya ocupada en ese horario."
-                    break
+                if sala not in SALAS_NO_EXCLUSIVAS and v.get("sala") == sala:
+                    if salas_bloquean:
+                        ok = False
+                        motivo = f"Cruce: sala '{sala}' ya ocupada en ese horario."
+                        break
+                    avisos.append(
+                        f"Fila {i}: sala '{sala}' ya ocupada en ese horario (no bloquea)."
+                    )
 
             # Tope materia
             if ok:
@@ -738,7 +755,7 @@ class HorarioService:
                     }
                 )
 
-        return ReporteLoteDTO(filas=resultado)
+        return ReporteLoteDTO(filas=resultado, avisos=avisos)
 
     @requiere_escritura
     def aplicar_lote(
@@ -747,11 +764,14 @@ class HorarioService:
         periodo_id: int,
         filas: list[dict],
         solo_validas: bool = False,
+        salas_bloquean: bool = True,
     ) -> ResultadoLoteDTO:
         """Persiste un lote de bloques: lo analiza y, si es válido (o si
         `solo_validas`), crea de forma masiva solo las filas OK; devuelve el
-        conteo de creados/omitidos junto con el reporte."""
-        reporte = self.analizar_lote(escenario_id, periodo_id, filas)
+        conteo de creados/omitidos junto con el reporte.
+
+        `salas_bloquean` se propaga a `analizar_lote` (ver su docstring)."""
+        reporte = self.analizar_lote(escenario_id, periodo_id, filas, salas_bloquean=salas_bloquean)
 
         if not solo_validas and not reporte.todo_ok:
             return ResultadoLoteDTO(creados=0, omitidos=len(filas), reporte=reporte)

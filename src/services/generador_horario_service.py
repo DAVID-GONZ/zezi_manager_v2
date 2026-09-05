@@ -6,7 +6,7 @@ Motor de generación de horarios con restricciones configurables.
 Extiende v1 (paso_15c) + v2 (paso_15d) con:
 
   T5 — Salas reales + bloques dobles/consecutivos
-    - ocupado_sala: set[(sala_id, dia, orden)] — evita conflictos de sala.
+    - ocupado_sala: Counter[(sala_id, dia, orden)] — evita conflictos de sala.
     - Asignatura.tipo_sala_requerido: elige una sala libre del tipo correcto.
     - Asignatura.bloque_doble / horas_consecutivas: macro-lección contigua.
     - König deshabilitado cuando hay restricción de sala, bloque doble,
@@ -26,6 +26,7 @@ Lógica pura: sin NiceGUI, sin src.db, sin instanciación de repos.
 from __future__ import annotations
 
 import logging
+from collections import Counter
 
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import (
@@ -60,6 +61,31 @@ PESOS_PRINCIPALES: list[tuple[str, str, str]] = [
     ),
 ]
 
+CAUSA_INFO: dict[str, tuple[str, str | None]] = {
+    "sin_slots": ("Sin franjas disponibles", "/academico/generar-horario?tab=plantillas"),
+    "docente_ocupado": ("Docente ya ocupado en otra clase", None),
+    "sin_disponibilidad": (
+        "Docente marcado no disponible en ese horario",
+        "/admin/disponibilidad-docente",
+    ),
+    "tope_carga": ("Carga horaria máxima del docente superada", "/admin/asignaciones"),
+    "max_dia": ("Tope de horas diarias del docente", None),
+    "grupo_saturado": (
+        "Grupo sin franjas libres para esta clase",
+        "/academico/generar-horario?tab=plantillas",
+    ),
+    "sala_pendiente": ("Sala pendiente de asignar", "/admin/salas"),
+    "min_dia_docente": ("Por debajo del mínimo de horas diarias", None),
+    # Causas adicionales que _diagnosticar_no_colocado también puede reportar.
+    "grupo_ocupado_parcial": ("Grupo ya ocupado en esa franja", None),
+    "reunion_bloqueada": ("Franja de reunión bloqueada para el docente", None),
+    "sin_consecutividad": (
+        "Sin franjas consecutivas suficientes",
+        "/academico/generar-horario?tab=plantillas",
+    ),
+    "desconocido": ("Motivo no determinado", None),
+}
+
 PESOS_AVANZADOS: list[tuple[str, str, str]] = [
     (
         "balance_diario",
@@ -89,6 +115,7 @@ class _Leccion:
 
     __slots__ = (
         "asignacion_id",
+        "docente_nombre",
         "etiqueta",
         "grupo_id",
         "n_horas",
@@ -104,15 +131,22 @@ class _Leccion:
         etiqueta,
         tipo_sala_req=None,
         n_horas=1,
+        docente_nombre=None,
     ):
         """Inicializa la unidad de bloque con su asignación, grupo, docente,
-        etiqueta, tipo de sala requerido y número de horas consecutivas."""
+        etiqueta, tipo de sala requerido y número de horas consecutivas.
+
+        `docente_nombre` (T7): nombre legible del docente, para construir
+        incidencias sin exponer ids crudos. None = no disponible (tests
+        antiguos que no lo pasan); se hace fallback al usuario_id.
+        """
         self.asignacion_id = asignacion_id
         self.grupo_id = grupo_id
         self.usuario_id = usuario_id
         self.etiqueta = etiqueta
         self.tipo_sala_req = tipo_sala_req  # str | None
         self.n_horas = n_horas  # int >= 1
+        self.docente_nombre = docente_nombre  # str | None
 
 
 class GeneradorHorarioService:
@@ -517,12 +551,22 @@ class GeneradorHorarioService:
         from src.services.contexto_tenant import institucion_actual
 
         sala_grupo_nombre: dict[int, str] = {}
+        # T2 (horario_01): aula base por grupo, para que `ocupado_sala` la
+        # contabilice como ocupada aunque la lección no requiera tipo de sala
+        # (evita que el generador reasigne esa aula a un laboratorio de otro
+        # grupo que sí está en clase a esa hora).
+        sala_base_de_grupo: dict[int, int] = {}
         grado_de_grupo: dict[int, int | None] = {}
+        # T7: nombres legibles para las incidencias (PRE-VUELO usa ids crudos
+        # de grupo/docente porque están fuera del bucle por asignación).
+        grupo_codigo_map: dict[int, str] = {}
         for g in self._infra.listar_grupos(institucion_id=institucion_actual() or "*"):
             grado_de_grupo[g.id] = g.grado
+            grupo_codigo_map[g.id] = g.codigo
             sid_g = getattr(g, "sala_id", None)
             if sid_g and sid_g in sala_nombre_map:
                 sala_grupo_nombre[g.id] = sala_nombre_map[sid_g]
+                sala_base_de_grupo[g.id] = sid_g
 
         def _horas_de(grupo_id: int, asignatura_id: int, asignatura) -> int:
             """Horas semanales de la (grupo, asignatura): plan del grado del grupo
@@ -619,7 +663,21 @@ class GeneradorHorarioService:
         demanda_grupo: dict[int, int] = {}
         demanda_docente: dict[int, int] = {}
         docentes_involucrados: set[int] = set()
+        docente_nombre_map: dict[int, str] = {}  # T7: para incidencias PRE-VUELO
         hay_bloque_doble = False
+
+        # T4 — incidencia explícita cuando no hay nada que generar (evita un
+        # resultado inválido sin ninguna explicación).
+        if not asignaciones:
+            if config.grupos:
+                incidencias.append(
+                    f"Los {len(config.grupos)} grupo(s) seleccionados no tienen "
+                    "asignaciones activas."
+                )
+            else:
+                incidencias.append(
+                    f"No hay asignaciones activas en el periodo {config.periodo_id}."
+                )
 
         for a in asignaciones:
             asignatura = _get_asignatura(a.asignatura_id)
@@ -628,6 +686,7 @@ class GeneradorHorarioService:
             demanda_grupo[a.grupo_id] = demanda_grupo.get(a.grupo_id, 0) + horas
             demanda_docente[a.usuario_id] = demanda_docente.get(a.usuario_id, 0) + horas
             docentes_involucrados.add(a.usuario_id)
+            docente_nombre_map[a.usuario_id] = a.docente_nombre
 
             tipo_sala = getattr(asignatura, "tipo_sala_requerido", None)
             es_bloque = getattr(asignatura, "bloque_doble", False)
@@ -645,6 +704,7 @@ class GeneradorHorarioService:
                     f"{a.grupo_codigo}/{a.asignatura_nombre}",
                     tipo_sala_req=tipo_sala if hay_salas else None,
                     n_horas=n_h,
+                    docente_nombre=a.docente_nombre,
                 )
                 for _ in range(n_macro)
             ]
@@ -656,12 +716,20 @@ class GeneradorHorarioService:
                     f"{a.grupo_codigo}/{a.asignatura_nombre}",
                     tipo_sala_req=tipo_sala if hay_salas else None,
                     n_horas=1,
+                    docente_nombre=a.docente_nombre,
                 )
                 for _ in range(n_sueltas)
             ]
 
             disp = _slots_disponibles_docente(a.usuario_id)
             grupos_asig.append(((disp, -horas), lecciones, a))
+
+        # T4 — asignaciones existen pero ninguna tiene horas configuradas.
+        if asignaciones and total_requeridos == 0:
+            incidencias.append(
+                f"Las asignaciones del periodo {config.periodo_id} tienen 0 horas "
+                "semanales configuradas; no hay nada que colocar."
+            )
 
         grupos_asig.sort(key=lambda t: t[0])
         lecciones_ordenadas: list[_Leccion] = []
@@ -687,21 +755,24 @@ class GeneradorHorarioService:
             else:
                 slots_g = len(slots)
             if demanda > slots_g:
+                nombre_g = grupo_codigo_map.get(g, str(g))
                 incidencias.append(
-                    f"PRE-VUELO: grupo {g} requiere {demanda}h pero solo hay "
+                    f"PRE-VUELO: grupo {nombre_g} requiere {demanda}h pero solo hay "
                     f"{slots_g} franjas disponibles — posible infactibilidad."
                 )
         for uid, demanda in demanda_docente.items():
+            nombre_doc = docente_nombre_map.get(uid, str(uid))
             disp = _slots_disponibles_docente(uid)
             if demanda > disp:
                 incidencias.append(
-                    f"PRE-VUELO: docente {uid} requiere {demanda}h pero solo tiene "
+                    f"PRE-VUELO: docente {nombre_doc} requiere {demanda}h pero solo tiene "
                     f"{disp} franjas disponibles."
                 )
             tope = _carga_max(uid)
             if tope is not None and demanda > tope:
                 incidencias.append(
-                    f"PRE-VUELO: docente {uid} requiere {demanda}h pero su carga máxima es {tope}h."
+                    f"PRE-VUELO: docente {nombre_doc} requiere {demanda}h pero su carga "
+                    f"máxima es {tope}h."
                 )
 
         # Slots por lección: combina n_horas + ventana de grupo
@@ -721,7 +792,11 @@ class GeneradorHorarioService:
         # --- Grids de backtracking ------------------------------------
         ocupado_grupo: set = set()  # (grupo_id, dia, orden)
         ocupado_docente: set = set()  # (usuario_id, dia, orden)
-        ocupado_sala: set = set()  # (sala_id, dia, orden)
+        # Conteo, no set: una misma sala puede quedar marcada por dos lecciones
+        # distintas (p. ej. un aula base que además está tipificada como
+        # laboratorio). Con un set, el `discard` de una liberaba la ocupación
+        # de la otra y la sala se reservaba dos veces en el mismo slot.
+        ocupado_sala: Counter[tuple] = Counter()  # (sala_id, dia, orden) -> n
         carga_docente: dict[int, int] = {}
         horas_dia_docente: dict[tuple, int] = {}  # (usuario_id, dia) -> count
         colocados: list[tuple[_Leccion, str, object]] = []
@@ -729,12 +804,20 @@ class GeneradorHorarioService:
 
         presupuesto = [max_iteraciones]
 
+        def _liberar_sala(clave: tuple) -> None:
+            """Decrementa el conteo de ocupación y borra la clave al llegar a 0."""
+            n_actual = ocupado_sala.get(clave, 0)
+            if n_actual <= 1:
+                ocupado_sala.pop(clave, None)
+            else:
+                ocupado_sala[clave] = n_actual - 1
+
         def _elegir_sala(tipo: str, dia: str, orden_start: int, n: int) -> int | None:
             ordenes = _ordenes_n(orden_start, n)
             if ordenes is None:
                 return None
             for sid in salas_por_tipo.get(tipo, []):
-                if all((sid, dia, o) not in ocupado_sala for o in ordenes):
+                if all(ocupado_sala.get((sid, dia, o), 0) == 0 for o in ordenes):
                     return sid
             return None
 
@@ -778,7 +861,15 @@ class GeneradorHorarioService:
                 lec_sala[id(lec)] = sid
                 if sid:
                     for o in ordenes:
-                        ocupado_sala.add((sid, dia, o))
+                        ocupado_sala[(sid, dia, o)] += 1
+            else:
+                # T2: la clase usa el aula base del grupo (no un tipo de sala
+                # especial) — se contabiliza como ocupada para que ningún
+                # laboratorio la elija a esta misma hora.
+                sid_base = sala_base_de_grupo.get(lec.grupo_id)
+                if sid_base:
+                    for o in ordenes:
+                        ocupado_sala[(sid_base, dia, o)] += 1
             colocados.append((lec, dia, franja))
 
         def _quitar(lec: _Leccion, dia: str, franja) -> None:
@@ -792,7 +883,12 @@ class GeneradorHorarioService:
             sid = lec_sala.pop(id(lec), None)
             if sid:
                 for o in ordenes:
-                    ocupado_sala.discard((sid, dia, o))
+                    _liberar_sala((sid, dia, o))
+            elif not lec.tipo_sala_req:
+                sid_base = sala_base_de_grupo.get(lec.grupo_id)
+                if sid_base:
+                    for o in ordenes:
+                        _liberar_sala((sid_base, dia, o))
             colocados.pop()
 
         def _desocupar(lec: _Leccion, dia: str, franja) -> None:
@@ -813,7 +909,12 @@ class GeneradorHorarioService:
             sid = lec_sala.pop(id(lec), None)
             if sid:
                 for o in ordenes:
-                    ocupado_sala.discard((sid, dia, o))
+                    _liberar_sala((sid, dia, o))
+            elif not lec.tipo_sala_req:
+                sid_base = sala_base_de_grupo.get(lec.grupo_id)
+                if sid_base:
+                    for o in ordenes:
+                        _liberar_sala((sid_base, dia, o))
             for pos, (otra, _d, _f) in enumerate(colocados):
                 if otra is lec:
                     del colocados[pos]
@@ -902,9 +1003,10 @@ class GeneradorHorarioService:
                     if max_hd is not None and horas_dia_docente.get((lec.usuario_id, dia), 0) + lec.n_horas > max_hd:
                         motivos_reales["max_dia"] += 1
                         continue
-                if lec.tipo_sala_req and _elegir_sala(lec.tipo_sala_req, dia, franja.orden, lec.n_horas) is None:
-                    motivos_reales["sin_sala"] += 1
-                    continue
+                # T16: no se comprueba sala aquí — `_puede_colocar` nunca
+                # bloquea por sala (comentario en esa función), así que si el
+                # flujo llegó hasta este punto la lección SÍ se habría podido
+                # colocar; esta rama era código muerto ("sin_sala").
                 motivos_reales["desconocido"] += 1
             if motivos_reales:
                 return motivos_reales.most_common(1)[0][0]
@@ -1123,8 +1225,12 @@ class GeneradorHorarioService:
                 if not ubicada:
                     causa = _diagnosticar_no_colocado(lec)
                     causas[causa] = causas.get(causa, 0) + 1
+                    # T7: nombres legibles (docente) en vez del id crudo de la
+                    # asignación; la etiqueta del motor ya trae grupo/materia.
+                    causa_label = CAUSA_INFO.get(causa, (causa, None))[0]
+                    docente_txt = lec.docente_nombre or f"docente {lec.usuario_id}"
                     incidencias.append(
-                        f"No colocado: {lec.etiqueta} (asignación {lec.asignacion_id}) — {causa}."
+                        f"No colocado: {lec.etiqueta} ({docente_txt}) — {causa_label}."
                     )
 
         # --- Post-solve: verificar min_horas_dia ----------------------
@@ -1253,6 +1359,18 @@ class GeneradorHorarioService:
             presupuesto_agotado=budget_exhausted,
         )
 
+        # --- T5: nada que persistir ni activar sin bloques -------------
+        # Sin bloques no hay nada que colocar en un escenario: no se crea
+        # escenario nuevo, no se borra el anterior, no se toca la config ni
+        # su estado. `escenario_id` queda None (default del DTO).
+        if not bloques:
+            if not resultado.incidencias:
+                resultado.incidencias.append(
+                    "No se generó ningún bloque de horario; revise la configuración."
+                )
+            resultado.valido = False
+            return resultado
+
         # --- Resolver escenario destino --------------------------------
         if crear_escenario:
             if config.escenario_destino_id is not None:
@@ -1275,6 +1393,9 @@ class GeneradorHorarioService:
         resultado.escenario_id = escenario_id
 
         # --- GATE oráculo: analizar_lote ------------------------------
+        # salas_bloquean=False: el generador ya evita choques reales de sala
+        # vía `ocupado_sala`; un cruce de sala aquí no debe invalidar el lote
+        # (paso_17 T1). Los cruces de docente y grupo siguen siendo duros.
         filas = [
             {
                 "asignacion_id": b.asignacion_id,
@@ -1286,31 +1407,39 @@ class GeneradorHorarioService:
             for b in bloques
         ]
 
-        if filas:
-            reporte = self._horario.analizar_lote(escenario_id, config.periodo_id, filas)
-            # El oráculo solo certifica que los bloques colocados no se cruzan.
-            # Un horario parcial nunca es apto para persistir/activar.
-            resultado.valido = reporte.todo_ok and resultado.no_colocados == 0
-            for f in reporte.filas:
-                if not f.ok:
-                    resultado.incidencias.append(
-                        f"Oráculo rechazó fila {f.indice}: {f.motivo or 'motivo desconocido'}."
-                    )
-            if resultado.no_colocados:
+        reporte = self._horario.analizar_lote(
+            escenario_id, config.periodo_id, filas, salas_bloquean=False
+        )
+        # El oráculo solo certifica que los bloques colocados no se cruzan.
+        # Un horario parcial nunca es apto para persistir/activar.
+        resultado.valido = reporte.todo_ok and resultado.no_colocados == 0
+        for f in reporte.filas:
+            if not f.ok:
                 resultado.incidencias.append(
-                    f"Resultado parcial: faltan {resultado.no_colocados} bloque(s); no se persistió."
+                    f"Oráculo rechazó fila {f.indice}: {f.motivo or 'motivo desconocido'}."
                 )
-        else:
-            resultado.valido = False
+        resultado.incidencias.extend(reporte.avisos)
+        if resultado.no_colocados:
+            resultado.incidencias.append(
+                f"Resultado parcial: faltan {resultado.no_colocados} bloque(s); no se persistió."
+            )
 
         # --- Persistir solo si válido ---------------------------------
-        if resultado.valido and filas:
-            self._horario.aplicar_lote(escenario_id, config.periodo_id, filas, solo_validas=False)
+        if resultado.valido:
+            self._horario.aplicar_lote(
+                escenario_id,
+                config.periodo_id,
+                filas,
+                solo_validas=False,
+                salas_bloquean=False,
+            )
 
-        # --- Actualizar config ----------------------------------------
+        # --- Actualizar config (solo si se resolvió un escenario) -----
         config_actualizada = config.model_copy(update={"escenario_destino_id": escenario_id})
         self._infra.actualizar_config_generacion(config_actualizada)
-        if config.puede_transicionar_a("generado"):
+        # T5: solo transiciona a "generado" si el resultado es válido y algo
+        # quedó efectivamente colocado; nunca sobre un resultado inválido o vacío.
+        if resultado.valido and resultado.colocados > 0 and config.puede_transicionar_a("generado"):
             self._infra.cambiar_estado_config(config_id, "generado")
 
         logger.info(
@@ -1331,6 +1460,7 @@ class GeneradorHorarioService:
 
 
 __all__ = [
+    "CAUSA_INFO",
     "PESOS_AVANZADOS",
     "PESOS_PRINCIPALES",
     "GeneradorHorarioService",

@@ -270,7 +270,9 @@ class _Est:
 class _FakeEstRepo:
     def __init__(self, ests):
         self._ests = ests
-    def listar_por_grupo(self, grupo_id):
+    # Espeja IEstudianteRepository.listar_por_grupo (institucion_id posicional
+    # obligatorio desde la migración multi-tenant).
+    def listar_por_grupo(self, grupo_id, institucion_id, solo_activos=True):
         return self._ests
 
 

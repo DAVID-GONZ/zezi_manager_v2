@@ -103,6 +103,14 @@
   background: var(--color-warning-light);
 }
 
+/* Variante informativa: los avisos de sala nunca invalidan un horario (P1),
+   así que no deben leerse como una advertencia. Solo cambia el color: el
+   cuerpo se hereda de .gen-incidencias. */
+.gen-incidencias--info {
+  border-color: var(--color-info);
+  background: var(--color-info-light);
+}
+
 .gen-incidencia-item {
   display: flex;
   align-items: flex-start;

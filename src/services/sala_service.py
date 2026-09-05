@@ -103,7 +103,13 @@ class SalaService:
 
     @requiere_escritura
     def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
-        """Asigna (o quita, con None) el aula propia de un grupo."""
+        """Asigna (o quita, con None) el aula propia de un grupo.
+
+        T16 (horario_01): verifica que el grupo pertenezca al tenant activo
+        (leído del repo por su id, como el resto de las verificaciones de
+        pertenencia) antes de mutarlo; antes faltaba esta verificación.
+        """
+        self._verificar_pertenencia_obj(self._repo.get_grupo(grupo_id), "El grupo")
         return self._repo.asignar_sala_a_grupo(grupo_id, sala_id)
 
 

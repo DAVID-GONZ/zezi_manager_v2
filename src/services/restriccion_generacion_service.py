@@ -91,13 +91,25 @@ class RestriccionGeneracionService:
         """Ensambla el payload de restricciones de generación a partir de
         primitivas, para que la interfaz no construya el dict anidado.
 
-        Solo incluye ``min_max_diario`` cuando el rango difiere del default
-        (mín > 0 o máx < 8); de lo contrario devuelve ``{}`` (sin restricción).
+        Incluye ``min_max_diario`` cuando el rango difiere del default (mín > 0
+        o máx < 8) o cuando ``modo == "estricta"``; de lo contrario devuelve
+        ``{}`` (sin restricción).
+
+        T14 (horario_01): antes, con modo "estricta" y el rango default
+        (min=0, max=8), el payload salía `{}` y `min_max_diario` desaparecía
+        del dict — `GeneradorHorarioService` lee `config_max_dia_global` de esa
+        clave y, si falta, `aplicar_max_dia_estricto` queda en False aunque el
+        usuario haya elegido "Estricta" explícitamente. Se incluye la clave
+        también en ese caso para que el modo elegido se respete.
         """
         min_h = int(min_horas or 0)
         max_h = int(max_horas if max_horas is not None else 8)
+        if min_h > max_h:
+            raise ValueError(
+                f"min_horas_dia ({min_h}) no puede ser mayor que max_horas_dia ({max_h})."
+            )
         restricciones: dict = {}
-        if min_h > 0 or max_h < 8:
+        if min_h > 0 or max_h < 8 or modo == "estricta":
             restricciones["min_max_diario"] = {
                 "modo": modo,
                 "min": min_h,
