@@ -12,6 +12,7 @@ que aplica scoping por rol e institución antes de devolver resultados.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 from nicegui import context as ng_context
@@ -59,10 +60,8 @@ def buscar_page() -> None:
 
     # Leer término de la URL query string (?q=...)
     termino_inicial = ""
-    try:
+    with contextlib.suppress(Exception):
         termino_inicial = ng_context.client.request.query_params.get("q", "") or ""
-    except Exception:
-        pass
 
     tipos_visibles = tipos_buscables(ctx.usuario_rol)
 
@@ -72,8 +71,7 @@ def buscar_page() -> None:
     def contenido() -> None:
 
         # ── Barra de búsqueda ─────────────────────────────────────────────────
-        with ui.element("div").classes("buscar-searchbar panel-card mb-4"):
-            with ui.row().classes("items-center gap-3 w-full"):
+        with ui.element("div").classes("buscar-searchbar panel-card mb-4"), ui.row().classes("items-center gap-3 w-full"):
                 ThemeManager.icono("search", size=20)
                 search_input = (
                     ui.input(
@@ -95,12 +93,10 @@ def buscar_page() -> None:
         def _on_termino_change(valor) -> None:
             presenter.set_termino(valor)
             _cargar_resultados()
-            try:
+            with contextlib.suppress(Exception):
                 ui.run_javascript(
                     f"window.history.replaceState(null, '', '/buscar?q={_s['termino']}')"
                 )
-            except Exception:
-                pass
 
         # ── Tabs por tipo ─────────────────────────────────────────────────────
         with ui.row().classes("buscar-tabs gap-2 mb-4"):

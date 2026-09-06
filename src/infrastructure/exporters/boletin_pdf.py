@@ -12,6 +12,7 @@ Produce un PDF por estudiante con:
 
 from __future__ import annotations
 
+import contextlib
 import io
 from datetime import date as _date
 from typing import Any
@@ -804,10 +805,8 @@ def _estadisticos_grupo(filas: list[dict], page_w: float) -> list:
     notas_raw = [f["nota"] for f in filas if f["nota"] is not None and f["nota"] != ""]
     notas: list[float] = []
     for n in notas_raw:
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             notas.append(float(n))
-        except (ValueError, TypeError):
-            pass
     promedio = round(sum(notas) / len(notas), 1) if notas else "—"
     nota_max = round(max(notas), 1) if notas else "—"
     nota_min = round(min(notas), 1) if notas else "—"

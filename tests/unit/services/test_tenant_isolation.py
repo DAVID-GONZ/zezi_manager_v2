@@ -31,7 +31,6 @@ from src.services.convivencia_service import ConvivenciaService
 from src.services.estudiante_service import EstudianteService
 from src.services.usuario_service import UsuarioService
 
-
 # =============================================================================
 # Reset de scope entre tests
 # =============================================================================

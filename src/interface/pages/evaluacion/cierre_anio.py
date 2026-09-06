@@ -175,8 +175,9 @@ def cierre_anio_page() -> None:
                     btn_icon("refresh", on_click=lambda: _cargar_estado(), tooltip="Recargar")
 
             # Advertencia prominente
-            with ui.element("div").classes("panel-card mt-4"):
-                with ui.element("div").classes("form-box border border-error bg-error-soft"):
+            with ui.element("div").classes("panel-card mt-4"), ui.element(
+                "div"
+            ).classes("form-box border border-error bg-error-soft"):
                     with ui.row().classes("form-row-center u-mb-sm"):
                         ThemeManager.icono(Icons.WARNING, size=20, color="var(--color-error)")
                         ui.label("Precauciones importantes").classes("font-bold text-error")

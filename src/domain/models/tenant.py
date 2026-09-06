@@ -6,9 +6,9 @@ Tipo centinela para el scope de institución en métodos de repositorio.
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import Literal
 
-TenantScope: TypeAlias = int | Literal["*"]
+type TenantScope = int | Literal["*"]
 """
 Scope de tenant obligatorio en métodos de repositorio.
 

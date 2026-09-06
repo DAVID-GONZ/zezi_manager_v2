@@ -5,8 +5,8 @@ from datetime import date
 from typing import Any
 
 import pytest
-from src.domain.exceptions import DependenciaNoDisponibleError
 
+from src.domain.exceptions import DependenciaNoDisponibleError
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     NotaComportamiento,

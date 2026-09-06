@@ -39,8 +39,7 @@ logger = logging.getLogger("CAMBIAR_PASSWORD")
 def cambiar_password_page() -> None:
     ui.add_body_html("<style>body{margin:0;padding:0;}</style>", shared=True)
 
-    with ui.element("div").classes("andes-login-bg w-full"):
-        with ui.element("div").classes("andes-login-card"):
+    with ui.element("div").classes("andes-login-bg w-full"), ui.element("div").classes("andes-login-card"):
             # ── Encabezado ──────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):

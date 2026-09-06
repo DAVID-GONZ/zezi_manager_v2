@@ -150,8 +150,7 @@ def disponibilidad_docente_page() -> None:
         dias = _s["dias_activos"]
         franjas = sorted(_s["franjas"], key=lambda f: f.orden)
 
-        with ui.element("div").classes("overflow-x-auto"):
-            with ui.element("table").classes("table-mini"):
+        with ui.element("div").classes("overflow-x-auto"), ui.element("table").classes("table-mini"):
                 # Header
                 with ui.element("thead"), ui.element("tr"):
                     ui.element("th").classes(

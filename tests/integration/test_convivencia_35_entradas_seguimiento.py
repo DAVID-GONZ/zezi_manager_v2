@@ -97,11 +97,11 @@ class TestEntradaSeguimiento:
         assert e.fecha is not None
 
     def test_texto_vacio_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             EntradaSeguimiento(registro_id=1, texto="")
 
     def test_texto_demasiado_largo_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             EntradaSeguimiento(registro_id=1, texto="x" * 2001)
 
 
@@ -111,7 +111,7 @@ class TestNuevaEntradaSeguimientoDTO:
         assert dto.texto == "texto"
 
     def test_texto_vacio_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             NuevaEntradaSeguimientoDTO(registro_id=1, texto="   ")
 
 

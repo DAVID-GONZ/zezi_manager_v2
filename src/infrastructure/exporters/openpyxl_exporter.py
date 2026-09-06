@@ -4,6 +4,7 @@ OpenpyxlExporter — implementación de IExporterService usando openpyxl.
 
 from __future__ import annotations
 
+import contextlib
 import io
 from collections import Counter
 from datetime import date as _date
@@ -328,10 +329,8 @@ def generar_reporte_convivencia_grupo_excel(
     for f in filas:
         n = f.get("nota")
         if n is not None and n != "":
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 notas.append(float(n))
-            except (ValueError, TypeError):
-                pass
     promedio = round(sum(notas) / len(notas), 1) if notas else None
     nota_max = round(max(notas), 1) if notas else None
     nota_min = round(min(notas), 1) if notas else None
@@ -357,7 +356,7 @@ def generar_reporte_convivencia_grupo_excel(
         cell.font = _HEADER_FONT
         cell.alignment = _HEADER_ALIGN
         cell.border = _THIN_BORDER
-    for i, (label, val) in enumerate(zip(resumen_labels, resumen_values)):
+    for i, (label, val) in enumerate(zip(resumen_labels, resumen_values, strict=False)):
         r = 6 + i
         c_label = ws2.cell(r, 1, label)
         c_val = ws2.cell(r, 2, val if val is not None else "—")
@@ -484,7 +483,7 @@ def generar_reporte_convivencia_grupo_excel(
     ws2.cell(hist_row, 5, "DISTRIBUCIÓN DE NOTAS").font = _SUBTITLE_FONT
     bin_labels, counts = _clasificar_notas(notas)
 
-    for ci, (label, cnt) in enumerate(zip(bin_labels, counts), 5):
+    for ci, (label, cnt) in enumerate(zip(bin_labels, counts, strict=False), 5):
         ws2.cell(hist_row + 1, ci, label).font = _SMALL_FONT
         ws2.cell(hist_row + 1, ci).alignment = Alignment(horizontal="center")
         ws2.cell(hist_row + 1, ci).border = _THIN_BORDER

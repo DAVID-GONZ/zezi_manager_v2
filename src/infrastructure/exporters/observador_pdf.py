@@ -18,12 +18,11 @@ import io
 from datetime import date as _date
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -494,7 +493,7 @@ def _tabla_firmas(page_w: float) -> Table:
 def generar_observador_pdf(datos: dict) -> bytes:
     """Genera el PDF del observador del estudiante y retorna los bytes."""
     buffer = io.BytesIO()
-    page_w, page_h = A4
+    page_w, _page_h = A4
     margin = 1.5 * cm
 
     doc = SimpleDocTemplate(

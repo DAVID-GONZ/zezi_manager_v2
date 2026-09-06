@@ -824,8 +824,9 @@ def planilla_notas_page() -> None:
             with ui.element("div").classes("flex-1").style("min-width:360px"):
 
                 # Formulario nueva actividad — etiquetas estáticas sobre cada campo
-                with ui.element("div").classes("bg-subtle form-box u-mb-lg"):
-                    with ui.row().classes("items-end gap-3 flex-wrap"):
+                with ui.element("div").classes("bg-subtle form-box u-mb-lg"), ui.row().classes(
+                    "items-end gap-3 flex-wrap"
+                ):
 
                         with ui.element("div").classes("flex-1").style("min-width:130px"):
                             field_input(

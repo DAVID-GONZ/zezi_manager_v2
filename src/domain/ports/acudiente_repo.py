@@ -33,8 +33,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..models.tenant import TenantScope
 from ..models.acudiente import Acudiente, EstudianteAcudiente
+from ..models.tenant import TenantScope
 
 
 class IAcudienteRepository(ABC):

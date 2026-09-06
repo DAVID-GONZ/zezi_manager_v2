@@ -255,8 +255,7 @@ def reporte_periodo_page() -> None:
         with ui.element("div").classes("page-stack"):
             # Exportar — solo si hay datos que exportar (evita una card vacía al cargar).
             if autorizado and _s["filas"]:
-                with ui.element("div").classes("panel-card"):
-                    with ui.row().classes("panel-toolbar"):
+                with ui.element("div").classes("panel-card"), ui.row().classes("panel-toolbar"):
                         ui.element("div").classes("panel-toolbar-spacer")
                         btn_secondary(
                             "Exportar Excel",

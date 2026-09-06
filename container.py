@@ -15,7 +15,7 @@ instancias frescas de repositorios.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 logger = logging.getLogger("CONTAINER")
 
@@ -33,7 +33,7 @@ class Container:
     que necesite repositorios distintos.
     """
 
-    _cache: dict[str, Any] = {}
+    _cache: ClassVar[dict[str, Any]] = {}
 
     # ──────────────────────────────────────────────────────
     # Reset (para tests de integración)

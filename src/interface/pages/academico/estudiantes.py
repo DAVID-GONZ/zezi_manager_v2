@@ -143,9 +143,7 @@ def estudiantes_page() -> None:
                 busqueda=_s["filtro_busqueda"] or None,
                 por_pagina=200,
             )
-            presenter.set_estudiantes(
-                Container.estudiante_service().listar_resumenes_plano(filtro)
-            )
+            presenter.set_estudiantes(Container.estudiante_service().listar_resumenes_plano(filtro))
         except Exception as exc:
             logger.error("Error cargando estudiantes: %s", exc)
             presenter.set_estudiantes([])
@@ -221,7 +219,7 @@ def estudiantes_page() -> None:
 
     # ── Procesador CSV ────────────────────────────────────────────────────────
 
-    def _procesar_csv(content: bytes) -> None:
+    def _procesar_csv(content: bytes, tabla_refreshable, resultado_refreshable) -> None:
         try:
             texto = content.decode("utf-8")
         except UnicodeDecodeError:
@@ -239,8 +237,8 @@ def estudiantes_page() -> None:
 
         _s["resultado_masivo"] = resultado
         _cargar_estudiantes()
-        tabla_refreshable.refresh()  # noqa: F821
-        resultado_refreshable.refresh()  # noqa: F821
+        tabla_refreshable.refresh()
+        resultado_refreshable.refresh()
 
         if resultado.fue_exitosa:
             toast_success(f"Carga completada: {resultado.exitosas} estudiantes matriculados.")
@@ -295,132 +293,128 @@ def estudiantes_page() -> None:
                 return
 
             # ── Cabecera de la tabla ──────────────────────────────────────────
-            with ui.element("div").classes("est-table w-full overflow-auto"):
-                with ui.element("table").classes("w-full est-table__table"):
-                    # thead
-                    with ui.element("thead"):
-                        with ui.element("tr").classes("est-table__head-row"):
-                            for label, extra in [
-                                ("Estudiante", "est-table__th--left est-table__th--wide"),
-                                ("Documento", "est-table__th--left"),
-                                ("Grupo", "est-table__th--center"),
-                                ("Estado", "est-table__th--center"),
-                                ("PIAR", "est-table__th--center"),
-                                ("Acciones", "est-table__th--center"),
-                            ]:
-                                with ui.element("th").classes(f"est-table__th {extra}"):
-                                    ui.label(label)
+            with (
+                ui.element("div").classes("est-table w-full overflow-auto"),
+                ui.element("table").classes("w-full est-table__table"),
+            ):
+                # thead
+                with ui.element("thead"), ui.element("tr").classes("est-table__head-row"):
+                    for label, extra in [
+                        ("Estudiante", "est-table__th--left est-table__th--wide"),
+                        ("Documento", "est-table__th--left"),
+                        ("Grupo", "est-table__th--center"),
+                        ("Estado", "est-table__th--center"),
+                        ("PIAR", "est-table__th--center"),
+                        ("Acciones", "est-table__th--center"),
+                    ]:
+                        with ui.element("th").classes(f"est-table__th {extra}"):
+                            ui.label(label)
 
-                    # tbody — una fila por estudiante
-                    # estudiantes es list[dict] (primitivos puros, sin enums)
-                    with ui.element("tbody"):
-                        for est in estudiantes:
-                            estado_raw = est["estado_matricula"]  # str plano del servicio
-                            fila = {
-                                "id": est["id"],
-                                "nombre_completo": est["nombre_completo"],
-                                "documento_display": est["documento_display"],
-                                "grupo_id": est["grupo_id"],
-                                "grupo_codigo": _grupo_codigo(est["grupo_id"]),
-                                "estado_str": _estado_label(estado_raw),
-                                "estado_raw": estado_raw,
-                                "posee_piar": est["posee_piar"],
-                            }
+                # tbody — una fila por estudiante
+                # estudiantes es list[dict] (primitivos puros, sin enums)
+                with ui.element("tbody"):
+                    for est in estudiantes:
+                        estado_raw = est["estado_matricula"]  # str plano del servicio
+                        fila = {
+                            "id": est["id"],
+                            "nombre_completo": est["nombre_completo"],
+                            "documento_display": est["documento_display"],
+                            "grupo_id": est["grupo_id"],
+                            "grupo_codigo": _grupo_codigo(est["grupo_id"]),
+                            "estado_str": _estado_label(estado_raw),
+                            "estado_raw": estado_raw,
+                            "posee_piar": est["posee_piar"],
+                        }
 
-                            # Captura de la fila en la closure — crítico en bucles
-                            def _fila_editar(_, f=fila):
-                                _abrir_dialog_edicion(f)
+                        # Captura de la fila en la closure — crítico en bucles
+                        def _fila_editar(_, f=fila):
+                            _abrir_dialog_edicion(f)
 
-                            def _fila_retirar(_, f=fila):
-                                _confirmar_retiro(f)
+                        def _fila_retirar(_, f=fila):
+                            _confirmar_retiro(f)
 
-                            def _fila_piar(_, f=fila):
-                                _abrir_dialog_piar(f)
+                        def _fila_piar(_, f=fila):
+                            _abrir_dialog_piar(f)
 
-                            def _fila_trasladar(_, f=fila):
-                                _abrir_dialog_traslado(f)
+                        def _fila_trasladar(_, f=fila):
+                            _abrir_dialog_traslado(f)
 
-                            def _fila_historial(_, f=fila):
-                                _abrir_dialog_historial(f)
+                        def _fila_historial(_, f=fila):
+                            _abrir_dialog_historial(f)
 
-                            with ui.element("tr").classes("est-table__row"):
-                                # Nombre
-                                with ui.element("td").classes("est-table__td est-table__td--left"):
-                                    ui.label(fila["nombre_completo"]).classes("est-table__nombre")
+                        with ui.element("tr").classes("est-table__row"):
+                            # Nombre
+                            with ui.element("td").classes("est-table__td est-table__td--left"):
+                                ui.label(fila["nombre_completo"]).classes("est-table__nombre")
 
-                                # Documento
-                                with ui.element("td").classes("est-table__td est-table__td--left"):
-                                    ui.label(fila["documento_display"]).classes("est-table__doc")
+                            # Documento
+                            with ui.element("td").classes("est-table__td est-table__td--left"):
+                                ui.label(fila["documento_display"]).classes("est-table__doc")
 
-                                # Grupo
-                                with ui.element("td").classes(
-                                    "est-table__td est-table__td--center"
-                                ):
-                                    ui.label(fila["grupo_codigo"]).classes("est-table__grupo")
+                            # Grupo
+                            with ui.element("td").classes("est-table__td est-table__td--center"):
+                                ui.label(fila["grupo_codigo"]).classes("est-table__grupo")
 
-                                # Estado
-                                with ui.element("td").classes(
-                                    "est-table__td est-table__td--center"
-                                ):
-                                    _variante = {
-                                        "activo": "success",
-                                        "inactivo": "neutral",
-                                        "retirado": "error",
-                                        "graduado": "info",
-                                    }.get(fila["estado_raw"], "neutral")
-                                    status_badge(fila["estado_str"], variante=_variante)
+                            # Estado
+                            with ui.element("td").classes("est-table__td est-table__td--center"):
+                                _variante = {
+                                    "activo": "success",
+                                    "inactivo": "neutral",
+                                    "retirado": "error",
+                                    "graduado": "info",
+                                }.get(fila["estado_raw"], "neutral")
+                                status_badge(fila["estado_str"], variante=_variante)
 
-                                # PIAR
-                                with ui.element("td").classes(
-                                    "est-table__td est-table__td--center"
-                                ):
-                                    status_badge(
-                                        "Sí" if fila["posee_piar"] else "No",
-                                        variante="info" if fila["posee_piar"] else "neutral",
-                                    )
+                            # PIAR
+                            with ui.element("td").classes("est-table__td est-table__td--center"):
+                                status_badge(
+                                    "Sí" if fila["posee_piar"] else "No",
+                                    variante="info" if fila["posee_piar"] else "neutral",
+                                )
 
-                                # Acciones — botones Python reales, sin slots ni $emit.
-                                # Gating paso_42: el profesor ve la tabla en modo
-                                # lectura (sin editar/retirar/PIAR). Solo
-                                # director/coordinador gestionan.
-                                with ui.element("td").classes(
-                                    "est-table__td est-table__td--center"
-                                ), ui.row().classes("gap-1 justify-center"):
-                                    es_retirado = fila["estado_raw"] == "retirado"
+                            # Acciones — botones Python reales, sin slots ni $emit.
+                            # Gating paso_42: el profesor ve la tabla en modo
+                            # lectura (sin editar/retirar/PIAR). Solo
+                            # director/coordinador gestionan.
+                            with (
+                                ui.element("td").classes("est-table__td est-table__td--center"),
+                                ui.row().classes("gap-1 justify-center"),
+                            ):
+                                es_retirado = fila["estado_raw"] == "retirado"
 
-                                    if puede_gestionar and not es_retirado:
-                                        btn_icon(
-                                            "edit",
-                                            on_click=_fila_editar,
-                                            tooltip="Editar estudiante",
-                                            variante="primary",
-                                        )
-                                        btn_icon(
-                                            "swap_horiz",
-                                            on_click=_fila_trasladar,
-                                            tooltip="Trasladar a otro grupo",
-                                            variante="secondary",
-                                        )
-                                        btn_icon(
-                                            "person_remove",
-                                            on_click=_fila_retirar,
-                                            tooltip="Retirar matrícula",
-                                            variante="danger",
-                                        )
-                                        btn_icon(
-                                            "description",
-                                            on_click=_fila_piar,
-                                            tooltip="Ver / registrar PIAR",
-                                            variante="secondary",
-                                        )
-                                    # Historial: visible para todos los que ven la página
-                                    # (incluido el profesor en modo lectura).
+                                if puede_gestionar and not es_retirado:
                                     btn_icon(
-                                        "history",
-                                        on_click=_fila_historial,
-                                        tooltip="Ver historial de movimientos",
-                                        variante="ghost",
+                                        "edit",
+                                        on_click=_fila_editar,
+                                        tooltip="Editar estudiante",
+                                        variante="primary",
                                     )
+                                    btn_icon(
+                                        "swap_horiz",
+                                        on_click=_fila_trasladar,
+                                        tooltip="Trasladar a otro grupo",
+                                        variante="secondary",
+                                    )
+                                    btn_icon(
+                                        "person_remove",
+                                        on_click=_fila_retirar,
+                                        tooltip="Retirar matrícula",
+                                        variante="danger",
+                                    )
+                                    btn_icon(
+                                        "description",
+                                        on_click=_fila_piar,
+                                        tooltip="Ver / registrar PIAR",
+                                        variante="secondary",
+                                    )
+                                # Historial: visible para todos los que ven la página
+                                # (incluido el profesor en modo lectura).
+                                btn_icon(
+                                    "history",
+                                    on_click=_fila_historial,
+                                    tooltip="Ver historial de movimientos",
+                                    variante="ghost",
+                                )
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -579,7 +573,14 @@ def estudiantes_page() -> None:
 
                 ui.upload(
                     label="Seleccionar archivo CSV",
-                    on_upload=lambda e: (_procesar_csv(e.content.read()), dlg.close()),
+                    on_upload=lambda e: (
+                        _procesar_csv(
+                            e.content.read(),
+                            tabla_refreshable,
+                            resultado_refreshable,
+                        ),
+                        dlg.close(),
+                    ),
                     auto_upload=True,
                 ).props("accept=.csv").classes("w-full")
 
@@ -858,34 +859,33 @@ def estudiantes_page() -> None:
                         descripcion="Este estudiante no tiene movimientos registrados.",
                     )
                 else:
-                    with ui.element("div").classes("est-table w-full overflow-auto"):
-                        with ui.element("table").classes("w-full est-table__table"):
-                            with ui.element("thead"):
-                                with ui.element("tr").classes("est-table__head-row"):
-                                    for label in ("Fecha", "Movimiento", "Tipo", "Motivo"):
-                                        with ui.element("th").classes(
-                                            "est-table__th est-table__th--left"
-                                        ):
-                                            ui.label(label)
-                            with ui.element("tbody"):
-                                for m in movimientos:
-                                    with ui.element("tr").classes("est-table__row"):
-                                        with ui.element("td").classes(
-                                            "est-table__td est-table__td--left"
-                                        ):
-                                            ui.label(m.fecha_display)
-                                        with ui.element("td").classes(
-                                            "est-table__td est-table__td--left"
-                                        ):
-                                            ui.label(m.ruta_display)
-                                        with ui.element("td").classes(
-                                            "est-table__td est-table__td--left"
-                                        ):
-                                            ui.label(m.tipo_movimiento.value)
-                                        with ui.element("td").classes(
-                                            "est-table__td est-table__td--left"
-                                        ):
-                                            ui.label(m.motivo or "—")
+                    with (
+                        ui.element("div").classes("est-table w-full overflow-auto"),
+                        ui.element("table").classes("w-full est-table__table"),
+                    ):
+                        with ui.element("thead"), ui.element("tr").classes("est-table__head-row"):
+                            for label in ("Fecha", "Movimiento", "Tipo", "Motivo"):
+                                with ui.element("th").classes("est-table__th est-table__th--left"):
+                                    ui.label(label)
+                        with ui.element("tbody"):
+                            for m in movimientos:
+                                with ui.element("tr").classes("est-table__row"):
+                                    with ui.element("td").classes(
+                                        "est-table__td est-table__td--left"
+                                    ):
+                                        ui.label(m.fecha_display)
+                                    with ui.element("td").classes(
+                                        "est-table__td est-table__td--left"
+                                    ):
+                                        ui.label(m.ruta_display)
+                                    with ui.element("td").classes(
+                                        "est-table__td est-table__td--left"
+                                    ):
+                                        ui.label(m.tipo_movimiento.value)
+                                    with ui.element("td").classes(
+                                        "est-table__td est-table__td--left"
+                                    ):
+                                        ui.label(m.motivo or "—")
 
                 with ui.row().classes("u-mt-md justify-end"):
                     btn_ghost("Cerrar", on_click=dlg.close)

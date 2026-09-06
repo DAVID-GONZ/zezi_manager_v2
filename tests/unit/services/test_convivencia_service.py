@@ -1,4 +1,5 @@
 """Tests unitarios para ConvivenciaService."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -31,6 +32,7 @@ from src.domain.models.convivencia import (
     ResumenConvivenciaDTO,
     Seguimiento360DTO,
     TipoRegistro,
+    TipoSituacion,
 )
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
@@ -39,6 +41,7 @@ from src.services.convivencia_service import ConvivenciaService
 # ===========================================================================
 # Fake
 # ===========================================================================
+
 
 class FakeConvRepo(IConvivenciaRepository):
     def __init__(self):
@@ -62,19 +65,24 @@ class FakeConvRepo(IConvivenciaRepository):
     def get_observacion(self, oid: int) -> ObservacionPeriodo | None:
         return self._obs.get(oid)
 
-    def get_observacion_por_asignacion(self, est_id: int, asig_id: int, per_id: int) -> ObservacionPeriodo | None:
+    def get_observacion_por_asignacion(
+        self, est_id: int, asig_id: int, per_id: int
+    ) -> ObservacionPeriodo | None:
         for o in self._obs.values():
             if o.estudiante_id == est_id and o.asignacion_id == asig_id and o.periodo_id == per_id:
                 return o
         return None
 
-    def listar_observaciones_por_estudiante(self, est_id: int, per_id=None, solo_publicas=False) -> list[ObservacionPeriodo]:
+    def listar_observaciones_por_estudiante(
+        self, est_id: int, per_id=None, solo_publicas=False
+    ) -> list[ObservacionPeriodo]:
         return [o for o in self._obs.values() if o.estudiante_id == est_id]
 
-    def listar_observaciones_por_grupo(self, grupo_id: int, periodo_id=None, solo_publicas=False) -> list[ObservacionPeriodo]:
+    def listar_observaciones_por_grupo(
+        self, grupo_id: int, periodo_id=None, solo_publicas=False
+    ) -> list[ObservacionPeriodo]:
         result = [
-            o for o in self._obs.values()
-            if self._asig_grupo.get(o.asignacion_id) == grupo_id
+            o for o in self._obs.values() if self._asig_grupo.get(o.asignacion_id) == grupo_id
         ]
         if periodo_id is not None:
             result = [o for o in result if o.periodo_id == periodo_id]
@@ -99,7 +107,9 @@ class FakeConvRepo(IConvivenciaRepository):
     def get_registro(self, rid: int) -> RegistroComportamiento | None:
         return self._regs.get(rid)
 
-    def listar_registros(self, filtro: FiltroConvivenciaDTO, institucion_id=None) -> list[RegistroComportamiento]:
+    def listar_registros(
+        self, filtro: FiltroConvivenciaDTO, institucion_id=None
+    ) -> list[RegistroComportamiento]:
         return list(self._regs.values())
 
     def contar_registros(self, filtro: FiltroConvivenciaDTO, institucion_id=None) -> int:
@@ -134,7 +144,9 @@ class FakeConvRepo(IConvivenciaRepository):
         return n
 
     # Categorías
-    def listar_categorias(self, solo_activas: bool = True, institucion_id: int | None = None) -> list[CategoriaObservacion]:
+    def listar_categorias(
+        self, solo_activas: bool = True, institucion_id: int | None = None
+    ) -> list[CategoriaObservacion]:
         cats = list(self._cats.values())
         if solo_activas:
             cats = [c for c in cats if c.activa]
@@ -154,7 +166,9 @@ class FakeConvRepo(IConvivenciaRepository):
         return cat
 
     # Plantillas (convivencia_12)
-    def listar_plantillas(self, categoria_id=None, solo_activas=True, institucion_id=None) -> list[PlantillaObservacion]:
+    def listar_plantillas(
+        self, categoria_id=None, solo_activas=True, institucion_id=None
+    ) -> list[PlantillaObservacion]:
         result = list(self._plantillas.values())
         if solo_activas:
             result = [p for p in result if p.activa]
@@ -178,9 +192,7 @@ class FakeConvRepo(IConvivenciaRepository):
     def incrementar_uso_plantilla(self, plantilla_id: int) -> None:
         if plantilla_id in self._plantillas:
             p = self._plantillas[plantilla_id]
-            self._plantillas[plantilla_id] = p.model_copy(
-                update={"uso_count": p.uso_count + 1}
-            )
+            self._plantillas[plantilla_id] = p.model_copy(update={"uso_count": p.uso_count + 1})
 
     # Tipos de situación (convivencia_34)
     def listar_tipos_situacion(self, solo_activas=True, institucion_id=None):
@@ -190,7 +202,6 @@ class FakeConvRepo(IConvivenciaRepository):
         return None
 
     def guardar_tipo_situacion(self, tipo_situacion):
-        from src.domain.models.convivencia import TipoSituacion
         return tipo_situacion.model_copy(update={"id": 1})
 
     def actualizar_tipo_situacion(self, tipo_situacion):
@@ -234,12 +245,21 @@ class FakeConvRepo(IConvivenciaRepository):
         return {"grupo_codigo": "601", "grupo_nombre": "601", "grado_nombre": "Sexto"}
 
     def resolver_acudiente_principal(self, estudiante_id):
-        return {"nombre": "María García", "parentesco": "madre", "parentesco_display": "Madre", "celular": "3001234567", "email": "", "direccion": "", "documento": "12345678"}
+        return {
+            "nombre": "María García",
+            "parentesco": "madre",
+            "parentesco_display": "Madre",
+            "celular": "3001234567",
+            "email": "",
+            "direccion": "",
+            "documento": "12345678",
+        }
 
 
 # ===========================================================================
 # Helpers
 # ===========================================================================
+
 
 def _make_svc() -> tuple[ConvivenciaService, FakeConvRepo]:
     repo = FakeConvRepo()
@@ -250,12 +270,17 @@ def _make_svc() -> tuple[ConvivenciaService, FakeConvRepo]:
 # Tests
 # ===========================================================================
 
+
 class TestRegistrarObservacion:
     def test_crea_nueva_observacion(self):
         svc, _ = _make_svc()
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Buen desempeño", es_publica=True, categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Buen desempeño",
+            es_publica=True,
+            categoria_id=1,
         )
         obs = svc.registrar_observacion(dto)
         assert obs.id is not None
@@ -263,13 +288,19 @@ class TestRegistrarObservacion:
     def test_actualiza_observacion_existente(self):
         svc, _ = _make_svc()
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto inicial", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Texto inicial",
+            categoria_id=1,
         )
         svc.registrar_observacion(dto)
         dto2 = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto actualizado", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Texto actualizado",
+            categoria_id=1,
         )
         obs = svc.registrar_observacion(dto2)
         assert obs.texto == "Texto actualizado"
@@ -279,7 +310,9 @@ class TestRegistrarComportamiento:
     def test_registra_comportamiento_fortaleza(self):
         svc, _ = _make_svc()
         dto = NuevoRegistroComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
             tipo=TipoRegistro.FORTALEZA,
             descripcion="Excelente participación en clase",
             fecha=date.today(),
@@ -291,7 +324,9 @@ class TestRegistrarComportamiento:
     def test_notificar_acudiente_exitosamente(self):
         svc, _ = _make_svc()
         dto = NuevoRegistroComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
             tipo=TipoRegistro.CITACION_ACUDIENTE,
             descripcion="Citación por bajo rendimiento",
             requiere_firma=True,
@@ -310,20 +345,14 @@ class TestRegistrarComportamiento:
 class TestNotaComportamiento:
     def test_registra_nota_comportamiento(self):
         svc, _ = _make_svc()
-        dto = NuevaNotaComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=85.0
-        )
+        dto = NuevaNotaComportamientoDTO(estudiante_id=1, grupo_id=10, periodo_id=5, valor=85.0)
         nota = svc.registrar_nota_comportamiento(dto)
         assert nota.valor == pytest.approx(85.0)
 
     def test_upsert_nota_sobreescribe(self):
         svc, _ = _make_svc()
-        dto1 = NuevaNotaComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0
-        )
-        dto2 = NuevaNotaComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=85.0
-        )
+        dto1 = NuevaNotaComportamientoDTO(estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0)
+        dto2 = NuevaNotaComportamientoDTO(estudiante_id=1, grupo_id=10, periodo_id=5, valor=85.0)
         svc.registrar_nota_comportamiento(dto1)
         svc.registrar_nota_comportamiento(dto2)
         nota = svc.get_nota_comportamiento(1, 5)
@@ -334,15 +363,15 @@ class TestNotaComportamiento:
 # Enforcement de autorización (convivencia_04b — defensa en profundidad)
 # ===========================================================================
 
+
 class _StubCatalogoSvc:
     """Stub minimal de CatalogoAcademicoService: siempre autoriza/deniega."""
+
     def __init__(self, autoriza: bool):
         self._autoriza = autoriza
         self.llamadas: list[tuple] = []
 
-    def puede_gestionar_comportamiento_en_grupo(
-        self, usuario_rol, usuario_id, grupo_id
-    ) -> bool:
+    def puede_gestionar_comportamiento_en_grupo(self, usuario_rol, usuario_id, grupo_id) -> bool:
         self.llamadas.append((usuario_rol, usuario_id, grupo_id))
         return self._autoriza
 
@@ -350,7 +379,9 @@ class _StubCatalogoSvc:
 class TestEnforcementAutorizacion:
     def _dto_registro(self) -> NuevoRegistroComportamientoDTO:
         return NuevoRegistroComportamientoDTO(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
             tipo=TipoRegistro.FORTALEZA,
             descripcion="Buen trabajo",
             fecha=date.today(),
@@ -390,7 +421,9 @@ class TestEnforcementAutorizacion:
     def test_sin_provider_es_compat_retro(self):
         svc, _repo = _make_svc()  # sin provider
         reg = svc.registrar_comportamiento(
-            self._dto_registro(), usuario_id=99, usuario_rol="profesor",
+            self._dto_registro(),
+            usuario_id=99,
+            usuario_rol="profesor",
         )
         assert reg.id is not None
 
@@ -398,6 +431,7 @@ class TestEnforcementAutorizacion:
 # ===========================================================================
 # Concepto consolidado (convivencia_05)
 # ===========================================================================
+
 
 class _FakeNivel:
     def __init__(self, id, nombre, rmin, rmax, descripcion=None):
@@ -411,6 +445,7 @@ class _FakeNivel:
 class _FakeConfigSvc:
     def __init__(self, niveles):
         self._niveles = niveles
+
     def listar_niveles(self, anio_id):
         return self._niveles
 
@@ -418,6 +453,7 @@ class _FakeConfigSvc:
 class _FakePeriodoSvc:
     class _P:
         anio_id = 2026
+
     def get_by_id(self, periodo_id):
         return self._P()
 
@@ -430,6 +466,7 @@ class _FakeEst:
 class _FakeEstSvc:
     def __init__(self, ests):
         self._ests = ests
+
     def listar_por_grupo(self, grupo_id, solo_activos=True):
         return self._ests
 
@@ -466,8 +503,12 @@ class TestConceptoComportamiento:
     def test_con_desempeno_id_explicito(self):
         svc, repo = _svc_completo()
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
-            valor=65.0, desempeno_id=4, observacion="Excelente actitud",
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=65.0,
+            desempeno_id=4,
+            observacion="Excelente actitud",
         )
         dto = svc.get_concepto_periodo(1, 5)
         # desempeno_id=4 (Superior) prevalece sobre el rango que daría "Básico"
@@ -479,7 +520,10 @@ class TestConceptoComportamiento:
     def test_sin_desempeno_id_resuelve_por_rango(self):
         svc, repo = _svc_completo()
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=72.5,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=72.5,
         )
         dto = svc.get_concepto_periodo(1, 5)
         assert dto.nivel_nombre == "Alto"
@@ -488,7 +532,10 @@ class TestConceptoComportamiento:
     def test_nota_menor_a_minima_no_aprobado(self):
         svc, repo = _svc_completo()
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=55.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=55.0,
         )
         dto = svc.get_concepto_periodo(1, 5, nota_minima=60.0)
         assert dto.aprobado is False
@@ -499,7 +546,10 @@ class TestConceptoComportamiento:
         svc, repo = _svc_completo(ests=ests)
         # Solo el estudiante 2 tiene nota.
         repo._notas[(2, 5)] = NotaComportamiento(
-            estudiante_id=2, grupo_id=10, periodo_id=5, valor=90.0,
+            estudiante_id=2,
+            grupo_id=10,
+            periodo_id=5,
+            valor=90.0,
         )
         conceptos = svc.listar_conceptos_grupo(grupo_id=10, periodo_id=5)
         assert len(conceptos) == 3
@@ -515,28 +565,47 @@ class TestConceptoComportamiento:
     def test_reporte_periodo_grupo_combina_notas_y_observaciones(self):
         ests = [_FakeEst(1), _FakeEst(2), _FakeEst(3)]
         # Añadimos nombre/apellido dinámicamente sin acoplar el modelo real.
-        for e, nom, ape in [(ests[0], "Ana", "Ruiz"), (ests[1], "Bob", "Diaz"), (ests[2], "Cyd", "Paz")]:
+        for e, nom, ape in [
+            (ests[0], "Ana", "Ruiz"),
+            (ests[1], "Bob", "Diaz"),
+            (ests[2], "Cyd", "Paz"),
+        ]:
             e.nombre = nom
             e.apellido = ape
         svc, repo = _svc_completo(ests=ests)
         # Estudiante 1 → nota + 2 observaciones.
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
-            valor=90.0, observacion="Excelente disciplina",
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=90.0,
+            observacion="Excelente disciplina",
         )
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=99, periodo_id=5,
-            texto="Muy participativo",
-        ))
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=100, periodo_id=5,
-            texto="Colabora con compañeros",
-        ))
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=99,
+                periodo_id=5,
+                texto="Muy participativo",
+            )
+        )
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=100,
+                periodo_id=5,
+                texto="Colabora con compañeros",
+            )
+        )
         # Estudiante 2 → sin nota, con 1 observación.
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=2, asignacion_id=99, periodo_id=5,
-            texto="Debe entregar tareas a tiempo",
-        ))
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=2,
+                asignacion_id=99,
+                periodo_id=5,
+                texto="Debe entregar tareas a tiempo",
+            )
+        )
         # Estudiante 3 → sin nota, sin observaciones.
 
         filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
@@ -548,7 +617,8 @@ class TestConceptoComportamiento:
         assert by_id[1].nivel_nombre == "Superior"
         assert by_id[1].concepto == "Excelente disciplina"
         assert set(by_id[1].observaciones) == {
-            "Muy participativo", "Colabora con compañeros",
+            "Muy participativo",
+            "Colabora con compañeros",
         }
         assert by_id[1].nombre == "Ruiz Ana"
 
@@ -571,7 +641,10 @@ class TestConceptoComportamiento:
     def test_get_concepto_sin_providers_lanza(self):
         repo = FakeConvRepo()
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=70.0,
         )
         svc = ConvivenciaService(repo=repo)
         with pytest.raises(RuntimeError):
@@ -588,9 +661,15 @@ class TestConceptoComportamiento:
 
     def test_exportar_reporte_formato_invalido_lanza(self):
         class _NullExp:
-            def exportar_excel(self, *a, **kw): return b""
-            def exportar_pdf(self, *a, **kw): return b""
-            def exportar_csv(self, *a, **kw): return b""
+            def exportar_excel(self, *a, **kw):
+                return b""
+
+            def exportar_pdf(self, *a, **kw):
+                return b""
+
+            def exportar_csv(self, *a, **kw):
+                return b""
+
         repo = FakeConvRepo()
         svc = ConvivenciaService(
             repo=repo,
@@ -604,17 +683,26 @@ class TestConceptoComportamiento:
 
     def test_exportar_reporte_excel_genera_xlsx_enriquecido(self):
         """El Excel generado es un xlsx válido con dos hojas (Reporte + Estadísticos)."""
+
         class _FakeExp:
-            def exportar_excel(self, *a, **kw): return b""
-            def exportar_pdf(self, *a, **kw): return b""
-            def exportar_csv(self, *a, **kw): return b""
+            def exportar_excel(self, *a, **kw):
+                return b""
+
+            def exportar_pdf(self, *a, **kw):
+                return b""
+
+            def exportar_csv(self, *a, **kw):
+                return b""
 
         est = _FakeEst(1)
         est.nombre = "Ana"
         est.apellido = "Ruiz"
         repo = FakeConvRepo()
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=80.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=80.0,
         )
         svc = ConvivenciaService(
             repo=repo,
@@ -624,13 +712,20 @@ class TestConceptoComportamiento:
             exporter=_FakeExp(),
         )
         bytes_ = svc.exportar_reporte_periodo_grupo(
-            10, 5, "excel", titulo="X", grupo="5A", periodo="P1",
+            10,
+            5,
+            "excel",
+            titulo="X",
+            grupo="5A",
+            periodo="P1",
         )
         assert isinstance(bytes_, bytes)
         assert len(bytes_) > 0
         # Verificar que es un xlsx válido con las hojas esperadas
         import io
+
         import openpyxl
+
         wb = openpyxl.load_workbook(io.BytesIO(bytes_))
         assert "Reporte" in wb.sheetnames
         assert "Estadísticos" in wb.sheetnames
@@ -647,9 +742,14 @@ class TestConceptoComportamiento:
 
     def test_exportar_reporte_pdf_genera_pdf_reportlab(self):
         class _FakeExp:
-            def exportar_excel(self, *a, **kw): return b""
-            def exportar_pdf(self, html, ruta_destino=None): return b""
-            def exportar_csv(self, *a, **kw): return b""
+            def exportar_excel(self, *a, **kw):
+                return b""
+
+            def exportar_pdf(self, html, ruta_destino=None):
+                return b""
+
+            def exportar_csv(self, *a, **kw):
+                return b""
 
         est = _FakeEst(1)
         est.nombre = "Ana"
@@ -664,7 +764,12 @@ class TestConceptoComportamiento:
             exporter=exp,
         )
         bytes_ = svc.exportar_reporte_periodo_grupo(
-            10, 5, "pdf", titulo="Reporte X", grupo="5A", periodo="Periodo 1",
+            10,
+            5,
+            "pdf",
+            titulo="Reporte X",
+            grupo="5A",
+            periodo="Periodo 1",
         )
         assert isinstance(bytes_, bytes)
         assert len(bytes_) > 0
@@ -675,17 +780,14 @@ class TestConceptoComportamiento:
 # Catálogo de categorías (convivencia_10)
 # ===========================================================================
 
+
 class TestCategoriasObservacion:
     def test_listar_categorias_delega_al_repo(self):
         """listar_categorias llama al repo con solo_activas=True por defecto."""
         repo = FakeConvRepo()
         # Precargar dos categorías: una activa y una inactiva.
-        repo.guardar_categoria(
-            CategoriaObservacion(nombre="Académico", activa=True)
-        )
-        repo.guardar_categoria(
-            CategoriaObservacion(nombre="Archivada", activa=False)
-        )
+        repo.guardar_categoria(CategoriaObservacion(nombre="Académico", activa=True))
+        repo.guardar_categoria(CategoriaObservacion(nombre="Archivada", activa=False))
         svc = ConvivenciaService(repo=repo)
         resultado = svc.listar_categorias(solo_activas=True)
         assert len(resultado) == 1
@@ -728,14 +830,17 @@ class TestCategoriasObservacion:
 # Autorización por objeto: observaciones (convivencia_11)
 # ===========================================================================
 
+
 class _FakeAsignacionSvc:
     """Stub de AsignacionService: asignación con usuario_id configurable."""
+
     def __init__(self, usuario_id_titular: int):
         self._usuario_id_titular = usuario_id_titular
 
     def get_by_id(self, asig_id: int):
         class _Asig:
             pass
+
         a = _Asig()
         a.id = asig_id
         a.usuario_id = self._usuario_id_titular
@@ -757,8 +862,11 @@ class TestObservacionAutorizacionPorObjeto:
             asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=99),
         )
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Obs ajena", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Obs ajena",
+            categoria_id=1,
         )
         with pytest.raises(PermissionError, match="Solo puedes registrar"):
             svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
@@ -773,8 +881,11 @@ class TestObservacionAutorizacionPorObjeto:
             asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=50),
         )
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Obs propia", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Obs propia",
+            categoria_id=1,
         )
         obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
         assert obs.id is not None
@@ -789,8 +900,11 @@ class TestObservacionAutorizacionPorObjeto:
             asignacion_svc_provider=lambda: _FakeAsignacionSvc(usuario_id_titular=99),
         )
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Obs de director", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Obs de director",
+            categoria_id=1,
         )
         obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="director")
         assert obs.id is not None
@@ -799,8 +913,11 @@ class TestObservacionAutorizacionPorObjeto:
         """Sin asignacion_svc_provider, compat retro: no bloquea aunque sea profesor."""
         svc, _repo = _make_svc()  # sin asignacion_svc_provider
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Obs sin provider", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Obs sin provider",
+            categoria_id=1,
         )
         obs = svc.registrar_observacion(dto, usuario_id=50, usuario_rol="profesor")
         assert obs.id is not None
@@ -809,6 +926,7 @@ class TestObservacionAutorizacionPorObjeto:
 # ===========================================================================
 # Catálogo de plantillas (convivencia_12)
 # ===========================================================================
+
 
 class TestPlantillasObservacion:
     def test_listar_plantillas_servicio(self):
@@ -847,8 +965,11 @@ class TestPlantillasObservacion:
         )
         svc = ConvivenciaService(repo=repo)
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto=plantilla.texto, categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto=plantilla.texto,
+            categoria_id=1,
         )
         obs = svc.registrar_observacion_desde_plantilla(dto, plantilla.id)
 
@@ -869,8 +990,11 @@ class TestPlantillasObservacion:
         svc = ConvivenciaService(repo=repo)
 
         dto = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto original", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Texto original",
+            categoria_id=1,
         )
         # Primera vez → crea
         obs1 = svc.registrar_observacion_desde_plantilla(dto, plantilla.id)
@@ -878,8 +1002,11 @@ class TestPlantillasObservacion:
 
         # Segunda vez → actualiza (misma asig/periodo/estudiante)
         dto2 = NuevaObservacionDTO(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Texto actualizado", categoria_id=1,
+            estudiante_id=1,
+            asignacion_id=3,
+            periodo_id=5,
+            texto="Texto actualizado",
+            categoria_id=1,
         )
         obs2 = svc.registrar_observacion_desde_plantilla(dto2, plantilla.id)
         assert obs2.texto == "Texto actualizado"
@@ -895,6 +1022,7 @@ class TestPlantillasObservacion:
 # ===========================================================================
 # Promoción a comportamiento (convivencia_14)
 # ===========================================================================
+
 
 class TestPromocionAComportamiento:
     """Tests para promover_a_comportamiento."""
@@ -937,9 +1065,7 @@ class TestPromocionAComportamiento:
         svc = ConvivenciaService(repo=repo)
         obs = self._obs_comportamental(repo)
 
-        registro = svc.promover_a_comportamiento(
-            obs.id, usuario_id=10, usuario_rol="director"
-        )
+        registro = svc.promover_a_comportamiento(obs.id, usuario_id=10, usuario_rol="director")
 
         # Debe retornar un RegistroComportamiento con id asignado
         assert isinstance(registro, RegistroComportamiento)
@@ -962,9 +1088,7 @@ class TestPromocionAComportamiento:
         svc = ConvivenciaService(repo=repo)
         obs = self._obs_comportamental(repo)
 
-        registro = svc.promover_a_comportamiento(
-            obs.id, usuario_id=20, usuario_rol="coordinador"
-        )
+        registro = svc.promover_a_comportamiento(obs.id, usuario_id=20, usuario_rol="coordinador")
         assert registro.id is not None
 
     def test_promover_a_comportamiento_categoria_no_comportamental(self):
@@ -974,9 +1098,7 @@ class TestPromocionAComportamiento:
         obs = self._obs_no_comportamental(repo)
 
         with pytest.raises(ValueError, match="comportamental"):
-            svc.promover_a_comportamiento(
-                obs.id, usuario_id=10, usuario_rol="director"
-            )
+            svc.promover_a_comportamiento(obs.id, usuario_id=10, usuario_rol="director")
         assert repo._regs == {}
 
     def test_promover_a_comportamiento_profesor_no_autorizado(self):
@@ -986,9 +1108,7 @@ class TestPromocionAComportamiento:
         obs = self._obs_comportamental(repo)
 
         with pytest.raises(PermissionError):
-            svc.promover_a_comportamiento(
-                obs.id, usuario_id=50, usuario_rol="profesor"
-            )
+            svc.promover_a_comportamiento(obs.id, usuario_id=50, usuario_rol="profesor")
         assert repo._regs == {}
 
     def test_promover_a_comportamiento_obs_sin_categoria_lanza(self):
@@ -997,28 +1117,28 @@ class TestPromocionAComportamiento:
         svc = ConvivenciaService(repo=repo)
         obs = repo.guardar_observacion(
             ObservacionPeriodo(
-                estudiante_id=1, asignacion_id=3, periodo_id=5,
-                texto="Sin categoría", es_publica=True,
+                estudiante_id=1,
+                asignacion_id=3,
+                periodo_id=5,
+                texto="Sin categoría",
+                es_publica=True,
                 categoria_id=None,
             )
         )
         with pytest.raises(ValueError):
-            svc.promover_a_comportamiento(
-                obs.id, usuario_id=10, usuario_rol="director"
-            )
+            svc.promover_a_comportamiento(obs.id, usuario_id=10, usuario_rol="director")
 
     def test_promover_a_comportamiento_obs_inexistente_lanza(self):
         """Observación no existe → ValueError."""
         svc, _ = _make_svc()
         with pytest.raises(ValueError, match="999"):
-            svc.promover_a_comportamiento(
-                999, usuario_id=10, usuario_rol="director"
-            )
+            svc.promover_a_comportamiento(999, usuario_id=10, usuario_rol="director")
 
 
 # ===========================================================================
 # Catálogo de retroalimentación (convivencia_13)
 # ===========================================================================
+
 
 class TestPromocionPlantillas:
     """Tests para promover_observacion_a_plantilla y listar_plantillas_sugeridas."""
@@ -1070,9 +1190,7 @@ class TestPromocionPlantillas:
         obs = self._obs_en_repo(repo)
 
         with pytest.raises(PermissionError):
-            svc.promover_observacion_a_plantilla(
-                obs.id, usuario_id=50, usuario_rol="profesor"
-            )
+            svc.promover_observacion_a_plantilla(obs.id, usuario_id=50, usuario_rol="profesor")
         # Ninguna plantilla debe haberse creado
         assert len(repo._plantillas) == 0
 
@@ -1080,9 +1198,7 @@ class TestPromocionPlantillas:
         """Si la observación no existe → ValueError."""
         svc, _ = _make_svc()
         with pytest.raises(ValueError, match="999"):
-            svc.promover_observacion_a_plantilla(
-                999, usuario_id=10, usuario_rol="director"
-            )
+            svc.promover_observacion_a_plantilla(999, usuario_id=10, usuario_rol="director")
 
     def test_listar_plantillas_sugeridas_limite(self):
         """listar_plantillas_sugeridas retorna como máximo `limite` elementos."""
@@ -1123,6 +1239,7 @@ class TestPromocionPlantillas:
 # FakeAlertaRepo para tests de alertas dentro de ConvivenciaService
 # ===========================================================================
 
+
 class FakeAlertaRepo(IAlertaRepository):
     """Implementación mínima de IAlertaRepository para tests de ConvivenciaService."""
 
@@ -1133,12 +1250,16 @@ class FakeAlertaRepo(IAlertaRepository):
         self._next_id = 1
 
     # Configuración
-    def get_configuracion(self, anio_id: int, tipo_alerta: TipoAlerta) -> ConfiguracionAlerta | None:
+    def get_configuracion(
+        self, anio_id: int, tipo_alerta: TipoAlerta
+    ) -> ConfiguracionAlerta | None:
         if self._cfg and self._cfg.tipo_alerta == tipo_alerta:
             return self._cfg
         return None
 
-    def listar_configuraciones(self, anio_id: int, solo_activas: bool = True) -> list[ConfiguracionAlerta]:
+    def listar_configuraciones(
+        self, anio_id: int, solo_activas: bool = True
+    ) -> list[ConfiguracionAlerta]:
         return [self._cfg] if self._cfg else []
 
     def guardar_configuracion(self, config: ConfiguracionAlerta) -> ConfiguracionAlerta:
@@ -1178,7 +1299,9 @@ class FakeAlertaRepo(IAlertaRepository):
     def resolver_alerta(self, alerta_id, usuario_id, observacion=None, fecha=None) -> bool:
         return False
 
-    def resolver_alertas_de_estudiante(self, estudiante_id, tipo_alerta, usuario_id, observacion=None) -> int:
+    def resolver_alertas_de_estudiante(
+        self, estudiante_id, tipo_alerta, usuario_id, observacion=None
+    ) -> int:
         return 0
 
     def listar_alertas_por_destinatario(
@@ -1188,7 +1311,8 @@ class FakeAlertaRepo(IAlertaRepository):
         solo_pendientes: bool = True,
     ) -> list[Alerta]:
         resultado = [
-            a for a in self._alertas
+            a
+            for a in self._alertas
             if a.usuario_destino_id == usuario_destino_id
             and (tipo is None or a.tipo_alerta.value == tipo)
             and (not solo_pendientes or not a.resuelta)
@@ -1199,6 +1323,7 @@ class FakeAlertaRepo(IAlertaRepository):
 # ===========================================================================
 # convivencia_16: crear_alerta_seguimiento_manual
 # ===========================================================================
+
 
 class TestCrearAlertaSeguimientoManual:
     """Tests para ConvivenciaService.crear_alerta_seguimiento_manual (convivencia_16)."""
@@ -1218,9 +1343,7 @@ class TestCrearAlertaSeguimientoManual:
             descripcion="El estudiante requiere atención urgente.",
             nivel=NivelAlerta.ADVERTENCIA,
         )
-        alerta = svc.crear_alerta_seguimiento_manual(
-            dto, usuario_id=1, usuario_rol="director"
-        )
+        alerta = svc.crear_alerta_seguimiento_manual(dto, usuario_id=1, usuario_rol="director")
         assert alerta.id is not None
         assert alerta.tipo_alerta == TipoAlerta.SEGUIMIENTO_REQUERIDO
         assert alerta.estudiante_id == 5
@@ -1236,9 +1359,7 @@ class TestCrearAlertaSeguimientoManual:
             usuario_destino_id=7,
             descripcion="Seguimiento recomendado.",
         )
-        alerta = svc.crear_alerta_seguimiento_manual(
-            dto, usuario_id=2, usuario_rol="coordinador"
-        )
+        alerta = svc.crear_alerta_seguimiento_manual(dto, usuario_id=2, usuario_rol="coordinador")
         assert alerta.tipo_alerta == TipoAlerta.SEGUIMIENTO_REQUERIDO
 
     def test_crear_alerta_seguimiento_profesor_no_autorizado(self):
@@ -1250,9 +1371,7 @@ class TestCrearAlertaSeguimientoManual:
             descripcion="Intento no autorizado.",
         )
         with pytest.raises(PermissionError):
-            svc.crear_alerta_seguimiento_manual(
-                dto, usuario_id=50, usuario_rol="profesor"
-            )
+            svc.crear_alerta_seguimiento_manual(dto, usuario_id=50, usuario_rol="profesor")
         assert alerta_repo._alertas == []
 
     def test_crear_alerta_seguimiento_nivel_critica(self):
@@ -1264,15 +1383,14 @@ class TestCrearAlertaSeguimientoManual:
             descripcion="Situación crítica de convivencia.",
             nivel=NivelAlerta.CRITICA,
         )
-        alerta = svc.crear_alerta_seguimiento_manual(
-            dto, usuario_id=1, usuario_rol="director"
-        )
+        alerta = svc.crear_alerta_seguimiento_manual(dto, usuario_id=1, usuario_rol="director")
         assert alerta.nivel == NivelAlerta.CRITICA
 
 
 # ===========================================================================
 # convivencia_17: _verificar_alerta_comportamiento usa SEGUIMIENTO_REQUERIDO
 # ===========================================================================
+
 
 class TestVerificarAlertaComportamiento:
     """Tests para _verificar_alerta_comportamiento (convivencia_17)."""
@@ -1354,17 +1472,20 @@ class TestVerificarAlertaComportamiento:
 # convivencia_18: vista_360
 # ===========================================================================
 
+
 class _FakeEstWithGrupo:
     """Estudiante fake con id, nombre, apellido y grupo_id."""
+
     def __init__(self, id: int, nombre: str = "Ana", apellido: str = "Ruiz", grupo_id: int = 10):
-        self.id       = id
-        self.nombre   = nombre
+        self.id = id
+        self.nombre = nombre
         self.apellido = apellido
         self.grupo_id = grupo_id
 
 
 class _FakeEstSvcById:
     """EstudianteService fake con get_by_id."""
+
     def __init__(self, estudiante):
         self._est = estudiante
 
@@ -1392,7 +1513,7 @@ def _svc_vista_360(
     }
     if con_niveles:
         svc_kwargs["configuracion_svc_provider"] = lambda: _FakeConfigSvc(_NIVELES)
-        svc_kwargs["periodo_svc_provider"]        = lambda: _FakePeriodoSvc()
+        svc_kwargs["periodo_svc_provider"] = lambda: _FakePeriodoSvc()
     if catalogo_autoriza is not None:
         stub = _StubCatalogoSvc(autoriza=catalogo_autoriza)
         svc_kwargs["catalogo_academico_svc_provider"] = lambda: stub
@@ -1408,24 +1529,36 @@ class TestVista360:
         alerta_repo = FakeAlertaRepo()
         # Precargar datos
         conv_repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
-            valor=85.0, observacion="Excelente conducta",
-        )
-        conv_repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=3, periodo_id=5,
-            texto="Participativo y respetuoso", es_publica=True,
-        ))
-        alerta_repo.guardar_alerta(Alerta(
-            tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
             estudiante_id=1,
-            descripcion="Requiere seguimiento",
-            nivel=NivelAlerta.ADVERTENCIA,
-        ))
+            grupo_id=10,
+            periodo_id=5,
+            valor=85.0,
+            observacion="Excelente conducta",
+        )
+        conv_repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=3,
+                periodo_id=5,
+                texto="Participativo y respetuoso",
+                es_publica=True,
+            )
+        )
+        alerta_repo.guardar_alerta(
+            Alerta(
+                tipo_alerta=TipoAlerta.SEGUIMIENTO_REQUERIDO,
+                estudiante_id=1,
+                descripcion="Requiere seguimiento",
+                nivel=NivelAlerta.ADVERTENCIA,
+            )
+        )
 
         svc, _ = _svc_vista_360(conv_repo=conv_repo, alerta_repo=alerta_repo)
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=10, usuario_rol="director",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=10,
+            usuario_rol="director",
         )
 
         assert isinstance(dto, Seguimiento360DTO)
@@ -1442,7 +1575,10 @@ class TestVista360:
         """director_de_grupo con autorización de catalogo accede correctamente."""
         conv_repo = FakeConvRepo()
         conv_repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=70.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=70.0,
         )
 
         svc, _ = _svc_vista_360(
@@ -1450,8 +1586,10 @@ class TestVista360:
             catalogo_autoriza=True,  # _StubCatalogoSvc(autoriza=True)
         )
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=99, usuario_rol="director_de_grupo",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=99,
+            usuario_rol="director_de_grupo",
         )
         assert isinstance(dto, Seguimiento360DTO)
         assert dto.nota_comportamiento == pytest.approx(70.0)
@@ -1461,8 +1599,10 @@ class TestVista360:
         svc, _ = _svc_vista_360(catalogo_autoriza=False)
         with pytest.raises(PermissionError):
             svc.vista_360(
-                estudiante_id=1, periodo_id=5,
-                usuario_id=99, usuario_rol="director_de_grupo",
+                estudiante_id=1,
+                periodo_id=5,
+                usuario_id=99,
+                usuario_rol="director_de_grupo",
             )
 
     def test_vista_360_profesor_no_autorizado(self):
@@ -1470,16 +1610,20 @@ class TestVista360:
         svc, _ = _svc_vista_360()
         with pytest.raises(PermissionError, match="Solo director"):
             svc.vista_360(
-                estudiante_id=1, periodo_id=5,
-                usuario_id=50, usuario_rol="profesor",
+                estudiante_id=1,
+                periodo_id=5,
+                usuario_id=50,
+                usuario_rol="profesor",
             )
 
     def test_vista_360_sin_datos(self):
         """Sin nota ni observaciones → DTO con campos None y listas vacías."""
         svc, _ = _svc_vista_360()
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=10, usuario_rol="director",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=10,
+            usuario_rol="director",
         )
         assert isinstance(dto, Seguimiento360DTO)
         assert dto.nota_comportamiento is None
@@ -1493,8 +1637,10 @@ class TestVista360:
         """Coordinador también accede sin restricciones adicionales."""
         svc, _ = _svc_vista_360()
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=20, usuario_rol="coordinador",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=20,
+            usuario_rol="coordinador",
         )
         assert isinstance(dto, Seguimiento360DTO)
 
@@ -1503,8 +1649,10 @@ class TestVista360:
         conv_repo = FakeConvRepo()
         svc, _ = _svc_vista_360(conv_repo=conv_repo, alerta_repo=None)
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=10, usuario_rol="director",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=10,
+            usuario_rol="director",
         )
         assert dto.alertas_activas == []
 
@@ -1512,13 +1660,18 @@ class TestVista360:
         """Sin providers de niveles, vista_360 extrae nota directamente del repo."""
         conv_repo = FakeConvRepo()
         conv_repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
-            valor=75.0, observacion="Buen comportamiento",
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=75.0,
+            observacion="Buen comportamiento",
         )
         svc, _ = _svc_vista_360(conv_repo=conv_repo, con_niveles=False)
         dto = svc.vista_360(
-            estudiante_id=1, periodo_id=5,
-            usuario_id=10, usuario_rol="director",
+            estudiante_id=1,
+            periodo_id=5,
+            usuario_id=10,
+            usuario_rol="director",
         )
         # Sin providers de niveles → nota extraída directo del repo
         assert dto.nota_comportamiento == pytest.approx(75.0)
@@ -1530,15 +1683,17 @@ class TestVista360:
 # convivencia_21: serie_notas_comportamiento y resumen_convivencia_grupo
 # ===========================================================================
 
+
 class _FakePeriodo:
     def __init__(self, id: int, nombre: str, anio_id: int = 2026):
-        self.id      = id
-        self.nombre  = nombre
+        self.id = id
+        self.nombre = nombre
         self.anio_id = anio_id
 
 
 class _FakePeriodoSvcConLista:
     """PeriodoService fake con listar_por_anio y get_by_id."""
+
     def __init__(self, periodos: list[_FakePeriodo]):
         self._periodos = periodos
 
@@ -1566,10 +1721,16 @@ class TestSerieNotasComportamiento:
         """Un punto por periodo, en orden; periodos sin nota → valor None."""
         repo = FakeConvRepo()
         repo._notas[(1, 1)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=1, valor=80.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=1,
+            valor=80.0,
         )
         repo._notas[(1, 3)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=3, valor=90.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=3,
+            valor=90.0,
         )
         svc = ConvivenciaService(
             repo=repo,
@@ -1613,7 +1774,11 @@ class TestResumenConvivenciaGrupo:
 
     def _ests(self):
         ests = [_FakeEst(1), _FakeEst(2), _FakeEst(3)]
-        for e, nom, ape in [(ests[0], "Ana", "Ruiz"), (ests[1], "Bob", "Diaz"), (ests[2], "Cyd", "Paz")]:
+        for e, nom, ape in [
+            (ests[0], "Ana", "Ruiz"),
+            (ests[1], "Bob", "Diaz"),
+            (ests[2], "Cyd", "Paz"),
+        ]:
             e.nombre = nom
             e.apellido = ape
         return ests
@@ -1623,9 +1788,7 @@ class TestResumenConvivenciaGrupo:
             repo=repo,
             alerta_repo=alerta_repo,
             configuracion_svc_provider=lambda: _FakeConfigSvc(_NIVELES),
-            periodo_svc_provider=lambda: _FakePeriodoSvcConLista(
-                [_FakePeriodo(5, "Periodo 5")]
-            ),
+            periodo_svc_provider=lambda: _FakePeriodoSvcConLista([_FakePeriodo(5, "Periodo 5")]),
             estudiante_svc_provider=lambda: _FakeEstSvc(ests),
         )
 
@@ -1636,23 +1799,46 @@ class TestResumenConvivenciaGrupo:
         repo._asig_grupo[99] = 10
         # Estudiante 1: nota Superior, 2 observaciones, 2 registros negativos.
         repo._notas[(1, 5)] = NotaComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5, valor=90.0,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            valor=90.0,
         )
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=99, periodo_id=5, texto="Obs A",
-        ))
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=99, periodo_id=5, texto="Obs B",
-        ))
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=99,
+                periodo_id=5,
+                texto="Obs A",
+            )
+        )
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=1,
+                asignacion_id=99,
+                periodo_id=5,
+                texto="Obs B",
+            )
+        )
         for _ in range(2):
-            repo.guardar_registro(RegistroComportamiento(
-                estudiante_id=1, grupo_id=10, periodo_id=5,
-                tipo=TipoRegistro.DIFICULTAD, descripcion="Incidente",
-            ))
+            repo.guardar_registro(
+                RegistroComportamiento(
+                    estudiante_id=1,
+                    grupo_id=10,
+                    periodo_id=5,
+                    tipo=TipoRegistro.DIFICULTAD,
+                    descripcion="Incidente",
+                )
+            )
         # Estudiante 2: sin nota, 1 observación, 0 negativos.
-        repo.guardar_observacion(ObservacionPeriodo(
-            estudiante_id=2, asignacion_id=99, periodo_id=5, texto="Obs C",
-        ))
+        repo.guardar_observacion(
+            ObservacionPeriodo(
+                estudiante_id=2,
+                asignacion_id=99,
+                periodo_id=5,
+                texto="Obs C",
+            )
+        )
         # Estudiante 3: sin nada.
 
         alerta_repo = FakeAlertaRepo(cfg=self._cfg_umbral(umbral=2.0))
@@ -1692,10 +1878,15 @@ class TestResumenConvivenciaGrupo:
         repo = FakeConvRepo()
         ests = self._ests()
         for _ in range(5):
-            repo.guardar_registro(RegistroComportamiento(
-                estudiante_id=1, grupo_id=10, periodo_id=5,
-                tipo=TipoRegistro.DIFICULTAD, descripcion="Incidente",
-            ))
+            repo.guardar_registro(
+                RegistroComportamiento(
+                    estudiante_id=1,
+                    grupo_id=10,
+                    periodo_id=5,
+                    tipo=TipoRegistro.DIFICULTAD,
+                    descripcion="Incidente",
+                )
+            )
         svc = self._svc(repo, ests, alerta_repo=None)
         resumen = svc.resumen_convivencia_grupo(grupo_id=10, periodo_id=5)
         by_id = {r.estudiante_id: r for r in resumen}
@@ -1707,11 +1898,12 @@ class TestResumenConvivenciaGrupo:
 # convivencia_36: medidas pedagógicas
 # ===========================================================================
 
+
 class TestMedidasPedagogicas:
     """Tests para ConvivenciaService — CRUD de medidas pedagógicas."""
 
     def test_crear_medida_director(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         dto = NuevaMedidaPedagogicaDTO(nombre="Dialogo pedagogico", nivel_minimo=1)
         medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
         assert medida.id is not None
@@ -1720,7 +1912,7 @@ class TestMedidasPedagogicas:
         assert medida.activa is True
 
     def test_crear_medida_coordinador(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         dto = NuevaMedidaPedagogicaDTO(nombre="Citacion", nivel_minimo=2)
         medida = svc.crear_medida_pedagogica(dto, usuario_rol="coordinador")
         assert medida.id is not None
@@ -1733,7 +1925,7 @@ class TestMedidasPedagogicas:
             svc.crear_medida_pedagogica(dto, usuario_rol="profesor")
 
     def test_actualizar_medida(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         dto = NuevaMedidaPedagogicaDTO(nombre="Original", nivel_minimo=1)
         medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
 
@@ -1759,7 +1951,7 @@ class TestMedidasPedagogicas:
         assert repo._medidas[medida.id].activa is False
 
     def test_desactivar_medida_profesor_rechazado(self):
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         dto = NuevaMedidaPedagogicaDTO(nombre="X")
         medida = svc.crear_medida_pedagogica(dto, usuario_rol="director")
         with pytest.raises(PermissionError):
@@ -1767,7 +1959,7 @@ class TestMedidasPedagogicas:
 
     def test_listar_medidas_filtra_por_nivel(self):
         """Medidas con nivel_minimo=3 no aparecen en el listado si el tipo de situación es nivel 1."""
-        svc, repo = _make_svc()
+        svc, _repo = _make_svc()
         # Crear medidas de distintos niveles
         for nombre, nivel in [("Dialogo", 1), ("Citacion", 2), ("No renovacion", 3)]:
             dto = NuevaMedidaPedagogicaDTO(nombre=nombre, nivel_minimo=nivel)
@@ -1786,6 +1978,7 @@ class TestMedidasPedagogicas:
 # ===========================================================================
 # convivencia_37 — observador_estudiante + exportar_observador
 # ===========================================================================
+
 
 class _FakeEstConNombre:
     def __init__(self, id: int, nombre: str = "Ana", apellido: str = "Ruiz"):
@@ -1834,11 +2027,9 @@ class _FakeConvRepoObs37(FakeConvRepo):
         self._entradas_seg: dict[int, list] = {}
 
     def listar_entradas_seguimiento(self, registro_id: int):
-        from src.domain.models.convivencia import EntradaSeguimiento
         return self._entradas_seg.get(registro_id, [])
 
     def guardar_entrada_seguimiento(self, entrada):
-        from src.domain.models.convivencia import EntradaSeguimiento
         return entrada.model_copy(update={"id": 1})
 
     def listar_registros(self, filtro, institucion_id=None):
@@ -1860,7 +2051,6 @@ class _FakeConvRepoObs37(FakeConvRepo):
 
 def _svc_observador(est=None, periodos=None):
     """Crea un ConvivenciaService con providers para el observador."""
-    from src.domain.models.convivencia import EntradaSeguimiento
     repo = _FakeConvRepoObs37()
     est = est or _FakeEstConNombre(1)
     periodos = periodos or [_FakePeriodo37(5, "Periodo 1")]
@@ -1893,12 +2083,15 @@ class TestObservadorEstudiante:
 
     def test_entradas_incluyen_observaciones_y_registros_ordenados(self):
         from datetime import datetime
+
         periodos = [_FakePeriodo37(5, "P1")]
         svc, repo = _svc_observador(periodos=periodos)
 
         # Registro creado primero (fecha antigua)
         reg = RegistroComportamiento(
-            estudiante_id=1, grupo_id=10, periodo_id=5,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
             tipo=TipoRegistro.DIFICULTAD,
             descripcion="Pelea en el patio",
             fecha=date(2026, 3, 10),
@@ -1907,7 +2100,9 @@ class TestObservadorEstudiante:
 
         # Observación pública más reciente
         obs = ObservacionPeriodo(
-            estudiante_id=1, asignacion_id=1, periodo_id=5,
+            estudiante_id=1,
+            asignacion_id=1,
+            periodo_id=5,
             texto="Buen comportamiento",
             es_publica=True,
             fecha_registro=datetime(2026, 4, 1, 10, 0, 0),
@@ -1926,10 +2121,19 @@ class TestObservadorEstudiante:
     def test_resumen_cuenta_tipos_correctamente(self):
         periodos = [_FakePeriodo37(5, "P1")]
         svc, repo = _svc_observador(periodos=periodos)
-        for tipo in [TipoRegistro.FORTALEZA, TipoRegistro.FORTALEZA, TipoRegistro.DIFICULTAD, TipoRegistro.COMPROMISO]:
+        for tipo in [
+            TipoRegistro.FORTALEZA,
+            TipoRegistro.FORTALEZA,
+            TipoRegistro.DIFICULTAD,
+            TipoRegistro.COMPROMISO,
+        ]:
             reg = RegistroComportamiento(
-                estudiante_id=1, grupo_id=10, periodo_id=5,
-                tipo=tipo, descripcion="desc", fecha=date.today(),
+                estudiante_id=1,
+                grupo_id=10,
+                periodo_id=5,
+                tipo=tipo,
+                descripcion="desc",
+                fecha=date.today(),
             )
             repo.guardar_registro(reg)
 
@@ -1946,8 +2150,12 @@ class TestObservadorEstudiante:
 
         for per_id in [5, 6]:
             reg = RegistroComportamiento(
-                estudiante_id=1, grupo_id=10, periodo_id=per_id,
-                tipo=TipoRegistro.FORTALEZA, descripcion="X", fecha=date.today(),
+                estudiante_id=1,
+                grupo_id=10,
+                periodo_id=per_id,
+                tipo=TipoRegistro.FORTALEZA,
+                descripcion="X",
+                fecha=date.today(),
             )
             repo.guardar_registro(reg)
 
@@ -1962,7 +2170,6 @@ class TestObservadorEstudiante:
             svc.observador_estudiante(estudiante_id=1, anio_id=2026)
 
     def test_exportar_observador_pdf_retorna_bytes(self):
-        from src.infrastructure.exporters.null_exporter import NullExporter
         svc, _ = _svc_observador()
         datos_bytes = svc.exportar_observador(estudiante_id=1, anio_id=2026, formato="pdf")
         assert isinstance(datos_bytes, bytes)
@@ -1972,6 +2179,7 @@ class TestObservadorEstudiante:
 
     def test_exportar_observador_excel_retorna_bytes(self):
         from src.infrastructure.exporters.openpyxl_exporter import OpenpyxlExporter
+
         repo = _FakeConvRepoObs37()
         periodos = [_FakePeriodo37(5, "P1")]
         est = _FakeEstConNombre(1)
@@ -1997,8 +2205,6 @@ class TestObservadorEstudiante:
 # convivencia_38 — Integración tipos_situacion y medidas en reportes
 # ===========================================================================
 
-from src.domain.models.convivencia import TipoSituacion
-
 
 class _FakeConvRepo38(FakeConvRepo):
     """Repo con tipos de situación y medidas precargados para tests de conv_38."""
@@ -2007,7 +2213,7 @@ class _FakeConvRepo38(FakeConvRepo):
         super().__init__()
         self._tipos38 = tipos or []
         # medidas ya están en FakeConvRepo._medidas; guardamos las extra en el super
-        for m in (medidas or []):
+        for m in medidas or []:
             self._medidas[m.id] = m
 
     def listar_tipos_situacion(self, solo_activas=True, institucion_id=None):
@@ -2051,8 +2257,12 @@ class TestRegistrosInformablesPeriodo38:
     def test_campos_tipo_situacion_y_medida_presentes_cuando_none(self):
         svc, repo = self._svc_con_prefs()
         reg = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Problema en clase",
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Problema en clase",
             fecha=date(2026, 3, 1),
         )
         repo._regs[1] = reg
@@ -2067,9 +2277,14 @@ class TestRegistrosInformablesPeriodo38:
         tipo = _tipo(7, "Tipo II")
         svc, repo = self._svc_con_prefs(tipos=[tipo])
         reg = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Pelea",
-            fecha=date(2026, 3, 5), tipo_situacion_id=7,
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Pelea",
+            fecha=date(2026, 3, 5),
+            tipo_situacion_id=7,
         )
         repo._regs[1] = reg
         resultado = svc._registros_informables_periodo(1, 5)
@@ -2079,9 +2294,14 @@ class TestRegistrosInformablesPeriodo38:
         medida = _medida_obj(3, "Diálogo con acudiente")
         svc, repo = self._svc_con_prefs(medidas=[medida])
         reg = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Pelea",
-            fecha=date(2026, 3, 5), medida_id=3,
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Pelea",
+            fecha=date(2026, 3, 5),
+            medida_id=3,
         )
         repo._regs[1] = reg
         resultado = svc._registros_informables_periodo(1, 5)
@@ -2091,9 +2311,14 @@ class TestRegistrosInformablesPeriodo38:
         """Si el tipo_situacion_id no existe en el mapa, retorna None."""
         svc, repo = self._svc_con_prefs(tipos=[_tipo(1, "Tipo I")])
         reg = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta",
-            fecha=date(2026, 3, 5), tipo_situacion_id=999,
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Falta",
+            fecha=date(2026, 3, 5),
+            tipo_situacion_id=999,
         )
         repo._regs[1] = reg
         resultado = svc._registros_informables_periodo(1, 5)
@@ -2124,7 +2349,7 @@ class TestReportePeriodoGrupo38:
 
     def test_desglose_cero_cuando_hay_tipos_pero_sin_negativos(self):
         tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
-        svc, repo = self._svc_con_tipos(tipos=tipos)
+        svc, _repo = self._svc_con_tipos(tipos=tipos)
         filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
         assert len(filas) == 1
         desglose = filas[0].desglose_por_tipo
@@ -2136,24 +2361,43 @@ class TestReportePeriodoGrupo38:
         tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
         svc, repo = self._svc_con_tipos(tipos=tipos)
         repo._regs[1] = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta leve",
-            fecha=date(2026, 3, 1), tipo_situacion_id=1,
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Falta leve",
+            fecha=date(2026, 3, 1),
+            tipo_situacion_id=1,
         )
         repo._regs[2] = RegistroComportamiento(
-            id=2, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Agresión verbal",
-            fecha=date(2026, 3, 5), tipo_situacion_id=2,
+            id=2,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Agresión verbal",
+            fecha=date(2026, 3, 5),
+            tipo_situacion_id=2,
         )
         repo._regs[3] = RegistroComportamiento(
-            id=3, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Segunda leve",
-            fecha=date(2026, 3, 7), tipo_situacion_id=1,
+            id=3,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Segunda leve",
+            fecha=date(2026, 3, 7),
+            tipo_situacion_id=1,
         )
         # Fortaleza no debe contar como negativo
         repo._regs[4] = RegistroComportamiento(
-            id=4, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.FORTALEZA, descripcion="Buen trabajo",
+            id=4,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.FORTALEZA,
+            descripcion="Buen trabajo",
             fecha=date(2026, 3, 10),
         )
         filas = svc.reporte_periodo_grupo(grupo_id=10, periodo_id=5)
@@ -2165,16 +2409,22 @@ class TestReportePeriodoGrupo38:
 
     def test_pdf_incluye_columnas_desglose(self):
         tipos = [_tipo(1, "Tipo I"), _tipo(2, "Tipo II")]
-        svc, repo = self._svc_con_tipos(tipos=tipos)
+        _svc, repo = self._svc_con_tipos(tipos=tipos)
         repo._regs[1] = RegistroComportamiento(
-            id=1, estudiante_id=1, grupo_id=10, periodo_id=5,
-            tipo=TipoRegistro.DIFICULTAD, descripcion="Falta",
-            fecha=date(2026, 3, 1), tipo_situacion_id=1,
+            id=1,
+            estudiante_id=1,
+            grupo_id=10,
+            periodo_id=5,
+            tipo=TipoRegistro.DIFICULTAD,
+            descripcion="Falta",
+            fecha=date(2026, 3, 1),
+            tipo_situacion_id=1,
         )
 
         class _Cap:
             def exportar_excel(self, datos, nombre_hoja="Datos", ruta_destino=None):
                 return b""
+
             def exportar_pdf(self, html, ruta_destino=None):
                 return b""
 
@@ -2189,5 +2439,3 @@ class TestReportePeriodoGrupo38:
         pdf_bytes = svc2.exportar_reporte_periodo_grupo(10, 5, "pdf")
         assert isinstance(pdf_bytes, bytes)
         assert pdf_bytes[:5] == b"%PDF-"
-
-

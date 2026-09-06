@@ -219,8 +219,7 @@ def _render_module_card_admin(c: dict) -> None:
         .style(  # DYNAMIC
             f"--card-accent:{c['color']}; --card-accent-bg:{c['bg']}"
         )
-    ):
-        with ui.element("div").classes("portal-card-header"):
+    ), ui.element("div").classes("portal-card-header"):
             with ui.element("div").classes("portal-card-icon"):
                 ThemeManager.icono(c["icono"], size=22, color=c["color"])
             ui.label(c["label"]).classes("portal-card-title")

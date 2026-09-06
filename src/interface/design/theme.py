@@ -21,6 +21,7 @@ from __future__ import annotations
 import contextlib
 import logging
 from pathlib import Path
+from typing import ClassVar
 
 logger = logging.getLogger("THEME")
 
@@ -63,7 +64,7 @@ class ThemeManager:
     """
 
     CSS_BASE_DIR = Path(__file__).parent / "styles"
-    CSS_LOAD_ORDER = [
+    CSS_LOAD_ORDER: ClassVar[list[str]] = [
         "tokens.css",
         "reset.css",
         "typography.css",

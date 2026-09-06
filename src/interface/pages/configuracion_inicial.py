@@ -62,8 +62,7 @@ def configuracion_inicial_page() -> None:
     # ── Estado del paso activo ────────────────────────────────────────────────
     _paso: list[int] = [1]
 
-    with ui.element("div").classes("andes-login-bg w-full"):
-        with ui.element("div").classes("wizard-wide-card"):
+    with ui.element("div").classes("andes-login-bg w-full"), ui.element("div").classes("wizard-wide-card"):
             # ── Cabecera ──────────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):

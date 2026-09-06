@@ -629,8 +629,7 @@ def observaciones_page() -> None:
                             ui.label(f"Responsable: {seg_resp}").classes("text-gray-400")
 
     def _render_resumen(resumen: dict) -> None:
-        with ui.element("div").classes("px-4 pb-4 mt-3"):
-            with ui.element("div").classes("grid grid-cols-3 gap-2 text-center"):
+        with ui.element("div").classes("px-4 pb-4 mt-3"), ui.element("div").classes("grid grid-cols-3 gap-2 text-center"):
                 campos = [
                     ("Fortalezas", resumen.get("fortalezas", 0), "text-green-700"),
                     ("Dificultades", resumen.get("dificultades", 0), "text-red-700"),

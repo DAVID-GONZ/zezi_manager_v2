@@ -628,8 +628,7 @@ def configuracion_convivencia_page() -> None:
                 with ui.element("div").classes(layout_cls):
                     # ── Columna izquierda: Categorías (solo dir/coord) ─────────
                     if es_directivo:
-                        with ui.element("div").classes("page-col-side").style("order: 1"):
-                            with ui.element("div").classes("panel-card"):
+                        with ui.element("div").classes("page-col-side").style("order: 1"), ui.element("div").classes("panel-card"):
                                 with ui.row().classes("panel-toolbar"):
                                     ui.label("Categorías").classes("panel-title")
                                     ui.element("div").classes("panel-toolbar-spacer")
@@ -745,8 +744,7 @@ def configuracion_convivencia_page() -> None:
 
                     # ── Tipos de situación (solo dir/coord) ───────────────────
                     if es_directivo:
-                        with ui.element("div").classes("page-col-main").style("order: 3"):
-                            with ui.element("div").classes("panel-card"):
+                        with ui.element("div").classes("page-col-main").style("order: 3"), ui.element("div").classes("panel-card"):
                                 with ui.row().classes("panel-toolbar"):
                                     ui.label("Tipos de situación (Ley 1620)").classes("panel-title")
                                     ui.element("div").classes("panel-toolbar-spacer")
@@ -859,8 +857,7 @@ def configuracion_convivencia_page() -> None:
                     # ── Medidas pedagógicas (solo dir/coord) ──────────────────
                     if es_directivo:
                         medidas = _s["medidas"]
-                        with ui.element("div").classes("page-col-main").style("order: 4"):
-                            with ui.element("div").classes("panel-card"):
+                        with ui.element("div").classes("page-col-main").style("order: 4"), ui.element("div").classes("panel-card"):
                                 with ui.row().classes("panel-toolbar"):
                                     ui.label("Medidas pedagógicas (Decreto 1965)").classes("panel-title")
                                     ui.element("div").classes("panel-toolbar-spacer")
@@ -971,8 +968,7 @@ def configuracion_convivencia_page() -> None:
                                         )
 
                     # ── Plantillas (todos los roles AULA) ─────
-                    with ui.element("div").classes("page-col-main").style("order: 2"):
-                        with ui.element("div").classes("panel-card"):
+                    with ui.element("div").classes("page-col-main").style("order: 2"), ui.element("div").classes("panel-card"):
                             with ui.row().classes("panel-toolbar"):
                                 ui.label("Plantillas").classes("panel-title")
                                 ui.element("div").classes("panel-toolbar-spacer")

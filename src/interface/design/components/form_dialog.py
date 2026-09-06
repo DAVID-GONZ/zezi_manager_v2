@@ -98,8 +98,7 @@ def form_dialog(
                     _submit_btn_ref[0].props(remove="loading disable")
 
         # ── Header ─────────────────────────────────────────────────────────
-        with ui.element("div").classes("form-dialog-header"):
-            with ui.row().classes("form-dialog-header-row items-center w-full"):
+        with ui.element("div").classes("form-dialog-header"), ui.row().classes("form-dialog-header-row items-center w-full"):
                 _icono = icono if icono is not None else _VARIANT_ICON.get(variante)
                 if _icono:
                     with ui.element("div").classes("form-dialog-icon"):

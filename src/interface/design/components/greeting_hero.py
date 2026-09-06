@@ -82,8 +82,7 @@ def greeting_hero(
                 ui.label(mensaje).classes("greeting-desc")
 
             # Columna derecha: badge de rol
-            with ui.element("div").classes("greeting-hero-right"):
-                with ui.element("div").classes("greeting-badge"):
+            with ui.element("div").classes("greeting-hero-right"), ui.element("div").classes("greeting-badge"):
                     ThemeManager.icono(
                         Icons.PROFILE,
                         size=16,

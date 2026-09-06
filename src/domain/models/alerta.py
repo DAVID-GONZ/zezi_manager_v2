@@ -24,9 +24,9 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Self
 
-from .tenant import TenantScope
-
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+from .tenant import TenantScope
 
 # =============================================================================
 # Enumeraciones

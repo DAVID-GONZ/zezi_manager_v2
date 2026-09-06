@@ -267,8 +267,7 @@ def catalogo_instituciones_page() -> None:
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
-        with ui.element("div").classes("page-stack"):
-            with ui.element("div").classes("panel-card"):
+        with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
                 with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
                     ui.label("Instituciones registradas").classes("text-base font-semibold")
                     btn_primary(

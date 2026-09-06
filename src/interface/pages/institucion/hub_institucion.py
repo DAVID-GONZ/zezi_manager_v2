@@ -767,8 +767,7 @@ def hub_institucion_page() -> None:
 
     # ── Contenido principal ───────────────────────────────────────────────────
     def contenido() -> None:
-        with ui.element("div").classes("page-stack"):
-            with ui.element("div").classes("panel-card"):
+            with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
                 with ui.tabs().classes("w-full") as tabs:
                     tab_id = ui.tab("identidad", label="Identidad")
                     tab_pref = ui.tab("preferencias", label="Preferencias")

@@ -579,33 +579,32 @@ def asignaciones_page() -> None:
             activo_uid_map, cargas=cargas, caps=caps,
         )
 
-        with ui.element("div").classes("panel-card"):
-            with ui.row().classes("form-row-between"):
-                with ui.element("div"):
-                    grado_txt = f" · Grado {grupo.grado}" if grupo.grado is not None else ""
-                    ui.label(f"{grupo.codigo} · {grupo.nombre}{grado_txt}").classes(
-                        "text-subtitle1 font-semibold"
-                    )
-                    if plan:
-                        sub = f"{cubiertas}/{len(plan)} materias · {horas_asignadas}/{total_horas} h"
-                        if restantes > 0:
-                            sub += f" · faltan {restantes} h"
-                        cls_sub = "text-xs text-warning" if restantes > 0 else "text-xs text-secondary"
-                        ui.label(sub).classes(cls_sub)
-                    else:
-                        ui.label(
-                            "Sin plan de estudios. Defínelo en «Plan de estudios» o agrega materias."
-                        ).classes("text-xs text-warning")
-                with ui.row().classes("items-center gap-2"):
-                    ui.switch(
-                        "Solo con cupo",
-                        value=_s["solo_con_cupo"],
-                        on_change=lambda e: (
-                            presenter.set_solo_con_cupo(e.value),
-                            matriz.refresh(),
-                        ),
-                    ).props("dense")
-                    btn_secondary("Agregar materia", icon="add", on_click=_agregar_fuera_plan)
+        with ui.element("div").classes("panel-card"), ui.row().classes("form-row-between"):
+            with ui.element("div"):
+                grado_txt = f" · Grado {grupo.grado}" if grupo.grado is not None else ""
+                ui.label(f"{grupo.codigo} · {grupo.nombre}{grado_txt}").classes(
+                    "text-subtitle1 font-semibold"
+                )
+                if plan:
+                    sub = f"{cubiertas}/{len(plan)} materias · {horas_asignadas}/{total_horas} h"
+                    if restantes > 0:
+                        sub += f" · faltan {restantes} h"
+                    cls_sub = "text-xs text-warning" if restantes > 0 else "text-xs text-secondary"
+                    ui.label(sub).classes(cls_sub)
+                else:
+                    ui.label(
+                        "Sin plan de estudios. Defínelo en «Plan de estudios» o agrega materias."
+                    ).classes("text-xs text-warning")
+            with ui.row().classes("items-center gap-2"):
+                ui.switch(
+                    "Solo con cupo",
+                    value=_s["solo_con_cupo"],
+                    on_change=lambda e: (
+                        presenter.set_solo_con_cupo(e.value),
+                        matriz.refresh(),
+                    ),
+                ).props("dense")
+                btn_secondary("Agregar materia", icon="add", on_click=_agregar_fuera_plan)
 
         if plan:
             with ui.element("div").classes("panel-card u-mt-xs"):

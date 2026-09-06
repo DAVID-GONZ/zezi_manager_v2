@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..models.tenant import TenantScope
 from ..models.estudiante import (
     Estudiante,
     EstudianteResumenDTO,
@@ -44,6 +43,7 @@ from ..models.estudiante import (
     TipoMovimiento,
 )
 from ..models.piar import PIAR
+from ..models.tenant import TenantScope
 
 
 class IEstudianteRepository(ABC):

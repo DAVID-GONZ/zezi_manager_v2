@@ -485,8 +485,9 @@ def planes_mejoramiento_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             # Header
-            with ui.element("div").classes("panel-card mb-0"):
-                with ui.row().classes("items-center gap-2"):
+            with ui.element("div").classes("panel-card mb-0"), ui.row().classes(
+                "items-center gap-2"
+            ):
                     ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
                     ui.label("Planes de Mejoramiento").classes("section-title-xl")
                     btn_ghost(

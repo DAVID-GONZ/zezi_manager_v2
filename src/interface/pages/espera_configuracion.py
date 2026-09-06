@@ -27,8 +27,7 @@ def espera_configuracion_page() -> None:
 
     rol = app.storage.user.get("usuario_rol", "")
 
-    with ui.element("div").classes("andes-login-bg w-full"):
-        with ui.element("div").classes("wizard-espera-card"):
+    with ui.element("div").classes("andes-login-bg w-full"), ui.element("div").classes("wizard-espera-card"):
             # ── Ícono + título ────────────────────────────────────────────────
             with ui.element("div").classes("andes-login-logo"):
                 with ui.element("div").classes("andes-login-icon-wrap"):

@@ -20,8 +20,9 @@ def mi_cuenta_password_page() -> None:
     ctx = SessionContext.desde_storage()
 
     def contenido() -> None:
-        with ui.element("div").classes("pwd-page-center"):
-            with ui.element("div").classes("andes-login-card"):
+        with ui.element("div").classes("pwd-page-center"), ui.element("div").classes(
+            "andes-login-card"
+        ):
                 # Header
                 with ui.element("div").classes("andes-login-logo"):
                     with ui.element("div").classes("andes-login-icon-wrap"):

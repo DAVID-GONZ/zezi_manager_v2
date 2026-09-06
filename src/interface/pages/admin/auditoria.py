@@ -239,8 +239,7 @@ def auditoria_page() -> None:
 
     # ── Contenido principal ──────────────────────────────────────────────────────
     def contenido() -> None:
-        with ui.element("div").classes("page-stack"):
-            with ui.element("div").classes("panel-card"):
+        with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-sm"):
                     ThemeManager.icono("history", size=22, color="var(--color-primary)")
                     ui.label("Registro de auditoría").classes("text-xl font-bold")

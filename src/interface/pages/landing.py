@@ -39,8 +39,9 @@ def landing_page() -> None:
                 btn_primary("Regístrate", lambda: ui.navigate.to("/login"))
 
         # ── Hero ─────────────────────────────────────────────────────────────
-        with ui.element("section").classes("mkt-hero"):
-            with ui.element("div").classes("mkt-hero-content"):
+        with ui.element("section").classes("mkt-hero"), ui.element("div").classes(
+            "mkt-hero-content"
+        ):
                 ui.label("Gestión educativa para instituciones modernas").classes("mkt-hero-title")
                 ui.label(
                     "Controla asistencia, evaluaciones y convivencia en un solo lugar. "

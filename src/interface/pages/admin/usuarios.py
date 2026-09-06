@@ -300,10 +300,8 @@ def usuarios_page() -> None:
 
     # -- Contenido principal ---
     def contenido() -> None:
-        with ui.element("div").classes("page-stack"):
-            with ui.element("div").classes("panel-card"):
-                with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
-                    with ui.row().classes("form-row-center-md"):
+        with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
+                with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"), ui.row().classes("form-row-center-md"):
                         ui.label("Filtros:").classes("text-sm font-semibold")
                         roles_opts = {None: "Todos los roles"}
                         roles_opts.update(_ROLES_OPCIONES)

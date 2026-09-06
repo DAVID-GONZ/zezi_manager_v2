@@ -6,8 +6,6 @@ Cubre R1–R8, R16, R18, R19, R20 del paso datos_01_excepciones_dominio.
 """
 from __future__ import annotations
 
-import pytest
-
 from src.domain.exceptions import (
     CategoriaError,
     CodigoError,
@@ -20,7 +18,6 @@ from src.domain.exceptions import (
     ReglaDeNegocioError,
     ZeciError,
 )
-
 
 # ---------------------------------------------------------------------------
 # R1 — Herencia de ValueError por familia
@@ -216,7 +213,6 @@ def test_no_quedan_raises_genericos_en_servicios():  # R18
 
 def test_zecierror_lanzados_usan_codigoerror():  # R20
     """Cada ZeciError lanzado desde servicios usa un miembro de CodigoError."""
-    import ast
     import pathlib
 
     # Solo verifica que no se pasan strings literales fuera del enum

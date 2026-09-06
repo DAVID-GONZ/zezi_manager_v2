@@ -231,9 +231,8 @@ def test_registrar_comportamiento_tipo_obligatorio_sin_id_falla(repo, db):
         tipo="dificultad",
         descripcion="Sin clasificar, pero obligatorio",
     )
-    with usar_institucion(1):
-        with pytest.raises(ValueError, match="clasificacion"):
-            svc_obligatorio.registrar_comportamiento(dto)
+    with usar_institucion(1), pytest.raises(ValueError, match="clasificacion"):
+        svc_obligatorio.registrar_comportamiento(dto)
 
 
 def test_registrar_comportamiento_con_tipo_situacion(svc, db):

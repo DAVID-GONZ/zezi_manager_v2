@@ -104,7 +104,7 @@ def _ast_check_function(
                 )
 
     # Argumentos keyword-only
-    for arg, kw_default in zip(args.kwonlyargs, args.kw_defaults):
+    for arg, kw_default in zip(args.kwonlyargs, args.kw_defaults, strict=False):
         if arg.arg != "institucion_id":
             continue
         if (

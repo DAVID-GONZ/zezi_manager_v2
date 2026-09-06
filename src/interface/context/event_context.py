@@ -28,7 +28,7 @@ def instalar_interceptor_tenant() -> None:
     _original_handle_event = Client.handle_event
 
     def _wrapper(self: Client, msg: dict) -> None:
-        from src.interface.context.session_context import SessionContext  # noqa: PLC0415
+        from src.interface.context.session_context import SessionContext
         try:
             SessionContext.desde_storage()
         except RuntimeError as exc:

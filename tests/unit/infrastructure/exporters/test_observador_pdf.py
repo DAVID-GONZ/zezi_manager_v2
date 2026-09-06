@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import pytest
-
 from src.infrastructure.exporters.observador_pdf import generar_observador_pdf
 
 

@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..models.tenant import TenantScope
 from ..models.convivencia import (
     CategoriaObservacion,
     EntradaSeguimiento,
@@ -39,6 +38,7 @@ from ..models.convivencia import (
     RegistroComportamiento,
     TipoSituacion,
 )
+from ..models.tenant import TenantScope
 
 
 class IConvivenciaRepository(ABC):

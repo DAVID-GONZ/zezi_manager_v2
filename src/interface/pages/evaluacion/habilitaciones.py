@@ -387,8 +387,7 @@ def habilitaciones_page() -> None:
 
             with ui.tab_panels(tabs, value="nivelacion").classes("w-full mt-0"):
                 # ── Tab 1: Nivelación ─────────────────────────────────────────
-                with ui.tab_panel("nivelacion"):
-                    with ui.element("div").classes("panel-card"):
+                with ui.tab_panel("nivelacion"), ui.element("div").classes("panel-card"):
                         with ui.row().classes("form-row-center u-mb-lg"):
                             ThemeManager.icono(Icons.GRADES, size=22, color="var(--color-primary)")
                             ui.label("Planilla de Nivelación").classes("text-xl font-bold")

@@ -1,8 +1,6 @@
 """Tests del ObservacionesPresenter."""
 from __future__ import annotations
 
-import pytest
-
 from src.interface.presenters.convivencia.observaciones_presenter import ObservacionesPresenter
 
 

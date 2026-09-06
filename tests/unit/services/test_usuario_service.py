@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import pytest
-from src.domain.exceptions import ConflictoError, DependenciaNoDisponibleError, PermisoDenegadoError
 
+from src.domain.exceptions import DependenciaNoDisponibleError, PermisoDenegadoError
 from src.domain.models.usuario import (
     DocenteInfoDTO,
     FiltroUsuariosDTO,

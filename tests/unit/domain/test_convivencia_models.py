@@ -4,9 +4,11 @@ Tests unitarios de dominio — modelos de convivencia (convivencia_09, convivenc
 Cubre CategoriaObservacion, NuevaCategoriaDTO, TipoSituacion, NuevoTipoSituacionDTO,
 NotaComportamiento.aprobado y RegistroComportamiento.tipo_situacion_id.
 """
+
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from src.domain.models.convivencia import (
     CategoriaObservacion,
@@ -23,8 +25,8 @@ from src.domain.models.convivencia import (
 # CategoriaObservacion
 # ---------------------------------------------------------------------------
 
-class TestCategoriaObservacion:
 
+class TestCategoriaObservacion:
     def test_defaults(self):
         """Defaults: activa=True, es_comportamental=False, id=None."""
         c = CategoriaObservacion(nombre="Académico")
@@ -62,8 +64,8 @@ class TestCategoriaObservacion:
 # NuevaCategoriaDTO
 # ---------------------------------------------------------------------------
 
-class TestNuevaCategoriaDTO:
 
+class TestNuevaCategoriaDTO:
     def test_defaults(self):
         """es_comportamental es False por defecto."""
         dto = NuevaCategoriaDTO(nombre="Participación")
@@ -86,8 +88,8 @@ class TestNuevaCategoriaDTO:
 # TipoSituacion (convivencia_34)
 # ---------------------------------------------------------------------------
 
-class TestTipoSituacion:
 
+class TestTipoSituacion:
     def test_defaults(self):
         t = TipoSituacion(nombre="Tipo I")
         assert t.id is None
@@ -106,7 +108,9 @@ class TestTipoSituacion:
         assert t.activa is False
 
     def test_model_dump_incluye_todos_los_campos(self):
-        t = TipoSituacion(id=1, nombre="Tipo I", nivel=1, descripcion="desc", activa=True, institucion_id=2)
+        t = TipoSituacion(
+            id=1, nombre="Tipo I", nivel=1, descripcion="desc", activa=True, institucion_id=2
+        )
         d = t.model_dump()
         assert d["id"] == 1
         assert d["nombre"] == "Tipo I"
@@ -119,8 +123,8 @@ class TestTipoSituacion:
 # NuevoTipoSituacionDTO (convivencia_34)
 # ---------------------------------------------------------------------------
 
-class TestNuevoTipoSituacionDTO:
 
+class TestNuevoTipoSituacionDTO:
     def test_nivel_valido_1(self):
         dto = NuevoTipoSituacionDTO(nombre="Tipo I", nivel=1)
         assert dto.nivel == 1
@@ -130,11 +134,11 @@ class TestNuevoTipoSituacionDTO:
         assert dto.nivel == 3
 
     def test_nivel_cero_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             NuevoTipoSituacionDTO(nombre="Inválido", nivel=0)
 
     def test_nivel_cuatro_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             NuevoTipoSituacionDTO(nombre="Inválido", nivel=4)
 
     def test_nivel_default_es_uno(self):
@@ -146,8 +150,8 @@ class TestNuevoTipoSituacionDTO:
 # NotaComportamiento.aprobado (fix R11 — convivencia_34)
 # ---------------------------------------------------------------------------
 
-class TestNotaComportamientoAprobado:
 
+class TestNotaComportamientoAprobado:
     def test_aprobado_igual_al_minimo(self):
         nota = NotaComportamiento(estudiante_id=1, grupo_id=1, periodo_id=1, valor=60.0)
         assert nota.aprobado is True
@@ -169,19 +173,26 @@ class TestNotaComportamientoAprobado:
 # RegistroComportamiento.tipo_situacion_id (convivencia_34)
 # ---------------------------------------------------------------------------
 
-class TestRegistroComportamientoTipoSituacion:
 
+class TestRegistroComportamientoTipoSituacion:
     def test_tipo_situacion_id_none_por_defecto(self):
         r = RegistroComportamiento(
-            estudiante_id=1, grupo_id=1, periodo_id=1,
-            tipo="dificultad", descripcion="test",
+            estudiante_id=1,
+            grupo_id=1,
+            periodo_id=1,
+            tipo="dificultad",
+            descripcion="test",
         )
         assert r.tipo_situacion_id is None
 
     def test_tipo_situacion_id_asignable(self):
         r = RegistroComportamiento(
-            estudiante_id=1, grupo_id=1, periodo_id=1,
-            tipo="fortaleza", descripcion="test", tipo_situacion_id=3,
+            estudiante_id=1,
+            grupo_id=1,
+            periodo_id=1,
+            tipo="fortaleza",
+            descripcion="test",
+            tipo_situacion_id=3,
         )
         assert r.tipo_situacion_id == 3
 
@@ -190,8 +201,8 @@ class TestRegistroComportamientoTipoSituacion:
 # MedidaPedagogica (convivencia_36)
 # ---------------------------------------------------------------------------
 
-class TestMedidaPedagogica:
 
+class TestMedidaPedagogica:
     def test_defaults(self):
         m = MedidaPedagogica(nombre="Dialogo pedagogico")
         assert m.id is None
@@ -220,8 +231,8 @@ class TestMedidaPedagogica:
 # NuevaMedidaPedagogicaDTO (convivencia_36)
 # ---------------------------------------------------------------------------
 
-class TestNuevaMedidaPedagogicaDTO:
 
+class TestNuevaMedidaPedagogicaDTO:
     def test_nivel_valido_1(self):
         dto = NuevaMedidaPedagogicaDTO(nombre="Dialogo", nivel_minimo=1)
         assert dto.nivel_minimo == 1
@@ -231,11 +242,11 @@ class TestNuevaMedidaPedagogicaDTO:
         assert dto.nivel_minimo == 3
 
     def test_nivel_cero_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             NuevaMedidaPedagogicaDTO(nombre="Inválido", nivel_minimo=0)
 
     def test_nivel_cuatro_rechazado(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             NuevaMedidaPedagogicaDTO(nombre="Inválido", nivel_minimo=4)
 
     def test_nivel_default_es_uno(self):
@@ -247,27 +258,38 @@ class TestNuevaMedidaPedagogicaDTO:
 # RegistroComportamiento.medida_id (convivencia_36)
 # ---------------------------------------------------------------------------
 
-class TestRegistroComportamientoMedidaId:
 
+class TestRegistroComportamientoMedidaId:
     def test_medida_id_none_por_defecto(self):
         r = RegistroComportamiento(
-            estudiante_id=1, grupo_id=1, periodo_id=1,
-            tipo="dificultad", descripcion="test",
+            estudiante_id=1,
+            grupo_id=1,
+            periodo_id=1,
+            tipo="dificultad",
+            descripcion="test",
         )
         assert r.medida_id is None
 
     def test_medida_id_asignable(self):
         r = RegistroComportamiento(
-            estudiante_id=1, grupo_id=1, periodo_id=1,
-            tipo="dificultad", descripcion="test", medida_id=2,
+            estudiante_id=1,
+            grupo_id=1,
+            periodo_id=1,
+            tipo="dificultad",
+            descripcion="test",
+            medida_id=2,
         )
         assert r.medida_id == 2
 
     def test_medida_id_independiente_de_tipo_situacion(self):
         r = RegistroComportamiento(
-            estudiante_id=1, grupo_id=1, periodo_id=1,
-            tipo="citacion_acudiente", descripcion="test",
-            tipo_situacion_id=1, medida_id=3,
+            estudiante_id=1,
+            grupo_id=1,
+            periodo_id=1,
+            tipo="citacion_acudiente",
+            descripcion="test",
+            tipo_situacion_id=1,
+            medida_id=3,
         )
         assert r.tipo_situacion_id == 1
         assert r.medida_id == 3

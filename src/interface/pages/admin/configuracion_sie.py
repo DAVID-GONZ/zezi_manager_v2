@@ -899,8 +899,7 @@ def configuracion_sie_page() -> None:
     def contenido() -> None:
         with ui.element("div").classes("page-stack"):
             # Header
-            with ui.element("div").classes("panel-card mb-0"):
-                with ui.row().classes("items-center gap-2"):
+            with ui.element("div").classes("panel-card mb-0"), ui.row().classes("items-center gap-2"):
                     ThemeManager.icono("school", size=22, color="var(--color-primary)")
                     ui.label("Configuración SIEE").classes("section-title-xl")
                     btn_ghost(

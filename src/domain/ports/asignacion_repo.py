@@ -33,12 +33,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..models.tenant import TenantScope
 from ..models.asignacion import (
     Asignacion,
     AsignacionInfo,
     FiltroAsignacionesDTO,
 )
+from ..models.tenant import TenantScope
 
 
 class IAsignacionRepository(ABC):

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+
 from src.domain.models.habilitacion import (
     CerrarPlanMejoramientoDTO,
     EstadoHabilitacion,

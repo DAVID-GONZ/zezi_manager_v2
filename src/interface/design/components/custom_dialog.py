@@ -62,8 +62,7 @@ def custom_dialog(
         dlg.props("persistent")
 
     ancho_cls = _MAX_WIDTHS.get(max_width, _MAX_WIDTHS["md"])
-    with dlg, ui.card().classes(f"andes-card form-dialog-card {ancho_cls}"):
-        with ui.element("div").classes("form-dialog-body"):
+    with dlg, ui.card().classes(f"andes-card form-dialog-card {ancho_cls}"), ui.element("div").classes("form-dialog-body"):
             yield dlg
 
 

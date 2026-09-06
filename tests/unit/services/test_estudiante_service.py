@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import pytest
-from src.domain.exceptions import PermisoDenegadoError
 
+from src.domain.exceptions import PermisoDenegadoError
 from src.domain.models.estudiante import (
     EstadoMatricula,
     Estudiante,
