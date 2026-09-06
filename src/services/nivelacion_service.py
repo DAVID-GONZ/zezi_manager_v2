@@ -10,6 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.cierre import CierrePeriodo
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
@@ -140,7 +145,7 @@ class NivelacionService:
         # Validar que la suma de pesos existente + nuevo peso no supera 1.0
         suma_actual = self._repo.suma_pesos_actividades(dto.asignacion_id, dto.periodo_id)
         if round(suma_actual + dto.peso, 4) > 1.001:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Agregar esta actividad (peso={dto.peso:.0%}) supera el 100% "
                 f"— pesos actuales: {suma_actual:.0%}."
             )
@@ -189,14 +194,14 @@ class NivelacionService:
         """
         nota = self._repo.get_nota(actividad_nivelacion_id, estudiante_id)
         if nota is None:
-            raise ValueError(
+            raise NoEncontradoError(
                 f"No existe registro de nivelación para el estudiante {estudiante_id} "
                 f"en la actividad {actividad_nivelacion_id}."
             )
         # Verificar que la nivelación no esté cerrada
         cierre = self._repo.get_cierre(nota.asignacion_id, nota.periodo_id)
         if cierre is not None:
-            raise ValueError("La nivelación ya está cerrada. No se pueden modificar notas.")
+            raise ConflictoError("La nivelación ya está cerrada. No se pueden modificar notas.")
         nota_actualizada = nota.model_copy(
             update={
                 "valor": dto.valor,
@@ -239,12 +244,12 @@ class NivelacionService:
         # 1. ¿Ya cerrada?
         existente = self._repo.get_cierre(asignacion_id, periodo_id)
         if existente is not None:
-            raise ValueError("La nivelación ya fue cerrada para esta asignación y período.")
+            raise ConflictoError("La nivelación ya fue cerrada para esta asignación y período.")
 
         # 2. Actividades existentes
         actividades = self._repo.listar_actividades(asignacion_id, periodo_id)
         if not actividades:
-            raise ValueError(
+            raise NoEncontradoError(
                 "No hay actividades de nivelación registradas. "
                 "Agregue al menos una actividad antes de cerrar."
             )
@@ -252,7 +257,7 @@ class NivelacionService:
         # 3. Pesos suman 1.0
         if not CalculadorNivelacion.pesos_completos(actividades):
             suma = CalculadorNivelacion.suma_pesos(actividades)
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Los pesos de las actividades suman {suma:.0%} — deben sumar 100% "
                 "para poder cerrar la nivelación."
             )
@@ -261,7 +266,7 @@ class NivelacionService:
         notas = self._repo.listar_notas_por_asignacion(asignacion_id, periodo_id)
         pendientes = [n for n in notas if n.valor is None]
         if pendientes:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Hay {len(pendientes)} nota(s) sin calificar. "
                 "Complete todas las notas antes de cerrar."
             )

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from src.domain.exceptions import PermisoDenegadoError
 
 from src.domain.models.estudiante import (
     EstadoMatricula,
@@ -355,7 +356,7 @@ class TestRBACActorRol:
     # ── matricular ───────────────────────────────────────────────────────
     def test_matricular_rechaza_profesor(self):
         svc, _ = _make_svc()
-        with pytest.raises(ValueError, match="profesor"):
+        with pytest.raises(PermisoDenegadoError, match="profesor"):
             svc.matricular(_dto("P1"), actor_rol="profesor")
 
     def test_matricular_acepta_director(self):
@@ -379,7 +380,7 @@ class TestRBACActorRol:
         svc, _ = _make_svc()
         est = svc.matricular(_dto("U1"))
         dto = ActualizarEstudianteDTO(nombre="Nuevo")
-        with pytest.raises(ValueError, match="profesor"):
+        with pytest.raises(PermisoDenegadoError, match="profesor"):
             svc.actualizar(est.id, dto, actor_rol="profesor")
 
     def test_actualizar_acepta_director(self):
@@ -396,7 +397,7 @@ class TestRBACActorRol:
         est = svc.matricular(_dto("PI1"))
         svc.registrar_piar(self._piar_dto(est.id))
         dto = ActualizarPIARDTO(descripcion_necesidad="Actualizada")
-        with pytest.raises(ValueError, match="profesor"):
+        with pytest.raises(PermisoDenegadoError, match="profesor"):
             svc.actualizar_piar(est.id, 1, dto, actor_rol="profesor")
 
     def test_actualizar_piar_acepta_coordinador(self):
@@ -415,7 +416,7 @@ class TestRBACActorRol:
             "nombre": "Ana", "apellido": "Uno", "genero": "", "grupo_codigo": "",
         }]
         # Falla toda la carga con ValueError, no marca la fila como error.
-        with pytest.raises(ValueError, match="profesor"):
+        with pytest.raises(PermisoDenegadoError, match="profesor"):
             svc.matricular_masivo_csv(filas, {}, actor_rol="profesor")
 
     def test_csv_acepta_director(self):
@@ -552,7 +553,7 @@ class TestTrasladar:
         svc, _ = _make_svc_con_grupos(grupos)
         est = svc.matricular(NuevoEstudianteDTO(
             numero_documento="T5", nombre="Ana", apellido="Cinco", grupo_id=10))
-        with pytest.raises(ValueError, match="profesor"):
+        with pytest.raises(PermisoDenegadoError, match="profesor"):
             svc.trasladar(est.id, 11, motivo="x", actor_rol="profesor")
 
     def test_grupo_destino_inexistente_lanza(self):

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalculadorPlan,
@@ -54,18 +59,18 @@ class PlanMejoramientoService:
            con estado EN_PLAN (si nota < umbral) o SIN_PLAN.
         """
         if self._plan_repo.get_corte(dto.asignacion_id, dto.periodo_id) is not None:
-            raise ValueError("Ya existe un corte para esta asignación en este periodo")
+            raise ConflictoError("Ya existe un corte para esta asignación en este periodo")
 
         from src.services.contexto_tenant import institucion_actual
         estudiantes = self._est_repo.listar_por_grupo(grupo_id, institucion_actual() or "*")
         if not estudiantes:
-            raise ValueError("No hay estudiantes en el grupo")
+            raise ReglaDeNegocioError("No hay estudiantes en el grupo")
 
         categorias = self._eval_repo.listar_categorias(dto.asignacion_id, dto.periodo_id)
         actividades = self._eval_repo.listar_actividades(dto.asignacion_id, dto.periodo_id)
 
         if not categorias:
-            raise ValueError("No hay categorías configuradas para esta asignación y periodo")
+            raise ReglaDeNegocioError("No hay categorías configuradas para esta asignación y periodo")
 
         # Actividades agrupadas por categoria_id
         acts_por_cat: dict[int, list] = {}
@@ -89,7 +94,7 @@ class PlanMejoramientoService:
         ]
 
         if not cats_con_notas:
-            raise ValueError("No hay notas registradas para ninguna categoría")
+            raise ReglaDeNegocioError("No hay notas registradas para ninguna categoría")
 
         peso_reg = CalculadorPlan.peso_registrado([{"peso": c.peso} for c in cats_con_notas])
         umbral = CalculadorPlan.nota_umbral(peso_reg, dto.nota_minima_aprobacion)
@@ -173,7 +178,7 @@ class PlanMejoramientoService:
         """
         suma_actual = self._plan_repo.suma_pesos_actividades(dto.corte_id)
         if suma_actual + dto.peso > 1.0 + 0.005:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"La suma de pesos superaría 1.0 (actual: {suma_actual:.3f}, nuevo: {dto.peso:.3f})"
             )
 
@@ -231,19 +236,19 @@ class PlanMejoramientoService:
         """
         nota = self._plan_repo.get_nota_actividad(actividad_plan_id, estudiante_id)
         if nota is None:
-            raise ValueError("El estudiante no tiene asignada esta actividad de plan")
+            raise ReglaDeNegocioError("El estudiante no tiene asignada esta actividad de plan")
 
         # Buscar corte_id a través de la actividad
         actividad = self._plan_repo.get_actividad(actividad_plan_id)
         if actividad is None:
-            raise ValueError("Actividad de plan no encontrada")
+            raise NoEncontradoError("Actividad de plan no encontrada")
 
         nota_corte = self._plan_repo.get_nota_corte(actividad.corte_id, estudiante_id)
         if nota_corte and nota_corte.estado in (
             EstadoNotaCorte.APROBADO,
             EstadoNotaCorte.REPROBADO,
         ):
-            raise ValueError("El plan del estudiante ya fue cerrado")
+            raise ConflictoError("El plan del estudiante ya fue cerrado")
 
         actualizada = nota.model_copy(update={"valor": dto.valor, "usuario_id": dto.usuario_id})
         return self._plan_repo.guardar_nota_actividad(actualizada)
@@ -273,15 +278,15 @@ class PlanMejoramientoService:
         """
         nota_corte = self._plan_repo.get_nota_corte(dto.corte_id, dto.estudiante_id)
         if nota_corte is None:
-            raise ValueError("No existe nota de corte para este estudiante")
+            raise NoEncontradoError("No existe nota de corte para este estudiante")
         if nota_corte.estado in (EstadoNotaCorte.APROBADO, EstadoNotaCorte.REPROBADO):
-            raise ValueError("El plan del estudiante ya fue cerrado")
+            raise ConflictoError("El plan del estudiante ya fue cerrado")
         if nota_corte.estado == EstadoNotaCorte.SIN_PLAN:
-            raise ValueError("El estudiante no está en plan de mejoramiento")
+            raise ReglaDeNegocioError("El estudiante no está en plan de mejoramiento")
 
         corte = self._plan_repo.get_corte_by_id(dto.corte_id)
         if corte is None:
-            raise ValueError("Corte no encontrado")
+            raise NoEncontradoError("Corte no encontrado")
 
         if dto.aprobado:
             nota_definitiva = CalculadorPlan.nota_definitiva_aprobado(
@@ -291,7 +296,7 @@ class PlanMejoramientoService:
         else:
             nota_calculada = self.calcular_nota_plan_estudiante(dto.corte_id, dto.estudiante_id)
             if nota_calculada is None:
-                raise ValueError("No todas las actividades del plan están calificadas")
+                raise ReglaDeNegocioError("No todas las actividades del plan están calificadas")
             nota_definitiva = nota_calculada
             nuevo_estado = EstadoNotaCorte.REPROBADO
 

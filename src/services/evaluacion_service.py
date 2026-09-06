@@ -9,6 +9,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from src.domain.exceptions import (
+    CodigoError,
+    ConflictoError,
+    DependenciaNoDisponibleError,
+    NoEncontradoError,
+    PermisoDenegadoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.dtos import ContextoAcademicoDTO
 from src.domain.models.evaluacion import (
@@ -102,7 +110,7 @@ class EvaluacionService:
             return
         periodo = self._periodo_repo.get_by_id(periodo_id)
         if periodo is not None and not periodo.esta_abierto:
-            raise ValueError(
+            raise ConflictoError(
                 f"El periodo con id {periodo_id} está cerrado. "
                 "No se pueden registrar cambios en periodos cerrados."
             )
@@ -110,13 +118,13 @@ class EvaluacionService:
     def _get_categoria_o_lanzar(self, cat_id: int) -> Categoria:
         cat = self._repo.get_categoria(cat_id)
         if cat is None:
-            raise ValueError(f"Categoría con id {cat_id} no existe.")
+            raise NoEncontradoError(f"Categoría con id {cat_id} no existe.")
         return cat
 
     def _get_actividad_o_lanzar(self, act_id: int) -> Actividad:
         act = self._repo.get_actividad(act_id)
         if act is None:
-            raise ValueError(f"Actividad con id {act_id} no existe.")
+            raise NoEncontradoError(f"Actividad con id {act_id} no existe.")
         return act
 
     # ------------------------------------------------------------------
@@ -184,9 +192,10 @@ class EvaluacionService:
 
         # Guard INSTITUCIONAL_FIJO
         if cfg.modo == ModoSIEE.INSTITUCIONAL_FIJO:
-            raise PermissionError(
+            raise PermisoDenegadoError(
                 "La configuración SIEE institucional está fijada. "
-                "Los docentes no pueden crear categorías propias."
+                "Los docentes no pueden crear categorías propias.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
 
         # Guard MIXTO_SUBCATEGORIAS: si viene padre, verificar que sea válido
@@ -195,17 +204,17 @@ class EvaluacionService:
                 and self._siee_repo is not None):
             padre = self._siee_repo.get_categoria_institucional(dto.categoria_padre_id)
             if padre is None:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"La categoría padre con id {dto.categoria_padre_id} "
                     "no es una categoría institucional."
                 )
             if not padre.permite_subcategorias:
-                raise ValueError(f"La categoría '{padre.nombre}' no permite sub-categorías.")
+                raise ReglaDeNegocioError(f"La categoría '{padre.nombre}' no permite sub-categorías.")
 
         # Guard de peso disponible
         disponible = self.peso_autonomia_disponible(dto.asignacion_id, dto.periodo_id, anio_id)
         if dto.peso > disponible + 0.001:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"El peso solicitado ({dto.peso * 100:.1f}%) supera el disponible "
                 f"({disponible * 100:.1f}%)."
             )
@@ -240,7 +249,7 @@ class EvaluacionService:
                 excluir_cat_id=cat_id,
             )
             if suma_sin_esta + dto.peso > 1.001:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"La suma de pesos superaría el 100% con el nuevo peso "
                     f"({dto.peso * 100:.1f}%). Disponible: {(1.0 - suma_sin_esta) * 100:.1f}%."
                 )
@@ -384,7 +393,7 @@ class EvaluacionService:
         """
         actividad = self._get_actividad_o_lanzar(act_id)
         if actividad.estado == EstadoActividad.CERRADA:
-            raise ValueError(
+            raise ConflictoError(
                 f"No se puede eliminar la actividad '{actividad.nombre}' porque está cerrada."
             )
         datos_ant = actividad.model_dump(mode="json")
@@ -424,7 +433,7 @@ class EvaluacionService:
         """
         actividad = self._get_actividad_o_lanzar(dto.actividad_id)
         if not actividad.acepta_notas:
-            raise ValueError(
+            raise ConflictoError(
                 f"La actividad '{actividad.nombre}' no acepta notas "
                 f"(estado: '{actividad.estado.value}'). "
                 "Solo las actividades publicadas aceptan notas."
@@ -449,7 +458,7 @@ class EvaluacionService:
         """
         actividad = self._get_actividad_o_lanzar(dto.actividad_id)
         if not actividad.acepta_notas:
-            raise ValueError(
+            raise ConflictoError(
                 f"La actividad '{actividad.nombre}' no acepta notas "
                 f"(estado: '{actividad.estado.value}')."
             )
@@ -556,10 +565,10 @@ class EvaluacionService:
             (el porcentaje autónomo supera lo que queda libre).
         """
         if self._siee_repo is None:
-            raise RuntimeError("SIEERepository no disponible.")
+            raise DependenciaNoDisponibleError("SIEERepository no disponible.", codigo=CodigoError.REPOSITORIO_NO_DISPONIBLE)
 
         if dto.modo == ModoSIEE.MIXTO_AUTONOMIA and dto.porcentaje_autonomia_docente is None:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 "Para el modo 'mixto_autonomia' debes indicar "
                 "el porcentaje de autonomía del docente."
             )
@@ -595,11 +604,11 @@ class EvaluacionService:
         Verifica que la suma de pesos institucionales no supere 1.0.
         """
         if self._siee_repo is None:
-            raise RuntimeError("SIEERepository no disponible.")
+            raise DependenciaNoDisponibleError("SIEERepository no disponible.", codigo=CodigoError.REPOSITORIO_NO_DISPONIBLE)
 
         suma = self._siee_repo.suma_pesos_institucionales(dto.anio_id)
         if suma + dto.peso > 1.001:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"La suma de pesos institucionales superaría el 100% "
                 f"(actual: {suma * 100:.1f}%, nueva: {dto.peso * 100:.1f}%). "
                 f"Disponible: {(1.0 - suma) * 100:.1f}%."
@@ -630,18 +639,18 @@ class EvaluacionService:
         Verifica que el nuevo peso no haga superar el 100% del total institucional.
         """
         if self._siee_repo is None:
-            raise RuntimeError("SIEERepository no disponible.")
+            raise DependenciaNoDisponibleError("SIEERepository no disponible.", codigo=CodigoError.REPOSITORIO_NO_DISPONIBLE)
 
         cat = self._siee_repo.get_categoria_institucional(cat_id)
         if cat is None:
-            raise ValueError(f"Categoría institucional con id {cat_id} no existe.")
+            raise NoEncontradoError(f"Categoría institucional con id {cat_id} no existe.")
 
         if dto.peso is not None and dto.peso != cat.peso:
             # suma de los otros (excluimos la actual)
             suma_todas = self._siee_repo.suma_pesos_institucionales(anio_id)
             suma_sin_esta = round(suma_todas - cat.peso, 4)
             if suma_sin_esta + dto.peso > 1.001:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"El nuevo peso ({dto.peso * 100:.1f}%) superaría el 100% "
                     f"del total institucional. "
                     f"Disponible: {(1.0 - suma_sin_esta) * 100:.1f}%."
@@ -670,11 +679,11 @@ class EvaluacionService:
         Elimina una categoría institucional.
         """
         if self._siee_repo is None:
-            raise RuntimeError("SIEERepository no disponible.")
+            raise DependenciaNoDisponibleError("SIEERepository no disponible.", codigo=CodigoError.REPOSITORIO_NO_DISPONIBLE)
 
         cat = self._siee_repo.get_categoria_institucional(cat_id)
         if cat is None:
-            raise ValueError(f"Categoría institucional con id {cat_id} no existe.")
+            raise NoEncontradoError(f"Categoría institucional con id {cat_id} no existe.")
 
         datos_ant = cat.model_dump(mode="json")
         self._siee_repo.eliminar_categoria_institucional(cat_id)

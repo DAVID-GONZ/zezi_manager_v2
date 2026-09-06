@@ -36,6 +36,8 @@ import contextlib
 import contextvars
 from collections.abc import Iterator
 
+from src.domain.exceptions import OperacionFueraDeInstitucionError
+
 # Estado privado. Default None → sin scope (admin / arranque sin sesión).
 _institucion_actual: contextvars.ContextVar[int | None] = contextvars.ContextVar(
     "zeci_institucion_actual", default=None
@@ -57,17 +59,6 @@ def institucion_actual() -> int | None:
     return _institucion_actual.get()
 
 
-class OperacionFueraDeInstitucionError(PermissionError):
-    """
-    Se intentó operar (leer/mutar por id) sobre un objeto que NO pertenece a
-    la institución activa de la sesión.
-
-    Cierra la dimensión multi-tenant de la seguridad del enrutado (hallazgo E,
-    paso_36): el scope filtra listados, pero las operaciones por `id` también
-    deben verificar que el objeto leído del repo sea del tenant del usuario.
-    """
-
-
 def verificar_pertenencia(institucion_id_objeto: int | None) -> None:
     """
     Verifica que un objeto pertenezca a la institución activa de la sesión.
@@ -87,7 +78,8 @@ def verificar_pertenencia(institucion_id_objeto: int | None) -> None:
         return
     if institucion_id_objeto != scope:
         raise OperacionFueraDeInstitucionError(
-            "La operación afecta a un objeto que no pertenece a tu institución."
+            "La operación afecta a un objeto que no pertenece a tu institución.",
+            detalles={"institucion_esperada": scope},
         )
 
 

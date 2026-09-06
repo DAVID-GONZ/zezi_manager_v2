@@ -10,6 +10,10 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.infraestructura import (
     BloqueAnclado,
     ConfigGeneracion,
@@ -105,7 +109,7 @@ class RestriccionGeneracionService:
         min_h = int(min_horas or 0)
         max_h = int(max_horas if max_horas is not None else 8)
         if min_h > max_h:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"min_horas_dia ({min_h}) no puede ser mayor que max_horas_dia ({max_h})."
             )
         restricciones: dict = {}
@@ -131,7 +135,7 @@ class RestriccionGeneracionService:
         """Actualiza los campos indicados de una config de generación (lanza si no existe)."""
         config = self._repo.get_config_generacion(config_id)
         if config is None:
-            raise ValueError(f"Config {config_id} no existe.")
+            raise NoEncontradoError(f"Config {config_id} no existe.", detalles={"recurso": "config_generacion", "id": config_id})
         if "pesos" in campos and isinstance(campos["pesos"], dict):
             from src.domain.models.infraestructura import PesosGeneracion
 
@@ -229,7 +233,7 @@ class RestriccionGeneracionService:
     def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         """Actualiza una franja de reunión (lanza si no tiene id)."""
         if f.id is None:
-            raise ValueError("La franja de reunión no tiene id.")
+            raise ReglaDeNegocioError("La franja de reunión no tiene id.")
         return self._repo.actualizar_franja_reunion(f)
 
     @requiere_escritura

@@ -6,6 +6,13 @@ Orquesta los casos de uso del módulo de Estudiantes y PIARs.
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    CodigoError,
+    ConflictoError,
+    NoEncontradoError,
+    PermisoDenegadoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.dtos import MatriculaMasivaResultadoDTO
 from src.domain.models.estudiante import (
@@ -70,10 +77,11 @@ class EstudianteService:
         if actor_rol is None:
             return
         if actor_rol not in cls._ROLES_GESTION:
-            raise ValueError(
+            raise PermisoDenegadoError(
                 f"Tu rol ('{actor_rol}') no tiene permiso para gestionar "
                 "estudiantes. Solo director y coordinador pueden crear, "
-                "importar, editar o registrar PIAR."
+                "importar, editar o registrar PIAR.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
 
     def _auditar(
@@ -102,7 +110,7 @@ class EstudianteService:
     def _get_estudiante_o_lanzar(self, estudiante_id: int) -> Estudiante:
         est = self._repo.get_by_id(estudiante_id)
         if est is None:
-            raise ValueError(f"Estudiante con id {estudiante_id} no existe.")
+            raise NoEncontradoError(f"Estudiante con id {estudiante_id} no existe.")
         # Autorización a nivel de objeto (paso_36): el estudiante debe pertenecer
         # a la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo. Scope None (admin/seed) → pasa.
@@ -165,7 +173,7 @@ class EstudianteService:
         # en otra institución sin colisionar.
         institucion_id = self._resolver_institucion(estudiante.institucion_id)
         if self._repo.existe_documento(dto.numero_documento, institucion_id=institucion_id):
-            raise ValueError(f"Ya existe un estudiante con el documento '{dto.numero_documento}'.")
+            raise ReglaDeNegocioError(f"Ya existe un estudiante con el documento '{dto.numero_documento}'.", codigo=CodigoError.DOCUMENTO_DUPLICADO)
         estudiante = estudiante.model_copy(update={"institucion_id": institucion_id})
         estudiante = self._repo.guardar(estudiante)
         self._auditar(
@@ -233,7 +241,7 @@ class EstudianteService:
         """
         estudiante = self._get_estudiante_o_lanzar(estudiante_id)
         if estudiante.estado_matricula == EstadoMatricula.RETIRADO:
-            raise ValueError("El estudiante ya está en estado RETIRADO.")
+            raise ConflictoError("El estudiante ya está en estado RETIRADO.")
         datos_ant = estudiante.model_dump(mode="json")
         estudiante_retirado = estudiante.model_copy(
             update={"estado_matricula": EstadoMatricula.RETIRADO}
@@ -329,7 +337,7 @@ class EstudianteService:
 
         grupo_destino = self._leer_grupo(grupo_destino_id)
         if grupo_destino is None:
-            raise ValueError(f"El grupo destino (id {grupo_destino_id}) no existe.")
+            raise NoEncontradoError(f"El grupo destino (id {grupo_destino_id}) no existe.")
         # Aislamiento por institución: no se traslada a un grupo de otra
         # institución. Scope None (admin/seed) → pasa.
         from src.services.contexto_tenant import verificar_pertenencia
@@ -337,7 +345,7 @@ class EstudianteService:
         verificar_pertenencia(grupo_destino.institucion_id)
 
         if origen_id == grupo_destino_id:
-            raise ValueError(
+            raise NoEncontradoError(
                 "El estudiante ya pertenece a ese grupo; no hay traslado que registrar."
             )
 
@@ -352,13 +360,13 @@ class EstudianteService:
         motivo_limpio = (motivo or "").strip() or None
         if es_cambio_grado:
             if not permitir_cambio_grado:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     "El grupo destino es de otro grado "
                     f"({grado_origen} → {grado_destino}); confirma el cambio de "
                     "grado y registra un motivo (promoción, repitencia o corrección)."
                 )
             if motivo_limpio is None:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     "Un cambio de grado requiere un motivo (promoción, repitencia o corrección)."
                 )
 
@@ -513,7 +521,7 @@ class EstudianteService:
         Lanza ValueError si ya existe un PIAR para ese estudiante y año.
         """
         if self._repo.existe_piar(dto.estudiante_id, dto.anio_id):
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Ya existe un PIAR para el estudiante {dto.estudiante_id} "
                 f"en el año {dto.anio_id}. Actualice el existente."
             )
@@ -561,7 +569,7 @@ class EstudianteService:
             verificar_pertenencia(est.institucion_id)
         piar_actual = self._repo.get_piar(estudiante_id, anio_id)
         if piar_actual is None:
-            raise ValueError(
+            raise NoEncontradoError(
                 f"No existe PIAR para el estudiante {estudiante_id} "
                 f"en el año {anio_id}. Regístralo primero."
             )

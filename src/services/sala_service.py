@@ -9,6 +9,10 @@ idéntica (firmas, tipos de retorno y `@requiere_escritura` intactos).
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.infraestructura import Sala
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.solo_lectura import requiere_escritura
@@ -56,7 +60,7 @@ class SalaService:
         activa. `obj` None → ValueError (no existe). Scope None (admin/seed) → pasa.
         """
         if obj is None:
-            raise ValueError(f"{etiqueta} no existe.")
+            raise NoEncontradoError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
@@ -87,7 +91,7 @@ class SalaService:
     def actualizar_sala(self, sala: Sala) -> Sala:
         """Actualiza una sala verificando su tenant y preservando su institución."""
         if sala.id is None:
-            raise ValueError("La sala no tiene id.")
+            raise ReglaDeNegocioError("La sala no tiene id.")
         # Autorización a nivel de objeto (paso_36): tenant verificado contra la
         # sala persistida; institución preservada (no se permite mover de tenant).
         actual = self._repo.get_sala(sala.id)

@@ -9,6 +9,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from src.domain.exceptions import (
+    CodigoError,
+    DependenciaNoDisponibleError,
+    NoEncontradoError,
+    PermisoDenegadoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.alerta import Alerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
 from src.domain.models.convivencia import (
     CategoriaObservacion,
@@ -102,11 +109,11 @@ class ConvivenciaService:
         self._asignacion_svc_provider = asignacion_svc_provider
         self._preferencias_svc_provider = preferencias_svc_provider
 
-    # ── Resolución de institución (multi-tenant — mejora_07-T3) ─────────────────
+    # â”€â”€ Resolución de institución (multi-tenant â€” mejora_07-T3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _resolver_institucion(institucion_id: int | None) -> int | None:
-        """Resuelve tenant: explícito → sesión → id_por_defecto → None."""
+        """Resuelve tenant: explícito â†’ sesión â†’ id_por_defecto â†’ None."""
         if institucion_id is not None:
             return institucion_id
         from src.services.contexto_tenant import institucion_actual
@@ -122,7 +129,7 @@ class ConvivenciaService:
             return None
 
     # ------------------------------------------------------------------
-    # Autorización (defensa en profundidad — convivencia_04b)
+    # Autorización (defensa en profundidad â€” convivencia_04b)
     # ------------------------------------------------------------------
 
     def _verificar_autorizacion(
@@ -133,16 +140,16 @@ class ConvivenciaService:
     ) -> None:
         """Rechaza la mutación si el rol/usuario no puede gestionar el grupo.
 
-        Sin provider inyectado → no-op (compat retro con scripts/tests).
+        Sin provider inyectado â†’ no-op (compat retro con scripts/tests).
         """
         if self._catalogo_academico_svc_provider is None:
             return
         if usuario_rol is None or usuario_id is None or grupo_id is None:
-            # Sin información suficiente para autorizar → no bloqueamos (compat).
+            # Sin información suficiente para autorizar â†’ no bloqueamos (compat).
             return
         svc = self._catalogo_academico_svc_provider()
         if not svc.puede_gestionar_comportamiento_en_grupo(usuario_rol, usuario_id, grupo_id):
-            raise PermissionError("No autorizado para gestionar el comportamiento de este grupo.")
+            raise PermisoDenegadoError("No autorizado para gestionar el comportamiento de este grupo.", codigo=CodigoError.ROL_NO_AUTORIZADO)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -151,13 +158,13 @@ class ConvivenciaService:
     def _get_registro_o_lanzar(self, registro_id: int) -> RegistroComportamiento:
         reg = self._repo.get_registro(registro_id)
         if reg is None:
-            raise ValueError(f"Registro de comportamiento con id {registro_id} no existe.")
+            raise NoEncontradoError(f"Registro de comportamiento con id {registro_id} no existe.", detalles={"recurso": "registro_comportamiento", "id": registro_id})
         return reg
 
     def _get_observacion_o_lanzar(self, observacion_id: int) -> ObservacionPeriodo:
         obs = self._repo.get_observacion(observacion_id)
         if obs is None:
-            raise ValueError(f"Observación con id {observacion_id} no existe.")
+            raise NoEncontradoError(f"Observación con id {observacion_id} no existe.", detalles={"recurso": "observacion", "id": observacion_id})
         return obs
 
     def _get_prefs_convivencia(self):
@@ -261,7 +268,7 @@ class ConvivenciaService:
     def _agrupar_obs_por_categoria(self, obs: list[ObservacionPeriodo]) -> list[dict]:
         """Agrupa observaciones por categoría con nombre resuelto.
 
-        Orden: activas A-Z → inactivas → "Sin categoría".
+        Orden: activas A-Z â†’ inactivas â†’ "Sin categoría".
         Items incluyen fecha, autor y texto (para boletín de periodo).
         """
         from src.services.contexto_tenant import institucion_actual
@@ -310,7 +317,7 @@ class ConvivenciaService:
         Claves:
           nota:                        float | None
           nota_observacion:            str   | None
-          observaciones:               list[str]   (textos planos — compat retro PDF)
+          observaciones:               list[str]   (textos planos â€” compat retro PDF)
           observaciones_por_categoria: list[dict]  (formato rico con fecha/autor/texto)
           registros:                   list[dict]  (política convivencia_29)
         """
@@ -362,7 +369,7 @@ class ConvivenciaService:
         periodo_lista = [{"id": p.id, "nombre": p.nombre} for p in periodos]
         periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
 
-        # ── Notas por periodo ─────────────────────────────────────────
+        # â”€â”€ Notas por periodo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         notas_dict = {
             n.periodo_id: n for n in self._repo.listar_notas_por_estudiante(estudiante_id)
         }
@@ -385,7 +392,7 @@ class ConvivenciaService:
         if ultimo_con_nota is not None and ultimo_con_nota.observacion:
             concepto = ultimo_con_nota.observacion
 
-        # ── Observaciones públicas agrupadas por categoría ─────────
+        # â”€â”€ Observaciones públicas agrupadas por categoría â”€â”€â”€â”€â”€â”€â”€â”€â”€
         from src.services.contexto_tenant import institucion_actual
 
         _scope = institucion_actual() or "*"
@@ -433,7 +440,7 @@ class ConvivenciaService:
                 }
             )
 
-        # ── Registros de comportamiento (convivencia_29) ──────────
+        # â”€â”€ Registros de comportamiento (convivencia_29) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _tipos_map = {
             t.id: t.nombre
             for t in self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
@@ -518,10 +525,10 @@ class ConvivenciaService:
         se actualiza; si no, se crea una nueva.
 
         Autorización por objeto (convivencia_11):
-        - profesor → solo puede registrar/actualizar observaciones de sus
+        - profesor â†’ solo puede registrar/actualizar observaciones de sus
           propias asignaciones (asignacion.usuario_id == usuario_id).
           Si no es titular, lanza PermissionError.
-        - director / coordinador → acceso pleno sin restricción adicional.
+        - director / coordinador â†’ acceso pleno sin restricción adicional.
         """
         # Autorización por objeto para profesores
         if (
@@ -535,7 +542,7 @@ class ConvivenciaService:
             except Exception:
                 asig = None
             if asig is None or asig.usuario_id != usuario_id:
-                raise PermissionError("Solo puedes registrar observaciones de tus asignaciones")
+                raise PermisoDenegadoError("Solo puedes registrar observaciones de tus asignaciones", codigo=CodigoError.ROL_NO_AUTORIZADO)
 
         existente = self._repo.get_observacion_por_asignacion(
             dto.estudiante_id, dto.asignacion_id, dto.periodo_id
@@ -615,7 +622,7 @@ class ConvivenciaService:
         self._verificar_autorizacion(usuario_rol, usuario_id, dto.grupo_id)
         prefs = self._get_prefs_convivencia()
         if prefs.tipo_situacion_obligatorio and dto.tipo_situacion_id is None:
-            raise ValueError("La clasificacion de situacion es obligatoria.")
+            raise ReglaDeNegocioError("La clasificacion de situacion es obligatoria.")
         registro = dto.to_registro(usuario_id=usuario_id)
         registro = self._repo.guardar_registro(registro)
 
@@ -639,7 +646,7 @@ class ConvivenciaService:
         """
         Marca un registro de comportamiento como notificado al acudiente.
 
-        Transición de estado: acudiente_notificado=False → True.
+        Transición de estado: acudiente_notificado=False â†’ True.
         Lanza si el registro no existe o ya fue notificado.
         """
         registro = self._get_registro_o_lanzar(registro_id)
@@ -680,7 +687,7 @@ class ConvivenciaService:
         usuario_id: int | None = None,
         usuario_rol: str | None = None,
     ) -> RegistroComportamiento:
-        """Método legacy — delega en agregar_entrada_seguimiento (R8)."""
+        """Método legacy â€” delega en agregar_entrada_seguimiento (R8)."""
         dto = NuevaEntradaSeguimientoDTO(registro_id=registro_id, texto=texto)
         self.agregar_entrada_seguimiento(dto, usuario_id=usuario_id, usuario_rol=usuario_rol)
         return self._get_registro_o_lanzar(registro_id)
@@ -692,8 +699,8 @@ class ConvivenciaService:
         """Retorna registros de comportamiento según los filtros indicados.
 
         Multi-tenant (paso_32, T4): cuando el listado cruza grupos (filtro sin
-        grupo ni estudiante) se acota por la institución del scope (director →
-        su institución; admin / arranque → None = todas) vía join a `grupos`.
+        grupo ni estudiante) se acota por la institución del scope (director â†’
+        su institución; admin / arranque â†’ None = todas) vía join a `grupos`.
         """
         from src.services.contexto_tenant import institucion_actual
 
@@ -747,13 +754,13 @@ class ConvivenciaService:
         return self._repo.listar_notas_por_grupo(grupo_id, periodo_id)
 
     # ------------------------------------------------------------------
-    # Concepto consolidado (cuant + cualit)  —  convivencia_05
+    # Concepto consolidado (cuant + cualit)  â€”  convivencia_05
     # ------------------------------------------------------------------
 
     def _resolver_niveles_del_periodo(self, periodo_id: int):
         """Retorna (anio_id, list[NivelDesempeno]) del año del periodo."""
         if self._periodo_svc_provider is None or self._configuracion_svc_provider is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService requiere periodo_svc_provider y "
                 "configuracion_svc_provider para consolidar conceptos."
             )
@@ -816,7 +823,7 @@ class ConvivenciaService:
         incluidos los que aún no tienen nota (DTO con valor=None).
         """
         if self._estudiante_svc_provider is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService requiere estudiante_svc_provider para "
                 "listar conceptos por grupo."
             )
@@ -874,10 +881,10 @@ class ConvivenciaService:
         Los periodos sin nota registrada aparecen con `valor=None` (huecos),
         preservando el eje completo de periodos.
 
-        Requiere `periodo_svc_provider`; si es None → RuntimeError.
+        Requiere `periodo_svc_provider`; si es None â†’ RuntimeError.
         """
         if self._periodo_svc_provider is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService requiere periodo_svc_provider para "
                 "construir la serie de notas de comportamiento."
             )
@@ -909,9 +916,9 @@ class ConvivenciaService:
         una para conceptos/notas, una para registros y una para observaciones.
 
         Requiere `estudiante_svc_provider` (vía `listar_conceptos_grupo`); si es
-        None → RuntimeError.
+        None â†’ RuntimeError.
         """
-        # Conceptos (nota + nivel) por estudiante — cubre estudiantes sin nota.
+        # Conceptos (nota + nivel) por estudiante â€” cubre estudiantes sin nota.
         conceptos = {c.estudiante_id: c for c in self.listar_conceptos_grupo(grupo_id, periodo_id)}
         estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
 
@@ -992,7 +999,7 @@ class ConvivenciaService:
         con `valor=None` y `observaciones=[]`.
         """
         if self._estudiante_svc_provider is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService requiere estudiante_svc_provider para "
                 "generar el reporte de periodo por grupo."
             )
@@ -1132,7 +1139,7 @@ class ConvivenciaService:
         filas: list[ReporteConvivenciaFilaDTO],
         titulo: str,
     ) -> str:
-        """HTML compacto del reporte para el exporter PDF (puerto HTML → PDF)."""
+        """HTML compacto del reporte para el exporter PDF (puerto HTML â†’ PDF)."""
         desglose_cols = self._desglose_cols_de_filas(filas)
         columnas = list(self._COLUMNAS_REPORTE_PERIODO) + [(n, n) for n in desglose_cols]
         heads_html = "".join(f"<th>{h}</th>" for _, h in columnas)
@@ -1186,12 +1193,13 @@ class ConvivenciaService:
             ValueError:   si `formato` no es soportado.
         """
         if self._exporter is None:
-            raise RuntimeError(
-                "ConvivenciaService no tiene exporter inyectado; no puede exportar reportes."
+            raise DependenciaNoDisponibleError(
+                "ConvivenciaService no tiene exporter inyectado; no puede exportar reportes.",
+                codigo=CodigoError.EXPORTADOR_NO_DISPONIBLE,
             )
         formato_norm = (formato or "").strip().lower()
         if formato_norm not in ("excel", "pdf"):
-            raise ValueError(f"Formato no soportado: {formato!r}. Usa 'excel' o 'pdf'.")
+            raise ReglaDeNegocioError(f"Formato no soportado: {formato!r}. Usa 'excel' o 'pdf'.")
 
         filas = self.reporte_periodo_grupo(grupo_id, periodo_id)
         desglose_cols = self._desglose_cols_de_filas(filas)
@@ -1228,7 +1236,7 @@ class ConvivenciaService:
         )
 
     # ------------------------------------------------------------------
-    # Catálogo de tipos de situación — Ley 1620 (convivencia_34)
+    # Catálogo de tipos de situación â€” Ley 1620 (convivencia_34)
     # ------------------------------------------------------------------
 
     def listar_tipos_situacion(self, solo_activas: bool = True) -> list[TipoSituacion]:
@@ -1247,7 +1255,7 @@ class ConvivenciaService:
     ) -> TipoSituacion:
         """Crea un tipo de situación. Solo director y coordinador."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar tipos de situacion.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         inst_id = self._resolver_institucion(None)
         tipo = TipoSituacion(
             nombre=dto.nombre,
@@ -1267,10 +1275,10 @@ class ConvivenciaService:
     ) -> TipoSituacion:
         """Actualiza nombre/nivel/descripción/protocolo de un tipo existente."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar tipos de situacion.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         tipo = self._repo.get_tipo_situacion(tipo_id)
         if tipo is None:
-            raise ValueError(f"Tipo de situacion con id {tipo_id} no existe.")
+            raise NoEncontradoError(f"Tipo de situacion con id {tipo_id} no existe.", detalles={"recurso": "tipo_situacion", "id": tipo_id})
         actualizado = tipo.model_copy(
             update={
                 "nombre": dto.nombre,
@@ -1289,10 +1297,10 @@ class ConvivenciaService:
     ) -> TipoSituacion:
         """Desactiva un tipo de situación (activa=False) sin eliminarlo."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar tipos de situacion.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar tipos de situacion.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         tipo = self._repo.get_tipo_situacion(tipo_id)
         if tipo is None:
-            raise ValueError(f"Tipo de situacion con id {tipo_id} no existe.")
+            raise NoEncontradoError(f"Tipo de situacion con id {tipo_id} no existe.", detalles={"recurso": "tipo_situacion", "id": tipo_id})
         desactivado = tipo.model_copy(update={"activa": False})
         return self._repo.actualizar_tipo_situacion(desactivado)
 
@@ -1316,7 +1324,7 @@ class ConvivenciaService:
     ) -> MedidaPedagogica:
         """Crea una medida pedagógica. Solo director y coordinador."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         inst_id = self._resolver_institucion(None)
         medida = MedidaPedagogica(
             nombre=dto.nombre,
@@ -1335,10 +1343,10 @@ class ConvivenciaService:
     ) -> MedidaPedagogica:
         """Actualiza nombre/descripcion/nivel_minimo de una medida existente."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         medida = self._repo.get_medida(medida_id)
         if medida is None:
-            raise ValueError(f"Medida pedagogica con id {medida_id} no existe.")
+            raise NoEncontradoError(f"Medida pedagogica con id {medida_id} no existe.", detalles={"recurso": "medida_pedagogica", "id": medida_id})
         actualizada = medida.model_copy(
             update={
                 "nombre": dto.nombre,
@@ -1356,10 +1364,10 @@ class ConvivenciaService:
     ) -> MedidaPedagogica:
         """Desactiva una medida pedagógica (activa=False) sin eliminarla."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden gestionar medidas pedagogicas.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         medida = self._repo.get_medida(medida_id)
         if medida is None:
-            raise ValueError(f"Medida pedagogica con id {medida_id} no existe.")
+            raise NoEncontradoError(f"Medida pedagogica con id {medida_id} no existe.", detalles={"recurso": "medida_pedagogica", "id": medida_id})
         desactivada = medida.model_copy(update={"activa": False})
         return self._repo.actualizar_medida(desactivada)
 
@@ -1401,7 +1409,7 @@ class ConvivenciaService:
         """Actualiza el nombre y tipo de una categoría existente."""
         categoria = self._repo.get_categoria(categoria_id)
         if categoria is None:
-            raise ValueError(f"Categoría con id {categoria_id} no existe.")
+            raise NoEncontradoError(f"Categoría con id {categoria_id} no existe.", detalles={"recurso": "categoria", "id": categoria_id})
         actualizada = categoria.model_copy(
             update={
                 "nombre": dto.nombre,
@@ -1418,7 +1426,7 @@ class ConvivenciaService:
         """Desactiva una categoría (activa=False) sin eliminarla."""
         categoria = self._repo.get_categoria(categoria_id)
         if categoria is None:
-            raise ValueError(f"Categoría con id {categoria_id} no existe.")
+            raise NoEncontradoError(f"Categoría con id {categoria_id} no existe.", detalles={"recurso": "categoria", "id": categoria_id})
         desactivada = categoria.model_copy(update={"activa": False})
         return self._repo.actualizar_categoria(desactivada)
 
@@ -1441,8 +1449,9 @@ class ConvivenciaService:
     ) -> PlantillaObservacion:
         """Crea una nueva plantilla de observación. Director, coordinador y profesor."""
         if usuario_rol not in ("director", "coordinador", "profesor"):
-            raise PermissionError(
-                "Solo directores, coordinadores y profesores pueden crear plantillas."
+            raise PermisoDenegadoError(
+                "Solo directores, coordinadores y profesores pueden crear plantillas.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
         inst_id = self._resolver_institucion(None)
         plantilla = PlantillaObservacion(
@@ -1460,12 +1469,13 @@ class ConvivenciaService:
     ) -> PlantillaObservacion:
         """Actualiza texto y/o categoría de una plantilla. Director, coordinador y profesor."""
         if usuario_rol not in ("director", "coordinador", "profesor"):
-            raise PermissionError(
-                "Solo directores, coordinadores y profesores pueden actualizar plantillas."
+            raise PermisoDenegadoError(
+                "Solo directores, coordinadores y profesores pueden actualizar plantillas.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
         plantilla = self._repo.get_plantilla(plantilla_id)
         if plantilla is None:
-            raise ValueError(f"Plantilla con id {plantilla_id} no existe.")
+            raise NoEncontradoError(f"Plantilla con id {plantilla_id} no existe.", detalles={"recurso": "plantilla", "id": plantilla_id})
         actualizada = plantilla.model_copy(
             update={"texto": dto.texto, "categoria_id": dto.categoria_id}
         )
@@ -1480,10 +1490,10 @@ class ConvivenciaService:
     ) -> None:
         """Desactiva una plantilla (la oculta del selector). Solo director y coordinador."""
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError("Solo directores y coordinadores pueden desactivar plantillas.")
+            raise PermisoDenegadoError("Solo directores y coordinadores pueden desactivar plantillas.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         plantilla = self._repo.get_plantilla(plantilla_id)
         if plantilla is None:
-            raise ValueError(f"Plantilla con id {plantilla_id} no existe.")
+            raise NoEncontradoError(f"Plantilla con id {plantilla_id} no existe.", detalles={"recurso": "plantilla", "id": plantilla_id})
         desactivada = plantilla.model_copy(update={"activa": False})
         self._repo.actualizar_plantilla(desactivada)
 
@@ -1526,7 +1536,7 @@ class ConvivenciaService:
             except Exception:
                 asig = None
             if asig is None or asig.usuario_id != usuario_id:
-                raise PermissionError("Solo puedes registrar observaciones de tus asignaciones")
+                raise PermisoDenegadoError("Solo puedes registrar observaciones de tus asignaciones", codigo=CodigoError.ROL_NO_AUTORIZADO)
 
         # Upsert con origen="plantilla"
         existente = self._repo.get_observacion_por_asignacion(
@@ -1571,8 +1581,9 @@ class ConvivenciaService:
         RBAC: solo DIRECTOR y COORDINADOR pueden promover.
         """
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError(
-                "Solo directores y coordinadores pueden promover observaciones a plantillas."
+            raise PermisoDenegadoError(
+                "Solo directores y coordinadores pueden promover observaciones a plantillas.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
         obs = self._get_observacion_o_lanzar(observacion_id)
         plantilla = PlantillaObservacion(texto=obs.texto, categoria_id=obs.categoria_id)
@@ -1610,31 +1621,32 @@ class ConvivenciaService:
         RBAC: DIRECTOR, COORDINADOR.
 
         Pasos:
-          1. Verifica RBAC: solo director/coordinador → PermissionError.
-          2. Carga la observación → ValueError si no existe.
-          3. Verifica que la categoría sea comportamental → ValueError si no.
+          1. Verifica RBAC: solo director/coordinador â†’ PermissionError.
+          2. Carga la observación â†’ ValueError si no existe.
+          3. Verifica que la categoría sea comportamental â†’ ValueError si no.
           4. Crea el RegistroComportamiento (grupo_id resuelto vía
              asignacion_svc_provider si disponible, o 0 como fallback).
           5. Persiste el registro y enlaza la observación (FK).
           6. Retorna el registro creado.
         """
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError(
+            raise PermisoDenegadoError(
                 "Solo directores y coordinadores pueden promover "
-                "observaciones a registros de comportamiento."
+                "observaciones a registros de comportamiento.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
 
         obs = self._get_observacion_o_lanzar(observacion_id)
 
         if obs.categoria_id is None:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 "La observación no tiene categoría asignada; "
                 "solo se pueden promover observaciones clasificadas."
             )
 
         categoria = self._repo.get_categoria(obs.categoria_id)
         if categoria is None or not categoria.es_comportamental:
-            raise ValueError("La categoría no es comportamental")
+            raise ReglaDeNegocioError("La categoría no es comportamental")
 
         # Resolver grupo_id desde la asignación (mejor esfuerzo)
         grupo_id: int = 0
@@ -1678,11 +1690,12 @@ class ConvivenciaService:
         RBAC: solo DIRECTOR y COORDINADOR pueden crearla.
         """
         if usuario_rol not in ("director", "coordinador"):
-            raise PermissionError(
-                "Solo directores y coordinadores pueden crear alertas de seguimiento."
+            raise PermisoDenegadoError(
+                "Solo directores y coordinadores pueden crear alertas de seguimiento.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
         if self._alerta_repo is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService no tiene alerta_repo inyectado; "
                 "no puede crear alertas de seguimiento."
             )
@@ -1696,7 +1709,7 @@ class ConvivenciaService:
         return self._alerta_repo.guardar_alerta(alerta)
 
     # ------------------------------------------------------------------
-    # Vista 360° del estudiante (convivencia_18)
+    # Vista 360Â° del estudiante (convivencia_18)
     # ------------------------------------------------------------------
 
     def vista_360(
@@ -1712,11 +1725,11 @@ class ConvivenciaService:
         observaciones públicas y alertas activas de seguimiento.
 
         RBAC:
-          - director / coordinador → acceso pleno.
-          - director_de_grupo / director_grupo → solo si es director del grupo
+          - director / coordinador â†’ acceso pleno.
+          - director_de_grupo / director_grupo â†’ solo si es director del grupo
             del estudiante (verificado con catalogo_academico_svc_provider cuando
             está disponible; compat retro cuando no lo está).
-          - cualquier otro rol → PermissionError.
+          - cualquier otro rol â†’ PermissionError.
         """
         _roles_plenos = ("director", "coordinador")
         _roles_dir_grupo = ("director_de_grupo", "director_grupo")
@@ -1737,20 +1750,22 @@ class ConvivenciaService:
                                 usuario_rol, usuario_id, grupo_id_est
                             )
                             if not autorizado:
-                                raise PermissionError(
+                                raise PermisoDenegadoError(
                                     "Solo director, coordinador o director de grupo "
-                                    "pueden ver el seguimiento 360°"
+                                    "pueden ver el seguimiento 360°",
+                                    codigo=CodigoError.ROL_NO_AUTORIZADO,
                                 )
                     except PermissionError:
                         raise
                     except Exception:
-                        pass  # compat retro: providers disponibles pero falla → permitir
+                        pass  # compat retro: providers disponibles pero falla â†’ permitir
             else:
-                raise PermissionError(
-                    "Solo director, coordinador o director de grupo pueden ver el seguimiento 360°"
+                raise PermisoDenegadoError(
+                    "Solo director, coordinador o director de grupo pueden ver el seguimiento 360°",
+                    codigo=CodigoError.ROL_NO_AUTORIZADO,
                 )
 
-        # ── Nombre del estudiante ────────────────────────────────────────────
+        # â”€â”€ Nombre del estudiante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         nombre = str(estudiante_id)
         if self._estudiante_svc_provider is not None:
             try:
@@ -1761,7 +1776,7 @@ class ConvivenciaService:
             except Exception:
                 pass
 
-        # ── Nota de comportamiento y concepto ───────────────────────────────
+        # â”€â”€ Nota de comportamiento y concepto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         nota_comportamiento: float | None = None
         concepto: str | None = None
         nivel_comportamiento: str | None = None
@@ -1782,7 +1797,7 @@ class ConvivenciaService:
         except Exception:
             pass
 
-        # ── Observaciones públicas del periodo ──────────────────────────────
+        # â”€â”€ Observaciones públicas del periodo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         textos_obs: list[str] = []
         try:
             obs_list = self._repo.listar_observaciones_por_estudiante(
@@ -1792,7 +1807,7 @@ class ConvivenciaService:
         except Exception:
             pass
 
-        # ── Alertas activas ─────────────────────────────────────────────────
+        # â”€â”€ Alertas activas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         alertas_activas: list[str] = []
         if self._alerta_repo is not None:
             try:
@@ -1836,24 +1851,24 @@ class ConvivenciaService:
         Requiere estudiante_svc_provider y periodo_svc_provider.
 
         Claves del resultado:
-          estudiante  — datos identificatorios del estudiante
-          institucion — datos del membrete
-          anio        — nombre/id del año lectivo
-          periodo     — nombre del periodo filtrado, o None si es anual
-          entradas    — lista cronológica ASC (observaciones + registros)
-          resumen     — totales (fortalezas, dificultades, compromisos,
+          estudiante  â€” datos identificatorios del estudiante
+          institucion â€” datos del membrete
+          anio        â€” nombre/id del año lectivo
+          periodo     â€” nombre del periodo filtrado, o None si es anual
+          entradas    â€” lista cronológica ASC (observaciones + registros)
+          resumen     â€” totales (fortalezas, dificultades, compromisos,
                         citaciones, descargos, num_observaciones,
                         notas_por_periodo)
         """
         from datetime import datetime
 
         if self._estudiante_svc_provider is None or self._periodo_svc_provider is None:
-            raise RuntimeError(
+            raise DependenciaNoDisponibleError(
                 "ConvivenciaService requiere estudiante_svc_provider y "
                 "periodo_svc_provider para generar el observador del estudiante."
             )
 
-        # ── Datos del estudiante ────────────────────────────────────────
+        # â”€â”€ Datos del estudiante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _GENERO_DISPLAY = {"M": "Masculino", "F": "Femenino", "OTRO": "Otro"}
         _PARENTESCO_DISPLAY = {
             "padre": "Padre", "madre": "Madre", "abuelo": "Abuelo",
@@ -1909,11 +1924,11 @@ class ConvivenciaService:
                 "acudiente": {},
             }
 
-        # ── Periodos del año ───────────────────────────────────────────
+        # â”€â”€ Periodos del año â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         periodos = self._periodo_svc_provider().listar_por_anio(anio_id)
         periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
 
-        # ── Catálogos (lookup sin N+1) ─────────────────────────────────
+        # â”€â”€ Catálogos (lookup sin N+1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         from src.services.contexto_tenant import institucion_actual
 
         _scope = institucion_actual() or "*"
@@ -1933,7 +1948,7 @@ class ConvivenciaService:
             if c.id is not None
         }
 
-        # ── Observaciones públicas ─────────────────────────────────────
+        # â”€â”€ Observaciones públicas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         obs_list = self._repo.listar_observaciones_por_estudiante(
             estudiante_id, periodo_id, solo_publicas=True
         )
@@ -1941,7 +1956,7 @@ class ConvivenciaService:
         if periodo_id is None:
             obs_list = [o for o in obs_list if o.periodo_id in valid_periodo_ids]
 
-        # ── Registros de comportamiento ───────────────────────────────
+        # â”€â”€ Registros de comportamiento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         filtro = FiltroConvivenciaDTO(
             estudiante_id=estudiante_id,
             periodo_id=periodo_id,
@@ -1951,16 +1966,16 @@ class ConvivenciaService:
         if periodo_id is None:
             registros = [r for r in registros if r.periodo_id in valid_periodo_ids]
 
-        # ── Entradas de seguimiento por registro (batch) ──────────────
+        # â”€â”€ Entradas de seguimiento por registro (batch) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         reg_ids = [reg.id for reg in registros if reg.id is not None]
         seguimiento_map: dict[int, list] = self._repo.listar_entradas_seguimiento_batch(reg_ids)
 
-        # ── Notas de comportamiento ────────────────────────────────────
+        # â”€â”€ Notas de comportamiento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         notas_est = {
             n.periodo_id: n for n in self._repo.listar_notas_por_estudiante(estudiante_id)
         }
 
-        # ── Resolver nombres de usuario (batch) ──────────────────────
+        # â”€â”€ Resolver nombres de usuario (batch) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         all_user_ids: set[int] = set()
         for obs in obs_list:
             if obs.usuario_id:
@@ -1974,16 +1989,16 @@ class ConvivenciaService:
                     all_user_ids.add(se.usuario_id)
         nombres_usuario = self._repo.resolver_nombres_usuario(list(all_user_ids))
 
-        # ── Resolver nombres de asignatura (batch) ────────────────────
+        # â”€â”€ Resolver nombres de asignatura (batch) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         asig_ids = list({obs.asignacion_id for obs in obs_list if obs.asignacion_id})
         asig_nombre_map = self._repo.resolver_nombres_asignatura(asig_ids)
 
         def _nombre_usuario(uid: int | None) -> str:
             if not uid:
-                return "—"
+                return "â€”"
             return nombres_usuario.get(uid, f"Usuario #{uid}")
 
-        # ── Construir lista unificada ─────────────────────────────────
+        # â”€â”€ Construir lista unificada â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         entradas: list[dict] = []
 
         for obs in obs_list:
@@ -2037,7 +2052,7 @@ class ConvivenciaService:
 
         entradas.sort(key=lambda e: e["fecha"] or datetime.min)
 
-        # ── Resumen estadístico ───────────────────────────────────────
+        # â”€â”€ Resumen estadístico â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         conteos: dict[str, int] = {
             "fortalezas": 0,
             "dificultades": 0,
@@ -2069,7 +2084,7 @@ class ConvivenciaService:
             "notas_por_periodo": notas_por_periodo,
         }
 
-        # ── Datos de la institución ────────────────────────────────────
+        # â”€â”€ Datos de la institución â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         institucion_data: dict = {
             "nombre": "Institución Educativa",
             "DANE": "",
@@ -2127,7 +2142,7 @@ class ConvivenciaService:
         """
         formato_norm = (formato or "").strip().lower()
         if formato_norm not in ("pdf", "excel"):
-            raise ValueError(f"Formato no soportado: {formato!r}. Usa 'pdf' o 'excel'.")
+            raise ReglaDeNegocioError(f"Formato no soportado: {formato!r}. Usa 'pdf' o 'excel'.")
 
         datos = self.observador_estudiante(estudiante_id, anio_id, periodo_id)
 
@@ -2150,3 +2165,4 @@ __all__ = [
     "Seguimiento360DTO",
     "TipoRegistro",
 ]
+

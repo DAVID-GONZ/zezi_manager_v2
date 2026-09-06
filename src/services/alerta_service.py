@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+)
 from src.domain.models.alerta import (
     Alerta,
     ConfiguracionAlerta,
@@ -43,7 +47,7 @@ class AlertaService:
     def _get_alerta_o_lanzar(self, alerta_id: int) -> Alerta:
         alerta = self._repo.get_alerta(alerta_id)
         if alerta is None:
-            raise ValueError(f"Alerta con id {alerta_id} no existe.")
+            raise NoEncontradoError(f"Alerta con id {alerta_id} no existe.", detalles={"recurso": "alerta", "id": alerta_id})
         return alerta
 
     # ------------------------------------------------------------------
@@ -121,7 +125,7 @@ class AlertaService:
         """
         alerta = self._get_alerta_o_lanzar(alerta_id)
         if alerta.resuelta:
-            raise ValueError(f"La alerta con id {alerta_id} ya está resuelta.")
+            raise ConflictoError(f"La alerta con id {alerta_id} ya está resuelta.")
         return self._repo.resolver_alerta(alerta_id, usuario_id, observacion, datetime.now())
 
     def listar_alertas_para_usuario(

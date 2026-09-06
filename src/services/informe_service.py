@@ -14,6 +14,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from src.domain.exceptions import (
+    CodigoError,
+    DependenciaNoDisponibleError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.dtos import (
     FormatoInforme,
     InformeAsistenciaDTO,
@@ -124,9 +130,10 @@ class InformeService:
 
     def _get_exporter_o_lanzar(self) -> IExporterService:
         if self._exporter is None:
-            raise ValueError(
+            raise DependenciaNoDisponibleError(
                 "No hay un exportador configurado. "
-                "Proporcione una implementación de IExporterService."
+                "Proporcione una implementación de IExporterService.",
+                codigo=CodigoError.EXPORTADOR_NO_DISPONIBLE,
             )
         return self._exporter
 
@@ -493,9 +500,9 @@ class InformeService:
         Devuelve el documento fusionado y la lista de estudiantes con error.
         """
         if periodo_id is None and anio_id is None:
-            raise ValueError("Debe indicar periodo_id (boletín de periodo) o anio_id (anual).")
+            raise ReglaDeNegocioError("Debe indicar periodo_id (boletín de periodo) o anio_id (anual).")
         if self._estudiante_repo is None:
-            raise ValueError("InformeService no tiene estudiante_repo configurado.")
+            raise ReglaDeNegocioError("InformeService no tiene estudiante_repo configurado.")
 
         from src.services.contexto_tenant import institucion_actual
         fmt = FormatoInforme(formato)
@@ -697,7 +704,6 @@ class InformeService:
             TIPO_REGISTRO_DISPLAY,
             FiltroConvivenciaDTO,
         )
-
         from src.services.contexto_tenant import institucion_actual
         estudiantes = sorted(
             self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*"),
@@ -860,7 +866,7 @@ class InformeService:
     # Exportación de estadísticos (encapsula el pipeline de la vista)
     # ------------------------------------------------------------------
 
-    _ESTADO_ASISTENCIA_LABEL = {
+    _ESTADO_ASISTENCIA_LABEL = {  # noqa: RUF012
         "P": "Presente",
         "FJ": "Falta Justificada",
         "FI": "Falta Injustificada",
@@ -869,7 +875,7 @@ class InformeService:
     }
 
     # tipo → (título PDF, nombre de hoja Excel)
-    _ESTADISTICO_TITULOS = {
+    _ESTADISTICO_TITULOS = {  # noqa: RUF012
         "consolidado_notas": ("Consolidado de Notas", "Consolidado Notas"),
         "consolidado_asistencia": ("Consolidado de Asistencia", "Consolidado Asistencia"),
         "ranking_grupo": ("Ranking del Grupo", "Ranking"),
@@ -941,7 +947,7 @@ class InformeService:
             )
 
         if tipo not in self._ESTADISTICO_TITULOS:
-            raise ValueError(f"Tipo de informe no reconocido: {tipo!r}")
+            raise ReglaDeNegocioError(f"Tipo de informe no reconocido: {tipo!r}")
 
         titulo, nombre_hoja = self._ESTADISTICO_TITULOS[tipo]
         filas = self._filas_estadistico(tipo, datos)
@@ -1025,7 +1031,7 @@ def merge_pdfs(pdf_list: list[bytes]) -> bytes:
     Lanza ValueError si la lista está vacía.
     """
     if not pdf_list:
-        raise ValueError("No hay PDFs para fusionar.")
+        raise NoEncontradoError("No hay PDFs para fusionar.")
     if len(pdf_list) == 1:
         return pdf_list[0]
 
@@ -1055,7 +1061,7 @@ def merge_excels(excel_list: list[tuple[str, bytes]]) -> bytes:
     Lanza ValueError si la lista está vacía.
     """
     if not excel_list:
-        raise ValueError("No hay archivos Excel para fusionar.")
+        raise NoEncontradoError("No hay archivos Excel para fusionar.")
 
     import copy
     import io

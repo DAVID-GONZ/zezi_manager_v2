@@ -286,7 +286,7 @@ class TestCrearBloque:
         svc, infra, asig = _make_service()
         asig._asigs[ASIG_ID] = _make_asignacion(activo=False)
         infra._asignaturas[ASIGNATURA_ID] = _make_asignatura()
-        with pytest.raises(ValueError, match="La asignación no existe"):
+        with pytest.raises(ValueError, match="La asignación está inactiva"):
             svc.crear_bloque(ESCENARIO_ID, ASIG_ID, "Lunes", "07:00", "08:00")
 
     def test_r4_cruce_docente(self):

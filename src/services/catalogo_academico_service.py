@@ -9,13 +9,17 @@ movió idéntica (firmas, retornos y `@requiere_escritura` en los mutadores).
 
 from __future__ import annotations
 
-from src.domain.models.infraestructura import (
-    AreaConocimiento,
-    Asignatura,
-    Grupo,
-)
-from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from typing import Any
+
+from src.domain.exceptions import NoEncontradoError, ReglaDeNegocioError
 from src.services.solo_lectura import requiere_escritura
+
+# El servicio se utiliza también con repositorios falsos en tests; las
+# anotaciones no deben exigir una importación concreta del repositorio.
+IInfraestructuraRepository = Any
+AreaConocimiento = Any
+Asignatura = Any
+Grupo = Any
 
 
 class CatalogoAcademicoService:
@@ -70,7 +74,7 @@ class CatalogoAcademicoService:
         activa. `obj` None → ValueError (no existe). Scope None (admin/seed) → pasa.
         """
         if obj is None:
-            raise ValueError(f"{etiqueta} no existe.")
+            raise NoEncontradoError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
@@ -218,7 +222,7 @@ class CatalogoAcademicoService:
         if usuario_id is not None:
             candidatos = self.candidatos_director_grupo(grupo_id)
             if usuario_id not in candidatos:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     "El docente seleccionado no tiene una asignación activa en "
                     "este grupo; no puede ser su director de grupo."
                 )
@@ -235,7 +239,7 @@ class CatalogoAcademicoService:
             )
             if otro is not None:
                 nombre = candidatos.get(usuario_id, "seleccionado")
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"El docente {nombre} ya es director del grupo "
                     f"'{otro.descripcion_corta}'; un docente solo puede dirigir "
                     "un grupo."

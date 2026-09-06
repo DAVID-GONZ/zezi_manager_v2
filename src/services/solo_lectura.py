@@ -30,26 +30,12 @@ import functools
 from collections.abc import Callable
 from typing import TypeVar
 
+from src.domain.exceptions import OperacionSoloLecturaError  # noqa: F401
+
 # Estado privado. Default False → comportamiento normal sin impersonación.
 _solo_lectura: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "zeci_solo_lectura", default=False
 )
-
-
-class OperacionSoloLecturaError(PermissionError):
-    """
-    Se lanza cuando se intenta una operación de escritura mientras la sesión
-    está en modo solo lectura (impersonación "Ver como").
-
-    Hereda de PermissionError para que el código que ya captura permisos
-    la trate de forma coherente.
-    """
-
-    def __init__(self, mensaje: str | None = None) -> None:
-        """Construye el error con un mensaje por defecto de solo lectura."""
-        super().__init__(
-            mensaje or "Sesión en modo solo lectura (Ver como): no se permiten cambios."
-        )
 
 
 def activar_solo_lectura(valor: bool) -> None:
@@ -70,7 +56,9 @@ def verificar_escritura() -> None:
     solo lectura. No hace nada en el modo normal (default).
     """
     if _solo_lectura.get():
-        raise OperacionSoloLecturaError()
+        raise OperacionSoloLecturaError(
+            "Sesión en modo solo lectura (Ver como): no se permiten cambios."
+        )
 
 
 F = TypeVar("F", bound=Callable[..., object])

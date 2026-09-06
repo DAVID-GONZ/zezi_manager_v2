@@ -9,6 +9,12 @@ carga_horaria_max del docente) antes de insertar o actualizar.
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    CodigoError,
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import (
     CupoDTO,
@@ -70,19 +76,19 @@ def _validar_intervalo(hora_inicio: str, hora_fin: str) -> tuple[str, str]:
     def _hora_valida(valor: str) -> str:
         partes = valor.strip().split(":")
         if len(partes) != 2:
-            raise ValueError("Use el formato HH:MM.")
+            raise ReglaDeNegocioError("Use el formato HH:MM.")
         try:
             hora, minuto = int(partes[0]), int(partes[1])
         except ValueError as exc:
-            raise ValueError("Use el formato HH:MM.") from exc
+            raise ReglaDeNegocioError("Use el formato HH:MM.") from exc
         if not 0 <= hora <= 23 or not 0 <= minuto <= 59:
-            raise ValueError("La hora está fuera de rango.")
+            raise ReglaDeNegocioError("La hora está fuera de rango.")
         return f"{hora:02d}:{minuto:02d}"
 
     inicio = _hora_valida(hora_inicio)
     fin = _hora_valida(hora_fin)
     if inicio >= fin:
-        raise ValueError("hora_inicio debe ser anterior a hora_fin.")
+        raise ReglaDeNegocioError("hora_inicio debe ser anterior a hora_fin.")
     return inicio, fin
 
 
@@ -154,7 +160,7 @@ class HorarioService:
         """Mueve un bloque a otro día/hora (misma sala) validando cruces."""
         horario = self._infra.get_horario(horario_id)
         if horario is None:
-            raise ValueError("Bloque no encontrado.")
+            raise NoEncontradoError("Bloque no encontrado.")
         asig = self._resolver_asignacion(horario.asignacion_id)
         hora_inicio, hora_fin = _validar_intervalo(hora_inicio, hora_fin)
         self._validar_cruces(
@@ -189,7 +195,7 @@ class HorarioService:
         """Actualiza día, horas y sala de un bloque validando cruces."""
         horario = self._infra.get_horario(horario_id)
         if horario is None:
-            raise ValueError("Bloque no encontrado.")
+            raise NoEncontradoError("Bloque no encontrado.")
         asig = self._resolver_asignacion(horario.asignacion_id)
         hora_inicio, hora_fin = _validar_intervalo(hora_inicio, hora_fin)
         self._validar_cruces(
@@ -533,9 +539,9 @@ class HorarioService:
     def _resolver_asignacion(self, asignacion_id: int):
         asig = self._asig.get_by_id(asignacion_id)
         if asig is None:
-            raise ValueError("La asignación no existe o está inactiva.")
+            raise NoEncontradoError("La asignación no existe o está inactiva.")
         if not asig.activo:
-            raise ValueError("La asignación no existe o está inactiva.")
+            raise ConflictoError("La asignación está inactiva.")
         return asig
 
     def _validar_cruces(
@@ -552,11 +558,11 @@ class HorarioService:
         if self._infra.existe_cruce(
             escenario_id, dia, hora_inicio, hora_fin, usuario_id=asig.usuario_id, **kwargs
         ):
-            raise ValueError("El docente ya tiene un bloque en ese horario.")
+            raise ConflictoError("El docente ya tiene un bloque en ese horario.", codigo=CodigoError.SOLAPE_HORARIO)
         if self._infra.existe_cruce(
             escenario_id, dia, hora_inicio, hora_fin, grupo_id=asig.grupo_id, **kwargs
         ):
-            raise ValueError("El grupo ya tiene un bloque en ese horario.")
+            raise ConflictoError("El grupo ya tiene un bloque en ese horario.", codigo=CodigoError.SOLAPE_HORARIO)
         if (
             sala
             and sala != "Aula"
@@ -564,7 +570,7 @@ class HorarioService:
                 escenario_id, dia, hora_inicio, hora_fin, sala=sala, **kwargs
             )
         ):
-            raise ValueError(f"La sala '{sala}' ya está ocupada en ese horario.")
+            raise ConflictoError(f"La sala '{sala}' ya está ocupada en ese horario.", codigo=CodigoError.SOLAPE_HORARIO)
 
     def _validar_topes(self, escenario_id: int, asig) -> None:
         asignatura = self._get_asignatura(asig.asignatura_id)
@@ -572,15 +578,16 @@ class HorarioService:
         if horas_max is not None:
             usadas = self._infra.contar_bloques_asignacion(escenario_id, asig.id)
             if usadas + 1 > horas_max:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"La materia ya tiene {usadas} bloque(s) asignado(s); límite: {horas_max}."
                 )
         max_docente = self._usuario.carga_horaria_max(asig.usuario_id)
         if max_docente is not None:
             usadas_doc = self._infra.contar_bloques_docente(escenario_id, asig.usuario_id)
             if usadas_doc + 1 > max_docente:
-                raise ValueError(
-                    f"El docente superaría su carga máxima de {max_docente} bloques/semana."
+                raise ReglaDeNegocioError(
+                    f"El docente superaría su carga máxima de {max_docente} bloques/semana.",
+                    codigo=CodigoError.CARGA_DOCENTE_EXCEDIDA,
                 )
 
     def analizar_lote(

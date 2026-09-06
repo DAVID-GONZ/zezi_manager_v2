@@ -6,6 +6,11 @@ Orquesta los casos de uso de configuración del año lectivo.
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.configuracion import (
     ActualizarConfiguracionAnioDTO,
     ActualizarInfoInstitucionalDTO,
@@ -79,7 +84,7 @@ class ConfiguracionService:
         """
         institucion_id = self._resolver_institucion(dto.institucion_id)
         if self._repo.get_by_anio(institucion_id or "*", dto.anio) is not None:
-            raise ValueError(
+            raise ConflictoError(
                 f"Ya existe una configuración para el año {dto.anio} en esta institución."
             )
         config = dto.to_configuracion().model_copy(update={"institucion_id": institucion_id})
@@ -140,7 +145,7 @@ class ConfiguracionService:
         """
         config = self._repo.get_by_id(anio_id)
         if config is None:
-            raise ValueError(f"No existe configuración con id {anio_id}.")
+            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
         # Autorización a nivel de objeto (paso_36): el año debe pertenecer a la
         # institución activa (se verifica contra el registro leído; scope None
         # → admin cross-tenant).
@@ -159,7 +164,7 @@ class ConfiguracionService:
         """Actualiza los datos institucionales del año indicado."""
         config = self._repo.get_by_id(anio_id)
         if config is None:
-            raise ValueError(f"No existe configuración con id {anio_id}.")
+            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
         config_actualizada = dto.aplicar_a(config)
         return self._repo.actualizar(config_actualizada)
 
@@ -174,7 +179,7 @@ class ConfiguracionService:
         institucion_id = self._resolver_institucion(institucion_id)
         config = self._repo.get_activa(institucion_id or "*")
         if config is None:
-            raise ValueError(
+            raise NoEncontradoError(
                 "No hay ningún año lectivo activo. Configure y active un año antes de operar."
             )
         return config
@@ -183,7 +188,7 @@ class ConfiguracionService:
         """Retorna una configuración por id. Lanza si no existe."""
         config = self._repo.get_by_id(anio_id)
         if config is None:
-            raise ValueError(f"No existe configuración con id {anio_id}.")
+            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
         # Autorización a nivel de objeto (paso_36): choke point de las lecturas
         # y mutaciones por anio_id (actualizar_info_institucional, niveles,
         # criterios, config académica). Verifica el tenant del registro leído.
@@ -218,7 +223,7 @@ class ConfiguracionService:
         - Al menos un nivel cubre el rango completo 0-100.
         """
         if not niveles:
-            raise ValueError("Debe especificar al menos un nivel de desempeño.")
+            raise ReglaDeNegocioError("Debe especificar al menos un nivel de desempeño.")
         # Verificar que el año existe
         self.get_by_id(anio_id)
 
@@ -230,7 +235,7 @@ class ConfiguracionService:
             actual = ordenados[i]
             siguiente = ordenados[i + 1]
             if actual.rango_max >= siguiente.rango_min:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"Los rangos de '{actual.nombre}' ({actual.rango_min}–{actual.rango_max}) "
                     f"y '{siguiente.nombre}' ({siguiente.rango_min}–{siguiente.rango_max}) "
                     "se solapan. Los rangos deben ser disjuntos."
@@ -256,7 +261,7 @@ class ConfiguracionService:
         for i in range(len(ordenados) - 1):
             actual, sig = ordenados[i], ordenados[i + 1]
             if actual.rango_max >= sig.rango_min:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"Los rangos de '{actual.nombre}' ({actual.rango_min}–{actual.rango_max}) "
                     f"y '{sig.nombre}' ({sig.rango_min}–{sig.rango_max}) se solapan. "
                     "Los rangos deben ser disjuntos."
@@ -289,7 +294,7 @@ class ConfiguracionService:
         existentes = self._repo.listar_niveles(anio_id)
         actual = next((n for n in existentes if n.id == nivel_id), None)
         if actual is None:
-            raise ValueError(f"El nivel {nivel_id} no existe en el año {anio_id}.")
+            raise NoEncontradoError(f"El nivel {nivel_id} no existe en el año {anio_id}.", detalles={"recurso": "nivel_desempeno", "id": nivel_id})
         modificado = dto.to_nivel().model_copy(update={"anio_id": anio_id, "id": nivel_id})
         otros = [n for n in existentes if n.id != nivel_id]
         self._validar_rangos_disjuntos([*otros, modificado])
@@ -343,7 +348,7 @@ class ConfiguracionService:
         """
         config = self._repo.get_by_id(anio_id)
         if config is None:
-            raise ValueError(f"No existe configuración con id {anio_id}.")
+            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
         from src.services.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(config.institucion_id)

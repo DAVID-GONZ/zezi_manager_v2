@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from src.domain.exceptions import CodigoError, ConflictoError, NoEncontradoError
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.cierre import (
@@ -148,9 +149,9 @@ class CierreService:
         # 1. Verificar periodo
         periodo = self._periodo_repo.get_by_id(periodo_id)
         if periodo is None:
-            raise ValueError(f"Periodo con id {periodo_id} no existe.")
+            raise NoEncontradoError(f"Periodo con id {periodo_id} no existe.")
         if not periodo.esta_abierto:
-            raise ValueError(f"El periodo '{periodo.nombre}' ya está cerrado.")
+            raise ConflictoError(f"El periodo '{periodo.nombre}' ya está cerrado.", codigo=CodigoError.PERIODO_CERRADO)
 
         # Obtener config del año para nota mínima y clasificación
         config = self._config_repo.get_by_id(ctx.anio_id)
@@ -219,7 +220,7 @@ class CierreService:
         abiertos = [p for p in periodos if p.esta_abierto]
         if abiertos:
             nombres = ", ".join(p.nombre for p in abiertos)
-            raise ValueError(
+            raise ConflictoError(
                 f"Los siguientes periodos aún están abiertos: {nombres}. "
                 "Cierre todos los periodos antes de cerrar el año."
             )
@@ -324,7 +325,7 @@ class CierreService:
         """
         promocion = self._cierre_repo.get_promocion(est_id, anio_id)
         if promocion is None:
-            raise ValueError(
+            raise NoEncontradoError(
                 f"No existe registro de promoción para el estudiante {est_id} "
                 f"en el año {anio_id}. Ejecute el cierre de año primero."
             )
@@ -475,9 +476,9 @@ class CierreService:
         """
         periodo = self._periodo_repo.get_by_id(periodo_id)
         if periodo is None:
-            raise ValueError(f"Periodo {periodo_id} no existe.")
+            raise NoEncontradoError(f"Periodo {periodo_id} no existe.")
         if not periodo.esta_abierto:
-            raise ValueError(f"El periodo '{periodo.nombre}' ya está cerrado.")
+            raise ConflictoError(f"El periodo '{periodo.nombre}' ya está cerrado.", codigo=CodigoError.PERIODO_CERRADO)
 
         resultados: dict[int, list[CierrePeriodo] | str] = {}
         for asig_id in asignacion_ids:

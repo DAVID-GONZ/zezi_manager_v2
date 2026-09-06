@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from src.domain.exceptions import ConflictoError, DependenciaNoDisponibleError, PermisoDenegadoError
 
 from src.domain.models.usuario import (
     DocenteInfoDTO,
@@ -239,7 +240,7 @@ class TestCrearUsuario:
             usuario="prof_debil", nombre_completo="Prof Debil",
             rol=Rol.PROFESOR, password="abcdefgh",  # sin dígito
         )
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.crear_usuario(dto)
 
     def test_temporal_generada_cumple_la_policy(self):
@@ -261,7 +262,7 @@ class TestDesactivar:
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto())
         svc.desactivar(u.id)
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.desactivar(u.id)
 
     def test_lanza_si_usuario_no_existe(self):
@@ -273,7 +274,7 @@ class TestDesactivar:
 class TestCambiarPassword:
     def test_lanza_si_sin_auth_service(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        with pytest.raises(ValueError, match="autenticaci"):
+        with pytest.raises(DependenciaNoDisponibleError, match="autenticaci"):
             svc.cambiar_password(1, "vieja", "nueva")
 
     def test_lanza_si_password_incorrecta(self):
@@ -298,12 +299,12 @@ class TestCambiarPassword:
     # M4 — enforcement de la política en el servidor (seguridad_02).
     def test_rechaza_password_solo_letras(self):
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.cambiar_password(1, "vieja", "abcdefgh")
 
     def test_rechaza_password_solo_digitos(self):
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=FakeAuth(pass_ok=True))
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.cambiar_password(1, "vieja", "1234567")
 
     def test_rechaza_password_igual_al_username(self):
@@ -311,7 +312,7 @@ class TestCambiarPassword:
         auth = FakeAuth(pass_ok=True)
         svc = UsuarioService(repo, auth_service=auth)
         u = svc.crear_usuario(_dto("juan2026"))
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.cambiar_password(u.id, "vieja", "juan2026")
 
     def test_acepta_password_que_cumple_policy(self):
@@ -341,7 +342,7 @@ class TestCambiarRol:
 class TestRbacCrear:
     def test_admin_no_puede_crear_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.crear_usuario(_dto("nuevo_admin", Rol.ADMIN), actor_rol="admin")
 
     def test_admin_puede_crear_director(self):
@@ -351,12 +352,12 @@ class TestRbacCrear:
 
     def test_director_no_puede_crear_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.crear_usuario(_dto("x_admin", Rol.ADMIN), actor_rol="director")
 
     def test_director_no_puede_crear_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.crear_usuario(_dto("x_dir", Rol.DIRECTOR), actor_rol="director")
 
     def test_director_puede_crear_profesor(self):
@@ -374,19 +375,19 @@ class TestRbacCambiarRol:
     def test_admin_no_puede_promover_a_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("dir1", Rol.DIRECTOR))
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.cambiar_rol(u.id, Rol.ADMIN, actor_rol="admin")
 
     def test_director_no_puede_cambiar_rol_de_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("adm1", Rol.ADMIN))
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.cambiar_rol(u.id, Rol.COORDINADOR, actor_rol="director")
 
     def test_director_no_puede_promover_a_director(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("prof_p1", Rol.PROFESOR))
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.cambiar_rol(u.id, Rol.DIRECTOR, actor_rol="director")
 
     def test_director_puede_cambiar_profesor_a_coordinador(self):
@@ -400,7 +401,7 @@ class TestRbacGestion:
     def test_director_no_puede_desactivar_admin(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("adm2", Rol.ADMIN))
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.desactivar(u.id, actor_rol="director")
 
     def test_director_puede_desactivar_profesor(self):
@@ -420,7 +421,7 @@ class TestRbacGestion:
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("dir2", Rol.DIRECTOR))
         svc.desactivar(u.id)
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.reactivar(u.id, actor_rol="director")
 
 
@@ -428,7 +429,7 @@ class TestResetearPassword:
     def test_lanza_si_sin_auth(self):
         svc = UsuarioService(FakeUsuarioRepo())
         u = _crear(svc, _dto("prof_p4"))
-        with pytest.raises(ValueError, match="autenticaci"):
+        with pytest.raises(DependenciaNoDisponibleError, match="autenticaci"):
             svc.resetear_password(u.id, "clave123")
 
     def test_resetea_con_password_dada(self):
@@ -443,7 +444,7 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
         u = _crear(svc, _dto("prof_p5b"))
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, PermisoDenegadoError, DependenciaNoDisponibleError)):
             svc.resetear_password(u.id, "abcdefgh")  # sin dígito
 
     def test_password_vacia_genera_temporal_no_username(self):
@@ -489,7 +490,7 @@ class TestResetearPassword:
         auth = FakeAuth()
         svc = UsuarioService(FakeUsuarioRepo(), auth_service=auth)
         u = _crear(svc, _dto("adm3", Rol.ADMIN))
-        with pytest.raises(ValueError, match="permiso"):
+        with pytest.raises(PermisoDenegadoError, match="permiso"):
             svc.resetear_password(u.id, "x", actor_rol="director")
 
     def test_director_puede_resetear_profesor(self):

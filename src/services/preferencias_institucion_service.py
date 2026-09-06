@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.domain.exceptions import ReglaDeNegocioError
 from src.domain.models.preferencia_institucion import (
     ActualizarPreferenciaDTO,
     CategoriaPreferencia,
@@ -52,7 +53,7 @@ class PreferenciasInstitucionService:
     @requiere_escritura
     def set(self, institucion_id: int, dto: ActualizarPreferenciaDTO) -> PreferenciaInstitucion:
         if dto.clave not in CLAVES_CONOCIDAS:
-            raise ValueError(f"Clave desconocida: {dto.clave!r}")
+            raise ReglaDeNegocioError(f"Clave desconocida: {dto.clave!r}")
         existing = self._repo.get(institucion_id, dto.clave)
         if existing is not None:
             pref = existing.model_copy(update={"valor": dto.valor})

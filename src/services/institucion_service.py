@@ -9,6 +9,7 @@ institución por defecto (#1). No contiene SQL ni lógica de presentación.
 
 from __future__ import annotations
 
+from src.domain.exceptions import ConflictoError, NoEncontradoError
 from src.domain.models.institucion import (
     ActualizarInstitucionDTO,
     Institucion,
@@ -53,7 +54,10 @@ class InstitucionService:
         """Retorna una institución por id. Lanza si no existe."""
         institucion = self._repo.get_by_id(institucion_id)
         if institucion is None:
-            raise ValueError(f"La institución con id {institucion_id} no existe.")
+            raise NoEncontradoError(
+                f"La institución con id {institucion_id} no existe.",
+                detalles={"recurso": "institucion", "id": institucion_id},
+            )
         return institucion
 
     def get_por_defecto(self) -> Institucion | None:
@@ -77,7 +81,10 @@ class InstitucionService:
         """Actualiza identidad institucional. No altera snapshots históricos de configuracion_anio."""
         inst = self._repo.get_by_id(institucion_id)
         if inst is None:
-            raise ValueError(f"La institución con id {institucion_id} no existe.")
+            raise NoEncontradoError(
+                f"La institución con id {institucion_id} no existe.",
+                detalles={"recurso": "institucion", "id": institucion_id},
+            )
         inst_actualizada = dto.aplicar_a(inst)
         return self._repo.actualizar(inst_actualizada)
 
@@ -111,7 +118,10 @@ class InstitucionService:
         """
         inst = self._repo.get_by_id(institucion_id)
         if inst is None:
-            raise ValueError(f"La institución con id {institucion_id} no existe.")
+            raise NoEncontradoError(
+                f"La institución con id {institucion_id} no existe.",
+                detalles={"recurso": "institucion", "id": institucion_id},
+            )
         return self._repo.actualizar(
             inst.model_copy(update={"configuracion_inicial_completa": True})
         )
@@ -123,7 +133,7 @@ class InstitucionService:
         Verifica que el nombre no exista antes de insertar.
         """
         if self._repo.existe_nombre(dto.nombre):
-            raise ValueError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
+            raise ConflictoError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
         return self._repo.guardar(dto.to_institucion())
 
 

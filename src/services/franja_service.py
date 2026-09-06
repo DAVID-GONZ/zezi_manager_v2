@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from itertools import pairwise
 
+from src.domain.exceptions import (
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.solo_lectura import requiere_escritura
@@ -58,7 +62,7 @@ class FranjaService:
         activa. `obj` None → ValueError (no existe). Scope None (admin/seed) → pasa.
         """
         if obj is None:
-            raise ValueError(f"{etiqueta} no existe.")
+            raise NoEncontradoError(f"{etiqueta} no existe.")
         from src.services.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
@@ -132,7 +136,7 @@ class FranjaService:
         ordenes = [f.orden for f in franjas]
         duplicados = sorted({o for o in ordenes if ordenes.count(o) > 1})
         if duplicados:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Hay franjas con 'orden' duplicado: {duplicados}. Cada franja debe "
                 "tener un orden único."
             )
@@ -140,7 +144,7 @@ class FranjaService:
         franjas_por_hora = sorted(franjas, key=lambda f: f.hora_inicio)
         for anterior, siguiente in pairwise(franjas_por_hora):
             if anterior.hora_fin > siguiente.hora_inicio:
-                raise ValueError(
+                raise ReglaDeNegocioError(
                     f"Las franjas se solapan: orden {anterior.orden} "
                     f"({anterior.hora_inicio}-{anterior.hora_fin}) con orden "
                     f"{siguiente.orden} ({siguiente.hora_inicio}-{siguiente.hora_fin})."

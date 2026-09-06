@@ -35,7 +35,7 @@ Tu trabajo es **descomponer y coordinar**, nunca implementar directamente.
 
 ## Reglas del harness (endurecidas 2026-08-17)
 
-- ✅ **El harness se versiona.** `scripts/`, `init.py`, `pyproject.toml`,
+- ✅ **El harness se versiona.** `scripts/`, `scripts/init.py`, `pyproject.toml`,
   `step_list.json`, `CLAUDE.md` y `.claude/agents/` están ahora bajo git.
   Antes estaban todos ignorados: un clon, un CI o el futuro fork a Vue se
   quedaban sin ninguna puerta de calidad. No los vuelvas a añadir a

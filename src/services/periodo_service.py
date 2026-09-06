@@ -8,6 +8,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from src.domain.exceptions import (
+    CodigoError,
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.periodo import (
     HitoPeriodo,
@@ -68,7 +74,7 @@ class PeriodoService:
     def _get_periodo_o_lanzar(self, periodo_id: int) -> Periodo:
         periodo = self._repo.get_by_id(periodo_id)
         if periodo is None:
-            raise ValueError(f"Periodo con id {periodo_id} no existe.")
+            raise NoEncontradoError(f"Periodo con id {periodo_id} no existe.", detalles={"recurso": "periodo", "id": periodo_id})
         return periodo
 
     # ------------------------------------------------------------------
@@ -89,19 +95,20 @@ class PeriodoService:
         if self._config_repo is not None:
             config = self._config_repo.get_by_id(dto.anio_id)
             if config is None:
-                raise ValueError(f"No existe configuración de año con id {dto.anio_id}.")
+                raise NoEncontradoError(f"No existe configuración de año con id {dto.anio_id}.", detalles={"recurso": "configuracion_anio", "id": dto.anio_id})
 
         # Verificar número único en el año
         existente = self._repo.get_por_numero(dto.anio_id, dto.numero)
         if existente is not None:
-            raise ValueError(f"Ya existe el período {dto.numero} en el año {dto.anio_id}.")
+            raise ConflictoError(f"Ya existe el período {dto.numero} en el año {dto.anio_id}.")
 
         # Verificar suma de pesos
         suma_actual = self._repo.suma_pesos_otros(dto.anio_id)
         if suma_actual + dto.peso_porcentual > 100.01:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"La suma de pesos de los períodos supera el 100% "
-                f"(actual: {suma_actual:.1f}%, nuevo: {dto.peso_porcentual:.1f}%)."
+                f"(actual: {suma_actual:.1f}%, nuevo: {dto.peso_porcentual:.1f}%).",
+                codigo=CodigoError.PESOS_EXCEDEN_TOTAL,
             )
 
         periodo = dto.to_periodo()
@@ -153,7 +160,7 @@ class PeriodoService:
         """Retorna el periodo activo del año. Lanza si no hay activo."""
         periodo = self._repo.get_activo(anio_id)
         if periodo is None:
-            raise ValueError(f"No hay ningún periodo activo para el año {anio_id}.")
+            raise NoEncontradoError(f"No hay ningún periodo activo para el año {anio_id}.", detalles={"recurso": "periodo_activo", "id": anio_id})
         return periodo
 
     def get_by_id(self, periodo_id: int) -> Periodo:
@@ -189,8 +196,9 @@ class PeriodoService:
         """
         periodo = self._get_periodo_o_lanzar(dto.periodo_id)
         if not periodo.esta_abierto:
-            raise ValueError(
-                f"No se puede agregar un hito al periodo '{periodo.nombre}' porque ya está cerrado."
+            raise ConflictoError(
+                f"No se puede agregar un hito al periodo '{periodo.nombre}' porque ya está cerrado.",
+                codigo=CodigoError.PERIODO_CERRADO,
             )
         hito = dto.to_hito()
         return self._repo.guardar_hito(hito)

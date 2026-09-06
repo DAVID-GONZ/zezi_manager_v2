@@ -28,6 +28,9 @@ from __future__ import annotations
 import logging
 from collections import Counter
 
+from src.domain.exceptions import (
+    NoEncontradoError,
+)
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import (
     BloqueGeneradoDTO,
@@ -416,7 +419,7 @@ class GeneradorHorarioService:
         """
         config = self._infra.get_config_generacion(config_id)
         if config is None:
-            raise ValueError(f"Config de generación {config_id} no existe.")
+            raise NoEncontradoError(f"Config de generación {config_id} no existe.", detalles={"recurso": "config_generacion", "id": config_id})
 
         # --- Resolver plantilla y slots lectivos -----------------------
         plantilla = self._infra.get_plantilla_franja(config.plantilla_id)

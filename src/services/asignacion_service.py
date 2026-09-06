@@ -8,6 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.asignacion import (
     Asignacion,
     AsignacionInfo,
@@ -112,7 +117,7 @@ class AsignacionService:
         if not pares:
             return {}
         if not self._plan_svc or not self._infra_repo:
-            return {p: 0 for p in pares}
+            return dict.fromkeys(pares, 0)
 
         grupo_ids_necesarios = {g for g, _ in pares}
         if grupos:
@@ -197,7 +202,7 @@ class AsignacionService:
         """Tope efectivo (carga_maxima_efectiva) de cada docente, una query por
         docente pero ejecutada una sola vez por render (no una vez por fila)."""
         if not self._usuario_repo:
-            return {did: None for did in docente_ids}
+            return dict.fromkeys(docente_ids)
         caps: dict[int, int | None] = {}
         for did in docente_ids:
             u = self._usuario_repo.get_by_id(did)
@@ -510,7 +515,7 @@ class AsignacionService:
                 if usuario.horas_extra
                 else ""
             )
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"Esta asignación elevaría la carga de {nombre} a {total}h/semana, "
                 f"superando su tope de {cap}h{extra_txt}. "
                 "Sube las horas extra o reasigna a otro docente."
@@ -519,7 +524,7 @@ class AsignacionService:
     def _get_asignacion_o_lanzar(self, asignacion_id: int) -> Asignacion:
         asig = self._repo.get_by_id(asignacion_id)
         if asig is None:
-            raise ValueError(f"Asignación con id {asignacion_id} no existe.")
+            raise NoEncontradoError(f"Asignación con id {asignacion_id} no existe.")
         return asig
 
     # ------------------------------------------------------------------
@@ -542,15 +547,15 @@ class AsignacionService:
         if self._periodo_repo is not None:
             periodo = self._periodo_repo.get_by_id(dto.periodo_id)
             if periodo is None:
-                raise ValueError(f"Periodo con id {dto.periodo_id} no existe.")
+                raise NoEncontradoError(f"Periodo con id {dto.periodo_id} no existe.")
             if not periodo.esta_abierto:
-                raise ValueError(
+                raise ConflictoError(
                     f"El periodo '{periodo.nombre}' está cerrado. "
                     "No se pueden crear asignaciones en periodos cerrados."
                 )
 
         if self._repo.existe(dto.grupo_id, dto.asignatura_id, dto.usuario_id, dto.periodo_id):
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 "Ya existe una asignación con esa combinación de grupo, "
                 "asignatura, docente y periodo."
             )
@@ -578,7 +583,7 @@ class AsignacionService:
         """Desactiva una asignación (soft delete)."""
         asig = self._get_asignacion_o_lanzar(asignacion_id)
         if not asig.activo:
-            raise ValueError(f"La asignación {asignacion_id} ya está desactivada.")
+            raise ConflictoError(f"La asignación {asignacion_id} ya está desactivada.")
         datos_ant = asig.model_dump(mode="json")
         self._repo.desactivar(asignacion_id)
         asig_desactivada = asig.model_copy(update={"activo": False})
@@ -629,9 +634,9 @@ class AsignacionService:
         """
         asig = self._get_asignacion_o_lanzar(asignacion_id)
         if asig.usuario_id == nuevo_usuario_id:
-            raise ValueError("El nuevo docente es el mismo que el actual.")
+            raise ReglaDeNegocioError("El nuevo docente es el mismo que el actual.")
         if self._repo.existe(asig.grupo_id, asig.asignatura_id, nuevo_usuario_id, asig.periodo_id):
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 "Ya existe una asignación con ese docente para el mismo "
                 "grupo, asignatura y periodo."
             )

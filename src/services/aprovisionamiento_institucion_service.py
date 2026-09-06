@@ -17,6 +17,7 @@ admin es `None`); el aprovisionamiento delega en infraestructura con
 
 from __future__ import annotations
 
+from src.domain.exceptions import ConflictoError
 from src.domain.models.institucion import (
     Institucion,
     NuevaInstitucionConDirectorDTO,
@@ -48,7 +49,7 @@ class AprovisionamientoInstitucionService:
         permiso para crear el rol director (RBAC delegado en UsuarioService).
         """
         if self._repo.existe_nombre(dto.nombre):
-            raise ValueError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
+            raise ConflictoError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
 
         inst = self._repo.guardar(
             Institucion(

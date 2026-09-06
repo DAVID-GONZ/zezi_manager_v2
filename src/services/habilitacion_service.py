@@ -6,6 +6,10 @@ Orquesta los casos de uso de habilitaciones y planes de mejoramiento.
 
 from __future__ import annotations
 
+from src.domain.exceptions import (
+    ConflictoError,
+    NoEncontradoError,
+)
 from src.domain.models.auditoria import AccionCambio, RegistroCambio
 from src.domain.models.habilitacion import (
     CerrarPlanMejoramientoDTO,
@@ -76,13 +80,13 @@ class HabilitacionService:
     def _get_habilitacion_o_lanzar(self, hab_id: int) -> Habilitacion:
         hab = self._repo.get_habilitacion(hab_id)
         if hab is None:
-            raise ValueError(f"Habilitación con id {hab_id} no existe.")
+            raise NoEncontradoError(f"Habilitación con id {hab_id} no existe.")
         return hab
 
     def _get_plan_o_lanzar(self, plan_id: int) -> PlanMejoramiento:
         plan = self._repo.get_plan(plan_id)
         if plan is None:
-            raise ValueError(f"Plan de mejoramiento con id {plan_id} no existe.")
+            raise NoEncontradoError(f"Plan de mejoramiento con id {plan_id} no existe.")
         return plan
 
     # ------------------------------------------------------------------
@@ -107,7 +111,7 @@ class HabilitacionService:
             dto.tipo,
             dto.periodo_id,
         ):
-            raise ValueError(
+            raise ConflictoError(
                 f"Ya existe una habilitación de tipo '{dto.tipo.value}' para "
                 f"el estudiante {dto.estudiante_id} en la asignación {dto.asignacion_id}."
             )

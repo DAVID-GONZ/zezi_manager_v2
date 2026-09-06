@@ -9,6 +9,14 @@ from __future__ import annotations
 import secrets
 import string
 
+from src.domain.exceptions import (
+    CodigoError,
+    ConflictoError,
+    DependenciaNoDisponibleError,
+    NoEncontradoError,
+    PermisoDenegadoError,
+    ReglaDeNegocioError,
+)
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
@@ -114,7 +122,7 @@ class UsuarioService:
     def _get_usuario_o_lanzar(self, usuario_id: int) -> Usuario:
         usuario = self._repo.get_by_id(usuario_id)
         if usuario is None:
-            raise ValueError(f"Usuario con id {usuario_id} no existe.")
+            raise NoEncontradoError(f"Usuario con id {usuario_id} no existe.", detalles={"recurso": "usuario", "id": usuario_id})
         # Autorización a nivel de objeto (paso_36): el target debe pertenecer a
         # la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo, no el que pueda venir del caller. Scope None (admin/seed) → pasa.
@@ -151,8 +159,9 @@ class UsuarioService:
         if actor_rol is None:
             return
         if not puede_gestionar(actor_rol, target.rol):
-            raise ValueError(
-                f"Tu rol no tiene permiso para gestionar al usuario '{target.usuario}'."
+            raise PermisoDenegadoError(
+                f"Tu rol no tiene permiso para gestionar al usuario '{target.usuario}'.",
+                codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
 
     @staticmethod
@@ -231,8 +240,9 @@ class UsuarioService:
         if actor_rol is not None:
             rol_str = dto.rol.value if hasattr(dto.rol, "value") else str(dto.rol)
             if rol_str not in roles_asignables(actor_rol):
-                raise ValueError(
-                    f"Tu rol no tiene permiso para crear usuarios con rol '{rol_str}'."
+                raise PermisoDenegadoError(
+                    f"Tu rol no tiene permiso para crear usuarios con rol '{rol_str}'.",
+                    codigo=CodigoError.ROL_NO_AUTORIZADO,
                 )
         usuario = dto.to_usuario()
         # Username ÚNICO GLOBAL (paso_37): un username no puede repetirse en
@@ -240,7 +250,7 @@ class UsuarioService:
         # La institución del nuevo usuario se sigue resolviendo (scope de sesión
         # o #1 en seed/arranque) para scopear todo lo demás del multi-tenant.
         if self._repo.existe_usuario(dto.usuario):
-            raise ValueError(f"Ya existe un usuario con el nombre '{dto.usuario}'.")
+            raise ConflictoError(f"Ya existe un usuario con el nombre '{dto.usuario}'.")
 
         # A2 — credencial inicial. Sin contraseña explícita → temporal fuerte
         # aleatoria + cambio forzado (nunca el username, que es predecible).
@@ -319,9 +329,9 @@ class UsuarioService:
             self._verificar_gestion(actor_rol, usuario)
             rol_str = nuevo_rol.value if hasattr(nuevo_rol, "value") else str(nuevo_rol)
             if rol_str not in roles_asignables(actor_rol):
-                raise ValueError(f"Tu rol no tiene permiso para asignar el rol '{rol_str}'.")
+                raise PermisoDenegadoError(f"Tu rol no tiene permiso para asignar el rol '{rol_str}'.", codigo=CodigoError.ROL_NO_AUTORIZADO)
         if not usuario.activo:
-            raise ValueError(
+            raise ReglaDeNegocioError(
                 f"El usuario '{usuario.usuario}' está desactivado y no puede modificarse."
             )
         datos_ant = usuario.model_dump(mode="json")
@@ -428,7 +438,7 @@ class UsuarioService:
             (para comunicarla), o `None` cuando el admin fijó una. NUNCA se loguea.
         """
         if self._auth is None:
-            raise ValueError("El servicio de autenticación no está configurado.")
+            raise DependenciaNoDisponibleError("El servicio de autenticación no está configurado.", codigo=CodigoError.AUTENTICACION_NO_CONFIGURADA)
         usuario = self._get_usuario_o_lanzar(usuario_id)
         self._verificar_gestion(actor_rol, usuario)
         explicita = (nueva_password or "").strip()
@@ -463,7 +473,7 @@ class UsuarioService:
         Lanza ValueError si la contraseña actual es incorrecta.
         """
         if self._auth is None:
-            raise ValueError("El servicio de autenticación no está configurado.")
+            raise DependenciaNoDisponibleError("El servicio de autenticación no está configurado.", codigo=CodigoError.AUTENTICACION_NO_CONFIGURADA)
         # M4: la nueva contraseña debe cumplir la política de dominio ANTES de
         # delegar al auth (>=8, letra+dígito, != username). Se resuelve el
         # username del usuario para la regla anti-igualdad (lectura best-effort:
@@ -474,7 +484,7 @@ class UsuarioService:
 
         exito = self._auth.cambiar_password(usuario_id, password_actual, password_nuevo)
         if not exito:
-            raise ValueError("La contraseña actual no es correcta.")
+            raise ReglaDeNegocioError("La contraseña actual no es correcta.", codigo=CodigoError.PASSWORD_INCORRECTA)
         # A2: el dueño cambió su contraseña → ya no está forzado.
         self._repo.marcar_debe_cambiar_password(usuario_id, False)
 
@@ -586,9 +596,9 @@ class UsuarioService:
         """
         usuario = self._get_usuario_o_lanzar(usuario_id)
         if carga_horaria_max is not None and carga_horaria_max < 0:
-            raise ValueError("La carga máxima no puede ser negativa.")
+            raise ReglaDeNegocioError("La carga máxima no puede ser negativa.")
         if horas_extra < 0:
-            raise ValueError("Las horas extra no pueden ser negativas.")
+            raise ReglaDeNegocioError("Las horas extra no pueden ser negativas.")
         datos_ant = usuario.model_dump(mode="json")
         self._repo.actualizar_carga(usuario_id, carga_horaria_max, horas_extra)
         actualizado = usuario.model_copy(

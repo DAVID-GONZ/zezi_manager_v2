@@ -6,6 +6,7 @@ Orquesta los casos de uso del módulo de Asistencia.
 
 from __future__ import annotations
 
+from src.domain.exceptions import ReglaDeNegocioError
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
 from src.domain.models.asistencia import (
     ControlDiario,
@@ -246,7 +247,7 @@ class AsistenciaService:
         Raises ValueError si mes está fuera del rango 1–12.
         """
         if not 1 <= mes <= 12:
-            raise ValueError("Mes fuera de rango (1–12).")
+            raise ReglaDeNegocioError("Mes fuera de rango (1–12).")
         return self._repo.contar_clases_dictadas_docente(usuario_id, anio, mes)
 
     def clases_mes_por_asignacion(self, usuario_id: int, anio: int, mes: int) -> dict[int, int]:
@@ -255,7 +256,7 @@ class AsistenciaService:
         Raises ValueError si mes está fuera del rango 1–12.
         """
         if not 1 <= mes <= 12:
-            raise ValueError("Mes fuera de rango (1–12).")
+            raise ReglaDeNegocioError("Mes fuera de rango (1–12).")
         return self._repo.clases_dictadas_por_asignacion(usuario_id, anio, mes)
 
 

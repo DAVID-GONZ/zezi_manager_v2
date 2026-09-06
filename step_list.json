@@ -47,10 +47,73 @@
   {
     "id": "horario_01_validacion_generacion",
     "nombre": "Validacion de datos y preparacion interactiva del generador de horarios",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "src/services/generador_horario_service.py, src/services/horario_service.py, src/services/preparacion_horario_service.py, src/services/restriccion_generacion_service.py, src/services/franja_service.py, src/services/sala_service.py, src/services/escenario_horario_service.py, src/domain/models/infraestructura.py, src/interface/presenters/academico/horarios_hub_presenter.py, src/interface/pages/academico/horarios_hub.py, container.py, tests/unit/services/test_generador_horario.py, tests/unit/services/test_preparacion_horario.py, tests/unit/services/test_horario_lote.py",
     "operacion": "crear+modificar",
     "sdd": true,
     "descripcion": "Cierra la auditoria del 2026-09-03. Las salas dejan de invalidar el horario via el oraculo (P1); ninguna corrida termina sin incidencias ni deja un escenario vacio activable (P2/P3); la checklist de preparacion pasa a medir la ConfigGeneracion real y las asignaciones activas en vez del catalogo y del plan en abstracto (P4); y el panel de puertas se embebe en la seccion Generar con recalculo en tiempo real y gating del boton (P5). 19 tareas."
+  },
+  {
+    "id": "datos_01_excepciones_dominio",
+    "nombre": "Jerarquia de excepciones de dominio",
+    "status": "in_progress",
+    "destino_v2": "src/domain/exceptions.py, src/services/alerta_service.py, src/services/aprovisionamiento_institucion_service.py, src/services/asignacion_service.py, src/services/asistencia_service.py, src/services/catalogo_academico_service.py, src/services/cierre_service.py, src/services/configuracion_service.py, src/services/convivencia_service.py, src/services/estudiante_service.py, src/services/evaluacion_service.py, src/services/franja_service.py, src/services/generador_horario_service.py, src/services/habilitacion_service.py, src/services/horario_service.py, src/services/informe_service.py, src/services/institucion_service.py, src/services/nivelacion_service.py, src/services/periodo_service.py, src/services/plan_mejoramiento_service.py, src/services/preferencias_institucion_service.py, src/services/restriccion_generacion_service.py, src/services/sala_service.py, src/services/usuario_service.py, src/services/solo_lectura.py, src/services/contexto_tenant.py, tests/unit/domain/test_exceptions.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Hueco 1 de la auditoria de datos (2026-09-05, seccion 3). Define ZeciError y sus subtipos (ReglaDeNegocioError, NoEncontradoError, ConflictoError, PermisoDenegadoError) con codigo estable, y sustituye los 145 raise ValueError y 11 RuntimeError de los servicios. OperacionSoloLecturaError y OperacionFueraDeInstitucionError se reencuadran bajo la jerarquia sin perder su herencia de PermissionError. Prerequisito de backend_12_endpoints_crud: sin codigos estables la API no puede mapear 404/409/422 y el mensaje en espanol se convierte en el contrato."
+  },
+  {
+    "id": "datos_02_model_config_base",
+    "nombre": "ZeciModel base con model_config en los 180 modelos",
+    "status": "pending",
+    "destino_v2": "src/domain/models/base.py, src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/busqueda.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, src/domain/models/piar.py, src/domain/models/plan_mejoramiento.py, src/domain/models/preferencia_institucion.py, src/domain/models/usuario.py, tests/unit/domain/test_model_config.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Hueco 2 de la auditoria de datos (seccion 2.1). Ninguno de los 180 modelos declara model_config: 0 from_attributes, 0 extra=forbid, 0 str_strip_whitespace, 0 validate_assignment. Crea ZeciModel(BaseModel) con la configuracion comun y hace que los 180 hereden de el. Incluye un test estructural que falla si un modelo nuevo hereda de BaseModel directo. Prerequisito de backend_07_repos_migracion: sin from_attributes=True no se puede hidratar un modelo desde un objeto del ORM."
+  },
+  {
+    "id": "datos_03_computed_fields",
+    "nombre": "123 @property a @computed_field y separacion de *_display",
+    "status": "pending",
+    "destino_v2": "src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, tests/unit/domain/test_computed_fields.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Hueco 3 de la auditoria de datos (seccion 2.2). 46 modelos exponen 123 valores derivados como @property de Python: ninguno aparece en model_dump() ni en JSON. Convierte a @computed_field las que son regla de negocio (Estudiante.edad, Nota.es_aprobatoria, Alerta.es_critica, PromocionAnual.fue_promovido) y deja como property de presentacion las *_display. Sin esto el fork Vue recalcula 123 reglas de negocio en TypeScript, en contra de la regla de logica de negocio al backend."
+  },
+  {
+    "id": "datos_04_decimal_notas",
+    "nombre": "Notas de float a Decimal",
+    "status": "pending",
+    "destino_v2": "src/domain/models/evaluacion.py, src/domain/models/cierre.py, src/domain/models/habilitacion.py, src/domain/models/nivelacion.py, src/domain/models/plan_mejoramiento.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/services/evaluacion_service.py, src/services/cierre_service.py, src/services/habilitacion_service.py, src/services/nivelacion_service.py, src/services/plan_mejoramiento_service.py, src/services/informe_service.py, src/infrastructure/db/repositories/sqlite_evaluacion_repo.py, src/infrastructure/db/repositories/sqlite_cierre_repo.py, src/infrastructure/db/repositories/sqlite_habilitacion_repo.py, src/infrastructure/db/repositories/sqlite_nivelacion_repo.py, src/infrastructure/db/repositories/sqlite_plan_mejoramiento_repo.py, tests/unit/domain/test_decimal_notas.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Hueco 4 de la auditoria de datos (seccion 1.4). 29 columnas REAL y 84 campos float sostienen las notas; cero usos de Decimal en el proyecto. Los umbrales de aprobacion y las medias ponderadas se comparan en IEEE-754 en un sistema donde la nota decide si un estudiante repite el ano. Pasa a Decimal con cuantizacion explicita en modelos, servicios y la serializacion de los repos. Debe ocurrir ANTES de backend_04_metadata_schema para que el tipo NUMERIC(4,2) se fije con el dominio ya correcto."
+  },
+  {
+    "id": "datos_05_enums_y_puerta",
+    "nombre": "StrEnum faltantes y puerta de alineacion enum-CHECK",
+    "status": "pending",
+    "destino_v2": "src/domain/models/infraestructura.py, src/domain/models/convivencia.py, src/domain/models/institucion.py, src/domain/models/dtos.py, src/domain/models/preferencia_institucion.py, scripts/check_enums.py, scripts/init.py, tests/unit/domain/test_enums_schema.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Hueco 6 de la auditoria de datos (seccion 2.4). 7 CHECK(col IN ...) del esquema no tienen StrEnum equivalente y el modelo los tipa como str libre (franjas.tipo, salas.tipo, franjas_reunion.modo, config_generacion.estado, observaciones_periodo.origen). En sentido contrario, 4 StrEnum no tienen CHECK en la base (Calendario, TipoInstitucion, FormatoInforme, CategoriaPreferencia): el modelo valida pero la base acepta cualquier valor. Anade los enums y una puerta en init.py que compare ambos conjuntos y falle ante cualquier divergencia futura."
+  },
+  {
+    "id": "datos_06_identidad_institucional",
+    "nombre": "Fuente unica de identidad institucional",
+    "status": "pending",
+    "destino_v2": "src/domain/models/configuracion.py, src/domain/models/institucion.py, src/domain/ports/configuracion_repo.py, src/domain/ports/institucion_repo.py, src/infrastructure/db/repositories/sqlite_configuracion_repo.py, src/infrastructure/db/repositories/sqlite_institucion_repo.py, src/services/configuracion_service.py, src/services/institucion_service.py, src/services/informe_service.py, tests/unit/services/test_identidad_institucional.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Hueco 5 de la auditoria de datos (seccion 1.6). instituciones y configuracion_anio duplican 8 columnas de identidad (nombre, DANE, rector, direccion, municipio, telefono, logo_path, resolucion) sin ningun mecanismo de sincronizacion: los boletines leen una y la cabecera de la UI la otra. Ademas ConfiguracionAnio.logo_url no tiene columna ni aparece en los INSERT/UPDATE del repo: es un campo permanentemente None, y por eso layout.py nunca pinta el logo desde ahi. Establece instituciones como fuente unica y elimina el campo muerto. Debe resolverse antes de backend_04, que si no mapearia la duplicacion en dos clases escribibles."
+  },
+  {
+    "id": "datos_07_restricciones_str",
+    "nombre": "Restricciones de longitud y formato en campos de texto",
+    "status": "pending",
+    "destino_v2": "src/domain/models/base.py, src/domain/models/usuario.py, src/domain/models/institucion.py, src/domain/models/estudiante.py, src/domain/models/acudiente.py, src/domain/models/convivencia.py, src/domain/models/configuracion.py, src/domain/models/infraestructura.py, tests/unit/domain/test_restricciones_str.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Hueco 7 de la auditoria de datos (seccion 2.3). 324 campos str sin max_length y cero usos de EmailStr, SecretStr, AnyUrl, constr o conint. Usuario.email e Institucion.email_institucional son str|None sin patron. En SQLite es inocuo; al exponer endpoints publicos es la puerta de entrada a payloads sin cota. Anade max_length coherente con el dominio y tipos restringidos en los campos que la API expondra."
   }
 ]

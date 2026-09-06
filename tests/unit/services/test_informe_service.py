@@ -5,6 +5,7 @@ from datetime import date
 from typing import Any
 
 import pytest
+from src.domain.exceptions import DependenciaNoDisponibleError
 
 from src.domain.models.convivencia import (
     CategoriaObservacion,
@@ -220,7 +221,7 @@ class TestSinExporter:
 
     def test_lanza_si_intenta_generar_sin_exporter(self):
         svc = InformeService(FakeEstadRepo())
-        with pytest.raises(ValueError, match="exportador"):
+        with pytest.raises(DependenciaNoDisponibleError, match="exportador"):
             svc.generar_notas(_dto_notas())
 
     def test_datos_asistencia_sin_exporter(self):
