@@ -56,7 +56,7 @@
   {
     "id": "datos_01_excepciones_dominio",
     "nombre": "Jerarquia de excepciones de dominio",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "src/domain/exceptions.py, src/services/alerta_service.py, src/services/aprovisionamiento_institucion_service.py, src/services/asignacion_service.py, src/services/asistencia_service.py, src/services/catalogo_academico_service.py, src/services/cierre_service.py, src/services/configuracion_service.py, src/services/convivencia_service.py, src/services/estudiante_service.py, src/services/evaluacion_service.py, src/services/franja_service.py, src/services/generador_horario_service.py, src/services/habilitacion_service.py, src/services/horario_service.py, src/services/informe_service.py, src/services/institucion_service.py, src/services/nivelacion_service.py, src/services/periodo_service.py, src/services/plan_mejoramiento_service.py, src/services/preferencias_institucion_service.py, src/services/restriccion_generacion_service.py, src/services/sala_service.py, src/services/usuario_service.py, src/services/solo_lectura.py, src/services/contexto_tenant.py, tests/unit/domain/test_exceptions.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -65,7 +65,7 @@
   {
     "id": "datos_02_model_config_base",
     "nombre": "ZeciModel base con model_config en los 180 modelos",
-    "status": "pending",
+    "status": "in_progress",
     "destino_v2": "src/domain/models/base.py, src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/busqueda.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, src/domain/models/piar.py, src/domain/models/plan_mejoramiento.py, src/domain/models/preferencia_institucion.py, src/domain/models/usuario.py, tests/unit/domain/test_model_config.py",
     "operacion": "crear+modificar",
     "sdd": true,

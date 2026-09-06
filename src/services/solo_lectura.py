@@ -30,7 +30,7 @@ import functools
 from collections.abc import Callable
 from typing import TypeVar
 
-from src.domain.exceptions import OperacionSoloLecturaError  # noqa: F401
+from src.domain.exceptions import OperacionSoloLecturaError
 
 # Estado privado. Default False → comportamiento normal sin impersonación.
 _solo_lectura: contextvars.ContextVar[bool] = contextvars.ContextVar(

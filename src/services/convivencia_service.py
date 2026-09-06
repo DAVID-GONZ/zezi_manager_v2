@@ -1054,7 +1054,7 @@ class ConvivenciaService:
 
             desglose: dict[str, int] | None = None
             if hay_tipos:
-                desglose = {nombre: 0 for nombre in tipos_map.values()}
+                desglose = dict.fromkeys(tipos_map.values(), 0)
                 for reg in regs_neg_por_est.get(est_id, []):
                     ts_id = getattr(reg, "tipo_situacion_id", None)
                     tipo_nombre = tipos_map.get(ts_id, "Sin clasificar") if ts_id is not None else "Sin clasificar"
@@ -1204,7 +1204,7 @@ class ConvivenciaService:
         filas = self.reporte_periodo_grupo(grupo_id, periodo_id)
         desglose_cols = self._desglose_cols_de_filas(filas)
         filas_dict = [self._fila_a_dict_exportacion(f) for f in filas]
-        for fd, fila in zip(filas_dict, filas):
+        for fd, fila in zip(filas_dict, filas, strict=False):
             fd["num_obs"] = len(fila.observaciones)
 
         grupo_nombre = kwargs.get("grupo", "")

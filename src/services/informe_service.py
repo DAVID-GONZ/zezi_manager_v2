@@ -1067,8 +1067,6 @@ def merge_excels(excel_list: list[tuple[str, bytes]]) -> bytes:
     import io
 
     import openpyxl
-    from openpyxl.utils import get_column_letter
-
     wb_dest = openpyxl.Workbook()
     wb_dest.remove(wb_dest.active)
 
