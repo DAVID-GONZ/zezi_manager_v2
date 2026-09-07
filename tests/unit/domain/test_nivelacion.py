@@ -1,5 +1,7 @@
 """Tests unitarios del dominio de nivelación."""
 
+from decimal import Decimal
+
 import pytest
 
 from src.domain.models.nivelacion import (
@@ -19,7 +21,7 @@ class TestActividadNivelacion:
 
     def test_peso_valido(self):
         a = self._act(peso=0.4)
-        assert a.peso == 0.4
+        assert a.peso == Decimal("0.4000")
 
     def test_peso_fuera_rango_lanza(self):
         with pytest.raises(ValueError, match="peso"):
@@ -114,7 +116,7 @@ class TestDTOs:
         dto = NuevaActividadNivelacionDTO(
             asignacion_id=1, periodo_id=1, nombre="X", peso=0.3
         )
-        assert dto.peso == 0.3
+        assert dto.peso == Decimal("0.3000")
 
     def test_nueva_actividad_dto_peso_invalido(self):
         with pytest.raises(ValueError):
@@ -124,7 +126,7 @@ class TestDTOs:
 
     def test_calificar_dto_redondea(self):
         dto = CalificarNotaNivelacionDTO(valor=75.555)
-        assert dto.valor == pytest.approx(75.56, abs=0.01)
+        assert dto.valor == Decimal("75.56")
 
     def test_calificar_dto_fuera_rango(self):
         with pytest.raises(ValueError):

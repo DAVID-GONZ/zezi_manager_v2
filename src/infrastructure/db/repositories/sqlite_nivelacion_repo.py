@@ -59,7 +59,7 @@ class SqliteNivelacionRepository(INivelacionRepository):
                     actividad.periodo_id,
                     actividad.nombre,
                     actividad.descripcion,
-                    actividad.peso,
+                    float(actividad.peso),
                     actividad.fecha.isoformat() if actividad.fecha else None,
                     actividad.usuario_id,
                 ),

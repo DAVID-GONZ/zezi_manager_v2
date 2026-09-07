@@ -88,7 +88,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
                 """,
                 (
                     categoria.nombre,
-                    categoria.peso,
+                    float(categoria.peso),
                     categoria.asignacion_id,
                     categoria.periodo_id,
                 ),
@@ -101,7 +101,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
         with self._get_conn() as conn:
             conn.execute(
                 "UPDATE categorias SET nombre = ?, peso = ? WHERE id = ?",
-                (categoria.nombre, categoria.peso, categoria.id),
+                (categoria.nombre, float(categoria.peso), categoria.id),
             )
             if self._conn is None:
                 conn.commit()
@@ -204,7 +204,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
                     actividad.nombre,
                     actividad.descripcion,
                     actividad.fecha.isoformat() if actividad.fecha else None,
-                    actividad.valor_maximo,
+                    float(actividad.valor_maximo),
                     actividad.estado.value,
                     actividad.categoria_id,
                 ),
@@ -226,7 +226,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
                     actividad.nombre,
                     actividad.descripcion,
                     actividad.fecha.isoformat() if actividad.fecha else None,
-                    actividad.valor_maximo,
+                    float(actividad.valor_maximo),
                     actividad.estado.value,
                     actividad.id,
                 ),
@@ -313,7 +313,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
                 (
                     nota.estudiante_id,
                     nota.actividad_id,
-                    nota.valor,
+                    float(nota.valor),
                     nota.usuario_registro_id,
                     nota.fecha_registro.isoformat(),
                 ),
@@ -342,7 +342,7 @@ class SqliteEvaluacionRepository(IEvaluacionRepository):
                     (
                         n.estudiante_id,
                         n.actividad_id,
-                        n.valor,
+                        float(n.valor),
                         n.usuario_registro_id,
                         n.fecha_registro.isoformat(),
                     )

@@ -31,11 +31,13 @@ El corazón de este módulo es CalculadorNotas:
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
 from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import QUANT_NOTA, QUANT_PESO, NotaDecimal, PesoDecimal
 
 # =============================================================================
 # Enumeraciones
@@ -97,7 +99,7 @@ class ConfiguracionSIEE(EntidadDominio):
     id: int | None = None
     anio_id: int
     modo: ModoSIEE = ModoSIEE.LIBRE
-    porcentaje_autonomia_docente: float | None = None  # solo para MIXTO_AUTONOMIA
+    porcentaje_autonomia_docente: PesoDecimal | None = None  # solo para MIXTO_AUTONOMIA
 
     @field_validator("anio_id")
     @classmethod
@@ -109,9 +111,9 @@ class ConfiguracionSIEE(EntidadDominio):
 
     @field_validator("porcentaje_autonomia_docente")
     @classmethod
-    def validar_porcentaje(cls, v: float | None) -> float | None:
+    def validar_porcentaje(cls, v: Decimal | None) -> Decimal | None:
         """Si se define, la autonomía docente debe estar en (0, 1.0] (fracción, no porcentaje)."""
-        if v is not None and not (0 < v <= 1.0):
+        if v is not None and not (0 < v <= Decimal("1")):
             raise ValueError(
                 f"porcentaje_autonomia_docente debe estar entre 0 (exclusivo) y 1.0 "
                 f"(recibido: {v}). Use 0.30 para representar 30%."
@@ -120,14 +122,16 @@ class ConfiguracionSIEE(EntidadDominio):
 
     @computed_field
     @property
-    def peso_institucional(self) -> float | None:
+    def peso_institucional(self) -> Decimal | None:
         """
         Peso total reservado para categorías institucionales en MIXTO_AUTONOMIA.
         Retorna None si el modo no aplica.
         """
         if self.modo != ModoSIEE.MIXTO_AUTONOMIA or self.porcentaje_autonomia_docente is None:
             return None
-        return round(1.0 - self.porcentaje_autonomia_docente, 4)
+        return (Decimal("1") - self.porcentaje_autonomia_docente).quantize(
+            QUANT_PESO, rounding=ROUND_HALF_UP
+        )
 
 
 class Categoria(EntidadDominio):
@@ -157,7 +161,7 @@ class Categoria(EntidadDominio):
 
     id: int | None = None
     nombre: str
-    peso: float  # 0 < peso <= 1.0
+    peso: PesoDecimal  # 0 < peso <= 1.0
     asignacion_id: int | None = None
     periodo_id: int | None = None
     anio_id: int | None = None  # solo para institucionales
@@ -178,14 +182,14 @@ class Categoria(EntidadDominio):
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float) -> float:
+    def validar_peso(cls, v: Decimal) -> Decimal:
         """El peso de la categoría debe estar en (0, 1.0] (escala 0-1, no porcentaje)."""
-        if not (0 < v <= 1.0):
+        if not (0 < v <= Decimal("1")):
             raise ValueError(
                 f"El peso debe estar entre 0 (exclusivo) y 1.0 (inclusivo) "
                 f"(recibido: {v}). Use 0.40 para representar 40%."
             )
-        return round(v, 4)
+        return v
 
     @field_validator("asignacion_id", "periodo_id", "anio_id", "categoria_padre_id")
     @classmethod
@@ -197,9 +201,9 @@ class Categoria(EntidadDominio):
 
     @computed_field
     @property
-    def peso_porcentaje(self) -> float:
-        """Peso en porcentaje: 0.40 → 40.0"""
-        return round(self.peso * 100, 2)
+    def peso_porcentaje(self) -> Decimal:
+        """Peso en porcentaje: 0.40 → 40.00"""
+        return (self.peso * 100).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @computed_field
     @property
@@ -223,7 +227,7 @@ class Actividad(EntidadDominio):
     nombre: str
     descripcion: str | None = None
     fecha: date | None = None
-    valor_maximo: float = 100.0
+    valor_maximo: NotaDecimal = Decimal("100.00")
     estado: EstadoActividad = EstadoActividad.BORRADOR
     categoria_id: int
 
@@ -333,7 +337,7 @@ class Nota(EntidadDominio):
     id: int | None = None
     estudiante_id: int
     actividad_id: int
-    valor: float
+    valor: NotaDecimal
     usuario_registro_id: int | None = None
     fecha_registro: datetime = Field(default_factory=datetime.now)
 
@@ -347,17 +351,17 @@ class Nota(EntidadDominio):
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
-        """La nota debe estar en el rango 0-100; se redondea a 2 decimales."""
+    def validar_valor(cls, v: Decimal) -> Decimal:
+        """La nota debe estar en el rango 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @computed_field
     @property
     def es_aprobatoria(self) -> bool:
         """True si el valor alcanza la nota mínima aprobatoria (60.0)."""
-        return self.valor >= 60.0
+        return self.valor >= 60
 
 
 class PuntosExtra(EntidadDominio):
@@ -437,18 +441,18 @@ class CalculadorNotas:
     """
 
     @staticmethod
-    def _to_nota_map(notas: list[Nota] | dict[int, float]) -> dict[int, float]:
+    def _to_nota_map(notas: list[Nota] | dict[int, Decimal]) -> dict[int, Decimal]:
         """Normaliza notas a dict {actividad_id: valor}, aceptando ambos formatos."""
         if isinstance(notas, dict):
-            return notas
+            return {k: (v if isinstance(v, Decimal) else Decimal(str(v))) for k, v in notas.items()}
         return {n.actividad_id: n.valor for n in notas}
 
     @staticmethod
     def calcular_definitiva(
-        notas: list[Nota] | dict[int, float],
+        notas: list[Nota] | dict[int, Decimal],
         actividades: list[Actividad],
         categorias: list[Categoria],
-    ) -> float:
+    ) -> Decimal:
         """
         Calcula la nota definitiva del periodo.
 
@@ -456,7 +460,7 @@ class CalculadorNotas:
           1. Para cada categoría, calcular el promedio de todas sus
              actividades. Si una actividad no tiene nota, cuenta como 0.
           2. Ponderar cada promedio de categoría por su peso.
-          3. Retornar la suma ponderada redondeada a 2 decimales.
+          3. Retornar la suma ponderada cuantizada a 2 decimales (ROUND_HALF_UP).
 
         Args:
             notas:       todas las notas del estudiante en la asignación
@@ -464,15 +468,14 @@ class CalculadorNotas:
             categorias:  todas las categorías de la asignación+periodo
 
         Returns:
-            Nota definitiva en escala 0-100.
+            Nota definitiva en escala 0-100 como Decimal exacto.
         """
         if not categorias:
-            return 0.0
+            return Decimal("0.00")
 
         # Índices para búsqueda O(1)
         cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
-        {a.id: a for a in actividades if a.id}
-        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
+        nota_map: dict[int, Decimal] = CalculadorNotas._to_nota_map(notas)
 
         # Actividades por categoría
         acts_por_cat: dict[int, list[int]] = {}
@@ -480,7 +483,7 @@ class CalculadorNotas:
             if act.id and act.categoria_id in cat_map:
                 acts_por_cat.setdefault(act.categoria_id, []).append(act.id)
 
-        definitiva = 0.0
+        definitiva = Decimal("0")
         for cat in categorias:
             if not cat.id:
                 continue
@@ -488,19 +491,22 @@ class CalculadorNotas:
             if not act_ids:
                 # Categoría sin actividades: su peso cuenta como 0
                 continue
-            promedio_cat = sum(nota_map.get(aid, 0.0) for aid in act_ids) / len(act_ids)
+            promedio_cat = sum(
+                (nota_map.get(aid, Decimal("0")) for aid in act_ids),
+                Decimal("0"),
+            ) / len(act_ids)
             definitiva += promedio_cat * cat.peso
 
-        return round(definitiva, 2)
+        return definitiva.quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
     def calcular_definitiva_con_corte(
-        notas: list[Nota] | dict[int, float],
+        notas: list[Nota] | dict[int, Decimal],
         actividades: list[Actividad],
         categorias: list[Categoria],
-        nota_definitiva_plan: float,
+        nota_definitiva_plan: Decimal,
         categoria_ids_en_corte: set[int],
-    ) -> float:
+    ) -> Decimal:
         """
         Calcula la nota definitiva cuando hay un Plan de Mejoramiento activo.
 
@@ -520,13 +526,15 @@ class CalculadorNotas:
                                     Estas se excluyen del cálculo posterior.
 
         Returns:
-            Nota definitiva total en escala 0-100, redondeada a 2 decimales.
+            Nota definitiva total en escala 0-100 como Decimal exacto.
         """
+        if not isinstance(nota_definitiva_plan, Decimal):
+            nota_definitiva_plan = Decimal(str(nota_definitiva_plan))
         if not categorias:
-            return round(nota_definitiva_plan, 2)
+            return nota_definitiva_plan.quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
         cat_map: dict[int, Categoria] = {c.id: c for c in categorias if c.id}
-        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
+        nota_map: dict[int, Decimal] = CalculadorNotas._to_nota_map(notas)
 
         acts_por_cat: dict[int, list[int]] = {}
         for act in actividades:
@@ -536,23 +544,26 @@ class CalculadorNotas:
         # Solo categorías que NO estuvieron en el corte
         cats_post_corte = [c for c in categorias if c.id and c.id not in categoria_ids_en_corte]
 
-        aporte_post = 0.0
+        aporte_post = Decimal("0")
         for cat in cats_post_corte:
             act_ids = acts_por_cat.get(cat.id, [])
             if not act_ids:
                 continue
-            promedio_cat = sum(nota_map.get(aid, 0.0) for aid in act_ids) / len(act_ids)
+            promedio_cat = sum(
+                (nota_map.get(aid, Decimal("0")) for aid in act_ids),
+                Decimal("0"),
+            ) / len(act_ids)
             aporte_post += promedio_cat * cat.peso
 
-        return round(nota_definitiva_plan + aporte_post, 2)
+        return (nota_definitiva_plan + aporte_post).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
     def calcular_promedio_ajustado(
-        notas: list[Nota] | dict[int, float],
+        notas: list[Nota] | dict[int, Decimal],
         actividades: list[Actividad],
         categorias: list[Categoria],
         hasta_fecha: date | None = None,
-    ) -> float:
+    ) -> Decimal:
         """
         Calcula el promedio ajustado a una fecha dada.
 
@@ -570,16 +581,16 @@ class CalculadorNotas:
             hasta_fecha: fecha de corte (default: hoy)
 
         Returns:
-            Promedio ajustado en escala 0-100. 0.0 si no hay nada evaluado.
+            Promedio ajustado en escala 0-100 como Decimal exacto. Decimal("0.00") si no hay nada evaluado.
         """
         if not categorias:
-            return 0.0
+            return Decimal("0.00")
 
         corte = hasta_fecha or date.today()
-        nota_map: dict[int, float] = CalculadorNotas._to_nota_map(notas)
+        nota_map: dict[int, Decimal] = CalculadorNotas._to_nota_map(notas)
 
         # Filtrar actividades con fecha <= corte que tienen nota
-        acts_evaluadas: dict[int, list[float]] = {}
+        acts_evaluadas: dict[int, list[Decimal]] = {}
         for act in actividades:
             if act.id is None:
                 continue
@@ -592,36 +603,36 @@ class CalculadorNotas:
         # Categorías con al menos una actividad evaluada
         cats_con_datos = [c for c in categorias if c.id and c.id in acts_evaluadas]
         if not cats_con_datos:
-            return 0.0
+            return Decimal("0.00")
 
         # Renormalizar pesos para que sumen 1.0
-        peso_total = sum(c.peso for c in cats_con_datos)
+        peso_total = sum((c.peso for c in cats_con_datos), Decimal("0"))
         if peso_total <= 0:
-            return 0.0
+            return Decimal("0.00")
 
-        promedio = 0.0
+        promedio = Decimal("0")
         for cat in cats_con_datos:
             valores = acts_evaluadas[cat.id]
-            promedio_cat = sum(valores) / len(valores)
+            promedio_cat = sum(valores, Decimal("0")) / len(valores)
             peso_ajustado = cat.peso / peso_total
             promedio += promedio_cat * peso_ajustado
 
-        return round(promedio, 2)
+        return promedio.quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
     def pesos_validos(categorias: list[Categoria]) -> bool:
         """
-        True si la suma de pesos de las categorías es <= 1.0.
-        Margen de 0.001 para errores de redondeo de flotantes.
+        True si la suma de pesos de las categorías es exactamente <= 1.0.
+        Con Decimal no se necesita margen de tolerancia.
         """
         if not categorias:
             return True
-        return CalculadorNotas.peso_total(categorias) <= 1.001
+        return CalculadorNotas.peso_total(categorias) <= Decimal("1")
 
     @staticmethod
-    def peso_total(categorias: list[Categoria]) -> float:
-        """Suma de pesos de las categorías, redondeada a 4 decimales."""
-        return round(sum(c.peso for c in categorias), 4)
+    def peso_total(categorias: list[Categoria]) -> Decimal:
+        """Suma exacta de pesos de las categorías (aritmética Decimal)."""
+        return sum((c.peso for c in categorias), Decimal("0"))
 
 
 # =============================================================================
@@ -675,7 +686,7 @@ class NuevaConfiguracionSIEEDTO(DTODominio):
 
     anio_id: int
     modo: ModoSIEE = ModoSIEE.LIBRE
-    porcentaje_autonomia_docente: float | None = None
+    porcentaje_autonomia_docente: PesoDecimal | None = None
 
     @field_validator("anio_id")
     @classmethod
@@ -687,9 +698,9 @@ class NuevaConfiguracionSIEEDTO(DTODominio):
 
     @field_validator("porcentaje_autonomia_docente")
     @classmethod
-    def validar_porcentaje(cls, v: float | None) -> float | None:
+    def validar_porcentaje(cls, v: Decimal | None) -> Decimal | None:
         """Si se define, la autonomía docente debe estar en (0, 1.0]."""
-        if v is not None and not (0 < v <= 1.0):
+        if v is not None and not (0 < v <= Decimal("1")):
             raise ValueError(
                 f"porcentaje_autonomia_docente debe estar entre 0 y 1.0 (recibido: {v})."
             )
@@ -710,7 +721,7 @@ class NuevaCategoriaInstitucionalDTO(DTODominio):
     """
 
     nombre: str
-    peso: float
+    peso: PesoDecimal
     anio_id: int
     permite_subcategorias: bool = False
 
@@ -727,11 +738,11 @@ class NuevaCategoriaInstitucionalDTO(DTODominio):
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float) -> float:
-        """El peso institucional debe estar en (0, 1.0]; se redondea a 4 decimales."""
-        if not (0 < v <= 1.0):
+    def validar_peso(cls, v: Decimal) -> Decimal:
+        """El peso institucional debe estar en (0, 1.0]."""
+        if not (0 < v <= Decimal("1")):
             raise ValueError(f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v}).")
-        return round(v, 4)
+        return v
 
     @field_validator("anio_id")
     @classmethod
@@ -756,7 +767,7 @@ class NuevaCategoriaDTO(DTODominio):
     """Datos para crear una categoría de evaluación de docente."""
 
     nombre: str
-    peso: float
+    peso: PesoDecimal
     asignacion_id: int
     periodo_id: int
     categoria_padre_id: int | None = None  # solo en modo MIXTO_SUBCATEGORIAS
@@ -772,11 +783,11 @@ class NuevaCategoriaDTO(DTODominio):
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float) -> float:
-        """El peso de la categoría debe estar en (0, 1.0]; se redondea a 4 decimales."""
-        if not (0 < v <= 1.0):
+    def validar_peso(cls, v: Decimal) -> Decimal:
+        """El peso de la categoría debe estar en (0, 1.0]."""
+        if not (0 < v <= Decimal("1")):
             raise ValueError(f"El peso debe estar entre 0 (exclusivo) y 1.0 (recibido: {v}).")
-        return round(v, 4)
+        return v
 
     def to_categoria(self) -> Categoria:
         """Construye una Categoria de docente a partir de los datos del DTO."""
@@ -787,13 +798,13 @@ class ActualizarCategoriaDTO(DTODominio):
     """Campos actualizables de una categoría."""
 
     nombre: str | None = None
-    peso: float | None = None
+    peso: PesoDecimal | None = None
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float | None) -> float | None:
+    def validar_peso(cls, v: Decimal | None) -> Decimal | None:
         """Si se actualiza el peso, debe permanecer en (0, 1.0]."""
-        if v is not None and not (0 < v <= 1.0):
+        if v is not None and not (0 < v <= Decimal("1")):
             raise ValueError(f"El peso debe estar entre 0 y 1.0 (recibido: {v}).")
         return v
 
@@ -810,7 +821,7 @@ class NuevaActividadDTO(DTODominio):
     categoria_id: int
     descripcion: str | None = None
     fecha: date | None = None
-    valor_maximo: float = 100.0
+    valor_maximo: NotaDecimal = Decimal("100.00")
     estado: EstadoActividad = EstadoActividad.BORRADOR
 
     @field_validator("nombre", mode="before")
@@ -824,7 +835,7 @@ class NuevaActividadDTO(DTODominio):
 
     @field_validator("valor_maximo")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
+    def validar_valor(cls, v: Decimal) -> Decimal:
         """El valor máximo de la actividad debe ser positivo."""
         if v <= 0:
             raise ValueError(f"El valor máximo debe ser positivo (recibido: {v}).")
@@ -841,7 +852,7 @@ class ActualizarActividadDTO(DTODominio):
     nombre: str | None = None
     descripcion: str | None = None
     fecha: date | None = None
-    valor_maximo: float | None = None
+    valor_maximo: NotaDecimal | None = None
 
     def aplicar_a(self, actividad: Actividad) -> Actividad:
         """Aplica los campos no nulos a la actividad; rechaza si está CERRADA."""
@@ -856,16 +867,16 @@ class RegistrarNotaDTO(DTODominio):
 
     estudiante_id: int
     actividad_id: int
-    valor: float
+    valor: NotaDecimal
     usuario_registro_id: int | None = None
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
-        """La nota debe estar en el rango 0-100; se redondea a 2 decimales."""
+    def validar_valor(cls, v: Decimal) -> Decimal:
+        """La nota debe estar en el rango 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     def to_nota(self, usuario_registro_id: int | None = None) -> Nota:
         """Construye una Nota del DTO, fijando el usuario que la registra si se indica."""
@@ -913,10 +924,10 @@ class ResultadoEstudianteDTO(DTODominio):
 
     estudiante_id: int
     nombre_completo: str
-    notas: dict[int, float] = Field(default_factory=dict)
+    notas: dict[int, Decimal] = Field(default_factory=dict)
     # {actividad_id: valor}
-    definitiva: float = 0.0
-    promedio_ajustado: float = 0.0
+    definitiva: NotaDecimal = Decimal("0.00")
+    promedio_ajustado: NotaDecimal = Decimal("0.00")
     posee_piar: bool = False
 
 

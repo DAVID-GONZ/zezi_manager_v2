@@ -143,8 +143,8 @@ class NivelacionService:
             ValueError: Si al agregar el nuevo peso la suma supera 1.0.
         """
         # Validar que la suma de pesos existente + nuevo peso no supera 1.0
-        suma_actual = self._repo.suma_pesos_actividades(dto.asignacion_id, dto.periodo_id)
-        if round(suma_actual + dto.peso, 4) > 1.001:
+        suma_actual = float(self._repo.suma_pesos_actividades(dto.asignacion_id, dto.periodo_id))
+        if round(suma_actual + float(dto.peso), 4) > 1.001:
             raise ReglaDeNegocioError(
                 f"Agregar esta actividad (peso={dto.peso:.0%}) supera el 100% "
                 f"— pesos actuales: {suma_actual:.0%}."

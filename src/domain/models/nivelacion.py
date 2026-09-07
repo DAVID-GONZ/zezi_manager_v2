@@ -18,10 +18,12 @@ No se almacena redundantemente; se computa al consultar.
 from __future__ import annotations
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import QUANT_NOTA, NotaDecimal, PesoDecimal
 
 
 class ActividadNivelacion(EntidadDominio):
@@ -39,7 +41,7 @@ class ActividadNivelacion(EntidadDominio):
     periodo_id: int
     nombre: str
     descripcion: str | None = None
-    peso: float  # (0, 1.0]
+    peso: PesoDecimal  # (0, 1.0]
     fecha: date | None = None
     usuario_id: int | None = None
 
@@ -53,11 +55,11 @@ class ActividadNivelacion(EntidadDominio):
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float) -> float:
-        """El peso de la actividad debe estar en (0, 1.0]; se redondea a 4 decimales."""
-        if not (0 < v <= 1.0):
+    def validar_peso(cls, v: Decimal) -> Decimal:
+        """El peso de la actividad debe estar en (0, 1.0]."""
+        if not (0 < v <= Decimal("1")):
             raise ValueError(f"El peso debe estar en el rango (0, 1.0] (recibido: {v}).")
-        return round(v, 4)
+        return v
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -93,7 +95,7 @@ class NotaNivelacion(EntidadDominio):
     estudiante_id: int
     asignacion_id: int  # desnormalizado para queries
     periodo_id: int  # desnormalizado para queries
-    valor: float | None = None
+    valor: NotaDecimal | None = None
     usuario_id: int | None = None
 
     @field_validator("actividad_nivelacion_id", "estudiante_id", "asignacion_id", "periodo_id")
@@ -106,13 +108,13 @@ class NotaNivelacion(EntidadDominio):
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float | None) -> float | None:
-        """Si está calificada, la nota debe estar en 0-100 (redondeada a 2)."""
+    def validar_valor(cls, v: Decimal | None) -> Decimal | None:
+        """Si está calificada, la nota debe estar en 0-100."""
         if v is None:
             return None
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @computed_field
     @property
@@ -161,8 +163,8 @@ class CalculadorNivelacion:
         if not actividades:
             return None
         act_map = {a.id: a for a in actividades if a.id is not None}
-        total_peso = 0.0
-        total = 0.0
+        total_peso = Decimal("0")
+        total = Decimal("0")
         for nota in notas:
             act = act_map.get(nota.actividad_nivelacion_id)
             if act is None or nota.valor is None:
@@ -171,20 +173,21 @@ class CalculadorNivelacion:
             total_peso += act.peso
         if total_peso == 0:
             return None
-        return round(total / total_peso * total_peso, 2)  # = round(total, 2)
+        # total / total_peso * total_peso == total (el total_peso cancela)
+        return total.quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def suma_pesos(actividades: list[ActividadNivelacion]) -> float:
-        """Suma de los pesos de las actividades de nivelación (redondeada a 4)."""
-        return round(sum(a.peso for a in actividades), 4)
+    def suma_pesos(actividades: list[ActividadNivelacion]) -> Decimal:
+        """Suma exacta de los pesos de las actividades de nivelación."""
+        return sum((a.peso for a in actividades), Decimal("0"))
 
     @staticmethod
     def pesos_completos(
         actividades: list[ActividadNivelacion],
-        tolerancia: float = 0.005,
+        tolerancia: Decimal = Decimal("0"),
     ) -> bool:
-        """True si la suma de pesos es 1.0 (con tolerancia de redondeo)."""
-        return abs(CalculadorNivelacion.suma_pesos(actividades) - 1.0) <= tolerancia
+        """True si la suma de pesos es exactamente 1.0 (aritmética Decimal exacta)."""
+        return abs(CalculadorNivelacion.suma_pesos(actividades) - Decimal("1")) <= tolerancia
 
 
 # =============================================================================
@@ -199,7 +202,7 @@ class NuevaActividadNivelacionDTO(DTODominio):
     periodo_id: int
     nombre: str
     descripcion: str | None = None
-    peso: float
+    peso: PesoDecimal
     fecha: date | None = None
 
     @field_validator("asignacion_id", "periodo_id")
@@ -212,11 +215,11 @@ class NuevaActividadNivelacionDTO(DTODominio):
 
     @field_validator("peso")
     @classmethod
-    def validar_peso(cls, v: float) -> float:
-        """El peso de la actividad debe estar en (0, 1.0]; se redondea a 4 decimales."""
-        if not (0 < v <= 1.0):
+    def validar_peso(cls, v: Decimal) -> Decimal:
+        """El peso de la actividad debe estar en (0, 1.0]."""
+        if not (0 < v <= Decimal("1")):
             raise ValueError(f"El peso debe estar en (0, 1.0] (recibido: {v}).")
-        return round(v, 4)
+        return v
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -238,16 +241,16 @@ class NuevaActividadNivelacionDTO(DTODominio):
 class CalificarNotaNivelacionDTO(DTODominio):
     """Datos para calificar (upsert) una nota de nivelación."""
 
-    valor: float
+    valor: NotaDecimal
     usuario_id: int | None = None
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
-        """La nota de nivelación debe estar en 0-100 (redondeada a 2)."""
+    def validar_valor(cls, v: Decimal) -> Decimal:
+        """La nota de nivelación debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
 
 __all__ = [

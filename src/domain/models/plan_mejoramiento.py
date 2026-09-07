@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
 from pydantic import Field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import QUANT_NOTA, NotaDecimal, PesoDecimal
 
 
 class EstadoNotaCorte(StrEnum):
@@ -24,9 +26,9 @@ class CortePlan(EntidadDominio):
     asignacion_id: int
     periodo_id: int
     fecha_ejecucion: date = Field(default_factory=date.today)
-    peso_registrado: float  # Suma de pesos de categorías con notas registradas (0..1)
-    nota_umbral: float  # = peso_registrado * nota_minima_aprobacion
-    nota_minima_aprobacion: float  # Umbral de aprobación del periodo (ej. 60.0)
+    peso_registrado: PesoDecimal  # Suma de pesos de categorías con notas registradas (0..1)
+    nota_umbral: NotaDecimal  # = peso_registrado * nota_minima_aprobacion
+    nota_minima_aprobacion: NotaDecimal  # Umbral de aprobación del periodo (ej. 60.0)
     usuario_id: int | None = None  # Quién ejecutó el corte
 
 
@@ -38,8 +40,8 @@ class NotaCortePlan(EntidadDominio):
     estudiante_id: int
     asignacion_id: int  # desnorm
     periodo_id: int  # desnorm
-    nota_al_corte: float  # Contribución parcial al corte (escala 0-100)
-    nota_definitiva_plan: float | None = None  # Congelado al cerrar el plan
+    nota_al_corte: NotaDecimal  # Contribución parcial al corte (escala 0-100)
+    nota_definitiva_plan: NotaDecimal | None = None  # Congelado al cerrar el plan
     estado: EstadoNotaCorte = EstadoNotaCorte.SIN_PLAN
     usuario_cierre_id: int | None = None
 
@@ -53,15 +55,15 @@ class ActividadPlan(EntidadDominio):
     periodo_id: int  # desnorm
     nombre: str
     descripcion: str | None = None
-    peso: float  # (0, 1.0] - fracción del peso del plan
+    peso: PesoDecimal  # (0, 1.0] - fracción del peso del plan
     fecha: date | None = None
     usuario_id: int | None = None
 
     @field_validator("peso")
     @classmethod
-    def peso_valido(cls, v: float) -> float:
+    def peso_valido(cls, v: Decimal) -> Decimal:
         """El peso de la actividad debe estar en (0, 1.0] (fracción del peso del plan)."""
-        if not (0 < v <= 1.0):
+        if not (0 < v <= Decimal("1")):
             raise ValueError("El peso debe estar entre 0 y 1.0 (exclusivo en 0)")
         return v
 
@@ -74,7 +76,7 @@ class NotaActividadPlan(EntidadDominio):
     estudiante_id: int
     asignacion_id: int  # desnorm
     periodo_id: int  # desnorm
-    valor: float | None = None
+    valor: NotaDecimal | None = None
     usuario_id: int | None = None
 
 
@@ -88,7 +90,7 @@ class EjecutarCorteDTO(DTODominio):
 
     asignacion_id: int
     periodo_id: int
-    nota_minima_aprobacion: float = 60.0  # Umbral de aprobación (0-100)
+    nota_minima_aprobacion: NotaDecimal = Decimal("60.00")  # Umbral de aprobación (0-100)
     usuario_id: int | None = None
 
 
@@ -100,14 +102,14 @@ class NuevaActividadPlanDTO(DTODominio):
     periodo_id: int
     nombre: str
     descripcion: str | None = None
-    peso: float
+    peso: PesoDecimal
     fecha: date | None = None
 
     @field_validator("peso")
     @classmethod
-    def peso_valido(cls, v: float) -> float:
+    def peso_valido(cls, v: Decimal) -> Decimal:
         """El peso de la actividad debe estar en (0, 1.0]."""
-        if not (0 < v <= 1.0):
+        if not (0 < v <= Decimal("1")):
             raise ValueError("El peso debe ser mayor a 0 y hasta 1.0")
         return v
 
@@ -128,12 +130,12 @@ class NuevaActividadPlanDTO(DTODominio):
 class CalificarNotaPlanDTO(DTODominio):
     """Datos para calificar la nota de una actividad de plan."""
 
-    valor: float
+    valor: NotaDecimal
     usuario_id: int | None = None
 
     @field_validator("valor")
     @classmethod
-    def valor_valido(cls, v: float) -> float:
+    def valor_valido(cls, v: Decimal) -> Decimal:
         """La nota de la actividad de plan debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError("El valor debe estar entre 0 y 100")
@@ -160,48 +162,62 @@ class CalculadorPlan:
     @staticmethod
     def nota_al_corte(
         categorias_con_notas: list[dict],
-    ) -> float:
+    ) -> Decimal:
         """
         Calcula la contribución parcial al corte.
 
         Cada ítem en `categorias_con_notas` debe tener:
-            - "peso": float  (fracción 0..1, ej. 0.3)
-            - "promedio": float  (0-100)
+            - "peso": Decimal  (fracción 0..1, ej. Decimal("0.3"))
+            - "promedio": Decimal  (0-100)
 
         Retorna la suma de contribuciones (escala 0-100 proporcional).
         """
-        return sum(c["peso"] * c["promedio"] for c in categorias_con_notas)
+        return sum(
+            (Decimal(str(c["peso"])) * Decimal(str(c["promedio"])) for c in categorias_con_notas),
+            Decimal("0"),
+        ).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def peso_registrado(categorias_con_notas: list[dict]) -> float:
+    def peso_registrado(categorias_con_notas: list[dict]) -> Decimal:
         """Suma de pesos de categorías que tienen al menos una nota registrada."""
-        return sum(c["peso"] for c in categorias_con_notas)
+        return sum(
+            (Decimal(str(c["peso"])) for c in categorias_con_notas),
+            Decimal("0"),
+        )
 
     @staticmethod
-    def nota_umbral(peso_registrado: float, nota_minima: float) -> float:
+    def nota_umbral(peso_registrado: Decimal, nota_minima: Decimal) -> Decimal:
         """Umbral de aprobación proporcional al peso registrado."""
-        return peso_registrado * nota_minima
+        if not isinstance(peso_registrado, Decimal):
+            peso_registrado = Decimal(str(peso_registrado))
+        if not isinstance(nota_minima, Decimal):
+            nota_minima = Decimal(str(nota_minima))
+        return (peso_registrado * nota_minima).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def nota_definitiva_aprobado(peso_registrado: float, nota_minima: float) -> float:
+    def nota_definitiva_aprobado(peso_registrado: Decimal, nota_minima: Decimal) -> Decimal:
         """Nota definitiva del plan si el estudiante aprobó."""
-        return peso_registrado * nota_minima
+        if not isinstance(peso_registrado, Decimal):
+            peso_registrado = Decimal(str(peso_registrado))
+        if not isinstance(nota_minima, Decimal):
+            nota_minima = Decimal(str(nota_minima))
+        return (peso_registrado * nota_minima).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def suma_pesos_actividades(actividades: list[ActividadPlan]) -> float:
-        """Suma de los pesos de todas las actividades del plan."""
-        return sum(a.peso for a in actividades)
+    def suma_pesos_actividades(actividades: list[ActividadPlan]) -> Decimal:
+        """Suma exacta de los pesos de todas las actividades del plan."""
+        return sum((a.peso for a in actividades), Decimal("0"))
 
     @staticmethod
-    def pesos_completos(actividades: list[ActividadPlan], tolerancia: float = 0.005) -> bool:
-        """Verifica que la suma de pesos de actividades sea ~1.0."""
-        return abs(CalculadorPlan.suma_pesos_actividades(actividades) - 1.0) <= tolerancia
+    def pesos_completos(actividades: list[ActividadPlan], tolerancia: Decimal = Decimal("0")) -> bool:
+        """Verifica que la suma de pesos de actividades sea exactamente 1.0."""
+        return abs(CalculadorPlan.suma_pesos_actividades(actividades) - Decimal("1")) <= tolerancia
 
     @staticmethod
     def nota_plan_estudiante(
         notas: list[NotaActividadPlan],
         actividades: list[ActividadPlan],
-    ) -> float | None:
+    ) -> Decimal | None:
         """
         Promedio ponderado de las actividades del plan para un estudiante.
         Retorna None si alguna nota no está registrada.
@@ -209,7 +225,7 @@ class CalculadorPlan:
         if not actividades:
             return None
         mapa_actividades = {a.id: a for a in actividades}
-        total = 0.0
+        total = Decimal("0")
         for n in notas:
             if n.valor is None:
                 return None
@@ -217,4 +233,4 @@ class CalculadorPlan:
             if act is None:
                 return None
             total += act.peso * n.valor
-        return total
+        return total.quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)

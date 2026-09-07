@@ -7,6 +7,7 @@ Ejecutar:
 """
 
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
@@ -524,7 +525,7 @@ class TestNotaComportamiento:
             estudiante_id=1, grupo_id=1, periodo_id=1,
             valor=85.555,
         )
-        assert nota.valor == 85.56
+        assert nota.valor == Decimal("85.56")
 
     def test_aprobado_con_nota_por_encima_del_minimo(self):
         nota = NotaComportamiento(

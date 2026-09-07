@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from src.domain.exceptions import (
@@ -91,7 +92,7 @@ def sanitizar_datos_exportacion(datos: list[dict]) -> list[dict]:
         for clave, valor in fila.items():
             if clave in _CAMPOS_EXCLUIR or clave.endswith("_perdio"):
                 continue
-            nueva[_CAMPO_RENOMBRAR.get(clave, clave)] = valor
+            nueva[_CAMPO_RENOMBRAR.get(clave, clave)] = float(valor) if isinstance(valor, Decimal) else valor
         resultado.append(nueva)
     return resultado
 

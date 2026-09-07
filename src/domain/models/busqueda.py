@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from pydantic import Field
+
 from src.domain.models.base import DTODominio
 
 
@@ -49,6 +51,6 @@ class ResultadosBusquedaDTO(DTODominio):
     """Agregado de resultados de búsqueda cross-entidad."""
 
     termino: str
-    resultados: list[ResultadoBusquedaDTO] = []
-    total_por_tipo: dict[str, int] = {}  # e.g. {"estudiante": 12, "grupo": 2}
+    resultados: list[ResultadoBusquedaDTO] = Field(default_factory=list)
+    total_por_tipo: dict[str, int] = Field(default_factory=dict)  # e.g. {"estudiante": 12, "grupo": 2}
     limitado: bool = False  # True si los resultados fueron truncados por límite

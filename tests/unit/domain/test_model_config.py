@@ -141,7 +141,7 @@ class TestHidratacionDesdeBaseSembrada:
 
     def _select_rows(self, conn: sqlite3.Connection, tabla: str) -> list[sqlite3.Row]:
         try:
-            cur = conn.execute(f"SELECT * FROM {tabla}")  # noqa: S608
+            cur = conn.execute(f"SELECT * FROM {tabla}")
             return cur.fetchall()
         except sqlite3.OperationalError:
             return []
@@ -329,7 +329,7 @@ def _iter_modelos() -> list[tuple[str, type]]:
     modelos_path = ROOT / "src" / "domain" / "models"
     resultados = []
 
-    for finder, modname, _ in pkgutil.walk_packages(
+    for _finder, modname, _ in pkgutil.walk_packages(
         path=[str(modelos_path)],
         prefix="src.domain.models.",
     ):

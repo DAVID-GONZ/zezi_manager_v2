@@ -1,6 +1,8 @@
 """Tests unitarios para EvaluacionService."""
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from src.domain.models.dtos import ContextoAcademicoDTO
@@ -164,7 +166,7 @@ class TestAgregarCategoria:
         svc, _ = _make_svc()
         cat = svc.agregar_categoria(_cat_dto(0.40), _ctx())
         assert cat.id is not None
-        assert cat.peso == pytest.approx(0.40)
+        assert cat.peso == Decimal("0.4000")
 
     def test_lanza_si_peso_supera_100(self):
         svc, _ = _make_svc()

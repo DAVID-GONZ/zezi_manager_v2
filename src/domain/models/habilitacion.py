@@ -43,12 +43,14 @@ Máquina de estados — PlanMejoramiento
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 from typing import Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import NotaDecimal
 
 from .tenant import TenantScope
 
@@ -110,8 +112,8 @@ class Habilitacion(EntidadDominio):
     asignacion_id: int
     periodo_id: int | None = None
     tipo: TipoHabilitacion
-    nota_antes: float | None = None
-    nota_habilitacion: float | None = None
+    nota_antes: NotaDecimal | None = None
+    nota_habilitacion: NotaDecimal | None = None
     fecha: date | None = None
     estado: EstadoHabilitacion = EstadoHabilitacion.PENDIENTE
     observacion: str | None = None
@@ -131,13 +133,13 @@ class Habilitacion(EntidadDominio):
 
     @field_validator("nota_antes", "nota_habilitacion")
     @classmethod
-    def validar_nota(cls, v: float | None) -> float | None:
-        """Cada nota, si está presente, debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal | None) -> Decimal | None:
+        """Cada nota, si está presente, debe estar en 0-100."""
         if v is None:
             return None
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("observacion", mode="before")
     @classmethod
@@ -251,7 +253,7 @@ class Habilitacion(EntidadDominio):
         return self.model_copy(
             update={
                 "estado": EstadoHabilitacion.REALIZADA,
-                "nota_habilitacion": round(nota, 2),
+                "nota_habilitacion": nota,
                 "fecha": fecha or date.today(),
                 "usuario_registro_id": usuario_id or self.usuario_registro_id,
                 "observacion": observacion.strip() if observacion else self.observacion,
@@ -472,12 +474,12 @@ class NuevaHabilitacionDTO(DTODominio):
     asignacion_id: int
     tipo: TipoHabilitacion
     periodo_id: int | None = None
-    nota_antes: float | None = None
+    nota_antes: NotaDecimal | None = None
     fecha: date | None = None
 
     @field_validator("nota_antes")
     @classmethod
-    def validar_nota(cls, v: float | None) -> float | None:
+    def validar_nota(cls, v: Decimal | None) -> Decimal | None:
         """Si se indica nota previa, debe estar en 0-100."""
         if v is not None and not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
@@ -503,18 +505,18 @@ class NuevaHabilitacionDTO(DTODominio):
 class RegistrarNotaHabilitacionDTO(DTODominio):
     """Datos para registrar la nota cuando el estudiante presenta la habilitación."""
 
-    nota: float
+    nota: NotaDecimal
     fecha: date | None = None
     usuario_id: int | None = None
     observacion: str | None = None
 
     @field_validator("nota")
     @classmethod
-    def validar_nota(cls, v: float) -> float:
-        """La nota de la habilitación debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal) -> Decimal:
+        """La nota de la habilitación debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
 
 class NuevoPlanMejoramientoDTO(DTODominio):

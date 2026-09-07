@@ -10,6 +10,7 @@ Ejecutar:
 """
 
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
@@ -123,7 +124,7 @@ class TestCategoria:
 
     def test_peso_redondeado(self):
         cat = Categoria(nombre="Cat", peso=0.33333, asignacion_id=1, periodo_id=1)
-        assert cat.peso == 0.3333
+        assert cat.peso == Decimal("0.3333")
 
     def test_dto_to_categoria(self):
         dto = NuevaCategoriaDTO(nombre="Evaluaciones", peso=0.40,
@@ -137,7 +138,7 @@ class TestCategoria:
         dto = ActualizarCategoriaDTO(nombre="Exámenes", peso=0.45)
         actualizada = dto.aplicar_a(cat)
         assert actualizada.nombre == "Exámenes"
-        assert actualizada.peso == 0.45
+        assert actualizada.peso == Decimal("0.4500")
 
     def test_actualizar_peso_invalido_falla(self):
         with pytest.raises(ValidationError):
@@ -218,7 +219,7 @@ class TestNota:
 
     def test_nota_redondeada(self):
         nota = Nota(estudiante_id=1, actividad_id=1, valor=75.555)
-        assert nota.valor == 75.56
+        assert nota.valor == Decimal("75.56")
 
     def test_valor_negativo_falla(self):
         with pytest.raises(ValidationError, match="0 y 100"):

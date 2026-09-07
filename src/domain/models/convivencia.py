@@ -34,14 +34,15 @@ Reglas de negocio:
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
-
 from src.domain.models.alerta import NivelAlerta
+from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import NotaDecimal
 
 # =============================================================================
 # Enumeraciones
@@ -443,7 +444,7 @@ class NotaComportamiento(EntidadDominio):
     estudiante_id: int
     grupo_id: int
     periodo_id: int
-    valor: float
+    valor: NotaDecimal
     desempeno_id: int | None = None
     # `observacion` es el CONCEPTO NARRATIVO que baja al boletín (Fase 3).
     # Semánticamente equivale al "concepto de comportamiento" que redacta el
@@ -455,11 +456,11 @@ class NotaComportamiento(EntidadDominio):
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
-        """La nota de comportamiento debe estar en 0-100 (redondeada a 2)."""
+    def validar_valor(cls, v: Decimal) -> Decimal:
+        """La nota de comportamiento debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota de comportamiento debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("observacion", mode="before")
     @classmethod
@@ -474,7 +475,7 @@ class NotaComportamiento(EntidadDominio):
     @property
     def aprobado(self) -> bool:
         """True si la nota de comportamiento supera el mínimo institucional base (60)."""
-        return self.valor >= 60.0
+        return self.valor >= 60
 
 
 # =============================================================================
@@ -547,16 +548,16 @@ class NuevaNotaComportamientoDTO(DTODominio):
     estudiante_id: int
     grupo_id: int
     periodo_id: int
-    valor: float
+    valor: NotaDecimal
     observacion: str | None = None
 
     @field_validator("valor")
     @classmethod
-    def validar_valor(cls, v: float) -> float:
-        """El valor de la nota de comportamiento debe estar en 0-100 (redondeado a 2)."""
+    def validar_valor(cls, v: Decimal) -> Decimal:
+        """El valor de la nota de comportamiento debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"El valor debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     def to_nota(self, usuario_id: int | None = None) -> NotaComportamiento:
         """Construye una NotaComportamiento del DTO, fijando el usuario autor."""
@@ -583,7 +584,7 @@ class ConceptoComportamientoDTO(DTODominio):
     estudiante_id: int
     periodo_id: int
     grupo_id: int
-    valor: float | None = None
+    valor: Decimal | None = None
     nivel_nombre: str | None = None
     nivel_descripcion: str | None = None
     concepto: str | None = None
@@ -600,7 +601,7 @@ class ReporteConvivenciaFilaDTO(DTODominio):
 
     estudiante_id: int
     nombre: str
-    valor: float | None = None
+    valor: Decimal | None = None
     nivel_nombre: str | None = None
     concepto: str | None = None
     observaciones: list[str] = Field(default_factory=list)
@@ -645,12 +646,12 @@ class Seguimiento360DTO(DTODominio):
     estudiante_id: int
     estudiante_nombre: str
     periodo_id: int
-    nota_comportamiento: float | None = None
+    nota_comportamiento: Decimal | None = None
     concepto: str | None = None
     nivel_comportamiento: str | None = None
-    observaciones: list[str] = []
-    alertas_activas: list[str] = []
-    promedio_notas: float | None = None
+    observaciones: list[str] = Field(default_factory=list)
+    alertas_activas: list[str] = Field(default_factory=list)
+    promedio_notas: Decimal | None = None
 
 
 class PuntoSerieDTO(DTODominio):
@@ -664,7 +665,7 @@ class PuntoSerieDTO(DTODominio):
 
     periodo_id: int
     periodo_nombre: str
-    valor: float | None = None
+    valor: Decimal | None = None
 
 
 class ResumenConvivenciaDTO(DTODominio):
@@ -683,7 +684,7 @@ class ResumenConvivenciaDTO(DTODominio):
     nombre: str
     num_observaciones: int = 0
     num_registros_negativos: int = 0
-    nota: float | None = None
+    nota: Decimal | None = None
     nivel_nombre: str | None = None
     supera_umbral: bool = False
 

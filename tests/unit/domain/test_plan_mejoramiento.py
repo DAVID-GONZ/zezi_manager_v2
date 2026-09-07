@@ -1,6 +1,8 @@
 """Tests unitarios para modelos del dominio Plan de Mejoramiento."""
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 
@@ -121,7 +123,7 @@ class TestNuevaActividadPlanDTO:
         act = dto.to_actividad()
         assert act.corte_id == 2
         assert act.asignacion_id == 3
-        assert act.peso == 0.4
+        assert act.peso == Decimal("0.4000")
         assert act.usuario_id is None
 
     def test_to_actividad_con_usuario(self):
@@ -147,19 +149,17 @@ class TestCalculadorPlan:
 
     def test_peso_registrado(self):
         cats = [{"peso": 0.4, "promedio": 80.0}, {"peso": 0.3, "promedio": 60.0}]
-        assert CalculadorPlan.peso_registrado(cats) == pytest.approx(0.7)
+        assert CalculadorPlan.peso_registrado(cats) == Decimal("0.7000")
 
     def test_nota_umbral(self):
         # 0.5 * 60 = 30
-        assert CalculadorPlan.nota_umbral(0.5, 60.0) == pytest.approx(30.0)
+        assert CalculadorPlan.nota_umbral(0.5, 60.0) == Decimal("30.00")
 
     def test_nota_definitiva_aprobado_igual_umbral(self):
         # nota_definitiva_aprobado == nota_umbral (congelado en el mínimo proporcional)
         peso = 0.6
         minima = 60.0
-        assert CalculadorPlan.nota_definitiva_aprobado(peso, minima) == pytest.approx(
-            CalculadorPlan.nota_umbral(peso, minima)
-        )
+        assert CalculadorPlan.nota_definitiva_aprobado(peso, minima) == CalculadorPlan.nota_umbral(peso, minima)
 
     def test_suma_pesos_actividades(self):
         acts = [_act(id_=1, peso=0.4), _act(id_=2, peso=0.6)]
@@ -214,7 +214,7 @@ class TestCalculadorNotasConCorte:
             nota_definitiva_plan=30.0,
             categoria_ids_en_corte={1, 2},
         )
-        assert resultado == pytest.approx(30.0)
+        assert resultado == Decimal("30.00")
 
     def test_suma_correctamente_post_corte(self):
         from src.domain.models.evaluacion import (
@@ -236,4 +236,4 @@ class TestCalculadorNotasConCorte:
             categoria_ids_en_corte={1},      # solo cat1 en el corte
         )
         # 24.0 + (0.6 * 70.0) = 24.0 + 42.0 = 66.0
-        assert resultado == pytest.approx(66.0)
+        assert resultado == Decimal("66.00")

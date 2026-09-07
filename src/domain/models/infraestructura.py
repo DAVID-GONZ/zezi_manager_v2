@@ -774,8 +774,8 @@ class ResultadoGeneracionDTO(DTODominio):
     total_requeridos: int = 0  # suma de horas_semanales de las asignaciones
     colocados: int = 0
     no_colocados: int = 0
-    bloques: list[BloqueGeneradoDTO] = []
-    incidencias: list[str] = []  # motivos de lo no colocado
+    bloques: list[BloqueGeneradoDTO] = Field(default_factory=list)
+    incidencias: list[str] = Field(default_factory=list)  # motivos de lo no colocado
     valido: bool = False  # analizar_lote.todo_ok del lote final
     metricas: MetricasCalidadDTO | None = None
     causas: dict[str, int] = Field(default_factory=dict)  # {"sin_sala": 3, "tope_docente": 1}
@@ -1231,10 +1231,10 @@ class FilaReporteDTO(DTODominio):
 
 
 class ReporteLoteDTO(DTODominio):
-    filas: list[FilaReporteDTO] = []
+    filas: list[FilaReporteDTO] = Field(default_factory=list)
     # Cruces de sala detectados con salas_bloquean=False (paso_17 T1): no
     # invalidan la fila, pero se listan para que la UI los muestre.
-    avisos: list[str] = []
+    avisos: list[str] = Field(default_factory=list)
 
     @computed_field
     @property

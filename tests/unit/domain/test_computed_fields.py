@@ -14,7 +14,8 @@ Verifica que:
 from __future__ import annotations
 
 import time
-from datetime import date, datetime, time as time_type
+from datetime import date, datetime
+from datetime import time as time_type
 from unittest.mock import patch
 
 import pytest
@@ -244,7 +245,7 @@ _DT_PRUEBA = datetime(2026, 6, 15, 12, 0, 0)
 
 def test_c_alerta_dias_pendiente():
     """Alerta.dias_pendiente refleja días desde la generación (fecha congelada)."""
-    from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
+    from src.domain.models.alerta import Alerta, TipoAlerta
 
     fecha_gen = datetime(2026, 6, 1, 0, 0, 0)
     alerta = Alerta(

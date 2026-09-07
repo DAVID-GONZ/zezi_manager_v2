@@ -150,8 +150,8 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
                     habilitacion.asignacion_id,
                     habilitacion.periodo_id,
                     habilitacion.tipo.value,
-                    habilitacion.nota_antes,
-                    habilitacion.nota_habilitacion,
+                    float(habilitacion.nota_antes) if habilitacion.nota_antes is not None else None,
+                    float(habilitacion.nota_habilitacion) if habilitacion.nota_habilitacion is not None else None,
                     habilitacion.fecha.isoformat() if habilitacion.fecha else None,
                     habilitacion.estado.value,
                     habilitacion.observacion,
@@ -176,8 +176,8 @@ class SqliteHabilitacionRepository(IHabilitacionRepository):
                 WHERE id = ?
                 """,
                 (
-                    habilitacion.nota_antes,
-                    habilitacion.nota_habilitacion,
+                    float(habilitacion.nota_antes) if habilitacion.nota_antes is not None else None,
+                    float(habilitacion.nota_habilitacion) if habilitacion.nota_habilitacion is not None else None,
                     habilitacion.fecha.isoformat() if habilitacion.fecha else None,
                     habilitacion.estado.value,
                     habilitacion.observacion,

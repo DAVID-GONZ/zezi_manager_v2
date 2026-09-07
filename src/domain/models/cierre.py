@@ -30,12 +30,14 @@ Responsabilidades del servicio (no del modelo):
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 from typing import Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import NotaDecimal
 
 # =============================================================================
 # Enumeraciones
@@ -73,7 +75,7 @@ class CierrePeriodo(EntidadDominio):
     estudiante_id: int
     asignacion_id: int
     periodo_id: int
-    nota_definitiva: float
+    nota_definitiva: NotaDecimal
     desempeno_id: int | None = None
     logro_id: int | None = None
     fecha_cierre: date = Field(default_factory=date.today)
@@ -89,11 +91,11 @@ class CierrePeriodo(EntidadDominio):
 
     @field_validator("nota_definitiva")
     @classmethod
-    def validar_nota(cls, v: float) -> float:
-        """La nota definitiva debe estar en 0-100; se redondea a 2 decimales."""
+    def validar_nota(cls, v: Decimal) -> Decimal:
+        """La nota definitiva debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota definitiva debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("fecha_cierre", mode="before")
     @classmethod
@@ -151,9 +153,9 @@ class CierreAnio(EntidadDominio):
     estudiante_id: int
     asignacion_id: int
     anio_id: int
-    nota_promedio_periodos: float
-    nota_habilitacion: float | None = None
-    nota_definitiva_anual: float
+    nota_promedio_periodos: NotaDecimal
+    nota_habilitacion: NotaDecimal | None = None
+    nota_definitiva_anual: NotaDecimal
     perdio: bool
     desempeno_id: int | None = None
     fecha_cierre: date = Field(default_factory=date.today)
@@ -173,13 +175,13 @@ class CierreAnio(EntidadDominio):
         "nota_definitiva_anual",
     )
     @classmethod
-    def validar_nota(cls, v: float | None) -> float | None:
-        """Cada nota anual, si está presente, debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal | None) -> Decimal | None:
+        """Cada nota anual, si está presente, debe estar en 0-100."""
         if v is None:
             return None
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("fecha_cierre", mode="before")
     @classmethod
@@ -196,17 +198,17 @@ class CierreAnio(EntidadDominio):
         """
         Si hay habilitación, nota_definitiva_anual debe ser nota_habilitacion.
         Si no hay habilitación, debe ser nota_promedio_periodos.
-        Margen de 0.01 para errores de redondeo.
+        Con Decimal la comparación es exacta; no se necesita margen de tolerancia.
         """
         if self.nota_habilitacion is not None:
-            if abs(self.nota_definitiva_anual - self.nota_habilitacion) > 0.01:
+            if self.nota_definitiva_anual != self.nota_habilitacion:
                 raise ValueError(
                     f"Con habilitación, nota_definitiva_anual "
                     f"({self.nota_definitiva_anual}) debe ser igual a "
                     f"nota_habilitacion ({self.nota_habilitacion})."
                 )
         else:
-            if abs(self.nota_definitiva_anual - self.nota_promedio_periodos) > 0.01:
+            if self.nota_definitiva_anual != self.nota_promedio_periodos:
                 raise ValueError(
                     f"Sin habilitación, nota_definitiva_anual "
                     f"({self.nota_definitiva_anual}) debe ser igual a "
@@ -408,18 +410,18 @@ class CrearCierrePeriodoDTO(DTODominio):
     estudiante_id: int
     asignacion_id: int
     periodo_id: int
-    nota_definitiva: float
+    nota_definitiva: NotaDecimal
     desempeno_id: int | None = None
     logro_id: int | None = None
     usuario_cierre_id: int | None = None
 
     @field_validator("nota_definitiva")
     @classmethod
-    def validar_nota(cls, v: float) -> float:
-        """La nota definitiva del cierre debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal) -> Decimal:
+        """La nota definitiva del cierre debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     def to_cierre(self) -> CierrePeriodo:
         """Construye un CierrePeriodo a partir de los datos del DTO."""
@@ -432,9 +434,9 @@ class CrearCierreAnioDTO(DTODominio):
     estudiante_id: int
     asignacion_id: int
     anio_id: int
-    nota_promedio_periodos: float
-    nota_habilitacion: float | None = None
-    nota_definitiva_anual: float
+    nota_promedio_periodos: NotaDecimal
+    nota_habilitacion: NotaDecimal | None = None
+    nota_definitiva_anual: NotaDecimal
     perdio: bool
     desempeno_id: int | None = None
     usuario_cierre_id: int | None = None
@@ -445,13 +447,13 @@ class CrearCierreAnioDTO(DTODominio):
         "nota_definitiva_anual",
     )
     @classmethod
-    def validar_nota(cls, v: float | None) -> float | None:
-        """Cada nota anual, si está presente, debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal | None) -> Decimal | None:
+        """Cada nota anual, si está presente, debe estar en 0-100."""
         if v is None:
             return None
         if not (0 <= v <= 100):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     def to_cierre(self) -> CierreAnio:
         """Construye un CierreAnio a partir de los datos del DTO."""

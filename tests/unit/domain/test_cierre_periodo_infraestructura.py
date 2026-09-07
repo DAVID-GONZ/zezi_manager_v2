@@ -7,6 +7,7 @@ Ejecutar:
 """
 
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
@@ -455,7 +456,7 @@ class TestCierrePeriodo:
             estudiante_id=1, asignacion_id=1, periodo_id=1,
             nota_definitiva=75.555,
         )
-        assert c.nota_definitiva == 75.56
+        assert c.nota_definitiva == Decimal("75.56")
 
     def test_fecha_futura_falla(self):
         with pytest.raises(ValidationError, match="futura"):

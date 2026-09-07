@@ -25,11 +25,13 @@ El generador de boletines consume este DTO directamente.
 from __future__ import annotations
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.decimal_types import QUANT_NOTA, NotaDecimal
 
 # =============================================================================
 # Entidad principal
@@ -53,12 +55,12 @@ class ConfiguracionAnio(EntidadDominio):
     institucion_id: int | None = None
     fecha_inicio_clases: date | None = None
     fecha_fin_clases: date | None = None
-    nota_minima_aprobacion: float = 60.0
+    nota_minima_aprobacion: NotaDecimal = Decimal("60.00")
     activo: bool = True
 
     # Escala de notas
-    nota_minima_escala: float = 0.0  # límite inferior de la escala
-    nota_maxima_escala: float = 100.0  # límite superior de la escala
+    nota_minima_escala: NotaDecimal = Decimal("0.00")  # límite inferior de la escala
+    nota_maxima_escala: NotaDecimal = Decimal("100.00")  # límite superior de la escala
 
     # Datos institucionales (para boletines e informes)
     nombre_institucion: str = "Institución Educativa"
@@ -85,19 +87,19 @@ class ConfiguracionAnio(EntidadDominio):
 
     @field_validator("nota_minima_aprobacion")
     @classmethod
-    def validar_nota_minima(cls, v: float) -> float:
-        """La nota mínima de aprobación debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota_minima(cls, v: Decimal) -> Decimal:
+        """La nota mínima de aprobación debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("nota_minima_escala", "nota_maxima_escala")
     @classmethod
-    def validar_escala(cls, v: float) -> float:
-        """Los límites de la escala de notas deben estar en 0-100 (redondeados a 2)."""
+    def validar_escala(cls, v: Decimal) -> Decimal:
+        """Los límites de la escala de notas deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("nombre_institucion", mode="before")
     @classmethod
@@ -232,9 +234,9 @@ class NuevaConfiguracionAnioDTO(DTODominio):
     institucion_id: int | None = None
     fecha_inicio_clases: date | None = None
     fecha_fin_clases: date | None = None
-    nota_minima_aprobacion: float = 60.0
-    nota_minima_escala: float = 0.0
-    nota_maxima_escala: float = 100.0
+    nota_minima_aprobacion: NotaDecimal = Decimal("60.00")
+    nota_minima_escala: NotaDecimal = Decimal("0.00")
+    nota_maxima_escala: NotaDecimal = Decimal("100.00")
     nombre_institucion: str = "Institución Educativa"
 
     @field_validator("anio")
@@ -247,19 +249,19 @@ class NuevaConfiguracionAnioDTO(DTODominio):
 
     @field_validator("nota_minima_aprobacion")
     @classmethod
-    def validar_nota(cls, v: float) -> float:
-        """La nota mínima de aprobación debe estar en 0-100 (redondeada a 2)."""
+    def validar_nota(cls, v: Decimal) -> Decimal:
+        """La nota mínima de aprobación debe estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @field_validator("nota_minima_escala", "nota_maxima_escala")
     @classmethod
-    def validar_escala(cls, v: float) -> float:
-        """Los límites de la escala de notas deben estar en 0-100 (redondeados a 2)."""
+    def validar_escala(cls, v: Decimal) -> Decimal:
+        """Los límites de la escala de notas deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @model_validator(mode="after")
     def validar_fechas(self) -> Self:
@@ -284,13 +286,13 @@ class ActualizarConfiguracionAnioDTO(DTODominio):
     institucion_id: int | None = None
     fecha_inicio_clases: date | None = None
     fecha_fin_clases: date | None = None
-    nota_minima_aprobacion: float | None = None
-    nota_minima_escala: float | None = None
-    nota_maxima_escala: float | None = None
+    nota_minima_aprobacion: NotaDecimal | None = None
+    nota_minima_escala: NotaDecimal | None = None
+    nota_maxima_escala: NotaDecimal | None = None
 
     @field_validator("nota_minima_aprobacion")
     @classmethod
-    def validar_nota(cls, v: float | None) -> float | None:
+    def validar_nota(cls, v: Decimal | None) -> Decimal | None:
         """Si se actualiza, la nota mínima debe permanecer en 0-100."""
         if v is not None and not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
@@ -347,7 +349,7 @@ class InformacionInstitucionalDTO(DTODominio):
     nombre_institucion: str
     dane_code: str
     rector: str
-    nota_minima_aprobacion: float
+    nota_minima_aprobacion: NotaDecimal
     direccion: str | None = None
     municipio: str | None = None
     telefono_institucion: str | None = None
@@ -442,8 +444,8 @@ class NivelDesempeno(EntidadDominio):
     id: int | None = None
     anio_id: int
     nombre: str
-    rango_min: float
-    rango_max: float
+    rango_min: NotaDecimal
+    rango_max: NotaDecimal
     descripcion: str | None = None
     orden: int = Field(default=0, ge=0)
 
@@ -468,11 +470,11 @@ class NivelDesempeno(EntidadDominio):
 
     @field_validator("rango_min", "rango_max")
     @classmethod
-    def validar_rango(cls, v: float) -> float:
-        """Los límites del rango del nivel deben estar en 0-100 (redondeados a 2)."""
+    def validar_rango(cls, v: Decimal) -> Decimal:
+        """Los límites del rango del nivel deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"El rango debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     @model_validator(mode="after")
     def validar_orden_rangos(self) -> NivelDesempeno:
@@ -489,9 +491,9 @@ class NivelDesempeno(EntidadDominio):
 
     @computed_field
     @property
-    def amplitud(self) -> float:
+    def amplitud(self) -> Decimal:
         """Amplitud del rango en puntos."""
-        return round(self.rango_max - self.rango_min, 2)
+        return (self.rango_max - self.rango_min).quantize(QUANT_NOTA, rounding=ROUND_HALF_UP)
 
 
 class CriterioPromocion(EntidadDominio):
@@ -507,8 +509,8 @@ class CriterioPromocion(EntidadDominio):
     anio_id: int
     max_asignaturas_perdidas: int = Field(default=2, ge=0)
     permite_condicionada: bool = True
-    nota_minima_habilitacion: float = 60.0
-    nota_minima_anual: float = 60.0
+    nota_minima_habilitacion: NotaDecimal = Decimal("60.00")
+    nota_minima_anual: NotaDecimal = Decimal("60.00")
 
     @field_validator("anio_id")
     @classmethod
@@ -520,11 +522,11 @@ class CriterioPromocion(EntidadDominio):
 
     @field_validator("nota_minima_habilitacion", "nota_minima_anual")
     @classmethod
-    def validar_nota(cls, v: float) -> float:
-        """Las notas mínimas de promoción deben estar en 0-100 (redondeadas a 2)."""
+    def validar_nota(cls, v: Decimal) -> Decimal:
+        """Las notas mínimas de promoción deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"La nota mínima debe estar entre 0 y 100 (recibido: {v}).")
-        return round(v, 2)
+        return v
 
     def puede_ser_promovido(self, asignaturas_perdidas: int) -> bool:
         """True si la cantidad de materias perdidas no supera el máximo."""
@@ -545,8 +547,8 @@ class NuevoNivelDesempenoDTO(DTODominio):
 
     anio_id: int
     nombre: str
-    rango_min: float
-    rango_max: float
+    rango_min: NotaDecimal
+    rango_max: NotaDecimal
     descripcion: str | None = None
     orden: int = 0
 
@@ -561,7 +563,7 @@ class NuevoNivelDesempenoDTO(DTODominio):
 
     @field_validator("rango_min", "rango_max")
     @classmethod
-    def validar_rango(cls, v: float) -> float:
+    def validar_rango(cls, v: Decimal) -> Decimal:
         """Los límites del rango deben estar en 0-100."""
         if not (0 <= v <= 100):
             raise ValueError(f"El rango debe estar entre 0 y 100 (recibido: {v}).")
@@ -583,8 +585,8 @@ class ActualizarNivelDesempenoDTO(DTODominio):
     """Campos actualizables de un nivel de desempeño."""
 
     nombre: str | None = None
-    rango_min: float | None = None
-    rango_max: float | None = None
+    rango_min: NotaDecimal | None = None
+    rango_max: NotaDecimal | None = None
     descripcion: str | None = None
     orden: int | None = None
 

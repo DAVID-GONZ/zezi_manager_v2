@@ -159,10 +159,10 @@ class EvaluacionService:
         if cfg.modo == ModoSIEE.INSTITUCIONAL_FIJO:
             return 0.0
 
-        suma_docente = self._repo.suma_pesos_otras(asignacion_id, periodo_id)
+        suma_docente = float(self._repo.suma_pesos_otras(asignacion_id, periodo_id))
 
         if cfg.modo == ModoSIEE.MIXTO_AUTONOMIA:
-            autonomia = cfg.porcentaje_autonomia_docente or 0.0
+            autonomia = float(cfg.porcentaje_autonomia_docente) if cfg.porcentaje_autonomia_docente else 0.0
             return round(max(0.0, autonomia - suma_docente), 4)
 
         # LIBRE o MIXTO_SUBCATEGORIAS
@@ -243,12 +243,12 @@ class EvaluacionService:
         self._verificar_periodo_abierto(categoria.periodo_id)
 
         if dto.peso is not None and dto.peso != categoria.peso:
-            suma_sin_esta = self._repo.suma_pesos_otras(
+            suma_sin_esta = float(self._repo.suma_pesos_otras(
                 categoria.asignacion_id,
                 categoria.periodo_id,
                 excluir_cat_id=cat_id,
-            )
-            if suma_sin_esta + dto.peso > 1.001:
+            ))
+            if suma_sin_esta + float(dto.peso) > 1.001:
                 raise ReglaDeNegocioError(
                     f"La suma de pesos superaría el 100% con el nuevo peso "
                     f"({dto.peso * 100:.1f}%). Disponible: {(1.0 - suma_sin_esta) * 100:.1f}%."
