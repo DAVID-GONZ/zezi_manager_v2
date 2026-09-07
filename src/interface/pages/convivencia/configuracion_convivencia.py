@@ -243,7 +243,11 @@ def configuracion_convivencia_page() -> None:
 
     # ── Handlers: tipos de situación (solo dir/coord) ────────────────────────
 
-    _OPCIONES_NIVEL = {1: "Tipo I - Conflictos", 2: "Tipo II - Agresión/Acoso", 3: "Tipo III - Presuntos delitos"}
+    _OPCIONES_NIVEL = {
+        1: "Tipo I - Conflictos",
+        2: "Tipo II - Agresión/Acoso",
+        3: "Tipo III - Presuntos delitos",
+    }
 
     def _abrir_nuevo_tipo() -> None:
         _s["editando_tipo"] = None
@@ -373,7 +377,11 @@ def configuracion_convivencia_page() -> None:
 
     # ── Handlers: medidas pedagógicas (solo dir/coord) ───────────────────────
 
-    _OPCIONES_NIVEL_MEDIDA = {1: "Nivel I - Tipo I", 2: "Nivel II - Tipo II+", 3: "Nivel III - Tipo III"}
+    _OPCIONES_NIVEL_MEDIDA = {
+        1: "Nivel I - Tipo I",
+        2: "Nivel II - Tipo II+",
+        3: "Nivel III - Tipo III",
+    }
 
     def _abrir_nueva_medida() -> None:
         _s["editando_medida"] = None
@@ -628,467 +636,493 @@ def configuracion_convivencia_page() -> None:
                 with ui.element("div").classes(layout_cls):
                     # ── Columna izquierda: Categorías (solo dir/coord) ─────────
                     if es_directivo:
-                        with ui.element("div").classes("page-col-side").style("order: 1"), ui.element("div").classes("panel-card"):
-                                with ui.row().classes("panel-toolbar"):
-                                    ui.label("Categorías").classes("panel-title")
-                                    ui.element("div").classes("panel-toolbar-spacer")
-                                    btn_primary(
-                                        "Nueva categoría",
-                                        on_click=_abrir_nueva_categoria,
-                                        icon=Icons.ADD,
-                                        size="sm",
-                                    )
-
-                                if not categorias:
-                                    empty_state(
-                                        icono="category",
-                                        titulo="Sin categorías",
-                                        descripcion="No hay categorías de observación registradas.",
-                                        cta_label="Nueva categoría",
-                                        cta_on_click=_abrir_nueva_categoria,
-                                        cta_icono="add",
-                                    )
-                                else:
-                                    filas_cat = [
-                                        {
-                                            "id": getattr(cat, "id", None),
-                                            "nombre": getattr(cat, "nombre", ""),
-                                            "tipo": "Comportamental"
-                                            if getattr(cat, "es_comportamental", False)
-                                            else "General",
-                                            "estado": "Activa"
-                                            if getattr(cat, "activa", True)
-                                            else "Inactiva",
-                                            "activa": getattr(cat, "activa", True),
-                                        }
-                                        for cat in categorias
-                                    ]
-                                    with ui.element("div").classes("config-scroll"):
-                                        cat_grid = ui.aggrid(
-                                            {
-                                                "columnDefs": [
-                                                    {
-                                                        "headerName": "Nombre",
-                                                        "field": "nombre",
-                                                        "flex": 1,
-                                                        "resizable": True,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Tipo",
-                                                        "field": "tipo",
-                                                        "width": 110,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Estado",
-                                                        "field": "estado",
-                                                        "width": 100,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                ],
-                                                "rowData": filas_cat,
-                                                "rowSelection": "single",
-                                                "domLayout": "autoHeight",
-                                            }
-                                        ).classes("w-full")
-
-                                    async def _on_cat_sel() -> None:
-                                        rows = await cat_grid.get_selected_rows()
-                                        _s["sel_cat"] = rows[0] if rows else None
-
-                                    cat_grid.on("selectionChanged", _on_cat_sel)
-
-                                    with ui.row().classes("gap-sm").style("flex-wrap: wrap; align-items: center"):
-
-                                        def _on_editar_cat_btn() -> None:
-                                            sel = _s.get("sel_cat")
-                                            if not sel:
-                                                toast_warning(
-                                                    "Selecciona una categoría de la tabla."
-                                                )
-                                                return
-                                            cat_obj = next(
-                                                (
-                                                    c
-                                                    for c in _s["categorias"]
-                                                    if getattr(c, "id", None) == sel.get("id")
-                                                ),
-                                                None,
-                                            )
-                                            if cat_obj:
-                                                _abrir_editar_categoria(cat_obj)
-
-                                        def _on_desactivar_cat_btn() -> None:
-                                            sel = _s.get("sel_cat")
-                                            if not sel:
-                                                toast_warning(
-                                                    "Selecciona una categoría de la tabla."
-                                                )
-                                                return
-                                            if not sel.get("activa"):
-                                                toast_warning("La categoría ya está inactiva.")
-                                                return
-                                            _desactivar_categoria(sel["id"])
-
-                                        btn_icon(
-                                            Icons.EDIT,
-                                            on_click=_on_editar_cat_btn,
-                                            tooltip="Editar seleccionada",
-                                        )
-                                        btn_danger(
-                                            "Desactivar", on_click=_on_desactivar_cat_btn, size="sm"
-                                        )
-
-                    # ── Tipos de situación (solo dir/coord) ───────────────────
-                    if es_directivo:
-                        with ui.element("div").classes("page-col-main").style("order: 3"), ui.element("div").classes("panel-card"):
-                                with ui.row().classes("panel-toolbar"):
-                                    ui.label("Tipos de situación (Ley 1620)").classes("panel-title")
-                                    ui.element("div").classes("panel-toolbar-spacer")
-                                    btn_primary(
-                                        "Nuevo tipo",
-                                        on_click=_abrir_nuevo_tipo,
-                                        icon=Icons.ADD,
-                                        size="sm",
-                                    )
-
-                                if not tipos_situacion:
-                                    empty_state(
-                                        icono="gavel",
-                                        titulo="Sin tipos de situación",
-                                        descripcion="No hay tipos de situación registrados.",
-                                        cta_label="Nuevo tipo",
-                                        cta_on_click=_abrir_nuevo_tipo,
-                                        cta_icono="add",
-                                    )
-                                else:
-                                    filas_tipo = [
-                                        {
-                                            "id": getattr(t, "id", None),
-                                            "nombre": getattr(t, "nombre", ""),
-                                            "nivel": getattr(t, "nivel", 1),
-                                            "estado": "Activo"
-                                            if getattr(t, "activa", True)
-                                            else "Inactivo",
-                                            "activa": getattr(t, "activa", True),
-                                        }
-                                        for t in tipos_situacion
-                                    ]
-                                    with ui.element("div").classes("config-scroll"):
-                                        tipo_grid = ui.aggrid(
-                                            {
-                                                "columnDefs": [
-                                                    {
-                                                        "headerName": "Nombre",
-                                                        "field": "nombre",
-                                                        "flex": 1,
-                                                        "resizable": True,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Nivel",
-                                                        "field": "nivel",
-                                                        "width": 80,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Estado",
-                                                        "field": "estado",
-                                                        "width": 100,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                ],
-                                                "rowData": filas_tipo,
-                                                "rowSelection": "single",
-                                                "domLayout": "autoHeight",
-                                            }
-                                        ).classes("w-full")
-
-                                    async def _on_tipo_sel() -> None:
-                                        rows = await tipo_grid.get_selected_rows()
-                                        _s["sel_tipo"] = rows[0] if rows else None
-
-                                    tipo_grid.on("selectionChanged", _on_tipo_sel)
-
-                                    with ui.row().classes("gap-sm").style("flex-wrap: wrap; align-items: center"):
-
-                                        def _on_editar_tipo_btn() -> None:
-                                            sel = _s.get("sel_tipo")
-                                            if not sel:
-                                                toast_warning("Selecciona un tipo de la tabla.")
-                                                return
-                                            tipo_obj = next(
-                                                (
-                                                    t
-                                                    for t in _s["tipos_situacion"]
-                                                    if getattr(t, "id", None) == sel.get("id")
-                                                ),
-                                                None,
-                                            )
-                                            if tipo_obj:
-                                                _abrir_editar_tipo(tipo_obj)
-
-                                        def _on_desactivar_tipo_btn() -> None:
-                                            sel = _s.get("sel_tipo")
-                                            if not sel:
-                                                toast_warning("Selecciona un tipo de la tabla.")
-                                                return
-                                            if not sel.get("activa"):
-                                                toast_warning("El tipo ya está inactivo.")
-                                                return
-                                            _desactivar_tipo(sel["id"])
-
-                                        btn_icon(
-                                            Icons.EDIT,
-                                            on_click=_on_editar_tipo_btn,
-                                            tooltip="Editar seleccionado",
-                                        )
-                                        btn_danger(
-                                            "Desactivar",
-                                            on_click=_on_desactivar_tipo_btn,
-                                            size="sm",
-                                        )
-
-                    # ── Medidas pedagógicas (solo dir/coord) ──────────────────
-                    if es_directivo:
-                        medidas = _s["medidas"]
-                        with ui.element("div").classes("page-col-main").style("order: 4"), ui.element("div").classes("panel-card"):
-                                with ui.row().classes("panel-toolbar"):
-                                    ui.label("Medidas pedagógicas (Decreto 1965)").classes("panel-title")
-                                    ui.element("div").classes("panel-toolbar-spacer")
-                                    btn_primary(
-                                        "Nueva medida",
-                                        on_click=_abrir_nueva_medida,
-                                        icon=Icons.ADD,
-                                        size="sm",
-                                    )
-
-                                if not medidas:
-                                    empty_state(
-                                        icono="gavel",
-                                        titulo="Sin medidas pedagógicas",
-                                        descripcion="No hay medidas pedagógicas registradas.",
-                                        cta_label="Nueva medida",
-                                        cta_on_click=_abrir_nueva_medida,
-                                        cta_icono="add",
-                                    )
-                                else:
-                                    filas_medida = [
-                                        {
-                                            "id": getattr(m, "id", None),
-                                            "nombre": getattr(m, "nombre", ""),
-                                            "nivel_minimo": getattr(m, "nivel_minimo", 1),
-                                            "estado": "Activa"
-                                            if getattr(m, "activa", True)
-                                            else "Inactiva",
-                                            "activa": getattr(m, "activa", True),
-                                        }
-                                        for m in medidas
-                                    ]
-                                    with ui.element("div").classes("config-scroll"):
-                                        medida_grid = ui.aggrid(
-                                            {
-                                                "columnDefs": [
-                                                    {
-                                                        "headerName": "Nombre",
-                                                        "field": "nombre",
-                                                        "flex": 1,
-                                                        "resizable": True,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Nivel mín.",
-                                                        "field": "nivel_minimo",
-                                                        "width": 100,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                    {
-                                                        "headerName": "Estado",
-                                                        "field": "estado",
-                                                        "width": 100,
-                                                        "resizable": False,
-                                                        "sortable": True,
-                                                    },
-                                                ],
-                                                "rowData": filas_medida,
-                                                "rowSelection": "single",
-                                                "domLayout": "autoHeight",
-                                            }
-                                        ).classes("w-full")
-
-                                    async def _on_medida_sel() -> None:
-                                        rows = await medida_grid.get_selected_rows()
-                                        _s["sel_medida"] = rows[0] if rows else None
-
-                                    medida_grid.on("selectionChanged", _on_medida_sel)
-
-                                    with ui.row().classes("gap-sm").style("flex-wrap: wrap; align-items: center"):
-
-                                        def _on_editar_medida_btn() -> None:
-                                            sel = _s.get("sel_medida")
-                                            if not sel:
-                                                toast_warning("Selecciona una medida de la tabla.")
-                                                return
-                                            medida_obj = next(
-                                                (
-                                                    m
-                                                    for m in _s["medidas"]
-                                                    if getattr(m, "id", None) == sel.get("id")
-                                                ),
-                                                None,
-                                            )
-                                            if medida_obj:
-                                                _abrir_editar_medida(medida_obj)
-
-                                        def _on_desactivar_medida_btn() -> None:
-                                            sel = _s.get("sel_medida")
-                                            if not sel:
-                                                toast_warning("Selecciona una medida de la tabla.")
-                                                return
-                                            if not sel.get("activa"):
-                                                toast_warning("La medida ya está inactiva.")
-                                                return
-                                            _desactivar_medida(sel["id"])
-
-                                        btn_icon(
-                                            Icons.EDIT,
-                                            on_click=_on_editar_medida_btn,
-                                            tooltip="Editar seleccionada",
-                                        )
-                                        btn_danger(
-                                            "Desactivar",
-                                            on_click=_on_desactivar_medida_btn,
-                                            size="sm",
-                                        )
-
-                    # ── Plantillas (todos los roles AULA) ─────
-                    with ui.element("div").classes("page-col-main").style("order: 2"), ui.element("div").classes("panel-card"):
+                        with (
+                            ui.element("div").classes("page-col-side").style("order: 1"),
+                            ui.element("div").classes("panel-card"),
+                        ):
                             with ui.row().classes("panel-toolbar"):
-                                ui.label("Plantillas").classes("panel-title")
+                                ui.label("Categorías").classes("panel-title")
                                 ui.element("div").classes("panel-toolbar-spacer")
                                 btn_primary(
-                                    "Nueva plantilla",
-                                    on_click=_abrir_nueva_plantilla,
+                                    "Nueva categoría",
+                                    on_click=_abrir_nueva_categoria,
                                     icon=Icons.ADD,
                                     size="sm",
                                 )
 
-                            if not plantillas:
+                            if not categorias:
                                 empty_state(
-                                    icono="description",
-                                    titulo="Sin plantillas",
-                                    descripcion="No hay plantillas de observación registradas.",
-                                    cta_label="Nueva plantilla",
-                                    cta_on_click=_abrir_nueva_plantilla,
+                                    icono="category",
+                                    titulo="Sin categorías",
+                                    descripcion="No hay categorías de observación registradas.",
+                                    cta_label="Nueva categoría",
+                                    cta_on_click=_abrir_nueva_categoria,
                                     cta_icono="add",
                                 )
                             else:
-                                filas_plt = [
+                                filas_cat = [
                                     {
-                                        "id": getattr(plt, "id", None),
-                                        "texto": getattr(plt, "texto", ""),
-                                        "categoria": nombres_cat.get(
-                                            getattr(plt, "categoria_id", None), "Sin categoría"
-                                        ),
-                                        "usos": getattr(plt, "uso_count", 0),
+                                        "id": getattr(cat, "id", None),
+                                        "nombre": getattr(cat, "nombre", ""),
+                                        "tipo": "Comportamental"
+                                        if getattr(cat, "es_comportamental", False)
+                                        else "General",
                                         "estado": "Activa"
-                                        if getattr(plt, "activa", True)
+                                        if getattr(cat, "activa", True)
                                         else "Inactiva",
-                                        "activa": getattr(plt, "activa", True),
+                                        "activa": getattr(cat, "activa", True),
                                     }
-                                    for plt in plantillas
+                                    for cat in categorias
                                 ]
                                 with ui.element("div").classes("config-scroll"):
-                                    plt_grid = ui.aggrid(
+                                    cat_grid = ui.aggrid(
                                         {
                                             "columnDefs": [
                                                 {
-                                                    "headerName": "Texto",
-                                                    "field": "texto",
+                                                    "headerName": "Nombre",
+                                                    "field": "nombre",
                                                     "flex": 1,
                                                     "resizable": True,
                                                     "sortable": True,
-                                                    "wrapText": True,
-                                                    "autoHeight": True,
-                                                    "cellClass": "cell-multiline",
                                                 },
                                                 {
-                                                    "headerName": "Categoría",
-                                                    "field": "categoria",
-                                                    "width": 120,
-                                                    "resizable": False,
-                                                    "sortable": True,
-                                                },
-                                                {
-                                                    "headerName": "Usos",
-                                                    "field": "usos",
-                                                    "width": 65,
+                                                    "headerName": "Tipo",
+                                                    "field": "tipo",
+                                                    "width": 110,
                                                     "resizable": False,
                                                     "sortable": True,
                                                 },
                                                 {
                                                     "headerName": "Estado",
                                                     "field": "estado",
-                                                    "width": 90,
+                                                    "width": 100,
                                                     "resizable": False,
                                                     "sortable": True,
                                                 },
                                             ],
-                                            "rowData": filas_plt,
+                                            "rowData": filas_cat,
                                             "rowSelection": "single",
                                             "domLayout": "autoHeight",
                                         }
                                     ).classes("w-full")
 
-                                async def _on_plt_sel() -> None:
-                                    rows = await plt_grid.get_selected_rows()
-                                    _s["sel_plt"] = rows[0] if rows else None
+                                async def _on_cat_sel() -> None:
+                                    rows = await cat_grid.get_selected_rows()
+                                    _s["sel_cat"] = rows[0] if rows else None
 
-                                plt_grid.on("selectionChanged", _on_plt_sel)
+                                cat_grid.on("selectionChanged", _on_cat_sel)
 
-                                with ui.row().classes("gap-sm").style("flex-wrap: wrap; align-items: center"):
+                                with (
+                                    ui.row()
+                                    .classes("gap-sm")
+                                    .style("flex-wrap: wrap; align-items: center")
+                                ):
 
-                                    def _on_editar_plt_btn() -> None:
-                                        sel = _s.get("sel_plt")
+                                    def _on_editar_cat_btn() -> None:
+                                        sel = _s.get("sel_cat")
                                         if not sel:
-                                            toast_warning("Selecciona una plantilla de la tabla.")
+                                            toast_warning("Selecciona una categoría de la tabla.")
                                             return
-                                        plt_obj = next(
+                                        cat_obj = next(
                                             (
-                                                p
-                                                for p in _s["plantillas"]
-                                                if getattr(p, "id", None) == sel.get("id")
+                                                c
+                                                for c in _s["categorias"]
+                                                if getattr(c, "id", None) == sel.get("id")
                                             ),
                                             None,
                                         )
-                                        if plt_obj:
-                                            _abrir_editar_plantilla(plt_obj)
+                                        if cat_obj:
+                                            _abrir_editar_categoria(cat_obj)
 
-                                    def _on_desactivar_plt_btn() -> None:
-                                        sel = _s.get("sel_plt")
+                                    def _on_desactivar_cat_btn() -> None:
+                                        sel = _s.get("sel_cat")
                                         if not sel:
-                                            toast_warning("Selecciona una plantilla de la tabla.")
+                                            toast_warning("Selecciona una categoría de la tabla.")
                                             return
                                         if not sel.get("activa"):
-                                            toast_warning("La plantilla ya está inactiva.")
+                                            toast_warning("La categoría ya está inactiva.")
                                             return
-                                        _desactivar_plantilla(sel["id"])
+                                        _desactivar_categoria(sel["id"])
 
                                     btn_icon(
                                         Icons.EDIT,
-                                        on_click=_on_editar_plt_btn,
+                                        on_click=_on_editar_cat_btn,
                                         tooltip="Editar seleccionada",
                                     )
-                                    if es_directivo:
-                                        btn_danger(
-                                            "Desactivar", on_click=_on_desactivar_plt_btn, size="sm"
+                                    btn_danger(
+                                        "Desactivar", on_click=_on_desactivar_cat_btn, size="sm"
+                                    )
+
+                    # ── Tipos de situación (solo dir/coord) ───────────────────
+                    if es_directivo:
+                        with (
+                            ui.element("div").classes("page-col-main").style("order: 3"),
+                            ui.element("div").classes("panel-card"),
+                        ):
+                            with ui.row().classes("panel-toolbar"):
+                                ui.label("Tipos de situación (Ley 1620)").classes("panel-title")
+                                ui.element("div").classes("panel-toolbar-spacer")
+                                btn_primary(
+                                    "Nuevo tipo",
+                                    on_click=_abrir_nuevo_tipo,
+                                    icon=Icons.ADD,
+                                    size="sm",
+                                )
+
+                            if not tipos_situacion:
+                                empty_state(
+                                    icono="gavel",
+                                    titulo="Sin tipos de situación",
+                                    descripcion="No hay tipos de situación registrados.",
+                                    cta_label="Nuevo tipo",
+                                    cta_on_click=_abrir_nuevo_tipo,
+                                    cta_icono="add",
+                                )
+                            else:
+                                filas_tipo = [
+                                    {
+                                        "id": getattr(t, "id", None),
+                                        "nombre": getattr(t, "nombre", ""),
+                                        "nivel": getattr(t, "nivel", 1),
+                                        "estado": "Activo"
+                                        if getattr(t, "activa", True)
+                                        else "Inactivo",
+                                        "activa": getattr(t, "activa", True),
+                                    }
+                                    for t in tipos_situacion
+                                ]
+                                with ui.element("div").classes("config-scroll"):
+                                    tipo_grid = ui.aggrid(
+                                        {
+                                            "columnDefs": [
+                                                {
+                                                    "headerName": "Nombre",
+                                                    "field": "nombre",
+                                                    "flex": 1,
+                                                    "resizable": True,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Nivel",
+                                                    "field": "nivel",
+                                                    "width": 80,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Estado",
+                                                    "field": "estado",
+                                                    "width": 100,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                            ],
+                                            "rowData": filas_tipo,
+                                            "rowSelection": "single",
+                                            "domLayout": "autoHeight",
+                                        }
+                                    ).classes("w-full")
+
+                                async def _on_tipo_sel() -> None:
+                                    rows = await tipo_grid.get_selected_rows()
+                                    _s["sel_tipo"] = rows[0] if rows else None
+
+                                tipo_grid.on("selectionChanged", _on_tipo_sel)
+
+                                with (
+                                    ui.row()
+                                    .classes("gap-sm")
+                                    .style("flex-wrap: wrap; align-items: center")
+                                ):
+
+                                    def _on_editar_tipo_btn() -> None:
+                                        sel = _s.get("sel_tipo")
+                                        if not sel:
+                                            toast_warning("Selecciona un tipo de la tabla.")
+                                            return
+                                        tipo_obj = next(
+                                            (
+                                                t
+                                                for t in _s["tipos_situacion"]
+                                                if getattr(t, "id", None) == sel.get("id")
+                                            ),
+                                            None,
                                         )
+                                        if tipo_obj:
+                                            _abrir_editar_tipo(tipo_obj)
+
+                                    def _on_desactivar_tipo_btn() -> None:
+                                        sel = _s.get("sel_tipo")
+                                        if not sel:
+                                            toast_warning("Selecciona un tipo de la tabla.")
+                                            return
+                                        if not sel.get("activa"):
+                                            toast_warning("El tipo ya está inactivo.")
+                                            return
+                                        _desactivar_tipo(sel["id"])
+
+                                    btn_icon(
+                                        Icons.EDIT,
+                                        on_click=_on_editar_tipo_btn,
+                                        tooltip="Editar seleccionado",
+                                    )
+                                    btn_danger(
+                                        "Desactivar",
+                                        on_click=_on_desactivar_tipo_btn,
+                                        size="sm",
+                                    )
+
+                    # ── Medidas pedagógicas (solo dir/coord) ──────────────────
+                    if es_directivo:
+                        medidas = _s["medidas"]
+                        with (
+                            ui.element("div").classes("page-col-main").style("order: 4"),
+                            ui.element("div").classes("panel-card"),
+                        ):
+                            with ui.row().classes("panel-toolbar"):
+                                ui.label("Medidas pedagógicas (Decreto 1965)").classes(
+                                    "panel-title"
+                                )
+                                ui.element("div").classes("panel-toolbar-spacer")
+                                btn_primary(
+                                    "Nueva medida",
+                                    on_click=_abrir_nueva_medida,
+                                    icon=Icons.ADD,
+                                    size="sm",
+                                )
+
+                            if not medidas:
+                                empty_state(
+                                    icono="gavel",
+                                    titulo="Sin medidas pedagógicas",
+                                    descripcion="No hay medidas pedagógicas registradas.",
+                                    cta_label="Nueva medida",
+                                    cta_on_click=_abrir_nueva_medida,
+                                    cta_icono="add",
+                                )
+                            else:
+                                filas_medida = [
+                                    {
+                                        "id": getattr(m, "id", None),
+                                        "nombre": getattr(m, "nombre", ""),
+                                        "nivel_minimo": getattr(m, "nivel_minimo", 1),
+                                        "estado": "Activa"
+                                        if getattr(m, "activa", True)
+                                        else "Inactiva",
+                                        "activa": getattr(m, "activa", True),
+                                    }
+                                    for m in medidas
+                                ]
+                                with ui.element("div").classes("config-scroll"):
+                                    medida_grid = ui.aggrid(
+                                        {
+                                            "columnDefs": [
+                                                {
+                                                    "headerName": "Nombre",
+                                                    "field": "nombre",
+                                                    "flex": 1,
+                                                    "resizable": True,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Nivel mín.",
+                                                    "field": "nivel_minimo",
+                                                    "width": 100,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                                {
+                                                    "headerName": "Estado",
+                                                    "field": "estado",
+                                                    "width": 100,
+                                                    "resizable": False,
+                                                    "sortable": True,
+                                                },
+                                            ],
+                                            "rowData": filas_medida,
+                                            "rowSelection": "single",
+                                            "domLayout": "autoHeight",
+                                        }
+                                    ).classes("w-full")
+
+                                async def _on_medida_sel() -> None:
+                                    rows = await medida_grid.get_selected_rows()
+                                    _s["sel_medida"] = rows[0] if rows else None
+
+                                medida_grid.on("selectionChanged", _on_medida_sel)
+
+                                with (
+                                    ui.row()
+                                    .classes("gap-sm")
+                                    .style("flex-wrap: wrap; align-items: center")
+                                ):
+
+                                    def _on_editar_medida_btn() -> None:
+                                        sel = _s.get("sel_medida")
+                                        if not sel:
+                                            toast_warning("Selecciona una medida de la tabla.")
+                                            return
+                                        medida_obj = next(
+                                            (
+                                                m
+                                                for m in _s["medidas"]
+                                                if getattr(m, "id", None) == sel.get("id")
+                                            ),
+                                            None,
+                                        )
+                                        if medida_obj:
+                                            _abrir_editar_medida(medida_obj)
+
+                                    def _on_desactivar_medida_btn() -> None:
+                                        sel = _s.get("sel_medida")
+                                        if not sel:
+                                            toast_warning("Selecciona una medida de la tabla.")
+                                            return
+                                        if not sel.get("activa"):
+                                            toast_warning("La medida ya está inactiva.")
+                                            return
+                                        _desactivar_medida(sel["id"])
+
+                                    btn_icon(
+                                        Icons.EDIT,
+                                        on_click=_on_editar_medida_btn,
+                                        tooltip="Editar seleccionada",
+                                    )
+                                    btn_danger(
+                                        "Desactivar",
+                                        on_click=_on_desactivar_medida_btn,
+                                        size="sm",
+                                    )
+
+                    # ── Plantillas (todos los roles AULA) ─────
+                    with (
+                        ui.element("div").classes("page-col-main").style("order: 2"),
+                        ui.element("div").classes("panel-card"),
+                    ):
+                        with ui.row().classes("panel-toolbar"):
+                            ui.label("Plantillas").classes("panel-title")
+                            ui.element("div").classes("panel-toolbar-spacer")
+                            btn_primary(
+                                "Nueva plantilla",
+                                on_click=_abrir_nueva_plantilla,
+                                icon=Icons.ADD,
+                                size="sm",
+                            )
+
+                        if not plantillas:
+                            empty_state(
+                                icono="description",
+                                titulo="Sin plantillas",
+                                descripcion="No hay plantillas de observación registradas.",
+                                cta_label="Nueva plantilla",
+                                cta_on_click=_abrir_nueva_plantilla,
+                                cta_icono="add",
+                            )
+                        else:
+                            filas_plt = [
+                                {
+                                    "id": getattr(plt, "id", None),
+                                    "texto": getattr(plt, "texto", ""),
+                                    "categoria": nombres_cat.get(
+                                        getattr(plt, "categoria_id", None), "Sin categoría"
+                                    ),
+                                    "usos": getattr(plt, "uso_count", 0),
+                                    "estado": "Activa"
+                                    if getattr(plt, "activa", True)
+                                    else "Inactiva",
+                                    "activa": getattr(plt, "activa", True),
+                                }
+                                for plt in plantillas
+                            ]
+                            with ui.element("div").classes("config-scroll"):
+                                plt_grid = ui.aggrid(
+                                    {
+                                        "columnDefs": [
+                                            {
+                                                "headerName": "Texto",
+                                                "field": "texto",
+                                                "flex": 1,
+                                                "resizable": True,
+                                                "sortable": True,
+                                                "wrapText": True,
+                                                "autoHeight": True,
+                                                "cellClass": "cell-multiline",
+                                            },
+                                            {
+                                                "headerName": "Categoría",
+                                                "field": "categoria",
+                                                "width": 120,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                            {
+                                                "headerName": "Usos",
+                                                "field": "usos",
+                                                "width": 65,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                            {
+                                                "headerName": "Estado",
+                                                "field": "estado",
+                                                "width": 90,
+                                                "resizable": False,
+                                                "sortable": True,
+                                            },
+                                        ],
+                                        "rowData": filas_plt,
+                                        "rowSelection": "single",
+                                        "domLayout": "autoHeight",
+                                    }
+                                ).classes("w-full")
+
+                            async def _on_plt_sel() -> None:
+                                rows = await plt_grid.get_selected_rows()
+                                _s["sel_plt"] = rows[0] if rows else None
+
+                            plt_grid.on("selectionChanged", _on_plt_sel)
+
+                            with (
+                                ui.row()
+                                .classes("gap-sm")
+                                .style("flex-wrap: wrap; align-items: center")
+                            ):
+
+                                def _on_editar_plt_btn() -> None:
+                                    sel = _s.get("sel_plt")
+                                    if not sel:
+                                        toast_warning("Selecciona una plantilla de la tabla.")
+                                        return
+                                    plt_obj = next(
+                                        (
+                                            p
+                                            for p in _s["plantillas"]
+                                            if getattr(p, "id", None) == sel.get("id")
+                                        ),
+                                        None,
+                                    )
+                                    if plt_obj:
+                                        _abrir_editar_plantilla(plt_obj)
+
+                                def _on_desactivar_plt_btn() -> None:
+                                    sel = _s.get("sel_plt")
+                                    if not sel:
+                                        toast_warning("Selecciona una plantilla de la tabla.")
+                                        return
+                                    if not sel.get("activa"):
+                                        toast_warning("La plantilla ya está inactiva.")
+                                        return
+                                    _desactivar_plantilla(sel["id"])
+
+                                btn_icon(
+                                    Icons.EDIT,
+                                    on_click=_on_editar_plt_btn,
+                                    tooltip="Editar seleccionada",
+                                )
+                                if es_directivo:
+                                    btn_danger(
+                                        "Desactivar", on_click=_on_desactivar_plt_btn, size="sm"
+                                    )
 
         app_layout(
             ctx_actual,

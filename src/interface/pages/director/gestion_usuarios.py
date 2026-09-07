@@ -78,9 +78,7 @@ def gestion_usuarios_page() -> None:
 
     svc = Container.usuario_service()
     roles_asignables = svc.roles_asignables(ctx.usuario_rol)
-    roles_disponibles_crear = {
-        r: _ROLES_EQUIPO[r] for r in _ROLES_EQUIPO if r in roles_asignables
-    }
+    roles_disponibles_crear = {r: _ROLES_EQUIPO[r] for r in _ROLES_EQUIPO if r in roles_asignables}
     _rol_crear_default = "profesor"
 
     logger.info("Equipo docente: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
@@ -317,9 +315,7 @@ def gestion_usuarios_page() -> None:
             toast_warning("Tu rol no puede asignar roles")
             return
 
-        opciones_rol = {
-            r: _ROLES_EQUIPO[r] for r in _ROLES_EQUIPO if r in roles_asignables
-        }
+        opciones_rol = {r: _ROLES_EQUIPO[r] for r in _ROLES_EQUIPO if r in roles_asignables}
         valor_default = rol_actual if rol_actual in opciones_rol else next(iter(opciones_rol))
 
         def _aplicar(datos: dict) -> bool | None:
@@ -331,7 +327,9 @@ def gestion_usuarios_page() -> None:
                     cambiado_por_id=ctx.usuario_id,
                     actor_rol=ctx.usuario_rol,
                 )
-                toast_success(f"Rol de '{nombre}' actualizado a '{_ROLES_EQUIPO.get(nuevo_rol, nuevo_rol)}'")
+                toast_success(
+                    f"Rol de '{nombre}' actualizado a '{_ROLES_EQUIPO.get(nuevo_rol, nuevo_rol)}'"
+                )
                 _cargar_estado()
                 tabla.refresh()
             except ValueError as exc:
@@ -451,44 +449,44 @@ def gestion_usuarios_page() -> None:
     # -- Contenido principal ---
     def contenido() -> None:
         with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
-                with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
-                    with ui.row().classes("form-row-center-md"):
-                        ui.label("Filtros:").classes("text-sm font-semibold")
-                        roles_opts = {None: "Todos los roles"}
-                        roles_opts.update(_ROLES_EQUIPO)
-                        filter_select(
-                            label="Rol",
-                            options=roles_opts,
-                            value=None,
-                            on_change=lambda e: (
-                                presenter.set_filtro_rol(e.value),
-                                _on_filtros_cambio(),
-                            ),
-                            cls_extra="w-40",
-                        )
-                        ui.checkbox(
-                            "Solo activos",
-                            value=_s["filtro_activos"],
-                            on_change=lambda e: (
-                                presenter.set_filtro_activos(e.value),
-                                _on_filtros_cambio(),
-                            ),
-                        )
-                        status_badge(str(len(_s["usuarios"])), "primary")
-                        btn_icon(
-                            "refresh",
-                            on_click=lambda: (_cargar_estado(), tabla.refresh()),
-                            tooltip="Recargar",
-                        )
-
-                    btn_primary(
-                        "Nuevo usuario",
-                        on_click=_abrir_crear_usuario,
-                        icon="person_add",
-                        size="sm",
+            with ui.row().classes("gap-4 items-center justify-between flex-wrap mb-4"):
+                with ui.row().classes("form-row-center-md"):
+                    ui.label("Filtros:").classes("text-sm font-semibold")
+                    roles_opts = {None: "Todos los roles"}
+                    roles_opts.update(_ROLES_EQUIPO)
+                    filter_select(
+                        label="Rol",
+                        options=roles_opts,
+                        value=None,
+                        on_change=lambda e: (
+                            presenter.set_filtro_rol(e.value),
+                            _on_filtros_cambio(),
+                        ),
+                        cls_extra="w-40",
+                    )
+                    ui.checkbox(
+                        "Solo activos",
+                        value=_s["filtro_activos"],
+                        on_change=lambda e: (
+                            presenter.set_filtro_activos(e.value),
+                            _on_filtros_cambio(),
+                        ),
+                    )
+                    status_badge(str(len(_s["usuarios"])), "primary")
+                    btn_icon(
+                        "refresh",
+                        on_click=lambda: (_cargar_estado(), tabla.refresh()),
+                        tooltip="Recargar",
                     )
 
-                tabla()
+                btn_primary(
+                    "Nuevo usuario",
+                    on_click=_abrir_crear_usuario,
+                    icon="person_add",
+                    size="sm",
+                )
+
+            tabla()
 
     app_layout(
         ctx,
