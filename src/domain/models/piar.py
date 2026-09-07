@@ -21,14 +21,16 @@ from __future__ import annotations
 from datetime import date
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Entidad
 # =============================================================================
 
 
-class PIAR(BaseModel):
+class PIAR(EntidadDominio):
     """
     Plan Individual de Apoyos y Ajustes Razonables de un estudiante.
 
@@ -174,7 +176,7 @@ class PIAR(BaseModel):
 # =============================================================================
 
 
-class NuevoPIARDTO(BaseModel):
+class NuevoPIARDTO(DTODominio):
     """Datos para registrar un PIAR nuevo."""
 
     estudiante_id: int
@@ -200,7 +202,7 @@ class NuevoPIARDTO(BaseModel):
         )
 
 
-class ActualizarPIARDTO(BaseModel):
+class ActualizarPIARDTO(DTODominio):
     """Campos actualizables de un PIAR. Todos opcionales."""
 
     descripcion_necesidad: str | None = None

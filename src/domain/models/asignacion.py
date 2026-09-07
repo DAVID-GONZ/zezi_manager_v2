@@ -27,14 +27,16 @@ Reglas de negocio:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Entidad de escritura — lo que persiste
 # =============================================================================
 
 
-class Asignacion(BaseModel):
+class Asignacion(EntidadDominio):
     """
     Pivot docente-asignatura-grupo-periodo.
 
@@ -89,7 +91,7 @@ class Asignacion(BaseModel):
 # =============================================================================
 
 
-class AsignacionInfo(BaseModel):
+class AsignacionInfo(EntidadDominio):
     """
     Vista enriquecida de una asignación con nombres resueltos por JOIN.
 
@@ -160,7 +162,7 @@ class AsignacionInfo(BaseModel):
 # =============================================================================
 
 
-class NuevaAsignacionDTO(BaseModel):
+class NuevaAsignacionDTO(DTODominio):
     """Datos necesarios para crear una asignación."""
 
     grupo_id: int
@@ -181,7 +183,7 @@ class NuevaAsignacionDTO(BaseModel):
         return Asignacion(**self.model_dump())
 
 
-class FiltroAsignacionesDTO(BaseModel):
+class FiltroAsignacionesDTO(DTODominio):
     """Parámetros para listar asignaciones."""
 
     usuario_id: int | None = None  # filtrar por docente

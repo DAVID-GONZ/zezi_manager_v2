@@ -37,7 +37,9 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 from src.domain.models.alerta import NivelAlerta
 
@@ -70,7 +72,7 @@ TIPO_REGISTRO_DISPLAY: dict[str, str] = {
 # =============================================================================
 
 
-class TipoSituacion(BaseModel):
+class TipoSituacion(EntidadDominio):
     """
     Clasificación de gravedad de una situación de convivencia (Tipo I/II/III).
     Catálogo configurable por institución.
@@ -85,7 +87,7 @@ class TipoSituacion(BaseModel):
     institucion_id: int | None = None
 
 
-class NuevoTipoSituacionDTO(BaseModel):
+class NuevoTipoSituacionDTO(DTODominio):
     """DTO para crear o editar un tipo de situación."""
 
     nombre: str
@@ -106,7 +108,7 @@ class NuevoTipoSituacionDTO(BaseModel):
 # =============================================================================
 
 
-class MedidaPedagogica(BaseModel):
+class MedidaPedagogica(EntidadDominio):
     """
     Medida pedagógica o correctiva aplicable a una situación de convivencia.
     Catálogo configurable por institución (Art. 43-44 Decreto 1965).
@@ -125,7 +127,7 @@ class MedidaPedagogica(BaseModel):
     institucion_id: int | None = None
 
 
-class NuevaMedidaPedagogicaDTO(BaseModel):
+class NuevaMedidaPedagogicaDTO(DTODominio):
     """DTO para crear o editar una medida pedagógica."""
 
     nombre: str
@@ -145,7 +147,7 @@ class NuevaMedidaPedagogicaDTO(BaseModel):
 # =============================================================================
 
 
-class CategoriaObservacion(BaseModel):
+class CategoriaObservacion(EntidadDominio):
     """
     Categoría para clasificar observaciones y registros de convivencia.
 
@@ -165,7 +167,7 @@ class CategoriaObservacion(BaseModel):
     institucion_id: int | None = None
 
 
-class NuevaCategoriaDTO(BaseModel):
+class NuevaCategoriaDTO(DTODominio):
     """DTO para crear una nueva categoría de observación."""
 
     nombre: str
@@ -177,7 +179,7 @@ class NuevaCategoriaDTO(BaseModel):
 # =============================================================================
 
 
-class PlantillaObservacion(BaseModel):
+class PlantillaObservacion(EntidadDominio):
     """
     Plantilla de texto reutilizable para agilizar el registro de observaciones.
 
@@ -195,7 +197,7 @@ class PlantillaObservacion(BaseModel):
     institucion_id: int | None = None
 
 
-class NuevaPlantillaDTO(BaseModel):
+class NuevaPlantillaDTO(DTODominio):
     """DTO para crear una nueva plantilla de observación."""
 
     texto: str
@@ -207,7 +209,7 @@ class NuevaPlantillaDTO(BaseModel):
 # =============================================================================
 
 
-class ObservacionPeriodo(BaseModel):
+class ObservacionPeriodo(EntidadDominio):
     """
     Observación narrativa de un docente sobre un estudiante en un periodo.
 
@@ -253,7 +255,7 @@ class ObservacionPeriodo(BaseModel):
         return self.model_copy(update={"es_publica": False})
 
 
-class EntradaSeguimiento(BaseModel):
+class EntradaSeguimiento(EntidadDominio):
     """
     Entrada cronológica del historial de seguimiento de un registro de comportamiento.
 
@@ -279,7 +281,7 @@ class EntradaSeguimiento(BaseModel):
         return v
 
 
-class NuevaEntradaSeguimientoDTO(BaseModel):
+class NuevaEntradaSeguimientoDTO(DTODominio):
     """DTO para agregar una entrada al historial de seguimiento."""
 
     registro_id: int
@@ -294,7 +296,7 @@ class NuevaEntradaSeguimientoDTO(BaseModel):
         return v
 
 
-class RegistroComportamiento(BaseModel):
+class RegistroComportamiento(EntidadDominio):
     """
     Evento puntual de convivencia registrado por un docente o directivo.
 
@@ -425,7 +427,7 @@ class RegistroComportamiento(BaseModel):
         return self.model_copy(update={"seguimiento": texto})
 
 
-class NotaComportamiento(BaseModel):
+class NotaComportamiento(EntidadDominio):
     """
     Calificación cuantitativa de convivencia por periodo.
 
@@ -475,7 +477,7 @@ class NotaComportamiento(BaseModel):
 # =============================================================================
 
 
-class NuevaObservacionDTO(BaseModel):
+class NuevaObservacionDTO(DTODominio):
     """Datos para registrar una observación de periodo."""
 
     estudiante_id: int
@@ -504,7 +506,7 @@ class NuevaObservacionDTO(BaseModel):
         )
 
 
-class NuevoRegistroComportamientoDTO(BaseModel):
+class NuevoRegistroComportamientoDTO(DTODominio):
     """Datos para crear un registro de comportamiento."""
 
     estudiante_id: int
@@ -534,7 +536,7 @@ class NuevoRegistroComportamientoDTO(BaseModel):
         )
 
 
-class NuevaNotaComportamientoDTO(BaseModel):
+class NuevaNotaComportamientoDTO(DTODominio):
     """Datos para registrar la nota de comportamiento de un periodo."""
 
     estudiante_id: int
@@ -559,7 +561,7 @@ class NuevaNotaComportamientoDTO(BaseModel):
         )
 
 
-class ConceptoComportamientoDTO(BaseModel):
+class ConceptoComportamientoDTO(DTODominio):
     """
     Consolidado cuantitativo + cualitativo del comportamiento de un
     estudiante en un periodo, listo para el boletín (Fase 3) y para el
@@ -583,7 +585,7 @@ class ConceptoComportamientoDTO(BaseModel):
     aprobado: bool = False
 
 
-class ReporteConvivenciaFilaDTO(BaseModel):
+class ReporteConvivenciaFilaDTO(DTODominio):
     """
     Fila del reporte de convivencia por grupo/periodo (convivencia_06):
     consolida la nota + concepto del estudiante con la lista de observaciones
@@ -605,7 +607,7 @@ class ReporteConvivenciaFilaDTO(BaseModel):
     descargos: int = 0
 
 
-class FiltroConvivenciaDTO(BaseModel):
+class FiltroConvivenciaDTO(DTODominio):
     """Parámetros para consultar registros de comportamiento."""
 
     estudiante_id: int | None = None
@@ -617,7 +619,7 @@ class FiltroConvivenciaDTO(BaseModel):
     por_pagina: int | None = Field(default=50, ge=1, le=200)
 
 
-class NuevaAlertaSeguimientoDTO(BaseModel):
+class NuevaAlertaSeguimientoDTO(DTODominio):
     """DTO para crear una alerta de seguimiento manual (convivencia_16)."""
 
     estudiante_id: int
@@ -626,7 +628,7 @@ class NuevaAlertaSeguimientoDTO(BaseModel):
     nivel: NivelAlerta = NivelAlerta.ADVERTENCIA
 
 
-class Seguimiento360DTO(BaseModel):
+class Seguimiento360DTO(DTODominio):
     """
     Vista consolidada 360° de un estudiante en un periodo (convivencia_18).
 
@@ -646,7 +648,7 @@ class Seguimiento360DTO(BaseModel):
     promedio_notas: float | None = None
 
 
-class PuntoSerieDTO(BaseModel):
+class PuntoSerieDTO(DTODominio):
     """
     Un punto de una serie temporal por periodo (convivencia_21).
 
@@ -660,7 +662,7 @@ class PuntoSerieDTO(BaseModel):
     valor: float | None = None
 
 
-class ResumenConvivenciaDTO(BaseModel):
+class ResumenConvivenciaDTO(DTODominio):
     """
     Resumen agregado de convivencia por estudiante en un grupo/periodo
     (convivencia_21). Alimenta el maestro-detalle del hub de Seguimiento

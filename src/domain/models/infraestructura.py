@@ -21,7 +21,9 @@ from datetime import time
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -48,7 +50,7 @@ class DiaSemana(StrEnum):
 # =============================================================================
 
 
-class AreaConocimiento(BaseModel):
+class AreaConocimiento(EntidadDominio):
     """
     Área del currículo colombiano (Ley 115 de 1994, Art. 23).
     Ejemplos: 'Matemáticas', 'Ciencias Naturales y Educación Ambiental'.
@@ -94,7 +96,7 @@ class AreaConocimiento(BaseModel):
         return None
 
 
-class Asignatura(BaseModel):
+class Asignatura(EntidadDominio):
     """
     Asignatura que se dicta en la institución.
     Pertenece a un área de conocimiento.
@@ -141,7 +143,7 @@ class Asignatura(BaseModel):
         return v
 
 
-class Grupo(BaseModel):
+class Grupo(EntidadDominio):
     """
     Grupo escolar (curso). Cada grupo tiene un grado, jornada y
     capacidad máxima de estudiantes.
@@ -225,7 +227,7 @@ class Grupo(BaseModel):
         return max(0, self.capacidad_maxima - matriculados)
 
 
-class Grado(BaseModel):
+class Grado(EntidadDominio):
     """
     Grado ofrecido por la institución (1–13), con su rango de estudiantes
     (norma colombiana) y el total de horas semanales objetivo del plan.
@@ -249,7 +251,7 @@ class Grado(BaseModel):
         return self
 
 
-class ConfiguracionGradoInstitucion(BaseModel):
+class ConfiguracionGradoInstitucion(EntidadDominio):
     """
     Configuración por-institución de un grado (tabla puente — mejora_07-T6).
     Permite que cada institución ajuste min/max de estudiantes y horas semanales
@@ -274,7 +276,7 @@ class ConfiguracionGradoInstitucion(BaseModel):
         return self
 
 
-class EscenarioHorario(BaseModel):
+class EscenarioHorario(EntidadDominio):
     """
     Escenario de horario para un año lectivo.
     Solo puede haber un escenario activo por año (enforced por índice parcial).
@@ -305,7 +307,7 @@ class EscenarioHorario(BaseModel):
         return v
 
 
-class NuevoEscenarioDTO(BaseModel):
+class NuevoEscenarioDTO(DTODominio):
     """DTO para crear un nuevo escenario de horario."""
 
     anio_id: int
@@ -334,7 +336,7 @@ class NuevoEscenarioDTO(BaseModel):
         return EscenarioHorario(**self.model_dump())
 
 
-class Horario(BaseModel):
+class Horario(EntidadDominio):
     """
     Franja horaria de una asignatura para un grupo en un escenario.
 
@@ -427,7 +429,7 @@ class Horario(BaseModel):
         )
 
 
-class Logro(BaseModel):
+class Logro(EntidadDominio):
     """
     Logro o competencia evaluado en una asignación durante un periodo.
 
@@ -474,7 +476,7 @@ TIPOS_FRANJA: set[str] = {"lectiva", "descanso", "almuerzo"}
 JORNADAS_VALIDAS: set[str] = {"AM", "PM", "UNICA"}
 
 
-class Franja(BaseModel):
+class Franja(EntidadDominio):
     """
     Una franja horaria dentro de una plantilla (rejilla fija).
 
@@ -553,7 +555,7 @@ class Franja(BaseModel):
         return self.tipo == "lectiva"
 
 
-class PlantillaFranja(BaseModel):
+class PlantillaFranja(EntidadDominio):
     """
     Plantilla (rejilla) de franjas para una jornada. A lo sumo una activa
     por jornada (índice único parcial en BD).
@@ -604,7 +606,7 @@ class PlantillaFranja(BaseModel):
         return dias
 
 
-class NuevaPlantillaFranjaDTO(BaseModel):
+class NuevaPlantillaFranjaDTO(DTODominio):
     nombre: str
     jornada: str = "UNICA"
     dias_activos: list[str]
@@ -614,7 +616,7 @@ class NuevaPlantillaFranjaDTO(BaseModel):
         return PlantillaFranja(**self.model_dump())
 
 
-class NuevaFranjaDTO(BaseModel):
+class NuevaFranjaDTO(DTODominio):
     plantilla_id: int
     orden: int
     hora_inicio: str
@@ -632,7 +634,7 @@ class NuevaFranjaDTO(BaseModel):
 # =============================================================================
 
 
-class PesosGeneracion(BaseModel):
+class PesosGeneracion(EntidadDominio):
     huecos: float = Field(default=1.0, ge=0.0, le=2.0)
     distribucion: float = Field(default=1.0, ge=0.0, le=2.0)
     compactacion: float = Field(default=0.5, ge=0.0, le=2.0)
@@ -654,7 +656,7 @@ TRANSICIONES_CONFIG: dict[str, set[str]] = {
 }
 
 
-class DisponibilidadDocente(BaseModel):
+class DisponibilidadDocente(EntidadDominio):
     id: int | None = None
     usuario_id: int = Field(gt=0)
     dia_semana: str
@@ -671,7 +673,7 @@ class DisponibilidadDocente(BaseModel):
         return v
 
 
-class ConfigGeneracion(BaseModel):
+class ConfigGeneracion(EntidadDominio):
     id: int | None = None
     nombre: str
     periodo_id: int = Field(gt=0)
@@ -707,7 +709,7 @@ class ConfigGeneracion(BaseModel):
         return nuevo in TRANSICIONES_CONFIG.get(self.estado, set())
 
 
-class NuevaDisponibilidadDTO(BaseModel):
+class NuevaDisponibilidadDTO(DTODominio):
     usuario_id: int
     dia_semana: str
     franja_orden: int
@@ -718,7 +720,7 @@ class NuevaDisponibilidadDTO(BaseModel):
         return DisponibilidadDocente(**self.model_dump())
 
 
-class NuevaConfigGeneracionDTO(BaseModel):
+class NuevaConfigGeneracionDTO(DTODominio):
     nombre: str
     periodo_id: int
     anio_id: int
@@ -737,7 +739,7 @@ class NuevaConfigGeneracionDTO(BaseModel):
 # =============================================================================
 
 
-class BloqueGeneradoDTO(BaseModel):
+class BloqueGeneradoDTO(DTODominio):
     """Un bloque colocado por el generador en una franja lectiva concreta."""
 
     asignacion_id: int
@@ -751,7 +753,7 @@ class BloqueGeneradoDTO(BaseModel):
     sala_id: int | None = None  # None = sala "Aula" legacy
 
 
-class MetricasCalidadDTO(BaseModel):
+class MetricasCalidadDTO(DTODominio):
     """Métricas de calidad blanda de una solución del generador (paso_15d)."""
 
     huecos_grupo: int = 0  # ventanas vacías intra-día de los grupos
@@ -763,7 +765,7 @@ class MetricasCalidadDTO(BaseModel):
     pasos_mejora: int = 0
 
 
-class ResultadoGeneracionDTO(BaseModel):
+class ResultadoGeneracionDTO(DTODominio):
     """Resultado de una corrida del generador de horarios v1."""
 
     escenario_id: int | None = None
@@ -788,7 +790,7 @@ class ResultadoGeneracionDTO(BaseModel):
 # =============================================================================
 
 
-class VentanaGrupo(BaseModel):
+class VentanaGrupo(EntidadDominio):
     """Restringe a qué franjas puede asignarse un grupo/grado."""
 
     id: int | None = None
@@ -806,7 +808,7 @@ class VentanaGrupo(BaseModel):
         return self
 
 
-class BloqueAnclado(BaseModel):
+class BloqueAnclado(EntidadDominio):
     """Un bloque pre-colocado que el motor debe respetar."""
 
     id: int | None = None
@@ -826,7 +828,7 @@ class BloqueAnclado(BaseModel):
         return v
 
 
-class FranjaReunion(BaseModel):
+class FranjaReunion(EntidadDominio):
     """Franja reservada para reunión de un conjunto de docentes."""
 
     id: int | None = None
@@ -865,7 +867,7 @@ class FranjaReunion(BaseModel):
         return v
 
 
-class LimitesDocente(BaseModel):
+class LimitesDocente(EntidadDominio):
     """Límites de carga diaria por docente (amplía carga_horaria_max en usuario)."""
 
     id: int | None = None
@@ -889,7 +891,7 @@ class LimitesDocente(BaseModel):
 # =============================================================================
 
 
-class PlanEstudios(BaseModel):
+class PlanEstudios(EntidadDominio):
     """Horas semanales de una asignatura para un grado específico."""
 
     id: int | None = None
@@ -904,7 +906,7 @@ class PlanEstudios(BaseModel):
 # =============================================================================
 
 
-class NuevaAreaDTO(BaseModel):
+class NuevaAreaDTO(DTODominio):
     nombre: str
     codigo: str | None = None
 
@@ -922,7 +924,7 @@ class NuevaAreaDTO(BaseModel):
         return AreaConocimiento(**self.model_dump())
 
 
-class NuevaAsignaturaDTO(BaseModel):
+class NuevaAsignaturaDTO(DTODominio):
     nombre: str
     codigo: str | None = None
     area_id: int | None = None
@@ -946,7 +948,7 @@ class NuevaAsignaturaDTO(BaseModel):
         return Asignatura(**self.model_dump())
 
 
-class NuevoGrupoDTO(BaseModel):
+class NuevoGrupoDTO(DTODominio):
     codigo: str
     nombre: str | None = None
     grado: int | None = None
@@ -973,7 +975,7 @@ class NuevoGrupoDTO(BaseModel):
 # =============================================================================
 
 
-class Sala(BaseModel):
+class Sala(EntidadDominio):
     """Sala o espacio físico donde se dictan clases."""
 
     id: int | None = None
@@ -1002,7 +1004,7 @@ class Sala(BaseModel):
         return v
 
 
-class NuevaSalaDTO(BaseModel):
+class NuevaSalaDTO(DTODominio):
     nombre: str
     tipo: str = "aula"
     capacidad: int = 30
@@ -1012,7 +1014,7 @@ class NuevaSalaDTO(BaseModel):
         return Sala(**self.model_dump())
 
 
-class NuevoHorarioDTO(BaseModel):
+class NuevoHorarioDTO(DTODominio):
     grupo_id: int
     asignatura_id: int
     usuario_id: int
@@ -1045,7 +1047,7 @@ class NuevoHorarioDTO(BaseModel):
         return Horario(**self.model_dump())
 
 
-class NuevoLogroDTO(BaseModel):
+class NuevoLogroDTO(DTODominio):
     asignacion_id: int
     periodo_id: int
     descripcion: str
@@ -1070,7 +1072,7 @@ class NuevoLogroDTO(BaseModel):
 # =============================================================================
 
 
-class HorarioInfo(BaseModel):
+class HorarioInfo(EntidadDominio):
     """
     Vista enriquecida de un bloque horario con nombres resueltos por JOIN.
 
@@ -1167,7 +1169,7 @@ class HorarioInfo(BaseModel):
         return f"{self.franja_display} — {self.asignatura_nombre}"
 
 
-class HorarioEstadisticasDTO(BaseModel):
+class HorarioEstadisticasDTO(EntidadDominio):
     """
     Métricas del horario maestro para el panel de estadísticas.
 
@@ -1181,7 +1183,7 @@ class HorarioEstadisticasDTO(BaseModel):
     docentes_con_horario: int = 0  # docentes con al menos un bloque
 
 
-class CupoDTO(BaseModel):
+class CupoDTO(DTODominio):
     usadas: int
     maximas: int | None = None
 
@@ -1205,7 +1207,7 @@ class CupoDTO(BaseModel):
 # =============================================================================
 
 
-class NuevoPlanEstudiosDTO(BaseModel):
+class NuevoPlanEstudiosDTO(DTODominio):
     grado: int = Field(ge=1, le=13)
     asignatura_id: int = Field(gt=0)
     horas_semanales: int = Field(ge=1, le=40)
@@ -1216,14 +1218,14 @@ class NuevoPlanEstudiosDTO(BaseModel):
 # =============================================================================
 
 
-class FilaReporteDTO(BaseModel):
+class FilaReporteDTO(DTODominio):
     indice: int
     ok: bool
     motivo: str | None = None
     resumen: str = ""
 
 
-class ReporteLoteDTO(BaseModel):
+class ReporteLoteDTO(DTODominio):
     filas: list[FilaReporteDTO] = []
     # Cruces de sala detectados con salas_bloquean=False (paso_17 T1): no
     # invalidan la fila, pero se listan para que la UI los muestre.
@@ -1245,7 +1247,7 @@ class ReporteLoteDTO(BaseModel):
         return bool(self.filas) and all(f.ok for f in self.filas)
 
 
-class ResultadoLoteDTO(BaseModel):
+class ResultadoLoteDTO(DTODominio):
     creados: int = 0
     omitidos: int = 0
     reporte: ReporteLoteDTO

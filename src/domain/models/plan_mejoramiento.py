@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 
 class EstadoNotaCorte(StrEnum):
@@ -15,7 +17,7 @@ class EstadoNotaCorte(StrEnum):
     REPROBADO = "reprobado"  # Cerró el plan y reprobó
 
 
-class CortePlan(BaseModel):
+class CortePlan(EntidadDominio):
     """Registro de un corte de plan de mejoramiento para una asignación en un periodo."""
 
     id: int | None = None
@@ -28,7 +30,7 @@ class CortePlan(BaseModel):
     usuario_id: int | None = None  # Quién ejecutó el corte
 
 
-class NotaCortePlan(BaseModel):
+class NotaCortePlan(EntidadDominio):
     """Nota de corte por estudiante. Todos los estudiantes tienen una."""
 
     id: int | None = None
@@ -42,7 +44,7 @@ class NotaCortePlan(BaseModel):
     usuario_cierre_id: int | None = None
 
 
-class ActividadPlan(BaseModel):
+class ActividadPlan(EntidadDominio):
     """Actividad de plan de mejoramiento (columna compartida para todos los en-plan)."""
 
     id: int | None = None
@@ -64,7 +66,7 @@ class ActividadPlan(BaseModel):
         return v
 
 
-class NotaActividadPlan(BaseModel):
+class NotaActividadPlan(EntidadDominio):
     """Nota de una actividad del plan por estudiante (celda)."""
 
     id: int | None = None
@@ -81,7 +83,7 @@ class NotaActividadPlan(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class EjecutarCorteDTO(BaseModel):
+class EjecutarCorteDTO(DTODominio):
     """Datos para ejecutar un corte de plan de mejoramiento."""
 
     asignacion_id: int
@@ -90,7 +92,7 @@ class EjecutarCorteDTO(BaseModel):
     usuario_id: int | None = None
 
 
-class NuevaActividadPlanDTO(BaseModel):
+class NuevaActividadPlanDTO(DTODominio):
     """Datos para crear una actividad de plan de mejoramiento."""
 
     corte_id: int
@@ -123,7 +125,7 @@ class NuevaActividadPlanDTO(BaseModel):
         )
 
 
-class CalificarNotaPlanDTO(BaseModel):
+class CalificarNotaPlanDTO(DTODominio):
     """Datos para calificar la nota de una actividad de plan."""
 
     valor: float
@@ -138,7 +140,7 @@ class CalificarNotaPlanDTO(BaseModel):
         return v
 
 
-class CerrarPlanEstudianteDTO(BaseModel):
+class CerrarPlanEstudianteDTO(DTODominio):
     """Datos para cerrar el plan de un estudiante específico."""
 
     estudiante_id: int

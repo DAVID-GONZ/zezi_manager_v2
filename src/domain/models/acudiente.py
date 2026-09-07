@@ -29,7 +29,9 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -61,7 +63,7 @@ class Parentesco(StrEnum):
 # =============================================================================
 
 
-class Acudiente(BaseModel):
+class Acudiente(EntidadDominio):
     """
     Acudiente o responsable legal de uno o más estudiantes.
 
@@ -181,7 +183,7 @@ class Acudiente(BaseModel):
         return self.model_copy(update={"activo": True})
 
 
-class EstudianteAcudiente(BaseModel):
+class EstudianteAcudiente(EntidadDominio):
     """
     Vínculo entre un estudiante y un acudiente.
 
@@ -208,7 +210,7 @@ class EstudianteAcudiente(BaseModel):
 # =============================================================================
 
 
-class NuevoAcudienteDTO(BaseModel):
+class NuevoAcudienteDTO(DTODominio):
     """Datos para registrar un acudiente nuevo."""
 
     tipo_documento: TipoDocumentoAcudiente = TipoDocumentoAcudiente.CC
@@ -253,7 +255,7 @@ class NuevoAcudienteDTO(BaseModel):
         return Acudiente(**self.model_dump())
 
 
-class ActualizarAcudienteDTO(BaseModel):
+class ActualizarAcudienteDTO(DTODominio):
     """Campos actualizables de un acudiente. Todos opcionales."""
 
     nombre_completo: str | None = None
@@ -279,7 +281,7 @@ class ActualizarAcudienteDTO(BaseModel):
         return acudiente.model_copy(update=cambios) if cambios else acudiente
 
 
-class VincularAcudienteDTO(BaseModel):
+class VincularAcudienteDTO(DTODominio):
     """Vincula un acudiente existente a un estudiante."""
 
     estudiante_id: int
@@ -299,7 +301,7 @@ class VincularAcudienteDTO(BaseModel):
         return EstudianteAcudiente(**self.model_dump())
 
 
-class AcudienteResumenDTO(BaseModel):
+class AcudienteResumenDTO(DTODominio):
     """Vista mínima para mostrar en el perfil del estudiante."""
 
     id: int

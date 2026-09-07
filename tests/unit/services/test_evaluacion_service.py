@@ -150,7 +150,7 @@ def _cat_dto(peso: float = 0.40) -> NuevaCategoriaDTO:
 
 def _act_dto(cat_id: int = 1) -> NuevaActividadDTO:
     return NuevaActividadDTO(
-        asignacion_id=3, periodo_id=5, categoria_id=cat_id,
+        categoria_id=cat_id,
         nombre="Quiz 1", valor_maximo=100.0,
     )
 

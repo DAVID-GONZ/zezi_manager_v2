@@ -26,7 +26,9 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enums (mejora_06)
@@ -54,7 +56,7 @@ class Calendario(StrEnum):
 # =============================================================================
 
 
-class Institucion(BaseModel):
+class Institucion(EntidadDominio):
     """
     Una institución educativa (tenant) registrada en la plataforma.
 
@@ -146,7 +148,7 @@ class Institucion(BaseModel):
 # =============================================================================
 
 
-class NuevaInstitucionDTO(BaseModel):
+class NuevaInstitucionDTO(DTODominio):
     """Datos para crear una institución nueva."""
 
     nombre: str
@@ -175,7 +177,7 @@ class NuevaInstitucionDTO(BaseModel):
         return Institucion(**self.model_dump())
 
 
-class ActualizarInstitucionDTO(BaseModel):
+class ActualizarInstitucionDTO(DTODominio):
     """Campos editables de la entidad Institucion. Todos opcionales."""
 
     nombre: str | None = None
@@ -202,7 +204,7 @@ class ActualizarInstitucionDTO(BaseModel):
         return inst.model_copy(update=cambios) if cambios else inst
 
 
-class InstitucionResumenDTO(BaseModel):
+class InstitucionResumenDTO(DTODominio):
     """Vista mínima para selects, filtros y lookups."""
 
     id: int
@@ -216,7 +218,7 @@ class InstitucionResumenDTO(BaseModel):
         return cls(id=i.id, nombre=i.nombre, activa=i.activa)
 
 
-class NuevaInstitucionConDirectorDTO(BaseModel):
+class NuevaInstitucionConDirectorDTO(DTODominio):
     """
     Datos para el flujo combinado (mejora_09a): un admin crea una institución
     nueva junto con su usuario director en una sola operación.
@@ -324,7 +326,7 @@ class NuevaInstitucionConDirectorDTO(BaseModel):
         return v
 
 
-class ResultadoAprovisionamientoDTO(BaseModel):
+class ResultadoAprovisionamientoDTO(DTODominio):
     """
     Resultado de crear una institución con su director (mejora_09a).
 

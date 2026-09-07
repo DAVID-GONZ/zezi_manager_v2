@@ -40,7 +40,9 @@ from datetime import date, datetime, time
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -85,7 +87,7 @@ class EstadoAsistencia(StrEnum):
 # =============================================================================
 
 
-class ControlDiario(BaseModel):
+class ControlDiario(EntidadDominio):
     """
     Registro de asistencia de un estudiante a una clase específica.
 
@@ -198,7 +200,7 @@ class ControlDiario(BaseModel):
 # =============================================================================
 
 
-class ResumenAsistenciaDTO(BaseModel):
+class ResumenAsistenciaDTO(EntidadDominio):
     """
     Resumen de asistencia de un estudiante en un periodo o rango de fechas.
     Calculado por el repositorio con GROUP BY; la página lo muestra directamente.
@@ -258,7 +260,7 @@ class ResumenAsistenciaDTO(BaseModel):
         )
 
 
-class RegistroAsistenciaItemDTO(BaseModel):
+class RegistroAsistenciaItemDTO(DTODominio):
     """
     Un ítem dentro de un registro masivo de asistencia.
     Representa la asistencia de un único estudiante en un registro grupal.
@@ -282,7 +284,7 @@ class RegistroAsistenciaItemDTO(BaseModel):
 # =============================================================================
 
 
-class RegistrarAsistenciaDTO(BaseModel):
+class RegistrarAsistenciaDTO(DTODominio):
     """Datos para registrar la asistencia de un único estudiante."""
 
     estudiante_id: int
@@ -313,7 +315,7 @@ class RegistrarAsistenciaDTO(BaseModel):
         return ControlDiario(**self.model_dump())
 
 
-class RegistrarAsistenciaMasivaDTO(BaseModel):
+class RegistrarAsistenciaMasivaDTO(DTODominio):
     """
     Registra la asistencia de todos los estudiantes de un grupo
     en una misma fecha y asignación. Operación atómica — el servicio
@@ -373,7 +375,7 @@ class RegistrarAsistenciaMasivaDTO(BaseModel):
         ]
 
 
-class FiltroAsistenciaDTO(BaseModel):
+class FiltroAsistenciaDTO(DTODominio):
     """Parámetros para consultar registros de asistencia."""
 
     estudiante_id: int | None = None

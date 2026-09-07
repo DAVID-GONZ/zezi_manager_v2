@@ -37,7 +37,9 @@ import json
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -71,7 +73,7 @@ class AccionCambio(StrEnum):
 # =============================================================================
 
 
-class EventoSesion(BaseModel):
+class EventoSesion(EntidadDominio):
     """
     Registro de un evento de autenticación o acceso.
 
@@ -141,7 +143,7 @@ class EventoSesion(BaseModel):
         return self.fecha_hora.strftime("%Y-%m-%d %H:%M:%S")
 
 
-class RegistroCambio(BaseModel):
+class RegistroCambio(EntidadDominio):
     """
     Registro de una operación CRUD sobre datos del sistema.
 
@@ -292,7 +294,7 @@ class RegistroCambio(BaseModel):
 # =============================================================================
 
 
-class CrearEventoSesionDTO(BaseModel):
+class CrearEventoSesionDTO(DTODominio):
     """Datos para registrar un evento de sesión."""
 
     usuario: str
@@ -306,7 +308,7 @@ class CrearEventoSesionDTO(BaseModel):
         return EventoSesion(**self.model_dump())
 
 
-class CrearRegistroCambioDTO(BaseModel):
+class CrearRegistroCambioDTO(DTODominio):
     """
     Datos para registrar un cambio de datos.
 
@@ -367,7 +369,7 @@ class CrearRegistroCambioDTO(BaseModel):
         )
 
 
-class ResumenUsoDTO(BaseModel):
+class ResumenUsoDTO(DTODominio):
     """
     Agregación de solo lectura del uso de la plataforma (paso_21).
 
@@ -382,7 +384,7 @@ class ResumenUsoDTO(BaseModel):
     dias: int = 7
 
 
-class FiltroAuditoriaDTO(BaseModel):
+class FiltroAuditoriaDTO(DTODominio):
     """Parámetros para consultar registros de auditoría."""
 
     usuario_id: int | None = None

@@ -33,7 +33,9 @@ from datetime import date
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -52,7 +54,7 @@ class EstadoPromocion(StrEnum):
 # =============================================================================
 
 
-class CierrePeriodo(BaseModel):
+class CierrePeriodo(EntidadDominio):
     """
     Nota definitiva de un estudiante en una asignatura al cierre de un periodo.
 
@@ -128,7 +130,7 @@ class CierrePeriodo(BaseModel):
 # =============================================================================
 
 
-class CierreAnio(BaseModel):
+class CierreAnio(EntidadDominio):
     """
     Nota definitiva anual de un estudiante en una asignatura.
 
@@ -242,7 +244,7 @@ class CierreAnio(BaseModel):
 # =============================================================================
 
 
-class PromocionAnual(BaseModel):
+class PromocionAnual(EntidadDominio):
     """
     Decisión de promoción de un estudiante al año siguiente.
 
@@ -393,7 +395,7 @@ class PromocionAnual(BaseModel):
 # =============================================================================
 
 
-class CrearCierrePeriodoDTO(BaseModel):
+class CrearCierrePeriodoDTO(DTODominio):
     """Datos para registrar el cierre de un periodo."""
 
     estudiante_id: int
@@ -417,7 +419,7 @@ class CrearCierrePeriodoDTO(BaseModel):
         return CierrePeriodo(**self.model_dump())
 
 
-class CrearCierreAnioDTO(BaseModel):
+class CrearCierreAnioDTO(DTODominio):
     """Datos para registrar el cierre anual de una asignatura."""
 
     estudiante_id: int
@@ -449,7 +451,7 @@ class CrearCierreAnioDTO(BaseModel):
         return CierreAnio(**self.model_dump())
 
 
-class DecidirPromocionDTO(BaseModel):
+class DecidirPromocionDTO(DTODominio):
     """Datos para registrar la decisión de promoción."""
 
     estado: EstadoPromocion

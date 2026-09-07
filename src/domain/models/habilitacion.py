@@ -46,7 +46,9 @@ from datetime import date
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 from .tenant import TenantScope
 
@@ -87,7 +89,7 @@ _TRANSICIONES_HABILITACION: dict[EstadoHabilitacion, set[EstadoHabilitacion]] = 
 # =============================================================================
 
 
-class Habilitacion(BaseModel):
+class Habilitacion(EntidadDominio):
     """
     Actividad de recuperación programada para un estudiante.
 
@@ -271,7 +273,7 @@ class Habilitacion(BaseModel):
 # =============================================================================
 
 
-class PlanMejoramiento(BaseModel):
+class PlanMejoramiento(EntidadDominio):
     """
     Plan de trabajo diseñado para que el estudiante supere sus dificultades
     académicas dentro del mismo periodo o entre periodos.
@@ -454,7 +456,7 @@ class PlanMejoramiento(BaseModel):
 # =============================================================================
 
 
-class NuevaHabilitacionDTO(BaseModel):
+class NuevaHabilitacionDTO(DTODominio):
     """Datos para programar una habilitación."""
 
     estudiante_id: int
@@ -489,7 +491,7 @@ class NuevaHabilitacionDTO(BaseModel):
         )
 
 
-class RegistrarNotaHabilitacionDTO(BaseModel):
+class RegistrarNotaHabilitacionDTO(DTODominio):
     """Datos para registrar la nota cuando el estudiante presenta la habilitación."""
 
     nota: float
@@ -506,7 +508,7 @@ class RegistrarNotaHabilitacionDTO(BaseModel):
         return round(v, 2)
 
 
-class NuevoPlanMejoramientoDTO(BaseModel):
+class NuevoPlanMejoramientoDTO(DTODominio):
     """Datos para crear un plan de mejoramiento."""
 
     estudiante_id: int
@@ -533,7 +535,7 @@ class NuevoPlanMejoramientoDTO(BaseModel):
         )
 
 
-class CerrarPlanMejoramientoDTO(BaseModel):
+class CerrarPlanMejoramientoDTO(DTODominio):
     """Datos para cerrar un plan de mejoramiento."""
 
     estado: EstadoPlanMejoramiento
@@ -560,7 +562,7 @@ class CerrarPlanMejoramientoDTO(BaseModel):
         return v
 
 
-class FiltroHabilitacionesDTO(BaseModel):
+class FiltroHabilitacionesDTO(DTODominio):
     """Parámetros para listar habilitaciones."""
 
     institucion_id: TenantScope  # obligatorio — sin default, fail-fast

@@ -29,7 +29,9 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -78,7 +80,7 @@ class TipoMovimiento(StrEnum):
 # =============================================================================
 
 
-class Estudiante(BaseModel):
+class Estudiante(EntidadDominio):
     """
     Entidad de dominio que representa a un estudiante matriculado.
 
@@ -308,7 +310,7 @@ class Estudiante(BaseModel):
 # =============================================================================
 
 
-class NuevoEstudianteDTO(BaseModel):
+class NuevoEstudianteDTO(DTODominio):
     """
     Datos necesarios para matricular un estudiante nuevo.
 
@@ -352,7 +354,7 @@ class NuevoEstudianteDTO(BaseModel):
         return Estudiante(**self.model_dump())
 
 
-class ActualizarEstudianteDTO(BaseModel):
+class ActualizarEstudianteDTO(DTODominio):
     """
     Campos actualizables de un estudiante existente.
 
@@ -393,7 +395,7 @@ class ActualizarEstudianteDTO(BaseModel):
         return estudiante.model_copy(update=cambios)
 
 
-class FiltroEstudiantesDTO(BaseModel):
+class FiltroEstudiantesDTO(DTODominio):
     """
     Parámetros de filtrado para listar estudiantes.
     Consumido por IEstudianteRepository.listar_filtrado().
@@ -424,7 +426,7 @@ class FiltroEstudiantesDTO(BaseModel):
         return v if v else None
 
 
-class EstudianteResumenDTO(BaseModel):
+class EstudianteResumenDTO(EntidadDominio):
     """
     Vista reducida de un estudiante para listados y selects.
     No incluye campos de auditoría ni direcciones.
@@ -461,7 +463,7 @@ class EstudianteResumenDTO(BaseModel):
 # =============================================================================
 
 
-class MovimientoEstudiante(BaseModel):
+class MovimientoEstudiante(EntidadDominio):
     """
     Un registro de la tabla `historial_estudiantes`: un movimiento de un
     estudiante (traslado entre grupos, retiro, reingreso o graduación).
@@ -493,7 +495,7 @@ class MovimientoEstudiante(BaseModel):
         return v if v else None
 
 
-class MovimientoEstudianteInfoDTO(BaseModel):
+class MovimientoEstudianteInfoDTO(EntidadDominio):
     """
     Vista de lectura de un movimiento, con los códigos de grupo legibles
     resueltos por el repositorio (join a grupos). Pensado para la vista de

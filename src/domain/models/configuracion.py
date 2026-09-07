@@ -27,14 +27,16 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Entidad principal
 # =============================================================================
 
 
-class ConfiguracionAnio(BaseModel):
+class ConfiguracionAnio(EntidadDominio):
     """
     Configuración del año lectivo activo.
 
@@ -218,7 +220,7 @@ class ConfiguracionAnio(BaseModel):
 # =============================================================================
 
 
-class NuevaConfiguracionAnioDTO(BaseModel):
+class NuevaConfiguracionAnioDTO(DTODominio):
     """Datos para crear un año lectivo nuevo."""
 
     anio: int
@@ -272,7 +274,7 @@ class NuevaConfiguracionAnioDTO(BaseModel):
         return ConfiguracionAnio(**self.model_dump())
 
 
-class ActualizarConfiguracionAnioDTO(BaseModel):
+class ActualizarConfiguracionAnioDTO(DTODominio):
     """Campos académicos actualizables. Todos opcionales."""
 
     anio: int | None = None
@@ -297,7 +299,7 @@ class ActualizarConfiguracionAnioDTO(BaseModel):
         return config.model_copy(update=cambios) if cambios else config
 
 
-class ActualizarInfoInstitucionalDTO(BaseModel):
+class ActualizarInfoInstitucionalDTO(DTODominio):
     """
     Campos institucionales para boletines e informes.
     Separados de los campos académicos para que directivos
@@ -331,7 +333,7 @@ class ActualizarInfoInstitucionalDTO(BaseModel):
         return config.model_copy(update=cambios) if cambios else config
 
 
-class InformacionInstitucionalDTO(BaseModel):
+class InformacionInstitucionalDTO(DTODominio):
     """
     Datos de la institución necesarios para generar boletines.
     El generador de informes construye este DTO desde ConfiguracionAnio.
@@ -418,7 +420,7 @@ class InformacionInstitucionalDTO(BaseModel):
 # =============================================================================
 
 
-class NivelDesempeno(BaseModel):
+class NivelDesempeno(EntidadDominio):
     """
     Nivel de desempeño del SIE (Sistema Institucional de Evaluación).
 
@@ -488,7 +490,7 @@ class NivelDesempeno(BaseModel):
         return round(self.rango_max - self.rango_min, 2)
 
 
-class CriterioPromocion(BaseModel):
+class CriterioPromocion(EntidadDominio):
     """
     Criterios de promoción al grado siguiente para un año lectivo.
 
@@ -534,7 +536,7 @@ class CriterioPromocion(BaseModel):
 # =============================================================================
 
 
-class NuevoNivelDesempenoDTO(BaseModel):
+class NuevoNivelDesempenoDTO(DTODominio):
     """Datos para crear un nivel de desempeño."""
 
     anio_id: int
@@ -573,7 +575,7 @@ class NuevoNivelDesempenoDTO(BaseModel):
         return NivelDesempeno(**self.model_dump())
 
 
-class ActualizarNivelDesempenoDTO(BaseModel):
+class ActualizarNivelDesempenoDTO(DTODominio):
     """Campos actualizables de un nivel de desempeño."""
 
     nombre: str | None = None

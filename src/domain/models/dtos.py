@@ -21,7 +21,9 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio
 
 # =============================================================================
 # Formato de exportación
@@ -38,7 +40,7 @@ class FormatoInforme(StrEnum):
 # =============================================================================
 
 
-class ContextoAcademicoDTO(BaseModel):
+class ContextoAcademicoDTO(DTODominio):
     """
     Captura el contexto de trabajo activo en la sesión: usuario, periodo,
     grupo y asignación seleccionados. Es inmutable — cada cambio en la UI
@@ -82,7 +84,7 @@ class ContextoAcademicoDTO(BaseModel):
 # =============================================================================
 
 
-class InformeNotasDTO(BaseModel):
+class InformeNotasDTO(DTODominio):
     """
     Parámetros para generar un informe de calificaciones.
     Consumido por InformeService.generar_notas() y por los exportadores.
@@ -114,7 +116,7 @@ class InformeNotasDTO(BaseModel):
         return v
 
 
-class InformeAsistenciaDTO(BaseModel):
+class InformeAsistenciaDTO(DTODominio):
     """Parámetros para generar un informe de asistencia."""
 
     grupo_id: int
@@ -147,7 +149,7 @@ class InformeAsistenciaDTO(BaseModel):
 # =============================================================================
 
 
-class DashboardMetricsDTO(BaseModel):
+class DashboardMetricsDTO(DTODominio):
     """
     Métricas agregadas para el panel principal.
     El DashboardService las calcula con queries GROUP BY;
@@ -191,7 +193,7 @@ class DashboardMetricsDTO(BaseModel):
 # =============================================================================
 
 
-class MatriculaMasivaDTO(BaseModel):
+class MatriculaMasivaDTO(DTODominio):
     """
     Entrada para carga masiva de estudiantes desde un archivo Excel/CSV.
     El servicio itera sobre `filas` y crea un Estudiante por cada una.
@@ -215,7 +217,7 @@ class MatriculaMasivaDTO(BaseModel):
         return len(self.filas)
 
 
-class MatriculaMasivaResultadoDTO(BaseModel):
+class MatriculaMasivaResultadoDTO(DTODominio):
     """Resultado de una operación de carga masiva."""
 
     total_procesadas: int = 0
@@ -244,7 +246,7 @@ class MatriculaMasivaResultadoDTO(BaseModel):
 # =============================================================================
 
 
-class RespuestaOperacionDTO(BaseModel):
+class RespuestaOperacionDTO(DTODominio):
     """
     Envuelve el resultado de una operación con metadatos de éxito/error.
     Los servicios la retornan cuando la UI necesita feedback estructurado

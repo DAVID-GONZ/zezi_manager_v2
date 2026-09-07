@@ -24,7 +24,9 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 from .tenant import TenantScope
 
@@ -53,7 +55,7 @@ class NivelAlerta(StrEnum):
 # =============================================================================
 
 
-class ConfiguracionAlerta(BaseModel):
+class ConfiguracionAlerta(EntidadDominio):
     """
     Define cuándo se genera automáticamente una alerta para un año lectivo.
 
@@ -117,7 +119,7 @@ class ConfiguracionAlerta(BaseModel):
         return self.notificar_docente or self.notificar_director or self.notificar_acudiente
 
 
-class Alerta(BaseModel):
+class Alerta(EntidadDominio):
     """
     Alerta generada para un estudiante específico.
 
@@ -230,7 +232,7 @@ class Alerta(BaseModel):
 # =============================================================================
 
 
-class CrearAlertaDTO(BaseModel):
+class CrearAlertaDTO(DTODominio):
     """Datos necesarios para generar una alerta nueva."""
 
     estudiante_id: int
@@ -250,7 +252,7 @@ class CrearAlertaDTO(BaseModel):
         return Alerta(**self.model_dump())
 
 
-class ResolverAlertaDTO(BaseModel):
+class ResolverAlertaDTO(DTODominio):
     """Datos para marcar una alerta como resuelta."""
 
     usuario_id: int
@@ -265,7 +267,7 @@ class ResolverAlertaDTO(BaseModel):
         return v if v else None
 
 
-class FiltroAlertasDTO(BaseModel):
+class FiltroAlertasDTO(DTODominio):
     """Parámetros para listar alertas."""
 
     institucion_id: TenantScope  # obligatorio — sin default, fail-fast

@@ -28,7 +28,9 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import field_validator, model_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -48,7 +50,7 @@ class TipoHito(StrEnum):
 # =============================================================================
 
 
-class Periodo(BaseModel):
+class Periodo(EntidadDominio):
     """
     Periodo académico dentro de un año lectivo.
 
@@ -204,7 +206,7 @@ class Periodo(BaseModel):
         return self.model_copy(update={"activo": False})
 
 
-class HitoPeriodo(BaseModel):
+class HitoPeriodo(EntidadDominio):
     """
     Fecha límite o evento importante dentro de un periodo.
 
@@ -256,7 +258,7 @@ class HitoPeriodo(BaseModel):
 # =============================================================================
 
 
-class NuevoPeriodoDTO(BaseModel):
+class NuevoPeriodoDTO(DTODominio):
     """Datos para crear un periodo nuevo."""
 
     anio_id: int
@@ -294,7 +296,7 @@ class NuevoPeriodoDTO(BaseModel):
         return Periodo(**self.model_dump())
 
 
-class ActualizarPeriodoDTO(BaseModel):
+class ActualizarPeriodoDTO(DTODominio):
     """Campos actualizables de un periodo. Todos opcionales."""
 
     nombre: str | None = None
@@ -320,7 +322,7 @@ class ActualizarPeriodoDTO(BaseModel):
         return periodo.model_copy(update=cambios) if cambios else periodo
 
 
-class NuevoHitoPeriodoDTO(BaseModel):
+class NuevoHitoPeriodoDTO(DTODominio):
     """
     Datos para registrar un hito dentro de un periodo.
 

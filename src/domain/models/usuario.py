@@ -31,7 +31,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -52,7 +54,7 @@ class Rol(StrEnum):
 # =============================================================================
 
 
-class Usuario(BaseModel):
+class Usuario(EntidadDominio):
     """
     Entidad que representa a cualquier usuario del sistema.
 
@@ -239,7 +241,7 @@ class Usuario(BaseModel):
 # =============================================================================
 
 
-class DocenteInfoDTO(BaseModel):
+class DocenteInfoDTO(EntidadDominio):
     """
     Vista estadística de un docente para el grid principal de profesores.
 
@@ -278,7 +280,7 @@ class DocenteInfoDTO(BaseModel):
         )
 
 
-class AsignacionDocenteInfoDTO(BaseModel):
+class AsignacionDocenteInfoDTO(EntidadDominio):
     """
     Detalle de una asignación de un docente específico.
 
@@ -321,7 +323,7 @@ class AsignacionDocenteInfoDTO(BaseModel):
 # =============================================================================
 
 
-class NuevoUsuarioDTO(BaseModel):
+class NuevoUsuarioDTO(DTODominio):
     """
     Datos para crear un usuario nuevo.
 
@@ -373,7 +375,7 @@ class NuevoUsuarioDTO(BaseModel):
         return Usuario(**self.model_dump(exclude={"password"}))
 
 
-class ActualizarUsuarioDTO(BaseModel):
+class ActualizarUsuarioDTO(DTODominio):
     """
     Campos actualizables de un usuario. Todos opcionales.
     El username y el rol no se actualizan aquí.
@@ -411,7 +413,7 @@ class ActualizarUsuarioDTO(BaseModel):
         return usuario.model_copy(update=cambios) if cambios else usuario
 
 
-class UsuarioResumenDTO(BaseModel):
+class UsuarioResumenDTO(EntidadDominio):
     """Vista mínima para selects, lookups y referencias en otros módulos."""
 
     id: int
@@ -436,7 +438,7 @@ class UsuarioResumenDTO(BaseModel):
         )
 
 
-class FiltroUsuariosDTO(BaseModel):
+class FiltroUsuariosDTO(DTODominio):
     """Parámetros para listar usuarios."""
 
     rol: Rol | None = None
@@ -456,7 +458,7 @@ class FiltroUsuariosDTO(BaseModel):
         return v if v else None
 
 
-class ResumenUsuariosDTO(BaseModel):
+class ResumenUsuariosDTO(DTODominio):
     """
     Agregación de solo lectura para el dashboard de plataforma (paso_21).
 

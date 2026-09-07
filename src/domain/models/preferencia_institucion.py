@@ -9,7 +9,9 @@ from __future__ import annotations
 import json as _json
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 
 class CategoriaPreferencia(StrEnum):
@@ -26,7 +28,7 @@ class TipoValor(StrEnum):
     JSON = "json"
 
 
-class PreferenciaInstitucion(BaseModel):
+class PreferenciaInstitucion(EntidadDominio):
     id: int | None = None
     institucion_id: int
     categoria: CategoriaPreferencia
@@ -50,7 +52,7 @@ class PreferenciaInstitucion(BaseModel):
                 return self.valor
 
 
-class PreferenciasDTO(BaseModel):
+class PreferenciasDTO(DTODominio):
     """Vista plana de las preferencias de una institución."""
 
     nota_minima_aprobacion_default: float = 60.0
@@ -73,7 +75,7 @@ class PreferenciasDTO(BaseModel):
     tipo_situacion_obligatorio: bool = False
 
 
-class ActualizarPreferenciaDTO(BaseModel):
+class ActualizarPreferenciaDTO(DTODominio):
     clave: str
     valor: str | None
 

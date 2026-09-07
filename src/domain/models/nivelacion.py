@@ -19,10 +19,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 
-class ActividadNivelacion(BaseModel):
+class ActividadNivelacion(EntidadDominio):
     """
     Columna de la planilla de nivelación.
     Compartida por todos los estudiantes con bajo desempeño de esa asignacion+periodo.
@@ -78,7 +80,7 @@ class ActividadNivelacion(BaseModel):
         return v if v else None
 
 
-class NotaNivelacion(BaseModel):
+class NotaNivelacion(EntidadDominio):
     """
     Celda de la planilla de nivelación.
     Una por (estudiante × actividad_nivelacion).
@@ -118,7 +120,7 @@ class NotaNivelacion(BaseModel):
         return self.valor is not None
 
 
-class CierreNivelacion(BaseModel):
+class CierreNivelacion(EntidadDominio):
     """
     Registro de cierre de nivelación para una asignacion+periodo.
     Su existencia implica que la nivelación está cerrada (read-only).
@@ -189,7 +191,7 @@ class CalculadorNivelacion:
 # =============================================================================
 
 
-class NuevaActividadNivelacionDTO(BaseModel):
+class NuevaActividadNivelacionDTO(DTODominio):
     """Datos para crear una actividad de nivelación."""
 
     asignacion_id: int
@@ -232,7 +234,7 @@ class NuevaActividadNivelacionDTO(BaseModel):
         )
 
 
-class CalificarNotaNivelacionDTO(BaseModel):
+class CalificarNotaNivelacionDTO(DTODominio):
     """Datos para calificar (upsert) una nota de nivelación."""
 
     valor: float

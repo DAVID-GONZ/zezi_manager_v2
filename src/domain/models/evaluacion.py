@@ -33,7 +33,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from src.domain.models.base import DTODominio, EntidadDominio
 
 # =============================================================================
 # Enumeraciones
@@ -78,7 +80,7 @@ class ModoSIEE(StrEnum):
 # =============================================================================
 
 
-class ConfiguracionSIEE(BaseModel):
+class ConfiguracionSIEE(EntidadDominio):
     """
     Configuración del Sistema Institucional de Evaluación (SIEE) para un año lectivo.
 
@@ -127,7 +129,7 @@ class ConfiguracionSIEE(BaseModel):
         return round(1.0 - self.porcentaje_autonomia_docente, 4)
 
 
-class Categoria(BaseModel):
+class Categoria(EntidadDominio):
     """
     Categoría de evaluación: agrupa actividades y define su peso
     en la nota definitiva del periodo.
@@ -203,7 +205,7 @@ class Categoria(BaseModel):
         return not self.es_institucional
 
 
-class Actividad(BaseModel):
+class Actividad(EntidadDominio):
     """
     Actividad evaluativa: un taller, examen, proyecto, quiz, etc.
     Pertenece a una categoría y tiene notas por estudiante.
@@ -314,7 +316,7 @@ class Actividad(BaseModel):
         return self.model_copy(update={"estado": EstadoActividad.PUBLICADA})
 
 
-class Nota(BaseModel):
+class Nota(EntidadDominio):
     """
     Calificación de un estudiante en una actividad específica.
 
@@ -352,7 +354,7 @@ class Nota(BaseModel):
         return self.valor >= nota_minima
 
 
-class PuntosExtra(BaseModel):
+class PuntosExtra(EntidadDominio):
     """
     Puntos adicionales que afectan la nota o el comportamiento.
 
@@ -660,7 +662,7 @@ def nivel_desempeno(nota: float) -> str:
 # =============================================================================
 
 
-class NuevaConfiguracionSIEEDTO(BaseModel):
+class NuevaConfiguracionSIEEDTO(DTODominio):
     """Datos para crear o reemplazar la configuración SIEE de un año."""
 
     anio_id: int
@@ -690,7 +692,7 @@ class NuevaConfiguracionSIEEDTO(BaseModel):
         return ConfiguracionSIEE(**self.model_dump())
 
 
-class NuevaCategoriaInstitucionalDTO(BaseModel):
+class NuevaCategoriaInstitucionalDTO(DTODominio):
     """
     Datos para crear una categoría institucional en la configuración SIEE.
 
@@ -742,7 +744,7 @@ class NuevaCategoriaInstitucionalDTO(BaseModel):
         )
 
 
-class NuevaCategoriaDTO(BaseModel):
+class NuevaCategoriaDTO(DTODominio):
     """Datos para crear una categoría de evaluación de docente."""
 
     nombre: str
@@ -773,7 +775,7 @@ class NuevaCategoriaDTO(BaseModel):
         return Categoria(**self.model_dump())
 
 
-class ActualizarCategoriaDTO(BaseModel):
+class ActualizarCategoriaDTO(DTODominio):
     """Campos actualizables de una categoría."""
 
     nombre: str | None = None
@@ -793,7 +795,7 @@ class ActualizarCategoriaDTO(BaseModel):
         return categoria.model_copy(update=cambios) if cambios else categoria
 
 
-class NuevaActividadDTO(BaseModel):
+class NuevaActividadDTO(DTODominio):
     """Datos para crear una actividad evaluativa."""
 
     nombre: str
@@ -825,7 +827,7 @@ class NuevaActividadDTO(BaseModel):
         return Actividad(**self.model_dump())
 
 
-class ActualizarActividadDTO(BaseModel):
+class ActualizarActividadDTO(DTODominio):
     """Campos actualizables de una actividad."""
 
     nombre: str | None = None
@@ -841,7 +843,7 @@ class ActualizarActividadDTO(BaseModel):
         return actividad.model_copy(update=cambios) if cambios else actividad
 
 
-class RegistrarNotaDTO(BaseModel):
+class RegistrarNotaDTO(DTODominio):
     """Datos para registrar la nota de un único estudiante."""
 
     estudiante_id: int
@@ -865,7 +867,7 @@ class RegistrarNotaDTO(BaseModel):
         return Nota(**data)
 
 
-class RegistrarNotasMasivasDTO(BaseModel):
+class RegistrarNotasMasivasDTO(DTODominio):
     """
     Registra notas para múltiples estudiantes en una misma actividad.
     Operación del ag-grid de la planilla de notas.
@@ -894,7 +896,7 @@ class RegistrarNotasMasivasDTO(BaseModel):
         return [dto.to_nota(usuario_registro_id=uid) for dto in self.notas]
 
 
-class ResultadoEstudianteDTO(BaseModel):
+class ResultadoEstudianteDTO(DTODominio):
     """
     Resumen de notas de un estudiante en una asignación.
     Consumido por la planilla de notas y el informe de calificaciones.

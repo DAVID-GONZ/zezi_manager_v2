@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from src.domain.models.base import DTODominio
 
 
 class TipoResultadoBusqueda(StrEnum):
@@ -34,7 +34,7 @@ class TipoResultadoBusqueda(StrEnum):
     ASIGNATURA = "asignatura"
 
 
-class ResultadoBusquedaDTO(BaseModel):
+class ResultadoBusquedaDTO(DTODominio):
     """Resultado individual de búsqueda, normalizado para cualquier entidad."""
 
     tipo: TipoResultadoBusqueda
@@ -45,7 +45,7 @@ class ResultadoBusquedaDTO(BaseModel):
     ruta: str = ""    # deep link URL para navegar al detalle
 
 
-class ResultadosBusquedaDTO(BaseModel):
+class ResultadosBusquedaDTO(DTODominio):
     """Agregado de resultados de búsqueda cross-entidad."""
 
     termino: str

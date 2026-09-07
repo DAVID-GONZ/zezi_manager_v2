@@ -65,7 +65,7 @@
   {
     "id": "datos_02_model_config_base",
     "nombre": "ZeciModel base con model_config en los 180 modelos",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "src/domain/models/base.py, src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/busqueda.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, src/domain/models/piar.py, src/domain/models/plan_mejoramiento.py, src/domain/models/preferencia_institucion.py, src/domain/models/usuario.py, tests/unit/domain/test_model_config.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -74,7 +74,7 @@
   {
     "id": "datos_03_computed_fields",
     "nombre": "123 @property a @computed_field y separacion de *_display",
-    "status": "pending",
+    "status": "spec_ready",
     "destino_v2": "src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, tests/unit/domain/test_computed_fields.py",
     "operacion": "modificar",
     "sdd": true,
@@ -83,7 +83,7 @@
   {
     "id": "datos_04_decimal_notas",
     "nombre": "Notas de float a Decimal",
-    "status": "pending",
+    "status": "spec_ready",
     "destino_v2": "src/domain/models/evaluacion.py, src/domain/models/cierre.py, src/domain/models/habilitacion.py, src/domain/models/nivelacion.py, src/domain/models/plan_mejoramiento.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/services/evaluacion_service.py, src/services/cierre_service.py, src/services/habilitacion_service.py, src/services/nivelacion_service.py, src/services/plan_mejoramiento_service.py, src/services/informe_service.py, src/infrastructure/db/repositories/sqlite_evaluacion_repo.py, src/infrastructure/db/repositories/sqlite_cierre_repo.py, src/infrastructure/db/repositories/sqlite_habilitacion_repo.py, src/infrastructure/db/repositories/sqlite_nivelacion_repo.py, src/infrastructure/db/repositories/sqlite_plan_mejoramiento_repo.py, tests/unit/domain/test_decimal_notas.py",
     "operacion": "modificar",
     "sdd": true,
@@ -92,7 +92,7 @@
   {
     "id": "datos_05_enums_y_puerta",
     "nombre": "StrEnum faltantes y puerta de alineacion enum-CHECK",
-    "status": "pending",
+    "status": "spec_ready",
     "destino_v2": "src/domain/models/infraestructura.py, src/domain/models/convivencia.py, src/domain/models/institucion.py, src/domain/models/dtos.py, src/domain/models/preferencia_institucion.py, scripts/check_enums.py, scripts/init.py, tests/unit/domain/test_enums_schema.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -115,5 +115,23 @@
     "operacion": "modificar",
     "sdd": true,
     "descripcion": "Hueco 7 de la auditoria de datos (seccion 2.3). 324 campos str sin max_length y cero usos de EmailStr, SecretStr, AnyUrl, constr o conint. Usuario.email e Institucion.email_institucional son str|None sin patron. En SQLite es inocuo; al exponer endpoints publicos es la puerta de entrada a payloads sin cota. Anade max_length coherente con el dominio y tipos restringidos en los campos que la API expondra."
+  },
+  {
+    "id": "datos_08_fecha_zona_horaria",
+    "nombre": "Fecha del sistema: una sola zona horaria",
+    "status": "spec_ready",
+    "destino_v2": "src/infrastructure/db/schema.py, src/infrastructure/db/repositories/sqlite_infraestructura_repo.py, src/infrastructure/db/repositories/sqlite_periodo_repo.py, src/domain/models/asistencia.py, src/domain/models/cierre.py, src/domain/models/convivencia.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, config.py, tests/unit/domain/test_fecha_zona_horaria.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "BUG DE PRODUCCION detectado el 2026-09-06 al auditar la suite de integracion. SQLite resuelve CURRENT_DATE y CURRENT_TIMESTAMP en UTC, mientras los validadores de dominio comparan contra date.today() en hora local. Verificado a las 19:50 hora de Colombia (UTC-5): CURRENT_DATE devuelve 2026-09-07 y date.today() devuelve 2026-09-06. Hay 20 columnas con DEFAULT CURRENT_DATE/CURRENT_TIMESTAMP, entre ellas registro_comportamiento.fecha, entradas_seguimiento.fecha, control_diario, notas.fecha_registro, observaciones_periodo.fecha_registro y estudiantes.fecha_ingreso; y al menos 9 validadores 'no puede ser futura' en asistencia, cierre y convivencia. Efecto: durante las 5 horas diarias entre las 19:00 y las 24:00 hora local, toda fila que tome su fecha por defecto de la base queda sellada con el dia siguiente, y al releerla el modelo la rechaza con ValidationError. La asistencia y los registros de convivencia creados a esa hora quedan fechados un dia despues sin que nadie lo note. TOCA EL ESQUEMA: requiere puerta de aprobacion de David."
+  },
+  {
+    "id": "harness_01_integracion_en_puerta",
+    "nombre": "Suite de integracion verde y encadenada a la puerta",
+    "status": "spec_ready",
+    "destino_v2": "tests/integration/test_repositories.py, tests/integration/test_convivencia_categorias.py, tests/integration/test_convivencia_14_promocion_comportamiento.py, tests/integration/test_convivencia_35_entradas_seguimiento.py, tests/integration/test_disponibilidad_config_repo.py, tests/integration/test_franjas_repo.py, scripts/init.py, scripts/run_tests.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "La puerta scripts/init.py ejecuta run_tests.py en modo 'rapido', que deselecciona los marcadores integration, slow, e2e y browser. Con ese agujero, 30 tests de integracion llevan rotos desde tenant_02/tenant_03 sin que ninguna puerta lo senale: 25 fallan con TypeError por llamar a repositorios con firmas anteriores al institucion_id obligatorio (14 metodos en 6 repositorios) y 5 por el desfase de zona horaria que aborda datos_08_fecha_zona_horaria. Consecuencia de fondo: la ruta Modelo(**dict(row)) de los 21 repositorios no la verifica nadie, justo cuando datos_02 y backend_07 dependen de que esa hidratacion sea correcta. Actualiza las llamadas a las firmas vigentes y encadena la suite de integracion a la puerta para que no vuelva a pudrirse en silencio. DEPENDE de datos_08: sin el, 5 tests siguen en rojo y la puerta no puede quedar verde."
   }
 ]
