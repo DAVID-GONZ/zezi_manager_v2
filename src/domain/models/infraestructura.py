@@ -21,7 +21,7 @@ from datetime import time
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -409,6 +409,7 @@ class Horario(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def duracion_minutos(self) -> int:
         """Duración de la clase en minutos."""
@@ -549,6 +550,7 @@ class Franja(EntidadDominio):
             )
         return self
 
+    @computed_field
     @property
     def es_lectiva(self) -> bool:
         """True si la franja es de tipo lectiva (dictada, no descanso ni almuerzo)."""
@@ -1145,6 +1147,7 @@ class HorarioInfo(EntidadDominio):
             f"{self.hora_fin.strftime('%H:%M')}"
         )
 
+    @computed_field
     @property
     def duracion_minutos(self) -> int:
         """Duración del bloque en minutos."""
@@ -1187,6 +1190,7 @@ class CupoDTO(DTODominio):
     usadas: int
     maximas: int | None = None
 
+    @computed_field
     @property
     def disponibles(self) -> int | None:
         """Cupos libres (máximas − usadas); None si no hay tope definido."""
@@ -1194,6 +1198,7 @@ class CupoDTO(DTODominio):
             return None
         return max(0, self.maximas - self.usadas)
 
+    @computed_field
     @property
     def excedido(self) -> bool:
         """True si las usadas superan el máximo; False si no hay tope."""
@@ -1231,16 +1236,19 @@ class ReporteLoteDTO(DTODominio):
     # invalidan la fila, pero se listan para que la UI los muestre.
     avisos: list[str] = []
 
+    @computed_field
     @property
     def validas(self) -> int:
         """Número de filas del lote marcadas como válidas (ok=True)."""
         return sum(1 for f in self.filas if f.ok)
 
+    @computed_field
     @property
     def invalidas(self) -> int:
         """Número de filas del lote marcadas como inválidas (ok=False)."""
         return sum(1 for f in self.filas if not f.ok)
 
+    @computed_field
     @property
     def todo_ok(self) -> bool:
         """True solo si hay filas y todas son válidas."""

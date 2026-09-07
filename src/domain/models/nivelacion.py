@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -114,6 +114,7 @@ class NotaNivelacion(EntidadDominio):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
+    @computed_field
     @property
     def calificada(self) -> bool:
         """True si la nota ya tiene un valor registrado (no está pendiente)."""

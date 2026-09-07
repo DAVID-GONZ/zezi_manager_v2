@@ -37,7 +37,7 @@ import json
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -122,16 +122,19 @@ class EventoSesion(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def es_exitoso(self) -> bool:
         """True si el evento es un login exitoso."""
         return self.tipo_evento == TipoEventoSesion.LOGIN_EXITOSO
 
+    @computed_field
     @property
     def es_fallido(self) -> bool:
         """True si el evento es un login fallido."""
         return self.tipo_evento == TipoEventoSesion.LOGIN_FALLIDO
 
+    @computed_field
     @property
     def es_acceso_denegado(self) -> bool:
         """True si el evento es un acceso denegado."""
@@ -200,6 +203,7 @@ class RegistroCambio(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def anterior_como_dict(self) -> dict | None:
         """Deserializa valor_anterior como dict."""
@@ -207,6 +211,7 @@ class RegistroCambio(EntidadDominio):
             return None
         return json.loads(self.valor_anterior)
 
+    @computed_field
     @property
     def nuevo_como_dict(self) -> dict | None:
         """Deserializa valor_nuevo como dict."""
@@ -214,11 +219,13 @@ class RegistroCambio(EntidadDominio):
             return None
         return json.loads(self.valor_nuevo)
 
+    @computed_field
     @property
     def es_creacion(self) -> bool:
         """True si el cambio corresponde a una operación CREATE."""
         return self.accion == AccionCambio.CREATE
 
+    @computed_field
     @property
     def es_eliminacion(self) -> bool:
         """True si el cambio corresponde a una operación DELETE."""

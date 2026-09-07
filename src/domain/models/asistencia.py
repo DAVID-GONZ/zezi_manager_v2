@@ -40,7 +40,7 @@ from datetime import date, datetime, time
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -172,6 +172,7 @@ class ControlDiario(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def es_presencia_efectiva(self) -> bool:
         """True si el estudiante estuvo presente (incluso con retraso)."""
@@ -181,6 +182,7 @@ class ControlDiario(EntidadDominio):
             EstadoAsistencia.EXCUSA,
         )
 
+    @computed_field
     @property
     def requiere_justificacion(self) -> bool:
         """True si el estado normalmente requiere una observación."""
@@ -229,6 +231,7 @@ class ResumenAsistenciaDTO(EntidadDominio):
             raise ValueError(f"El conteo no puede ser negativo (recibido: {v}).")
         return v
 
+    @computed_field
     @property
     def porcentaje_asistencia(self) -> float:
         """
@@ -240,15 +243,17 @@ class ResumenAsistenciaDTO(EntidadDominio):
         ausencias_reales = self.faltas_injustificadas + self.retrasos
         return round((1 - ausencias_reales / self.total_clases) * 100, 1)
 
+    @computed_field
     @property
     def total_faltas(self) -> int:
         """Total de faltas (justificadas + injustificadas)."""
         return self.faltas_justificadas + self.faltas_injustificadas
 
+    @computed_field
     @property
-    def en_riesgo_por_faltas(self, umbral: float = 80.0) -> bool:
-        """True si el porcentaje de asistencia está por debajo del umbral."""
-        return self.porcentaje_asistencia < umbral
+    def en_riesgo_por_faltas(self) -> bool:
+        """True si el porcentaje de asistencia está por debajo del umbral (80.0%)."""
+        return self.porcentaje_asistencia < 80.0
 
     @property
     def resumen_display(self) -> str:
@@ -347,6 +352,7 @@ class RegistrarAsistenciaMasivaDTO(DTODominio):
             raise ValueError("La lista de registros no puede estar vacía.")
         return v
 
+    @computed_field
     @property
     def total_estudiantes(self) -> int:
         """Cantidad de estudiantes incluidos en el registro masivo."""

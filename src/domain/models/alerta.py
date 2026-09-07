@@ -24,7 +24,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -108,11 +108,13 @@ class ConfiguracionAlerta(EntidadDominio):
             )
         return self
 
+    @computed_field
     @property
     def umbral_entero(self) -> int:
         """Umbral como entero para tipos de conteo."""
         return int(self.umbral)
 
+    @computed_field
     @property
     def notifica_a_alguien(self) -> bool:
         """True si al menos un destinatario está habilitado."""
@@ -176,10 +178,12 @@ class Alerta(EntidadDominio):
     # Propiedades computadas
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_pendiente(self) -> bool:
         return not self.resuelta
 
+    @computed_field
     @property
     def dias_pendiente(self) -> int | None:
         """Días transcurridos desde la generación. None si ya está resuelta."""
@@ -187,6 +191,7 @@ class Alerta(EntidadDominio):
             return None
         return (datetime.now() - self.fecha_generacion).days
 
+    @computed_field
     @property
     def es_critica(self) -> bool:
         return self.nivel == NivelAlerta.CRITICA

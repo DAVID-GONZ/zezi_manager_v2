@@ -27,7 +27,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -176,6 +176,7 @@ class ConfiguracionAnio(EntidadDominio):
             f"{self.fecha_fin_clases.strftime('%d %b %Y')}"
         )
 
+    @computed_field
     @property
     def duracion_semanas(self) -> int | None:
         """Semanas de duración del año escolar."""
@@ -184,11 +185,13 @@ class ConfiguracionAnio(EntidadDominio):
         dias = (self.fecha_fin_clases - self.fecha_inicio_clases).days
         return dias // 7
 
+    @computed_field
     @property
     def tiene_informacion_institucional(self) -> bool:
         """True si tiene los campos mínimos para generar boletines."""
         return bool(self.dane_code and self.rector)
 
+    @computed_field
     @property
     def aprobacion_en_rango(self) -> bool:
         """True si la nota mínima de aprobación cae dentro de la escala
@@ -484,6 +487,7 @@ class NivelDesempeno(EntidadDominio):
         """True si la nota cae dentro de este nivel."""
         return self.rango_min <= nota <= self.rango_max
 
+    @computed_field
     @property
     def amplitud(self) -> float:
         """Amplitud del rango en puntos."""

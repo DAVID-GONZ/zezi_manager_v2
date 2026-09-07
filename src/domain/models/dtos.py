@@ -21,7 +21,7 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio
 
@@ -65,14 +65,17 @@ class ContextoAcademicoDTO(DTODominio):
             raise ValueError(f"El ID debe ser un entero positivo (recibido: {v}).")
         return v
 
+    @computed_field
     @property
     def tiene_grupo(self) -> bool:
         return self.grupo_id is not None
 
+    @computed_field
     @property
     def tiene_asignacion(self) -> bool:
         return self.asignacion_id is not None
 
+    @computed_field
     @property
     def contexto_completo(self) -> bool:
         """True si tiene todos los selectores necesarios para notas y asistencia."""
@@ -180,6 +183,7 @@ class DashboardMetricsDTO(DTODominio):
             raise ValueError(f"El valor no puede ser negativo (recibido: {v}).")
         return v
 
+    @computed_field
     @property
     def pct_en_riesgo(self) -> float:
         """Porcentaje de estudiantes en riesgo."""
@@ -212,6 +216,7 @@ class MatriculaMasivaDTO(DTODominio):
             )
         return v
 
+    @computed_field
     @property
     def total_filas(self) -> int:
         return len(self.filas)
@@ -226,12 +231,14 @@ class MatriculaMasivaResultadoDTO(DTODominio):
     errores: list[dict] = Field(default_factory=list)
     # Cada error: {"fila": int, "dato": str, "motivo": str}
 
+    @computed_field
     @property
     def tasa_exito(self) -> float:
         if self.total_procesadas == 0:
             return 0.0
         return round(self.exitosas / self.total_procesadas * 100, 1)
 
+    @computed_field
     @property
     def fue_exitosa(self) -> bool:
         return self.fallidas == 0

@@ -46,7 +46,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -177,16 +177,19 @@ class Habilitacion(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_pendiente(self) -> bool:
         """True si la habilitación está programada pero aún no se presenta."""
         return self.estado == EstadoHabilitacion.PENDIENTE
 
+    @computed_field
     @property
     def fue_realizada(self) -> bool:
         """True si la habilitación ya se presentó (estado distinto de PENDIENTE)."""
         return self.estado != EstadoHabilitacion.PENDIENTE
 
+    @computed_field
     @property
     def tiene_resultado_final(self) -> bool:
         """True si ya se decidió el resultado (APROBADA o REPROBADA)."""
@@ -195,6 +198,7 @@ class Habilitacion(EntidadDominio):
             EstadoHabilitacion.REPROBADA,
         )
 
+    @computed_field
     @property
     def mejoro_nota(self) -> bool | None:
         """
@@ -366,21 +370,25 @@ class PlanMejoramiento(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_activo(self) -> bool:
         """True si el plan sigue en curso (estado ACTIVO)."""
         return self.estado == EstadoPlanMejoramiento.ACTIVO
 
+    @computed_field
     @property
     def esta_cerrado(self) -> bool:
         """True si el plan ya fue cerrado (CUMPLIDO o INCUMPLIDO)."""
         return not self.esta_activo
 
+    @computed_field
     @property
     def tiene_seguimiento_programado(self) -> bool:
         """True si el plan tiene una fecha de seguimiento fijada."""
         return self.fecha_seguimiento is not None
 
+    @computed_field
     @property
     def seguimiento_vencido(self) -> bool:
         """True si la fecha de seguimiento ya pasó y el plan aún está activo."""
@@ -388,6 +396,7 @@ class PlanMejoramiento(EntidadDominio):
             return False
         return self.fecha_seguimiento < date.today()
 
+    @computed_field
     @property
     def dias_activo(self) -> int:
         """Días transcurridos desde el inicio del plan."""

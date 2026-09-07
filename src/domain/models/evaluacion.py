@@ -33,7 +33,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -118,6 +118,7 @@ class ConfiguracionSIEE(EntidadDominio):
             )
         return v
 
+    @computed_field
     @property
     def peso_institucional(self) -> float | None:
         """
@@ -194,11 +195,13 @@ class Categoria(EntidadDominio):
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
 
+    @computed_field
     @property
     def peso_porcentaje(self) -> float:
         """Peso en porcentaje: 0.40 → 40.0"""
         return round(self.peso * 100, 2)
 
+    @computed_field
     @property
     def es_docente(self) -> bool:
         """True si la categoría pertenece a un docente (no es institucional)."""
@@ -274,11 +277,13 @@ class Actividad(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_publicada(self) -> bool:
         """True si la actividad está en estado PUBLICADA."""
         return self.estado == EstadoActividad.PUBLICADA
 
+    @computed_field
     @property
     def acepta_notas(self) -> bool:
         """Alias de esta_publicada. Solo las actividades PUBLICADAS aceptan notas."""
@@ -348,10 +353,11 @@ class Nota(EntidadDominio):
             raise ValueError(f"La nota debe estar entre 0 y 100 (recibido: {v}).")
         return round(v, 2)
 
+    @computed_field
     @property
-    def es_aprobatoria(self, nota_minima: float = 60.0) -> bool:
-        """True si el valor alcanza la nota mínima aprobatoria (por defecto 60)."""
-        return self.valor >= nota_minima
+    def es_aprobatoria(self) -> bool:
+        """True si el valor alcanza la nota mínima aprobatoria (60.0)."""
+        return self.valor >= 60.0
 
 
 class PuntosExtra(EntidadDominio):
@@ -394,11 +400,13 @@ class PuntosExtra(EntidadDominio):
         v = str(v).strip()
         return v if v else None
 
+    @computed_field
     @property
     def balance(self) -> int:
         """Diferencia neta entre puntos positivos y negativos."""
         return self.positivos - self.negativos
 
+    @computed_field
     @property
     def tiene_impacto(self) -> bool:
         """True si hay al menos un punto positivo o negativo registrado."""
@@ -885,6 +893,7 @@ class RegistrarNotasMasivasDTO(DTODominio):
             raise ValueError(f"actividad_id debe ser positivo (recibido: {v}).")
         return v
 
+    @computed_field
     @property
     def total_notas(self) -> int:
         """Cantidad de notas incluidas en el registro masivo."""

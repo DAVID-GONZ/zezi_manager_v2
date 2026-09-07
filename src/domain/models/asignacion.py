@@ -27,7 +27,7 @@ Reglas de negocio:
 
 from __future__ import annotations
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -64,6 +64,7 @@ class Asignacion(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_activa(self) -> bool:
         """True si la asignación está activa (acepta nuevos registros)."""

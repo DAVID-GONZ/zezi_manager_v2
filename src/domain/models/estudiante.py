@@ -29,7 +29,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -234,11 +234,13 @@ class Estudiante(EntidadDominio):
     # Propiedades computadas — lógica de negocio sin persistencia
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def nombre_completo(self) -> str:
         """Nombre completo para mostrar: 'Ana Sofía García Pérez'."""
         return f"{self.nombre} {self.apellido}"
 
+    @computed_field
     @property
     def edad(self) -> int | None:
         """Edad en años completos. None si no hay fecha de nacimiento."""
@@ -246,11 +248,13 @@ class Estudiante(EntidadDominio):
             return None
         return (date.today() - self.fecha_nacimiento).days // 365
 
+    @computed_field
     @property
     def es_activo(self) -> bool:
         """True si el estudiante está matriculado activamente."""
         return self.estado_matricula == EstadoMatricula.ACTIVO
 
+    @computed_field
     @property
     def puede_recibir_calificaciones(self) -> bool:
         """
@@ -262,6 +266,7 @@ class Estudiante(EntidadDominio):
             EstadoMatricula.INACTIVO,  # inactivo temporal (permiso, enfermedad)
         )
 
+    @computed_field
     @property
     def requiere_atencion_diferencial(self) -> bool:
         """True si el estudiante tiene PIAR activo."""

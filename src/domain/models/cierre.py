@@ -33,7 +33,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -218,11 +218,13 @@ class CierreAnio(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def tiene_habilitacion(self) -> bool:
         """True si el cierre anual incluye una nota de habilitación."""
         return self.nota_habilitacion is not None
 
+    @computed_field
     @property
     def mejoro_con_habilitacion(self) -> bool | None:
         """
@@ -313,16 +315,19 @@ class PromocionAnual(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_pendiente(self) -> bool:
         """True si la promoción aún no ha sido decidida (estado PENDIENTE)."""
         return self.estado == EstadoPromocion.PENDIENTE
 
+    @computed_field
     @property
     def esta_finalizado(self) -> bool:
         """True si la promoción ya fue decidida (cualquier estado distinto de PENDIENTE)."""
         return self.estado != EstadoPromocion.PENDIENTE
 
+    @computed_field
     @property
     def fue_promovido(self) -> bool:
         """True si el estudiante pasó de año (PROMOVIDO o CONDICIONAL)."""
@@ -331,11 +336,13 @@ class PromocionAnual(EntidadDominio):
             EstadoPromocion.CONDICIONAL,
         )
 
+    @computed_field
     @property
     def fue_reprobado(self) -> bool:
         """True si el estudiante reprobó el año."""
         return self.estado == EstadoPromocion.REPROBADO
 
+    @computed_field
     @property
     def es_condicional(self) -> bool:
         """True si fue promovido de forma condicional (con materias pendientes)."""

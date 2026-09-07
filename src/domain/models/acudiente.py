@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import field_validator
+from pydantic import computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -142,11 +142,13 @@ class Acudiente(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_activo(self) -> bool:
         """True si el acudiente está activo (no dado de baja)."""
         return self.activo
 
+    @computed_field
     @property
     def tiene_contacto(self) -> bool:
         """True si tiene al menos un medio de contacto."""

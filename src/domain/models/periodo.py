@@ -28,7 +28,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import field_validator, model_validator
+from pydantic import computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -140,16 +140,19 @@ class Periodo(EntidadDominio):
     # Propiedades
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def esta_abierto(self) -> bool:
         """True si el periodo acepta modificaciones de notas y asistencia."""
         return not self.cerrado
 
+    @computed_field
     @property
     def esta_vigente(self) -> bool:
         """True si el periodo está activo y no cerrado."""
         return self.activo and not self.cerrado
 
+    @computed_field
     @property
     def duracion_dias(self) -> int | None:
         """Días de duración del periodo. None si faltan fechas."""
@@ -157,6 +160,7 @@ class Periodo(EntidadDominio):
             return None
         return (self.fecha_fin - self.fecha_inicio).days
 
+    @computed_field
     @property
     def en_curso(self) -> bool:
         """
@@ -238,6 +242,7 @@ class HitoPeriodo(EntidadDominio):
         v = str(v).strip()
         return v if v else None
 
+    @computed_field
     @property
     def esta_vencido(self) -> bool:
         """True si la fecha límite ya pasó."""
@@ -245,6 +250,7 @@ class HitoPeriodo(EntidadDominio):
             return False
         return self.fecha_limite < date.today()
 
+    @computed_field
     @property
     def dias_restantes(self) -> int | None:
         """Días que faltan para el hito. Negativo si ya venció."""

@@ -93,6 +93,8 @@ markers = [
     "slow: prueba lenta (estrés, generación combinatoria)",
     "e2e: flujo de UI real con nicegui.testing (headless)",
     "browser: flujo de navegador real con Playwright (opt-in)",
+    "presentacion: verifica que propiedades de presentación NO aparezcan en model_dump()",
+    "entrada: verifica que computed_fields no sean aceptados como argumentos de constructor",
 ]
 
 # ---------------------------------------------------------------------------

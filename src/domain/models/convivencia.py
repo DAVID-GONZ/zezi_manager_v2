@@ -37,7 +37,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
 
@@ -374,6 +374,7 @@ class RegistroComportamiento(EntidadDominio):
     # Propiedades computadas
     # ------------------------------------------------------------------
 
+    @computed_field
     @property
     def es_negativo(self) -> bool:
         """True para registros que implican una situación problemática."""
@@ -382,16 +383,19 @@ class RegistroComportamiento(EntidadDominio):
             TipoRegistro.CITACION_ACUDIENTE,
         )
 
+    @computed_field
     @property
     def es_positivo(self) -> bool:
         """True para registros que reconocen comportamiento positivo."""
         return self.tipo == TipoRegistro.FORTALEZA
 
+    @computed_field
     @property
     def pendiente_notificacion(self) -> bool:
         """True si requiere firma pero el acudiente aún no ha sido notificado."""
         return self.requiere_firma and not self.acudiente_notificado
 
+    @computed_field
     @property
     def tiene_seguimiento(self) -> bool:
         """True si el registro tiene texto de seguimiento asociado."""
@@ -466,6 +470,7 @@ class NotaComportamiento(EntidadDominio):
         v = str(v).strip()
         return v if v else None
 
+    @computed_field
     @property
     def aprobado(self) -> bool:
         """True si la nota de comportamiento supera el mínimo institucional base (60)."""

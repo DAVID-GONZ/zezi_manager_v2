@@ -74,7 +74,7 @@
   {
     "id": "datos_03_computed_fields",
     "nombre": "123 @property a @computed_field y separacion de *_display",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/domain/models/acudiente.py, src/domain/models/alerta.py, src/domain/models/asignacion.py, src/domain/models/asistencia.py, src/domain/models/auditoria.py, src/domain/models/cierre.py, src/domain/models/configuracion.py, src/domain/models/convivencia.py, src/domain/models/dtos.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, src/domain/models/habilitacion.py, src/domain/models/infraestructura.py, src/domain/models/institucion.py, src/domain/models/nivelacion.py, src/domain/models/periodo.py, tests/unit/domain/test_computed_fields.py",
     "operacion": "modificar",
     "sdd": true,
