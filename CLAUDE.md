@@ -73,6 +73,20 @@ Cuando lances subagentes, instrúyeles para **escribir resultados en archivos**
 (`progress/impl_<paso>.md`, `progress/review_<paso>.md`) y devolverte solo
 la referencia, no el contenido completo.
 
+## Decisiones de arquitectura permanentes (2026-09-07)
+
+- **Sin migraciones en este entorno.** El esquema de la base de datos se recrea desde
+  cero cuando cambia; no existe tooling de migración incremental (Alembic ni similar).
+  Consecuencia: modificar `schema.py` solo tiene efecto sobre bases nuevas, no sobre
+  la base de desarrollo existente. Cambios de esquema que afecten datos vivos requieren
+  recrear la base manualmente.
+- **`CHECK` constraints se generan en `backend_04_metadata_schema`**, no antes.
+  SQLite no soporta `ALTER TABLE ADD CONSTRAINT`; añadirlos hoy en cadenas DDL es
+  trabajo que `backend_04` reescribirá entero al pasar a `MetaData` de SQLAlchemy.
+  La deuda de los 5 `CHECK` faltantes (AccionCambio, Calendario, CategoriaPreferencia,
+  JornadaPrincipal, TipoInstitucion) está registrada en `scripts/check_enums.py →
+  ENUMS_SIN_CHECK_DEUDA` y se resuelve allí.
+
 ## Cuándo NO aplica este rol
 
 - Preguntas conceptuales o lectura pura del repo → responde directamente.

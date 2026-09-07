@@ -45,6 +45,31 @@ class DiaSemana(StrEnum):
     SABADO = "Sábado"
 
 
+class TipoFranja(StrEnum):
+    LECTIVA = "lectiva"
+    DESCANSO = "descanso"
+    ALMUERZO = "almuerzo"
+
+
+class TipoSala(StrEnum):
+    AULA = "aula"
+    COMPUTO = "computo"
+    ED_FISICA = "ed_fisica"
+    LABORATORIO = "laboratorio"
+    OTRO = "otro"
+
+
+class ModoFranjaReunion(StrEnum):
+    ESTRICTA = "estricta"
+    PREFERENTE = "preferente"
+
+
+class EstadoConfigGeneracion(StrEnum):
+    BORRADOR = "borrador"
+    GENERADO = "generado"
+    APLICADO = "aplicado"
+
+
 # =============================================================================
 # Entidades
 # =============================================================================
@@ -490,7 +515,7 @@ class Franja(EntidadDominio):
     orden: int = Field(ge=1)
     hora_inicio: str
     hora_fin: str
-    tipo: str = "lectiva"
+    tipo: TipoFranja = TipoFranja.LECTIVA
     etiqueta: str | None = None
 
     @field_validator("plantilla_id")
@@ -525,12 +550,9 @@ class Franja(EntidadDominio):
 
     @field_validator("tipo", mode="before")
     @classmethod
-    def validar_tipo(cls, v: str) -> str:
-        """El tipo de franja debe ser uno de TIPOS_FRANJA (lectiva/descanso/almuerzo)."""
-        v = str(v).strip().lower()
-        if v not in TIPOS_FRANJA:
-            raise ValueError(f"tipo inválido: '{v}'. Use uno de {sorted(TIPOS_FRANJA)}.")
-        return v
+    def normalizar_tipo(cls, v: str) -> str:
+        """Normaliza el tipo de franja (strip, lower); Pydantic valida contra TipoFranja."""
+        return str(v).strip().lower()
 
     @field_validator("etiqueta", mode="before")
     @classmethod
@@ -554,7 +576,7 @@ class Franja(EntidadDominio):
     @property
     def es_lectiva(self) -> bool:
         """True si la franja es de tipo lectiva (dictada, no descanso ni almuerzo)."""
-        return self.tipo == "lectiva"
+        return self.tipo == TipoFranja.LECTIVA
 
 
 class PlantillaFranja(EntidadDominio):
@@ -623,7 +645,7 @@ class NuevaFranjaDTO(DTODominio):
     orden: int
     hora_inicio: str
     hora_fin: str
-    tipo: str = "lectiva"
+    tipo: TipoFranja = TipoFranja.LECTIVA
     etiqueta: str | None = None
 
     def to_franja(self) -> Franja:
@@ -681,7 +703,7 @@ class ConfigGeneracion(EntidadDominio):
     periodo_id: int = Field(gt=0)
     anio_id: int = Field(gt=0)
     plantilla_id: int = Field(gt=0)
-    estado: str = "borrador"
+    estado: EstadoConfigGeneracion = EstadoConfigGeneracion.BORRADOR
     grupos: list[int] = Field(default_factory=list)
     pesos: PesosGeneracion = Field(default_factory=PesosGeneracion)
     escenario_destino_id: int | None = None
@@ -700,11 +722,9 @@ class ConfigGeneracion(EntidadDominio):
 
     @field_validator("estado", mode="before")
     @classmethod
-    def validar_estado(cls, v: str) -> str:
-        """El estado debe ser uno de ESTADOS_CONFIG (borrador/generado/aplicado)."""
-        if v not in ESTADOS_CONFIG:
-            raise ValueError(f"estado inválido: {v!r}")
-        return v
+    def normalizar_estado(cls, v: str) -> str:
+        """Normaliza el estado (strip, lower); Pydantic valida contra EstadoConfigGeneracion."""
+        return str(v).strip().lower()
 
     def puede_transicionar_a(self, nuevo: str) -> bool:
         """True si el estado destino es alcanzable desde el actual según TRANSICIONES_CONFIG."""
@@ -838,7 +858,7 @@ class FranjaReunion(EntidadDominio):
     docentes: list[int]  # lista de usuario_id
     dia_semana: str
     franja_orden: int = Field(ge=1)
-    modo: str = "preferente"  # "estricta" | "preferente"
+    modo: ModoFranjaReunion = ModoFranjaReunion.PREFERENTE
     institucion_id: int | None = None
 
     @field_validator("dia_semana", mode="before")
@@ -852,12 +872,9 @@ class FranjaReunion(EntidadDominio):
 
     @field_validator("modo", mode="before")
     @classmethod
-    def validar_modo(cls, v: str) -> str:
-        """El modo de la reunión debe ser 'estricta' o 'preferente'."""
-        v = str(v).strip().lower()
-        if v not in {"estricta", "preferente"}:
-            raise ValueError(f"modo inválido: '{v}'. Use 'estricta' o 'preferente'.")
-        return v
+    def normalizar_modo(cls, v: str) -> str:
+        """Normaliza el modo de reunión (strip, lower); Pydantic valida contra ModoFranjaReunion."""
+        return str(v).strip().lower()
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -982,7 +999,7 @@ class Sala(EntidadDominio):
 
     id: int | None = None
     nombre: str
-    tipo: str = "aula"  # "aula" | "laboratorio" | "computo" | "ed_fisica" | "otro"
+    tipo: TipoSala = TipoSala.AULA
     capacidad: int = Field(default=30, ge=1)
     institucion_id: int | None = None  # paso_32: lo resuelve el servicio si falta
 
@@ -997,18 +1014,14 @@ class Sala(EntidadDominio):
 
     @field_validator("tipo", mode="before")
     @classmethod
-    def validar_tipo(cls, v: str) -> str:
-        """El tipo de sala debe ser uno de aula/laboratorio/computo/ed_fisica/otro."""
-        v = str(v).strip().lower()
-        tipos = {"aula", "laboratorio", "computo", "ed_fisica", "otro"}
-        if v not in tipos:
-            raise ValueError(f"tipo inválido: '{v}'. Use uno de {sorted(tipos)}.")
-        return v
+    def normalizar_tipo(cls, v: str) -> str:
+        """Normaliza el tipo de sala (strip, lower); Pydantic valida contra TipoSala."""
+        return str(v).strip().lower()
 
 
 class NuevaSalaDTO(DTODominio):
     nombre: str
-    tipo: str = "aula"
+    tipo: TipoSala = TipoSala.AULA
     capacidad: int = 30
 
     def to_sala(self) -> Sala:
@@ -1282,6 +1295,8 @@ __all__ = [
     "DiaSemana",
     "DisponibilidadDocente",
     "EscenarioHorario",
+    # datos_05: nuevos StrEnum
+    "EstadoConfigGeneracion",
     "FilaReporteDTO",
     "Franja",
     "FranjaReunion",
@@ -1295,6 +1310,8 @@ __all__ = [
     "Logro",
     # paso_15d
     "MetricasCalidadDTO",
+    # datos_05: nuevos StrEnum
+    "ModoFranjaReunion",
     "NuevaAreaDTO",
     "NuevaAsignaturaDTO",
     "NuevaConfigGeneracionDTO",
@@ -1317,5 +1334,8 @@ __all__ = [
     "ResultadoLoteDTO",
     # paso_17
     "Sala",
+    # datos_05: nuevos StrEnum
+    "TipoFranja",
+    "TipoSala",
     "VentanaGrupo",
 ]

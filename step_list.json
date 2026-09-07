@@ -92,7 +92,7 @@
   {
     "id": "datos_05_enums_y_puerta",
     "nombre": "StrEnum faltantes y puerta de alineacion enum-CHECK",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/domain/models/infraestructura.py, src/domain/models/convivencia.py, src/domain/models/institucion.py, src/domain/models/dtos.py, src/domain/models/preferencia_institucion.py, scripts/check_enums.py, scripts/init.py, tests/unit/domain/test_enums_schema.py",
     "operacion": "crear+modificar",
     "sdd": true,

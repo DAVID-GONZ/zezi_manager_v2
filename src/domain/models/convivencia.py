@@ -57,6 +57,11 @@ class TipoRegistro(StrEnum):
     DESCARGO = "descargo"
 
 
+class OrigenObservacion(StrEnum):
+    LIBRE = "libre"
+    PLANTILLA = "plantilla"
+
+
 # Mapa de valores de TipoRegistro a etiquetas legibles para el boletín (convivencia_29).
 # Fuente única de verdad: evita repetir el dict en observaciones.py y en el servicio.
 TIPO_REGISTRO_DISPLAY: dict[str, str] = {
@@ -228,10 +233,10 @@ class ObservacionPeriodo(EntidadDominio):
     usuario_id: int | None = None
     # Campos añadidos en convivencia_11: clasificación por categoría y origen.
     # categoria_id=None → observación libre (sin categoría asignada).
-    # origen='libre' → texto ingresado directamente; 'plantilla' → generado
+    # origen=LIBRE → texto ingresado directamente; PLANTILLA → generado
     # desde una plantilla del catálogo (convivencia_12).
     categoria_id: int | None = None
-    origen: str = "libre"
+    origen: OrigenObservacion = OrigenObservacion.LIBRE
     # Añadido en convivencia_14: vínculo al RegistroComportamiento creado al
     # promover la observación. None = no promovida aún.
     registro_comportamiento_id: int | None = None
@@ -711,6 +716,8 @@ __all__ = [
     "NuevoRegistroComportamientoDTO",
     "NuevoTipoSituacionDTO",
     "ObservacionPeriodo",
+    # datos_05: nuevo StrEnum
+    "OrigenObservacion",
     "PlantillaObservacion",
     "PuntoSerieDTO",
     "RegistroComportamiento",
