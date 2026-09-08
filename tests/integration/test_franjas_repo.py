@@ -20,6 +20,7 @@ def _plantilla(nombre="Test UNICA", jornada="UNICA", dias=None) -> PlantillaFran
         nombre=nombre,
         jornada=jornada,
         dias_activos=dias or ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"],
+        institucion_id=1,
     )
 
 
@@ -76,10 +77,10 @@ def test_activar_excluye_misma_jornada(db_conn):
     p2 = repo.crear_plantilla_franja(_plantilla("P2 UNICA"))
 
     repo.activar_plantilla_franja(p1.id)
-    assert repo.get_plantilla_activa("UNICA").id == p1.id
+    assert repo.get_plantilla_activa("UNICA", 1).id == p1.id
 
     repo.activar_plantilla_franja(p2.id)
-    activa = repo.get_plantilla_activa("UNICA")
+    activa = repo.get_plantilla_activa("UNICA", 1)
     assert activa.id == p2.id
 
     inactiva = repo.get_plantilla_franja(p1.id)
@@ -95,8 +96,8 @@ def test_jornadas_distintas_ambas_activas(db_conn):
     repo.activar_plantilla_franja(p_am.id)
     repo.activar_plantilla_franja(p_pm.id)
 
-    assert repo.get_plantilla_activa("AM").id == p_am.id
-    assert repo.get_plantilla_activa("PM").id == p_pm.id
+    assert repo.get_plantilla_activa("AM", 1).id == p_am.id
+    assert repo.get_plantilla_activa("PM", 1).id == p_pm.id
 
 
 def test_get_plantilla_activa_sin_activa_retorna_none(db_conn):
@@ -104,7 +105,7 @@ def test_get_plantilla_activa_sin_activa_retorna_none(db_conn):
     repo = _repo(db_conn)
     # Crear plantilla pero no activar
     repo.crear_plantilla_franja(_plantilla("Sin activar", jornada="PM"))
-    result = repo.get_plantilla_activa("PM")
+    result = repo.get_plantilla_activa("PM", 1)
     # Solo retorna None si ninguna PM está activa (el seed no crea PM)
     assert result is None or isinstance(result, PlantillaFranja)
 
@@ -133,7 +134,7 @@ def test_eliminar_plantilla_cascada_borra_franjas(db_conn):
 def test_seed_deja_plantilla_activa_unica(db_conn):
     """El seed crea una plantilla UNICA activa con franjas lectivas."""
     repo = _repo(db_conn)
-    activa = repo.get_plantilla_activa("UNICA")
+    activa = repo.get_plantilla_activa("UNICA", 1)
     assert activa is not None, "seed debe dejar una plantilla UNICA activa"
     franjas = repo.listar_franjas(activa.id)
     assert len(franjas) >= 1

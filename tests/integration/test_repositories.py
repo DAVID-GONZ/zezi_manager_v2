@@ -198,7 +198,7 @@ class TestSqliteEstudianteRepository:
         repo = SqliteEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         est = repo.get_by_id(eid)
-        encontrado = repo.get_by_documento(est.numero_documento)
+        encontrado = repo.get_by_documento(est.numero_documento, 1)
         assert encontrado is not None
         assert encontrado.id == eid
 
@@ -206,19 +206,19 @@ class TestSqliteEstudianteRepository:
         repo = SqliteEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         est = repo.get_by_id(eid)
-        assert repo.existe_documento(est.numero_documento) is True
-        assert repo.existe_documento("9999999999") is False
+        assert repo.existe_documento(est.numero_documento, 1) is True
+        assert repo.existe_documento("9999999999", 1) is False
 
     def test_listar_por_grupo(self, db_conn, seed_result):
         repo = SqliteEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
-        estudiantes = repo.listar_por_grupo(gid)
+        estudiantes = repo.listar_por_grupo(gid, 1)
         assert len(estudiantes) == 3
 
     def test_contar_por_grupo(self, db_conn, seed_result):
         repo = SqliteEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
-        assert repo.contar_por_grupo(gid) == 3
+        assert repo.contar_por_grupo(gid, 1) == 3
 
     def test_get_resumen(self, db_conn, seed_result):
         repo = SqliteEstudianteRepository(conn=db_conn)
@@ -409,13 +409,13 @@ class TestSqliteAsignacionRepository:
         repo = SqliteAsignacionRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
-        infos = repo.listar_por_grupo(gid, pid)
+        infos = repo.listar_por_grupo(gid, pid, 1)
         assert len(infos) >= 1
 
     def test_listar_por_docente(self, db_conn, seed_result):
         repo = SqliteAsignacionRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
-        infos = repo.listar_por_docente(uid)
+        infos = repo.listar_por_docente(uid, 1)
         assert len(infos) >= 1
 
     def test_desactivar_reactivar(self, db_conn, seed_result):
@@ -740,7 +740,7 @@ class TestSqliteConvivenciaRepository:
         )
         guardado = repo.guardar_registro(reg)
         assert guardado.id is not None
-        lista = repo.listar_registros(FiltroConvivenciaDTO(estudiante_id=eid))
+        lista = repo.listar_registros(FiltroConvivenciaDTO(estudiante_id=eid), 1)
         assert any(r.id == guardado.id for r in lista)
 
     def test_guardar_nota_comportamiento(self, db_conn, seed_result):
@@ -837,7 +837,7 @@ class TestSqliteAlertaRepository:
             estudiante_id=eid, tipo_alerta=TipoAlerta.PLAN_MEJORAMIENTO_VENCIDO,
             nivel=NivelAlerta.ADVERTENCIA, descripcion="Plan vencido.",
         ))
-        count = repo.contar_pendientes(estudiante_id=eid)
+        count = repo.contar_pendientes(1, estudiante_id=eid)
         assert count >= 1
 
 
@@ -1002,7 +1002,7 @@ class TestSqliteInfraestructuraRepository:
 
     def test_listar_areas(self, db_conn, seed_result):
         repo = SqliteInfraestructuraRepository(conn=db_conn)
-        areas = repo.listar_areas()
+        areas = repo.listar_areas(1)
         assert len(areas) >= 1
 
     def test_guardar_area(self, db_conn, seed_result):
@@ -1015,7 +1015,7 @@ class TestSqliteInfraestructuraRepository:
 
     def test_listar_asignaturas(self, db_conn, seed_result):
         repo = SqliteInfraestructuraRepository(conn=db_conn)
-        asigs = repo.listar_asignaturas()
+        asigs = repo.listar_asignaturas(1)
         assert len(asigs) >= 1
 
     def test_get_grupo(self, db_conn, seed_result):
@@ -1084,7 +1084,7 @@ class TestSqliteConfiguracionRepository:
 
     def test_get_anio_activo(self, db_conn, seed_result):
         repo = SqliteConfiguracionRepository(conn=db_conn)
-        anio = repo.get_activa()
+        anio = repo.get_activa(1)
         assert anio is not None
 
     def test_get_anio_by_id(self, db_conn, seed_result):

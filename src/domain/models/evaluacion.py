@@ -37,6 +37,7 @@ from enum import StrEnum
 from pydantic import Field, computed_field, field_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.clock import ahora, hoy
 from src.domain.models.decimal_types import QUANT_NOTA, QUANT_PESO, NotaDecimal, PesoDecimal
 
 # =============================================================================
@@ -339,7 +340,7 @@ class Nota(EntidadDominio):
     actividad_id: int
     valor: NotaDecimal
     usuario_registro_id: int | None = None
-    fecha_registro: datetime = Field(default_factory=datetime.now)
+    fecha_registro: datetime = Field(default_factory=ahora)
 
     @field_validator("estudiante_id", "actividad_id")
     @classmethod
@@ -385,7 +386,7 @@ class PuntosExtra(EntidadDominio):
     positivos: int = Field(default=0, ge=0)
     negativos: int = Field(default=0, ge=0)
     observacion: str | None = None
-    fecha_actualizacion: datetime = Field(default_factory=datetime.now)
+    fecha_actualizacion: datetime = Field(default_factory=ahora)
 
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
     @classmethod
@@ -586,7 +587,7 @@ class CalculadorNotas:
         if not categorias:
             return Decimal("0.00")
 
-        corte = hasta_fecha or date.today()
+        corte = hasta_fecha or hoy()
         nota_map: dict[int, Decimal] = CalculadorNotas._to_nota_map(notas)
 
         # Filtrar actividades con fecha <= corte que tienen nota

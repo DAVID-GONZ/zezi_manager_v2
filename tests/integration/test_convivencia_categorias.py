@@ -41,7 +41,7 @@ def db_cat():
 def test_listar_categorias_activas_incluye_seed(db_cat):
     """Después del seed_base deben existir al menos 7 categorías activas."""
     repo = SqliteConvivenciaRepository(conn=db_cat)
-    cats = repo.listar_categorias(solo_activas=True)
+    cats = repo.listar_categorias("*", solo_activas=True)
     assert len(cats) >= 7, f"Se esperaban >=7 categorías, hay {len(cats)}"
     nombres = {c.nombre for c in cats}
     assert "Académico" in nombres
@@ -74,7 +74,7 @@ def test_actualizar_categoria_desactivar(db_cat):
     db_cat.commit()
 
     # Verificar que aparece en el listado activo
-    nombres_antes = {c.nombre for c in repo.listar_categorias(solo_activas=True)}
+    nombres_antes = {c.nombre for c in repo.listar_categorias("*", solo_activas=True)}
     assert "Para desactivar" in nombres_antes
 
     # Desactivar
@@ -83,11 +83,11 @@ def test_actualizar_categoria_desactivar(db_cat):
     db_cat.commit()
 
     # Ya no debe aparecer en el listado activo
-    nombres_despues = {c.nombre for c in repo.listar_categorias(solo_activas=True)}
+    nombres_despues = {c.nombre for c in repo.listar_categorias("*", solo_activas=True)}
     assert "Para desactivar" not in nombres_despues
 
     # Pero sí aparece si pedimos todas
-    todas = {c.nombre for c in repo.listar_categorias(solo_activas=False)}
+    todas = {c.nombre for c in repo.listar_categorias("*", solo_activas=False)}
     assert "Para desactivar" in todas
 
 
@@ -103,22 +103,22 @@ def test_listar_plantillas_por_categoria(db_cat):
     repo = SqliteConvivenciaRepository(conn=db_cat)
 
     # Obtener IDs de dos categorías sembradas
-    cats = repo.listar_categorias(solo_activas=True)
+    cats = repo.listar_categorias("*", solo_activas=True)
     assert len(cats) >= 2, "Se necesitan al menos 2 categorías del seed"
     cat_a = cats[0]
     cat_b = cats[1]
 
     # Verificar que el seed insertó plantillas (convivencia_12)
-    todas = repo.listar_plantillas(solo_activas=True)
+    todas = repo.listar_plantillas("*", solo_activas=True)
     assert len(todas) >= 1, "seed_base debe haber insertado plantillas"
 
     # Filtrar por cat_a: solo deben aparecer plantillas de esa categoría
-    de_cat_a = repo.listar_plantillas(categoria_id=cat_a.id, solo_activas=True)
+    de_cat_a = repo.listar_plantillas("*", categoria_id=cat_a.id, solo_activas=True)
     for p in de_cat_a:
         assert p.categoria_id == cat_a.id
 
     # Filtrar por cat_b: solo deben aparecer plantillas de esa categoría
-    de_cat_b = repo.listar_plantillas(categoria_id=cat_b.id, solo_activas=True)
+    de_cat_b = repo.listar_plantillas("*", categoria_id=cat_b.id, solo_activas=True)
     for p in de_cat_b:
         assert p.categoria_id == cat_b.id
 
@@ -136,7 +136,7 @@ def test_registrar_observacion_desde_plantilla_incrementa_uso(db_cat):
     repo = SqliteConvivenciaRepository(conn=db_cat)
 
     # Obtener la primera plantilla activa del seed
-    plantillas = repo.listar_plantillas(solo_activas=True)
+    plantillas = repo.listar_plantillas("*", solo_activas=True)
     assert len(plantillas) >= 1, "seed_base debe haber insertado plantillas"
     plantilla = plantillas[0]
     uso_inicial = plantilla.uso_count
@@ -181,7 +181,7 @@ def test_registrar_observacion_desde_plantilla_incrementa_uso(db_cat):
         asignacion_id=asignacion_id,
         periodo_id=periodo_id,
         texto=plantilla.texto,
-        categoria_id=plantilla.categoria_id or repo.listar_categorias()[0].id,
+        categoria_id=plantilla.categoria_id or repo.listar_categorias("*")[0].id,
         es_publica=True,
     )
     obs = svc.registrar_observacion_desde_plantilla(dto, plantilla.id)
@@ -204,7 +204,7 @@ def test_guardar_observacion_con_categoria(db_cat):
     repo = SqliteConvivenciaRepository(conn=db_cat)
 
     # Usar la primera categoría activa sembrada
-    cats = repo.listar_categorias(solo_activas=True)
+    cats = repo.listar_categorias("*", solo_activas=True)
     assert len(cats) > 0, "Se esperaban categorías en el seed"
     categoria_id = cats[0].id
 

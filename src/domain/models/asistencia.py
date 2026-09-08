@@ -1,37 +1,37 @@
-"""
+﻿"""
 Modelo de dominio: Asistencia
 ==============================
 
 Contiene:
-  Enums    — EstadoAsistencia
-  Entidad  — ControlDiario
-  Read models — ResumenAsistenciaDTO, RegistroAsistenciaItemDTO
-  DTOs     — RegistrarAsistenciaDTO, RegistrarAsistenciaMasivaDTO,
+  Enums    â€” EstadoAsistencia
+  Entidad  â€” ControlDiario
+  Read models â€” ResumenAsistenciaDTO, RegistroAsistenciaItemDTO
+  DTOs     â€” RegistrarAsistenciaDTO, RegistrarAsistenciaMasivaDTO,
               FiltroAsistenciaDTO
 
-Corrección de v1.0:
-  El schema de v1.0 definía estados ('P', 'A', 'R', 'J', 'E')
-  pero el código usaba ('P', 'FJ', 'FI', 'R', 'E'). El schema v2.0
-  usa la convención del código:
-    P  → Presente
-    FJ → Falta Justificada
-    FI → Falta Injustificada
-    R  → Retraso
-    E  → Excusa médica
+CorrecciÃ³n de v1.0:
+  El schema de v1.0 definÃ­a estados ('P', 'A', 'R', 'J', 'E')
+  pero el cÃ³digo usaba ('P', 'FJ', 'FI', 'R', 'E'). El schema v2.0
+  usa la convenciÃ³n del cÃ³digo:
+    P  â†’ Presente
+    FJ â†’ Falta Justificada
+    FI â†’ Falta Injustificada
+    R  â†’ Retraso
+    E  â†’ Excusa mÃ©dica
 
 Reglas de negocio:
-  - fecha no puede ser futura (no se puede tomar asistencia de mañana).
+  - fecha no puede ser futura (no se puede tomar asistencia de maÃ±ana).
   - hora_entrada < hora_salida si ambas existen.
   - Un registro por estudiante por asignacion por fecha
     (UNIQUE constraint en BD, ON CONFLICT REPLACE).
-  - El estado 'P' no requiere observación.
-  - Los estados FJ y E típicamente requieren una justificación
-    (observación), pero no se fuerza en el modelo para no bloquear
-    registros rápidos en campo.
+  - El estado 'P' no requiere observaciÃ³n.
+  - Los estados FJ y E tÃ­picamente requieren una justificaciÃ³n
+    (observaciÃ³n), pero no se fuerza en el modelo para no bloquear
+    registros rÃ¡pidos en campo.
 
 ResumenAsistenciaDTO:
   Calculado por el repositorio con GROUP BY. El servicio lo retorna
-  directamente al panel de seguimiento y al boletín.
+  directamente al panel de seguimiento y al boletÃ­n.
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ from typing import Self
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.clock import ahora, hoy
 
 # =============================================================================
 # Enumeraciones
@@ -71,7 +72,7 @@ class EstadoAsistencia(StrEnum):
 
     @property
     def descripcion(self) -> str:
-        """Etiqueta legible del estado (p. ej. 'FI' → 'Falta Injustificada')."""
+        """Etiqueta legible del estado (p. ej. 'FI' â†’ 'Falta Injustificada')."""
         descripciones = {
             "P": "Presente",
             "FJ": "Falta Justificada",
@@ -89,11 +90,11 @@ class EstadoAsistencia(StrEnum):
 
 class ControlDiario(EntidadDominio):
     """
-    Registro de asistencia de un estudiante a una clase específica.
+    Registro de asistencia de un estudiante a una clase especÃ­fica.
 
-    El campo `fecha_actualizacion` se actualiza automáticamente cuando
+    El campo `fecha_actualizacion` se actualiza automÃ¡ticamente cuando
     el trigger ON CONFLICT REPLACE recrea el registro. En el modelo,
-    se inicializa al momento de construcción.
+    se inicializa al momento de construcciÃ³n.
     """
 
     id: int | None = None
@@ -101,7 +102,7 @@ class ControlDiario(EntidadDominio):
     grupo_id: int
     asignacion_id: int
     periodo_id: int
-    fecha: date = Field(default_factory=date.today)
+    fecha: date = Field(default_factory=hoy)
     estado: EstadoAsistencia = EstadoAsistencia.PRESENTE
     hora_entrada: time | None = None
     hora_salida: time | None = None
@@ -109,12 +110,12 @@ class ControlDiario(EntidadDominio):
     materiales: bool = True
     observacion: str | None = None
     usuario_registro_id: int | None = None
-    fecha_actualizacion: datetime = Field(default_factory=datetime.now)
+    fecha_actualizacion: datetime = Field(default_factory=ahora)
 
     @field_validator("estudiante_id", "grupo_id", "asignacion_id", "periodo_id")
     @classmethod
     def validar_id_positivo(cls, v: int) -> int:
-        """Las FK del registro (estudiante, grupo, asignación, periodo) deben ser positivas."""
+        """Las FK del registro (estudiante, grupo, asignaciÃ³n, periodo) deben ser positivas."""
         if v <= 0:
             raise ValueError(f"El ID debe ser positivo (recibido: {v}).")
         return v
@@ -125,14 +126,14 @@ class ControlDiario(EntidadDominio):
         """Acepta date o string ISO; no se puede registrar asistencia en fecha futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"No se puede registrar asistencia para una fecha futura ({v}).")
         return v
 
     @field_validator("observacion", mode="before")
     @classmethod
     def limpiar_observacion(cls, v: str | None) -> str | None:
-        """Normaliza la observación opcional (strip); cadena vacía → None."""
+        """Normaliza la observaciÃ³n opcional (strip); cadena vacÃ­a â†’ None."""
         if v is None:
             return None
         v = str(v).strip()
@@ -148,7 +149,7 @@ class ControlDiario(EntidadDominio):
             return v
         partes = str(v).strip().split(":")
         if len(partes) < 2:
-            raise ValueError(f"Formato de hora inválido: '{v}'. Use HH:MM.")
+            raise ValueError(f"Formato de hora invÃ¡lido: '{v}'. Use HH:MM.")
         try:
             return time(int(partes[0]), int(partes[1]))
         except ValueError as e:
@@ -156,7 +157,7 @@ class ControlDiario(EntidadDominio):
 
     @model_validator(mode="after")
     def validar_horas(self) -> Self:
-        """Si ambas están presentes, la hora de entrada debe ser anterior a la de salida."""
+        """Si ambas estÃ¡n presentes, la hora de entrada debe ser anterior a la de salida."""
         if (
             self.hora_entrada is not None
             and self.hora_salida is not None
@@ -185,7 +186,7 @@ class ControlDiario(EntidadDominio):
     @computed_field
     @property
     def requiere_justificacion(self) -> bool:
-        """True si el estado normalmente requiere una observación."""
+        """True si el estado normalmente requiere una observaciÃ³n."""
         return self.estado in (
             EstadoAsistencia.FALTA_JUSTIFICADA,
             EstadoAsistencia.EXCUSA,
@@ -205,7 +206,7 @@ class ControlDiario(EntidadDominio):
 class ResumenAsistenciaDTO(EntidadDominio):
     """
     Resumen de asistencia de un estudiante en un periodo o rango de fechas.
-    Calculado por el repositorio con GROUP BY; la página lo muestra directamente.
+    Calculado por el repositorio con GROUP BY; la pÃ¡gina lo muestra directamente.
     """
 
     estudiante_id: int
@@ -226,7 +227,7 @@ class ResumenAsistenciaDTO(EntidadDominio):
     )
     @classmethod
     def no_negativo(cls, v: int) -> int:
-        """Ningún conteo del resumen (clases, presentes, faltas…) puede ser negativo."""
+        """NingÃºn conteo del resumen (clases, presentes, faltasâ€¦) puede ser negativo."""
         if v < 0:
             raise ValueError(f"El conteo no puede ser negativo (recibido: {v}).")
         return v
@@ -252,7 +253,7 @@ class ResumenAsistenciaDTO(EntidadDominio):
     @computed_field
     @property
     def en_riesgo_por_faltas(self) -> bool:
-        """True si el porcentaje de asistencia está por debajo del umbral (80.0%)."""
+        """True si el porcentaje de asistencia estÃ¡ por debajo del umbral (80.0%)."""
         return self.porcentaje_asistencia < 80.0
 
     @property
@@ -267,8 +268,8 @@ class ResumenAsistenciaDTO(EntidadDominio):
 
 class RegistroAsistenciaItemDTO(DTODominio):
     """
-    Un ítem dentro de un registro masivo de asistencia.
-    Representa la asistencia de un único estudiante en un registro grupal.
+    Un Ã­tem dentro de un registro masivo de asistencia.
+    Representa la asistencia de un Ãºnico estudiante en un registro grupal.
     """
 
     estudiante_id: int
@@ -278,7 +279,7 @@ class RegistroAsistenciaItemDTO(DTODominio):
     @field_validator("estudiante_id")
     @classmethod
     def validar_id(cls, v: int) -> int:
-        """El estudiante del ítem debe referenciarse con id positivo."""
+        """El estudiante del Ã­tem debe referenciarse con id positivo."""
         if v <= 0:
             raise ValueError(f"estudiante_id debe ser positivo (recibido: {v}).")
         return v
@@ -290,13 +291,13 @@ class RegistroAsistenciaItemDTO(DTODominio):
 
 
 class RegistrarAsistenciaDTO(DTODominio):
-    """Datos para registrar la asistencia de un único estudiante."""
+    """Datos para registrar la asistencia de un Ãºnico estudiante."""
 
     estudiante_id: int
     grupo_id: int
     asignacion_id: int
     periodo_id: int
-    fecha: date = Field(default_factory=date.today)
+    fecha: date = Field(default_factory=hoy)
     estado: EstadoAsistencia = EstadoAsistencia.PRESENTE
     hora_entrada: time | None = None
     hora_salida: time | None = None
@@ -311,7 +312,7 @@ class RegistrarAsistenciaDTO(DTODominio):
         """Acepta date o string ISO; la fecha del registro no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha no puede ser futura ({v}).")
         return v
 
@@ -323,14 +324,14 @@ class RegistrarAsistenciaDTO(DTODominio):
 class RegistrarAsistenciaMasivaDTO(DTODominio):
     """
     Registra la asistencia de todos los estudiantes de un grupo
-    en una misma fecha y asignación. Operación atómica — el servicio
+    en una misma fecha y asignaciÃ³n. OperaciÃ³n atÃ³mica â€” el servicio
     crea un ControlDiario por cada item.
     """
 
     grupo_id: int
     asignacion_id: int
     periodo_id: int
-    fecha: date = Field(default_factory=date.today)
+    fecha: date = Field(default_factory=hoy)
     registros: list[RegistroAsistenciaItemDTO] = Field(default_factory=list)
     usuario_registro_id: int | None = None
 
@@ -340,16 +341,16 @@ class RegistrarAsistenciaMasivaDTO(DTODominio):
         """Acepta date o string ISO; la fecha del registro masivo no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha no puede ser futura ({v}).")
         return v
 
     @field_validator("registros")
     @classmethod
     def validar_registros(cls, v: list) -> list:
-        """La lista de registros del grupo no puede estar vacía."""
+        """La lista de registros del grupo no puede estar vacÃ­a."""
         if not v:
-            raise ValueError("La lista de registros no puede estar vacía.")
+            raise ValueError("La lista de registros no puede estar vacÃ­a.")
         return v
 
     @computed_field
@@ -382,7 +383,7 @@ class RegistrarAsistenciaMasivaDTO(DTODominio):
 
 
 class FiltroAsistenciaDTO(DTODominio):
-    """Parámetros para consultar registros de asistencia."""
+    """ParÃ¡metros para consultar registros de asistencia."""
 
     estudiante_id: int | None = None
     grupo_id: int | None = None
@@ -408,3 +409,4 @@ __all__ = [
     "RegistroAsistenciaItemDTO",
     "ResumenAsistenciaDTO",
 ]
+

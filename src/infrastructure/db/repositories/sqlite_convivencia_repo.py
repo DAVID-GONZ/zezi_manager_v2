@@ -375,7 +375,7 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
                     nota.estudiante_id,
                     nota.grupo_id,
                     nota.periodo_id,
-                    nota.valor,
+                    float(nota.valor),
                     nota.desempeno_id,
                     nota.observacion,
                     nota.usuario_id,

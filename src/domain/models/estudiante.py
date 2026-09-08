@@ -41,6 +41,7 @@ from src.domain.models.base import (
     NombrePropioStr,
     TextoCortStr,
 )
+from src.domain.models.clock import hoy
 
 # =============================================================================
 # Enumeraciones
@@ -130,7 +131,7 @@ class Estudiante(EntidadDominio):
     # Contexto académico
     grupo_id: int | None = None
     posee_piar: bool = False
-    fecha_ingreso: date = Field(default_factory=date.today)
+    fecha_ingreso: date = Field(default_factory=hoy)
     estado_matricula: EstadoMatricula = EstadoMatricula.ACTIVO
 
     # Multi-tenant (paso_30, frente B2): institución a la que pertenece el
@@ -179,10 +180,10 @@ class Estudiante(EntidadDominio):
                 v = date.fromisoformat(v)
             except ValueError as e:
                 raise ValueError(f"Formato de fecha inválido: '{v}'. Use YYYY-MM-DD.") from e
-        hoy = date.today()
-        if v >= hoy:
+        hoy_local = hoy()
+        if v >= hoy_local:
             raise ValueError("La fecha de nacimiento no puede ser futura.")
-        edad = hoy.year - v.year - ((hoy.month, hoy.day) < (v.month, v.day))
+        edad = hoy_local.year - v.year - ((hoy_local.month, hoy_local.day) < (v.month, v.day))
         if edad > 25:
             raise ValueError(
                 f"La fecha indica {edad} años (máximo permitido: 25). "
@@ -222,7 +223,7 @@ class Estudiante(EntidadDominio):
         if self.fecha_nacimiento is None:
             return self
 
-        edad = (date.today() - self.fecha_nacimiento).days // 365
+        edad = (hoy() - self.fecha_nacimiento).days // 365
 
         if self.tipo_documento == TipoDocumento.CC and edad < 17:
             raise ValueError(
@@ -255,7 +256,7 @@ class Estudiante(EntidadDominio):
         """Edad en años completos. None si no hay fecha de nacimiento."""
         if self.fecha_nacimiento is None:
             return None
-        return (date.today() - self.fecha_nacimiento).days // 365
+        return (hoy() - self.fecha_nacimiento).days // 365
 
     @computed_field
     @property

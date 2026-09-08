@@ -126,7 +126,7 @@ def test_promover_a_comportamiento_guarda_fk(db_conv14):
     )
 
     # Usar una categoría comportamental existente del seed
-    cats = repo.listar_categorias(solo_activas=True)
+    cats = repo.listar_categorias("*", solo_activas=True)
     cat_comp = next((c for c in cats if c.es_comportamental), None)
     assert cat_comp is not None, "seed_base debe sembrar al menos una categoría comportamental"
 
@@ -190,7 +190,7 @@ def test_promover_a_comportamiento_fk_on_delete_set_null(db_conv14):
     )
 
     # Usar categoría comportamental del seed
-    cats = repo.listar_categorias(solo_activas=True)
+    cats = repo.listar_categorias("*", solo_activas=True)
     cat_comp = next((c for c in cats if c.es_comportamental), None)
     assert cat_comp is not None
 

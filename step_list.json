@@ -119,7 +119,7 @@
   {
     "id": "datos_08_fecha_zona_horaria",
     "nombre": "Fecha del sistema: una sola zona horaria",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/infrastructure/db/schema.py, src/infrastructure/db/repositories/sqlite_infraestructura_repo.py, src/infrastructure/db/repositories/sqlite_periodo_repo.py, src/domain/models/asistencia.py, src/domain/models/cierre.py, src/domain/models/convivencia.py, src/domain/models/estudiante.py, src/domain/models/evaluacion.py, config.py, tests/unit/domain/test_fecha_zona_horaria.py",
     "operacion": "modificar",
     "sdd": true,
@@ -128,7 +128,7 @@
   {
     "id": "harness_01_integracion_en_puerta",
     "nombre": "Suite de integracion verde y encadenada a la puerta",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "tests/integration/test_repositories.py, tests/integration/test_convivencia_categorias.py, tests/integration/test_convivencia_14_promocion_comportamiento.py, tests/integration/test_convivencia_35_entradas_seguimiento.py, tests/integration/test_disponibilidad_config_repo.py, tests/integration/test_franjas_repo.py, scripts/init.py, scripts/run_tests.py",
     "operacion": "modificar",
     "sdd": true,

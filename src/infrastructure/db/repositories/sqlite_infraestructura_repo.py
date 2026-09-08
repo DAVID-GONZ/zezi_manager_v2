@@ -10,6 +10,7 @@ import json
 import sqlite3
 from contextlib import contextmanager
 
+from src.domain.models.clock import ahora as _ahora
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
@@ -1184,7 +1185,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     nombre = ?, periodo_id = ?, anio_id = ?, plantilla_id = ?,
                     estado = ?, grupos_json = ?, pesos_json = ?,
                     restricciones_json = ?, escenario_destino_id = ?,
-                    updated_at = datetime('now')
+                    updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -1197,6 +1198,7 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
                     pesos_json,
                     restricciones_json,
                     c.escenario_destino_id,
+                    _ahora().isoformat(timespec="seconds"),
                     c.id,
                 ),
             )
@@ -1225,10 +1227,10 @@ class SqliteInfraestructuraRepository(IInfraestructuraRepository):
             conn.execute(
                 """
                 UPDATE config_generacion
-                   SET estado = ?, updated_at = datetime('now')
+                   SET estado = ?, updated_at = ?
                  WHERE id = ?
                 """,
-                (nuevo_estado, config_id),
+                (nuevo_estado, _ahora().isoformat(timespec="seconds"), config_id),
             )
             if self._conn is None:
                 conn.commit()

@@ -48,6 +48,7 @@ from src.domain.models.base import (
     TextoLargoStr,
     TextoMedioStr,
 )
+from src.domain.models.clock import ahora, hoy
 from src.domain.models.decimal_types import NotaDecimal
 
 # =============================================================================
@@ -235,7 +236,7 @@ class ObservacionPeriodo(EntidadDominio):
     periodo_id: int
     texto: TextoLargoStr
     es_publica: bool = True
-    fecha_registro: datetime = Field(default_factory=datetime.now)
+    fecha_registro: datetime = Field(default_factory=ahora)
     usuario_id: int | None = None
     # Campos añadidos en convivencia_11: clasificación por categoría y origen.
     # categoria_id=None → observación libre (sin categoría asignada).
@@ -277,7 +278,7 @@ class EntradaSeguimiento(EntidadDominio):
 
     id: int | None = None
     registro_id: int
-    fecha: datetime = Field(default_factory=datetime.now)
+    fecha: datetime = Field(default_factory=ahora)
     texto: TextoLargoStr
     usuario_id: int | None = None
     usuario_nombre: str | None = None  # solo lectura, resuelto en repo — R13: nunca recibe dato de cliente
@@ -325,7 +326,7 @@ class RegistroComportamiento(EntidadDominio):
     estudiante_id: int
     grupo_id: int
     periodo_id: int
-    fecha: date = Field(default_factory=date.today)
+    fecha: date = Field(default_factory=hoy)
     tipo: TipoRegistro
     descripcion: TextoMedioStr
     seguimiento: TextoMedioStr | None = None  # R15-ajuste: mismo orden que descripcion
@@ -362,7 +363,7 @@ class RegistroComportamiento(EntidadDominio):
         """Acepta date o string ISO; la fecha del registro no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha del registro ({v}) no puede ser futura.")
         return v
 
@@ -532,7 +533,7 @@ class NuevoRegistroComportamientoDTO(DTODominio):
     tipo: TipoRegistro
     descripcion: TextoMedioStr
     requiere_firma: bool = False
-    fecha: date = Field(default_factory=date.today)
+    fecha: date = Field(default_factory=hoy)
     tipo_situacion_id: int | None = None
     medida_id: int | None = None
 

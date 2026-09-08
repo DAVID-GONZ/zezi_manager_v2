@@ -147,14 +147,14 @@ class TestConfigGeneracion:
 
     def test_listar_configs(self, db_conn, seed_result):
         repo = make_repo(db_conn)
-        configs = repo.listar_configs_generacion()
+        configs = repo.listar_configs_generacion(1)
         # seed_test crea "Config inicial"
         assert len(configs) >= 1
 
     def test_listar_por_periodo(self, db_conn, seed_result):
         repo = make_repo(db_conn)
         periodo_id = seed_result.periodo_ids[0]
-        configs = repo.listar_configs_generacion(periodo_id=periodo_id)
+        configs = repo.listar_configs_generacion(1, periodo_id=periodo_id)
         assert all(c.periodo_id == periodo_id for c in configs)
 
     def test_eliminar_config(self, db_conn, seed_result):
@@ -227,7 +227,7 @@ class TestConfigGeneracion:
 
     def test_seed_creo_al_menos_una_config_borrador(self, db_conn):
         repo = make_repo(db_conn)
-        configs = repo.listar_configs_generacion()
+        configs = repo.listar_configs_generacion(1)
         borradores = [c for c in configs if c.estado == "borrador"]
         assert len(borradores) >= 1
 

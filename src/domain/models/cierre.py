@@ -37,6 +37,7 @@ from typing import Self
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.clock import hoy
 from src.domain.models.decimal_types import NotaDecimal
 
 # =============================================================================
@@ -78,7 +79,7 @@ class CierrePeriodo(EntidadDominio):
     nota_definitiva: NotaDecimal
     desempeno_id: int | None = None
     logro_id: int | None = None
-    fecha_cierre: date = Field(default_factory=date.today)
+    fecha_cierre: date = Field(default_factory=hoy)
     usuario_cierre_id: int | None = None
 
     @field_validator("estudiante_id", "asignacion_id", "periodo_id")
@@ -103,7 +104,7 @@ class CierrePeriodo(EntidadDominio):
         """Acepta date o string ISO; la fecha de cierre no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha de cierre ({v}) no puede ser futura.")
         return v
 
@@ -158,7 +159,7 @@ class CierreAnio(EntidadDominio):
     nota_definitiva_anual: NotaDecimal
     perdio: bool
     desempeno_id: int | None = None
-    fecha_cierre: date = Field(default_factory=date.today)
+    fecha_cierre: date = Field(default_factory=hoy)
     usuario_cierre_id: int | None = None
 
     @field_validator("estudiante_id", "asignacion_id", "anio_id")
@@ -189,7 +190,7 @@ class CierreAnio(EntidadDominio):
         """Acepta date o string ISO; la fecha de cierre no puede ser futura."""
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha de cierre ({v}) no puede ser futura.")
         return v
 
@@ -297,7 +298,7 @@ class PromocionAnual(EntidadDominio):
             return None
         if isinstance(v, str):
             v = date.fromisoformat(v)
-        if v > date.today():
+        if v > hoy():
             raise ValueError(f"La fecha de decisión ({v}) no puede ser futura.")
         return v
 
@@ -393,7 +394,7 @@ class PromocionAnual(EntidadDominio):
                 "estado": estado,
                 "asignaturas_perdidas": asignaturas_perdidas,
                 "observacion": observacion.strip() if observacion else None,
-                "fecha_decision": fecha or date.today(),
+                "fecha_decision": fecha or hoy(),
                 "usuario_decision_id": usuario_id,
             }
         )

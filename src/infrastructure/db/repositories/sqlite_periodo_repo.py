@@ -7,6 +7,7 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 
+from src.domain.models.clock import ahora as _ahora
 from src.domain.models.periodo import HitoPeriodo, Periodo, TipoHito
 from src.domain.ports.periodo_repo import IPeriodoRepository
 
@@ -148,10 +149,10 @@ class SqlitePeriodoRepository(IPeriodoRepository):
             cursor = conn.execute(
                 """
                 UPDATE periodos
-                SET cerrado = 1, activo = 0, fecha_cierre_real = datetime('now')
+                SET cerrado = 1, activo = 0, fecha_cierre_real = ?
                 WHERE id = ?
                 """,
-                (periodo_id,),
+                (_ahora().isoformat(timespec="seconds"), periodo_id),
             )
             if self._conn is None:
                 conn.commit()

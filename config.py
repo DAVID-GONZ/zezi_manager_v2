@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     RELOAD: bool = False  # True solo en desarrollo con hot-reload
 
     # ------------------------------------------------------------------
+    # Zona horaria de referencia (datos_08)
+    # ------------------------------------------------------------------
+    ZONA_HORARIA: str = "America/Bogota"
+    """
+    Zona horaria canónica de la institución. Todos los cálculos de fecha
+    del dominio (hoy(), ahora()) la usan para evitar desface con SQLite UTC.
+    Usar zona nombrada (no desfase numérico); ejemplo: 'America/Bogota'.
+    """
+
+    # ------------------------------------------------------------------
     # Logging
     # ------------------------------------------------------------------
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
@@ -289,12 +299,14 @@ settings = Settings()
 DATABASE_PATH: Path = settings.DATABASE_PATH
 DB_CONFIG: dict = settings.db_config
 IS_PRODUCTION: bool = settings.is_production
+ZONA_HORARIA: str = settings.ZONA_HORARIA
 
 
 __all__ = [
     "DATABASE_PATH",
     "DB_CONFIG",
     "IS_PRODUCTION",
+    "ZONA_HORARIA",
     "Settings",
     "settings",
 ]
