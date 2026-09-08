@@ -151,7 +151,7 @@ class InformeService:
     # Información institucional — punto de acceso único (R16)
     # ------------------------------------------------------------------
 
-    def get_informacion_institucional(self, anio_id: int) -> "InformacionInstitucionalDTO":
+    def get_informacion_institucional(self, anio_id: int) -> InformacionInstitucionalDTO:
         """
         Punto de acceso único a la información institucional para
         boletines e informes (R16).

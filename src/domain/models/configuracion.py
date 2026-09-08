@@ -299,7 +299,7 @@ class ActualizarInfoInstitucionalDTO(DTODominio):
             raise ValueError("El nombre no puede ser una cadena vacía.")
         return v
 
-    def to_actualizar_institucion_dto(self) -> "ActualizarInstitucionDTO":
+    def to_actualizar_institucion_dto(self) -> ActualizarInstitucionDTO:
         """
         Construye un ActualizarInstitucionDTO mapeando los campos de identidad
         desde las claves de configuracion hacia las claves canónicas de Institucion.

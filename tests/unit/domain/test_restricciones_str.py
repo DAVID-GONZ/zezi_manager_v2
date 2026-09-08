@@ -17,33 +17,16 @@ import pytest
 from pydantic import StringConstraints
 from pydantic.fields import FieldInfo
 
-# ---------------------------------------------------------------------------
-# Importar todos los modelos en scope
-# ---------------------------------------------------------------------------
-
-from src.domain.models.usuario import (
-    ActualizarUsuarioDTO,
-    FiltroUsuariosDTO,
-    NuevoUsuarioDTO,
-    Usuario,
-)
-from src.domain.models.institucion import (
-    ActualizarInstitucionDTO,
-    Institucion,
-    NuevaInstitucionConDirectorDTO,
-    NuevaInstitucionDTO,
-)
-from src.domain.models.estudiante import (
-    ActualizarEstudianteDTO,
-    Estudiante,
-    FiltroEstudiantesDTO,
-    MovimientoEstudiante,
-    NuevoEstudianteDTO,
-)
 from src.domain.models.acudiente import (
     ActualizarAcudienteDTO,
     Acudiente,
     NuevoAcudienteDTO,
+)
+from src.domain.models.configuracion import (
+    ActualizarInfoInstitucionalDTO,
+    ActualizarNivelDesempenoDTO,
+    NivelDesempeno,
+    NuevoNivelDesempenoDTO,
 )
 from src.domain.models.convivencia import (
     CategoriaObservacion,
@@ -64,11 +47,12 @@ from src.domain.models.convivencia import (
     RegistroComportamiento,
     TipoSituacion,
 )
-from src.domain.models.configuracion import (
-    ActualizarInfoInstitucionalDTO,
-    ActualizarNivelDesempenoDTO,
-    NivelDesempeno,
-    NuevoNivelDesempenoDTO,
+from src.domain.models.estudiante import (
+    ActualizarEstudianteDTO,
+    Estudiante,
+    FiltroEstudiantesDTO,
+    MovimientoEstudiante,
+    NuevoEstudianteDTO,
 )
 from src.domain.models.infraestructura import (
     AreaConocimiento,
@@ -86,15 +70,30 @@ from src.domain.models.infraestructura import (
     NuevaConfigGeneracionDTO,
     NuevaFranjaDTO,
     NuevaPlantillaFranjaDTO,
+    NuevaSalaDTO,
     NuevoEscenarioDTO,
     NuevoGrupoDTO,
     NuevoHorarioDTO,
     NuevoLogroDTO,
-    NuevaSalaDTO,
     PlantillaFranja,
     Sala,
 )
+from src.domain.models.institucion import (
+    ActualizarInstitucionDTO,
+    Institucion,
+    NuevaInstitucionConDirectorDTO,
+    NuevaInstitucionDTO,
+)
 
+# ---------------------------------------------------------------------------
+# Importar todos los modelos en scope
+# ---------------------------------------------------------------------------
+from src.domain.models.usuario import (
+    ActualizarUsuarioDTO,
+    FiltroUsuariosDTO,
+    NuevoUsuarioDTO,
+    Usuario,
+)
 
 # ---------------------------------------------------------------------------
 # Función auxiliar: extrae max_length de StringConstraints en un campo
@@ -222,21 +221,17 @@ EXCLUSIONES: dict[type, dict[str, str]] = {
     # -----------------------------------------------------------------------
     # DocenteInfoDTO, AsignacionDocenteInfoDTO, UsuarioResumenDTO,
     # ResumenUsuariosDTO excluidos de MODELOS_EN_SCOPE por R13.
-
     # -----------------------------------------------------------------------
     # institucion.py
     # -----------------------------------------------------------------------
     # InstitucionResumenDTO, ResultadoAprovisionamientoDTO: R13.
-
     # -----------------------------------------------------------------------
     # estudiante.py
     # -----------------------------------------------------------------------
     # EstudianteResumenDTO, MovimientoEstudianteInfoDTO: R13.
-
     # -----------------------------------------------------------------------
     # acudiente.py — sin exclusiones en clases de MODELOS_EN_SCOPE
     # -----------------------------------------------------------------------
-
     # -----------------------------------------------------------------------
     # convivencia.py
     # -----------------------------------------------------------------------
@@ -246,11 +241,9 @@ EXCLUSIONES: dict[type, dict[str, str]] = {
             "nunca recibe datos crudos de un cliente."
         ),
     },
-
     # -----------------------------------------------------------------------
     # configuracion.py — sin exclusiones en clases de MODELOS_EN_SCOPE
     # -----------------------------------------------------------------------
-
     # -----------------------------------------------------------------------
     # infraestructura.py
     # -----------------------------------------------------------------------
@@ -282,8 +275,7 @@ EXCLUSIONES: dict[type, dict[str, str]] = {
     },
     FranjaReunion: {
         "dia_semana": (
-            "R14: validado contra DIAS_VALIDOS (conjunto cerrado, "
-            "derivado de DiaSemana StrEnum)."
+            "R14: validado contra DIAS_VALIDOS (conjunto cerrado, derivado de DiaSemana StrEnum)."
         ),
     },
     NuevaPlantillaFranjaDTO: {
@@ -338,7 +330,6 @@ COTAS_CON_VALIDATOR_EXISTENTE: dict[tuple[type, str], int] = {
 
 def _es_str_simple(annotation: object) -> bool:
     """True si la anotación es `str` o `str | None` (sin Annotated)."""
-    import typing
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", ())
     # Annotated tiene __class_getitem__ y su __origin__ es str si es un simple
@@ -351,6 +342,7 @@ def _es_str_simple(annotation: object) -> bool:
         return False
     try:
         import types
+
         if isinstance(annotation, types.UnionType):
             return set(args) == {str, type(None)}
     except AttributeError:
@@ -364,17 +356,17 @@ def _es_str_simple(annotation: object) -> bool:
 def _tiene_string_constraints(annotation: object) -> bool:
     """True si la anotación es Annotated[str, StringConstraints(max_length=…)]."""
     import typing
+
     origin = getattr(annotation, "__origin__", None)
     # Annotated tiene __class_getitem__ y origin es el tipo base
     if origin is None:
         return False
     # Python 3.8+ Annotated
-    if hasattr(typing, "get_args"):
+    if hasattr(typing, "get_args") and hasattr(annotation, "__metadata__"):
         # Annotated[str, ...] o Annotated[str | None, ...]
-        if hasattr(annotation, "__metadata__"):
-            for meta in annotation.__metadata__:  # type: ignore[attr-defined]
-                if isinstance(meta, StringConstraints) and meta.max_length is not None:
-                    return True
+        for meta in annotation.__metadata__:  # type: ignore[attr-defined]
+            if isinstance(meta, StringConstraints) and meta.max_length is not None:
+                return True
     return False
 
 
@@ -433,7 +425,7 @@ def test_todos_los_campos_str_tienen_cota() -> None:
 
             # Sin cota y sin exclusión: verificar si el tipo involucra str
             # (campos int, bool, Decimal, date, etc. no nos interesan)
-            ann = modelo.model_fields[nombre_campo].annotation
+            _ = modelo.model_fields[nombre_campo].annotation
             # Pydantic v2 pone la anotación procesada en field_info.annotation
             # pero puede ser None si usa tipos complejos.
             # Recorremos la jerarquía si es necesario.
@@ -524,7 +516,7 @@ def test_email_formato_preservado() -> None:
         )
 
     # ---- Acudiente ----
-    from src.domain.models.acudiente import Parentesco, TipoDocumentoAcudiente
+    from src.domain.models.acudiente import Parentesco
 
     with pytest.raises(ValidationError):
         Acudiente(

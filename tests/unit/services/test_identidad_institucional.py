@@ -27,7 +27,6 @@ from src.domain.models.institucion import Institucion
 from src.services.configuracion_service import ConfiguracionService
 from src.services.informe_service import InformeService
 
-
 # =============================================================================
 # Helpers
 # =============================================================================
@@ -40,13 +39,13 @@ def _make_config(institucion_id: int | None = None, anio: int = 2025) -> Configu
 
 def _make_institucion(**kwargs) -> Institucion:
     """Institucion con valores razonables por defecto."""
-    defaults = dict(
-        id=1,
-        nombre="IE Test",
-        nombre_oficial="Institución Educativa Test",
-        codigo_dane="123456789012",
-        rector="Dr. García",
-    )
+    defaults = {
+        "id": 1,
+        "nombre": "IE Test",
+        "nombre_oficial": "Institución Educativa Test",
+        "codigo_dane": "123456789012",
+        "rector": "Dr. García",
+    }
     defaults.update(kwargs)
     return Institucion(**defaults)
 

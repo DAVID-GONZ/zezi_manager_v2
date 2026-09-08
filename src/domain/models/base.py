@@ -141,9 +141,9 @@ UrlStr = Annotated[str, StringConstraints(max_length=2048)]
 
 __all__ = [
     "CodigoStr",
+    "DTODominio",
     "DaneStr",
     "DireccionStr",
-    "DTODominio",
     "DocumentoStr",
     "EmailStr",
     "EntidadDominio",

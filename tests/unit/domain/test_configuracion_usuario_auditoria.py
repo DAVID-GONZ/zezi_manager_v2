@@ -23,9 +23,7 @@ from src.domain.models.auditoria import (
 )
 from src.domain.models.configuracion import (
     ActualizarConfiguracionAnioDTO,
-    ActualizarInfoInstitucionalDTO,
     ConfiguracionAnio,
-    InformacionInstitucionalDTO,
     NuevaConfiguracionAnioDTO,
 )
 from src.domain.models.usuario import (
