@@ -41,7 +41,13 @@ from typing import Self
 from pydantic import Field, computed_field, field_validator, model_validator
 
 from src.domain.models.alerta import NivelAlerta
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    DTODominio,
+    EntidadDominio,
+    NombrePropioStr,
+    TextoLargoStr,
+    TextoMedioStr,
+)
 from src.domain.models.decimal_types import NotaDecimal
 
 # =============================================================================
@@ -85,10 +91,10 @@ class TipoSituacion(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
+    nombre: NombrePropioStr
     nivel: int = 1
-    descripcion: str | None = None
-    protocolo: str | None = None
+    descripcion: TextoMedioStr | None = None
+    protocolo: TextoLargoStr | None = None
     activa: bool = True
     institucion_id: int | None = None
 
@@ -96,10 +102,10 @@ class TipoSituacion(EntidadDominio):
 class NuevoTipoSituacionDTO(DTODominio):
     """DTO para crear o editar un tipo de situación."""
 
-    nombre: str
+    nombre: NombrePropioStr
     nivel: int = 1
-    descripcion: str | None = None
-    protocolo: str | None = None
+    descripcion: TextoMedioStr | None = None
+    protocolo: TextoLargoStr | None = None
 
     @field_validator("nivel")
     @classmethod
@@ -126,8 +132,8 @@ class MedidaPedagogica(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
-    descripcion: str | None = None
+    nombre: NombrePropioStr
+    descripcion: TextoMedioStr | None = None
     nivel_minimo: int = 1
     activa: bool = True
     institucion_id: int | None = None
@@ -136,8 +142,8 @@ class MedidaPedagogica(EntidadDominio):
 class NuevaMedidaPedagogicaDTO(DTODominio):
     """DTO para crear o editar una medida pedagógica."""
 
-    nombre: str
-    descripcion: str | None = None
+    nombre: NombrePropioStr
+    descripcion: TextoMedioStr | None = None
     nivel_minimo: int = 1
 
     @field_validator("nivel_minimo")
@@ -167,7 +173,7 @@ class CategoriaObservacion(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
+    nombre: NombrePropioStr
     es_comportamental: bool = False
     activa: bool = True
     institucion_id: int | None = None
@@ -176,7 +182,7 @@ class CategoriaObservacion(EntidadDominio):
 class NuevaCategoriaDTO(DTODominio):
     """DTO para crear una nueva categoría de observación."""
 
-    nombre: str
+    nombre: NombrePropioStr
     es_comportamental: bool = False
 
 
@@ -196,7 +202,7 @@ class PlantillaObservacion(EntidadDominio):
     """
 
     id: int | None = None
-    texto: str
+    texto: TextoLargoStr
     categoria_id: int | None = None
     uso_count: int = 0
     activa: bool = True
@@ -206,7 +212,7 @@ class PlantillaObservacion(EntidadDominio):
 class NuevaPlantillaDTO(DTODominio):
     """DTO para crear una nueva plantilla de observación."""
 
-    texto: str
+    texto: TextoLargoStr
     categoria_id: int | None = None
 
 
@@ -227,7 +233,7 @@ class ObservacionPeriodo(EntidadDominio):
     estudiante_id: int
     asignacion_id: int
     periodo_id: int
-    texto: str
+    texto: TextoLargoStr
     es_publica: bool = True
     fecha_registro: datetime = Field(default_factory=datetime.now)
     usuario_id: int | None = None
@@ -272,9 +278,9 @@ class EntradaSeguimiento(EntidadDominio):
     id: int | None = None
     registro_id: int
     fecha: datetime = Field(default_factory=datetime.now)
-    texto: str
+    texto: TextoLargoStr
     usuario_id: int | None = None
-    usuario_nombre: str | None = None  # solo lectura, resuelto en repo
+    usuario_nombre: str | None = None  # solo lectura, resuelto en repo — R13: nunca recibe dato de cliente
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -291,7 +297,7 @@ class NuevaEntradaSeguimientoDTO(DTODominio):
     """DTO para agregar una entrada al historial de seguimiento."""
 
     registro_id: int
-    texto: str
+    texto: TextoLargoStr
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -321,8 +327,8 @@ class RegistroComportamiento(EntidadDominio):
     periodo_id: int
     fecha: date = Field(default_factory=date.today)
     tipo: TipoRegistro
-    descripcion: str
-    seguimiento: str | None = None
+    descripcion: TextoMedioStr
+    seguimiento: TextoMedioStr | None = None  # R15-ajuste: mismo orden que descripcion
     requiere_firma: bool = False
     acudiente_notificado: bool = False
     usuario_registro_id: int | None = None
@@ -456,7 +462,7 @@ class NotaComportamiento(EntidadDominio):
     # director de grupo. El nombre del campo se conserva por compat con el
     # repositorio; la vista/DTO consolidado (ConceptoComportamientoDTO) expone
     # este texto como `concepto`.
-    observacion: str | None = None
+    observacion: TextoLargoStr | None = None
     usuario_id: int | None = None
 
     @field_validator("valor")
@@ -494,7 +500,7 @@ class NuevaObservacionDTO(DTODominio):
     estudiante_id: int
     asignacion_id: int
     periodo_id: int
-    texto: str
+    texto: TextoLargoStr
     # categoria_id es obligatorio al crear (convivencia_11). Colocado antes
     # de campos con default para que Pydantic no falle en la validación.
     categoria_id: int
@@ -524,7 +530,7 @@ class NuevoRegistroComportamientoDTO(DTODominio):
     grupo_id: int
     periodo_id: int
     tipo: TipoRegistro
-    descripcion: str
+    descripcion: TextoMedioStr
     requiere_firma: bool = False
     fecha: date = Field(default_factory=date.today)
     tipo_situacion_id: int | None = None
@@ -554,7 +560,7 @@ class NuevaNotaComportamientoDTO(DTODominio):
     grupo_id: int
     periodo_id: int
     valor: NotaDecimal
-    observacion: str | None = None
+    observacion: TextoLargoStr | None = None
 
     @field_validator("valor")
     @classmethod
@@ -635,7 +641,7 @@ class NuevaAlertaSeguimientoDTO(DTODominio):
 
     estudiante_id: int
     usuario_destino_id: int  # profesor destinatario
-    descripcion: str
+    descripcion: TextoMedioStr
     nivel: NivelAlerta = NivelAlerta.ADVERTENCIA
 
 

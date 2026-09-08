@@ -31,7 +31,16 @@ from typing import Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    CodigoStr,
+    DireccionStr,
+    DocumentoStr,
+    DTODominio,
+    EntidadDominio,
+    NombrePersonaStr,
+    NombrePropioStr,
+    TextoCortStr,
+)
 
 # =============================================================================
 # Enumeraciones
@@ -107,16 +116,16 @@ class Estudiante(EntidadDominio):
 
     # Campos de identidad
     id: int | None = None
-    id_publico: str | None = None
+    id_publico: CodigoStr | None = None
     tipo_documento: TipoDocumento = TipoDocumento.TI
-    numero_documento: str
+    numero_documento: DocumentoStr
 
     # Datos personales
-    nombre: str
-    apellido: str
+    nombre: NombrePropioStr
+    apellido: NombrePropioStr
     genero: Genero | None = None
     fecha_nacimiento: date | None = None
-    direccion: str | None = None
+    direccion: DireccionStr | None = None
 
     # Contexto académico
     grupo_id: int | None = None
@@ -324,14 +333,14 @@ class NuevoEstudianteDTO(DTODominio):
     """
 
     tipo_documento: TipoDocumento = TipoDocumento.TI
-    numero_documento: str
-    nombre: str
-    apellido: str
+    numero_documento: DocumentoStr
+    nombre: NombrePropioStr
+    apellido: NombrePropioStr
     genero: Genero | None = None
     fecha_nacimiento: date | None = None
     grupo_id: int | None = None
     posee_piar: bool = False
-    direccion: str | None = None
+    direccion: DireccionStr | None = None
 
     # Los mismos validadores de Estudiante aplican aquí
     @field_validator("numero_documento", mode="before")
@@ -367,13 +376,13 @@ class ActualizarEstudianteDTO(DTODominio):
     El número de documento no es actualizable (es el identificador principal).
     """
 
-    nombre: str | None = None
-    apellido: str | None = None
+    nombre: NombrePropioStr | None = None
+    apellido: NombrePropioStr | None = None
     genero: Genero | None = None
     fecha_nacimiento: date | None = None
     grupo_id: int | None = None
     posee_piar: bool | None = None
-    direccion: str | None = None
+    direccion: DireccionStr | None = None
     estado_matricula: EstadoMatricula | None = None
 
     @field_validator("nombre", "apellido", mode="before")
@@ -413,7 +422,7 @@ class FiltroEstudiantesDTO(DTODominio):
     grupos_ids: list[int] | None = None
     estado_matricula: EstadoMatricula | None = None
     posee_piar: bool | None = None
-    busqueda: str | None = None  # nombre, apellido o documento
+    busqueda: NombrePersonaStr | None = None  # nombre, apellido o documento
     # Multi-tenant (paso_30, frente B2): scope de institución. El servicio lo
     # resuelve desde institucion_actual() (None → admin ve todo; institución →
     # filtra). El repo aplica WHERE e.institucion_id = ? cuando no es None.
@@ -487,7 +496,7 @@ class MovimientoEstudiante(EntidadDominio):
     grupo_destino_id: int | None = None
     fecha_movimiento: datetime | None = None
     tipo_movimiento: TipoMovimiento = TipoMovimiento.TRASLADO
-    motivo: str | None = None
+    motivo: TextoCortStr | None = None
     usuario_registro_id: int | None = None
 
     @field_validator("motivo", mode="before")

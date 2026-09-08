@@ -25,7 +25,9 @@ Opciones deliberadamente ausentes:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
 class ZeciModel(BaseModel):
@@ -74,8 +76,89 @@ class DTODominio(ZeciModel):
     )
 
 
+# =============================================================================
+# Tipos de texto con cota de longitud (datos_07_restricciones_str)
+#
+# Fuente única de verdad para las cotas semánticas de los campos de texto.
+# Cambiar el max_length aquí propaga la cota a todos los campos que usan el tipo.
+# Ver design.md §1 (R4, R5).
+# =============================================================================
+
+DocumentoStr = Annotated[str, StringConstraints(max_length=30)]
+"""Números de documento (TI, CC, CE, NUIP, PASAPORTE). max=30 con margen doble."""
+
+GrupoCodigoStr = Annotated[str, StringConstraints(max_length=20)]
+"""Códigos de grupo escolar (601, A1, 1101-B, …). max=20."""
+
+TelefonoStr = Annotated[str, StringConstraints(max_length=20)]
+"""Teléfono/celular con prefijo internacional y separadores. max=20."""
+
+EtiquetaStr = Annotated[str, StringConstraints(max_length=50)]
+"""Etiquetas de pantalla cortas (nombre nivel desempeño, sala, etiqueta franja). max=50."""
+
+CodigoStr = Annotated[str, StringConstraints(max_length=50)]
+"""Identificadores cortos de sistema (username, código externo, NIT, código área). max=50."""
+
+DaneStr = Annotated[str, StringConstraints(min_length=12, max_length=12)]
+"""Código DANE: longitud fija exacta de 12 dígitos (estándar externo). min=max=12."""
+
+PasswordStr = Annotated[str, StringConstraints(max_length=128)]
+"""Campos que transportan contraseñas — política vigente max=128 (R20)."""
+
+NombrePropioStr = Annotated[str, StringConstraints(max_length=100)]
+"""Nombres de persona (nombre/apellido individuales), nombres cortos de entidades. max=100."""
+
+NombreAreaStr = Annotated[str, StringConstraints(max_length=120)]
+"""Nombres de área de conocimiento (Ley 115; max real ~80 chars colombianos). max=120."""
+
+NombrePersonaStr = Annotated[str, StringConstraints(max_length=150)]
+"""Nombre completo de persona natural (nombre_completo). max=150."""
+
+NombreInstStr = Annotated[str, StringConstraints(max_length=200)]
+"""Nombres de institución educativa, nombres oficiales, referencias a resoluciones. max=200."""
+
+DireccionStr = Annotated[str, StringConstraints(max_length=200)]
+"""Direcciones físicas (calle + número + complemento). max=200."""
+
+EmailStr = Annotated[str, StringConstraints(max_length=254)]
+"""Correo electrónico — máximo RFC 5321 para una dirección enrutable (R16). max=254."""
+
+TextoCortStr = Annotated[str, StringConstraints(max_length=500)]
+"""Descripciones cortas, enunciados de logros, descripciones de escenario. max=500."""
+
+RutaLocalStr = Annotated[str, StringConstraints(max_length=500)]
+"""Rutas del sistema de archivos local (R21). max=500."""
+
+TextoMedioStr = Annotated[str, StringConstraints(max_length=1000)]
+"""Descripciones de registros de comportamiento, protocolos breves. max=1000."""
+
+TextoLargoStr = Annotated[str, StringConstraints(max_length=2000)]
+"""Textos narrativos libres (observaciones de periodo, seguimientos, plantillas). max=2000."""
+
+UrlStr = Annotated[str, StringConstraints(max_length=2048)]
+"""URLs de recursos remotos (logo_url); límite práctico de cliente HTTP (R21). max=2048."""
+
+
 __all__ = [
+    "CodigoStr",
+    "DaneStr",
+    "DireccionStr",
     "DTODominio",
+    "DocumentoStr",
+    "EmailStr",
     "EntidadDominio",
+    "EtiquetaStr",
+    "GrupoCodigoStr",
+    "NombreAreaStr",
+    "NombreInstStr",
+    "NombrePersonaStr",
+    "NombrePropioStr",
+    "PasswordStr",
+    "RutaLocalStr",
+    "TelefonoStr",
+    "TextoCortStr",
+    "TextoLargoStr",
+    "TextoMedioStr",
+    "UrlStr",
     "ZeciModel",
 ]

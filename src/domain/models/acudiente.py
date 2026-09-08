@@ -31,7 +31,15 @@ from enum import StrEnum
 
 from pydantic import computed_field, field_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    DireccionStr,
+    DocumentoStr,
+    DTODominio,
+    EmailStr,
+    EntidadDominio,
+    NombrePersonaStr,
+    TelefonoStr,
+)
 
 # =============================================================================
 # Enumeraciones
@@ -75,12 +83,12 @@ class Acudiente(EntidadDominio):
 
     id: int | None = None
     tipo_documento: TipoDocumentoAcudiente = TipoDocumentoAcudiente.CC
-    numero_documento: str
-    nombre_completo: str
+    numero_documento: DocumentoStr
+    nombre_completo: NombrePersonaStr
     parentesco: Parentesco
-    celular: str | None = None
-    email: str | None = None
-    direccion: str | None = None
+    celular: TelefonoStr | None = None
+    email: EmailStr | None = None
+    direccion: DireccionStr | None = None
     activo: bool = True
     usuario_id: int | None = None  # portal v3.0
     institucion_id: int | None = None
@@ -216,12 +224,12 @@ class NuevoAcudienteDTO(DTODominio):
     """Datos para registrar un acudiente nuevo."""
 
     tipo_documento: TipoDocumentoAcudiente = TipoDocumentoAcudiente.CC
-    numero_documento: str
-    nombre_completo: str
+    numero_documento: DocumentoStr
+    nombre_completo: NombrePersonaStr
     parentesco: Parentesco
-    celular: str | None = None
-    email: str | None = None
-    direccion: str | None = None
+    celular: TelefonoStr | None = None
+    email: EmailStr | None = None
+    direccion: DireccionStr | None = None
 
     @field_validator("numero_documento", mode="before")
     @classmethod
@@ -260,11 +268,11 @@ class NuevoAcudienteDTO(DTODominio):
 class ActualizarAcudienteDTO(DTODominio):
     """Campos actualizables de un acudiente. Todos opcionales."""
 
-    nombre_completo: str | None = None
+    nombre_completo: NombrePersonaStr | None = None
     parentesco: Parentesco | None = None
-    celular: str | None = None
-    email: str | None = None
-    direccion: str | None = None
+    celular: TelefonoStr | None = None
+    email: EmailStr | None = None
+    direccion: DireccionStr | None = None
 
     @field_validator("nombre_completo", mode="before")
     @classmethod

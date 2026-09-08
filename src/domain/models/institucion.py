@@ -28,7 +28,21 @@ from enum import StrEnum
 
 from pydantic import Field, field_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    CodigoStr,
+    DaneStr,
+    DireccionStr,
+    DTODominio,
+    EmailStr,
+    EntidadDominio,
+    NombreInstStr,
+    NombrePersonaStr,
+    NombrePropioStr,
+    RutaLocalStr,
+    TelefonoStr,
+    TextoCortStr,
+    UrlStr,
+)
 
 # =============================================================================
 # Enums (mejora_06)
@@ -65,26 +79,26 @@ class Institucion(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
-    nit: str | None = None  # NIT / identificador tributario
-    codigo: str | None = None  # código externo (p.ej. DANE)
+    nombre: NombreInstStr
+    nit: CodigoStr | None = None  # NIT / identificador tributario
+    codigo: CodigoStr | None = None  # código externo (p.ej. DANE)
     activa: bool = True
     fecha_creacion: date = Field(default_factory=date.today)
 
     # Campos de identidad institucional (mejora_06)
-    nombre_oficial: str | None = None
-    codigo_dane: str | None = None
-    rector: str | None = None
-    direccion: str | None = None
-    pais: str | None = None
-    departamento: str | None = None
-    municipio: str | None = None
-    telefono: str | None = None
-    logo_path: str | None = None
-    logo_url: str | None = None
-    resolucion_aprobacion: str | None = None
-    lema: str | None = None
-    email_institucional: str | None = None
+    nombre_oficial: NombreInstStr | None = None
+    codigo_dane: DaneStr | None = None
+    rector: NombrePersonaStr | None = None
+    direccion: DireccionStr | None = None
+    pais: NombrePropioStr | None = None
+    departamento: NombrePropioStr | None = None
+    municipio: NombrePropioStr | None = None
+    telefono: TelefonoStr | None = None
+    logo_path: RutaLocalStr | None = None
+    logo_url: UrlStr | None = None
+    resolucion_aprobacion: NombreInstStr | None = None
+    lema: TextoCortStr | None = None
+    email_institucional: EmailStr | None = None
     jornada_principal: JornadaPrincipal | None = None
     tipo_institucion: TipoInstitucion | None = None
     calendario: Calendario | None = None
@@ -151,9 +165,9 @@ class Institucion(EntidadDominio):
 class NuevaInstitucionDTO(DTODominio):
     """Datos para crear una institución nueva."""
 
-    nombre: str
-    nit: str | None = None
-    codigo: str | None = None
+    nombre: NombreInstStr
+    nit: CodigoStr | None = None
+    codigo: CodigoStr | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -180,21 +194,21 @@ class NuevaInstitucionDTO(DTODominio):
 class ActualizarInstitucionDTO(DTODominio):
     """Campos editables de la entidad Institucion. Todos opcionales."""
 
-    nombre: str | None = None
-    nit: str | None = None
-    nombre_oficial: str | None = None
-    codigo_dane: str | None = None
-    rector: str | None = None
-    direccion: str | None = None
-    pais: str | None = None
-    departamento: str | None = None
-    municipio: str | None = None
-    telefono: str | None = None
-    logo_path: str | None = None
-    logo_url: str | None = None
-    resolucion_aprobacion: str | None = None
-    lema: str | None = None
-    email_institucional: str | None = None
+    nombre: NombreInstStr | None = None
+    nit: CodigoStr | None = None
+    nombre_oficial: NombreInstStr | None = None
+    codigo_dane: DaneStr | None = None
+    rector: NombrePersonaStr | None = None
+    direccion: DireccionStr | None = None
+    pais: NombrePropioStr | None = None
+    departamento: NombrePropioStr | None = None
+    municipio: NombrePropioStr | None = None
+    telefono: TelefonoStr | None = None
+    logo_path: RutaLocalStr | None = None
+    logo_url: UrlStr | None = None
+    resolucion_aprobacion: NombreInstStr | None = None
+    lema: TextoCortStr | None = None
+    email_institucional: EmailStr | None = None
     jornada_principal: JornadaPrincipal | None = None
     tipo_institucion: TipoInstitucion | None = None
     calendario: Calendario | None = None
@@ -229,17 +243,17 @@ class NuevaInstitucionConDirectorDTO(DTODominio):
     """
 
     # Institución — datos básicos (todos obligatorios en el flujo admin).
-    nombre: str
-    nombre_oficial: str | None = None
-    codigo_dane: str
-    pais: str = "Colombia"
-    departamento: str
-    municipio: str
+    nombre: NombreInstStr
+    nombre_oficial: NombreInstStr | None = None
+    codigo_dane: DaneStr
+    pais: NombrePropioStr = "Colombia"
+    departamento: NombrePropioStr
+    municipio: NombrePropioStr
 
     # Director — la contraseña la genera el servicio (temporal).
-    director_usuario: str
-    director_nombre_completo: str
-    director_email: str
+    director_usuario: CodigoStr
+    director_nombre_completo: NombrePersonaStr
+    director_email: EmailStr
 
     @field_validator("nombre", mode="before")
     @classmethod

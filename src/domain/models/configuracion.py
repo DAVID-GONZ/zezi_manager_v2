@@ -33,7 +33,19 @@ if TYPE_CHECKING:
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    DaneStr,
+    DireccionStr,
+    DTODominio,
+    EntidadDominio,
+    EtiquetaStr,
+    NombreInstStr,
+    NombrePersonaStr,
+    NombrePropioStr,
+    RutaLocalStr,
+    TelefonoStr,
+    TextoCortStr,
+)
 from src.domain.models.decimal_types import QUANT_NOTA, NotaDecimal
 
 # =============================================================================
@@ -267,14 +279,14 @@ class ActualizarInfoInstitucionalDTO(DTODominio):
     afectar la configuración de notas.
     """
 
-    nombre_institucion: str | None = None
-    dane_code: str | None = None
-    rector: str | None = None
-    direccion: str | None = None
-    municipio: str | None = None
-    telefono_institucion: str | None = None
-    logo_path: str | None = None
-    resolucion_aprobacion: str | None = None
+    nombre_institucion: NombreInstStr | None = None
+    dane_code: DaneStr | None = None
+    rector: NombrePersonaStr | None = None
+    direccion: DireccionStr | None = None
+    municipio: NombrePropioStr | None = None
+    telefono_institucion: TelefonoStr | None = None
+    logo_path: RutaLocalStr | None = None
+    resolucion_aprobacion: NombreInstStr | None = None
 
     @field_validator("nombre_institucion", mode="before")
     @classmethod
@@ -381,10 +393,10 @@ class NivelDesempeno(EntidadDominio):
 
     id: int | None = None
     anio_id: int
-    nombre: str
+    nombre: EtiquetaStr
     rango_min: NotaDecimal
     rango_max: NotaDecimal
-    descripcion: str | None = None
+    descripcion: TextoCortStr | None = None
     orden: int = Field(default=0, ge=0)
 
     @field_validator("anio_id")
@@ -484,10 +496,10 @@ class NuevoNivelDesempenoDTO(DTODominio):
     """Datos para crear un nivel de desempeño."""
 
     anio_id: int
-    nombre: str
+    nombre: EtiquetaStr
     rango_min: NotaDecimal
     rango_max: NotaDecimal
-    descripcion: str | None = None
+    descripcion: TextoCortStr | None = None
     orden: int = 0
 
     @field_validator("nombre", mode="before")
@@ -522,10 +534,10 @@ class NuevoNivelDesempenoDTO(DTODominio):
 class ActualizarNivelDesempenoDTO(DTODominio):
     """Campos actualizables de un nivel de desempeño."""
 
-    nombre: str | None = None
+    nombre: EtiquetaStr | None = None
     rango_min: NotaDecimal | None = None
     rango_max: NotaDecimal | None = None
-    descripcion: str | None = None
+    descripcion: TextoCortStr | None = None
     orden: int | None = None
 
     def aplicar_a(self, nivel: NivelDesempeno) -> NivelDesempeno:

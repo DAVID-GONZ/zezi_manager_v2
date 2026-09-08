@@ -23,7 +23,15 @@ from typing import Self
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    DTODominio,
+    EntidadDominio,
+    EtiquetaStr,
+    GrupoCodigoStr,
+    NombreAreaStr,
+    NombrePropioStr,
+    TextoCortStr,
+)
 
 # =============================================================================
 # Enumeraciones
@@ -82,9 +90,9 @@ class AreaConocimiento(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
-    codigo: str | None = None
-    color: str | None = None  # hex "#RGB" o "#RRGGBB"; None = sin color
+    nombre: NombreAreaStr
+    codigo: EtiquetaStr | None = None
+    color: str | None = None  # excepcion: hex color max=7; ver design.md §3
     institucion_id: int | None = None
 
     @field_validator("nombre", mode="before")
@@ -128,11 +136,11 @@ class Asignatura(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
-    codigo: str | None = None
+    nombre: NombrePropioStr
+    codigo: EtiquetaStr | None = None
     area_id: int | None = None
     horas_semanales: int = Field(default=1, ge=1)
-    tipo_sala_requerido: str | None = None  # None = cualquier sala / "Aula"
+    tipo_sala_requerido: EtiquetaStr | None = None  # None = cualquier sala / "Aula"
     bloque_doble: bool = False  # requiere franjas consecutivas
     horas_consecutivas: int = Field(default=1, ge=1)  # bloques dobles N horas seguidas
     # Multi-tenant (paso_29): institución dueña. None = sin tenant (single-tenant
@@ -177,8 +185,8 @@ class Grupo(EntidadDominio):
     """
 
     id: int | None = None
-    codigo: str
-    nombre: str | None = None
+    codigo: GrupoCodigoStr
+    nombre: NombrePropioStr | None = None
     grado: int | None = None
     jornada: Jornada = Jornada.UNICA
     capacidad_maxima: int = Field(default=40, ge=1)
@@ -260,7 +268,7 @@ class Grado(EntidadDominio):
 
     id: int | None = None
     numero: int = Field(ge=1, le=13)
-    nombre: str | None = None
+    nombre: EtiquetaStr | None = None
     min_estudiantes: int = Field(default=0, ge=0)
     max_estudiantes: int = Field(default=40, ge=1)
     horas_semanales: int = Field(default=0, ge=0)
@@ -309,10 +317,10 @@ class EscenarioHorario(EntidadDominio):
 
     id: int | None = None
     anio_id: int
-    nombre: str
-    descripcion: str | None = None
+    nombre: NombrePropioStr
+    descripcion: TextoCortStr | None = None
     activo: bool = False
-    created_at: str | None = None
+    created_at: str | None = None  # R14: instante de tiempo ISO 8601
 
     @field_validator("anio_id")
     @classmethod
@@ -336,8 +344,8 @@ class NuevoEscenarioDTO(DTODominio):
     """DTO para crear un nuevo escenario de horario."""
 
     anio_id: int
-    nombre: str
-    descripcion: str | None = None
+    nombre: NombrePropioStr
+    descripcion: TextoCortStr | None = None
 
     @field_validator("anio_id")
     @classmethod
@@ -380,7 +388,7 @@ class Horario(EntidadDominio):
     dia_semana: DiaSemana
     hora_inicio: time
     hora_fin: time
-    sala: str = "Aula"
+    sala: EtiquetaStr = "Aula"
 
     @field_validator("grupo_id", "asignatura_id", "usuario_id")
     @classmethod
@@ -467,7 +475,7 @@ class Logro(EntidadDominio):
     id: int | None = None
     asignacion_id: int
     periodo_id: int
-    descripcion: str
+    descripcion: TextoCortStr
     orden: int = Field(default=0, ge=0)
 
     @field_validator("asignacion_id", "periodo_id")
@@ -513,10 +521,10 @@ class Franja(EntidadDominio):
     id: int | None = None
     plantilla_id: int
     orden: int = Field(ge=1)
-    hora_inicio: str
-    hora_fin: str
+    hora_inicio: str  # R14: representación de hora HH:MM
+    hora_fin: str  # R14: representación de hora HH:MM
     tipo: TipoFranja = TipoFranja.LECTIVA
-    etiqueta: str | None = None
+    etiqueta: EtiquetaStr | None = None
 
     @field_validator("plantilla_id")
     @classmethod
@@ -586,8 +594,8 @@ class PlantillaFranja(EntidadDominio):
     """
 
     id: int | None = None
-    nombre: str
-    jornada: str = "UNICA"
+    nombre: NombrePropioStr
+    jornada: str = "UNICA"  # R14: conjunto cerrado JORNADAS_VALIDAS destinado a enum
     dias_activos: list[str]
     activa: bool = False
     created_at: str | None = None
@@ -631,8 +639,8 @@ class PlantillaFranja(EntidadDominio):
 
 
 class NuevaPlantillaFranjaDTO(DTODominio):
-    nombre: str
-    jornada: str = "UNICA"
+    nombre: NombrePropioStr
+    jornada: str = "UNICA"  # R14: conjunto cerrado JORNADAS_VALIDAS destinado a enum
     dias_activos: list[str]
 
     def to_plantilla(self) -> PlantillaFranja:
@@ -643,10 +651,10 @@ class NuevaPlantillaFranjaDTO(DTODominio):
 class NuevaFranjaDTO(DTODominio):
     plantilla_id: int
     orden: int
-    hora_inicio: str
-    hora_fin: str
+    hora_inicio: str  # R14: representación de hora HH:MM
+    hora_fin: str  # R14: representación de hora HH:MM
     tipo: TipoFranja = TipoFranja.LECTIVA
-    etiqueta: str | None = None
+    etiqueta: EtiquetaStr | None = None
 
     def to_franja(self) -> Franja:
         """Construye una Franja a partir de los datos del DTO."""
@@ -699,7 +707,7 @@ class DisponibilidadDocente(EntidadDominio):
 
 class ConfigGeneracion(EntidadDominio):
     id: int | None = None
-    nombre: str
+    nombre: NombrePropioStr
     periodo_id: int = Field(gt=0)
     anio_id: int = Field(gt=0)
     plantilla_id: int = Field(gt=0)
@@ -743,7 +751,7 @@ class NuevaDisponibilidadDTO(DTODominio):
 
 
 class NuevaConfigGeneracionDTO(DTODominio):
-    nombre: str
+    nombre: NombrePropioStr
     periodo_id: int
     anio_id: int
     plantilla_id: int
@@ -854,9 +862,9 @@ class FranjaReunion(EntidadDominio):
     """Franja reservada para reunión de un conjunto de docentes."""
 
     id: int | None = None
-    nombre: str
+    nombre: NombrePropioStr
     docentes: list[int]  # lista de usuario_id
-    dia_semana: str
+    dia_semana: str  # R14: validado contra DIAS_VALIDOS (conjunto cerrado)
     franja_orden: int = Field(ge=1)
     modo: ModoFranjaReunion = ModoFranjaReunion.PREFERENTE
     institucion_id: int | None = None
@@ -926,8 +934,8 @@ class PlanEstudios(EntidadDominio):
 
 
 class NuevaAreaDTO(DTODominio):
-    nombre: str
-    codigo: str | None = None
+    nombre: NombreAreaStr
+    codigo: EtiquetaStr | None = None
 
     @field_validator("nombre", mode="before")
     @classmethod
@@ -944,11 +952,11 @@ class NuevaAreaDTO(DTODominio):
 
 
 class NuevaAsignaturaDTO(DTODominio):
-    nombre: str
-    codigo: str | None = None
+    nombre: NombrePropioStr
+    codigo: EtiquetaStr | None = None
     area_id: int | None = None
     horas_semanales: int = 1
-    tipo_sala_requerido: str | None = None
+    tipo_sala_requerido: EtiquetaStr | None = None
     bloque_doble: bool = False
     horas_consecutivas: int = Field(default=1, ge=1)
     institucion_id: int | None = None  # paso_29: lo resuelve el servicio si falta
@@ -968,8 +976,8 @@ class NuevaAsignaturaDTO(DTODominio):
 
 
 class NuevoGrupoDTO(DTODominio):
-    codigo: str
-    nombre: str | None = None
+    codigo: GrupoCodigoStr
+    nombre: NombrePropioStr | None = None
     grado: int | None = None
     jornada: Jornada = Jornada.UNICA
     capacidad_maxima: int = 40
@@ -998,7 +1006,7 @@ class Sala(EntidadDominio):
     """Sala o espacio físico donde se dictan clases."""
 
     id: int | None = None
-    nombre: str
+    nombre: NombrePropioStr
     tipo: TipoSala = TipoSala.AULA
     capacidad: int = Field(default=30, ge=1)
     institucion_id: int | None = None  # paso_32: lo resuelve el servicio si falta
@@ -1020,7 +1028,7 @@ class Sala(EntidadDominio):
 
 
 class NuevaSalaDTO(DTODominio):
-    nombre: str
+    nombre: NombrePropioStr
     tipo: TipoSala = TipoSala.AULA
     capacidad: int = 30
 
@@ -1039,7 +1047,7 @@ class NuevoHorarioDTO(DTODominio):
     hora_inicio: time
     hora_fin: time
     asignacion_id: int | None = None
-    sala: str = "Aula"
+    sala: EtiquetaStr = "Aula"
 
     @field_validator("hora_inicio", "hora_fin", mode="before")
     @classmethod
@@ -1065,7 +1073,7 @@ class NuevoHorarioDTO(DTODominio):
 class NuevoLogroDTO(DTODominio):
     asignacion_id: int
     periodo_id: int
-    descripcion: str
+    descripcion: TextoCortStr
     orden: int = 0
 
     @field_validator("descripcion", mode="before")

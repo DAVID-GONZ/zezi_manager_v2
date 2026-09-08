@@ -33,7 +33,15 @@ from enum import StrEnum
 
 from pydantic import Field, field_validator
 
-from src.domain.models.base import DTODominio, EntidadDominio
+from src.domain.models.base import (
+    CodigoStr,
+    DTODominio,
+    EmailStr,
+    EntidadDominio,
+    NombrePersonaStr,
+    PasswordStr,
+    TelefonoStr,
+)
 
 # =============================================================================
 # Enumeraciones
@@ -71,10 +79,10 @@ class Usuario(EntidadDominio):
     """
 
     id: int | None = None
-    usuario: str  # username — inmutable tras creación
-    nombre_completo: str
-    email: str | None = None
-    telefono: str | None = None
+    usuario: CodigoStr  # username — inmutable tras creación
+    nombre_completo: NombrePersonaStr
+    email: EmailStr | None = None
+    telefono: TelefonoStr | None = None
     rol: Rol = Rol.PROFESOR
     activo: bool = True
     # Cambio forzado de contraseña (A2 — seguridad_01): se activa cuando el
@@ -97,7 +105,7 @@ class Usuario(EntidadDominio):
     # servicio en la entidad RETORNADA por crear/resetear para que el admin la
     # comunique al usuario. `exclude=True` lo saca de model_dump (auditoría,
     # logs); `repr=False` evita que aparezca en reprs/trazas.
-    password_temporal: str | None = Field(default=None, exclude=True, repr=False)
+    password_temporal: PasswordStr | None = Field(default=None, exclude=True, repr=False)
 
     # ------------------------------------------------------------------
     # Validadores de campo
@@ -331,12 +339,12 @@ class NuevoUsuarioDTO(DTODominio):
     Si no se provee, el servicio usa el username como contraseña inicial.
     """
 
-    usuario: str
-    nombre_completo: str
+    usuario: CodigoStr
+    nombre_completo: NombrePersonaStr
     rol: Rol = Rol.PROFESOR
-    email: str | None = None
-    telefono: str | None = None
-    password: str | None = None  # gestionada por IAuthenticationService
+    email: EmailStr | None = None
+    telefono: TelefonoStr | None = None
+    password: PasswordStr | None = None  # gestionada por IAuthenticationService
     institucion_id: int | None = None  # multi-tenant (paso_24)
 
     @field_validator("usuario", mode="before")
@@ -381,9 +389,9 @@ class ActualizarUsuarioDTO(DTODominio):
     El username y el rol no se actualizan aquí.
     """
 
-    nombre_completo: str | None = None
-    email: str | None = None
-    telefono: str | None = None
+    nombre_completo: NombrePersonaStr | None = None
+    email: EmailStr | None = None
+    telefono: TelefonoStr | None = None
 
     @field_validator("nombre_completo", mode="before")
     @classmethod
@@ -443,7 +451,7 @@ class FiltroUsuariosDTO(DTODominio):
 
     rol: Rol | None = None
     solo_activos: bool = True
-    busqueda: str | None = None  # nombre o username
+    busqueda: NombrePersonaStr | None = None  # nombre o username
     institucion_id: int | None = None  # multi-tenant scope (paso_24)
     pagina: int = Field(default=1, ge=1)
     por_pagina: int = Field(default=50, ge=1, le=200)
