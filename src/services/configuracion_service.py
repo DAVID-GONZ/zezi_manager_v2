@@ -116,24 +116,6 @@ class ConfiguracionService:
                 config = self._repo.actualizar(config.model_copy(update=_upd))
         except Exception:
             pass
-        # Auto-snapshot (mejora_06): copia identidad vigente de la institución al nuevo año
-        try:
-            from container import Container
-
-            snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
-            if snap:
-                dto_snap = ActualizarInfoInstitucionalDTO(
-                    **{
-                        k: v
-                        for k, v in snap.items()
-                        if k in ActualizarInfoInstitucionalDTO.model_fields
-                    }
-                )
-                config_snap = dto_snap.aplicar_a(config)
-                if config_snap != config:
-                    config = self._repo.actualizar(config_snap)
-        except Exception:
-            pass  # best-effort; el año se creó correctamente
         return config
 
     @requiere_escritura
@@ -161,12 +143,22 @@ class ConfiguracionService:
         anio_id: int,
         dto: ActualizarInfoInstitucionalDTO,
     ) -> ConfiguracionAnio:
-        """Actualiza los datos institucionales del año indicado."""
-        config = self._repo.get_by_id(anio_id)
-        if config is None:
-            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
-        config_actualizada = dto.aplicar_a(config)
-        return self._repo.actualizar(config_actualizada)
+        """
+        Actualiza la identidad institucional del año indicado.
+
+        Delega en la institución dueña del año (R7).
+        Lanza ReglaDeNegocioError si el año no tiene institución asociada (R8).
+        """
+        config = self.get_by_id(anio_id)
+        if config.institucion_id is None:
+            raise ReglaDeNegocioError(
+                "El año lectivo no tiene institución asociada. "
+                "Asigne una institución antes de actualizar la identidad institucional."
+            )
+        from container import Container
+        inst_dto = dto.to_actualizar_institucion_dto()
+        Container.institucion_service().actualizar(config.institucion_id, inst_dto)
+        return config
 
     def get_activa(self, institucion_id: int | None = None) -> ConfiguracionAnio:
         """
@@ -199,11 +191,27 @@ class ConfiguracionService:
 
     def get_info_institucional(self, anio_id: int) -> InformacionInstitucionalDTO:
         """
-        Retorna el DTO de información institucional.
-        Lanza ValueError si faltan campos obligatorios para boletines.
+        Retorna el DTO de información institucional del año lectivo.
+
+        - Si el año no tiene institución asociada, retorna defaults sin fallar (R5).
+        - Si tiene institución, construye el DTO desde la entidad Institucion (R4, R14).
+        - Lanza ReglaDeNegocioError/ValueError si faltan DANE o rector para boletines (R15).
         """
         config = self.get_by_id(anio_id)
-        return InformacionInstitucionalDTO.desde_configuracion(config)
+        if config.institucion_id is None:
+            # R5: sin institución, retorna valores por defecto sin lanzar.
+            return InformacionInstitucionalDTO(
+                anio=config.anio,
+                nombre_institucion="Institución Educativa",
+                dane_code=None,
+                rector=None,
+                nota_minima_aprobacion=config.nota_minima_aprobacion,
+            )
+        from container import Container
+        inst = Container.institucion_service().get(config.institucion_id)
+        return InformacionInstitucionalDTO.desde_institucion(
+            inst, config.anio, config.nota_minima_aprobacion
+        )
 
     # ------------------------------------------------------------------
     # NivelDesempeno
@@ -343,28 +351,22 @@ class ConfiguracionService:
     @requiere_escritura
     def sincronizar_snapshot_desde_institucion(self, anio_id: int) -> ConfiguracionAnio:
         """
-        Copia la identidad vigente de la institución al snapshot del año indicado (R6).
-        Solo actualiza campos no nulos de la institución.
+        Obsoleto desde datos_06: la identidad institucional ya no se duplica en el
+        año lectivo. Este método conserva su firma para compatibilidad con el código
+        de interfaz existente, pero su efecto es nulo.
+
+        Lanza NoEncontradoError si el año no existe (comportamiento anterior preservado).
         """
         config = self._repo.get_by_id(anio_id)
         if config is None:
-            raise NoEncontradoError(f"No existe configuración con id {anio_id}.", detalles={"recurso": "configuracion_anio", "id": anio_id})
+            raise NoEncontradoError(
+                f"No existe configuración con id {anio_id}.",
+                detalles={"recurso": "configuracion_anio", "id": anio_id},
+            )
         from src.services.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(config.institucion_id)
-        try:
-            from container import Container
-
-            snap = Container.institucion_service().snapshot_institucional(config.institucion_id)
-        except Exception:
-            snap = {}
-        if not snap:
-            return config
-        dto_snap = ActualizarInfoInstitucionalDTO(
-            **{k: v for k, v in snap.items() if k in ActualizarInfoInstitucionalDTO.model_fields}
-        )
-        config_actualizada = dto_snap.aplicar_a(config)
-        return self._repo.actualizar(config_actualizada)
+        return config
 
 
 __all__ = ["ConfiguracionService"]

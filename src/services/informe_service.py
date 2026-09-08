@@ -30,6 +30,8 @@ from src.domain.ports.estadisticos_repo import IEstadisticosRepository
 from src.domain.ports.service_ports import IExporterService
 
 if TYPE_CHECKING:
+    from src.domain.models.configuracion import InformacionInstitucionalDTO
+    from src.services.configuracion_service import ConfiguracionService
     from src.services.convivencia_service import ConvivenciaService
 
 # ── Sanitización de datos para exportación ───────────────────────────────────
@@ -112,18 +114,25 @@ class InformeService:
         exporter: IExporterService | None = None,
         estudiante_repo=None,
         convivencia_svc_provider: Callable[[], ConvivenciaService] | None = None,
+        config_svc_provider: Callable[[], ConfiguracionService] | None = None,
     ) -> None:
         """Inyecta el repo de estadísticos y, opcionalmente, el exportador,
-        el repo de estudiantes y un proveedor lazy de ``ConvivenciaService``.
+        el repo de estudiantes, un proveedor lazy de ``ConvivenciaService``
+        y un proveedor lazy de ``ConfiguracionService``.
 
         ``convivencia_svc_provider`` es un callable que retorna
         ``ConvivenciaService``; se usa lazy para evitar ciclos de wiring.
         Si es None, los métodos de convivencia retornan dicts vacíos.
+
+        ``config_svc_provider`` es un callable que retorna ``ConfiguracionService``;
+        se usa para el punto de acceso único de identidad institucional (R16).
+        Si es None, ``get_informacion_institucional`` lanza DependenciaNoDisponibleError.
         """
         self._estadisticos_repo = estadisticos_repo
         self._exporter = exporter
         self._estudiante_repo = estudiante_repo
         self._convivencia_svc_provider = convivencia_svc_provider
+        self._config_svc_provider = config_svc_provider
 
     # ------------------------------------------------------------------
     # Helpers
@@ -137,6 +146,28 @@ class InformeService:
                 codigo=CodigoError.EXPORTADOR_NO_DISPONIBLE,
             )
         return self._exporter
+
+    # ------------------------------------------------------------------
+    # Información institucional — punto de acceso único (R16)
+    # ------------------------------------------------------------------
+
+    def get_informacion_institucional(self, anio_id: int) -> "InformacionInstitucionalDTO":
+        """
+        Punto de acceso único a la información institucional para
+        boletines e informes (R16).
+
+        Lanza DependenciaNoDisponibleError si no hay config_svc_provider.
+        Lanza ReglaDeNegocioError/ValueError si faltan DANE o rector (R15).
+        """
+        if self._config_svc_provider is None:
+            raise DependenciaNoDisponibleError(
+                "No hay un ConfiguracionService configurado. "
+                "Proporcione config_svc_provider al construir InformeService.",
+                codigo=CodigoError.EXPORTADOR_NO_DISPONIBLE,
+            )
+        from src.domain.models.configuracion import InformacionInstitucionalDTO  # noqa: F401
+        svc = self._config_svc_provider()
+        return svc.get_info_institucional(anio_id)
 
     # ------------------------------------------------------------------
     # Datos de convivencia para boletín (convivencia_32 — thin wrappers)

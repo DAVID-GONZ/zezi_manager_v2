@@ -101,7 +101,7 @@
   {
     "id": "datos_06_identidad_institucional",
     "nombre": "Fuente unica de identidad institucional",
-    "status": "pending",
+    "status": "done",
     "destino_v2": "src/domain/models/configuracion.py, src/domain/models/institucion.py, src/domain/ports/configuracion_repo.py, src/domain/ports/institucion_repo.py, src/infrastructure/db/repositories/sqlite_configuracion_repo.py, src/infrastructure/db/repositories/sqlite_institucion_repo.py, src/services/configuracion_service.py, src/services/institucion_service.py, src/services/informe_service.py, tests/unit/services/test_identidad_institucional.py",
     "operacion": "modificar",
     "sdd": true,
@@ -110,7 +110,7 @@
   {
     "id": "datos_07_restricciones_str",
     "nombre": "Restricciones de longitud y formato en campos de texto",
-    "status": "pending",
+    "status": "spec_ready",
     "destino_v2": "src/domain/models/base.py, src/domain/models/usuario.py, src/domain/models/institucion.py, src/domain/models/estudiante.py, src/domain/models/acudiente.py, src/domain/models/convivencia.py, src/domain/models/configuracion.py, src/domain/models/infraestructura.py, tests/unit/domain/test_restricciones_str.py",
     "operacion": "modificar",
     "sdd": true,

@@ -88,28 +88,6 @@ class InstitucionService:
         inst_actualizada = dto.aplicar_a(inst)
         return self._repo.actualizar(inst_actualizada)
 
-    def snapshot_institucional(self, institucion_id: int | None) -> dict:
-        """
-        Retorna dict con campos de identidad mapeados a las claves de ConfiguracionAnio.
-        Solo incluye campos con valor no-None. Retorna {} si no hay datos o la institución no existe.
-        """
-        if institucion_id is None:
-            return {}
-        inst = self._repo.get_by_id(institucion_id)
-        if inst is None:
-            return {}
-        mapeo = {
-            "nombre_institucion": inst.nombre_oficial or inst.nombre or None,
-            "dane_code": inst.codigo_dane,
-            "rector": inst.rector,
-            "direccion": inst.direccion,
-            "municipio": inst.municipio,
-            "telefono_institucion": inst.telefono,
-            "logo_path": inst.logo_path,
-            "resolucion_aprobacion": inst.resolucion_aprobacion,
-        }
-        return {k: v for k, v in mapeo.items() if v is not None}
-
     @requiere_escritura
     def marcar_configuracion_inicial_completa(self, institucion_id: int) -> Institucion:
         """

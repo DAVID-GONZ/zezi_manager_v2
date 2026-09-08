@@ -17,6 +17,14 @@ from src.domain.models.configuracion import (
 from src.domain.models.tenant import TenantScope
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 
+# Columnas académicas — se usa SELECT explícito para no cargar los campos de
+# identidad institucional que permanecen como columnas muertas en la tabla SQLite
+# (datos_06: la identidad vive en la entidad Institucion, no en el año lectivo).
+_COLS_ACADEMICOS = (
+    "id, anio, institucion_id, fecha_inicio_clases, fecha_fin_clases, "
+    "nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala, activo"
+)
+
 
 class SqliteConfiguracionRepository(IConfiguracionRepository):
     def __init__(self, conn: sqlite3.Connection | None = None):
@@ -40,20 +48,20 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
         with self._get_conn() as conn:
             if isinstance(institucion_id, int):
                 row = conn.execute(
-                    "SELECT * FROM configuracion_anio "
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio "
                     "WHERE institucion_id = ? AND activo = 1 LIMIT 1",
                     (institucion_id,),
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE activo = 1 LIMIT 1"
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio WHERE activo = 1 LIMIT 1"
                 ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
     def get_by_id(self, anio_id: int) -> ConfiguracionAnio | None:
         with self._get_conn() as conn:
             row = conn.execute(
-                "SELECT * FROM configuracion_anio WHERE id = ?", (anio_id,)
+                f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio WHERE id = ?", (anio_id,)
             ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
@@ -61,12 +69,13 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
         with self._get_conn() as conn:
             if isinstance(institucion_id, int):
                 row = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE institucion_id = ? AND anio = ?",
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio "
+                    "WHERE institucion_id = ? AND anio = ?",
                     (institucion_id, anio),
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE anio = ?", (anio,)
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio WHERE anio = ?", (anio,)
                 ).fetchone()
             return ConfiguracionAnio(**dict(row)) if row else None
 
@@ -74,12 +83,13 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
         with self._get_conn() as conn:
             if isinstance(institucion_id, int):
                 rows = conn.execute(
-                    "SELECT * FROM configuracion_anio WHERE institucion_id = ? ORDER BY anio DESC",
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio "
+                    "WHERE institucion_id = ? ORDER BY anio DESC",
                     (institucion_id,),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM configuracion_anio ORDER BY anio DESC"
+                    f"SELECT {_COLS_ACADEMICOS} FROM configuracion_anio ORDER BY anio DESC"
                 ).fetchall()
             return [ConfiguracionAnio(**dict(r)) for r in rows]
 
@@ -90,10 +100,8 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 INSERT INTO configuracion_anio (
                     anio, institucion_id, fecha_inicio_clases, fecha_fin_clases,
                     nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala,
-                    nombre_institucion,
-                    dane_code, rector, direccion, municipio,
-                    telefono_institucion, logo_path, resolucion_aprobacion, activo
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    activo
+                ) VALUES (?,?,?,?,?,?,?,?)
                 """,
                 (
                     config.anio,
@@ -103,14 +111,6 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                     config.nota_minima_aprobacion,
                     config.nota_minima_escala,
                     config.nota_maxima_escala,
-                    config.nombre_institucion,
-                    config.dane_code,
-                    config.rector,
-                    config.direccion,
-                    config.municipio,
-                    config.telefono_institucion,
-                    config.logo_path,
-                    config.resolucion_aprobacion,
                     int(config.activo),
                 ),
             )
@@ -125,10 +125,7 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                 UPDATE configuracion_anio SET
                     anio = ?, institucion_id = ?, fecha_inicio_clases = ?, fecha_fin_clases = ?,
                     nota_minima_aprobacion = ?, nota_minima_escala = ?, nota_maxima_escala = ?,
-                    nombre_institucion = ?,
-                    dane_code = ?, rector = ?, direccion = ?, municipio = ?,
-                    telefono_institucion = ?, logo_path = ?,
-                    resolucion_aprobacion = ?, activo = ?
+                    activo = ?
                 WHERE id = ?
                 """,
                 (
@@ -139,14 +136,6 @@ class SqliteConfiguracionRepository(IConfiguracionRepository):
                     config.nota_minima_aprobacion,
                     config.nota_minima_escala,
                     config.nota_maxima_escala,
-                    config.nombre_institucion,
-                    config.dane_code,
-                    config.rector,
-                    config.direccion,
-                    config.municipio,
-                    config.telefono_institucion,
-                    config.logo_path,
-                    config.resolucion_aprobacion,
                     int(config.activo),
                     config.id,
                 ),

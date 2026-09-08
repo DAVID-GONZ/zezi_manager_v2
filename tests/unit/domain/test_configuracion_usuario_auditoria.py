@@ -217,7 +217,6 @@ class TestConfiguracionAnio:
 
     def test_configuracion_valida(self, config):
         assert config.activo is True
-        assert config.tiene_informacion_institucional is False
 
     def test_anio_fuera_de_rango_falla(self):
         with pytest.raises(ValidationError, match="2000 y 2100"):
@@ -272,17 +271,6 @@ class TestConfiguracionAnio:
         with pytest.raises(ValueError, match="ya está inactivo"):
             inactiva.desactivar()
 
-    def test_nombre_institucion_vacio_falla(self):
-        with pytest.raises(ValidationError, match="vacío"):
-            ConfiguracionAnio(anio=2025, nombre_institucion="   ")
-
-    def test_info_institucional_completa(self, config):
-        con_info = config.model_copy(update={
-            "dane_code": "123456789000",
-            "rector": "María García Pérez",
-        })
-        assert con_info.tiene_informacion_institucional is True
-
     def test_nuevo_dto(self):
         dto = NuevaConfiguracionAnioDTO(anio=2026, nota_minima_aprobacion=60.0)
         cfg = dto.to_configuracion()
@@ -292,34 +280,6 @@ class TestConfiguracionAnio:
     def test_actualizar_nota_invalida_falla(self):
         with pytest.raises(ValidationError, match="0 y 100"):
             ActualizarConfiguracionAnioDTO(nota_minima_aprobacion=105.0)
-
-    def test_actualizar_info_institucional(self, config):
-        dto = ActualizarInfoInstitucionalDTO(
-            rector="Dr. Luis Pérez",
-            dane_code="123456000000",
-        )
-        actualizada = dto.aplicar_a(config)
-        assert actualizada.rector == "Dr. Luis Pérez"
-        assert actualizada.dane_code == "123456000000"
-        assert actualizada.nombre_institucion == config.nombre_institucion
-
-    def test_informacion_institucional_dto_desde_configuracion(self, config):
-        config_completa = config.model_copy(update={
-            "dane_code": "123456000000",
-            "rector": "Dr. Luis Pérez",
-        })
-        info = InformacionInstitucionalDTO.desde_configuracion(config_completa)
-        assert info.dane_code == "123456000000"
-        assert info.anio == 2025
-
-    def test_informacion_institucional_sin_dane_falla(self, config):
-        with pytest.raises(ValueError, match="DANE"):
-            InformacionInstitucionalDTO.desde_configuracion(config)
-
-    def test_informacion_institucional_sin_rector_falla(self, config):
-        sin_rector = config.model_copy(update={"dane_code": "123456000000"})
-        with pytest.raises(ValueError, match="rector"):
-            InformacionInstitucionalDTO.desde_configuracion(sin_rector)
 
 
 # =============================================================================

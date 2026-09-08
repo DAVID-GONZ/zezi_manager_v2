@@ -26,7 +26,10 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
+
+if TYPE_CHECKING:
+    from src.domain.models.institucion import ActualizarInstitucionDTO
 
 from pydantic import Field, computed_field, field_validator, model_validator
 
@@ -62,17 +65,6 @@ class ConfiguracionAnio(EntidadDominio):
     nota_minima_escala: NotaDecimal = Decimal("0.00")  # límite inferior de la escala
     nota_maxima_escala: NotaDecimal = Decimal("100.00")  # límite superior de la escala
 
-    # Datos institucionales (para boletines e informes)
-    nombre_institucion: str = "Institución Educativa"
-    dane_code: str | None = None
-    rector: str | None = None
-    direccion: str | None = None
-    municipio: str | None = None
-    telefono_institucion: str | None = None
-    logo_path: str | None = None
-    logo_url: str | None = None  # URL del logo institucional (topbar/sidebar)
-    resolucion_aprobacion: str | None = None
-
     # ------------------------------------------------------------------
     # Validadores de campo
     # ------------------------------------------------------------------
@@ -100,36 +92,6 @@ class ConfiguracionAnio(EntidadDominio):
         if not (0 <= v <= 100):
             raise ValueError(f"La escala debe estar entre 0 y 100 (recibido: {v}).")
         return v
-
-    @field_validator("nombre_institucion", mode="before")
-    @classmethod
-    def validar_nombre_institucion(cls, v: str) -> str:
-        """Normaliza el nombre institucional; exige no vacío y ≤200 caracteres."""
-        v = str(v).strip()
-        if not v:
-            raise ValueError("El nombre de la institución no puede estar vacío.")
-        if len(v) > 200:
-            raise ValueError(f"El nombre no puede exceder 200 caracteres (tiene {len(v)}).")
-        return v
-
-    @field_validator(
-        "dane_code",
-        "rector",
-        "direccion",
-        "municipio",
-        "telefono_institucion",
-        "logo_path",
-        "logo_url",
-        "resolucion_aprobacion",
-        mode="before",
-    )
-    @classmethod
-    def limpiar_campo_opcional(cls, v: str | None) -> str | None:
-        """Normaliza los campos institucionales opcionales (strip); vacío → None."""
-        if v is None:
-            return None
-        v = str(v).strip()
-        return v if v else None
 
     # ------------------------------------------------------------------
     # Validador de modelo
@@ -189,12 +151,6 @@ class ConfiguracionAnio(EntidadDominio):
 
     @computed_field
     @property
-    def tiene_informacion_institucional(self) -> bool:
-        """True si tiene los campos mínimos para generar boletines."""
-        return bool(self.dane_code and self.rector)
-
-    @computed_field
-    @property
     def aprobacion_en_rango(self) -> bool:
         """True si la nota mínima de aprobación cae dentro de la escala
         [nota_minima_escala, nota_maxima_escala]."""
@@ -237,7 +193,6 @@ class NuevaConfiguracionAnioDTO(DTODominio):
     nota_minima_aprobacion: NotaDecimal = Decimal("60.00")
     nota_minima_escala: NotaDecimal = Decimal("0.00")
     nota_maxima_escala: NotaDecimal = Decimal("100.00")
-    nombre_institucion: str = "Institución Educativa"
 
     @field_validator("anio")
     @classmethod
@@ -332,10 +287,22 @@ class ActualizarInfoInstitucionalDTO(DTODominio):
             raise ValueError("El nombre no puede ser una cadena vacía.")
         return v
 
-    def aplicar_a(self, config: ConfiguracionAnio) -> ConfiguracionAnio:
-        """Devuelve una copia de la configuración con los campos institucionales no nulos aplicados."""
-        cambios = {k: v for k, v in self.model_dump().items() if v is not None}
-        return config.model_copy(update=cambios) if cambios else config
+    def to_actualizar_institucion_dto(self) -> "ActualizarInstitucionDTO":
+        """
+        Construye un ActualizarInstitucionDTO mapeando los campos de identidad
+        desde las claves de configuracion hacia las claves canónicas de Institucion.
+        """
+        from src.domain.models.institucion import ActualizarInstitucionDTO
+        return ActualizarInstitucionDTO(
+            nombre_oficial=self.nombre_institucion,
+            codigo_dane=self.dane_code,
+            rector=self.rector,
+            direccion=self.direccion,
+            municipio=self.municipio,
+            telefono=self.telefono_institucion,
+            logo_path=self.logo_path,
+            resolucion_aprobacion=self.resolucion_aprobacion,
+        )
 
 
 class InformacionInstitucionalDTO(DTODominio):
@@ -347,43 +314,14 @@ class InformacionInstitucionalDTO(DTODominio):
 
     anio: int
     nombre_institucion: str
-    dane_code: str
-    rector: str
+    dane_code: str | None = None
+    rector: str | None = None
     nota_minima_aprobacion: NotaDecimal
     direccion: str | None = None
     municipio: str | None = None
     telefono_institucion: str | None = None
     logo_path: str | None = None
     resolucion_aprobacion: str | None = None
-
-    @classmethod
-    def desde_configuracion(cls, config: ConfiguracionAnio) -> InformacionInstitucionalDTO:
-        """
-        Construye el DTO desde una ConfiguracionAnio.
-        Falla explícitamente si faltan campos obligatorios para boletines.
-        """
-        if not config.dane_code:
-            raise ValueError(
-                f"El año {config.anio} no tiene código DANE. "
-                "Completa la información institucional antes de generar boletines."
-            )
-        if not config.rector:
-            raise ValueError(
-                f"El año {config.anio} no tiene rector registrado. "
-                "Completa la información institucional antes de generar boletines."
-            )
-        return cls(
-            anio=config.anio,
-            nombre_institucion=config.nombre_institucion,
-            dane_code=config.dane_code,
-            rector=config.rector,
-            nota_minima_aprobacion=config.nota_minima_aprobacion,
-            direccion=config.direccion,
-            municipio=config.municipio,
-            telefono_institucion=config.telefono_institucion,
-            logo_path=config.logo_path,
-            resolucion_aprobacion=config.resolucion_aprobacion,
-        )
 
     @classmethod
     def desde_institucion(
