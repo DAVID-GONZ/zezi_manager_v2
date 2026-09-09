@@ -146,7 +146,7 @@
   {
     "id": "obs_02_puerta_huella",
     "nombre": "Puerta de huella — check_auditoria.py con lista de deuda",
-    "status": "spec_ready",
+    "status": "in_progress",
     "destino_v2": "scripts/check_auditoria.py, scripts/init.py, tests/unit/test_check_auditoria.py, tests/integration/test_huella_cobertura.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -209,7 +209,7 @@
   {
     "id": "infra_01_retirar_weasyprint",
     "nombre": "Retirar weasyprint — reportlab como motor único de PDF",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "src/infrastructure/exporters/pdf_exporter.py, src/infrastructure/exporters/exporter_factory.py, src/infrastructure/exporters/null_exporter.py, src/infrastructure/exporters/openpyxl_exporter.py, src/domain/ports/service_ports.py, src/interface/pages/informes/boletin_anual.py, src/interface/pages/informes/boletin_periodo.py, tests/unit/infrastructure/test_exporters.py, requirements.txt",
     "operacion": "modificar",
     "sdd": true,

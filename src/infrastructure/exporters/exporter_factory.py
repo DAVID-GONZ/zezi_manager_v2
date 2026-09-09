@@ -23,7 +23,7 @@ def crear_exporter() -> IExporterService:
     """
     # Nivel 1: PDF via reportlab + Excel + CSV (completo)
     try:
-        import openpyxl  # noqa: F401
+        import openpyxl
         import reportlab  # noqa: F401
 
         from .pdf_exporter import ReportLabExporter
