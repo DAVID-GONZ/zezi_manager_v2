@@ -12,7 +12,7 @@ from datetime import date
 
 from src.domain.exceptions import CodigoError, ConflictoError, NoEncontradoError
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.cierre import (
     CierreAnio,
     CierrePeriodo,
@@ -28,6 +28,7 @@ from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -62,29 +63,6 @@ class CierreService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     def _verificar_alerta_academica(
         self,
@@ -337,13 +315,13 @@ class CierreService:
             usuario_id=usuario_id,
         )
         self._cierre_repo.actualizar_promocion(promocion_decidida)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "promociones_anuales",
-            promocion.id,
-            datos_ant,
-            promocion_decidida.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="promociones_anuales",
+            registro_id=promocion.id,
+            anterior=datos_ant,
+            nuevo=promocion_decidida.model_dump(mode="json"),
         )
         return promocion_decidida
 
@@ -445,18 +423,16 @@ class CierreService:
         Retorna la cantidad de registros eliminados.
         """
         cantidad = self._cierre_repo.borrar_cierres_periodo(asignacion_id, periodo_id)
-        self._auditar(
-            AccionCambio.DELETE,
-            "cierres_periodo",
-            None,
-            {
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.DELETE,
+            tabla="cierres_periodo",
+            anterior={
                 "asignacion_id": asignacion_id,
                 "periodo_id": periodo_id,
                 "cantidad": cantidad,
                 "motivo": motivo or "",
             },
-            None,
-            usuario_id,
         )
         return cantidad
 

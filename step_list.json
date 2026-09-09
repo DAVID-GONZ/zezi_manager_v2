@@ -133,5 +133,77 @@
     "operacion": "modificar",
     "sdd": true,
     "descripcion": "La puerta scripts/init.py ejecuta run_tests.py en modo 'rapido', que deselecciona los marcadores integration, slow, e2e y browser. Con ese agujero, 30 tests de integracion llevan rotos desde tenant_02/tenant_03 sin que ninguna puerta lo senale: 25 fallan con TypeError por llamar a repositorios con firmas anteriores al institucion_id obligatorio (14 metodos en 6 repositorios) y 5 por el desfase de zona horaria que aborda datos_08_fecha_zona_horaria. Consecuencia de fondo: la ruta Modelo(**dict(row)) de los 21 repositorios no la verifica nadie, justo cuando datos_02 y backend_07 dependen de que esa hidratacion sea correcta. Actualiza las llamadas a las firmas vigentes y encadena la suite de integracion a la puerta para que no vuelva a pudrirse en silencio. DEPENDE de datos_08: sin el, 5 tests siguen en rojo y la puerta no puede quedar verde."
+  },
+  {
+    "id": "obs_01_huella_actor",
+    "nombre": "Huella completa y atribuible — actor en contexto y helper único",
+    "status": "done",
+    "destino_v2": "src/services/contexto_actor.py, src/services/auditoria_helpers.py, src/domain/models/auditoria.py, container.py, src/services/usuario_service.py, src/services/estudiante_service.py, src/services/periodo_service.py, src/services/asignacion_service.py, src/services/evaluacion_service.py, src/services/cierre_service.py, src/services/habilitacion_service.py, src/services/contexto_tenant.py, src/services/solo_lectura.py, src/interface/context/session_context.py, src/interface/auth/route_guard.py, src/interface/pages/login.py, main.py, tests/unit/services/test_contexto_actor.py, tests/unit/services/test_auditoria_helpers.py, tests/integration/test_huella_actor.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Cimiento de la huella universal. Cinco bugs verificados el 2026-09-08: (1) container.py:431-435 construye HabilitacionService sin auditoria=, asi que sus 4 llamadas a _auditar son no-ops silenciosos en produccion y ninguna habilitacion queda registrada; (2) audit_log.institucion_id es siempre NULL porque las 3 factories de RegistroCambio no lo asignan y los servicios llaman al repo saltandose AuditoriaService, que si lo autorrellenaria, de modo que la bitacora de cambios no es consultable por tenant; (3) ACCESO_DENEGADO esta en el enum, en el CHECK de SQL y en resumen_uso(), pero route_guard, verificar_pertenencia y verificar_escritura solo notifican y redirigen: un intento de acceso cross-tenant o de escalada de privilegios no deja rastro alguno; (4) LOGOUT nunca se emite; (5) ip_address esta en el modelo, en la tabla, en el payload del hash y en la UI, y ningun call site la rellena. Ademas el actor viaja a mano en ~40 call sites, asi que olvidar un usuario_id= escribe una fila anonima sin error, y _auditar esta copiado literalmente 7 veces. Se resuelve con una ContextVar de actor sembrada en SessionContext.desde_storage(), el mismo choke point que ya usan solo_lectura y contexto_tenant, mas un helper unico. RIESGO: el payload del hash de la cadena no debe cambiar de forma o verificar_integridad() reportara alterados los registros preexistentes."
+  },
+  {
+    "id": "obs_02_puerta_huella",
+    "nombre": "Puerta de huella — check_auditoria.py con lista de deuda",
+    "status": "spec_ready",
+    "destino_v2": "scripts/check_auditoria.py, scripts/init.py, tests/unit/test_check_auditoria.py, tests/integration/test_huella_cobertura.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Convierte la cobertura de auditoria en invariante en vez de buen proposito. Auditoria del 2026-09-08: aproximadamente 118 de 137 metodos de servicio que persisten datos no dejan ningun rastro, y audit_log tiene 6 filas frente a 60.480 notas y 3.920 registros de asistencia. Sin puerta, lo que ganen los tramos obs_04 se degrada con el primer servicio nuevo. Inventario por AST de la stdlib, no por regex ni por lineas: la leccion de check_design.py, ciego a las violaciones partidas en varias lineas hasta 2026-08-17, aplica igual aqui porque una llamada a auditar_cambio repartida en cinco lineas es lo normal. La lista SERVICIOS_SIN_HUELLA_DEUDA se calca de ENUMS_SIN_CHECK_DEUDA y tiene doble filo: falla si crece y falla si contiene una entrada que ya tiene huella, para no repetir lo de RESTRICCIONES_DEUDA, que quedo con 5 entradas muertas tras datos_05 y hoy puede enmascarar regresiones. Se acompana de un test de integracion contra base real porque el analisis estatico se puede enganar: una llamada a auditar_cambio puede existir y no escribir nada, que es literalmente el bug de HabilitacionService. DEPENDE de obs_01, que define el helper que la puerta busca."
+  },
+  {
+    "id": "obs_03_security_logger",
+    "nombre": "Logging de seguridad estructurado y alertas (spec S09)",
+    "status": "spec_ready",
+    "destino_v2": "src/domain/ports/security_logger.py, src/infrastructure/logging/security_logger.py, src/domain/policies/alerta_ip.py, config.py, .env.example, .gitignore, container.py, src/services/auditoria_service.py, main.py, tests/unit/infrastructure/test_security_logger.py, tests/unit/domain/test_alerta_ip.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Implementa specs/seguridad_web_09_logging_alertas, nivel N1 del roadmap de seguridad web, redactada el 2026-07-29 y nunca implementada. Estado actual: el logging es texto plano sin rotacion y sin fichero por defecto (LOG_FILE=None y ni siquiera aparece en .env.example); logger.exception aparece 4 veces en todo el repo, asi que de ~450 llamadas la mayoria registra solo str(exc) sin traza; hay 31 bloques except Exception seguidos de pass; la cobertura es de 3 de 35 servicios y 0 de 21 repositorios; no hay manejador global de excepciones; y /health devuelve 200 aunque la base este corrupta. Decision de diseno clave: R5 exige modulo separado y que la interfaz nunca toque el logger, pero los eventos de R1 nacen en la interfaz (login, route guard, ver como); se resuelve colgando el logger de AuditoriaService, que tras obs_01 ya es el punto unico por donde pasan todos. R2 y R7 se cumplen con lista blanca de campos en el formatter, sin kwargs libre, de modo que un campo sensible nuevo simplemente no se escribe. Incluye dos arreglos sobre codigo muerto existente: /health que llama a verify_db_integrity() y devuelve 503, y manejador global de excepciones. DEPENDE de obs_01: hoy LOGOUT, ACCESO_DENEGADO e ip_address no se emiten y R1 quedaria incompleto por construccion."
+  },
+  {
+    "id": "obs_04a_huella_convivencia_asistencia",
+    "nombre": "Huella en convivencia y asistencia (24 métodos)",
+    "status": "spec_ready",
+    "destino_v2": "src/services/convivencia_service.py, src/services/asistencia_service.py, src/services/alerta_service.py, scripts/check_auditoria.py, tests/integration/",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Primer tramo de cobertura universal, elegido primero por exposicion legal. convivencia_service tiene 21 metodos que escriben y cero auditoria; asistencia_service 3 y cero; alerta_service 1 y cero. Es decir: observaciones, comportamiento, seguimiento (material de Ley 1620) y todo el control de asistencia mutan hoy sin dejar constancia de quien edito que. Son ademas los dos modulos que sostienen el posicionamiento comercial del producto. Cada metodo pasa a llamar al helper de obs_01 conservando el estado anterior y el nuevo. Reduce SERVICIOS_SIN_HUELLA_DEUDA en tres entradas. DEPENDE de obs_01 y obs_02."
+  },
+  {
+    "id": "obs_04b_huella_infraestructura_horarios",
+    "nombre": "Huella en infraestructura, horarios, salas y franjas (~63 métodos)",
+    "status": "spec_ready",
+    "destino_v2": "src/services/infraestructura_service.py, src/services/restriccion_generacion_service.py, src/services/escenario_horario_service.py, src/services/horario_service.py, src/services/sala_service.py, src/services/franja_service.py, scripts/check_auditoria.py, tests/integration/",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Tramo grande de la cobertura universal: infraestructura_service 37 metodos que escriben y cero auditoria sobre un repositorio con 58 sentencias de escritura, restriccion_generacion_service 14, escenario_horario_service 5, sala_service 4, franja_service 4, horario_service 3. Va en paso propio porque un diff de ~63 metodos mezclado con los otros tramos seria irrevisable, y el precedente registrado en CLAUDE.md es explicito sobre sepultar el cambio real bajo el ruido. Si al empezar resulta inmanejable, se parte otra vez por servicio. Reduce SERVICIOS_SIN_HUELLA_DEUDA en seis entradas. DEPENDE de obs_01 y obs_02."
+  },
+  {
+    "id": "obs_04c_huella_config_catalogos",
+    "nombre": "Huella en configuración, institución, catálogos y planes (~28 métodos)",
+    "status": "spec_ready",
+    "destino_v2": "src/services/configuracion_service.py, src/services/catalogo_academico_service.py, src/services/plan_estudios_service.py, src/services/institucion_service.py, src/services/plan_mejoramiento_service.py, src/services/nivelacion_service.py, src/services/aprovisionamiento_institucion_service.py, scripts/check_auditoria.py, tests/integration/",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Tercer y ultimo tramo de la cobertura universal: catalogo_academico_service 11 metodos que escriben y cero auditoria, configuracion_service 7, plan_estudios_service 5, institucion_service 2, y uno cada uno plan_mejoramiento, nivelacion y aprovisionamiento. Incluye la configuracion SIEE y la identidad institucional, cuyos cambios hoy no se pueden reconstruir. Al cerrarlo, SERVICIOS_SIN_HUELLA_DEUDA debe quedar vacia y la puerta obs_02 pasa a proteger cobertura total. DEPENDE de obs_01 y obs_02."
+  },
+  {
+    "id": "informes_01_identidad_boletin",
+    "nombre": "Identidad institucional real en boletines PDF y Excel",
+    "status": "spec_ready",
+    "destino_v2": "src/infrastructure/exporters/boletin_pdf.py, src/infrastructure/exporters/pdf_exporter.py, src/infrastructure/exporters/openpyxl_exporter.py, src/services/informe_service.py, tests/unit/infrastructure/test_exporters.py, tests/unit/services/test_convivencia_service.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "BUG MULTI-TENANT. El membrete del boletin esta hardcodeado como literal 'INSTITUCION EDUCATIVA ZECI' en boletin_pdf.py:207, pdf_exporter.py:150 y openpyxl_exporter.py:195, y el logo es una celda vacia. Consecuencia: todo colegio recibe boletines con el membrete de otro. InformeService.get_informacion_institucional() se escribio justo para esto como R16 de datos_06_identidad_institucional, esta cubierto por tests en tests/unit/services/test_identidad_institucional.py y no tiene ni un llamador: es codigo muerto. El patron correcto ya existe en el repositorio, en observador_pdf.py:143-177, que si usa nombre, DANE, rector, municipio, direccion, telefono y resolucion reales. Ojo: tres tests afirman hoy el literal ZECI y hay que actualizarlos. La carga de logo queda fuera, diferida a su paso dedicado."
+  },
+  {
+    "id": "obs_05_admin_auditoria_ui",
+    "nombre": "Auditoría en admin — filtro por institución, paginación y KPIs de uso",
+    "status": "spec_ready",
+    "destino_v2": "src/interface/pages/admin/auditoria.py, src/interface/presenters/admin/auditoria_presenter.py, src/interface/pages/inicio.py, src/services/auditoria_service.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Cierra las carencias de la UI de auditoria, que con la huella universal pasan de incomodas a bloqueantes. Tres huecos: (1) la pagina no expone filtro por institucion aunque FiltroAuditoriaDTO.institucion_id existe y sqlite_auditoria_repo lo soporta en las lineas 163-165 y 306-308, porque AuditoriaPresenter.construir_filtro() nunca lo asigna, de modo que un admin cross-tenant no puede acotar la bitacora a un tenant; (2) no hay paginacion real: _POR_PAGINA=100 es un techo silencioso y set_pagina() existe sin controles en la UI, lo que con decenas de miles de filas hace la pagina inutil; (3) resumen_uso() y ResumenUsoDTO calculan KPIs de uso, estan cubiertos por tests y no los consume nadie desde que el refactor de inicio.py a _ADMIN_CARDS dejo el consumidor por el camino. DEPENDE de obs_04a como minimo: sin volumen real de huella, la paginacion no se puede validar."
   }
 ]

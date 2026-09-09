@@ -82,6 +82,29 @@ def login_page() -> None:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")
 
+            # ── Helper IP ────────────────────────────────────────────────────
+            def _obtener_ip() -> str | None:
+                try:
+                    from nicegui import app as _app
+                    try:
+                        forwarded = _app.storage.request.headers.get("X-Forwarded-For", "")
+                        if forwarded:
+                            return forwarded.split(",")[0].strip()
+                        return getattr(getattr(_app.storage.request, "client", None), "host", None)
+                    except AttributeError:
+                        pass
+                    try:
+                        from nicegui import Client
+                        request = Client.current().request
+                        forwarded = request.headers.get("X-Forwarded-For", "")
+                        if forwarded:
+                            return forwarded.split(",")[0].strip()
+                        return getattr(getattr(request, "client", None), "host", None)
+                    except Exception:
+                        return None
+                except Exception:
+                    return None
+
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
                 error_container.classes(
@@ -199,6 +222,7 @@ def login_page() -> None:
                                 usuario=user_db.usuario,
                                 usuario_id=user_db.id,
                                 tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
+                                ip_address=_obtener_ip(),
                             )
                         )
                     except Exception as audit_exc:
@@ -233,6 +257,7 @@ def login_page() -> None:
                                 EventoSesion(
                                     usuario=nombre_usuario,
                                     tipo_evento=TipoEventoSesion.LOGIN_FALLIDO,
+                                    ip_address=_obtener_ip(),
                                 )
                             )
                         except Exception as audit_exc:

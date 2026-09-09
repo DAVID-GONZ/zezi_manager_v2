@@ -116,6 +116,21 @@ def registrar_rutas_ui() -> None:
             login_page()
 
     def pagina_logout():
+        try:
+            ctx_data = dict(app.storage.user)
+            usuario = ctx_data.get("usuario_nombre", "")
+            usuario_id = ctx_data.get("usuario_id")
+            if usuario:
+                from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
+                Container.auditoria_service().registrar_evento(
+                    EventoSesion(
+                        usuario=usuario,
+                        usuario_id=usuario_id,
+                        tipo_evento=TipoEventoSesion.LOGOUT,
+                    )
+                )
+        except Exception:
+            pass
         app.storage.user.clear()
         ui.navigate.to("/login")
 

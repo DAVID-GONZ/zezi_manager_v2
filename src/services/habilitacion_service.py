@@ -10,7 +10,7 @@ from src.domain.exceptions import (
     ConflictoError,
     NoEncontradoError,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.habilitacion import (
     CerrarPlanMejoramientoDTO,
     EstadoHabilitacion,
@@ -26,6 +26,7 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
@@ -53,29 +54,6 @@ class HabilitacionService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     def _get_habilitacion_o_lanzar(self, hab_id: int) -> Habilitacion:
         hab = self._repo.get_habilitacion(hab_id)
@@ -118,13 +96,12 @@ class HabilitacionService:
 
         habilitacion = dto.to_habilitacion()
         habilitacion = self._repo.guardar_habilitacion(habilitacion)
-        self._auditar(
-            AccionCambio.CREATE,
-            "habilitaciones",
-            habilitacion.id,
-            None,
-            habilitacion.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="habilitaciones",
+            registro_id=habilitacion.id,
+            nuevo=habilitacion.model_dump(mode="json"),
         )
         return habilitacion
 
@@ -162,13 +139,13 @@ class HabilitacionService:
         hab_final = hab_realizada.aprobar() if dto.nota >= nota_minima else hab_realizada.reprobar()
 
         self._repo.actualizar_habilitacion(hab_final)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "habilitaciones",
-            hab_id,
-            datos_ant,
-            hab_final.model_dump(mode="json"),
-            dto.usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="habilitaciones",
+            registro_id=hab_id,
+            anterior=datos_ant,
+            nuevo=hab_final.model_dump(mode="json"),
         )
         return hab_final
 
@@ -215,13 +192,12 @@ class HabilitacionService:
         """Crea un plan de mejoramiento para un estudiante."""
         plan = dto.to_plan(usuario_id=usuario_id)
         plan = self._repo.guardar_plan(plan)
-        self._auditar(
-            AccionCambio.CREATE,
-            "planes_mejoramiento",
-            plan.id,
-            None,
-            plan.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="planes_mejoramiento",
+            registro_id=plan.id,
+            nuevo=plan.model_dump(mode="json"),
         )
         return plan
 
@@ -241,13 +217,13 @@ class HabilitacionService:
         datos_ant = plan.model_dump(mode="json")
         plan_cerrado = plan.cerrar(dto.estado, dto.observacion)
         self._repo.actualizar_plan(plan_cerrado)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "planes_mejoramiento",
-            plan_id,
-            datos_ant,
-            plan_cerrado.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="planes_mejoramiento",
+            registro_id=plan_id,
+            anterior=datos_ant,
+            nuevo=plan_cerrado.model_dump(mode="json"),
         )
         return plan_cerrado
 

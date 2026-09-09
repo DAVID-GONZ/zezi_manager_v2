@@ -77,6 +77,21 @@ def verificar_pertenencia(institucion_id_objeto: int | None) -> None:
     if scope is None:
         return
     if institucion_id_objeto != scope:
+        try:
+            from container import Container
+            from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
+            from src.services.contexto_actor import actor_actual
+            uid = actor_actual()
+            Container.auditoria_service().registrar_evento(
+                EventoSesion(
+                    usuario=str(uid or "anon"),
+                    usuario_id=uid,
+                    tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
+                    detalles=f"Cross-tenant: objeto institucion {institucion_id_objeto!r}",
+                )
+            )
+        except Exception:
+            pass
         raise OperacionFueraDeInstitucionError(
             "La operación afecta a un objeto que no pertenece a tu institución.",
             detalles={"institucion_esperada": scope},

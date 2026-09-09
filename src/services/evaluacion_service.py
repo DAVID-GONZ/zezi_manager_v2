@@ -17,7 +17,7 @@ from src.domain.exceptions import (
     PermisoDenegadoError,
     ReglaDeNegocioError,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.dtos import ContextoAcademicoDTO
 from src.domain.models.evaluacion import (
     Actividad,
@@ -43,6 +43,7 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.siee_repo import ISIEERepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -81,29 +82,6 @@ class EvaluacionService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     def _verificar_periodo_abierto(self, periodo_id: int) -> None:
         if self._periodo_repo is None:
@@ -221,13 +199,12 @@ class EvaluacionService:
 
         categoria = dto.to_categoria()
         categoria = self._repo.guardar_categoria(categoria)
-        self._auditar(
-            AccionCambio.CREATE,
-            "categorias",
-            categoria.id,
-            None,
-            categoria.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="categorias",
+            registro_id=categoria.id,
+            nuevo=categoria.model_dump(mode="json"),
         )
         return categoria
 
@@ -257,13 +234,13 @@ class EvaluacionService:
         datos_ant = categoria.model_dump(mode="json")
         categoria_actualizada = dto.aplicar_a(categoria)
         self._repo.actualizar_categoria(categoria_actualizada)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "categorias",
-            cat_id,
-            datos_ant,
-            categoria_actualizada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="categorias",
+            registro_id=cat_id,
+            anterior=datos_ant,
+            nuevo=categoria_actualizada.model_dump(mode="json"),
         )
         return categoria_actualizada
 
@@ -281,13 +258,12 @@ class EvaluacionService:
         self._verificar_periodo_abierto(categoria.periodo_id)
         datos_ant = categoria.model_dump(mode="json")
         self._repo.eliminar_categoria(cat_id)
-        self._auditar(
-            AccionCambio.DELETE,
-            "categorias",
-            cat_id,
-            datos_ant,
-            None,
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.DELETE,
+            tabla="categorias",
+            registro_id=cat_id,
+            anterior=datos_ant,
         )
 
     def listar_categorias(
@@ -311,13 +287,12 @@ class EvaluacionService:
         """Crea una actividad evaluativa en estado borrador."""
         actividad = dto.to_actividad()
         actividad = self._repo.guardar_actividad(actividad)
-        self._auditar(
-            AccionCambio.CREATE,
-            "actividades",
-            actividad.id,
-            None,
-            actividad.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="actividades",
+            registro_id=actividad.id,
+            nuevo=actividad.model_dump(mode="json"),
         )
         return actividad
 
@@ -330,13 +305,13 @@ class EvaluacionService:
         actividad = self._get_actividad_o_lanzar(act_id)
         actividad_publicada = actividad.publicar()  # lanza si no está en borrador
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.PUBLICADA)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "actividades",
-            act_id,
-            actividad.model_dump(mode="json"),
-            actividad_publicada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="actividades",
+            registro_id=act_id,
+            anterior=actividad.model_dump(mode="json"),
+            nuevo=actividad_publicada.model_dump(mode="json"),
         )
         return actividad_publicada
 
@@ -350,13 +325,13 @@ class EvaluacionService:
         actividad = self._get_actividad_o_lanzar(act_id)
         actividad_cerrada = actividad.cerrar()  # lanza si no está publicada
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.CERRADA)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "actividades",
-            act_id,
-            actividad.model_dump(mode="json"),
-            actividad_cerrada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="actividades",
+            registro_id=act_id,
+            anterior=actividad.model_dump(mode="json"),
+            nuevo=actividad_cerrada.model_dump(mode="json"),
         )
         return actividad_cerrada
 
@@ -370,13 +345,13 @@ class EvaluacionService:
         actividad = self._get_actividad_o_lanzar(act_id)
         actividad_reabierta = actividad.reabrir()  # lanza si no está cerrada
         self._repo.actualizar_estado_actividad(act_id, EstadoActividad.PUBLICADA)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "actividades",
-            act_id,
-            actividad.model_dump(mode="json"),
-            actividad_reabierta.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="actividades",
+            registro_id=act_id,
+            anterior=actividad.model_dump(mode="json"),
+            nuevo=actividad_reabierta.model_dump(mode="json"),
         )
         return actividad_reabierta
 
@@ -398,13 +373,12 @@ class EvaluacionService:
             )
         datos_ant = actividad.model_dump(mode="json")
         self._repo.eliminar_actividad(act_id)
-        self._auditar(
-            AccionCambio.DELETE,
-            "actividades",
-            act_id,
-            datos_ant,
-            None,
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.DELETE,
+            tabla="actividades",
+            registro_id=act_id,
+            anterior=datos_ant,
         )
 
     def listar_actividades(
@@ -575,13 +549,12 @@ class EvaluacionService:
 
         cfg = dto.to_configuracion_siee()
         cfg = self._siee_repo.guardar_configuracion(cfg)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "configuracion_siee",
-            cfg.id,
-            None,
-            cfg.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="configuracion_siee",
+            registro_id=cfg.id,
+            nuevo=cfg.model_dump(mode="json"),
         )
         return cfg
 
@@ -616,13 +589,12 @@ class EvaluacionService:
 
         categoria = dto.to_categoria()
         categoria = self._siee_repo.guardar_categoria_institucional(categoria)
-        self._auditar(
-            AccionCambio.CREATE,
-            "categorias",
-            categoria.id,
-            None,
-            categoria.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="categorias",
+            registro_id=categoria.id,
+            nuevo=categoria.model_dump(mode="json"),
         )
         return categoria
 
@@ -659,13 +631,13 @@ class EvaluacionService:
         datos_ant = cat.model_dump(mode="json")
         cat_actualizada = dto.aplicar_a(cat)
         self._siee_repo.actualizar_categoria_institucional(cat_actualizada)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "categorias",
-            cat_id,
-            datos_ant,
-            cat_actualizada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="categorias",
+            registro_id=cat_id,
+            anterior=datos_ant,
+            nuevo=cat_actualizada.model_dump(mode="json"),
         )
         return cat_actualizada
 
@@ -687,13 +659,12 @@ class EvaluacionService:
 
         datos_ant = cat.model_dump(mode="json")
         self._siee_repo.eliminar_categoria_institucional(cat_id)
-        self._auditar(
-            AccionCambio.DELETE,
-            "categorias",
-            cat_id,
-            datos_ant,
-            None,
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.DELETE,
+            tabla="categorias",
+            registro_id=cat_id,
+            anterior=datos_ant,
         )
 
 

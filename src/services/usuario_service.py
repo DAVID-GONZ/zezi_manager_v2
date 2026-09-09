@@ -20,7 +20,6 @@ from src.domain.exceptions import (
 from src.domain.models.auditoria import (
     AccionCambio,
     EventoSesion,
-    RegistroCambio,
     TipoEventoSesion,
 )
 from src.domain.models.usuario import (
@@ -44,6 +43,7 @@ from src.domain.policies.rbac_usuarios import (
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.service_ports import IAuthenticationService
 from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -68,29 +68,6 @@ class UsuarioService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     @staticmethod
     def _resolver_institucion(institucion_id: int | None) -> int | None:
@@ -277,13 +254,12 @@ class UsuarioService:
         if self._auth is not None:
             self._auth.resetear_password(usuario.id, password)
 
-        self._auditar(
-            AccionCambio.CREATE,
-            "usuarios",
-            usuario.id,
-            None,
-            usuario.model_dump(mode="json"),
-            creado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="usuarios",
+            registro_id=usuario.id,
+            nuevo=usuario.model_dump(mode="json"),
         )
         # La temporal viaja en la entidad retornada (campo efímero, no persistido
         # ni serializado). model_dump de la auditoría arriba ya la excluye.
@@ -301,13 +277,13 @@ class UsuarioService:
         datos_ant = usuario.model_dump(mode="json")
         usuario_actualizado = dto.aplicar_a(usuario)
         self._repo.actualizar(usuario_actualizado)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "usuarios",
-            usuario_id,
-            datos_ant,
-            usuario_actualizado.model_dump(mode="json"),
-            actualizado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="usuarios",
+            registro_id=usuario_id,
+            anterior=datos_ant,
+            nuevo=usuario_actualizado.model_dump(mode="json"),
         )
         return usuario_actualizado
 
@@ -337,13 +313,13 @@ class UsuarioService:
         datos_ant = usuario.model_dump(mode="json")
         self._repo.cambiar_rol(usuario_id, nuevo_rol)
         usuario_actualizado = usuario.model_copy(update={"rol": nuevo_rol})
-        self._auditar(
-            AccionCambio.UPDATE,
-            "usuarios",
-            usuario_id,
-            datos_ant,
-            usuario_actualizado.model_dump(mode="json"),
-            cambiado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="usuarios",
+            registro_id=usuario_id,
+            anterior=datos_ant,
+            nuevo=usuario_actualizado.model_dump(mode="json"),
         )
         self._registrar_evento(
             TipoEventoSesion.CAMBIAR_ROL,
@@ -368,13 +344,13 @@ class UsuarioService:
         self._verificar_gestion(actor_rol, usuario)
         usuario_desactivado = usuario.desactivar()  # lanza si ya está inactivo
         self._repo.desactivar(usuario_id)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "usuarios",
-            usuario_id,
-            usuario.model_dump(mode="json"),
-            usuario_desactivado.model_dump(mode="json"),
-            desactivado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="usuarios",
+            registro_id=usuario_id,
+            anterior=usuario.model_dump(mode="json"),
+            nuevo=usuario_desactivado.model_dump(mode="json"),
         )
         self._registrar_evento(
             TipoEventoSesion.DESACTIVAR_USUARIO,
@@ -398,13 +374,13 @@ class UsuarioService:
         self._verificar_gestion(actor_rol, usuario)
         usuario_reactivado = usuario.reactivar()  # lanza si ya está activo
         self._repo.reactivar(usuario_id)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "usuarios",
-            usuario_id,
-            usuario.model_dump(mode="json"),
-            usuario_reactivado.model_dump(mode="json"),
-            reactivado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="usuarios",
+            registro_id=usuario_id,
+            anterior=usuario.model_dump(mode="json"),
+            nuevo=usuario_reactivado.model_dump(mode="json"),
         )
         self._registrar_evento(
             TipoEventoSesion.ACTIVAR_USUARIO,
@@ -607,13 +583,13 @@ class UsuarioService:
                 "horas_extra": horas_extra,
             }
         )
-        self._auditar(
-            AccionCambio.UPDATE,
-            "usuarios",
-            usuario_id,
-            datos_ant,
-            actualizado.model_dump(mode="json"),
-            actualizado_por_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="usuarios",
+            registro_id=usuario_id,
+            anterior=datos_ant,
+            nuevo=actualizado.model_dump(mode="json"),
         )
         return actualizado
 

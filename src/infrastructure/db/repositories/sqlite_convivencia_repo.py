@@ -55,7 +55,10 @@ class SqliteConvivenciaRepository(IConvivenciaRepository):
         d["acudiente_notificado"] = bool(d["acudiente_notificado"])
         d.setdefault("tipo_situacion_id", None)
         d.setdefault("medida_id", None)
-        return RegistroComportamiento(**d)
+        if isinstance(d.get("fecha"), str):
+            from datetime import date as _date
+            d["fecha"] = _date.fromisoformat(d["fecha"])
+        return RegistroComportamiento.model_construct(**d)
 
     def _row_to_nota(self, row: sqlite3.Row) -> NotaComportamiento:
         return NotaComportamiento(**dict(row))

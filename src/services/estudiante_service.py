@@ -13,7 +13,7 @@ from src.domain.exceptions import (
     PermisoDenegadoError,
     ReglaDeNegocioError,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.dtos import MatriculaMasivaResultadoDTO
 from src.domain.models.estudiante import (
     ActualizarEstudianteDTO,
@@ -29,6 +29,7 @@ from src.domain.models.piar import PIAR, ActualizarPIARDTO, NuevoPIARDTO
 from src.domain.ports.acudiente_repo import IAcudienteRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -83,29 +84,6 @@ class EstudianteService:
                 "importar, editar o registrar PIAR.",
                 codigo=CodigoError.ROL_NO_AUTORIZADO,
             )
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     def _get_estudiante_o_lanzar(self, estudiante_id: int) -> Estudiante:
         est = self._repo.get_by_id(estudiante_id)
@@ -176,13 +154,12 @@ class EstudianteService:
             raise ReglaDeNegocioError(f"Ya existe un estudiante con el documento '{dto.numero_documento}'.", codigo=CodigoError.DOCUMENTO_DUPLICADO)
         estudiante = estudiante.model_copy(update={"institucion_id": institucion_id})
         estudiante = self._repo.guardar(estudiante)
-        self._auditar(
-            AccionCambio.CREATE,
-            "estudiantes",
-            estudiante.id,
-            None,
-            estudiante.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="estudiantes",
+            registro_id=estudiante.id,
+            nuevo=estudiante.model_dump(mode="json"),
         )
         return estudiante
 
@@ -218,13 +195,13 @@ class EstudianteService:
                 motivo=None,
                 usuario_registro_id=usuario_id,
             )
-        self._auditar(
-            AccionCambio.UPDATE,
-            "estudiantes",
-            estudiante_id,
-            datos_ant,
-            estudiante_actualizado.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="estudiantes",
+            registro_id=estudiante_id,
+            anterior=datos_ant,
+            nuevo=estudiante_actualizado.model_dump(mode="json"),
         )
         return estudiante_actualizado
 
@@ -247,13 +224,13 @@ class EstudianteService:
             update={"estado_matricula": EstadoMatricula.RETIRADO}
         )
         self._repo.actualizar_estado_matricula(estudiante_id, EstadoMatricula.RETIRADO.value)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "estudiantes",
-            estudiante_id,
-            datos_ant,
-            estudiante_retirado.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="estudiantes",
+            registro_id=estudiante_id,
+            anterior=datos_ant,
+            nuevo=estudiante_retirado.model_dump(mode="json"),
         )
         return estudiante_retirado
 
@@ -381,13 +358,13 @@ class EstudianteService:
             usuario_registro_id=usuario_id,
         )
         estudiante_actualizado = estudiante.model_copy(update={"grupo_id": grupo_destino_id})
-        self._auditar(
-            AccionCambio.UPDATE,
-            "estudiantes",
-            estudiante_id,
-            datos_ant,
-            estudiante_actualizado.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="estudiantes",
+            registro_id=estudiante_id,
+            anterior=datos_ant,
+            nuevo=estudiante_actualizado.model_dump(mode="json"),
         )
         return estudiante_actualizado
 
@@ -531,13 +508,12 @@ class EstudianteService:
         estudiante = self._get_estudiante_o_lanzar(dto.estudiante_id)
         if not estudiante.posee_piar:
             self._repo.actualizar(estudiante.model_copy(update={"posee_piar": True}))
-        self._auditar(
-            AccionCambio.CREATE,
-            "piars",
-            piar.id,
-            None,
-            piar.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="piars",
+            registro_id=piar.id,
+            nuevo=piar.model_dump(mode="json"),
         )
         return piar
 
@@ -576,13 +552,13 @@ class EstudianteService:
         datos_ant = piar_actual.model_dump(mode="json")
         piar_nuevo = dto.aplicar_a(piar_actual)
         piar_nuevo = self._repo.actualizar_piar(piar_nuevo)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "piars",
-            piar_nuevo.id,
-            datos_ant,
-            piar_nuevo.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="piars",
+            registro_id=piar_nuevo.id,
+            anterior=datos_ant,
+            nuevo=piar_nuevo.model_dump(mode="json"),
         )
         return piar_nuevo
 

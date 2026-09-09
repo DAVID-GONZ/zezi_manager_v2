@@ -56,6 +56,21 @@ def verificar_escritura() -> None:
     solo lectura. No hace nada en el modo normal (default).
     """
     if _solo_lectura.get():
+        try:
+            from container import Container
+            from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
+            from src.services.contexto_actor import actor_actual
+            uid = actor_actual()
+            Container.auditoria_service().registrar_evento(
+                EventoSesion(
+                    usuario=str(uid or "anon"),
+                    usuario_id=uid,
+                    tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
+                    detalles="Intento de escritura en modo solo lectura (Ver como)",
+                )
+            )
+        except Exception:
+            pass
         raise OperacionSoloLecturaError(
             "Sesión en modo solo lectura (Ver como): no se permiten cambios."
         )

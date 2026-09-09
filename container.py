@@ -432,6 +432,7 @@ class Container:
                 repo=cls.habilitacion_repo(),
                 cierre_repo=cls.cierre_repo(),
                 config_repo=cls.configuracion_repo(),
+                auditoria=cls.auditoria_repo(),
             ),
         )
 

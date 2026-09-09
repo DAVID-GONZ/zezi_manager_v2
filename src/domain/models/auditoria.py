@@ -247,6 +247,7 @@ class RegistroCambio(EntidadDominio):
         datos_nuevos: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
+        institucion_id: int | None = None,
     ) -> RegistroCambio:
         """Construye un registro de creación (sin valor anterior)."""
         return cls(
@@ -256,6 +257,7 @@ class RegistroCambio(EntidadDominio):
             registro_id=registro_id,
             valor_anterior=None,
             valor_nuevo=datos_nuevos,
+            institucion_id=institucion_id,
         )
 
     @classmethod
@@ -266,6 +268,7 @@ class RegistroCambio(EntidadDominio):
         datos_nuevos: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
+        institucion_id: int | None = None,
     ) -> RegistroCambio:
         """Construye un registro de actualización."""
         return cls(
@@ -275,6 +278,7 @@ class RegistroCambio(EntidadDominio):
             registro_id=registro_id,
             valor_anterior=datos_anteriores,
             valor_nuevo=datos_nuevos,
+            institucion_id=institucion_id,
         )
 
     @classmethod
@@ -284,6 +288,7 @@ class RegistroCambio(EntidadDominio):
         datos_anteriores: dict,
         registro_id: int | None = None,
         usuario_id: int | None = None,
+        institucion_id: int | None = None,
     ) -> RegistroCambio:
         """Construye un registro de eliminación (sin valor nuevo)."""
         return cls(
@@ -293,6 +298,7 @@ class RegistroCambio(EntidadDominio):
             registro_id=registro_id,
             valor_anterior=datos_anteriores,
             valor_nuevo=None,
+            institucion_id=institucion_id,
         )
 
 

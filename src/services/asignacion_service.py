@@ -19,12 +19,13 @@ from src.domain.models.asignacion import (
     FiltroAsignacionesDTO,
     NuevaAsignacionDTO,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 # =============================================================================
@@ -474,29 +475,6 @@ class AsignacionService:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
-
     def _validar_carga_docente(self, dto: NuevaAsignacionDTO) -> None:
         """Comprueba que agregar esta asignación no supere carga_horaria_max (R4)."""
         if self._usuario_repo is None or self._infra_repo is None:
@@ -564,13 +542,12 @@ class AsignacionService:
 
         asignacion = dto.to_asignacion()
         asignacion = self._repo.guardar(asignacion)
-        self._auditar(
-            AccionCambio.CREATE,
-            "asignaciones",
-            asignacion.id,
-            None,
-            asignacion.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="asignaciones",
+            registro_id=asignacion.id,
+            nuevo=asignacion.model_dump(mode="json"),
         )
         return asignacion
 
@@ -587,13 +564,13 @@ class AsignacionService:
         datos_ant = asig.model_dump(mode="json")
         self._repo.desactivar(asignacion_id)
         asig_desactivada = asig.model_copy(update={"activo": False})
-        self._auditar(
-            AccionCambio.UPDATE,
-            "asignaciones",
-            asignacion_id,
-            datos_ant,
-            asig_desactivada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="asignaciones",
+            registro_id=asignacion_id,
+            anterior=datos_ant,
+            nuevo=asig_desactivada.model_dump(mode="json"),
         )
         return asig_desactivada
 
@@ -610,13 +587,13 @@ class AsignacionService:
         datos_ant = asig.model_dump(mode="json")
         self._repo.reactivar(asignacion_id)
         asig_react = asig.model_copy(update={"activo": True})
-        self._auditar(
-            AccionCambio.UPDATE,
-            "asignaciones",
-            asignacion_id,
-            datos_ant,
-            asig_react.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="asignaciones",
+            registro_id=asignacion_id,
+            anterior=datos_ant,
+            nuevo=asig_react.model_dump(mode="json"),
         )
         return asig_react
 
@@ -643,13 +620,13 @@ class AsignacionService:
         datos_ant = asig.model_dump(mode="json")
         self._repo.reasignar_docente(asignacion_id, nuevo_usuario_id)
         asig_reasignada = asig.model_copy(update={"usuario_id": nuevo_usuario_id})
-        self._auditar(
-            AccionCambio.UPDATE,
-            "asignaciones",
-            asignacion_id,
-            datos_ant,
-            asig_reasignada.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="asignaciones",
+            registro_id=asignacion_id,
+            anterior=datos_ant,
+            nuevo=asig_reasignada.model_dump(mode="json"),
         )
         return asig_reasignada
 

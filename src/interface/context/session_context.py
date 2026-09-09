@@ -93,6 +93,10 @@ class SessionContext:
             storage.get("usuario_rol", ""),
             storage.get("institucion_id"),
         )
+        # Siembra el actor: bajo impersonación usa el admin real, no el suplantado.
+        impersonando = bool(storage.get("impersonando", False))
+        actor_id = storage.get("admin_real_id") if impersonando else storage.get("usuario_id")
+        cls._sincronizar_actor(actor_id)
         return cls(
             usuario_id=storage.get("usuario_id"),
             usuario_nombre=storage.get("usuario_nombre", ""),
@@ -122,6 +126,13 @@ class SessionContext:
         from src.services.solo_lectura import activar_solo_lectura
 
         activar_solo_lectura(valor)
+
+    @staticmethod
+    def _sincronizar_actor(actor_id: int | None) -> None:
+        """Refleja el actor real (admin bajo impersonación o usuario normal) en la capa de servicios."""
+        from src.services.contexto_actor import activar_actor
+
+        activar_actor(actor_id)
 
     @staticmethod
     def _sincronizar_institucion(rol: str, institucion_id: int | None) -> None:
@@ -169,6 +180,9 @@ class SessionContext:
         self._sincronizar_solo_lectura(self.solo_lectura)
         # Mantener el scope de institución coherente (regla admin→None).
         self._sincronizar_institucion(self.usuario_rol, self.institucion_id)
+        # Mantener el actor coherente (admin real bajo impersonación).
+        actor_id = self.admin_real_id if self.impersonando else self.usuario_id
+        self._sincronizar_actor(actor_id)
 
     def to_contexto_academico(self):
         """

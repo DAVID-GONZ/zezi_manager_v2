@@ -184,6 +184,17 @@ SQLAlchemy Core detrás de los mismos puertos.
   Tipos neutros. *(toca schema → puerta de aprobación)*
   - *criterio_done*: `metadata.create_all()` genera schema equivalente en SQLite;
     tests de schema verdes.
+  - **Entradas obligatorias (auditoría 2026-09-08)**: antes de escribir el `MetaData`,
+    leer `docs/auditoria_observabilidad_2026-09-08.md` §5.1, que registra los doce
+    defectos que este paso debe resolver. Tres son bloqueantes: **D1** el orden declarado
+    de `SCHEMA` viola su propio docstring (`grupos` referencia `usuarios` 34 líneas antes
+    de crearla; `observaciones_periodo` referencia `registro_comportamiento`), lo que
+    SQLite tolera y un replay de DDL sobre PostgreSQL no; **D2** `grupos.sala_id` es una
+    FK fantasma, columna declarada sin `FOREIGN KEY`; **D3** `ON CONFLICT REPLACE` en 10
+    tablas, que no existe en PostgreSQL y además destruye la huella de auditoría anterior.
+    Los otros nueve (los 5 `CHECK` de deuda, `institucion_id` nullable, ausencia de
+    transacciones compuestas, y la falta total de tests de esquema, que es la razón por la
+    que D1 y D2 llevaban meses ocultos) están en la misma sección.
 - **backend_05_engine_factory** 🕓 — Factory de engine en `container.py` conmutable
   por config: `DB_BACKEND=sqlite` → `sqlite:///...`; `DB_BACKEND=postgres` →
   `postgresql+psycopg://...`. WAL/pragmas SQLite vía eventos SQLAlchemy.

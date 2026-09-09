@@ -14,7 +14,7 @@ from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
-from src.domain.models.auditoria import AccionCambio, RegistroCambio
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.periodo import (
     HitoPeriodo,
     NuevoHitoPeriodoDTO,
@@ -24,6 +24,7 @@ from src.domain.models.periodo import (
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -47,29 +48,6 @@ class PeriodoService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _auditar(
-        self,
-        accion: AccionCambio,
-        tabla: str,
-        registro_id: int | None,
-        datos_ant: dict | None,
-        datos_nue: dict | None,
-        usuario_id: int | None,
-    ) -> None:
-        if self._auditoria is None:
-            return
-        if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, datos_nue or {}, registro_id, usuario_id)
-        elif accion == AccionCambio.UPDATE:
-            cambio = RegistroCambio.para_actualizacion(
-                tabla, datos_ant or {}, datos_nue or {}, registro_id, usuario_id
-            )
-        else:
-            cambio = RegistroCambio.para_eliminacion(
-                tabla, datos_ant or {}, registro_id, usuario_id
-            )
-        self._auditoria.registrar_cambio(cambio)
 
     def _get_periodo_o_lanzar(self, periodo_id: int) -> Periodo:
         periodo = self._repo.get_by_id(periodo_id)
@@ -113,13 +91,12 @@ class PeriodoService:
 
         periodo = dto.to_periodo()
         periodo = self._repo.guardar(periodo)
-        self._auditar(
-            AccionCambio.CREATE,
-            "periodos",
-            periodo.id,
-            None,
-            periodo.model_dump(mode="json"),
-            None,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.CREATE,
+            tabla="periodos",
+            registro_id=periodo.id,
+            nuevo=periodo.model_dump(mode="json"),
         )
         return periodo
 
@@ -134,13 +111,13 @@ class PeriodoService:
         datos_ant = periodo.model_dump(mode="json")
         periodo_cerrado = periodo.cerrar(datetime.now())
         self._repo.actualizar(periodo_cerrado)
-        self._auditar(
-            AccionCambio.UPDATE,
-            "periodos",
-            periodo_id,
-            datos_ant,
-            periodo_cerrado.model_dump(mode="json"),
-            usuario_id,
+        auditar_cambio(
+            self._auditoria,
+            accion=AccionCambio.UPDATE,
+            tabla="periodos",
+            registro_id=periodo_id,
+            anterior=datos_ant,
+            nuevo=periodo_cerrado.model_dump(mode="json"),
         )
         return periodo_cerrado
 

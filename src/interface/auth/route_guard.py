@@ -253,6 +253,23 @@ def registrar_pagina(
             ui.navigate.to("/login")
             return
         if veredicto == ACCESO_DENEGADO:
+            try:
+                from nicegui import app as _app
+
+                from container import Container
+                from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
+                _u = _app.storage.user.get("usuario_nombre", "anon")
+                _uid = _app.storage.user.get("usuario_id")
+                Container.auditoria_service().registrar_evento(
+                    EventoSesion(
+                        usuario=_u or "anon",
+                        usuario_id=_uid,
+                        tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
+                        detalles=f"Ruta denegada: {ruta!r}",
+                    )
+                )
+            except Exception:
+                pass
             from src.interface.design.components import toast_error
 
             toast_error("Acceso no autorizado")
