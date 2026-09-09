@@ -140,7 +140,7 @@ class OpenpyxlExporter(IExporterService):
     ) -> bytes:
         raise NotImplementedError(
             "PDF no implementado en OpenpyxlExporter. "
-            "Registra un exportador HTML→PDF (weasyprint, reportlab) para esta operación."
+            "Registra un exportador HTML→PDF (reportlab) para esta operación."
         )
 
     def exportar_csv(

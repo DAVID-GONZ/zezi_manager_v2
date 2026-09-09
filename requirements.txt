@@ -8,6 +8,5 @@ pytest-asyncio
 pytest-cov
 pre-commit
 nicegui
-weasyprint
 reportlab
 pypdf

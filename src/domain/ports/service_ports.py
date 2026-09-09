@@ -206,7 +206,7 @@ class IExporterService(ABC):
     El servicio de dominio prepara los datos en estructuras del dominio
     (DTOs, listas); este port los convierte al formato de salida.
     La implementación concreta gestiona las dependencias de librerías
-    (openpyxl, reportlab, weasyprint, etc.).
+    (openpyxl, reportlab, etc.).
     """
 
     @abstractmethod

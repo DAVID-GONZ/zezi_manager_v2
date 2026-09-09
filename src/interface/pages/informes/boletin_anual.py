@@ -108,7 +108,7 @@ def _descargar_pdf_individual(estudiante_id: int, nombre: str, _s: dict) -> None
     except ValueError as exc:
         toast_error(f"Sin datos o exportador no disponible: {exc}")
     except NotImplementedError:
-        toast_warning("PDF no disponible. Instala weasyprint o reportlab.")
+        toast_warning("PDF no disponible. Instala reportlab.")
     except Exception as exc:
         logger.error("Error PDF %s: %s", nombre, exc, exc_info=True)
         toast_error(f"Error al generar boletín de {nombre}.")

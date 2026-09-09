@@ -46,7 +46,7 @@ class NullExporter(IExporterService):
     ) -> bytes:
         raise RuntimeError(
             "El exportador PDF no está disponible. "
-            "Instala weasyprint o reportlab: pip install weasyprint"
+            "Instala reportlab: pip install reportlab"
         )
 
     def exportar_csv(

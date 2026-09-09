@@ -17,35 +17,19 @@ def crear_exporter() -> IExporterService:
     El container llama a esta función una vez al arrancar.
 
     Prioridad:
-      Nivel 1:  WeasyPrintExporter — PDF via weasyprint + Excel + CSV (requiere weasyprint + openpyxl)
-      Nivel 1b: WeasyPrintExporter — PDF via reportlab  + Excel + CSV (requiere reportlab  + openpyxl)
-      Nivel 2:  OpenpyxlExporter   — Excel + CSV        (requiere openpyxl)
-      Nivel 3:  NullExporter       — solo CSV           (sin dependencias)
+      Nivel 1: ReportLabExporter — PDF + Excel + CSV (requiere reportlab + openpyxl)
+      Nivel 2: OpenpyxlExporter  — Excel + CSV       (requiere openpyxl)
+      Nivel 3: NullExporter      — solo CSV          (sin dependencias)
     """
-    # Nivel 1: PDF via weasyprint + Excel + CSV (completo)
-    # Catch Exception (no solo ImportError) porque weasyprint puede fallar con OSError
-    # al intentar cargar libgobject/libpango en Windows sin las libs nativas instaladas.
+    # Nivel 1: PDF via reportlab + Excel + CSV (completo)
     try:
-        import openpyxl
-        import weasyprint  # noqa: F401
-
-        from .pdf_exporter import WeasyPrintExporter
-
-        _log.info("Exportador activo: WeasyPrintExporter (PDF via weasyprint + Excel + CSV)")
-        return WeasyPrintExporter()
-    except Exception:
-        pass
-
-    # Nivel 1b: PDF via reportlab + Excel + CSV
-    # Fallback cuando weasyprint no puede cargar sus librerías nativas.
-    try:
-        import openpyxl
+        import openpyxl  # noqa: F401
         import reportlab  # noqa: F401
 
-        from .pdf_exporter import WeasyPrintExporter
+        from .pdf_exporter import ReportLabExporter
 
-        _log.info("Exportador activo: WeasyPrintExporter (PDF via reportlab + Excel + CSV)")
-        return WeasyPrintExporter()
+        _log.info("Exportador activo: ReportLabExporter (PDF + Excel + CSV)")
+        return ReportLabExporter()
     except ImportError:
         pass
 
@@ -55,15 +39,15 @@ def crear_exporter() -> IExporterService:
 
         from .openpyxl_exporter import OpenpyxlExporter
 
-        _log.warning("weasyprint no disponible. PDF no funcionará. Instala: pip install weasyprint")
+        _log.warning("reportlab no disponible. PDF no funcionará. Instala: pip install reportlab")
         return OpenpyxlExporter()
     except ImportError:
         pass
 
     # Nivel 3: Solo CSV
     _log.warning(
-        "openpyxl y weasyprint no disponibles. "
-        "Solo CSV funcionará. Instala: pip install openpyxl weasyprint"
+        "openpyxl y reportlab no disponibles. "
+        "Solo CSV funcionará. Instala: pip install openpyxl reportlab"
     )
     from .null_exporter import NullExporter
 

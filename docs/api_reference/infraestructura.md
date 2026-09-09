@@ -630,8 +630,8 @@
 - `def handle_endtag(self, tag: str) -> None` — ⚠️ sin docstring
 - `def handle_data(self, data: str) -> None` — ⚠️ sin docstring
 
-### WeasyPrintExporter(IExporterService)
-> Exportador completo: PDF (weasyprint con fallback a reportlab), Excel via openpyxl, CSV nativo.
+### ReportLabExporter(IExporterService)
+> Exportador completo: PDF via reportlab, Excel via openpyxl, CSV nativo.
 
 - `def exportar_pdf( self, html_content: str, ruta_destino: Path | None = None, ) -> bytes` — ⚠️ sin docstring
 - `def exportar_excel( self, datos: list[dict], nombre_hoja: str = "Datos", ruta_destino: Path | None = None, ) -> bytes` — ⚠️ sin docstring

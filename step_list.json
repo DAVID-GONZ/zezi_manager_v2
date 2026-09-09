@@ -205,5 +205,14 @@
     "operacion": "modificar",
     "sdd": true,
     "descripcion": "Cierra las carencias de la UI de auditoria, que con la huella universal pasan de incomodas a bloqueantes. Tres huecos: (1) la pagina no expone filtro por institucion aunque FiltroAuditoriaDTO.institucion_id existe y sqlite_auditoria_repo lo soporta en las lineas 163-165 y 306-308, porque AuditoriaPresenter.construir_filtro() nunca lo asigna, de modo que un admin cross-tenant no puede acotar la bitacora a un tenant; (2) no hay paginacion real: _POR_PAGINA=100 es un techo silencioso y set_pagina() existe sin controles en la UI, lo que con decenas de miles de filas hace la pagina inutil; (3) resumen_uso() y ResumenUsoDTO calculan KPIs de uso, estan cubiertos por tests y no los consume nadie desde que el refactor de inicio.py a _ADMIN_CARDS dejo el consumidor por el camino. DEPENDE de obs_04a como minimo: sin volumen real de huella, la paginacion no se puede validar."
+  },
+  {
+    "id": "infra_01_retirar_weasyprint",
+    "nombre": "Retirar weasyprint — reportlab como motor único de PDF",
+    "status": "in_progress",
+    "destino_v2": "src/infrastructure/exporters/pdf_exporter.py, src/infrastructure/exporters/exporter_factory.py, src/infrastructure/exporters/null_exporter.py, src/infrastructure/exporters/openpyxl_exporter.py, src/domain/ports/service_ports.py, src/interface/pages/informes/boletin_anual.py, src/interface/pages/informes/boletin_periodo.py, tests/unit/infrastructure/test_exporters.py, requirements.txt",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "weasyprint es un binding CFFI: el paquete de PyPI no trae las DLL de GTK/Pango y las carga con ffi.dlopen() en tiempo de import (libgobject-2.0-0, libpango-1.0-0, libharfbuzz-0, libfontconfig-1, libpangoft2-1.0-0), buscando solo en C:\\msys64\\mingw64\\bin y C:\\Program Files\\GTK3-Runtime Win64\\bin. Ninguna existe en el entorno, asi que el import imprime un bloque de advertencia con print() a stdout (no logging, fuera de todo control del logger del proyecto) y relanza OSError. El nivel 1 de crear_exporter() nunca se alcanza: reportlab ya es el motor real desde el primer dia, mientras la clase se llama WeasyPrintExporter y los mensajes de error de cuatro modulos mandan al usuario a instalar weasyprint. El paso retira weasyprint de la cadena, renombra la clase a ReportLabExporter, colapsa los niveles 1 y 1b de la factory en uno, estrecha su except Exception a except ImportError (el catch amplio existia solo por el OSError de las libs nativas) y alinea requirements.txt con lo que el codigo importa. Sin cambio de fidelidad visual: la salida PDF de hoy ya la produce reportlab. Alternativa descartada por David: instalar el runtime GTK, que habria dado render HTML/CSS real a costa de una dependencia nativa fuera de pip en cada maquina y cada despliegue."
   }
 ]

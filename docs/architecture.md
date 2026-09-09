@@ -59,7 +59,7 @@ interface → services → domain ← infrastructure
 - **`domain/`** no importa nada externo (solo stdlib + `pydantic`). Contiene
   entidades, puertos (interfaces `ABC`) y **políticas** puras.
 - **`infrastructure/`** implementa los contratos del dominio. Es la **única**
-  capa que puede tocar `sqlite3`, `pandas`, `bcrypt`, `openpyxl`, `weasyprint`.
+  capa que puede tocar `sqlite3`, `pandas`, `bcrypt`, `openpyxl`, `reportlab`.
 - **`services/`** orquesta casos de uso sin saber de SQL ni de NiceGUI. Solo
   importa de `src/domain/`.
 - **`interface/`** consume servicios vía `Container`, **nunca** repositorios ni

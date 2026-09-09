@@ -121,7 +121,7 @@ def _descargar_pdf_individual(estudiante_id: int, nombre: str, _s: dict) -> None
             src=contenido, filename=f"boletin_{nombre.replace(' ', '_')}_p{_s['periodo_id']}.pdf"
         )
     except NotImplementedError:
-        toast_warning("PDF no disponible. Instala weasyprint o reportlab.")
+        toast_warning("PDF no disponible. Instala reportlab.")
     except Exception as exc:
         logger.error("Error PDF %s: %s", nombre, exc, exc_info=True)
         toast_error(f"Error al generar boletín de {nombre}.")

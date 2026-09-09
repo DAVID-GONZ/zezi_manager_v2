@@ -1,5 +1,5 @@
 """
-WeasyPrintExporter — PDF via weasyprint (con fallback a reportlab), Excel via openpyxl, CSV nativo.
+ReportLabExporter — PDF via reportlab, Excel via openpyxl, CSV nativo.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from src.domain.ports.service_ports import IExporterService
 
-# ── Fallback: HTML → PDF via reportlab ───────────────────────────────────────
+# ── Motor: HTML → PDF via reportlab ──────────────────────────────────────────
 
 
 class _HTMLTableParser(HTMLParser):
@@ -292,14 +292,13 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
 # ── Exportador principal ──────────────────────────────────────────────────────
 
 
-class WeasyPrintExporter(IExporterService):
+class ReportLabExporter(IExporterService):
     """
-    Exportador completo: PDF (weasyprint con fallback a reportlab), Excel via openpyxl, CSV nativo.
+    Exportador completo: PDF via reportlab, Excel via openpyxl, CSV nativo.
 
-    Estrategia PDF:
-      1. Intenta weasyprint (mejor fidelidad visual).
-      2. Si weasyprint falla (ImportError u OSError por libs nativas), usa reportlab.
-      3. Si ambos fallan, lanza NotImplementedError.
+    reportlab es Python puro: no requiere librerías nativas del sistema
+    operativo, de modo que el mismo entorno virtual funciona en Windows,
+    Linux y contenedor sin pasos de instalación fuera de pip.
     """
 
     def exportar_pdf(
@@ -307,20 +306,12 @@ class WeasyPrintExporter(IExporterService):
         html_content: str,
         ruta_destino: Path | None = None,
     ) -> bytes:
-        # Intento 1: weasyprint
         try:
-            import weasyprint
-
-            pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
-        except Exception:
-            # Intento 2: reportlab (sin dependencias nativas)
-            try:
-                pdf_bytes = _html_to_pdf_reportlab(html_content)
-            except Exception as exc2:
-                raise NotImplementedError(
-                    "PDF no disponible. Instala weasyprint o reportlab: "
-                    "pip install weasyprint  # o: pip install reportlab"
-                ) from exc2
+            pdf_bytes = _html_to_pdf_reportlab(html_content)
+        except Exception as exc:
+            raise NotImplementedError(
+                "PDF no disponible. Instala reportlab: pip install reportlab"
+            ) from exc
 
         if ruta_destino is not None:
             Path(ruta_destino).write_bytes(pdf_bytes)
@@ -352,4 +343,4 @@ class WeasyPrintExporter(IExporterService):
         return contenido
 
 
-__all__ = ["WeasyPrintExporter"]
+__all__ = ["ReportLabExporter"]

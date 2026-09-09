@@ -76,24 +76,27 @@ elige el mejor exportador disponible según las dependencias instaladas
 
 | Nivel | Exportador | Requiere | Capacidades |
 |---|---|---|---|
-| 1 | `WeasyPrintExporter` (PDF vía weasyprint) | `weasyprint` + `openpyxl` | PDF + Excel + CSV |
-| 1b | `WeasyPrintExporter` (PDF vía reportlab) | `reportlab` + `openpyxl` | PDF + Excel + CSV |
+| 1 | `ReportLabExporter` | `reportlab` + `openpyxl` | PDF + Excel + CSV |
 | 2 | `OpenpyxlExporter` | `openpyxl` | Excel + CSV (sin PDF) |
 | 3 | `NullExporter` | — (sin dependencias) | Solo CSV |
 
-> El catch es amplio (`Exception`, no solo `ImportError`) porque `weasyprint`
-> puede fallar con `OSError` al cargar libgobject/libpango en Windows sin las
-> libs nativas; en ese caso cae al siguiente nivel.
+> El catch de cada nivel es `ImportError`, no `Exception`: los tres motores son
+> Python puro y no cargan librerías nativas, de modo que un fallo distinto a
+> "paquete ausente" es un defecto y debe propagarse, no degradar en silencio.
+> Ver ADR-012 en `decisions.md` para por qué el catch amplio dejó de hacer falta.
 
 ### Adaptador: `OpenpyxlExporter` (`openpyxl_exporter.py`)
 Genera hojas de cálculo (`.xlsx`) y CSV.
 - **Responsabilidad:** Crear planillas de notas, listas de asistencia y exportaciones de configuraciones complejas hacia Excel.
 - **Dependencias Ocultas:** Encapsula totalmente el uso de `openpyxl`. Estilos, anchos de columna y colores de celda viven aquí y no contaminan el `InformeService`.
 
-### Adaptador: `WeasyPrintExporter` (`pdf_exporter.py`)
+### Adaptador: `ReportLabExporter` (`pdf_exporter.py`)
 Genera documentos PDF (además de Excel + CSV).
 - **Responsabilidad:** Construir boletines de periodo, actas finales y consolidados en formato listo para imprimir. La construcción específica de boletines se apoya en `boletin_pdf.py`.
-- **Dependencias Ocultas:** Encapsula `weasyprint` (o `reportlab` como fallback).
+- **Dependencias Ocultas:** Encapsula `reportlab`. El HTML entra por un parser
+  tabular mínimo (`_HTMLTableParser`) que extrae título, cabeceras, filas y
+  metadatos; no hay motor CSS. Un informe que necesite maquetación real exige
+  un nivel nuevo en la cascada, no un parche aquí.
 
 ### Adaptador: `NullExporter` (`null_exporter.py`)
 Implementa el patrón Null Object (solo CSV).

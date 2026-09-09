@@ -14,7 +14,7 @@ from src.infrastructure.exporters.openpyxl_exporter import (
     OpenpyxlExporter,
     generar_reporte_convivencia_grupo_excel,
 )
-from src.infrastructure.exporters.pdf_exporter import WeasyPrintExporter
+from src.infrastructure.exporters.pdf_exporter import ReportLabExporter
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -49,7 +49,7 @@ class TestNullExporter:
     # --- pdf ---
 
     def test_pdf_lanza_runtime_error(self):
-        with pytest.raises(RuntimeError, match=r"weasyprint|reportlab"):
+        with pytest.raises(RuntimeError, match=r"reportlab"):
             NullExporter().exportar_pdf("<p>test</p>")
 
     # --- csv ---
@@ -188,7 +188,7 @@ class TestOpenpyxlExporterPdf:
     def test_pdf_mensaje_sugiere_alternativa(self):
         with pytest.raises(NotImplementedError) as exc:
             OpenpyxlExporter().exportar_pdf("")
-        assert "weasyprint" in str(exc.value).lower() or "reportlab" in str(exc.value).lower()
+        assert "reportlab" in str(exc.value).lower()
 
 
 # ===========================================================================
@@ -222,10 +222,10 @@ class TestCrearExporter:
         exporter = crear_exporter()
         assert isinstance(exporter, IExporterService)
 
-    def test_retorna_weasyprint_cuando_reportlab_disponible(self):
-        # reportlab + openpyxl están instalados → nivel 1b → WeasyPrintExporter (PDF via reportlab)
+    def test_retorna_reportlab_exporter_en_nivel_1(self):
+        # R1 — reportlab + openpyxl instalados → nivel 1 → ReportLabExporter
         exporter = crear_exporter()
-        assert isinstance(exporter, WeasyPrintExporter)
+        assert isinstance(exporter, ReportLabExporter)
 
     def test_factory_puede_exportar_csv(self):
         exporter = crear_exporter()

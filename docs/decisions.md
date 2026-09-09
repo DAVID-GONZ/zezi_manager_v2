@@ -137,8 +137,28 @@ ejemplo y detalle en `seguridad.md`.
 ## ADR-012 — Selección de exportador en cascada
 
 **Decisión.** El `Container` no fija una clase de exportador: `crear_exporter()`
-elige el mejor nivel disponible (weasyprint → reportlab → openpyxl → CSV) según
-las dependencias instaladas, con catch amplio para libs nativas ausentes.
+elige el mejor nivel disponible (reportlab → openpyxl → CSV) según las
+dependencias instaladas.
 
 **Consecuencia.** La app arranca y exporta (al menos CSV) aunque falten libs
 pesadas; el nivel activo se registra en el log. Ver `infraestructura.md` §3.
+
+**Revisión 2026-09-09 (`infra_01_retirar_weasyprint`).** La cascada tenía un
+nivel por encima, `weasyprint`, y su catch era amplio (`Exception`, no solo
+`ImportError`) precisamente para tolerar el `OSError` de las libs nativas. Ese
+nivel nunca se alcanzaba: `weasyprint` es un binding CFFI y el paquete de PyPI
+no trae las DLL de GTK/Pango, que carga con `ffi.dlopen()` en tiempo de import
+buscando solo en dos rutas fijas de Windows. Al fallar imprimía un bloque de
+advertencia con `print()` a stdout —fuera del logger del proyecto— y el sistema
+caía a `reportlab`, que era el motor real desde el primer día. Se retiró
+`weasyprint` de la cadena y el catch se estrechó a `ImportError`: sin libs
+nativas en juego, un `except Exception` ahí convertiría cualquier error de
+programación en un descenso silencioso a Excel-sin-PDF.
+
+Alternativa descartada por David: instalar el runtime GTK
+(`winget install tschoonj.GTKForWindows`). Habría dado render HTML/CSS real
+—reutilizable con el design system y sus tokens— a costa de una dependencia
+nativa fuera de `pip` en cada máquina de desarrollo y cada despliegue, un
+requisito que ninguna otra dependencia del proyecto impone. Si algún informe
+llega a exigir maquetación CSS real, el punto de reentrada es un nivel nuevo
+en `crear_exporter()` por delante de `ReportLabExporter`.
