@@ -15,6 +15,7 @@ from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.cierre import CierrePeriodo
 from src.domain.models.nivelacion import (
     ActividadNivelacion,
@@ -27,6 +28,7 @@ from src.domain.models.nivelacion import (
 from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.nivelacion_repo import INivelacionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -66,11 +68,13 @@ class NivelacionService:
         repo: INivelacionRepository,
         cierre_repo: ICierreRepository,
         config_repo: IConfiguracionRepository | None = None,
+        auditoria_repo=None,
     ) -> None:
         """Inyecta el repo de nivelación, el de cierre y el de configuración (opcional)."""
         self._repo = repo
         self._cierre_repo = cierre_repo
         self._config_repo = config_repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Detección de bajo desempeño
@@ -153,6 +157,9 @@ class NivelacionService:
         # Crear la actividad
         actividad = dto.to_actividad(usuario_id=usuario_id)
         actividad = self._repo.guardar_actividad(actividad)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="actividades_nivelacion",
+            registro_id=actividad.id,
+            nuevo={"asignacion_id": dto.asignacion_id, "n_estudiantes": len(estudiante_ids)})
 
         # Generar NotaNivelacion vacías para cada estudiante
         for est_id in estudiante_ids:
@@ -208,7 +215,12 @@ class NivelacionService:
                 "usuario_id": dto.usuario_id or nota.usuario_id,
             }
         )
-        return self._repo.actualizar_nota(nota_actualizada)
+        resultado = self._repo.actualizar_nota(nota_actualizada)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="notas_nivelacion",
+            registro_id=resultado.id if hasattr(resultado, "id") else None,
+            anterior=nota.model_dump(),
+            nuevo=resultado.model_dump())
+        return resultado
 
     # ------------------------------------------------------------------
     # Cierre
@@ -278,7 +290,11 @@ class NivelacionService:
             fecha_cierre=date.today(),
             usuario_cierre_id=usuario_id,
         )
-        return self._repo.guardar_cierre(cierre)
+        cierre_guardado = self._repo.guardar_cierre(cierre)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="cierres_nivelacion",
+            registro_id=cierre_guardado.id if hasattr(cierre_guardado, "id") else None,
+            nuevo=cierre_guardado.model_dump())
+        return cierre_guardado
 
     def calcular_nota_estudiante(
         self,

@@ -146,7 +146,7 @@
   {
     "id": "obs_02_puerta_huella",
     "nombre": "Puerta de huella — check_auditoria.py con lista de deuda",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "scripts/check_auditoria.py, scripts/init.py, tests/unit/test_check_auditoria.py, tests/integration/test_huella_cobertura.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -155,7 +155,7 @@
   {
     "id": "obs_03_security_logger",
     "nombre": "Logging de seguridad estructurado y alertas (spec S09)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/domain/ports/security_logger.py, src/infrastructure/logging/security_logger.py, src/domain/policies/alerta_ip.py, config.py, .env.example, .gitignore, container.py, src/services/auditoria_service.py, main.py, tests/unit/infrastructure/test_security_logger.py, tests/unit/domain/test_alerta_ip.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -164,7 +164,7 @@
   {
     "id": "obs_04a_huella_convivencia_asistencia",
     "nombre": "Huella en convivencia y asistencia (24 métodos)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/services/convivencia_service.py, src/services/asistencia_service.py, src/services/alerta_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
     "sdd": true,
@@ -173,7 +173,7 @@
   {
     "id": "obs_04b_huella_infraestructura_horarios",
     "nombre": "Huella en infraestructura, horarios, salas y franjas (~63 métodos)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/services/infraestructura_service.py, src/services/restriccion_generacion_service.py, src/services/escenario_horario_service.py, src/services/horario_service.py, src/services/sala_service.py, src/services/franja_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
     "sdd": true,
@@ -182,7 +182,7 @@
   {
     "id": "obs_04c_huella_config_catalogos",
     "nombre": "Huella en configuración, institución, catálogos y planes (~28 métodos)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/services/configuracion_service.py, src/services/catalogo_academico_service.py, src/services/plan_estudios_service.py, src/services/institucion_service.py, src/services/plan_mejoramiento_service.py, src/services/nivelacion_service.py, src/services/aprovisionamiento_institucion_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
     "sdd": true,
@@ -191,7 +191,7 @@
   {
     "id": "informes_01_identidad_boletin",
     "nombre": "Identidad institucional real en boletines PDF y Excel",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/infrastructure/exporters/boletin_pdf.py, src/infrastructure/exporters/pdf_exporter.py, src/infrastructure/exporters/openpyxl_exporter.py, src/services/informe_service.py, tests/unit/infrastructure/test_exporters.py, tests/unit/services/test_convivencia_service.py",
     "operacion": "modificar",
     "sdd": true,
@@ -200,7 +200,7 @@
   {
     "id": "obs_05_admin_auditoria_ui",
     "nombre": "Auditoría en admin — filtro por institución, paginación y KPIs de uso",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/interface/pages/admin/auditoria.py, src/interface/presenters/admin/auditoria_presenter.py, src/interface/pages/inicio.py, src/services/auditoria_service.py",
     "operacion": "modificar",
     "sdd": true,

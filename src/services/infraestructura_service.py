@@ -8,6 +8,11 @@ Horario y Logro sin revelar el repositorio directamente.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
+
 from src.domain.models.infraestructura import (
     AreaConocimiento,
     Asignatura,
@@ -28,9 +33,14 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 
 
 class InfraestructuraService:
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        auditoria_repo: IAuditoriaRepository | None = None,
+    ) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
         # Fachada por delegación (mejora_01): cada subdominio vive en su propio
         # sub-servicio, construido con ESTE mismo repo (preserva la inyección de
         # los tests y evita el DB global del Container). Cache lazy por nombre.
@@ -44,7 +54,7 @@ class InfraestructuraService:
         if svc is None:
             from src.services.sala_service import SalaService
 
-            svc = SalaService(repo=self._repo)
+            svc = SalaService(repo=self._repo, auditoria_repo=self._auditoria_repo)
             self._subservicios["sala"] = svc
         return svc
 
@@ -54,7 +64,7 @@ class InfraestructuraService:
         if svc is None:
             from src.services.franja_service import FranjaService
 
-            svc = FranjaService(repo=self._repo)
+            svc = FranjaService(repo=self._repo, auditoria_repo=self._auditoria_repo)
             self._subservicios["franja"] = svc
         return svc
 
@@ -64,7 +74,7 @@ class InfraestructuraService:
         if svc is None:
             from src.services.escenario_horario_service import EscenarioHorarioService
 
-            svc = EscenarioHorarioService(repo=self._repo)
+            svc = EscenarioHorarioService(repo=self._repo, auditoria_repo=self._auditoria_repo)
             self._subservicios["escenario"] = svc
         return svc
 
@@ -76,7 +86,7 @@ class InfraestructuraService:
                 RestriccionGeneracionService,
             )
 
-            svc = RestriccionGeneracionService(repo=self._repo)
+            svc = RestriccionGeneracionService(repo=self._repo, auditoria_repo=self._auditoria_repo)
             self._subservicios["restriccion"] = svc
         return svc
 

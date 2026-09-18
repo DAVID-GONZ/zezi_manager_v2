@@ -66,7 +66,7 @@ class _HTMLTableParser(HTMLParser):
             self._cell += data
 
 
-def _html_to_pdf_reportlab(html_content: str) -> bytes:
+def _html_to_pdf_reportlab(html_content: str, institution_name: str = "") -> bytes:
     """
     Convierte HTML simple (tabla + título) a PDF via reportlab.
 
@@ -147,7 +147,7 @@ def _html_to_pdf_reportlab(html_content: str) -> bytes:
     periodo = parser.meta.get("report-periodo", "")
     asignatura = parser.meta.get("report-asignatura", "")
 
-    col_izq_items = ["INSTITUCIÓN EDUCATIVA ZECI"]
+    col_izq_items = [institution_name or "Institución Educativa"]
     if parser.title.strip():
         col_izq_items.append(parser.title.strip())
     if grupo:
@@ -305,9 +305,10 @@ class ReportLabExporter(IExporterService):
         self,
         html_content: str,
         ruta_destino: Path | None = None,
+        institution_name: str = "",
     ) -> bytes:
         try:
-            pdf_bytes = _html_to_pdf_reportlab(html_content)
+            pdf_bytes = _html_to_pdf_reportlab(html_content, institution_name=institution_name)
         except Exception as exc:
             raise NotImplementedError(
                 "PDF no disponible. Instala reportlab: pip install reportlab"

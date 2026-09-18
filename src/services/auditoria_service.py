@@ -15,6 +15,7 @@ IAuditoriaRepository.registrar_cambio / registrar_evento.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from src.domain.models.auditoria import (
     AccionCambio,
@@ -26,6 +27,9 @@ from src.domain.models.auditoria import (
 )
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 
+if TYPE_CHECKING:
+    from src.domain.ports.security_logger import ISecurityLogger
+
 
 class AuditoriaService:
     """
@@ -35,9 +39,14 @@ class AuditoriaService:
     exponer el repositorio directamente.
     """
 
-    def __init__(self, repo: IAuditoriaRepository) -> None:
-        """Inyecta el repositorio de auditoría."""
+    def __init__(
+        self,
+        repo: IAuditoriaRepository,
+        security_logger: ISecurityLogger | None = None,
+    ) -> None:
+        """Inyecta el repositorio de auditoría y el logger de seguridad."""
         self._repo = repo
+        self._security_logger = security_logger
 
     def registrar_evento(self, evento: EventoSesion) -> EventoSesion:
         """Registra un evento de sesión (delegado al repositorio)."""
@@ -48,7 +57,56 @@ class AuditoriaService:
                 evento = evento.model_copy(update={"institucion_id": institucion_actual()})
             except Exception:
                 pass
-        return self._repo.registrar_evento(evento)
+        resultado = self._repo.registrar_evento(evento)
+
+        # Emitir al security logger sin romper la auditoría ante fallos de logging
+        if self._security_logger is not None:
+            try:
+                self._emit_security_log(evento)
+            except Exception:
+                pass
+
+        # alerta_ip: registrar fallo por IP cuando el evento es LOGIN_FALLIDO
+        if evento.tipo_evento == TipoEventoSesion.LOGIN_FALLIDO and evento.ip_address is not None:
+            try:
+                from src.domain.policies import alerta_ip
+                alerta_ip.registrar_fallo_ip(evento.ip_address)
+            except Exception:
+                pass
+
+        return resultado
+
+    def _emit_security_log(self, evento: EventoSesion) -> None:
+        """Despacha el evento al security logger según su tipo."""
+        sl = self._security_logger
+        if sl is None:
+            return
+
+        usuario = evento.usuario
+        ip = evento.ip_address or ""
+        detalles = evento.detalles or ""
+        institucion_id = evento.institucion_id or 0
+        tipo = evento.tipo_evento
+
+        if tipo == TipoEventoSesion.LOGIN_EXITOSO:
+            sl.login_exitoso(usuario, ip, rol=detalles, institucion_id=institucion_id)
+        elif tipo == TipoEventoSesion.LOGIN_FALLIDO:
+            sl.login_fallido(usuario, ip, motivo=detalles)
+        elif tipo == TipoEventoSesion.LOGOUT:
+            sl.logout(usuario, ip)
+        elif tipo == TipoEventoSesion.ACCESO_DENEGADO:
+            sl.acceso_denegado(usuario, ip, recurso=detalles)
+        elif tipo in (TipoEventoSesion.VER_COMO_INICIO, TipoEventoSesion.VER_COMO_FIN):
+            sl.ver_como(admin=usuario, objetivo=detalles, accion=tipo.value)
+        elif tipo in (
+            TipoEventoSesion.CREAR_USUARIO,
+            TipoEventoSesion.EDITAR_USUARIO,
+            TipoEventoSesion.CAMBIAR_ROL,
+            TipoEventoSesion.DESACTIVAR_USUARIO,
+            TipoEventoSesion.ACTIVAR_USUARIO,
+            TipoEventoSesion.RESETEAR_PASSWORD,
+        ):
+            sl.gestion_usuario(actor=usuario, objetivo=detalles, operacion=tipo.value)
 
     def listar_cambios(
         self,

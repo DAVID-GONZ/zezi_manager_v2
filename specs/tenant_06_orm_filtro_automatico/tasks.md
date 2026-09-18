@@ -1,5 +1,19 @@
 # tenant_06_orm_filtro_automatico — Filtro automatico de tenant via SQLAlchemy ORM
 
+> 🛑 **ESTA SPEC ESTÁ ESCRITA SOBRE UNA PREMISA FALSA — NO IMPLEMENTAR TAL CUAL.**
+> Revisión de viabilidad del 2026-09-09: David confirmó **SQLAlchemy Core
+> estricto** (roadmap `backend_00`, línea 98: «no ORM completo»). Los hooks
+> `do_orm_execute` y `with_loader_criteria` en los que se apoyan las tareas
+> T2–T4 de abajo **solo existen en el ORM**: con Core no hay sesión de ORM que
+> los emita.
+>
+> Reescritura pendiente antes de ejecutarla, con el mismo objetivo (que un repo
+> que olvide el filtro siga siendo seguro) por otro mecanismo:
+> un `RepositorioBase` que construya los `select()` ya filtrados, más un test de
+> conformidad que recorra los repos `sqla_*` y falle si una consulta sobre una
+> tabla con `institucion_id` no lleva el filtro. Se ejecuta dentro de
+> `backend_07_repos_migracion`.
+
 > **Fase 2B del plan de aislamiento multi-tenant.**
 > Implementa la inyeccion automatica de `WHERE institucion_id = X` en toda
 > query SELECT usando el evento `do_orm_execute` o `with_loader_criteria`

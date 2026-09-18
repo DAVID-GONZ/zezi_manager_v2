@@ -9,6 +9,11 @@ carga_horaria_max del docente) antes de insertar o actualizar.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
+
 from src.domain.exceptions import (
     CodigoError,
     ConflictoError,
@@ -16,6 +21,7 @@ from src.domain.exceptions import (
     ReglaDeNegocioError,
 )
 from src.domain.models.asignacion import FiltroAsignacionesDTO
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import (
     CupoDTO,
     FilaReporteDTO,
@@ -27,6 +33,7 @@ from src.domain.models.infraestructura import (
 )
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
@@ -99,6 +106,7 @@ class HorarioService:
         asignacion_repo: IAsignacionRepository,
         usuario_repo,
         plan_svc=None,
+        auditoria_repo: IAuditoriaRepository | None = None,
     ):
         """Inyecta los repos de infraestructura, asignación y usuario, más el
         servicio de plan de estudios (opcional) para los topes de horas."""
@@ -106,6 +114,7 @@ class HorarioService:
         self._asig = asignacion_repo
         self._usuario = usuario_repo
         self._plan = plan_svc
+        self._auditoria_repo = auditoria_repo
 
     def _horas_max_materia(self, asig, asignatura) -> int | None:
         """Tope de bloques de una (grupo, asignatura): horas del plan del grado
@@ -147,7 +156,9 @@ class HorarioService:
             hora_fin=hora_fin,
             sala=sala,
         )
-        return self._infra.guardar_horario(dto.to_horario())
+        resultado = self._infra.guardar_horario(dto.to_horario())
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="horarios", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def mover_bloque(
@@ -161,6 +172,7 @@ class HorarioService:
         horario = self._infra.get_horario(horario_id)
         if horario is None:
             raise NoEncontradoError("Bloque no encontrado.")
+        anterior_dump = horario.model_dump()
         asig = self._resolver_asignacion(horario.asignacion_id)
         hora_inicio, hora_fin = _validar_intervalo(hora_inicio, hora_fin)
         self._validar_cruces(
@@ -180,7 +192,9 @@ class HorarioService:
                 "hora_fin": hora_fin,
             }
         )
-        return self._infra.actualizar_horario(updated)
+        resultado = self._infra.actualizar_horario(updated)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="horarios", anterior=anterior_dump, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_bloque(
@@ -196,6 +210,7 @@ class HorarioService:
         horario = self._infra.get_horario(horario_id)
         if horario is None:
             raise NoEncontradoError("Bloque no encontrado.")
+        anterior_dump = horario.model_dump()
         asig = self._resolver_asignacion(horario.asignacion_id)
         hora_inicio, hora_fin = _validar_intervalo(hora_inicio, hora_fin)
         self._validar_cruces(
@@ -216,12 +231,17 @@ class HorarioService:
                 "sala": sala,
             }
         )
-        return self._infra.actualizar_horario(updated)
+        resultado = self._infra.actualizar_horario(updated)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="horarios", anterior=anterior_dump, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_bloque(self, horario_id: int) -> bool:
         """Elimina un bloque de horario (delegado al repositorio)."""
-        return self._infra.eliminar_horario(horario_id)
+        bloque = self._infra.get_horario(horario_id)
+        resultado = self._infra.eliminar_horario(horario_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="horarios", anterior=bloque.model_dump() if bloque else None)
+        return resultado
 
     # ------------------------------------------------------------------ #
     # Consultas de bloques por periodo (mejora_05 — dueño canónico R3)     #
@@ -813,6 +833,7 @@ class HorarioService:
             )
 
         creados = self._infra.crear_bloques_masivo(horarios_nuevos)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="horarios", nuevo={"escenario_id": escenario_id, "creados": creados})
         omitidos = len(filas) - creados
         return ResultadoLoteDTO(creados=creados, omitidos=omitidos, reporte=reporte)
 

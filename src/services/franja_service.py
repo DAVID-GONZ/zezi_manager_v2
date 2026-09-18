@@ -10,20 +10,31 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 from __future__ import annotations
 
 from itertools import pairwise
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
 
 from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
 class FranjaService:
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        auditoria_repo: IAuditoriaRepository | None = None,
+    ) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ── Resolución de institución (multi-tenant — paso_29, frente B1) ──────────
 
@@ -92,7 +103,9 @@ class FranjaService:
         plantilla = dto.to_plantilla()
         institucion_id = self._resolver_institucion(plantilla.institucion_id)
         plantilla = plantilla.model_copy(update={"institucion_id": institucion_id})
-        return self._repo.crear_plantilla_franja(plantilla)
+        resultado = self._repo.crear_plantilla_franja(plantilla)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="plantillas_franja", nuevo=resultado.model_dump())
+        return resultado
 
     def listar_plantillas(self) -> list[PlantillaFranja]:
         """Lista las plantillas de franja del scope actual (admin ve todas)."""
@@ -150,7 +163,9 @@ class FranjaService:
                     f"{siguiente.orden} ({siguiente.hora_inicio}-{siguiente.hora_fin})."
                 )
 
-        return self._repo.reemplazar_franjas(plantilla_id, franjas)
+        n = self._repo.reemplazar_franjas(plantilla_id, franjas)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="franjas", nuevo={"plantilla_id": plantilla_id, "n_franjas": n})
+        return n
 
     def listar_franjas(self, plantilla_id: int) -> list[Franja]:
         """Lista las franjas de una plantilla (delegado al repositorio)."""
@@ -159,17 +174,20 @@ class FranjaService:
     @requiere_escritura
     def activar_plantilla(self, plantilla_id: int) -> None:
         """Marca una plantilla de franja como activa (delegado al repositorio)."""
-        return self._repo.activar_plantilla_franja(plantilla_id)
+        resultado = self._repo.activar_plantilla_franja(plantilla_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="plantillas_franja", nuevo={"plantilla_id": plantilla_id, "activa": True})
+        return resultado
 
     @requiere_escritura
     def eliminar_plantilla(self, plantilla_id: int) -> bool:
         """Elimina una plantilla tras verificar que pertenece al tenant activo."""
         # Autorización a nivel de objeto (paso_36): la plantilla debe ser del
         # tenant activo (se lee del repo por id; scope None → cross-tenant).
-        self._verificar_pertenencia_obj(
-            self._repo.get_plantilla_franja(plantilla_id), "La plantilla"
-        )
-        return self._repo.eliminar_plantilla_franja(plantilla_id)
+        plantilla_obj = self._repo.get_plantilla_franja(plantilla_id)
+        self._verificar_pertenencia_obj(plantilla_obj, "La plantilla")
+        resultado = self._repo.eliminar_plantilla_franja(plantilla_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="plantillas_franja", anterior=plantilla_obj.model_dump() if plantilla_obj else None)
+        return resultado
 
 
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las

@@ -19,8 +19,11 @@ from src.domain.models.alerta import (
     NivelAlerta,
     TipoAlerta,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
@@ -35,10 +38,12 @@ class AlertaService:
         self,
         repo: IAlertaRepository,
         estadisticos_repo: IEstadisticosRepository | None = None,
+        auditoria_repo: IAuditoriaRepository | None = None,
     ) -> None:
         """Inyecta el repositorio de alertas y el de estadísticos (opcional)."""
         self._repo = repo
         self._estadisticos_repo = estadisticos_repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Helpers
@@ -64,7 +69,18 @@ class AlertaService:
 
         Verifica que el umbral sea positivo (el modelo Pydantic lo valida).
         """
-        return self._repo.guardar_configuracion(config)
+        existente_cfg = self._repo.get_configuracion(config.anio_id, config.tipo_alerta)
+        resultado = self._repo.guardar_configuracion(config)
+        accion_cfg = AccionCambio.UPDATE if existente_cfg is not None else AccionCambio.CREATE
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=accion_cfg,
+            tabla="configuracion_alertas",
+            registro_id=resultado.id,
+            anterior=existente_cfg.model_dump() if existente_cfg is not None else None,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def desactivar_configuracion(
@@ -73,7 +89,14 @@ class AlertaService:
         tipo_alerta: TipoAlerta,
     ) -> bool:
         """Desactiva una configuración de alerta. Retorna True si fue desactivada."""
-        return self._repo.desactivar_configuracion(anio_id, tipo_alerta)
+        resultado = self._repo.desactivar_configuracion(anio_id, tipo_alerta)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="configuracion_alertas",
+            nuevo={"anio_id": anio_id, "tipo": tipo_alerta.value, "activa": False},
+        )
+        return resultado
 
     def listar_configuraciones(
         self,
@@ -126,7 +149,16 @@ class AlertaService:
         alerta = self._get_alerta_o_lanzar(alerta_id)
         if alerta.resuelta:
             raise ConflictoError(f"La alerta con id {alerta_id} ya está resuelta.")
-        return self._repo.resolver_alerta(alerta_id, usuario_id, observacion, datetime.now())
+        resultado = self._repo.resolver_alerta(alerta_id, usuario_id, observacion, datetime.now())
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="alertas",
+            registro_id=alerta_id,
+            anterior=alerta.model_dump(),
+            nuevo={"id": alerta_id, "resuelta": True, "usuario_resolucion_id": usuario_id},
+        )
+        return resultado
 
     def listar_alertas_para_usuario(
         self,
@@ -152,9 +184,20 @@ class AlertaService:
 
         Retorna el número de alertas resueltas.
         """
-        return self._repo.resolver_alertas_de_estudiante(
+        n_resueltas = self._repo.resolver_alertas_de_estudiante(
             estudiante_id, tipo_alerta, usuario_id, observacion
         )
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="alertas",
+            nuevo={
+                "estudiante_id": estudiante_id,
+                "tipo": tipo_alerta.value,
+                "n_resueltas": n_resueltas,
+            },
+        )
+        return n_resueltas
 
     # ------------------------------------------------------------------
     # Detección automática de riesgo académico
@@ -204,8 +247,16 @@ class AlertaService:
             alertas_nuevas.append(alerta)
 
         if alertas_nuevas:
-            return self._repo.guardar_alertas_masivas(alertas_nuevas)
-        return 0
+            n_creadas = self._repo.guardar_alertas_masivas(alertas_nuevas)
+        else:
+            n_creadas = 0
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="alertas",
+            nuevo={"grupo_id": grupo_id, "n_alertas": n_creadas},
+        )
+        return n_creadas
 
 
 __all__ = ["AlertaService"]

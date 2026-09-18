@@ -18,6 +18,7 @@ admin es `None`); el aprovisionamiento delega en infraestructura con
 from __future__ import annotations
 
 from src.domain.exceptions import ConflictoError
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.institucion import (
     Institucion,
     NuevaInstitucionConDirectorDTO,
@@ -25,14 +26,16 @@ from src.domain.models.institucion import (
 )
 from src.domain.models.usuario import NuevoUsuarioDTO, Rol
 from src.domain.ports.institucion_repo import IInstitucionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
 class AprovisionamientoInstitucionService:
     """Aprovisiona un tenant nuevo (institución + director) para el admin."""
 
-    def __init__(self, institucion_repo: IInstitucionRepository):
+    def __init__(self, institucion_repo: IInstitucionRepository, auditoria_repo=None):
         self._repo = institucion_repo
+        self._auditoria_repo = auditoria_repo
 
     @requiere_escritura
     def crear_institucion_con_director(
@@ -62,6 +65,8 @@ class AprovisionamientoInstitucionService:
                 configuracion_inicial_completa=False,
             )
         )
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="instituciones",
+            registro_id=inst.id, nuevo=inst.model_dump())
 
         self._repo.sembrar_defaults_tenant(inst.id)
 

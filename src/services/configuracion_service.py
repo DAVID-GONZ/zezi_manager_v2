@@ -21,7 +21,9 @@ from src.domain.models.configuracion import (
     NuevaConfiguracionAnioDTO,
     NuevoNivelDesempenoDTO,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -31,9 +33,10 @@ class ConfiguracionService:
     No contiene SQL. No contiene lógica de presentación.
     """
 
-    def __init__(self, repo: IConfiguracionRepository) -> None:
+    def __init__(self, repo: IConfiguracionRepository, auditoria_repo=None) -> None:
         """Inyecta el repositorio de configuración."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Resolución de institución (multi-tenant — paso_27)
@@ -89,6 +92,8 @@ class ConfiguracionService:
             )
         config = dto.to_configuracion().model_copy(update={"institucion_id": institucion_id})
         config = self._repo.guardar(config)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="configuracion_anio",
+            registro_id=config.id, nuevo=config.model_dump())
         # Periodos: lee preferencia del tenant, fallback a 4
         _num_periodos = 4
         try:
@@ -135,6 +140,8 @@ class ConfiguracionService:
 
         verificar_pertenencia(config.institucion_id)
         self._repo.activar(anio_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="configuracion_anio",
+            registro_id=anio_id, nuevo={"anio_id": anio_id, "activo": True})
         return self._repo.get_by_id(anio_id)
 
     @requiere_escritura
@@ -253,7 +260,10 @@ class ConfiguracionService:
             dto.to_nivel().model_copy(update={"anio_id": anio_id, "orden": i})
             for i, dto in enumerate(ordenados)
         ]
-        return self._repo.reemplazar_niveles(anio_id, entidades)
+        resultado = self._repo.reemplazar_niveles(anio_id, entidades)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="niveles_desempeno",
+            registro_id=anio_id, nuevo={"anio_id": anio_id, "n_niveles": len(entidades)})
+        return resultado
 
     def listar_niveles(self, anio_id: int) -> list[NivelDesempeno]:
         """Retorna los niveles de desempeño del año."""
@@ -290,6 +300,8 @@ class ConfiguracionService:
         nuevo = dto.to_nivel().model_copy(update={"anio_id": anio_id, "id": None})
         self._validar_rangos_disjuntos([*existentes, nuevo])
         guardado = self._repo.guardar_nivel(nuevo)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="niveles_desempeno",
+            registro_id=guardado.id, nuevo=guardado.model_dump())
         self._reindexar_orden(anio_id)
         return guardado
 
@@ -307,6 +319,10 @@ class ConfiguracionService:
         otros = [n for n in existentes if n.id != nivel_id]
         self._validar_rangos_disjuntos([*otros, modificado])
         guardado = self._repo.actualizar_nivel(modificado)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="niveles_desempeno",
+            registro_id=nivel_id,
+            anterior=actual.model_dump() if actual else None,
+            nuevo=guardado.model_dump())
         self._reindexar_orden(anio_id)
         return guardado
 
@@ -314,8 +330,12 @@ class ConfiguracionService:
     def eliminar_nivel(self, anio_id: int, nivel_id: int) -> bool:
         """Elimina un nivel y reindexa el `orden` de los restantes."""
         self.get_by_id(anio_id)
+        existentes = self._repo.listar_niveles(anio_id)
+        nivel_obj = next((n for n in existentes if n.id == nivel_id), None)
         ok = self._repo.eliminar_nivel(nivel_id)
         if ok:
+            auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="niveles_desempeno",
+                registro_id=nivel_id, anterior=nivel_obj.model_dump() if nivel_obj else None)
             self._reindexar_orden(anio_id)
         return ok
 
@@ -335,7 +355,10 @@ class ConfiguracionService:
     def guardar_criterios(self, criterios: CriterioPromocion) -> CriterioPromocion:
         """Guarda o actualiza los criterios de promoción del año."""
         self.get_by_id(criterios.anio_id)
-        return self._repo.guardar_criterios(criterios)
+        resultado = self._repo.guardar_criterios(criterios)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="criterios_promocion",
+            registro_id=criterios.anio_id, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_configuracion_academica(
@@ -346,7 +369,12 @@ class ConfiguracionService:
         """Actualiza campos académicos: nota_minima_aprobacion, nota_minima_escala, nota_maxima_escala, fechas."""
         config = self.get_by_id(anio_id)
         config_actualizada = dto.aplicar_a(config)
-        return self._repo.actualizar(config_actualizada)
+        resultado = self._repo.actualizar(config_actualizada)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="configuracion_anio",
+            registro_id=anio_id,
+            anterior=config.model_dump(),
+            nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def sincronizar_snapshot_desde_institucion(self, anio_id: int) -> ConfiguracionAnio:

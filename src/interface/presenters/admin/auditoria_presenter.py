@@ -21,6 +21,7 @@ class AuditoriaPresenter:
             "desde": None,  # "YYYY-MM-DD" o None
             "hasta": None,
             "usuario_id": None,
+            "institucion_id": None,           # Hueco A
             "pagina": 1,
             # específicos de Cambios
             "tabla": None,
@@ -31,6 +32,9 @@ class AuditoriaPresenter:
             "cambios": [],
             "sesiones": [],
             "integridad": None,
+            # paginación look-ahead
+            "hay_siguiente_cambios": False,   # Hueco B
+            "hay_siguiente_sesiones": False,  # Hueco B
         }
 
     # ── Helpers puros ───────────────────────────────────────────────────────
@@ -61,6 +65,9 @@ class AuditoriaPresenter:
 
     def set_usuario(self, valor) -> None:
         self.estado["usuario_id"] = self.a_int(valor)
+
+    def set_institucion(self, valor) -> None:
+        self.estado["institucion_id"] = self.a_int(valor)
 
     def set_tabla(self, valor) -> None:
         self.estado["tabla"] = (valor or "").strip() or None
@@ -93,6 +100,7 @@ class AuditoriaPresenter:
             tipo_evento=self.estado["tipo_evento"] or None,
             desde=self.parsear_fecha(self.estado["desde"]),
             hasta=self.parsear_fecha(self.estado["hasta"], fin_de_dia=True),
+            institucion_id=self.estado["institucion_id"],
             pagina=self.estado["pagina"],
             por_pagina=por_pagina,
         )

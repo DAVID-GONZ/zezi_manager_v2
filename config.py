@@ -133,6 +133,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FILE: Path | None = None  # None → solo consola; Path → también archivo
 
+    # Security logging (obs_03 — R4)
+    SECURITY_LOG_FILE: Path | None = None  # None → NullHandler (sin archivo)
+    SECURITY_LOG_MAX_BYTES: int = Field(
+        default=10 * 1024 * 1024,  # 10 MB
+        gt=0,
+        description="Tamaño máximo del archivo de log de seguridad en bytes.",
+    )
+    SECURITY_LOG_BACKUP_COUNT: int = Field(
+        default=30,
+        ge=0,
+        description="Número de archivos de respaldo del log de seguridad.",
+    )
+
     # ------------------------------------------------------------------
     # Validadores
     # ------------------------------------------------------------------
@@ -146,7 +159,7 @@ class Settings(BaseSettings):
             path = _PROJECT_ROOT / path
         return path
 
-    @field_validator("LOG_FILE", mode="before")
+    @field_validator("LOG_FILE", "SECURITY_LOG_FILE", mode="before")
     @classmethod
     def resolver_log_path(cls, v: str | Path | None) -> Path | None:
         if v is None:

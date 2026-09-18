@@ -270,6 +270,7 @@ class TestReporteConvivenciaGrupoExcel:
     def test_membrete_presente(self):
         resultado = generar_reporte_convivencia_grupo_excel(
             filas=[_FILA_CONV], titulo="Reporte", grupo="5A", periodo="P1",
+            inst_nombre="INSTITUCIÓN EDUCATIVA ZECI",
         )
         wb = openpyxl.load_workbook(io.BytesIO(resultado))
         ws = wb["Reporte"]

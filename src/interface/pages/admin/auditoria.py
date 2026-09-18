@@ -41,13 +41,10 @@ from src.services.auditoria_service import (
 
 logger = logging.getLogger("ADMIN.AUDITORIA")
 
-# Opciones de filtro derivadas de los enums del dominio (re-exportados por el
-# service layer). Se construyen como dicts {valor_str: etiqueta} para los
-# selects; el valor None representa "todos".
 _ACCIONES_OPCIONES = {a.value: a.value.capitalize() for a in AccionCambio}
 _EVENTOS_OPCIONES = {t.value: t.value.replace("_", " ").capitalize() for t in TipoEventoSesion}
 
-_POR_PAGINA = 100
+_POR_PAGINA = 50  # MODIFICADO: reducido de 100 a 50 (R5)
 
 
 # page-delegate: ruta y guard de rol registrados en main.py (paso_35)
@@ -59,9 +56,6 @@ def auditoria_page() -> None:
 
     logger.info("Auditoría: %s (%s)", ctx.usuario_nombre, ctx.usuario_rol)
 
-    # Rango del periodo activo (para el preset "Periodo activo" del componente
-    # de fecha). Se obtiene en la página y se inyecta como primitivos; el
-    # componente no consulta servicios.
     _periodo_desde: str | None = None
     _periodo_hasta: str | None = None
     try:
@@ -73,32 +67,37 @@ def auditoria_page() -> None:
     except Exception as exc:
         logger.warning("No se pudo obtener el periodo activo: %s", exc)
 
-    # ── Estado mutable (view-model en el presenter) ───────────────────────────
     presenter = AuditoriaPresenter()
-    _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
+    _s = presenter.estado
 
-    # ── Carga de datos ──────────────────────────────────────────────────────────
+    # ── Carga de datos con look-ahead (R3) ──────────────────────────────────
     def _cargar_cambios() -> None:
         try:
-            presenter.set_cambios(
+            raw = list(
                 Container.auditoria_service().listar_cambios(
-                    presenter.construir_filtro(_POR_PAGINA)
+                    presenter.construir_filtro(_POR_PAGINA + 1)
                 )
             )
+            presenter.estado["hay_siguiente_cambios"] = len(raw) > _POR_PAGINA
+            presenter.set_cambios(raw[:_POR_PAGINA])
         except Exception as exc:
             logger.error("Error al cargar cambios de auditoría: %s", exc)
             presenter.set_cambios([])
+            presenter.estado["hay_siguiente_cambios"] = False
 
     def _cargar_sesiones() -> None:
         try:
-            presenter.set_sesiones(
+            raw = list(
                 Container.auditoria_service().listar_eventos_sesion(
-                    presenter.construir_filtro(_POR_PAGINA)
+                    presenter.construir_filtro(_POR_PAGINA + 1)
                 )
             )
+            presenter.estado["hay_siguiente_sesiones"] = len(raw) > _POR_PAGINA
+            presenter.set_sesiones(raw[:_POR_PAGINA])
         except Exception as exc:
             logger.error("Error al cargar eventos de sesión: %s", exc)
             presenter.set_sesiones([])
+            presenter.estado["hay_siguiente_sesiones"] = False
 
     def _cargar_todo() -> None:
         _cargar_cambios()
@@ -106,14 +105,23 @@ def auditoria_page() -> None:
 
     _cargar_todo()
 
-    # ── Refrescos ────────────────────────────────────────────────────────────────
     def _on_filtros_cambio() -> None:
         presenter.reset_pagina()
         _cargar_todo()
         tabla_cambios.refresh()
         tabla_sesiones.refresh()
 
-    # ── Integridad de la bitácora (read-only) ──────────────────────────────────
+    # NUEVO: navegación de página por tab (R3)
+    def _ir_pagina(nueva: int, tab: str) -> None:
+        presenter.set_pagina(max(1, nueva))
+        if tab == "cambios":
+            _cargar_cambios()
+            tabla_cambios.refresh()
+        else:
+            _cargar_sesiones()
+            tabla_sesiones.refresh()
+
+    # ── Integridad de la bitácora (read-only) ──────────────────────────────
     @ui.refreshable
     def badge_integridad() -> None:
         estado = _s["integridad"]
@@ -124,7 +132,6 @@ def auditoria_page() -> None:
         if ok:
             status_badge("Íntegra", variante="success")
             return
-        # Reportar el primer registro roto de cada cadena alterada.
         rotos = []
         if not estado["eventos_ok"] and estado["evento_roto_id"] is not None:
             rotos.append(f"sesión #{estado['evento_roto_id']}")
@@ -147,10 +154,13 @@ def auditoria_page() -> None:
         if estado["eventos_ok"] and estado["cambios_ok"]:
             toast_success("Bitácora íntegra: la cadena de hashes cuadra")
 
-    # ── Tablas (refreshable, solo lectura) ─────────────────────────────────────
+    # ── Tablas (refreshable, solo lectura) ─────────────────────────────────
     @ui.refreshable
     def tabla_cambios() -> None:
         cambios = _s["cambios"]
+        pagina = _s["pagina"]
+        hay_sig = _s["hay_siguiente_cambios"]
+
         if not cambios:
             empty_state(
                 variante="search",
@@ -158,30 +168,49 @@ def auditoria_page() -> None:
                 titulo="No hay cambios registrados",
                 descripcion="Ajusta el rango de fechas, la tabla o la acción para ver más resultados.",
             )
-            return
+        else:
+            columnas = [
+                {"name": "timestamp", "label": "Fecha y hora", "field": "timestamp", "sortable": True},
+                {"name": "accion", "label": "Acción", "field": "accion", "sortable": True},
+                {"name": "tabla", "label": "Tabla", "field": "tabla", "sortable": True},
+                {"name": "registro", "label": "Registro", "field": "registro"},
+                {"name": "usuario", "label": "Usuario ID", "field": "usuario"},
+            ]
+            filas = [
+                {
+                    "timestamp": c.timestamp_display,
+                    "accion": c.accion.value if hasattr(c.accion, "value") else str(c.accion),
+                    "tabla": c.tabla,
+                    "registro": c.registro_id if c.registro_id is not None else "—",
+                    "usuario": c.usuario_id if c.usuario_id is not None else "—",
+                }
+                for c in cambios
+            ]
+            data_table(columnas, filas, titulo="Cambios (audit_log)", filas_por_pagina=15)
 
-        columnas = [
-            {"name": "timestamp", "label": "Fecha y hora", "field": "timestamp", "sortable": True},
-            {"name": "accion", "label": "Acción", "field": "accion", "sortable": True},
-            {"name": "tabla", "label": "Tabla", "field": "tabla", "sortable": True},
-            {"name": "registro", "label": "Registro", "field": "registro"},
-            {"name": "usuario", "label": "Usuario ID", "field": "usuario"},
-        ]
-        filas = [
-            {
-                "timestamp": c.timestamp_display,
-                "accion": c.accion.value if hasattr(c.accion, "value") else str(c.accion),
-                "tabla": c.tabla,
-                "registro": c.registro_id if c.registro_id is not None else "—",
-                "usuario": c.usuario_id if c.usuario_id is not None else "—",
-            }
-            for c in cambios
-        ]
-        data_table(columnas, filas, titulo="Cambios (audit_log)", filas_por_pagina=15)
+        # NUEVO: controles de paginación (R3)
+        if pagina > 1 or hay_sig:
+            with ui.row().classes("form-row-center u-mt-md"):
+                btn_secondary(
+                    "Anterior",
+                    on_click=lambda: _ir_pagina(pagina - 1, "cambios"),
+                    icon="chevron_left",
+                    size="sm",
+                ).set_enabled(pagina > 1)
+                ui.label(f"Página {pagina}").classes("text-sm self-center px-2")
+                btn_secondary(
+                    "Siguiente",
+                    on_click=lambda: _ir_pagina(pagina + 1, "cambios"),
+                    icon="chevron_right",
+                    size="sm",
+                ).set_enabled(hay_sig)
 
     @ui.refreshable
     def tabla_sesiones() -> None:
         sesiones = _s["sesiones"]
+        pagina = _s["pagina"]
+        hay_sig = _s["hay_siguiente_sesiones"]
+
         if not sesiones:
             empty_state(
                 variante="search",
@@ -189,30 +218,46 @@ def auditoria_page() -> None:
                 titulo="No hay eventos de sesión",
                 descripcion="Ajusta el rango de fechas, el usuario o el tipo de evento para ver más resultados.",
             )
-            return
+        else:
+            columnas = [
+                {"name": "fecha", "label": "Fecha y hora", "field": "fecha", "sortable": True},
+                {"name": "tipo_evento", "label": "Tipo", "field": "tipo_evento", "sortable": True},
+                {"name": "usuario", "label": "Usuario", "field": "usuario", "sortable": True},
+                {"name": "ip", "label": "IP", "field": "ip"},
+                {"name": "detalles", "label": "Detalles", "field": "detalles"},
+            ]
+            filas = [
+                {
+                    "fecha": e.fecha_display,
+                    "tipo_evento": e.tipo_evento.value
+                    if hasattr(e.tipo_evento, "value")
+                    else str(e.tipo_evento),
+                    "usuario": e.usuario,
+                    "ip": e.ip_address or "—",
+                    "detalles": e.detalles or "—",
+                }
+                for e in sesiones
+            ]
+            data_table(columnas, filas, titulo="Sesiones (auditoría)", filas_por_pagina=15)
 
-        columnas = [
-            {"name": "fecha", "label": "Fecha y hora", "field": "fecha", "sortable": True},
-            {"name": "tipo_evento", "label": "Tipo", "field": "tipo_evento", "sortable": True},
-            {"name": "usuario", "label": "Usuario", "field": "usuario", "sortable": True},
-            {"name": "ip", "label": "IP", "field": "ip"},
-            {"name": "detalles", "label": "Detalles", "field": "detalles"},
-        ]
-        filas = [
-            {
-                "fecha": e.fecha_display,
-                "tipo_evento": e.tipo_evento.value
-                if hasattr(e.tipo_evento, "value")
-                else str(e.tipo_evento),
-                "usuario": e.usuario,
-                "ip": e.ip_address or "—",
-                "detalles": e.detalles or "—",
-            }
-            for e in sesiones
-        ]
-        data_table(columnas, filas, titulo="Sesiones (auditoría)", filas_por_pagina=15)
+        # NUEVO: controles de paginación (R3)
+        if pagina > 1 or hay_sig:
+            with ui.row().classes("form-row-center u-mt-md"):
+                btn_secondary(
+                    "Anterior",
+                    on_click=lambda: _ir_pagina(pagina - 1, "sesiones"),
+                    icon="chevron_left",
+                    size="sm",
+                ).set_enabled(pagina > 1)
+                ui.label(f"Página {pagina}").classes("text-sm self-center px-2")
+                btn_secondary(
+                    "Siguiente",
+                    on_click=lambda: _ir_pagina(pagina + 1, "sesiones"),
+                    icon="chevron_right",
+                    size="sm",
+                ).set_enabled(hay_sig)
 
-    # ── Filtros comunes (rango de fechas + usuario) ─────────────────────────────
+    # ── Filtros comunes ────────────────────────────────────────────────────
     def _on_rango_cambio(desde: str | None, hasta: str | None) -> None:
         presenter.set_rango(desde, hasta)
         _on_filtros_cambio()
@@ -235,9 +280,30 @@ def auditoria_page() -> None:
                 ),
                 cls_extra="w-32",
             )
+
+            # NUEVO: filtro de institución — solo admin (R1, R2)
+            if ctx.usuario_rol == "admin":
+                _instituciones = []
+                try:
+                    _instituciones = Container.institucion_service().listar()
+                except Exception:
+                    pass
+                inst_opts = {None: "Todas las instituciones"}
+                inst_opts.update({i.id: i.nombre for i in _instituciones})
+                filter_select(
+                    label="Institución",
+                    options=inst_opts,
+                    value=None,
+                    on_change=lambda e: (
+                        presenter.set_institucion(e.value),
+                        _on_filtros_cambio(),
+                    ),
+                    cls_extra="w-52",
+                )
+
             btn_icon("refresh", on_click=_on_filtros_cambio, tooltip="Recargar")
 
-    # ── Contenido principal ──────────────────────────────────────────────────────
+    # ── Contenido principal ────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
                 with ui.row().classes("form-row-center u-mb-sm"):
@@ -260,7 +326,6 @@ def auditoria_page() -> None:
                     ui.tab("sesiones", label="Sesiones", icon="login")
 
                 with ui.tab_panels(tabs, value="cambios").classes("w-full mt-0"):
-                    # ── Tab Cambios ───────────────────────────────────────────
                     with ui.tab_panel("cambios"):
                         with ui.row().classes("form-row-center-md u-mb-lg"):
                             ui.label("Filtros:").classes("text-sm font-semibold")
@@ -287,7 +352,6 @@ def auditoria_page() -> None:
                             )
                         tabla_cambios()
 
-                    # ── Tab Sesiones ──────────────────────────────────────────
                     with ui.tab_panel("sesiones"):
                         with ui.row().classes("form-row-center-md u-mb-lg"):
                             ui.label("Filtros:").classes("text-sm font-semibold")

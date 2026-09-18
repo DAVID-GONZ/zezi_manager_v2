@@ -172,6 +172,7 @@ def generar_reporte_convivencia_grupo_excel(
     grupo: str = "",
     periodo: str = "",
     desglose_cols: list[str] | None = None,
+    inst_nombre: str = "",
 ) -> bytes:
     """Genera un Excel enriquecido del reporte de convivencia por grupo.
 
@@ -192,7 +193,7 @@ def generar_reporte_convivencia_grupo_excel(
 
     # ── Membrete ──
     ws.merge_cells("A1:F1")
-    c_inst = ws.cell(1, 1, "INSTITUCIÓN EDUCATIVA ZECI")
+    c_inst = ws.cell(1, 1, inst_nombre or "Institución Educativa")
     c_inst.font = _MEMBRETE_FONT
     c_inst.alignment = Alignment(horizontal="left", vertical="center")
 

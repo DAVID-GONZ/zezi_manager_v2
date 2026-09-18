@@ -219,6 +219,7 @@ class Container:
             "configuracion_service",
             lambda: ConfiguracionService(
                 repo=cls.configuracion_repo(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -227,7 +228,10 @@ class Container:
         from src.services.institucion_service import InstitucionService
         return cls._get_or_create(
             "institucion_service",
-            lambda: InstitucionService(repo=cls.institucion_repo()),
+            lambda: InstitucionService(
+                repo=cls.institucion_repo(),
+                auditoria_repo=cls.auditoria_repo(),
+            ),
         )
 
     @classmethod
@@ -239,7 +243,10 @@ class Container:
             "aprovisionamiento_service",
             # Reutiliza el repo ya cableado del institucion_service (no
             # duplica wiring; el aprovisionamiento opera sobre el mismo tenant).
-            lambda: AprovisionamientoInstitucionService(cls.institucion_service()._repo),
+            lambda: AprovisionamientoInstitucionService(
+                cls.institucion_service()._repo,
+                cls.auditoria_repo(),
+            ),
         )
 
     @classmethod
@@ -335,6 +342,7 @@ class Container:
             lambda: AlertaService(
                 repo=cls.alerta_repo(),
                 estadisticos_repo=cls.estadisticos_repo(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -403,6 +411,7 @@ class Container:
                 repo=cls.asistencia_repo(),
                 alerta_repo=cls.alerta_repo(),
                 config_repo=cls.configuracion_repo(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -445,6 +454,7 @@ class Container:
                 repo=cls.nivelacion_repo(),
                 cierre_repo=cls.cierre_repo(),
                 config_repo=cls.configuracion_repo(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -464,6 +474,7 @@ class Container:
                 plan_repo=cls.plan_mejoramiento_repo(),
                 eval_repo=cls.evaluacion_repo(),
                 est_repo=cls.estudiante_repo(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -491,6 +502,7 @@ class Container:
                 asignacion_svc_provider=cls.asignacion_service,
                 # Provider lazy: política de registros en boletín (convivencia_29).
                 preferencias_svc_provider=cls.preferencias_service,
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -530,7 +542,10 @@ class Container:
         from src.services.infraestructura_service import InfraestructuraService
         return cls._get_or_create(
             "infraestructura_service",
-            lambda: InfraestructuraService(repo=cls.infraestructura_repo()),
+            lambda: InfraestructuraService(
+                repo=cls.infraestructura_repo(),
+                auditoria_repo=cls.auditoria_repo(),
+            ),
         )
 
     # ── Sub-servicios de infraestructura (mejora_01 — fachada por delegación) ──
@@ -579,6 +594,7 @@ class Container:
                 # Provider lazy: candidatos/validación del director de grupo
                 # (convivencia_02) sin acoplar el composition root.
                 asignacion_svc_provider=cls.asignacion_service,
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -591,6 +607,7 @@ class Container:
                 repo=cls.infraestructura_repo(),
                 # Provider lazy: evita la recursión plan↔asignacion en el arranque.
                 asignacion_svc_provider=cls.asignacion_service,
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -618,7 +635,7 @@ class Container:
                 infra_repo=cls.infraestructura_repo(),
                 asignacion_repo=cls.asignacion_repo(),
                 usuario_repo=cls.usuario_service(),
-                plan_svc=cls.plan_estudios_service(),
+                auditoria_repo=cls.auditoria_repo(),
             ),
         )
 
@@ -644,11 +661,19 @@ class Container:
         return ContextInitializer.inicializar(ctx)
 
     @classmethod
+    def security_logger(cls):
+        from src.infrastructure.logging.security_logger import SecurityLogger
+        return cls._get_or_create("security_logger", SecurityLogger)
+
+    @classmethod
     def auditoria_service(cls):
         from src.services.auditoria_service import AuditoriaService
         return cls._get_or_create(
             "auditoria_service",
-            lambda: AuditoriaService(repo=cls.auditoria_repo()),
+            lambda: AuditoriaService(
+                repo=cls.auditoria_repo(),
+                security_logger=cls.security_logger(),
+            ),
         )
 
     @classmethod

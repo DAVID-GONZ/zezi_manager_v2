@@ -9,19 +9,31 @@ idéntica (firmas, tipos de retorno y `@requiere_escritura` intactos).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
+
 from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import Sala
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
 class SalaService:
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        auditoria_repo: IAuditoriaRepository | None = None,
+    ) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ── Resolución de institución (multi-tenant — paso_29, frente B1) ──────────
 
@@ -85,7 +97,9 @@ class SalaService:
         # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
         institucion_id = self._resolver_institucion(sala.institucion_id)
         sala = sala.model_copy(update={"institucion_id": institucion_id})
-        return self._repo.crear_sala(sala)
+        resultado = self._repo.crear_sala(sala)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="salas", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_sala(self, sala: Sala) -> Sala:
@@ -97,13 +111,18 @@ class SalaService:
         actual = self._repo.get_sala(sala.id)
         self._verificar_pertenencia_obj(actual, "La sala")
         sala = sala.model_copy(update={"institucion_id": actual.institucion_id})
-        return self._repo.actualizar_sala(sala)
+        resultado = self._repo.actualizar_sala(sala)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="salas", anterior=actual.model_dump(), nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_sala(self, sala_id: int) -> bool:
         """Elimina una sala tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(self._repo.get_sala(sala_id), "La sala")
-        return self._repo.eliminar_sala(sala_id)
+        sala_obj = self._repo.get_sala(sala_id)
+        self._verificar_pertenencia_obj(sala_obj, "La sala")
+        resultado = self._repo.eliminar_sala(sala_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="salas", anterior=sala_obj.model_dump() if sala_obj else None)
+        return resultado
 
     @requiere_escritura
     def asignar_sala_a_grupo(self, grupo_id: int, sala_id: int | None) -> bool:
@@ -114,7 +133,9 @@ class SalaService:
         pertenencia) antes de mutarlo; antes faltaba esta verificación.
         """
         self._verificar_pertenencia_obj(self._repo.get_grupo(grupo_id), "El grupo")
-        return self._repo.asignar_sala_a_grupo(grupo_id, sala_id)
+        resultado = self._repo.asignar_sala_a_grupo(grupo_id, sala_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="grupos", nuevo={"grupo_id": grupo_id, "sala_id": sala_id})
+        return resultado
 
 
 # Re-export de símbolos de dominio para la capa de interfaz (mejora_05): las

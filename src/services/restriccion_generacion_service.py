@@ -10,10 +10,16 @@ inyección; la lógica se movió idéntica (firmas, retornos y `@requiere_escrit
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
+
 from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import (
     BloqueAnclado,
     ConfigGeneracion,
@@ -23,14 +29,20 @@ from src.domain.models.infraestructura import (
     VentanaGrupo,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
 
 class RestriccionGeneracionService:
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        auditoria_repo: IAuditoriaRepository | None = None,
+    ) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ── Disponibilidad docente (paso_15b) ─────────────────────────────────────
 
@@ -40,11 +52,15 @@ class RestriccionGeneracionService:
 
     def bloquear_franjas_docente(self, usuario_id: int, slots: list[dict]) -> int:
         """Carga en lote las franjas no disponibles de un docente (delegado al repositorio)."""
-        return self._repo.cargar_disponibilidad_lote(usuario_id, slots)
+        resultado = self._repo.cargar_disponibilidad_lote(usuario_id, slots)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="disponibilidad_docente", nuevo={"usuario_id": usuario_id, "n_slots": len(slots)})
+        return resultado
 
     def limpiar_disponibilidad_docente(self, usuario_id: int) -> int:
         """Borra toda la disponibilidad configurada de un docente (delegado al repositorio)."""
-        return self._repo.limpiar_disponibilidad_docente(usuario_id)
+        resultado = self._repo.limpiar_disponibilidad_docente(usuario_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="disponibilidad_docente", anterior={"usuario_id": usuario_id})
+        return resultado
 
     @requiere_escritura
     def guardar_disponibilidad_docente(self, usuario_id: int, slots: list[dict]) -> int:
@@ -52,7 +68,9 @@ class RestriccionGeneracionService:
         en una sola transacción). `slots` son los bloques NO disponibles, cada uno
         con 'dia_semana' y 'franja_orden'. Retorna cuántos slots quedaron cargados.
         """
-        return self._repo.reemplazar_disponibilidad_docente(usuario_id, slots)
+        resultado = self._repo.reemplazar_disponibilidad_docente(usuario_id, slots)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="disponibilidad_docente", nuevo={"usuario_id": usuario_id, "n_slots": len(slots)})
+        return resultado
 
     def listar_disponibilidad_docente(self, usuario_id: int) -> list[DisponibilidadDocente]:
         """Lista la disponibilidad configurada de un docente (delegado al repositorio)."""
@@ -87,7 +105,9 @@ class RestriccionGeneracionService:
             pesos=pesos_obj,
             restricciones=restricciones if restricciones is not None else {},
         )
-        return self._repo.crear_config_generacion(dto.to_config())
+        resultado = self._repo.crear_config_generacion(dto.to_config())
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="config_generacion", nuevo=resultado.model_dump())
+        return resultado
 
     def construir_restricciones(
         self, min_horas: int, max_horas: int, modo: str = "preferente"
@@ -140,23 +160,32 @@ class RestriccionGeneracionService:
             from src.domain.models.infraestructura import PesosGeneracion
 
             campos = {**campos, "pesos": PesosGeneracion(**campos["pesos"])}
+        anterior = config.model_dump()
         updated = config.model_copy(update=campos)
-        return self._repo.actualizar_config_generacion(updated)
+        resultado = self._repo.actualizar_config_generacion(updated)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="config_generacion", anterior=anterior, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_config_generacion(self, config_id: int) -> bool:
         """Elimina una config de generación (delegado al repositorio)."""
-        return self._repo.eliminar_config_generacion(config_id)
+        resultado = self._repo.eliminar_config_generacion(config_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="config_generacion", anterior={"config_id": config_id})
+        return resultado
 
     @requiere_escritura
     def cambiar_estado_config(self, config_id: int, nuevo_estado: str) -> ConfigGeneracion:
         """Cambia el estado de una config de generación (delegado al repositorio)."""
-        return self._repo.cambiar_estado_config(config_id, nuevo_estado)
+        resultado = self._repo.cambiar_estado_config(config_id, nuevo_estado)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="config_generacion", nuevo={"config_id": config_id, "estado": nuevo_estado})
+        return resultado
 
     @requiere_escritura
     def duplicar_config_generacion(self, config_id: int) -> ConfigGeneracion:
         """Duplica una config de generación (delegado al repositorio)."""
-        return self._repo.duplicar_config_generacion(config_id)
+        resultado = self._repo.duplicar_config_generacion(config_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="config_generacion", nuevo=resultado.model_dump())
+        return resultado
 
     # ── VentanaGrupo (paso_17) ────────────────────────────────────────────────
 
@@ -176,12 +205,16 @@ class RestriccionGeneracionService:
     @requiere_escritura
     def crear_ventana_grupo(self, v: VentanaGrupo) -> VentanaGrupo:
         """Crea una ventana de grupo (delegado al repositorio)."""
-        return self._repo.crear_ventana_grupo(v)
+        resultado = self._repo.crear_ventana_grupo(v)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="ventanas_grupo", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_ventana_grupo(self, ventana_id: int) -> bool:
         """Elimina una ventana de grupo (delegado al repositorio)."""
-        return self._repo.eliminar_ventana_grupo(ventana_id)
+        resultado = self._repo.eliminar_ventana_grupo(ventana_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="ventanas_grupo", anterior={"ventana_id": ventana_id})
+        return resultado
 
     # ── BloqueAnclado (paso_17) ───────────────────────────────────────────────
 
@@ -192,12 +225,16 @@ class RestriccionGeneracionService:
     @requiere_escritura
     def crear_bloque_anclado(self, b: BloqueAnclado) -> BloqueAnclado:
         """Crea un bloque anclado (delegado al repositorio)."""
-        return self._repo.crear_bloque_anclado(b)
+        resultado = self._repo.crear_bloque_anclado(b)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="bloques_anclados", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_bloque_anclado(self, bloque_id: int) -> bool:
         """Elimina un bloque anclado (delegado al repositorio)."""
-        return self._repo.eliminar_bloque_anclado(bloque_id)
+        resultado = self._repo.eliminar_bloque_anclado(bloque_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="bloques_anclados", anterior={"bloque_id": bloque_id})
+        return resultado
 
     # ── FranjaReunion (paso_17) ───────────────────────────────────────────────
 
@@ -227,19 +264,25 @@ class RestriccionGeneracionService:
                     pass
             if inst_id is not None:
                 f = f.model_copy(update={"institucion_id": inst_id})
-        return self._repo.crear_franja_reunion(f)
+        resultado = self._repo.crear_franja_reunion(f)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="franjas_reunion", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         """Actualiza una franja de reunión (lanza si no tiene id)."""
         if f.id is None:
             raise ReglaDeNegocioError("La franja de reunión no tiene id.")
-        return self._repo.actualizar_franja_reunion(f)
+        resultado = self._repo.actualizar_franja_reunion(f)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="franjas_reunion", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_franja_reunion(self, franja_id: int) -> bool:
         """Elimina una franja de reunión (delegado al repositorio)."""
-        return self._repo.eliminar_franja_reunion(franja_id)
+        resultado = self._repo.eliminar_franja_reunion(franja_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="franjas_reunion", anterior={"franja_id": franja_id})
+        return resultado
 
     # ── LimitesDocente (paso_17) ──────────────────────────────────────────────
 
@@ -250,7 +293,9 @@ class RestriccionGeneracionService:
     @requiere_escritura
     def set_limites_docente(self, limites: LimitesDocente) -> LimitesDocente:
         """Crea o actualiza los límites diarios de un docente (delegado al repositorio)."""
-        return self._repo.set_limites_docente(limites)
+        resultado = self._repo.set_limites_docente(limites)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="limites_docente", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def set_limites_docente_simple(
@@ -262,7 +307,9 @@ class RestriccionGeneracionService:
             min_horas_dia=min_horas_dia,
             max_horas_dia=max_horas_dia,
         )
-        return self._repo.set_limites_docente(limites)
+        resultado = self._repo.set_limites_docente(limites)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="limites_docente", nuevo=resultado.model_dump())
+        return resultado
 
     def listar_limites_docente(self) -> list[LimitesDocente]:
         """Lista los límites diarios de todos los docentes (delegado al repositorio)."""

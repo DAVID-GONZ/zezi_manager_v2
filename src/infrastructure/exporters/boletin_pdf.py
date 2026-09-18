@@ -185,7 +185,13 @@ def _pct(presentes: int, fi: int, fj: int, retrasos: int, excusas: int) -> str:
 # ── Membrete ──────────────────────────────────────────────────────────────────
 
 
-def _membrete(page_w: float, titulo_doc: str, grupo: str, periodo: str) -> Table:
+def _membrete(
+    page_w: float,
+    titulo_doc: str,
+    grupo: str,
+    periodo: str,
+    inst: dict | None = None,
+) -> Table:
     """Tabla de encabezado con espacio para logo + datos institucionales."""
     logo_cell = Table(
         [[""]],
@@ -203,11 +209,29 @@ def _membrete(page_w: float, titulo_doc: str, grupo: str, periodo: str) -> Table
         )
     )
 
-    inst_lines = (
-        "<b>INSTITUCIÓN EDUCATIVA ZECI</b><br/>"
-        f"{titulo_doc}<br/>"
-        f"Curso: {grupo} &nbsp;&nbsp; {periodo}"
-    )
+    inst_data = inst or {}
+    nombre_inst = inst_data.get("nombre", "Institución Educativa").upper()
+    sub_parts = []
+    if inst_data.get("dane_code"):
+        sub_parts.append(f"DANE: {inst_data['dane_code']}")
+    if inst_data.get("municipio"):
+        sub_parts.append(inst_data["municipio"])
+    if inst_data.get("rector"):
+        sub_parts.append(f"Rector(a): {inst_data['rector']}")
+    sub_line = " — ".join(sub_parts)
+    if sub_line:
+        inst_lines = (
+            f"<b>{nombre_inst}</b><br/>"
+            f"<font size='7'>{sub_line}</font><br/>"
+            f"{titulo_doc}<br/>"
+            f"Curso: {grupo} &nbsp;&nbsp; {periodo}"
+        )
+    else:
+        inst_lines = (
+            f"<b>{nombre_inst}</b><br/>"
+            f"{titulo_doc}<br/>"
+            f"Curso: {grupo} &nbsp;&nbsp; {periodo}"
+        )
     info_right = f"Generado: {_date.today().strftime('%d/%m/%Y')}"
 
     membrete_data = [
@@ -645,6 +669,7 @@ def generar_boletin_periodo_pdf(datos: dict[str, Any]) -> bytes:
             titulo_doc="BOLETÍN DE CALIFICACIONES POR PERIODO",
             grupo=est.get("grupo", ""),
             periodo=f"Periodo: {est.get('periodo', '')}",
+            inst=datos.get("inst"),
         )
     )
     story.append(Spacer(1, 0.35 * cm))
@@ -724,6 +749,7 @@ def _build_boletin_anual_pdf(datos: dict[str, Any], label_definitiva: str = "Def
             titulo_doc=titulo_doc,
             grupo=est.get("grupo", ""),
             periodo=periodo_str,
+            inst=datos.get("inst"),
         )
     )
     story.append(Spacer(1, 0.35 * cm))
@@ -1109,6 +1135,7 @@ def generar_reporte_convivencia_grupo_pdf(
     grupo: str = "",
     periodo: str = "",
     desglose_cols: list[str] | None = None,
+    inst_nombre: str = "",
 ) -> bytes:
     """Genera el PDF del reporte de convivencia por grupo con ReportLab.
 
@@ -1137,7 +1164,7 @@ def generar_reporte_convivencia_grupo_pdf(
 
     # ── Membrete ──
     story.append(
-        _membrete(page_w, titulo_doc=titulo, grupo=grupo, periodo=periodo)
+        _membrete(page_w, titulo_doc=titulo, grupo=grupo, periodo=periodo, inst={"nombre": inst_nombre} if inst_nombre else None)
     )
     story.append(Spacer(1, 0.3 * cm))
 

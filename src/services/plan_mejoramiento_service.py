@@ -19,9 +19,11 @@ from src.domain.models.plan_mejoramiento import (
     NotaCortePlan,
     NuevaActividadPlanDTO,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -33,11 +35,13 @@ class PlanMejoramientoService:
         plan_repo: IPlanMejoramientoRepository,
         eval_repo: IEvaluacionRepository,
         est_repo: IEstudianteRepository,
+        auditoria_repo=None,
     ) -> None:
         """Inyecta los repos de plan de mejoramiento, evaluación y estudiante."""
         self._plan_repo = plan_repo
         self._eval_repo = eval_repo
         self._est_repo = est_repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Corte
@@ -140,6 +144,9 @@ class PlanMejoramientoService:
             )
             notas_corte.append(nota_c)
 
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="cortes_plan",
+            registro_id=corte.id,
+            nuevo={"asignacion_id": dto.asignacion_id, "periodo_id": dto.periodo_id, "n_estudiantes": len(estudiantes)})
         return corte, notas_corte
 
     def get_corte(self, asignacion_id: int, periodo_id: int) -> CortePlan | None:
@@ -183,6 +190,8 @@ class PlanMejoramientoService:
             )
 
         actividad = self._plan_repo.guardar_actividad(dto.to_actividad(usuario_id))
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="actividades_plan",
+            registro_id=actividad.id, nuevo=actividad.model_dump())
 
         en_plan = self.listar_en_plan(dto.corte_id)
         for nc in en_plan:
@@ -251,7 +260,11 @@ class PlanMejoramientoService:
             raise ConflictoError("El plan del estudiante ya fue cerrado")
 
         actualizada = nota.model_copy(update={"valor": dto.valor, "usuario_id": dto.usuario_id})
-        return self._plan_repo.guardar_nota_actividad(actualizada)
+        resultado = self._plan_repo.guardar_nota_actividad(actualizada)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="notas_plan",
+            registro_id=resultado.id if hasattr(resultado, "id") else None,
+            nuevo={"actividad_plan_id": actividad_plan_id, "estudiante_id": estudiante_id, "valor": str(dto.valor)})
+        return resultado
 
     def calcular_nota_plan_estudiante(self, corte_id: int, estudiante_id: int) -> float | None:
         """
@@ -307,7 +320,12 @@ class PlanMejoramientoService:
                 "usuario_cierre_id": dto.usuario_cierre_id,
             }
         )
-        return self._plan_repo.actualizar_nota_corte(actualizada)
+        resultado = self._plan_repo.actualizar_nota_corte(actualizada)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="notas_corte_plan",
+            registro_id=nota_corte.id if hasattr(nota_corte, "id") else None,
+            anterior=nota_corte.model_dump(),
+            nuevo=resultado.model_dump())
+        return resultado
 
 
 __all__ = [

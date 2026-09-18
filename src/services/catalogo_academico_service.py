@@ -12,6 +12,9 @@ from __future__ import annotations
 from typing import Any
 
 from src.domain.exceptions import NoEncontradoError, ReglaDeNegocioError
+from src.domain.models.auditoria import AccionCambio
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 # El servicio se utiliza también con repositorios falsos en tests; las
@@ -27,6 +30,7 @@ class CatalogoAcademicoService:
         self,
         repo: IInfraestructuraRepository,
         asignacion_svc_provider=None,
+        auditoria_repo=None,
     ) -> None:
         """Inyecta el repositorio de infraestructura y un provider lazy del
         servicio de asignaciones (usado solo para director de grupo:
@@ -36,6 +40,7 @@ class CatalogoAcademicoService:
         # Provider lazy (callable que retorna AsignacionService) — se resuelve
         # bajo demanda en los métodos de director de grupo (convivencia_02).
         self._asignacion_svc_provider = asignacion_svc_provider
+        self._auditoria_repo = auditoria_repo
 
     # ── Resolución de institución (multi-tenant — paso_29, frente B1) ──────────
 
@@ -93,25 +98,40 @@ class CatalogoAcademicoService:
         inst_id = self._resolver_institucion(area.institucion_id)
         if inst_id != area.institucion_id:
             area = area.model_copy(update={"institucion_id": inst_id})
-        return self._repo.guardar_area(area)
+        resultado = self._repo.guardar_area(area)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="areas",
+            registro_id=resultado.id, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_area(self, area: AreaConocimiento) -> AreaConocimiento:
         """Actualiza un área verificando pertenencia al tenant."""
         actual = self._repo.get_area(area.id)
         self._verificar_pertenencia_obj(actual, "El área")
-        return self._repo.actualizar_area(area)
+        resultado = self._repo.actualizar_area(area)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="areas",
+            registro_id=area.id,
+            anterior=actual.model_dump() if actual else None,
+            nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_area(self, area_id: int) -> bool:
         """Elimina un área de conocimiento (delegado al repositorio)."""
-        return self._repo.eliminar_area(area_id)
+        anterior = self._repo.get_area(area_id)
+        ok = self._repo.eliminar_area(area_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="areas",
+            registro_id=area_id, anterior=anterior.model_dump() if anterior else None)
+        return ok
 
     @requiere_escritura
     def set_color_area(self, area_id: int, color: str | None) -> bool:
         """Asigna (o limpia) el color hex de un área. Valida vía el modelo."""
         normalizado = AreaConocimiento(id=area_id, nombre="_", color=color).color
-        return self._repo.actualizar_color_area(area_id, normalizado)
+        ok = self._repo.actualizar_color_area(area_id, normalizado)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="areas",
+            registro_id=area_id, nuevo={"area_id": area_id, "color": normalizado})
+        return ok
 
     # ── Asignaturas ───────────────────────────────────────────────────────────
 
@@ -130,7 +150,10 @@ class CatalogoAcademicoService:
         # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
         institucion_id = self._resolver_institucion(asignatura.institucion_id)
         asignatura = asignatura.model_copy(update={"institucion_id": institucion_id})
-        return self._repo.guardar_asignatura(asignatura)
+        resultado = self._repo.guardar_asignatura(asignatura)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="asignaturas",
+            registro_id=resultado.id, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_asignatura(self, asignatura: Asignatura) -> Asignatura:
@@ -142,13 +165,22 @@ class CatalogoAcademicoService:
         actual = self._repo.get_asignatura(asignatura.id)
         self._verificar_pertenencia_obj(actual, "La asignatura")
         asignatura = asignatura.model_copy(update={"institucion_id": actual.institucion_id})
-        return self._repo.actualizar_asignatura(asignatura)
+        resultado = self._repo.actualizar_asignatura(asignatura)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="asignaturas",
+            registro_id=asignatura.id,
+            anterior=actual.model_dump() if actual else None,
+            nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_asignatura(self, asignatura_id: int) -> bool:
         """Elimina una asignatura tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(self._repo.get_asignatura(asignatura_id), "La asignatura")
-        return self._repo.eliminar_asignatura(asignatura_id)
+        anterior = self._repo.get_asignatura(asignatura_id)
+        self._verificar_pertenencia_obj(anterior, "La asignatura")
+        ok = self._repo.eliminar_asignatura(asignatura_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="asignaturas",
+            registro_id=asignatura_id, anterior=anterior.model_dump() if anterior else None)
+        return ok
 
     # ── Grupos ────────────────────────────────────────────────────────────────
 
@@ -170,7 +202,10 @@ class CatalogoAcademicoService:
         # Asigna la institución del scope (o #1 en seed/arranque) si no viene ya.
         institucion_id = self._resolver_institucion(grupo.institucion_id)
         grupo = grupo.model_copy(update={"institucion_id": institucion_id})
-        return self._repo.guardar_grupo(grupo)
+        resultado = self._repo.guardar_grupo(grupo)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="grupos",
+            registro_id=resultado.id, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_grupo(self, grupo: Grupo) -> Grupo:
@@ -180,13 +215,22 @@ class CatalogoAcademicoService:
         actual = self._repo.get_grupo(grupo.id)
         self._verificar_pertenencia_obj(actual, "El grupo")
         grupo = grupo.model_copy(update={"institucion_id": actual.institucion_id})
-        return self._repo.actualizar_grupo(grupo)
+        resultado = self._repo.actualizar_grupo(grupo)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="grupos",
+            registro_id=grupo.id,
+            anterior=actual.model_dump() if actual else None,
+            nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_grupo(self, grupo_id: int) -> bool:
         """Elimina un grupo tras verificar que pertenece al tenant activo."""
-        self._verificar_pertenencia_obj(self._repo.get_grupo(grupo_id), "El grupo")
-        return self._repo.eliminar_grupo(grupo_id)
+        anterior = self._repo.get_grupo(grupo_id)
+        self._verificar_pertenencia_obj(anterior, "El grupo")
+        ok = self._repo.eliminar_grupo(grupo_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="grupos",
+            registro_id=grupo_id, anterior=anterior.model_dump() if anterior else None)
+        return ok
 
     # ── Director de grupo (convivencia_02) ──────────────────────────────────────
 
@@ -245,7 +289,10 @@ class CatalogoAcademicoService:
                     "un grupo."
                 )
         grupo_act = actual.model_copy(update={"director_grupo_id": usuario_id})
-        return self._repo.actualizar_grupo(grupo_act)
+        resultado = self._repo.actualizar_grupo(grupo_act)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="grupos",
+            registro_id=grupo_id, nuevo={"grupo_id": grupo_id, "director_id": usuario_id})
+        return resultado
 
     # ── Autorización por objeto: director de grupo (convivencia_03) ─────────────
 

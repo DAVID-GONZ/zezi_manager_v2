@@ -211,6 +211,37 @@ def _render_module_card(d, ctx, provider) -> None:
                         ui.label(item.detalle).classes("portal-subcard-detalle")
 
 
+def _render_kpis_admin() -> None:
+    """KPIs de uso de la plataforma para el admin (fail-open, R6/R7)."""
+    import contextlib
+
+    from container import Container
+    from src.interface.design.components.stats_grid import StatItem, stats_grid
+
+    with contextlib.suppress(Exception):
+        uso = Container.auditoria_service().resumen_uso(dias=7)
+        stats_grid([
+            StatItem(
+                titulo="Logins hoy",
+                valor=str(uso.logins_hoy),
+                icono="login",
+                variante="primary",
+            ),
+            StatItem(
+                titulo="Usuarios activos (7 d)",
+                valor=str(uso.usuarios_activos),
+                icono="group",
+                variante="success",
+            ),
+            StatItem(
+                titulo="Accesos denegados (7 d)",
+                valor=str(uso.accesos_denegados),
+                icono="block",
+                variante="warning" if uso.accesos_denegados > 0 else "neutral",
+            ),
+        ])
+
+
 def _render_module_card_admin(c: dict) -> None:
     """Tarjeta de administración (sin sub-secciones)."""
     with (
@@ -319,6 +350,7 @@ def inicio_page() -> None:
         # Tarjetas de módulo
         with ui.element("div").classes("module-hub-grid"):
             if rol == "admin":
+                _render_kpis_admin()
                 for c in _ADMIN_CARDS:
                     _render_module_card_admin(c)
             elif rol:

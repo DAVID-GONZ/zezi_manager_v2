@@ -89,10 +89,9 @@ def test_detecta_mutador_sin_huella(tmp_path: Path) -> None:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         for child in ast.walk(node):
-            if isinstance(child, ast.Constant) and isinstance(child.value, str):
-                if mod._is_sql_write(child.value):
-                    write_methods.add(node.name)
-                    break
+            if isinstance(child, ast.Constant) and isinstance(child.value, str) and mod._is_sql_write(child.value):
+                write_methods.add(node.name)
+                break
 
     assert "guardar_fake" in write_methods, (
         "El inventario de repos debe detectar 'guardar_fake' como metodo de escritura "

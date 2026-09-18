@@ -6,6 +6,7 @@ Orquesta los casos de uso del módulo de Convivencia.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -43,9 +44,12 @@ from src.domain.models.convivencia import (
     TipoRegistro,
     TipoSituacion,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.alerta_repo import IAlertaRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.service_ports import IExporterService
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 if TYPE_CHECKING:
@@ -76,6 +80,7 @@ class ConvivenciaService:
         exporter: IExporterService | None = None,
         asignacion_svc_provider: Callable[[], AsignacionService] | None = None,
         preferencias_svc_provider: Callable[[], PreferenciasInstitucionService] | None = None,
+        auditoria_repo: IAuditoriaRepository | None = None,
     ) -> None:
         """Inyecta el repositorio de convivencia y el de alertas (opcional).
 
@@ -108,6 +113,7 @@ class ConvivenciaService:
         self._exporter = exporter
         self._asignacion_svc_provider = asignacion_svc_provider
         self._preferencias_svc_provider = preferencias_svc_provider
+        self._auditoria_repo = auditoria_repo
 
     # â”€â”€ Resolución de institución (multi-tenant â€” mejora_07-T3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -556,10 +562,27 @@ class ConvivenciaService:
                     "categoria_id": dto.categoria_id,
                 }
             )
-            return self._repo.actualizar_observacion(obs_actualizada)
+            resultado = self._repo.actualizar_observacion(obs_actualizada)
+            auditar_cambio(
+                self._auditoria_repo,
+                accion=AccionCambio.UPDATE,
+                tabla="observaciones_periodo",
+                registro_id=resultado.id,
+                anterior=existente.model_dump(),
+                nuevo=resultado.model_dump(),
+            )
+            return resultado
 
         observacion = dto.to_observacion(usuario_id=usuario_id)
-        return self._repo.guardar_observacion(observacion)
+        resultado = self._repo.guardar_observacion(observacion)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="observaciones_periodo",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     def listar_observaciones(
         self,
@@ -598,8 +621,16 @@ class ConvivenciaService:
     @requiere_escritura
     def eliminar_observacion(self, observacion_id: int) -> bool:
         """Elimina una observación. Retorna True si fue eliminada."""
-        self._get_observacion_o_lanzar(observacion_id)
-        return self._repo.eliminar_observacion(observacion_id)
+        anterior = self._get_observacion_o_lanzar(observacion_id)
+        resultado = self._repo.eliminar_observacion(observacion_id)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.DELETE,
+            tabla="observaciones_periodo",
+            registro_id=observacion_id,
+            anterior=anterior.model_dump(),
+        )
+        return resultado
 
     # ------------------------------------------------------------------
     # Registros de comportamiento
@@ -625,6 +656,13 @@ class ConvivenciaService:
             raise ReglaDeNegocioError("La clasificacion de situacion es obligatoria.")
         registro = dto.to_registro(usuario_id=usuario_id)
         registro = self._repo.guardar_registro(registro)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="registro_comportamiento",
+            registro_id=registro.id,
+            nuevo=registro.model_dump(),
+        )
 
         # Verificar alertas si el registro es negativo
         if anio_id is not None and registro.es_negativo:
@@ -649,10 +687,19 @@ class ConvivenciaService:
         Transición de estado: acudiente_notificado=False â†’ True.
         Lanza si el registro no existe o ya fue notificado.
         """
-        registro = self._get_registro_o_lanzar(registro_id)
-        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
-        registro_notificado = registro.registrar_notificacion()
-        return self._repo.actualizar_registro(registro_notificado)
+        anterior = self._get_registro_o_lanzar(registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, anterior.grupo_id)
+        registro_notificado = anterior.registrar_notificacion()
+        resultado = self._repo.actualizar_registro(registro_notificado)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="registro_comportamiento",
+            registro_id=registro_id,
+            anterior=anterior.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def agregar_entrada_seguimiento(
@@ -670,6 +717,13 @@ class ConvivenciaService:
             usuario_id=usuario_id,
         )
         entrada = self._repo.guardar_entrada_seguimiento(entrada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="entradas_seguimiento",
+            registro_id=entrada.id,
+            nuevo=entrada.model_dump(),
+        )
         # Denormalización R3: actualizar campo legacy con el texto de la última entrada.
         registro_actualizado = registro.agregar_seguimiento(dto.texto)
         self._repo.actualizar_registro(registro_actualizado)
@@ -714,9 +768,17 @@ class ConvivenciaService:
         usuario_rol: str | None = None,
     ) -> bool:
         """Elimina un registro de comportamiento. Retorna True si fue eliminado."""
-        registro = self._get_registro_o_lanzar(registro_id)
-        self._verificar_autorizacion(usuario_rol, usuario_id, registro.grupo_id)
-        return self._repo.eliminar_registro(registro_id)
+        anterior = self._get_registro_o_lanzar(registro_id)
+        self._verificar_autorizacion(usuario_rol, usuario_id, anterior.grupo_id)
+        resultado = self._repo.eliminar_registro(registro_id)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.DELETE,
+            tabla="registro_comportamiento",
+            registro_id=registro_id,
+            anterior=anterior.model_dump(),
+        )
+        return resultado
 
     # ------------------------------------------------------------------
     # Notas de comportamiento
@@ -734,8 +796,19 @@ class ConvivenciaService:
         en un periodo (upsert: una nota por estudiante/grupo/periodo).
         """
         self._verificar_autorizacion(usuario_rol, usuario_id, dto.grupo_id)
+        existente_nota = self._repo.get_nota(dto.estudiante_id, dto.periodo_id)
         nota = dto.to_nota(usuario_id=usuario_id)
-        return self._repo.guardar_nota(nota)
+        resultado_nota = self._repo.guardar_nota(nota)
+        accion_nota = AccionCambio.UPDATE if existente_nota is not None else AccionCambio.CREATE
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=accion_nota,
+            tabla="notas_comportamiento",
+            registro_id=resultado_nota.id,
+            anterior=existente_nota.model_dump() if existente_nota is not None else None,
+            nuevo=resultado_nota.model_dump(),
+        )
+        return resultado_nota
 
     def get_nota_comportamiento(
         self,
@@ -1210,6 +1283,13 @@ class ConvivenciaService:
         grupo_nombre = kwargs.get("grupo", "")
         periodo_nombre = kwargs.get("periodo", "")
 
+        # Identidad institucional (informes_01)
+        inst_nombre = ""
+        if self._configuracion_svc_provider is not None:
+            with contextlib.suppress(Exception):
+                cfg_activa = self._configuracion_svc_provider().get_activa()
+                inst_nombre = getattr(cfg_activa, "nombre_institucion", "") or ""
+
         if formato_norm == "excel":
             from src.infrastructure.exporters.openpyxl_exporter import (
                 generar_reporte_convivencia_grupo_excel,
@@ -1221,6 +1301,7 @@ class ConvivenciaService:
                 grupo=grupo_nombre,
                 periodo=periodo_nombre,
                 desglose_cols=desglose_cols,
+                inst_nombre=inst_nombre,
             )
 
         from src.infrastructure.exporters.boletin_pdf import (
@@ -1233,6 +1314,7 @@ class ConvivenciaService:
             grupo=grupo_nombre,
             periodo=periodo_nombre,
             desglose_cols=desglose_cols,
+            inst_nombre=inst_nombre,
         )
 
     # ------------------------------------------------------------------
@@ -1264,7 +1346,15 @@ class ConvivenciaService:
             protocolo=dto.protocolo,
             institucion_id=inst_id,
         )
-        return self._repo.guardar_tipo_situacion(tipo)
+        resultado = self._repo.guardar_tipo_situacion(tipo)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="tipos_situacion",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def actualizar_tipo_situacion(
@@ -1287,7 +1377,16 @@ class ConvivenciaService:
                 "protocolo": dto.protocolo,
             }
         )
-        return self._repo.actualizar_tipo_situacion(actualizado)
+        resultado = self._repo.actualizar_tipo_situacion(actualizado)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="tipos_situacion",
+            registro_id=tipo_id,
+            anterior=tipo.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def desactivar_tipo_situacion(
@@ -1302,7 +1401,16 @@ class ConvivenciaService:
         if tipo is None:
             raise NoEncontradoError(f"Tipo de situacion con id {tipo_id} no existe.", detalles={"recurso": "tipo_situacion", "id": tipo_id})
         desactivado = tipo.model_copy(update={"activa": False})
-        return self._repo.actualizar_tipo_situacion(desactivado)
+        resultado = self._repo.actualizar_tipo_situacion(desactivado)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="tipos_situacion",
+            registro_id=tipo_id,
+            anterior=tipo.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     # ------------------------------------------------------------------
     # Catálogo de medidas pedagógicas (convivencia_36)
@@ -1332,7 +1440,15 @@ class ConvivenciaService:
             nivel_minimo=dto.nivel_minimo,
             institucion_id=inst_id,
         )
-        return self._repo.guardar_medida(medida)
+        resultado = self._repo.guardar_medida(medida)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="medidas_pedagogicas",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def actualizar_medida_pedagogica(
@@ -1354,7 +1470,16 @@ class ConvivenciaService:
                 "nivel_minimo": dto.nivel_minimo,
             }
         )
-        return self._repo.actualizar_medida(actualizada)
+        resultado = self._repo.actualizar_medida(actualizada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="medidas_pedagogicas",
+            registro_id=medida_id,
+            anterior=medida.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def desactivar_medida_pedagogica(
@@ -1369,7 +1494,16 @@ class ConvivenciaService:
         if medida is None:
             raise NoEncontradoError(f"Medida pedagogica con id {medida_id} no existe.", detalles={"recurso": "medida_pedagogica", "id": medida_id})
         desactivada = medida.model_copy(update={"activa": False})
-        return self._repo.actualizar_medida(desactivada)
+        resultado = self._repo.actualizar_medida(desactivada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="medidas_pedagogicas",
+            registro_id=medida_id,
+            anterior=medida.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     # ------------------------------------------------------------------
     # Catálogo de categorías de observación (convivencia_09 / _10)
@@ -1398,7 +1532,15 @@ class ConvivenciaService:
             es_comportamental=dto.es_comportamental,
             institucion_id=inst_id,
         )
-        return self._repo.guardar_categoria(categoria)
+        resultado = self._repo.guardar_categoria(categoria)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="categorias_observacion",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def actualizar_categoria(
@@ -1416,7 +1558,16 @@ class ConvivenciaService:
                 "es_comportamental": dto.es_comportamental,
             }
         )
-        return self._repo.actualizar_categoria(actualizada)
+        resultado = self._repo.actualizar_categoria(actualizada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="categorias_observacion",
+            registro_id=categoria_id,
+            anterior=categoria.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def desactivar_categoria(
@@ -1428,7 +1579,16 @@ class ConvivenciaService:
         if categoria is None:
             raise NoEncontradoError(f"Categoría con id {categoria_id} no existe.", detalles={"recurso": "categoria", "id": categoria_id})
         desactivada = categoria.model_copy(update={"activa": False})
-        return self._repo.actualizar_categoria(desactivada)
+        resultado = self._repo.actualizar_categoria(desactivada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="categorias_observacion",
+            registro_id=categoria_id,
+            anterior=categoria.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     def listar_todas_plantillas(
         self, categoria_id: int | None = None
@@ -1457,7 +1617,15 @@ class ConvivenciaService:
         plantilla = PlantillaObservacion(
             texto=dto.texto, categoria_id=dto.categoria_id, institucion_id=inst_id
         )
-        return self._repo.guardar_plantilla(plantilla)
+        resultado = self._repo.guardar_plantilla(plantilla)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="plantillas_observacion",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def actualizar_plantilla(
@@ -1479,7 +1647,16 @@ class ConvivenciaService:
         actualizada = plantilla.model_copy(
             update={"texto": dto.texto, "categoria_id": dto.categoria_id}
         )
-        return self._repo.actualizar_plantilla(actualizada)
+        resultado = self._repo.actualizar_plantilla(actualizada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="plantillas_observacion",
+            registro_id=plantilla_id,
+            anterior=plantilla.model_dump(),
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     @requiere_escritura
     def desactivar_plantilla(
@@ -1495,7 +1672,15 @@ class ConvivenciaService:
         if plantilla is None:
             raise NoEncontradoError(f"Plantilla con id {plantilla_id} no existe.", detalles={"recurso": "plantilla", "id": plantilla_id})
         desactivada = plantilla.model_copy(update={"activa": False})
-        self._repo.actualizar_plantilla(desactivada)
+        resultado_plantilla = self._repo.actualizar_plantilla(desactivada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="plantillas_observacion",
+            registro_id=plantilla_id,
+            anterior=plantilla.model_dump(),
+            nuevo=resultado_plantilla.model_dump(),
+        )
 
     # ------------------------------------------------------------------
     # Catálogo de plantillas de observación (convivencia_12)
@@ -1552,6 +1737,14 @@ class ConvivenciaService:
                 }
             )
             obs = self._repo.actualizar_observacion(obs_actualizada)
+            auditar_cambio(
+                self._auditoria_repo,
+                accion=AccionCambio.UPDATE,
+                tabla="observaciones_periodo",
+                registro_id=obs.id,
+                anterior=existente.model_dump(),
+                nuevo=obs.model_dump(),
+            )
         else:
             obs = ObservacionPeriodo(
                 **dto.model_dump(),
@@ -1559,6 +1752,13 @@ class ConvivenciaService:
                 origen="plantilla",
             )
             obs = self._repo.guardar_observacion(obs)
+            auditar_cambio(
+                self._auditoria_repo,
+                accion=AccionCambio.CREATE,
+                tabla="observaciones_periodo",
+                registro_id=obs.id,
+                nuevo=obs.model_dump(),
+            )
 
         # Incrementar el contador de uso de la plantilla
         self._repo.incrementar_uso_plantilla(plantilla_id)
@@ -1587,7 +1787,15 @@ class ConvivenciaService:
             )
         obs = self._get_observacion_o_lanzar(observacion_id)
         plantilla = PlantillaObservacion(texto=obs.texto, categoria_id=obs.categoria_id)
-        return self._repo.guardar_plantilla(plantilla)
+        resultado = self._repo.guardar_plantilla(plantilla)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="plantillas_observacion",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     def listar_plantillas_sugeridas(
         self,
@@ -1668,9 +1876,24 @@ class ConvivenciaService:
             tipo=TipoRegistro.DIFICULTAD,
         )
         registro = self._repo.guardar_registro(registro_nuevo)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="registro_comportamiento",
+            registro_id=registro.id,
+            nuevo=registro.model_dump(),
+        )
 
         obs_actualizada = obs.model_copy(update={"registro_comportamiento_id": registro.id})
-        self._repo.actualizar_observacion(obs_actualizada)
+        obs_resultado = self._repo.actualizar_observacion(obs_actualizada)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.UPDATE,
+            tabla="observaciones_periodo",
+            registro_id=obs.id,
+            anterior=obs.model_dump(),
+            nuevo=obs_resultado.model_dump(),
+        )
 
         return registro
 
@@ -1706,7 +1929,15 @@ class ConvivenciaService:
             nivel=dto.nivel,
             usuario_destino_id=dto.usuario_destino_id,
         )
-        return self._alerta_repo.guardar_alerta(alerta)
+        resultado = self._alerta_repo.guardar_alerta(alerta)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="alertas",
+            registro_id=resultado.id,
+            nuevo=resultado.model_dump(),
+        )
+        return resultado
 
     # ------------------------------------------------------------------
     # Vista 360Â° del estudiante (convivencia_18)

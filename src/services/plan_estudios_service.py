@@ -7,6 +7,7 @@ que usan los validadores de PreparacionHorarioService.
 
 from __future__ import annotations
 
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import (
     ConfiguracionGradoInstitucion,
     Grado,
@@ -14,6 +15,7 @@ from src.domain.models.infraestructura import (
     PlanEstudios,
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.contexto_tenant import institucion_actual
 from src.services.solo_lectura import requiere_escritura
 
@@ -23,6 +25,7 @@ class PlanEstudiosService:
         self,
         repo: IInfraestructuraRepository,
         asignacion_svc_provider=None,
+        auditoria_repo=None,
     ) -> None:
         """Inyecta el repo de infraestructura y un provider lazy del servicio de
         asignaciones (evita la dependencia circular plan↔asignación)."""
@@ -30,6 +33,7 @@ class PlanEstudiosService:
         # Provider lazy (callable que retorna AsignacionService) para evitar la
         # dependencia circular plan↔asignacion en el composition root.
         self._asignacion_svc_provider = asignacion_svc_provider
+        self._auditoria_repo = auditoria_repo
 
     # ── Resolución de institución (multi-tenant — mejora_07-T2) ────────────────
 
@@ -73,12 +77,22 @@ class PlanEstudiosService:
             max_estudiantes=max_estudiantes,
             horas_semanales=horas_semanales,
         )
-        return self._repo.upsert_grado(grado)
+        resultado = self._repo.upsert_grado(grado)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="grados",
+            registro_id=resultado.id, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def eliminar_grado(self, numero: int) -> bool:
         """Elimina un grado por su número (delegado al repositorio)."""
-        return self._repo.eliminar_grado(numero)
+        scope = institucion_actual() or "*"
+        existentes = self._repo.listar_grados(scope)
+        anterior = next((g for g in existentes if g.numero == numero), None)
+        ok = self._repo.eliminar_grado(numero)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="grados",
+            registro_id=anterior.id if anterior else None,
+            anterior=anterior.model_dump() if anterior else {"numero": numero})
+        return ok
 
     def horas_objetivo(self, grado: int) -> int:
         """Total de horas semanales objetivo declarado para el grado (0 si no existe)."""
@@ -126,9 +140,12 @@ class PlanEstudiosService:
     def actualizar(self, dto: NuevoPlanEstudiosDTO) -> PlanEstudios:
         """Fija (upsert) las horas de una asignatura en el plan de un grado."""
         inst_id = self._resolver_institucion(None)
-        return self._repo.set_horas_plan(
+        resultado = self._repo.set_horas_plan(
             dto.grado, dto.asignatura_id, dto.horas_semanales, institucion_id=inst_id
         )
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="plan_estudios",
+            registro_id=None, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def set_horas(self, grado: int, asignatura_id: int, horas: int) -> PlanEstudios:
@@ -165,6 +182,8 @@ class PlanEstudiosService:
         Retorna (eliminado_del_plan, n_asignaciones_desactivadas).
         """
         eliminado = self._repo.eliminar_plan_estudios(grado, asignatura_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="plan_estudios",
+            registro_id=None, anterior={"grado": grado, "asignatura_id": asignatura_id})
         n_desactivadas = 0
         if cascade and self._asignacion_svc_provider is not None:
             asignacion_svc = self._asignacion_svc_provider()

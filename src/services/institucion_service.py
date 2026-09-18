@@ -10,6 +10,7 @@ institución por defecto (#1). No contiene SQL ni lógica de presentación.
 from __future__ import annotations
 
 from src.domain.exceptions import ConflictoError, NoEncontradoError
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.institucion import (
     ActualizarInstitucionDTO,
     Institucion,
@@ -17,6 +18,7 @@ from src.domain.models.institucion import (
     NuevaInstitucionDTO,
 )
 from src.domain.ports.institucion_repo import IInstitucionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -26,9 +28,10 @@ class InstitucionService:
     No contiene SQL. No contiene lógica de presentación.
     """
 
-    def __init__(self, repo: IInstitucionRepository) -> None:
+    def __init__(self, repo: IInstitucionRepository, auditoria_repo=None) -> None:
         """Inyecta el repositorio de instituciones."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Consultas
@@ -86,7 +89,12 @@ class InstitucionService:
                 detalles={"recurso": "institucion", "id": institucion_id},
             )
         inst_actualizada = dto.aplicar_a(inst)
-        return self._repo.actualizar(inst_actualizada)
+        resultado = self._repo.actualizar(inst_actualizada)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="instituciones",
+            registro_id=institucion_id,
+            anterior=inst.model_dump(),
+            nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def marcar_configuracion_inicial_completa(self, institucion_id: int) -> Institucion:
@@ -100,9 +108,13 @@ class InstitucionService:
                 f"La institución con id {institucion_id} no existe.",
                 detalles={"recurso": "institucion", "id": institucion_id},
             )
-        return self._repo.actualizar(
+        resultado = self._repo.actualizar(
             inst.model_copy(update={"configuracion_inicial_completa": True})
         )
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="instituciones",
+            registro_id=institucion_id,
+            nuevo={"institucion_id": institucion_id, "configuracion_inicial_completa": True})
+        return resultado
 
     @requiere_escritura
     def crear(self, dto: NuevaInstitucionDTO) -> Institucion:
@@ -112,7 +124,10 @@ class InstitucionService:
         """
         if self._repo.existe_nombre(dto.nombre):
             raise ConflictoError(f"Ya existe una institución con el nombre '{dto.nombre}'.")
-        return self._repo.guardar(dto.to_institucion())
+        resultado = self._repo.guardar(dto.to_institucion())
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="instituciones",
+            registro_id=resultado.id, nuevo=resultado.model_dump())
+        return resultado
 
 
 __all__ = [

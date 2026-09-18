@@ -9,15 +9,27 @@ IInfraestructuraRepository por inyección; la lógica se movió idéntica.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.domain.ports.auditoria_repo import IAuditoriaRepository
+
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import EscenarioHorario, HorarioInfo
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
 class EscenarioHorarioService:
-    def __init__(self, repo: IInfraestructuraRepository) -> None:
+    def __init__(
+        self,
+        repo: IInfraestructuraRepository,
+        auditoria_repo: IAuditoriaRepository | None = None,
+    ) -> None:
         """Inyecta el repositorio de infraestructura."""
         self._repo = repo
+        self._auditoria_repo = auditoria_repo
 
     # ── Escenarios ────────────────────────────────────────────────────────────
 
@@ -36,7 +48,9 @@ class EscenarioHorarioService:
     @requiere_escritura
     def crear_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
         """Crea un escenario (delegado al repositorio)."""
-        return self._repo.crear_escenario(esc)
+        resultado = self._repo.crear_escenario(esc)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="escenarios_horario", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def crear_escenario_simple(
@@ -46,17 +60,23 @@ class EscenarioHorarioService:
         from src.domain.models.infraestructura import NuevoEscenarioDTO
 
         dto = NuevoEscenarioDTO(anio_id=anio_id, nombre=nombre, descripcion=descripcion)
-        return self._repo.crear_escenario(dto.to_escenario())
+        resultado = self._repo.crear_escenario(dto.to_escenario())
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="escenarios_horario", nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def actualizar_escenario(self, esc: EscenarioHorario) -> EscenarioHorario:
         """Actualiza un escenario (delegado al repositorio)."""
-        return self._repo.actualizar_escenario(esc)
+        anterior = self._repo.get_escenario(esc.id)
+        resultado = self._repo.actualizar_escenario(esc)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="escenarios_horario", anterior=anterior.model_dump() if anterior else None, nuevo=resultado.model_dump())
+        return resultado
 
     def renombrar_escenario(
         self, esc_existente, nombre: str, descripcion: str | None = None
     ) -> EscenarioHorario:
         """Actualiza nombre/descripción de un escenario usando el objeto ya cargado."""
+        anterior_dump = esc_existente.model_dump()
         updated = esc_existente.model_copy(
             update={
                 "nombre": nombre,
@@ -65,22 +85,30 @@ class EscenarioHorarioService:
                 else esc_existente.descripcion,
             }
         )
-        return self._repo.actualizar_escenario(updated)
+        resultado = self._repo.actualizar_escenario(updated)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="escenarios_horario", anterior=anterior_dump, nuevo=resultado.model_dump())
+        return resultado
 
     @requiere_escritura
     def activar_escenario(self, escenario_id: int) -> None:
         """Marca un escenario como activo (delegado al repositorio)."""
-        return self._repo.activar_escenario(escenario_id)
+        resultado = self._repo.activar_escenario(escenario_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.UPDATE, tabla="escenarios_horario", nuevo={"escenario_id": escenario_id, "activo": True})
+        return resultado
 
     @requiere_escritura
     def eliminar_escenario(self, escenario_id: int) -> bool:
         """Elimina un escenario (delegado al repositorio)."""
-        return self._repo.eliminar_escenario(escenario_id)
+        resultado = self._repo.eliminar_escenario(escenario_id)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.DELETE, tabla="escenarios_horario", anterior={"escenario_id": escenario_id})
+        return resultado
 
     @requiere_escritura
     def duplicar_escenario(self, escenario_id: int, nuevo_nombre: str) -> EscenarioHorario:
         """Duplica un escenario con un nuevo nombre (delegado al repositorio)."""
-        return self._repo.duplicar_escenario(escenario_id, nuevo_nombre)
+        resultado = self._repo.duplicar_escenario(escenario_id, nuevo_nombre)
+        auditar_cambio(self._auditoria_repo, accion=AccionCambio.CREATE, tabla="escenarios_horario", nuevo=resultado.model_dump())
+        return resultado
 
     def listar_horario_grupo_escenario(self, grupo_id: int, escenario_id: int) -> list[HorarioInfo]:
         """Lista el horario de un grupo dentro de un escenario (delegado al repositorio)."""

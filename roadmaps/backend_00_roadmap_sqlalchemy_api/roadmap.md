@@ -102,6 +102,75 @@ Builds:
 
 ---
 
+## Revisión de viabilidad (2026-09-09) — decisiones de David
+
+Pregunta planteada: *¿es viable arrancar SQLAlchemy ahora?* Veredicto:
+**técnicamente sí, pero no entrando por `backend_04`.** El código aguanta —
+`sqlite3` sigue 100 % contenido en `src/infrastructure/db/` (23 ficheros, cero
+fugas a `services/`, `domain/` o `interface/`)—; lo que falta es la red que
+haría verificable la migración. Decisiones tomadas:
+
+1. **Orden.** Se cierran primero los 6 pasos `spec_ready` de `step_list.json`
+   (`informes_01`, `obs_03`, `obs_04a/b/c`, `obs_05`). Ninguno colisiona de
+   fichero con la Fase 2 —tocan servicios, exporters y UI, no SQL—, pero
+   compiten por el tiempo. `portal_*` y `seguridad_web_*` quedan **después** del
+   backend: no forman parte de la puerta de la Fase 0.
+2. **SQLAlchemy Core estricto.** Se mantiene la decisión de la línea 98 (no ORM).
+   Consecuencia: `specs/tenant_06_orm_filtro_automatico/tasks.md` **está escrito
+   sobre una premisa falsa** — `do_orm_execute` y `with_loader_criteria` solo
+   existen en el ORM. Ese paso debe reescribirse como *filtro obligatorio en un
+   `RepositorioBase`* + test de conformidad que falle si un `select()` sobre
+   tabla con `institucion_id` no lleva el filtro. Se ejecuta dentro de
+   `backend_07`.
+3. **Postgres diferido.** `backend_03_postgres_test_infra` se reubica **entre
+   `backend_08` y `backend_09`**: `docker` no está disponible en la máquina de
+   desarrollo y no se instala ahora. `backend_02` debe dejar el conftest
+   parametrizado por engine para que el segundo dialecto entre después sin tocar
+   los 24 ficheros de `tests/integration/`.
+4. **`tenant_05_desnormalizacion_transitivas` queda absorbido por
+   `backend_04`.** Es trabajo de esquema (D5); sin migraciones en este entorno
+   el esquema se recrea, y hacerlo antes obligaría a escribirlo dos veces: una
+   en las cadenas DDL y otra en el `MetaData`.
+
+### Pasos nuevos que anteceden a `backend_04`
+
+- **backend_02b_tests_esquema** 🕓 — Tests que comparen el esquema aplicado
+  contra `sqlite_master`: tablas, columnas, FKs, índices, triggers y orden de
+  creación. Resuelve **D11** (cero tests de esquema), que es la razón de fondo
+  por la que D1 y D2 llevaban meses ocultos. Sin esto `backend_04` reescribe
+  1.616 líneas de DDL sin nada que verifique la equivalencia.
+  - *criterio_done*: la suite falla ante cualquier alteración de `schema.py`;
+    D1 y D2 quedan como fallo rojo reproducible.
+- **backend_02c_normalizar_plan_mejoramiento** 🕓 — Llevar
+  `sqlite_plan_mejoramiento_repo.py` al patrón `conn=None` del resto (**D7**):
+  hoy abre su propia `sqlite3.connect()` y sus tests de integración escriben en
+  `data/app.db` real.
+  - *criterio_done*: ningún test de integración toca la base de desarrollo.
+
+### Reestimación de la Fase 2
+
+La estimación de «1.5–2.5 semanas» se midió el 2026-07-27 sobre un repo más
+pequeño. Superficie real hoy:
+
+| Superficie | 2026-07-27 | 2026-09-09 |
+| --- | --- | --- |
+| Ficheros de test | 75 | **170** |
+| Tests que importan `sqlite3` | 8 | **19** |
+| `INSERT OR REPLACE/IGNORE` | 9 | **23** |
+| Repos / métodos / LOC | — | 21 repos, **389 métodos**, 8.752 LOC |
+| `schema.py` | — | 1.616 líneas, **65 tablas** |
+
+Contar la Fase 2 al **doble** de lo escrito en la tabla de esfuerzo original.
+
+### Aviso pendiente sobre `obs_04a/b/c`
+
+Los tres tramos de huella universal añaden ~115 escrituras de auditoría que hoy
+**no son atómicas con el cambio que describen** (D6: 0 `rollback`, 0 `BEGIN` en
+20 de 21 repos). La atomicidad solo llega con `backend_06`/`backend_07`; habrá
+que revisitar esas llamadas entonces.
+
+---
+
 ## Estado actual (revisión de 2026-07-27)
 
 ### Lo que juega a favor

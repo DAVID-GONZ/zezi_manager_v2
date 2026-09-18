@@ -16,9 +16,12 @@ from src.domain.models.asistencia import (
     RegistroAsistenciaItemDTO,
     ResumenAsistenciaDTO,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.asistencia_repo import IAsistenciaRepository
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
+from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 
 
@@ -33,11 +36,13 @@ class AsistenciaService:
         repo: IAsistenciaRepository,
         alerta_repo: IAlertaRepository | None = None,
         config_repo: IConfiguracionRepository | None = None,
+        auditoria_repo: IAuditoriaRepository | None = None,
     ) -> None:
         """Inyecta el repo de asistencia y los de alertas y configuración (opcionales)."""
         self._repo = repo
         self._alerta_repo = alerta_repo
         self._config_repo = config_repo
+        self._auditoria_repo = auditoria_repo
 
     # ------------------------------------------------------------------
     # Helpers privados
@@ -98,6 +103,13 @@ class AsistenciaService:
         """
         control = dto.to_control()
         control = self._repo.registrar(control)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="control_diario",
+            registro_id=control.id,
+            nuevo=control.model_dump(),
+        )
         return control
 
     @requiere_escritura
@@ -117,6 +129,17 @@ class AsistenciaService:
         """
         controles = dto.to_controles()
         conteo = self._repo.registrar_masivo(controles)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="control_diario",
+            nuevo={
+                "grupo_id": dto.grupo_id,
+                "asignacion_id": dto.asignacion_id,
+                "fecha": str(dto.fecha),
+                "n_registros": conteo,
+            },
+        )
 
         # Verificar alertas para estudiantes con FI
         if anio_id is not None and controles:
@@ -239,7 +262,19 @@ class AsistenciaService:
             registros=items,
             usuario_registro_id=usuario_id,
         )
-        return self.registrar_masivo(dto, usuario_id=usuario_id, anio_id=anio_id)
+        n = self.registrar_masivo(dto, usuario_id=usuario_id, anio_id=anio_id)
+        auditar_cambio(
+            self._auditoria_repo,
+            accion=AccionCambio.CREATE,
+            tabla="control_diario",
+            nuevo={
+                "grupo_id": grupo_id,
+                "asignacion_id": asignacion_id,
+                "fecha": str(fecha),
+                "fuente": "guardar_masiva",
+            },
+        )
+        return n
 
     def contar_clases_mes(self, usuario_id: int, anio: int, mes: int) -> int:
         """

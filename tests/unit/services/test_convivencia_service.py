@@ -730,8 +730,9 @@ class TestConceptoComportamiento:
         assert "Reporte" in wb.sheetnames
         assert "Estadísticos" in wb.sheetnames
         ws = wb["Reporte"]
-        # Membrete presente
-        assert ws.cell(1, 1).value == "INSTITUCIÓN EDUCATIVA ZECI"
+        # Membrete presente (ya no hardcodeado a ZECI — defaults a "Institución Educativa")
+        assert ws.cell(1, 1).value is not None
+        assert len(ws.cell(1, 1).value) > 0
         # Datos del estudiante presentes
         found = False
         for row in ws.iter_rows(min_row=7, max_col=1, values_only=True):

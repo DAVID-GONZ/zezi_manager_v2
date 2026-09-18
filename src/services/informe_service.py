@@ -410,6 +410,7 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
+            import contextlib
             import importlib
 
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
@@ -417,6 +418,22 @@ class InformeService:
                 estudiante_id, grupo_id, periodo_id
             )
             datos["convivencia"] = self.convivencia_boletin(estudiante_id, periodo_id)
+            # Identidad institucional (informes_01)
+            inst = {}
+            if self._config_svc_provider is not None:
+                with contextlib.suppress(Exception):
+                    cfg = self._config_svc_provider().get_activa()
+                    dto = self.get_informacion_institucional(cfg.id)
+                    inst = {
+                        "nombre": dto.nombre_institucion,
+                        "dane_code": dto.dane_code,
+                        "rector": dto.rector,
+                        "municipio": dto.municipio,
+                        "direccion": dto.direccion,
+                        "telefono": dto.telefono_institucion,
+                        "resolucion": dto.resolucion_aprobacion,
+                    }
+            datos["inst"] = inst
             return _boletin_mod.generar_boletin_acumulado_pdf(datos)
 
         # Excel: tabla plana acumulada con columna por cada periodo anterior + actual
@@ -475,11 +492,27 @@ class InformeService:
         fmt = FormatoInforme(formato)
 
         if fmt == FormatoInforme.PDF:
+            import contextlib
             import importlib
 
             _boletin_mod = importlib.import_module("src.infrastructure.exporters.boletin_pdf")
             datos = self._estadisticos_repo.boletin_datos_anual(estudiante_id, grupo_id, anio_id)
             datos["convivencia_anual"] = self.convivencia_boletin_anual(estudiante_id, anio_id)
+            # Identidad institucional (informes_01)
+            inst = {}
+            if self._config_svc_provider is not None:
+                with contextlib.suppress(Exception):
+                    dto = self.get_informacion_institucional(anio_id)
+                    inst = {
+                        "nombre": dto.nombre_institucion,
+                        "dane_code": dto.dane_code,
+                        "rector": dto.rector,
+                        "municipio": dto.municipio,
+                        "direccion": dto.direccion,
+                        "telefono": dto.telefono_institucion,
+                        "resolucion": dto.resolucion_aprobacion,
+                    }
+            datos["inst"] = inst
             return _boletin_mod.generar_boletin_anual_pdf(datos)
 
         # Excel: tabla plana con columna por periodo

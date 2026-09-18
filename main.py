@@ -70,16 +70,33 @@ def configurar_logging() -> None:
 
 def registrar_rutas_internas(app) -> None:
     """
-    Registra rutas FastAPI auxiliares (health).
+    Registra rutas FastAPI auxiliares (health, manejador global).
     Separadas de las rutas NiceGUI para mantener claridad.
 
     Nota (paso_38): la antigua página inline `/diagnostico` se movió a una
     página de herramientas de admin (src/interface/pages/admin/diagnostico.py)
     y ahora se registra en `registrar_rutas_ui()` (surgida en el NAV).
     """
+    import logging as _logging
+    _log_main = _logging.getLogger("MAIN")
+
     @app.get("/health")
     def health():
+        from src.infrastructure.db.connection import verify_db_integrity
+        ok = verify_db_integrity()
+        if not ok:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={"status": "error", "version": settings.APP_VERSION},
+            )
         return {"status": "ok", "version": settings.APP_VERSION}
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        _log_main.exception("Excepcion no capturada: %s", exc)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": "Error interno"})
 
 
 def registrar_rutas_ui() -> None:
