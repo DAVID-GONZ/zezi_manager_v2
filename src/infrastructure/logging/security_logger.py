@@ -40,6 +40,7 @@ _CAMPOS_PERMITIDOS: frozenset[str] = frozenset({
     "tipo_evento",
     "motivo",
     "recurso",
+    "objetivo",    # NUEVO (obs_06, R12): sujeto de ver_como / gestion_usuario
 })
 
 
@@ -175,21 +176,29 @@ class SecurityLogger(ISecurityLogger):
         )
 
     def ver_como(self, admin: str, objetivo: str, accion: str) -> None:
-        """Registra inicio/fin de impersonación (INFO)."""
+        """Registra inicio/fin de impersonación (INFO).
+
+        obs_06 (T14): ahora incluye `objetivo` (el usuario impersonado).
+        """
         _logger.info(
             "ver_como",
             extra={
                 "usuario": admin,
+                "objetivo": objetivo,   # NUEVO (obs_06, R12)
                 "tipo_evento": accion,
             },
         )
 
     def gestion_usuario(self, actor: str, objetivo: str, operacion: str) -> None:
-        """Registra una operación de gestión de usuario (INFO)."""
+        """Registra una operación de gestión de usuario (INFO).
+
+        obs_06 (T14): ahora incluye `objetivo` (el usuario gestionado).
+        """
         _logger.info(
             "gestion_usuario",
             extra={
                 "usuario": actor,
+                "objetivo": objetivo,   # NUEVO (obs_06, R12)
                 "tipo_evento": operacion,
             },
         )

@@ -30,7 +30,12 @@ def instalar_interceptor_tenant() -> None:
     def _wrapper(self: Client, msg: dict) -> None:
         from src.interface.context.session_context import SessionContext
         try:
-            SessionContext.desde_storage()
+            ctx = SessionContext.desde_storage()
+            if ctx is None:
+                # Sin sesión activa: limpiar el actor para evitar valores
+                # obsoletos heredados de la task padre (obs_07, T6).
+                from src.services.contexto_actor import limpiar_actor
+                limpiar_actor()
         except RuntimeError as exc:
             if "can only be used within a UI context" not in str(exc):
                 raise

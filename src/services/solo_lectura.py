@@ -27,10 +27,13 @@ from __future__ import annotations
 
 import contextvars
 import functools
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
 from src.domain.exceptions import OperacionSoloLecturaError
+
+_log = logging.getLogger("SOLO_LECTURA")
 
 # Estado privado. Default False → comportamiento normal sin impersonación.
 _solo_lectura: contextvars.ContextVar[bool] = contextvars.ContextVar(
@@ -59,20 +62,28 @@ def verificar_escritura() -> None:
         try:
             from container import Container
             from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
-            from src.services.contexto_actor import actor_actual
+            from src.domain.policies.severidad_evento import (
+                MOTIVO_SOLO_LECTURA,
+                severidad_de,
+            )
+            from src.services.contexto_actor import actor_actual, actor_ip, actor_username
             uid = actor_actual()
+            # obs_07 T7: añadir motivo y derivar severidad (ADVERTENCIA para solo_lectura).
             Container.auditoria_service().registrar_evento(
                 EventoSesion(
-                    usuario=str(uid or "anon"),
+                    usuario=actor_username() or "desconocido",
                     usuario_id=uid,
+                    ip_address=actor_ip(),
                     tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
+                    severidad=severidad_de(TipoEventoSesion.ACCESO_DENEGADO, MOTIVO_SOLO_LECTURA),
                     detalles="Intento de escritura en modo solo lectura (Ver como)",
                 )
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # obs_07 T8: la auditoría no bloquea la operación, pero el fallo ya no es invisible.
+            _log.warning("No se pudo auditar la denegacion de escritura: %s", exc)
         raise OperacionSoloLecturaError(
-            "Sesión en modo solo lectura (Ver como): no se permiten cambios."
+            "Sesion en modo solo lectura (Ver como): no se permiten cambios."
         )
 
 

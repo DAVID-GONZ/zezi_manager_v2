@@ -166,6 +166,7 @@ def planilla_notas_page() -> None:
             _s["peso_disponible"] = 1.0
 
     async def _carga_inicial():
+        SessionContext.desde_storage()  # re-sincroniza ContextVars: ui.timer no pasa por el interceptor
         _cargar_siee_cats()   # primero: establece anio_id
         _cargar_datos()        # segundo: usa anio_id para cachear peso
         _s["cargando"] = False

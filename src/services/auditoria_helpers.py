@@ -40,19 +40,27 @@ def auditar_cambio(
     if repo is None:
         return
     try:
-        from src.services.contexto_actor import actor_actual
+        from src.services.contexto_actor import actor_actual, actor_ip, actor_username
         from src.services.contexto_tenant import institucion_actual
 
         uid = usuario_id if usuario_id is not None else actor_actual()
         iid = institucion_id if institucion_id is not None else institucion_actual()
+        # obs_06 (T13): resolver identidad completa desde el contexto del actor
+        uname = actor_username()
+        uip = actor_ip()
 
         if accion == AccionCambio.CREATE:
-            cambio = RegistroCambio.para_creacion(tabla, nuevo or {}, registro_id, uid, iid)
+            cambio = RegistroCambio.para_creacion(
+                tabla, nuevo or {}, registro_id, uid, iid, usuario=uname, ip_address=uip
+            )
         elif accion == AccionCambio.DELETE:
-            cambio = RegistroCambio.para_eliminacion(tabla, anterior or {}, registro_id, uid, iid)
+            cambio = RegistroCambio.para_eliminacion(
+                tabla, anterior or {}, registro_id, uid, iid, usuario=uname, ip_address=uip
+            )
         else:
             cambio = RegistroCambio.para_actualizacion(
-                tabla, anterior or {}, nuevo or {}, registro_id, uid, iid
+                tabla, anterior or {}, nuevo or {}, registro_id, uid, iid,
+                usuario=uname, ip_address=uip
             )
         repo.registrar_cambio(cambio)
     except Exception as exc:

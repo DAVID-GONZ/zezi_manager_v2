@@ -673,6 +673,7 @@ class Container:
             lambda: AuditoriaService(
                 repo=cls.auditoria_repo(),
                 security_logger=cls.security_logger(),
+                usuario_repo=cls.usuario_repo(),  # obs_09: resolver_actores / detalle_cambio
             ),
         )
 

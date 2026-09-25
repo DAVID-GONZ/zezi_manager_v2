@@ -110,20 +110,22 @@ class TestJsonSecurityFormatter:
             usuario="admin",
             ip="127.0.0.1",
             tipo_evento="LOGIN_EXITOSO",
+            objetivo="usuario_objetivo",        # permitido desde obs_06 (R12)
             # Campos que NO están en la whitelist
             token="eyJhbGciOiJIUzI1NiJ9",
             datos_internos={"secreto": "valor"},
-            objetivo="usuario_objetivo",
+            datos_extras="no deberia aparecer",
         )
         output = formatter.format(record)
         data = json.loads(output)
 
         assert "token" not in data
         assert "datos_internos" not in data
-        assert "objetivo" not in data
+        assert "datos_extras" not in data
         # Los permitidos sí aparecen
         assert data["usuario"] == "admin"
         assert data["tipo_evento"] == "LOGIN_EXITOSO"
+        assert data["objetivo"] == "usuario_objetivo"
 
     def test_timestamp_iso8601_presente(self, formatter):
         record = _make_record(logging.INFO, "logout", usuario="u", ip="1.1.1.1")
@@ -150,7 +152,11 @@ class TestJsonSecurityFormatter:
 
     def test_whitelist_es_frozenset_completo(self):
         """Verificar que _CAMPOS_PERMITIDOS contiene los campos esperados."""
-        esperados = {"usuario", "ip", "timestamp", "rol", "institucion_id", "tipo_evento", "motivo", "recurso"}
+        esperados = {
+            "usuario", "ip", "timestamp", "rol", "institucion_id",
+            "tipo_evento", "motivo", "recurso",
+            "objetivo",   # añadido en obs_06 para ver_como / gestion_usuario
+        }
         assert esperados == _CAMPOS_PERMITIDOS
 
 

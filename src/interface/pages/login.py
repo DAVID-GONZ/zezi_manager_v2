@@ -82,29 +82,6 @@ def login_page() -> None:
                 ThemeManager.icono("error", size=20, color="inherit")
                 error_label = ui.label("").classes("login-alert-text")
 
-            # ── Helper IP ────────────────────────────────────────────────────
-            def _obtener_ip() -> str | None:
-                try:
-                    from nicegui import app as _app
-                    try:
-                        forwarded = _app.storage.request.headers.get("X-Forwarded-For", "")
-                        if forwarded:
-                            return forwarded.split(",")[0].strip()
-                        return getattr(getattr(_app.storage.request, "client", None), "host", None)
-                    except AttributeError:
-                        pass
-                    try:
-                        from nicegui import Client
-                        request = Client.current().request
-                        forwarded = request.headers.get("X-Forwarded-For", "")
-                        if forwarded:
-                            return forwarded.split(",")[0].strip()
-                        return getattr(getattr(request, "client", None), "host", None)
-                    except Exception:
-                        return None
-                except Exception:
-                    return None
-
             # ── Lógica de autenticación ──────────────────────────────────────
             def intentar_login() -> None:
                 error_container.classes(
@@ -171,6 +148,7 @@ def login_page() -> None:
 
                     app.storage.user["autenticado"] = True
                     app.storage.user["usuario_id"] = user_db.id
+                    app.storage.user["usuario"] = user_db.usuario  # username (obs_06)
                     app.storage.user["usuario_nombre"] = user_db.nombre_completo
                     app.storage.user["usuario_rol"] = rol_str
                     # A2 — cambio forzado: el guard fuerza /cambiar-password si
@@ -212,17 +190,15 @@ def login_page() -> None:
                     ctx.guardar()
 
                     try:
-                        from src.services.auditoria_service import (
-                            EventoSesion,
-                            TipoEventoSesion,
-                        )
+                        from src.domain.models.auditoria import TipoEventoSesion
+                        from src.interface.context.eventos_sesion import construir_evento
 
                         Container.auditoria_service().registrar_evento(
-                            EventoSesion(
+                            construir_evento(
                                 usuario=user_db.usuario,
                                 usuario_id=user_db.id,
                                 tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
-                                ip_address=_obtener_ip(),
+                                institucion_id=getattr(user_db, "institucion_id", None),
                             )
                         )
                     except Exception as audit_exc:
@@ -248,16 +224,14 @@ def login_page() -> None:
                         # disparar el bloqueo) y auditar el evento ya existente.
                         login_throttle.registrar_fallo(nombre_usuario)
                         try:
-                            from src.services.auditoria_service import (
-                                EventoSesion,
-                                TipoEventoSesion,
-                            )
+                            from src.domain.models.auditoria import TipoEventoSesion
+                            from src.interface.context.eventos_sesion import construir_evento
 
                             Container.auditoria_service().registrar_evento(
-                                EventoSesion(
+                                construir_evento(
                                     usuario=nombre_usuario,
+                                    usuario_id=None,
                                     tipo_evento=TipoEventoSesion.LOGIN_FALLIDO,
-                                    ip_address=_obtener_ip(),
                                 )
                             )
                         except Exception as audit_exc:

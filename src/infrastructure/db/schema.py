@@ -1052,6 +1052,17 @@ SCHEMA: list[str] = [
         fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         detalles    TEXT,
 
+        -- NUEVO (obs_06): sujeto de la acción (usuario impersonado, gestionado, etc.).
+        -- Entra en el payload firmado de la cadena SHA-256.
+        objetivo    TEXT,
+
+        -- NUEVO (obs_06): clasificación de severidad. obs_07 la consumirá.
+        -- No entra en el payload firmado (es clasificación, no contenido de evento).
+        -- CHECK declarado aquí porque la columna nace con este DDL (no aplica
+        -- la restricción de CLAUDE.md sobre ALTER TABLE; ver §5 del diseño).
+        severidad   TEXT NOT NULL DEFAULT 'INFO'
+                    CHECK(severidad IN ('INFO', 'ADVERTENCIA', 'CRITICA')),
+
         -- Encadenamiento por hash (seguridad_03, M3): SHA256(hash_previo||payload)
         -- del registro anterior de esta tabla. NULL = registro pre-cadena
         -- (anterior a la migración); la verificación arranca desde el primer
@@ -1070,6 +1081,16 @@ SCHEMA: list[str] = [
     CREATE TABLE IF NOT EXISTS audit_log (
         id              INTEGER  PRIMARY KEY AUTOINCREMENT,
         usuario_id      INTEGER,
+
+        -- NUEVO (obs_06, R8): snapshot del username en el momento del cambio.
+        -- Sobrevive al borrado del usuario (igual que auditoria.usuario).
+        -- ENTRA en el hash SHA-256 (R11): cambiar el username rompe la cadena.
+        usuario         TEXT,
+
+        -- NUEVO (obs_06, R8): IP del actor en el momento del cambio.
+        -- ENTRA en el hash SHA-256 (R11): cambiar la IP rompe la cadena.
+        ip_address      TEXT,
+
         accion          TEXT     NOT NULL,
         tabla           TEXT     NOT NULL,
         registro_id     INTEGER,
@@ -1078,6 +1099,10 @@ SCHEMA: list[str] = [
         timestamp       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
         -- Encadenamiento por hash (seguridad_03, M3): ver tabla `auditoria`.
+        -- Campos en el hash: usuario, usuario_id, ip_address, accion, tabla,
+        --   registro_id, valor_anterior, valor_nuevo, timestamp.
+        -- Campo fuera del hash: institucion_id (scope informacional, igual que
+        --   en `auditoria` desde mejora_07-T7).
         hash_cadena     TEXT,
 
         -- Multi-tenant informacional (mejora_07-T7): scope de la institución.
@@ -1085,6 +1110,18 @@ SCHEMA: list[str] = [
         institucion_id  INTEGER REFERENCES instituciones(id),
 
         FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+    )
+    """,
+    # obs_08: punto de control para la verificación incremental de la cadena.
+    # Metadato operativo: no participa en ninguna cadena (no tiene hash_cadena).
+    # Si se pierde, la siguiente verificación arranca desde el origen y lo
+    # reconstruye. Almacena una fila por tabla auditada ('auditoria'/'audit_log').
+    """
+    CREATE TABLE IF NOT EXISTS verificacion_auditoria (
+        tabla          TEXT     PRIMARY KEY,   -- 'auditoria' | 'audit_log'
+        ultimo_id      INTEGER  NOT NULL,      -- última fila verificada como íntegra
+        ultimo_hash    TEXT     NOT NULL,      -- hash_cadena de esa fila: semilla del tramo siguiente
+        verificado_en  DATETIME NOT NULL
     )
     """,
     # 12. GENERADOR DE HORARIOS

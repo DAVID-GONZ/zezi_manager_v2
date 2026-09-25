@@ -24,12 +24,14 @@ Principios:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from ..models.auditoria import (
     EventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
 )
+from ..models.tenant import TenantScope
 
 
 class IAuditoriaRepository(ABC):
@@ -143,26 +145,78 @@ class IAuditoriaRepository(ABC):
     # cadena (fakes de tests) los heredan sin cambios y se consideran "no
     # verificables" (devuelven None). El repo SQLite los sobreescribe.
 
-    def verificar_cadena_eventos(self) -> int | None:
+    def verificar_cadena_eventos(self, *, completa: bool = False) -> int | None:
         """
         Verifica el encadenamiento por hash de la tabla `auditoria`.
 
-        Retorna el `id` del primer evento cuya cadena no cuadra (edición,
-        inserción o borrado intermedio), o None si la cadena es íntegra.
-        Los repos sin soporte de cadena se consideran no verificables y
-        devuelven None.
+        Con `completa=False` (por defecto) reanuda desde el último punto de
+        control guardado (verificación incremental — R6). Con `completa=True`
+        verifica desde el origen, ignorando el punto de control (R8).
+
+        Retorna el `id` del primer evento cuya cadena no cuadra, o None si el
+        tramo verificado es íntegro. Los repos sin soporte de cadena devuelven
+        None (se consideran no verificables).
         """
         return None
 
-    def verificar_cadena_cambios(self) -> int | None:
+    def verificar_cadena_cambios(self, *, completa: bool = False) -> int | None:
         """
         Verifica el encadenamiento por hash de la tabla `audit_log`.
 
-        Retorna el `id` del primer cambio cuya cadena no cuadra, o None si la
-        cadena es íntegra. Los repos sin soporte de cadena se consideran no
-        verificables y devuelven None.
+        Con `completa=False` (por defecto) reanuda desde el último punto de
+        control. Con `completa=True` verifica desde el origen (R8).
+
+        Retorna el `id` del primer cambio cuya cadena no cuadra, o None si el
+        tramo verificado es íntegro. Los repos sin soporte de cadena devuelven None.
         """
         return None
+
+    # =========================================================================
+    # Conteos y agregados (obs_08 — R1, R2, R3)
+    # =========================================================================
+    #
+    # Métodos CONCRETOS (no abstractos) con valor por defecto neutro (R3),
+    # al igual que `verificar_cadena_*`. Los fakes de tests los heredan sin
+    # modificarse. El repo SQLite los sobreescribe con implementaciones SQL.
+
+    def contar_eventos(self, filtro: FiltroAuditoriaDTO) -> int:
+        """
+        Cuenta los eventos de sesión que satisfacen `filtro`, ignorando
+        `filtro.pagina` y `filtro.por_pagina`.
+
+        Permite mostrar el total de resultados («N resultados») junto a los
+        controles de paginación sin necesidad de materializar todas las filas.
+        """
+        return 0
+
+    def contar_cambios(self, filtro: FiltroAuditoriaDTO) -> int:
+        """
+        Cuenta los registros de cambio que satisfacen `filtro`, ignorando
+        `filtro.pagina` y `filtro.por_pagina`.
+        """
+        return 0
+
+    def resumen_eventos(
+        self,
+        desde: datetime,
+        hasta: datetime | None = None,
+        institucion_id: TenantScope = "*",
+    ) -> dict:
+        """
+        Devuelve los agregados de uso calculados en SQL para la ventana temporal
+        `[desde, hasta]` (o hasta el momento presente si `hasta` es None),
+        acotados por `institucion_id` cuando no es `"*"`.
+
+        Claves garantizadas en el dict devuelto:
+          - ``por_tipo``          dict[str, int] — conteo de eventos por tipo.
+          - ``logins_hoy``        int  — LOGIN_EXITOSO desde inicio del día actual.
+          - ``usuarios_distintos`` int — usuarios únicos con login en la ventana.
+          - ``denegados_criticos`` int — ACCESO_DENEGADO con severidad=CRITICA.
+
+        Los repos sin soporte devuelven `{}` (valor neutro; el consumidor usa
+        `.get(clave, 0)` para un comportamiento fail-open).
+        """
+        return {}
 
 
 __all__ = ["IAuditoriaRepository"]

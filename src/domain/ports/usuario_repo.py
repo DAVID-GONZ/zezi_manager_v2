@@ -58,6 +58,25 @@ class IUsuarioRepository(ABC):
         """Retorna el usuario con ese id, o None si no existe."""
         ...
 
+    def get_varios(self, ids: set[int]) -> list[Usuario]:
+        """
+        Retorna los usuarios cuyo id esté en ``ids``, en una sola consulta.
+
+        Usado por ``AuditoriaService.resolver_actores`` para resolver nombres
+        de actores en bloque (obs_09, R8). El orden de la lista no está garantizado.
+        Si algún id no existe, simplemente no aparece en el resultado.
+
+        Args:
+            ids: Conjunto de IDs de usuario a buscar.
+
+        Returns:
+            Lista de ``Usuario`` (puede ser vacía si ningún id coincide).
+
+        Concreto con default neutro (pattern R3 de obs_08): los dobles de test
+        existentes lo heredan sin modificarse.
+        """
+        return []
+
     @abstractmethod
     def get_by_username(self, username: str) -> Usuario | None:
         """

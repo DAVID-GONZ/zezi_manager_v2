@@ -132,22 +132,27 @@ def registrar_rutas_ui() -> None:
         else:
             login_page()
 
+    _log_logout = logging.getLogger("LOGOUT")
+
     def pagina_logout():
         try:
             ctx_data = dict(app.storage.user)
-            usuario = ctx_data.get("usuario_nombre", "")
+            # obs_06: usar el username (campo "usuario"), no el nombre para mostrar
+            usuario = ctx_data.get("usuario", "") or ctx_data.get("usuario_nombre", "")
             usuario_id = ctx_data.get("usuario_id")
             if usuario:
-                from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
+                from src.domain.models.auditoria import TipoEventoSesion
+                from src.interface.context.eventos_sesion import construir_evento
                 Container.auditoria_service().registrar_evento(
-                    EventoSesion(
+                    construir_evento(
                         usuario=usuario,
                         usuario_id=usuario_id,
                         tipo_evento=TipoEventoSesion.LOGOUT,
                     )
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            # obs_07 T8: fallo de auditoría ya no es invisible.
+            _log_logout.warning("No se pudo auditar el logout: %s", exc)
         app.storage.user.clear()
         ui.navigate.to("/login")
 

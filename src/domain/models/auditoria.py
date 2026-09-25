@@ -46,6 +46,15 @@ from src.domain.models.base import DTODominio, EntidadDominio
 # =============================================================================
 
 
+class TipoCambioCampo(StrEnum):
+    """Clasificación semántica del cambio observado en un campo del diff (obs_09)."""
+
+    ANADIDO = "anadido"
+    MODIFICADO = "modificado"
+    ELIMINADO = "eliminado"
+    SIN_CAMBIO = "sin_cambio"
+
+
 class TipoEventoSesion(StrEnum):
     LOGIN_EXITOSO = "LOGIN_EXITOSO"
     LOGIN_FALLIDO = "LOGIN_FALLIDO"
@@ -59,6 +68,14 @@ class TipoEventoSesion(StrEnum):
     ACCESO_DENEGADO = "ACCESO_DENEGADO"
     VER_COMO_INICIO = "VER_COMO_INICIO"
     VER_COMO_FIN = "VER_COMO_FIN"
+
+
+class SeveridadEvento(StrEnum):
+    """Clasificación de severidad de un evento de sesión (obs_06/obs_07)."""
+
+    INFO = "INFO"
+    ADVERTENCIA = "ADVERTENCIA"
+    CRITICA = "CRITICA"
 
 
 class AccionCambio(StrEnum):
@@ -89,6 +106,8 @@ class EventoSesion(EntidadDominio):
     ip_address: str | None = None
     fecha_hora: datetime = Field(default_factory=datetime.now)
     detalles: str | None = None
+    objetivo: str | None = None  # sujeto de la acción (obs_06): usuario impersonado, etc.
+    severidad: SeveridadEvento = SeveridadEvento.INFO  # obs_06: lo clasifica obs_07
     institucion_id: int | None = None  # multi-tenant informacional (mejora_07-T7)
 
     @field_validator("usuario", mode="before")
@@ -160,6 +179,8 @@ class RegistroCambio(EntidadDominio):
 
     id: int | None = None
     usuario_id: int | None = None
+    usuario: str | None = None      # snapshot del username (obs_06, R8): sobrevive al borrado
+    ip_address: str | None = None   # IP en el momento del cambio (obs_06, R8)
     accion: AccionCambio
     tabla: str
     registro_id: int | None = None
@@ -248,10 +269,14 @@ class RegistroCambio(EntidadDominio):
         registro_id: int | None = None,
         usuario_id: int | None = None,
         institucion_id: int | None = None,
+        usuario: str | None = None,      # obs_06: snapshot del username
+        ip_address: str | None = None,   # obs_06: IP del cambio
     ) -> RegistroCambio:
         """Construye un registro de creación (sin valor anterior)."""
         return cls(
             usuario_id=usuario_id,
+            usuario=usuario,
+            ip_address=ip_address,
             accion=AccionCambio.CREATE,
             tabla=tabla,
             registro_id=registro_id,
@@ -269,10 +294,14 @@ class RegistroCambio(EntidadDominio):
         registro_id: int | None = None,
         usuario_id: int | None = None,
         institucion_id: int | None = None,
+        usuario: str | None = None,      # obs_06: snapshot del username
+        ip_address: str | None = None,   # obs_06: IP del cambio
     ) -> RegistroCambio:
         """Construye un registro de actualización."""
         return cls(
             usuario_id=usuario_id,
+            usuario=usuario,
+            ip_address=ip_address,
             accion=AccionCambio.UPDATE,
             tabla=tabla,
             registro_id=registro_id,
@@ -289,10 +318,14 @@ class RegistroCambio(EntidadDominio):
         registro_id: int | None = None,
         usuario_id: int | None = None,
         institucion_id: int | None = None,
+        usuario: str | None = None,      # obs_06: snapshot del username
+        ip_address: str | None = None,   # obs_06: IP del cambio
     ) -> RegistroCambio:
         """Construye un registro de eliminación (sin valor nuevo)."""
         return cls(
             usuario_id=usuario_id,
+            usuario=usuario,
+            ip_address=ip_address,
             accion=AccionCambio.DELETE,
             tabla=tabla,
             registro_id=registro_id,
@@ -382,6 +415,36 @@ class CrearRegistroCambioDTO(DTODominio):
         )
 
 
+class CampoDiffDTO(DTODominio):
+    """
+    Resultado del diff de un campo individual (obs_09, R2).
+
+    `oculto=True` indica que el campo es sensible (R3): los valores no se
+    exponen, ambos lados viajan como ``None``.
+    """
+
+    nombre: str
+    valor_anterior: str | None = None
+    valor_nuevo: str | None = None
+    tipo: TipoCambioCampo
+    oculto: bool = False
+
+
+class DetalleCambioDTO(DTODominio):
+    """
+    Vista completa de un cambio auditado: cabecera + diff campo a campo (obs_09, R6).
+
+    Construido por ``AuditoriaService.detalle_cambio()`` y consumido directamente
+    por la capa de interfaz. El presenter solo lo almacena y expone; el diff ya
+    viene calculado.
+    """
+
+    cambio: RegistroCambio
+    actor_nombre: str
+    etiqueta_tabla: str
+    campos: list[CampoDiffDTO]
+
+
 class ResumenUsoDTO(DTODominio):
     """
     Agregación de solo lectura del uso de la plataforma (paso_21).
@@ -407,6 +470,9 @@ class FiltroAuditoriaDTO(DTODominio):
     desde: datetime | None = None
     hasta: datetime | None = None
     institucion_id: int | None = None
+    severidad: SeveridadEvento | None = None  # obs_07 T10: filtro por severidad
+    registro_id: int | None = None            # obs_09 T3: filtro por entidad concreta (R11)
+    sin_institucion: bool = False             # obs_09 T3: mostrar filas con institucion_id IS NULL (R12)
     pagina: int = Field(default=1, ge=1)
     por_pagina: int = Field(default=100, ge=1, le=500)
 
@@ -417,11 +483,15 @@ class FiltroAuditoriaDTO(DTODominio):
 
 __all__ = [
     "AccionCambio",
+    "CampoDiffDTO",
     "CrearEventoSesionDTO",
     "CrearRegistroCambioDTO",
+    "DetalleCambioDTO",
     "EventoSesion",
     "FiltroAuditoriaDTO",
     "RegistroCambio",
     "ResumenUsoDTO",
+    "SeveridadEvento",
+    "TipoCambioCampo",
     "TipoEventoSesion",
 ]

@@ -133,8 +133,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FILE: Path | None = None  # None → solo consola; Path → también archivo
 
-    # Security logging (obs_03 — R4)
-    SECURITY_LOG_FILE: Path | None = None  # None → NullHandler (sin archivo)
+    # Security logging (obs_03 — R4 / obs_06 — R13)
+    # Default efectivo: logs/security.log (obs_06 activa el log por defecto).
+    # El validador resolver_log_path convierte la ruta relativa en absoluta.
+    SECURITY_LOG_FILE: Path | None = Path("logs/security.log")
     SECURITY_LOG_MAX_BYTES: int = Field(
         default=10 * 1024 * 1024,  # 10 MB
         gt=0,

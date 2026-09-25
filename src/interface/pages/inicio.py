@@ -212,14 +212,18 @@ def _render_module_card(d, ctx, provider) -> None:
 
 
 def _render_kpis_admin() -> None:
-    """KPIs de uso de la plataforma para el admin (fail-open, R6/R7)."""
+    """KPIs de uso de la plataforma para el admin (fail-open, R6/R7).
+
+    obs_08: `resumen_uso` ahora usa agregados SQL (sin techo de 500 filas).
+    `scope="*"` → cross-tenant (admin ve todas las instituciones).
+    """
     import contextlib
 
     from container import Container
     from src.interface.design.components.stats_grid import StatItem, stats_grid
 
     with contextlib.suppress(Exception):
-        uso = Container.auditoria_service().resumen_uso(dias=7)
+        uso = Container.auditoria_service().resumen_uso(dias=7, scope="*")
         stats_grid([
             StatItem(
                 titulo="Logins hoy",

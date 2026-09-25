@@ -63,6 +63,18 @@ class SqliteUsuarioRepository(IUsuarioRepository):
             ).fetchone()
             return self._row_to_usuario(row) if row else None
 
+    def get_varios(self, ids: set[int]) -> list[Usuario]:
+        """Retorna los usuarios cuyo id esté en ``ids`` en una sola consulta (obs_09, R8)."""
+        if not ids:
+            return []
+        placeholders = ",".join("?" * len(ids))
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                f"SELECT {_COLS_USUARIO} FROM usuarios WHERE id IN ({placeholders})",
+                list(ids),
+            ).fetchall()
+            return [self._row_to_usuario(r) for r in rows]
+
     def get_by_username(self, username: str) -> Usuario | None:
         with self._get_conn() as conn:
             row = conn.execute(

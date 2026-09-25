@@ -995,6 +995,7 @@ def tablero_estadisticos_page() -> None:
     _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
 
     async def _carga_inicial():
+        SessionContext.desde_storage()  # re-sincroniza ContextVars: ui.timer no pasa por el interceptor
         if es_directivo and _s["periodo_id"]:
             _cargar_datos_globales(_s)
         if es_directivo and _s["drill_grupo_id"] and _s["periodo_id"]:

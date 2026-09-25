@@ -11,28 +11,32 @@ from src.services.auditoria_service import AuditoriaService
 
 
 class _FakeAuditoriaRepo:
-    """Repo mínimo: solo expone los métodos de verificación de cadena."""
+    """Repo mínimo: solo expone los métodos de verificación de cadena.
+
+    obs_08: acepta `completa` kwarg según el nuevo contrato del port (R6/R8).
+    """
 
     def __init__(self, evento_roto: int | None, cambio_roto: int | None):
         self._evento_roto = evento_roto
         self._cambio_roto = cambio_roto
 
-    def verificar_cadena_eventos(self) -> int | None:
+    def verificar_cadena_eventos(self, *, completa: bool = False) -> int | None:
         return self._evento_roto
 
-    def verificar_cadena_cambios(self) -> int | None:
+    def verificar_cadena_cambios(self, *, completa: bool = False) -> int | None:
         return self._cambio_roto
 
 
 def test_ambas_cadenas_integras():
     svc = AuditoriaService(_FakeAuditoriaRepo(evento_roto=None, cambio_roto=None))
     resultado = svc.verificar_integridad()
-    assert resultado == {
-        "eventos_ok": True,
-        "cambios_ok": True,
-        "evento_roto_id": None,
-        "cambio_roto_id": None,
-    }
+    # obs_08: el dict incluye alcance, desde_id_* y verificado_en (R9).
+    # Se comprueba por clave para no acoplar al conjunto completo de claves.
+    assert resultado["eventos_ok"] is True
+    assert resultado["cambios_ok"] is True
+    assert resultado["evento_roto_id"] is None
+    assert resultado["cambio_roto_id"] is None
+    assert resultado["alcance"] == "incremental"
 
 
 def test_eventos_alterados():
@@ -55,9 +59,7 @@ def test_cambios_alterados():
 def test_ambas_alteradas():
     svc = AuditoriaService(_FakeAuditoriaRepo(evento_roto=1, cambio_roto=2))
     resultado = svc.verificar_integridad()
-    assert resultado == {
-        "eventos_ok": False,
-        "cambios_ok": False,
-        "evento_roto_id": 1,
-        "cambio_roto_id": 2,
-    }
+    assert resultado["eventos_ok"] is False
+    assert resultado["cambios_ok"] is False
+    assert resultado["evento_roto_id"] == 1
+    assert resultado["cambio_roto_id"] == 2

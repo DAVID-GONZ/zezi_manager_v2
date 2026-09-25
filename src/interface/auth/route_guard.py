@@ -39,10 +39,13 @@ sin servidor NiceGUI; el wrapper solo traduce su veredicto a navegación/render.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterable
 from enum import Enum
 
 from src.domain.models.usuario import Rol
+
+_log = logging.getLogger("ROUTE_GUARD")
 
 
 # ── Sentinels de acceso ───────────────────────────────────────────────────────
@@ -257,19 +260,25 @@ def registrar_pagina(
                 from nicegui import app as _app
 
                 from container import Container
-                from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
-                _u = _app.storage.user.get("usuario_nombre", "anon")
+                from src.domain.models.auditoria import TipoEventoSesion
+                from src.domain.policies.severidad_evento import MOTIVO_ROL
+                from src.interface.context.eventos_sesion import construir_evento
+                # obs_06: usar el username ("usuario"), no el nombre para mostrar
+                _u = _app.storage.user.get("usuario", "") or _app.storage.user.get("usuario_nombre", "anon")
                 _uid = _app.storage.user.get("usuario_id")
+                # obs_07 T7: pasar motivo=MOTIVO_ROL; construir_evento deriva la severidad.
                 Container.auditoria_service().registrar_evento(
-                    EventoSesion(
+                    construir_evento(
                         usuario=_u or "anon",
                         usuario_id=_uid,
                         tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
                         detalles=f"Ruta denegada: {ruta!r}",
+                        motivo=MOTIVO_ROL,
                     )
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                # obs_07 T8: fallo de auditoría ya no es invisible.
+                _log.warning("No se pudo auditar acceso denegado a %r: %s", ruta, exc)
             from src.interface.design.components import toast_error
 
             toast_error("Acceso no autorizado")

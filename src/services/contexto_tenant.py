@@ -34,9 +34,12 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import logging
 from collections.abc import Iterator
 
 from src.domain.exceptions import OperacionFueraDeInstitucionError
+
+_log = logging.getLogger("CONTEXTO_TENANT")
 
 # Estado privado. Default None → sin scope (admin / arranque sin sesión).
 _institucion_actual: contextvars.ContextVar[int | None] = contextvars.ContextVar(
@@ -80,20 +83,28 @@ def verificar_pertenencia(institucion_id_objeto: int | None) -> None:
         try:
             from container import Container
             from src.domain.models.auditoria import EventoSesion, TipoEventoSesion
-            from src.services.contexto_actor import actor_actual
+            from src.domain.policies.severidad_evento import (
+                MOTIVO_CROSS_TENANT,
+                severidad_de,
+            )
+            from src.services.contexto_actor import actor_actual, actor_ip, actor_username
             uid = actor_actual()
+            # obs_07 T7: añadir motivo y derivar severidad (CRITICA para cross-tenant).
             Container.auditoria_service().registrar_evento(
                 EventoSesion(
-                    usuario=str(uid or "anon"),
+                    usuario=actor_username() or "desconocido",
                     usuario_id=uid,
+                    ip_address=actor_ip(),
                     tipo_evento=TipoEventoSesion.ACCESO_DENEGADO,
+                    severidad=severidad_de(TipoEventoSesion.ACCESO_DENEGADO, MOTIVO_CROSS_TENANT),
                     detalles=f"Cross-tenant: objeto institucion {institucion_id_objeto!r}",
                 )
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # obs_07 T8: la auditoría no bloquea la operación, pero el fallo ya no es invisible.
+            _log.warning("No se pudo auditar la denegacion cross-tenant: %s", exc)
         raise OperacionFueraDeInstitucionError(
-            "La operación afecta a un objeto que no pertenece a tu institución.",
+            "La operacion afecta a un objeto que no pertenece a tu institucion.",
             detalles={"institucion_esperada": scope},
         )
 

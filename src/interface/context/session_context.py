@@ -10,9 +10,12 @@ Los servicios NO reciben SessionContext — reciben ContextoAcademicoDTO
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 from nicegui import app
+
+_log = logging.getLogger("SESSION_CONTEXT")
 
 
 @dataclass
@@ -28,6 +31,7 @@ class SessionContext:
     usuario_id: int
     usuario_nombre: str
     usuario_rol: str
+    usuario: str = field(default="")  # username de login (obs_06: para auditoría)
     institucion_id: int | None = None  # multi-tenant (paso_24)
     # A2 (seguridad_01): cambio forzado de contraseña. Lo setea login.py desde
     # user_db.debe_cambiar_password; el route_guard fuerza /cambiar-password.
@@ -53,6 +57,7 @@ class SessionContext:
     impersonando: bool = False
     admin_real_id: int | None = None
     admin_real_nombre: str = field(default="")
+    admin_real_usuario: str = field(default="")  # username del admin real (obs_06)
     admin_real_rol: str = field(default="")
     admin_real_institucion_id: int | None = None
     solo_lectura: bool = False
@@ -84,6 +89,9 @@ class SessionContext:
             # Sesión cerrada: el contexto deja de imponer solo lectura ni scope.
             cls._sincronizar_solo_lectura(False)
             cls._sincronizar_institucion(None, None)
+            # obs_07 T6: limpiar el actor para evitar valores obsoletos
+            # heredados de la task padre cuando la sesión deja de estar activa.
+            cls._sincronizar_actor(None, None, None)
             return None
         solo_lectura = bool(storage.get("solo_lectura", False))
         # Sincroniza el ContextVar de servicios con el estado persistido.
@@ -94,13 +102,20 @@ class SessionContext:
             storage.get("institucion_id"),
         )
         # Siembra el actor: bajo impersonación usa el admin real, no el suplantado.
+        # obs_06 (T12): activa los tres datos (id, username, ip).
         impersonando = bool(storage.get("impersonando", False))
         actor_id = storage.get("admin_real_id") if impersonando else storage.get("usuario_id")
-        cls._sincronizar_actor(actor_id)
+        actor_uname = (
+            storage.get("admin_real_usuario", "") if impersonando
+            else storage.get("usuario", "")
+        )
+        from src.interface.context.request_ip import ip_de_peticion
+        cls._sincronizar_actor(actor_id, actor_uname or None, ip_de_peticion())
         return cls(
             usuario_id=storage.get("usuario_id"),
             usuario_nombre=storage.get("usuario_nombre", ""),
             usuario_rol=storage.get("usuario_rol", ""),
+            usuario=storage.get("usuario", ""),
             institucion_id=storage.get("institucion_id"),
             debe_cambiar_password=bool(storage.get("debe_cambiar_password", False)),
             institucion_config_completa=bool(storage.get("institucion_config_completa", True)),
@@ -115,6 +130,7 @@ class SessionContext:
             impersonando=bool(storage.get("impersonando", False)),
             admin_real_id=storage.get("admin_real_id"),
             admin_real_nombre=storage.get("admin_real_nombre", ""),
+            admin_real_usuario=storage.get("admin_real_usuario", ""),
             admin_real_rol=storage.get("admin_real_rol", ""),
             admin_real_institucion_id=storage.get("admin_real_institucion_id"),
             solo_lectura=solo_lectura,
@@ -128,11 +144,19 @@ class SessionContext:
         activar_solo_lectura(valor)
 
     @staticmethod
-    def _sincronizar_actor(actor_id: int | None) -> None:
-        """Refleja el actor real (admin bajo impersonación o usuario normal) en la capa de servicios."""
+    def _sincronizar_actor(
+        actor_id: int | None,
+        username: str | None = None,
+        ip: str | None = None,
+    ) -> None:
+        """Refleja el actor real (admin bajo impersonación o usuario normal) en la capa de servicios.
+
+        obs_06: ahora propaga también username e ip para que auditar_cambio
+        pueda resolver la identidad completa sin parámetros explícitos.
+        """
         from src.services.contexto_actor import activar_actor
 
-        activar_actor(actor_id)
+        activar_actor(actor_id, username, ip)
 
     @staticmethod
     def _sincronizar_institucion(rol: str, institucion_id: int | None) -> None:
@@ -155,6 +179,7 @@ class SessionContext:
         app.storage.user.update(
             {
                 "usuario_id": self.usuario_id,
+                "usuario": self.usuario,                   # obs_06: username de login
                 "usuario_nombre": self.usuario_nombre,
                 "usuario_rol": self.usuario_rol,
                 "institucion_id": self.institucion_id,
@@ -171,6 +196,7 @@ class SessionContext:
                 "impersonando": self.impersonando,
                 "admin_real_id": self.admin_real_id,
                 "admin_real_nombre": self.admin_real_nombre,
+                "admin_real_usuario": self.admin_real_usuario,  # obs_06
                 "admin_real_rol": self.admin_real_rol,
                 "admin_real_institucion_id": self.admin_real_institucion_id,
                 "solo_lectura": self.solo_lectura,
@@ -181,8 +207,11 @@ class SessionContext:
         # Mantener el scope de institución coherente (regla admin→None).
         self._sincronizar_institucion(self.usuario_rol, self.institucion_id)
         # Mantener el actor coherente (admin real bajo impersonación).
+        # obs_06: propaga también username e ip.
         actor_id = self.admin_real_id if self.impersonando else self.usuario_id
-        self._sincronizar_actor(actor_id)
+        actor_uname = self.admin_real_usuario if self.impersonando else self.usuario
+        from src.interface.context.request_ip import ip_de_peticion
+        self._sincronizar_actor(actor_id, actor_uname or None, ip_de_peticion())
 
     def to_contexto_academico(self):
         """
@@ -226,12 +255,12 @@ class SessionContext:
         if not self.impersonando:
             self.admin_real_id = self.usuario_id
             self.admin_real_nombre = self.usuario_nombre
+            self.admin_real_usuario = self.usuario  # obs_06: guardar username del admin
             self.admin_real_rol = self.usuario_rol
             # Conservar la institución real del admin para restaurarla al salir.
             self.admin_real_institucion_id = self.institucion_id
 
         admin_id = self.admin_real_id
-        admin_nombre = self.admin_real_nombre
 
         self.usuario_id = target_usuario_id
         self.usuario_rol = target_rol
@@ -255,7 +284,6 @@ class SessionContext:
         self._auditar_ver_como(
             inicio=True,
             admin_id=admin_id,
-            admin_nombre=admin_nombre,
             target_usuario_id=target_usuario_id,
             target_nombre=target_nombre,
             target_rol=target_rol,
@@ -273,10 +301,10 @@ class SessionContext:
         target_nombre = self.usuario_nombre
         target_rol = self.usuario_rol
         admin_id = self.admin_real_id
-        admin_nombre = self.admin_real_nombre
 
         self.usuario_id = self.admin_real_id
         self.usuario_nombre = self.admin_real_nombre
+        self.usuario = self.admin_real_usuario  # obs_06: restaurar username del admin
         self.usuario_rol = self.admin_real_rol
         self.institucion_id = self.admin_real_institucion_id
 
@@ -288,6 +316,7 @@ class SessionContext:
         self.solo_lectura = False
         self.admin_real_id = None
         self.admin_real_nombre = ""
+        self.admin_real_usuario = ""  # obs_06
         self.admin_real_rol = ""
         self.admin_real_institucion_id = None
         self.guardar()
@@ -295,7 +324,6 @@ class SessionContext:
         self._auditar_ver_como(
             inicio=False,
             admin_id=admin_id,
-            admin_nombre=admin_nombre,
             target_usuario_id=target_id,
             target_nombre=target_nombre,
             target_rol=target_rol,
@@ -306,36 +334,41 @@ class SessionContext:
         *,
         inicio: bool,
         admin_id: int | None,
-        admin_nombre: str,
         target_usuario_id: int | None,
         target_nombre: str,
         target_rol: str,
     ) -> None:
-        """Registra el evento de inicio/fin de impersonación (append-only)."""
+        """Registra el evento de inicio/fin de impersonación (append-only).
+
+        obs_06 (T10): usa construir_evento y obtiene el username del admin
+        desde actor_username() (ya sincronizado por guardar() antes de esta llamada).
+        """
         try:
             from container import Container
-            from src.services.auditoria_service import (
-                EventoSesion,
-                TipoEventoSesion,
-            )
+            from src.domain.models.auditoria import TipoEventoSesion
+            from src.interface.context.eventos_sesion import construir_evento
+            from src.services.contexto_actor import actor_username
 
             tipo = TipoEventoSesion.VER_COMO_INICIO if inicio else TipoEventoSesion.VER_COMO_FIN
             verbo = "inicia" if inicio else "finaliza"
+            admin_u = actor_username() or "admin"
             detalles = (
-                f"Admin '{admin_nombre}' (id={admin_id}) {verbo} 'Ver como' "
+                f"Admin '{admin_u}' (id={admin_id}) {verbo} 'Ver como' "
                 f"usuario '{target_nombre}' (id={target_usuario_id}, rol={target_rol})"
             )
             Container.auditoria_service().registrar_evento(
-                EventoSesion(
-                    usuario=admin_nombre or "admin",
+                construir_evento(
+                    usuario=admin_u,
                     usuario_id=admin_id,
                     tipo_evento=tipo,
                     detalles=detalles,
+                    objetivo=target_nombre,  # sujeto de la acción (obs_06)
                 )
             )
-        except Exception:
+        except Exception as exc:
             # La auditoría no debe bloquear la operación de UI.
-            pass
+            # obs_07 T8: registrar el fallo para que no sea invisible.
+            _log.warning("No se pudo auditar evento VER_COMO: %s", exc)
 
     # ── Propiedades de conveniencia ──────────────────────────────────────────
 
