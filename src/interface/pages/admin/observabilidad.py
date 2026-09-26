@@ -239,14 +239,14 @@ def _seccion_log(presenter: ObservabilidadPresenter, on_filtro_change) -> None:
             })
 
         data_table(
-            columns=[
+            columnas=[
                 {"name": "timestamp", "label": "Fecha/hora", "field": "timestamp"},
                 {"name": "tipo_evento", "label": "Evento", "field": "tipo_evento"},
                 {"name": "usuario", "label": "Usuario", "field": "usuario"},
                 {"name": "ip", "label": "IP", "field": "ip"},
                 {"name": "motivo", "label": "Detalle", "field": "motivo"},
             ],
-            rows=filas,
+            filas=filas,
         )
 
 
