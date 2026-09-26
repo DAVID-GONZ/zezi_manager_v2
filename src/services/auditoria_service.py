@@ -17,6 +17,7 @@ IAuditoriaRepository.registrar_cambio / registrar_evento.
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -91,10 +92,8 @@ class AuditoriaService:
 
         # Emitir al security logger sin romper la auditoría ante fallos de logging
         if self._security_logger is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._emit_security_log(evento)
-            except Exception:
-                pass
 
         # alerta_ip: registrar fallo por IP cuando el evento es LOGIN_FALLIDO
         if evento.tipo_evento == TipoEventoSesion.LOGIN_FALLIDO and evento.ip_address is not None:
@@ -138,35 +137,71 @@ class AuditoriaService:
         ):
             sl.gestion_usuario(actor=usuario, objetivo=detalles, operacion=tipo.value)
 
+    # -----------------------------------------------------------------------
+    # Helper de scope — obs_11 (R3)
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def _filtro_con_scope(
+        filtro: FiltroAuditoriaDTO,
+        scope: TenantScope,
+    ) -> FiltroAuditoriaDTO:
+        """
+        Aplica el scope como límite, no como criterio.
+
+        scope="*"  → el filtro del usuario manda (admin cross-tenant).
+        scope=int  → institucion_id se fuerza al scope y sin_institucion se
+                     apaga, pase lo que pase en el DTO que llega de la UI.
+        """
+        if scope == "*":
+            return filtro
+        return filtro.model_copy(update={"institucion_id": scope, "sin_institucion": False})
+
     def listar_cambios(
         self,
         filtro: FiltroAuditoriaDTO,
+        scope: TenantScope,
     ) -> list[RegistroCambio]:
         """
         Retorna registros del audit_log ordenados por timestamp descendente.
 
+        El ``scope`` es obligatorio y posicional (obs_11, R3). Omitirlo es
+        un TypeError en tiempo de llamada, no un cross-tenant silencioso.
+
+        scope="*"  → admin cross-tenant (el filtro del usuario manda).
+        scope=int  → fuerza institucion_id al valor del scope.
+
         Args:
             filtro: Criterios de búsqueda y paginación.
+            scope:  TenantScope obligatorio — "``*``" o id de institución.
 
         Returns:
             Lista de RegistroCambio (puede ser vacía).
         """
-        return self._repo.listar_cambios(filtro)
+        return self._repo.listar_cambios(self._filtro_con_scope(filtro, scope))
 
     def listar_eventos_sesion(
         self,
         filtro: FiltroAuditoriaDTO,
+        scope: TenantScope,
     ) -> list[EventoSesion]:
         """
         Retorna eventos de sesión (login, logout, fallos) paginados.
 
+        El ``scope`` es obligatorio y posicional (obs_11, R3). Omitirlo es
+        un TypeError en tiempo de llamada, no un cross-tenant silencioso.
+
+        scope="*"  → admin cross-tenant (el filtro del usuario manda).
+        scope=int  → fuerza institucion_id al valor del scope.
+
         Args:
             filtro: Criterios de búsqueda y paginación.
+            scope:  TenantScope obligatorio — "``*``" o id de institución.
 
         Returns:
             Lista de EventoSesion (puede ser vacía).
         """
-        return self._repo.listar_eventos(filtro)
+        return self._repo.listar_eventos(self._filtro_con_scope(filtro, scope))
 
     def verificar_integridad(self, completa: bool = False) -> dict:
         """
@@ -326,40 +361,14 @@ class AuditoriaService:
 
         Devuelve ``None`` si el cambio no existe.
 
-        El nombre del actor se resuelve en orden: nombre completo (del repo de
-        usuarios si disponible) → username almacenado en la fila → «Usuario #N»
-        → «—».
+        El nombre del actor se resuelve a través de ``_componer_detalle`` con el
+        mapa de actores pre-resuelto por ``resolver_actores`` (cascada R9).
         """
-        from src.domain.tablas_auditables import etiqueta_de_tabla
-
         cambio = self._repo.get_cambio(cambio_id)
         if cambio is None:
             return None
-
-        # Resolver nombre del actor
-        actor_nombre = "—"
-        if cambio.usuario_id is not None and self._usuario_repo is not None:
-            try:
-                usuario = self._usuario_repo.get_by_id(cambio.usuario_id)
-                if usuario is not None:
-                    actor_nombre = usuario.nombre_completo
-                elif cambio.usuario:
-                    actor_nombre = cambio.usuario
-                else:
-                    actor_nombre = f"Usuario #{cambio.usuario_id}"
-            except Exception:
-                actor_nombre = cambio.usuario or f"Usuario #{cambio.usuario_id}"
-        elif cambio.usuario:
-            actor_nombre = cambio.usuario
-        elif cambio.usuario_id is not None:
-            actor_nombre = f"Usuario #{cambio.usuario_id}"
-
-        return DetalleCambioDTO(
-            cambio=cambio,
-            actor_nombre=actor_nombre,
-            etiqueta_tabla=etiqueta_de_tabla(cambio.tabla),
-            campos=self.diff_cambio(cambio),
-        )
+        actores = self.resolver_actores([cambio])
+        return self._componer_detalle(cambio, actores)
 
     # -----------------------------------------------------------------------
     # Resolución de actores en una sola consulta (obs_09, T7, R8)
@@ -389,6 +398,88 @@ class AuditoriaService:
             return {u.id: u.nombre_completo for u in usuarios if u.id is not None}
         except Exception:
             return {}
+
+    # -----------------------------------------------------------------------
+    # Helper interno: compone un DetalleCambioDTO con el mapa de actores
+    # ya resuelto (obs_10, T3). Reutilizado tanto por detalle_cambio (obs_09)
+    # como por historial_de (obs_10) para no duplicar la resolución del actor.
+    # -----------------------------------------------------------------------
+
+    def _componer_detalle(
+        self,
+        cambio: RegistroCambio,
+        actores: dict[int, str],
+    ) -> DetalleCambioDTO:
+        """
+        Construye un ``DetalleCambioDTO`` con el mapa de actores ya resuelto.
+
+        Cascada de fallback para el nombre del actor:
+          1. Nombre completo del mapa ``actores`` (resuelto por ``resolver_actores``).
+          2. Username almacenado en la fila (snapshot de obs_06).
+          3. «Usuario #N» si solo hay usuario_id.
+          4. «—» si no hay ninguna referencia.
+
+        Args:
+            cambio:  Registro del audit_log a componer.
+            actores: Mapa ``usuario_id → nombre_completo`` pre-resuelto.
+
+        Returns:
+            ``DetalleCambioDTO`` con diff, etiqueta de tabla y nombre del actor.
+        """
+        from src.domain.tablas_auditables import etiqueta_de_tabla
+
+        actor_nombre = "—"
+        if cambio.usuario_id is not None:
+            nombre_resuelto = actores.get(cambio.usuario_id, "")
+            if nombre_resuelto:
+                actor_nombre = nombre_resuelto
+            elif cambio.usuario:
+                actor_nombre = cambio.usuario
+            else:
+                actor_nombre = f"Usuario #{cambio.usuario_id}"
+        elif cambio.usuario:
+            actor_nombre = cambio.usuario
+
+        return DetalleCambioDTO(
+            cambio=cambio,
+            actor_nombre=actor_nombre,
+            etiqueta_tabla=etiqueta_de_tabla(cambio.tabla),
+            campos=self.diff_cambio(cambio),
+        )
+
+    # -----------------------------------------------------------------------
+    # Historial por registro (obs_10, T3)
+    # -----------------------------------------------------------------------
+
+    def historial_de(
+        self,
+        tabla: str,
+        registro_id: int,
+        scope: TenantScope,
+    ) -> list[DetalleCambioDTO]:
+        """
+        Historial cronológico de un registro, ya resuelto a detalle.
+
+        Consume ``listar_cambios_por_registro`` (orden ascendente del repo) y
+        compone cada entrada con el diff, la etiqueta de tabla y el nombre del
+        actor. Las filas con ``institucion_id IS NULL`` siempre se incluyen: son
+        registros anteriores a la migración multi-tenant y excluirlos crearía
+        agujeros silenciosos en el historial.
+
+        Args:
+            tabla:       Nombre de la tabla auditada (p.ej. ``"estudiantes"``).
+            registro_id: PK del registro cuyo historial se solicita.
+            scope:       ``"*"`` para admin cross-tenant; ``int`` para el resto
+                         (solo devuelve cambios de esa institución o sin institución).
+
+        Returns:
+            Lista de ``DetalleCambioDTO`` en orden cronológico ascendente.
+        """
+        cambios = self._repo.listar_cambios_por_registro(tabla, registro_id)
+        if scope != "*":
+            cambios = [c for c in cambios if c.institucion_id in (scope, None)]
+        actores = self.resolver_actores(cambios)
+        return [self._componer_detalle(c, actores) for c in cambios]
 
 
 __all__ = [

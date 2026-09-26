@@ -246,10 +246,7 @@ class AlertaService:
             )
             alertas_nuevas.append(alerta)
 
-        if alertas_nuevas:
-            n_creadas = self._repo.guardar_alertas_masivas(alertas_nuevas)
-        else:
-            n_creadas = 0
+        n_creadas = self._repo.guardar_alertas_masivas(alertas_nuevas) if alertas_nuevas else 0
         auditar_cambio(
             self._auditoria_repo,
             accion=AccionCambio.CREATE,

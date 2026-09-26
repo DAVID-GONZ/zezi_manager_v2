@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 
 from config import settings
@@ -60,8 +60,8 @@ class _JsonSecurityFormatter(logging.Formatter):
     se descarta sin error.
     """
 
-    def format(self, record: logging.LogRecord) -> str:  # noqa: A003
-        ts = datetime.fromtimestamp(record.created, tz=timezone.utc).strftime(
+    def format(self, record: logging.LogRecord) -> str:
+        ts = datetime.fromtimestamp(record.created, tz=UTC).strftime(
             "%Y-%m-%dT%H:%M:%S"
         )
         doc: dict = {"timestamp": ts}
@@ -205,7 +205,7 @@ class SecurityLogger(ISecurityLogger):
 
 
 __all__ = [
+    "_CAMPOS_PERMITIDOS",
     "SecurityLogger",
     "_JsonSecurityFormatter",
-    "_CAMPOS_PERMITIDOS",
 ]

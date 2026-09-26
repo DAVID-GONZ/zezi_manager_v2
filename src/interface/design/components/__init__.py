@@ -13,6 +13,7 @@ from .followup_panel import FollowupItem, followup_panel
 from .form_dialog import form_dialog
 from .greeting_hero import greeting_hero
 from .groups_attention import GroupRisk, groups_attention_panel
+from .historial_cambios import HistorialItem, historial_cambios
 from .inline_selectors import inline_periodo_grupo, inline_periodo_grupo_asignatura
 from .milestones_panel import MilestoneItem, milestones_panel
 from .mini_chart import mini_chart
@@ -40,6 +41,7 @@ __all__ = [
     "AlertItem",
     "FollowupItem",
     "GroupRisk",
+    "HistorialItem",
     "MilestoneItem",
     "PendingItem",
     "PeriodData",
@@ -75,6 +77,7 @@ __all__ = [
     "form_dialog",
     "greeting_hero",
     "groups_attention_panel",
+    "historial_cambios",
     "inline_periodo_grupo",
     # Selectores inline en cascada (chip_01)
     "inline_periodo_grupo_asignatura",

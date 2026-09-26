@@ -104,10 +104,35 @@ def reset_all() -> None:
     _estados.clear()
 
 
+def alertas_activas() -> list[tuple[str, int, float]]:
+    """
+    IPs con fallos dentro de la ventana vigente: (ip, fallos, segundos_restantes).
+
+    Lectura pura — no muta ``_estados`` ni purga entradas caducadas (obs_13 §6).
+    La purga la sigue haciendo ``registrar_fallo_ip`` al siguiente fallo.
+    Abrir el panel de observabilidad no altera el comportamiento del bloqueo.
+
+    Returns:
+        Lista de tuplas ``(ip, fallos, segundos_restantes)`` para las IPs con
+        al menos un fallo dentro de la ventana aún activa. Las entradas ya
+        caducadas no se incluyen pero tampoco se eliminan.
+    """
+    ahora = time.monotonic()
+    vivas: list[tuple[str, int, float]] = []
+    for ip, estado in _estados.items():
+        if estado.fallos == 0:
+            continue
+        restante = VENTANA_SEGUNDOS - (ahora - estado.primer_fallo_en)
+        if restante > 0:
+            vivas.append((ip, estado.fallos, restante))
+    return vivas
+
+
 __all__ = [
     "MAX_FALLOS_IP",
     "VENTANA_SEGUNDOS",
+    "alertas_activas",
     "registrar_fallo_ip",
-    "reset_ip",
     "reset_all",
+    "reset_ip",
 ]

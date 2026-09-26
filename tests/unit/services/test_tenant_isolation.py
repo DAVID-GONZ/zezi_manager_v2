@@ -16,15 +16,24 @@ import re
 
 import pytest
 
+from src.domain.models.auditoria import (
+    AccionCambio,
+    EventoSesion,
+    FiltroAuditoriaDTO,
+    RegistroCambio,
+    TipoEventoSesion,
+)
 from src.domain.models.configuracion import ConfiguracionAnio
 from src.domain.models.convivencia import CategoriaObservacion
 from src.domain.models.estudiante import EstadoMatricula, EstudianteResumenDTO, FiltroEstudiantesDTO
 from src.domain.models.tenant import TenantScope
 from src.domain.models.usuario import FiltroUsuariosDTO, Rol, UsuarioResumenDTO
+from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
+from src.services.auditoria_service import AuditoriaService
 from src.services.configuracion_service import ConfiguracionService
 from src.services.contexto_tenant import activar_institucion, usar_institucion
 from src.services.convivencia_service import ConvivenciaService
@@ -608,3 +617,134 @@ def test_ningun_listar_con_default_none() -> None:
             if pattern.search(line):
                 violaciones.append(f"{f.name}:{i}: {line.strip()}")
     assert not violaciones, "Metodos con default None:\n" + "\n".join(violaciones)
+
+
+# =============================================================================
+# obs_11: Aislamiento de la bitácora institucional (filtro hostil) — tenant_04
+# =============================================================================
+
+
+class FakeAuditoriaRepo(IAuditoriaRepository):
+    """
+    Repo en memoria que filtra cambios y eventos por institucion_id.
+    Usado para verificar que AuditoriaService._filtro_con_scope
+    impide que un filtro hostil cruce tenant (obs_11, R3, R11).
+    """
+
+    def __init__(
+        self,
+        cambios: list[RegistroCambio],
+        eventos: list[EventoSesion],
+    ) -> None:
+        self._cambios = cambios
+        self._eventos = eventos
+
+    # ── métodos usados por los tests ──────────────────────────────────────────
+
+    def listar_cambios(self, filtro: FiltroAuditoriaDTO) -> list[RegistroCambio]:
+        resultado = self._cambios
+        if filtro.institucion_id is not None:
+            resultado = [c for c in resultado if c.institucion_id == filtro.institucion_id]
+        if filtro.sin_institucion:
+            resultado = [c for c in resultado if c.institucion_id is None]
+        return resultado
+
+    def listar_eventos(self, filtro: FiltroAuditoriaDTO) -> list[EventoSesion]:
+        resultado = self._eventos
+        if filtro.institucion_id is not None:
+            resultado = [e for e in resultado if e.institucion_id == filtro.institucion_id]
+        return resultado
+
+    # ── métodos abstractos no usados ──────────────────────────────────────────
+
+    def registrar_evento(self, evento):
+        return evento
+
+    def get_ultimo_login(self, usuario_id):
+        return None
+
+    def contar_fallos_recientes(self, usuario, ventana_minutos=30):
+        return 0
+
+    def registrar_cambio(self, registro):
+        return registro
+
+    def registrar_cambios_masivos(self, registros):
+        return len(registros)
+
+    def listar_cambios_por_registro(self, tabla, registro_id):
+        return []
+
+    def get_cambio(self, cambio_id):
+        return None
+
+
+@pytest.fixture()
+def auditoria_repo_dos_tenants() -> FakeAuditoriaRepo:
+    """Repo con cambios y eventos sembrados en dos instituciones distintas."""
+    cambios = [
+        RegistroCambio(
+            id=1, accion=AccionCambio.CREATE, tabla="estudiantes",
+            usuario="ana", usuario_id=1, institucion_id=1,
+        ),
+        RegistroCambio(
+            id=2, accion=AccionCambio.UPDATE, tabla="estudiantes",
+            usuario="sara", usuario_id=3, institucion_id=2,
+        ),
+        RegistroCambio(
+            id=3, accion=AccionCambio.DELETE, tabla="grupos",
+            usuario=None, usuario_id=None, institucion_id=None,  # legado sin tenant
+        ),
+    ]
+    eventos = [
+        EventoSesion(
+            id=10, tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
+            usuario="ana", usuario_id=1, institucion_id=1,
+        ),
+        EventoSesion(
+            id=11, tipo_evento=TipoEventoSesion.LOGIN_EXITOSO,
+            usuario="sara", usuario_id=3, institucion_id=2,
+        ),
+    ]
+    return FakeAuditoriaRepo(cambios=cambios, eventos=eventos)
+
+
+def test_director_no_ve_cambios_de_otro_tenant(
+    auditoria_repo_dos_tenants: FakeAuditoriaRepo,
+) -> None:
+    """
+    obs_11 R3/R11: un filtro hostil que pide institucion_id=2 es ignorado
+    cuando el scope es 1 — AuditoriaService.listar_cambios fuerza el scope.
+    """
+    # R11
+    svc = AuditoriaService(repo=auditoria_repo_dos_tenants)
+    filtro_hostil = FiltroAuditoriaDTO(institucion_id=2)  # el director intenta cruzar tenant
+    filas = svc.listar_cambios(filtro_hostil, scope=1)   # scope=1 debe ganar
+    # Solo filas de inst 1 o sin institución (legado)
+    for c in filas:
+        assert c.institucion_id in (1, None), (
+            f"fila con institucion_id={c.institucion_id!r} no debe aparecer con scope=1"
+        )
+    # El cambio de inst 2 no debe aparecer
+    ids = {c.id for c in filas}
+    assert 2 not in ids, "el cambio de la institución 2 no debe aparecer con scope=1"
+
+
+def test_director_no_ve_sesiones_de_otro_tenant(
+    auditoria_repo_dos_tenants: FakeAuditoriaRepo,
+) -> None:
+    """
+    obs_11 R3/R11: un filtro hostil que pide institucion_id=2 es ignorado
+    cuando el scope es 1 — AuditoriaService.listar_eventos_sesion fuerza el scope.
+    """
+    # R11
+    svc = AuditoriaService(repo=auditoria_repo_dos_tenants)
+    filtro_hostil = FiltroAuditoriaDTO(institucion_id=2)  # el director intenta cruzar tenant
+    eventos = svc.listar_eventos_sesion(filtro_hostil, scope=1)  # scope=1 debe ganar
+    # Solo eventos de inst 1
+    for e in eventos:
+        assert e.institucion_id in (1, None), (
+            f"evento con institucion_id={e.institucion_id!r} no debe aparecer con scope=1"
+        )
+    ids = {e.id for e in eventos}
+    assert 11 not in ids, "el evento de la institución 2 no debe aparecer con scope=1"

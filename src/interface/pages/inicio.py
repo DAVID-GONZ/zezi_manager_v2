@@ -90,6 +90,14 @@ _ADMIN_CARDS: list[dict[str, str]] = [
         "bg": "var(--color-warning-light)",
         "color": "var(--color-warning)",
     },
+    {
+        "label": "Observabilidad",
+        "desc": "Estado operativo de la plataforma",
+        "icono": "monitor_heart",
+        "ruta": "/admin/observabilidad",
+        "bg": "var(--color-error-light)",
+        "color": "var(--color-error)",
+    },
 ]
 
 

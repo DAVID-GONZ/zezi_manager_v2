@@ -64,10 +64,7 @@ def _buscar_llamadas_evento_sesion(ruta: Path) -> list[int]:
             continue
         func = nodo.func
         # Caso simple: EventoSesion(...)
-        if isinstance(func, ast.Name) and func.id == _CLASE_VIGILADA:
-            lineas.append(nodo.lineno)
-        # Caso atributo: algo.EventoSesion(...)
-        elif isinstance(func, ast.Attribute) and func.attr == _CLASE_VIGILADA:
+        if (isinstance(func, ast.Name) and func.id == _CLASE_VIGILADA) or (isinstance(func, ast.Attribute) and func.attr == _CLASE_VIGILADA):
             lineas.append(nodo.lineno)
 
     return lineas
@@ -118,4 +115,4 @@ def test_evento_sesion_solo_en_archivo_autorizado():
         )
         # Imprimir con sys.stdout para máxima visibilidad
         sys.stdout.write(f"\n{mensaje}\n")
-        assert False, mensaje
+        raise AssertionError(mensaje)

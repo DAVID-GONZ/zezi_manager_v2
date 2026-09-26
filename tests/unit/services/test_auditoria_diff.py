@@ -9,11 +9,8 @@ Cubre:
 """
 from __future__ import annotations
 
-import json
-
 from src.domain.models.auditoria import (
     AccionCambio,
-    CampoDiffDTO,
     RegistroCambio,
     TipoCambioCampo,
 )

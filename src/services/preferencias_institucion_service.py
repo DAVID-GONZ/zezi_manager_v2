@@ -32,6 +32,8 @@ CLAVES_CONOCIDAS: frozenset[str] = frozenset(
         "registros_boletin_dedup_observaciones",
         # Clasificación de situación (convivencia_34)
         "tipo_situacion_obligatorio",
+        # Retención de la bitácora (obs_12 — T12)
+        "retencion_auditoria_meses",
     }
 )
 
@@ -98,7 +100,7 @@ def _inferir_tipo(clave: str) -> TipoValor:
         return TipoValor.BOOL
     if clave == "registros_boletin_tipos":
         return TipoValor.JSON
-    if clave == "numero_periodos_default":
+    if clave in ("numero_periodos_default", "retencion_auditoria_meses"):
         return TipoValor.INT
     if clave in ("color_primario", "color_secundario"):
         return TipoValor.STR

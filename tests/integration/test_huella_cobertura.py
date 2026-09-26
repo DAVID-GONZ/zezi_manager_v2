@@ -67,9 +67,6 @@ from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
 from src.infrastructure.db.repositories.sqlite_habilitacion_repo import (
     SqliteHabilitacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-    SqlitePeriodoRepository,
-)
 from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
     SqliteInfraestructuraRepository,
 )
@@ -79,8 +76,8 @@ from src.infrastructure.db.repositories.sqlite_institucion_repo import (
 from src.infrastructure.db.repositories.sqlite_nivelacion_repo import (
     SqliteNivelacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_plan_mejoramiento_repo import (
-    SqlitePlanMejoramientoRepository,
+from src.infrastructure.db.repositories.sqlite_periodo_repo import (
+    SqlitePeriodoRepository,
 )
 from src.infrastructure.db.repositories.sqlite_usuario_repo import (
     SqliteUsuarioRepository,
@@ -109,11 +106,6 @@ from src.services.institucion_service import InstitucionService
 from src.services.nivelacion_service import NivelacionService, NuevaActividadNivelacionDTO
 from src.services.periodo_service import PeriodoService
 from src.services.plan_estudios_service import PlanEstudiosService
-from src.services.plan_mejoramiento_service import (
-    EjecutarCorteDTO,
-    NuevaActividadPlanDTO,
-    PlanMejoramientoService,
-)
 from src.services.restriccion_generacion_service import RestriccionGeneracionService
 from src.services.sala_service import SalaService
 from src.services.usuario_service import UsuarioService

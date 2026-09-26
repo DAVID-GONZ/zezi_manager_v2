@@ -14,10 +14,7 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.interface.context.request_ip import _de_request
-
 
 # ---------------------------------------------------------------------------
 # Dobles de petición

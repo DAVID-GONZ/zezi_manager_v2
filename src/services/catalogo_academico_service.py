@@ -13,7 +13,6 @@ from typing import Any
 
 from src.domain.exceptions import NoEncontradoError, ReglaDeNegocioError
 from src.domain.models.auditoria import AccionCambio
-from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura
 

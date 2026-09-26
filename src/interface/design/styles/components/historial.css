@@ -1,0 +1,127 @@
+/*
+ * historial.css — Timeline de cambios auditados por registro.
+ *
+ * Solo tokens (sin hex literales, sin px literales si existe token).
+ * Sin selectores de framework (.q-*, .ag-*, .nicegui-*): portable a Vue.
+ * Registrado en CLASS_CONTRACT.md (sección Historial de cambios).
+ */
+
+/* ── Contenedor del timeline ─────────────────────────────────────────────── */
+
+.historial-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+/* ── Entrada individual ──────────────────────────────────────────────────── */
+
+.historial-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-left: 2px solid var(--color-primary-light);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+}
+
+/* ── Metadatos (fecha + actor + badge de acción) ─────────────────────────── */
+
+.historial-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.historial-fecha {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.historial-actor {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+/* ── Campos del diff ─────────────────────────────────────────────────────── */
+
+.historial-campos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
+.historial-campo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.historial-campo-nombre {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 6rem;
+  text-transform: capitalize;
+}
+
+/* ── Valores anterior / nuevo ────────────────────────────────────────────── */
+
+.historial-valor {
+  font-size: var(--font-size-small);
+  font-family: monospace;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+}
+
+.historial-valor--anterior {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+  text-decoration: line-through;
+}
+
+.historial-valor--nuevo {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.historial-valor--oculto {
+  background: var(--color-surface-alt);
+  color: var(--color-text-disabled);
+  font-style: italic;
+}
+
+.historial-valor-par {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.historial-valor-flecha {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+}
+
+/* ── Modo oscuro ─────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .historial-item {
+    background: var(--color-surface);
+    border-left-color: var(--color-primary);
+  }
+}
+
+:root[data-theme="dark"] .historial-item {
+  background: var(--color-surface);
+  border-left-color: var(--color-primary);
+}

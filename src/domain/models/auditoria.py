@@ -68,6 +68,9 @@ class TipoEventoSesion(StrEnum):
     ACCESO_DENEGADO = "ACCESO_DENEGADO"
     VER_COMO_INICIO = "VER_COMO_INICIO"
     VER_COMO_FIN = "VER_COMO_FIN"
+    # obs_12: eventos de exportación y purga de la bitácora
+    AUDITORIA_EXPORTADA = "AUDITORIA_EXPORTADA"
+    AUDITORIA_PURGADA = "AUDITORIA_PURGADA"
 
 
 class SeveridadEvento(StrEnum):
@@ -478,6 +481,63 @@ class FiltroAuditoriaDTO(DTODominio):
 
 
 # =============================================================================
+# DTOs de exportación y retención (obs_12)
+# =============================================================================
+
+
+class HojaVerificacionDTO(DTODominio):
+    """
+    Hoja de verificación adjunta a toda exportación de la bitácora (obs_12, R2).
+
+    Permite que un tercero, sin acceso a la aplicación, recompute la cadena
+    del tramo y confronte el resultado con este documento (R3).
+
+    ``hash_contenido`` se calcula sobre los bytes del CSV/PDF de datos
+    SIN incluir esta hoja; si no, sería un hash de sí mismo.
+    El procedimiento documentado en ``docs/verificacion_bitacora.md`` detalla
+    la forma canónica exacta para que la verificación sea reproducible (R3).
+
+    Cuando ``integridad_ok=False``, ``id_roto`` apunta al primer registro
+    cuyo hash no cuadra en el tramo exportado. La exportación se produce
+    igualmente (R4).
+    """
+
+    generado_en: datetime
+    generado_por: str          # username del actor (no nombre para mostrar)
+    institucion: str | None    # nombre de la institución o None (admin cross-tenant)
+    tabla: str                 # 'audit_log' | 'auditoria'
+    id_desde: int
+    id_hasta: int
+    fecha_desde: datetime | None
+    fecha_hasta: datetime | None
+    filas: int
+    hash_primera_fila: str     # hash_cadena del primer registro del tramo
+    hash_ultima_fila: str      # hash_cadena del último
+    hash_contenido: str        # SHA-256 de los bytes del CSV/PDF (sin la hoja)
+    integridad_ok: bool        # veredicto del tramo en el momento de exportar
+    id_roto: int | None        # primer id con cadena rota (None si íntegro)
+
+
+class ResultadoArchivadoDTO(DTODominio):
+    """
+    Resultado de una operación de archivado y purga (obs_12, §4).
+
+    Documenta el tramo eliminado, el archivo producido y el evento de auditoría
+    que lo explica. La operación es irreversible; este DTO es la constancia
+    de lo que se hizo.
+    """
+
+    tabla: str
+    hasta: datetime              # fecha de corte usada para delimitar el tramo
+    id_desde: int                # primer id eliminado
+    id_hasta: int                # último id eliminado (k: el ancla del nuevo checkpoint)
+    filas_eliminadas: int
+    ruta_archivo: str            # ruta absoluta del archivo JSONL generado
+    hash_archivo: str            # SHA-256 del archivo (verificado antes de borrar)
+    verificacion_previa_ok: bool # True si la cadena estaba íntegra antes de purgar
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -489,8 +549,10 @@ __all__ = [
     "DetalleCambioDTO",
     "EventoSesion",
     "FiltroAuditoriaDTO",
+    "HojaVerificacionDTO",
     "RegistroCambio",
     "ResumenUsoDTO",
+    "ResultadoArchivadoDTO",
     "SeveridadEvento",
     "TipoCambioCampo",
     "TipoEventoSesion",

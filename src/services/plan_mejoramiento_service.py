@@ -7,6 +7,7 @@ from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.plan_mejoramiento import (
     ActividadPlan,
     CalculadorPlan,
@@ -19,7 +20,6 @@ from src.domain.models.plan_mejoramiento import (
     NotaCortePlan,
     NuevaActividadPlanDTO,
 )
-from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.plan_mejoramiento_repo import IPlanMejoramientoRepository

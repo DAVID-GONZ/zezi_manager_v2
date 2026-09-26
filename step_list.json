@@ -254,8 +254,8 @@
   {
     "id": "obs_10_historial_por_registro",
     "nombre": "Historial de cambios en la ficha de negocio",
-    "status": "spec_ready",
-    "destino_v2": "src/domain/policies/rbac_auditoria.py, src/services/auditoria_service.py, src/interface/design/components/historial_cambios.py, src/interface/design/components/__init__.py, src/interface/design/styles/components/historial.css, src/interface/design/styles/CLASS_CONTRACT.md, src/interface/presenters/admin/historial_presenter.py, src/interface/pages/convivencia/observaciones.py, src/interface/pages/evaluacion/planilla_notas.py, src/interface/pages/academico/estudiantes.py, src/interface/pages/admin/usuarios.py, tests/unit/domain/test_rbac_auditoria.py",
+    "status": "done",
+    "destino_v2": "src/domain/policies/rbac_auditoria.py, src/services/auditoria_service.py, src/services/convivencia_service.py, src/interface/design/components/historial_cambios.py, src/interface/design/components/__init__.py, src/interface/design/styles/components/historial.css, src/interface/design/styles/CLASS_CONTRACT.md, src/interface/presenters/admin/historial_presenter.py, src/interface/pages/convivencia/observaciones.py, src/interface/pages/evaluacion/planilla_notas.py, src/interface/pages/academico/estudiantes.py, src/interface/pages/admin/usuarios.py, tests/unit/domain/test_rbac_auditoria.py",
     "operacion": "crear+modificar",
     "sdd": true,
     "descripcion": "La pregunta que un colegio hace primero, quien cambio esto y cuando, solo se puede responder hoy navegando a /admin/auditoria con rol de admin y filtrando a ciegas por nombre de tabla y numero de registro. Desde la ficha de la observacion, de la nota, del estudiante o del usuario no hay ningun camino. listar_cambios_por_registro existe en el puerto, en el repo SQLite y en los dobles de test sin ningun consumidor, y devuelve los cambios en orden cronologico ascendente, que es justo el orden en que se lee un historial. El paso introduce rbac_auditoria.py con puede_ver_historial (admin, director, coordinador), consultada en el servicio y en la vista para que no diverjan, igual que rbac_usuarios; anade AuditoriaService.historial_de(tabla, registro_id, scope) que aplica TenantScope e incluye las filas con institucion_id nulo, porque excluirlas crearia agujeros silenciosos en el historial; y crea el componente historial_cambios como presentacion pura con la misma forma que activity_feed (dataclass de entrada, section_panel, cero llamadas a servicios). No amplia activity_feed: su ActivityItem no admite un diff y lo usa el portal para otra cosa. La carga es perezosa, de modo que abrir la ficha sin pulsar Historial no anade coste a pantallas que hoy no lo pagan. El nombre exacto de tabla de cada enganche se verifica contra el argumento tabla= de auditar_cambio del servicio correspondiente: si divergen, el historial sale vacio sin dar error, que es el peor fallo posible aqui. DEPENDE de obs_09."
@@ -263,7 +263,7 @@
   {
     "id": "obs_11_auditoria_del_rector",
     "nombre": "Bitácora institucional para el equipo directivo",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/interface/pages/institucion/auditoria.py, src/interface/presenters/institucion/auditoria_presenter.py, src/domain/policies/rbac_auditoria.py, src/services/auditoria_service.py, src/interface/pages/admin/auditoria.py, main.py, src/interface/design/layout.py, tests/unit/interface/auth/test_matriz_rutas_completa.py, tests/unit/services/test_tenant_isolation.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -272,7 +272,7 @@
   {
     "id": "obs_12_exportacion_y_retencion",
     "nombre": "Exportación verificable y retención de la bitácora",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/services/auditoria_export_service.py, src/services/auditoria_retencion_service.py, src/domain/models/auditoria.py, src/domain/ports/auditoria_repo.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, src/infrastructure/db/schema.py, src/domain/policies/rbac_auditoria.py, src/services/preferencias_institucion_service.py, src/interface/pages/admin/auditoria.py, src/interface/pages/institucion/auditoria.py, docs/verificacion_bitacora.md, config.py, .env.example, container.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -281,7 +281,7 @@
   {
     "id": "obs_13_panel_observabilidad",
     "nombre": "Panel de observabilidad de plataforma",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/domain/models/observabilidad.py, src/domain/ports/log_reader.py, src/infrastructure/logging/jsonl_log_reader.py, src/services/observabilidad_service.py, src/domain/policies/alerta_ip.py, src/interface/presenters/admin/observabilidad_presenter.py, src/interface/pages/admin/observabilidad.py, main.py, src/interface/design/layout.py, src/interface/pages/inicio.py, container.py, tests/unit/interface/auth/test_matriz_rutas_completa.py",
     "operacion": "crear+modificar",
     "sdd": true,

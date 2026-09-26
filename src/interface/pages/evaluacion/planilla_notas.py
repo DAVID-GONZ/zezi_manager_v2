@@ -23,11 +23,13 @@ import logging
 from nicegui import ui
 
 from container import Container
+from src.domain.policies.rbac_auditoria import puede_ver_historial
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
     empty_state,
     form_dialog,
+    historial_cambios,
     skeleton_table,
     status_badge,
     toast_error,
@@ -46,12 +48,14 @@ from src.interface.design.components.form_fields import (
     field_number,
     field_select,
 )
+from src.interface.design.components.historial_cambios import HistorialItem
 from src.interface.design.components.inline_selectors import (
     inline_periodo_grupo_asignatura,
 )
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
+from src.interface.presenters.admin.historial_presenter import HistorialPresenter
 from src.interface.presenters.evaluacion.planilla_notas_presenter import PlanillaNotasPresenter
 from src.services.evaluacion_service import (
     ActualizarCategoriaDTO,
@@ -106,6 +110,52 @@ def planilla_notas_page() -> None:
 
     presenter = PlanillaNotasPresenter()
     _s = presenter.estado  # misma referencia: bind_value/refreshables usan el estado del presenter
+
+    # ── Historial de cambios (obs_10) ─────────────────────────────────────────
+    _historial_p = HistorialPresenter()
+    _hs = _historial_p.estado
+
+    @ui.refreshable
+    def _dialogo_historial() -> None:
+        if not _hs["abierto"]:
+            return
+        with ui.dialog().props("maximized persistent") as dlg:
+            dlg.open()
+            with ui.element("div").classes("panel-card u-pa-md").style("min-width:320px;max-width:640px;margin:auto"):
+                with ui.row().classes("form-row-center-md u-mb-md"):
+                    ui.label("Historial de cambios").classes("section-title-lg flex-1")
+                    btn_icon("close", on_click=lambda: (_historial_p.cerrar(), _dialogo_historial.refresh()))
+                if _hs["cargando"]:
+                    ui.spinner(size="md")
+                elif _hs["error"]:
+                    empty_state(icono="error_outline", titulo="Error", descripcion=str(_hs["error"]))
+                else:
+                    items = [
+                        HistorialItem(
+                            fecha=getattr(d.cambio, "timestamp_display", str(d.cambio.timestamp)),
+                            actor=d.actor_nombre,
+                            accion=d.cambio.accion.value if hasattr(d.cambio.accion, "value") else str(d.cambio.accion),
+                            campos=d.campos,
+                        )
+                        for d in _hs["items"]
+                    ]
+                    historial_cambios(items)
+
+    def _abrir_historial_actividad(act_id: int) -> None:
+        _historial_p.abrir("actividades", act_id)
+        _dialogo_historial.refresh()
+        try:
+            from src.services.contexto_tenant import institucion_actual
+            scope = institucion_actual() or "*"
+        except Exception:
+            scope = "*"
+        try:
+            items = Container.auditoria_service().historial_de("actividades", act_id, scope)
+            _historial_p.set_items(items)
+        except Exception as exc:
+            logger.error("Error cargando historial de actividad %s: %s", act_id, exc)
+            _historial_p.set_error(str(exc))
+        _dialogo_historial.refresh()
 
     # ── Carga de datos ────────────────────────────────────────────────────────
     def _cargar_datos() -> None:
@@ -955,6 +1005,14 @@ def planilla_notas_page() -> None:
                                                     on_click=lambda aid=act.id, an=act.nombre: _reabrir_actividad(aid, an),
                                                     tooltip="Reabrir actividad",
                                                 )
+                                            # obs_10: historial de cambios por actividad
+                                            if puede_ver_historial(ctx.usuario_rol):
+                                                btn_icon(
+                                                    "history",
+                                                    on_click=lambda aid=act.id: _abrir_historial_actividad(aid),
+                                                    tooltip="Historial de cambios",
+                                                    variante="ghost",
+                                                )
 
             # ── Columna derecha: Categorías propias ───────────────────────────
             with ui.element("div").classes("panel-card").style(
@@ -1283,6 +1341,7 @@ def planilla_notas_page() -> None:
         contenido,
         page_titulo="Evaluación · Planilla de Notas",
     )
+    _dialogo_historial()
 
 
 __all__ = ["planilla_notas_page"]

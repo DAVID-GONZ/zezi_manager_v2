@@ -14,7 +14,6 @@ from src.domain.policies.severidad_evento import (
     severidad_de,
 )
 
-
 # ── ACCESO_DENEGADO — variantes por motivo ───────────────────────────────────
 
 @pytest.mark.parametrize(

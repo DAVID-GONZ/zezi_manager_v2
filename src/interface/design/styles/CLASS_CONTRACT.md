@@ -94,6 +94,16 @@ Escala de espaciado/layout como clases (evitan apilar utilidades atómicas en la
 | **Sub-sección** | `.portal-subcard` | `.portal-subcard--{recientes\|alertas\|hitos}`, `.portal-card-section-title` |
 | **Ítem de sub-sección** | `.portal-subcard-item` | `.portal-subcard-item--warning`, `.portal-subcard-label`, `.portal-subcard-detalle` |
 
+## Historial de cambios (obs_10)
+
+| Componente | Base | Hijos / variantes |
+|---|---|---|
+| **Timeline** | `.historial-timeline` | contenedor del listado |
+| **Entrada** | `.historial-item` | `.historial-meta`, `.historial-fecha`, `.historial-actor` |
+| **Campos del diff** | `.historial-campos` | `.historial-campo`, `.historial-campo-nombre` |
+| **Valor** | `.historial-valor` | `.historial-valor--anterior`, `.historial-valor--nuevo`, `.historial-valor--oculto` |
+| **Par de valores** | `.historial-valor-par` | `.historial-valor-flecha` |
+
 ## Reglas del contrato
 
 1. **Un componente = una clase base semántica** (describe el rol, no la apariencia).

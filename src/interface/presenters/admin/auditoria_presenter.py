@@ -180,4 +180,4 @@ class AuditoriaPresenter:
         )
 
 
-__all__ = ["AuditoriaPresenter", "_SIN_INSTITUCION_SENTINEL"]
+__all__ = ["_SIN_INSTITUCION_SENTINEL", "AuditoriaPresenter"]

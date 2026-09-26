@@ -17,11 +17,10 @@ import pytest
 
 import src.infrastructure.logging.security_logger as _sl_module
 from src.infrastructure.logging.security_logger import (
+    _CAMPOS_PERMITIDOS,
     SecurityLogger,
     _JsonSecurityFormatter,
-    _CAMPOS_PERMITIDOS,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -216,19 +215,19 @@ class TestSecurityLoggerNiveles:
         sl = SecurityLogger()
         sl.login_exitoso("jperez", "10.0.0.1", "DIRECTOR", 3)
         rec = self.records[-1]
-        assert getattr(rec, "usuario") == "jperez"
-        assert getattr(rec, "ip") == "10.0.0.1"
-        assert getattr(rec, "rol") == "DIRECTOR"
-        assert getattr(rec, "institucion_id") == 3
-        assert getattr(rec, "tipo_evento") == "LOGIN_EXITOSO"
+        assert rec.usuario == "jperez"
+        assert rec.ip == "10.0.0.1"
+        assert rec.rol == "DIRECTOR"
+        assert rec.institucion_id == 3
+        assert rec.tipo_evento == "LOGIN_EXITOSO"
 
     def test_login_fallido_campos(self):
         sl = SecurityLogger()
         sl.login_fallido("x", "2.2.2.2", "cuenta bloqueada")
         rec = self.records[-1]
-        assert getattr(rec, "usuario") == "x"
-        assert getattr(rec, "tipo_evento") == "LOGIN_FALLIDO"
-        assert getattr(rec, "motivo") == "cuenta bloqueada"
+        assert rec.usuario == "x"
+        assert rec.tipo_evento == "LOGIN_FALLIDO"
+        assert rec.motivo == "cuenta bloqueada"
 
 
 class _CapturingHandler(logging.Handler):

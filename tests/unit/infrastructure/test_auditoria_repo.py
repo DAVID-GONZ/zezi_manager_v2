@@ -15,19 +15,16 @@ import sqlite3
 import pytest
 
 from src.domain.models.auditoria import (
-    AccionCambio,
     EventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
     TipoEventoSesion,
 )
-from src.domain.policies import alerta_ip as _alerta_ip_module
 from src.domain.policies.alerta_ip import MAX_FALLOS_IP, registrar_fallo_ip, reset_all
 from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
     SqliteAuditoriaRepository,
 )
 from src.infrastructure.db.schema import SCHEMA
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

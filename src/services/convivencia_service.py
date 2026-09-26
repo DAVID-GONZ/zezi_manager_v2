@@ -18,6 +18,7 @@ from src.domain.exceptions import (
     ReglaDeNegocioError,
 )
 from src.domain.models.alerta import Alerta, FiltroAlertasDTO, NivelAlerta, TipoAlerta
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.convivencia import (
     CategoriaObservacion,
     ConceptoComportamientoDTO,
@@ -44,7 +45,6 @@ from src.domain.models.convivencia import (
     TipoRegistro,
     TipoSituacion,
 )
-from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
@@ -2237,6 +2237,7 @@ class ConvivenciaService:
             asig_nombre = asig_nombre_map.get(obs.asignacion_id)
             entradas.append(
                 {
+                    "id": obs.id,
                     "fecha": obs.fecha_registro,
                     "tipo": "observacion",
                     "subtipo": "publica" if obs.es_publica else "privada",
@@ -2265,6 +2266,7 @@ class ConvivenciaService:
             fecha_reg: datetime = datetime.combine(reg.fecha, datetime.min.time())
             entradas.append(
                 {
+                    "id": reg.id,
                     "fecha": fecha_reg,
                     "tipo": "registro",
                     "subtipo": reg.tipo.value,

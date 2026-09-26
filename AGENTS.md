@@ -7,7 +7,7 @@
 
 ## 1. Antes de empezar (obligatorio)
 
-1. Ejecuta `./init.sh` — si falla, **para**. No toques código.
+1. Ejecuta `scripts\init.py` — si falla, **para**. No toques código.
 2. Lee `step_list.json` — identifica el paso activo (`in_progress`) o el siguiente pendiente.
 3. Lee `progress/current.md` — estado de la última sesión.
 4. Si el paso tiene `"sdd": true`, lee el spec en `specs/<paso>/` antes de implementar.

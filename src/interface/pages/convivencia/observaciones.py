@@ -34,15 +34,18 @@ from datetime import date
 from nicegui import ui
 
 from container import Container
+from src.domain.policies.rbac_auditoria import puede_ver_historial
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     empty_state,
     form_dialog,
+    historial_cambios,
     toast_error,
     toast_success,
     toast_warning,
 )
-from src.interface.design.components.buttons import btn_ghost, btn_primary
+from src.interface.design.components.buttons import btn_ghost, btn_icon, btn_primary
+from src.interface.design.components.historial_cambios import HistorialItem
 from src.interface.design.components.inline_selectors import (
     inline_periodo_grupo_asignatura,
 )
@@ -51,6 +54,7 @@ from src.interface.design.styles.tokens import Icons
 from src.interface.pages.convivencia._shared_observacion_form import (
     abrir_crear_observacion_dialog,
 )
+from src.interface.presenters.admin.historial_presenter import HistorialPresenter
 from src.interface.presenters.convivencia.observaciones_presenter import ObservacionesPresenter
 from src.services.convivencia_service import NuevoRegistroComportamientoDTO
 
@@ -201,6 +205,52 @@ def observaciones_page() -> None:
     presenter = ObservacionesPresenter()
     _s = presenter.estado
     _cargar_periodos(_s)
+
+    # ── Historial de cambios (obs_10) ─────────────────────────────────────────
+    _historial_p = HistorialPresenter()
+    _hs = _historial_p.estado
+
+    @ui.refreshable
+    def _dialogo_historial_obs() -> None:
+        if not _hs["abierto"]:
+            return
+        with ui.dialog().props("maximized persistent") as dlg:
+            dlg.open()
+            with ui.element("div").classes("panel-card u-pa-md").style("min-width:320px;max-width:640px;margin:auto"):
+                with ui.row().classes("form-row-center-md u-mb-md"):
+                    ui.label("Historial de cambios").classes("section-title-lg flex-1")
+                    btn_icon("close", on_click=lambda: (_historial_p.cerrar(), _dialogo_historial_obs.refresh()))
+                if _hs["cargando"]:
+                    ui.spinner(size="md")
+                elif _hs["error"]:
+                    empty_state(icono="error_outline", titulo="Error", descripcion=str(_hs["error"]))
+                else:
+                    items = [
+                        HistorialItem(
+                            fecha=getattr(d.cambio, "timestamp_display", str(d.cambio.timestamp)),
+                            actor=d.actor_nombre,
+                            accion=d.cambio.accion.value if hasattr(d.cambio.accion, "value") else str(d.cambio.accion),
+                            campos=d.campos,
+                        )
+                        for d in _hs["items"]
+                    ]
+                    historial_cambios(items)
+
+    def _abrir_historial_obs(tabla: str, registro_id: int) -> None:
+        _historial_p.abrir(tabla, registro_id)
+        _dialogo_historial_obs.refresh()
+        try:
+            from src.services.contexto_tenant import institucion_actual
+            scope = institucion_actual() or "*"
+        except Exception:
+            scope = "*"
+        try:
+            items = Container.auditoria_service().historial_de(tabla, registro_id, scope)
+            _historial_p.set_items(items)
+        except Exception as exc:
+            logger.error("Error cargando historial de %s/%s: %s", tabla, registro_id, exc)
+            _historial_p.set_error(str(exc))
+        _dialogo_historial_obs.refresh()
 
     _refs: dict = {}
 
@@ -590,6 +640,12 @@ def observaciones_page() -> None:
         icono = _TIPO_ICONO.get(subtipo, _TIPO_ICONO.get(tipo, "circle"))
         color_cls = _TIPO_COLOR.get(subtipo, "text-gray-700")
 
+        # obs_10: mapa tipo → tabla auditada (verificado contra convivencia_service)
+        _TIPO_TABLA_AUDITORIA: dict[str, str] = {
+            "observacion": "observaciones_periodo",
+            "registro": "registro_comportamiento",
+        }
+
         with ui.element("div").classes("border border-gray-200 rounded-md p-3 bg-white hover:bg-gray-50"):
             # Cabecera
             with ui.element("div").classes("flex items-center gap-2 mb-1"):
@@ -599,6 +655,20 @@ def observaciones_page() -> None:
                     ui.badge(tipo_sit, color="orange").props("dense")
                 ui.element("div").classes("flex-1")
                 ui.label(_fecha_display(fecha)).classes("text-xs text-gray-400")
+                # obs_10: botón historial (solo si el id está disponible en la entrada)
+                entrada_id = entrada.get("id")
+                tabla_audit = _TIPO_TABLA_AUDITORIA.get(tipo)
+                if (
+                    puede_ver_historial(ctx.usuario_rol)
+                    and entrada_id is not None
+                    and tabla_audit is not None
+                ):
+                    btn_icon(
+                        "history",
+                        on_click=lambda t=tabla_audit, eid=entrada_id: _abrir_historial_obs(t, eid),
+                        tooltip="Historial de cambios",
+                        variante="ghost",
+                    )
 
             # Descripción
             ui.label(descripcion).classes("text-sm text-gray-700 leading-snug")
@@ -733,6 +803,7 @@ def observaciones_page() -> None:
             panel_grid()
 
     app_layout(ctx, contenido, page_titulo="Observador del estudiante")
+    _dialogo_historial_obs()
 
 
 __all__ = ["observaciones_page"]

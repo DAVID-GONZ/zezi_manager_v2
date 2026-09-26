@@ -57,6 +57,7 @@ ACCESO_ESPERADO: dict[str, object] = {
     "/admin/instituciones": _ADMIN,
     "/diagnostico": _ADMIN,
     "/admin/usuarios": _ADMIN,
+    "/admin/observabilidad": _ADMIN,
     # ── Solo director ──
     "/director/equipo": _DIR,
     "/admin/asignaturas": _DIR,
@@ -66,6 +67,7 @@ ACCESO_ESPERADO: dict[str, object] = {
     "/institucion/configuracion": _DIR,
     # ── Director + coordinador ──
     "/admin/disponibilidad-docente": _DIR_COORD,
+    "/institucion/auditoria": _DIR_COORD,
     "/admin/grupos": _DIR_COORD,
     "/admin/plan-estudios": _DIR_COORD,
     "/convivencia/configuracion-alertas": _DIR_COORD,

@@ -678,6 +678,36 @@ class Container:
         )
 
     @classmethod
+    def auditoria_export_service(cls):
+        from src.services.auditoria_export_service import AuditoriaExportService
+        from config import settings
+        return cls._get_or_create(
+            "auditoria_export_service",
+            lambda: AuditoriaExportService(
+                repo=cls.auditoria_repo(),
+                exporter=cls.exporter_service(),
+                max_filas=settings.AUDITORIA_EXPORT_MAX_FILAS,
+            ),
+        )
+
+    @classmethod
+    def auditoria_retencion_service(cls):
+        from src.services.auditoria_retencion_service import AuditoriaRetencionService
+        from config import settings
+        from pathlib import Path
+        archivo_dir = Path(settings.AUDITORIA_ARCHIVO_DIR)
+        if not archivo_dir.is_absolute():
+            from pathlib import Path as _Path
+            archivo_dir = _Path(__file__).parent / settings.AUDITORIA_ARCHIVO_DIR
+        return cls._get_or_create(
+            "auditoria_retencion_service",
+            lambda: AuditoriaRetencionService(
+                repo=cls.auditoria_repo(),
+                archivo_dir=archivo_dir,
+            ),
+        )
+
+    @classmethod
     def busqueda_service(cls):
         from src.services.busqueda_service import BusquedaService
         return cls._get_or_create(
@@ -687,6 +717,22 @@ class Container:
                 usuario_svc_provider=cls.usuario_service,
                 catalogo_svc_provider=cls.catalogo_academico_service,
                 asignacion_svc_provider=cls.asignacion_service,
+            ),
+        )
+
+    @classmethod
+    def log_reader(cls):
+        from src.infrastructure.logging.jsonl_log_reader import JsonlLogReader
+        return cls._get_or_create("log_reader", JsonlLogReader)
+
+    @classmethod
+    def observabilidad_service(cls):
+        from src.services.observabilidad_service import ObservabilidadService
+        return cls._get_or_create(
+            "observabilidad_service",
+            lambda: ObservabilidadService(
+                auditoria_repo=cls.auditoria_repo(),
+                log_reader=cls.log_reader(),
             ),
         )
 
@@ -710,11 +756,13 @@ class Container:
             "evaluacion_service", "asistencia_service", "cierre_service",
             "habilitacion_service", "nivelacion_service", "plan_mejoramiento_service", "convivencia_service", "alerta_service",
             "estadisticos_service", "informe_service", "auditoria_service",
+            "auditoria_export_service", "auditoria_retencion_service",
             "infraestructura_service", "plan_estudios_service",
             "preparacion_horario_service",
             "sala_service", "franja_service", "escenario_horario_service",
             "restriccion_generacion_service", "catalogo_academico_service",
             "busqueda_service",
+            "log_reader", "observabilidad_service",
         ]
         for nombre in metodos:
             try:

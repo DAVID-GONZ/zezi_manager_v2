@@ -11,6 +11,8 @@ Cubre:
 """
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
@@ -165,7 +167,6 @@ def test_denegacion_escritura_con_actor_activo_lleva_usuario_id_y_severidad_adve
     R8: con actor activo en el contexto, una denegación de escritura lleva
     usuario_id no nulo y severidad=ADVERTENCIA.
     """
-    from datetime import datetime
     from unittest.mock import MagicMock
 
     from src.domain.models.auditoria import EventoSesion, SeveridadEvento, TipoEventoSesion
@@ -185,11 +186,8 @@ def test_denegacion_escritura_con_actor_activo_lleva_usuario_id_y_severidad_adve
     try:
         _container_module.Container = fake_container
         activar_solo_lectura(True)
-        with usar_actor(42, "admin_real", "10.0.0.1"):
-            try:
-                verificar_escritura()
-            except Exception:
-                pass
+        with usar_actor(42, "admin_real", "10.0.0.1"), contextlib.suppress(Exception):
+            verificar_escritura()
     finally:
         activar_solo_lectura(False)
         if original is not None:
@@ -225,12 +223,8 @@ def test_denegacion_cross_tenant_con_actor_activo_lleva_usuario_id_y_severidad_c
     original = getattr(_container_module, "Container", None)
     try:
         _container_module.Container = fake_container
-        with usar_actor(7, "director1", "192.168.1.1"):
-            with usar_institucion(1):  # scope = institución 1
-                try:
-                    verificar_pertenencia(2)  # objeto de institución 2 → DENEGADO
-                except Exception:
-                    pass
+        with usar_actor(7, "director1", "192.168.1.1"), usar_institucion(1), contextlib.suppress(Exception):  # scope = institución 1
+            verificar_pertenencia(2)  # objeto de institución 2 → DENEGADO
     finally:
         if original is not None:
             _container_module.Container = original

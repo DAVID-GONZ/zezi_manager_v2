@@ -25,7 +25,6 @@ from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
 )
 from src.infrastructure.db.schema import SCHEMA
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -185,7 +184,7 @@ class TestVerificacionIncremental:
     def test_b_alterar_fila_posterior_al_checkpoint_la_detecta(self, repo, conn):
         """(b) Alterar una fila POSTERIOR al checkpoint → devuelve su id y el
         checkpoint no se mueve."""
-        insertados = _sembrar_cambios_n(repo, 5)
+        _sembrar_cambios_n(repo, 5)
 
         # Establecer checkpoint con completa=True
         assert repo.verificar_cadena_cambios(completa=True) is None
@@ -219,7 +218,7 @@ class TestVerificacionIncremental:
 
         Documenta el compromiso de §2 del diseño: no es un bug.
         """
-        insertados = _sembrar_cambios_n(repo, 10)
+        _sembrar_cambios_n(repo, 10)
 
         # Establecer checkpoint
         assert repo.verificar_cadena_cambios(completa=True) is None
@@ -316,9 +315,9 @@ def test_volumen_50000_filas_verificacion_incremental(conn):
         repo.registrar_cambios_masivos(registros)
 
     # Primera verificación completa: verifica toda la cadena y guarda checkpoint
-    t0 = time.perf_counter()
+    time.perf_counter()
     id_roto = repo.verificar_cadena_cambios(completa=True)
-    t1 = time.perf_counter()
+    time.perf_counter()
     assert id_roto is None, f"La cadena de 50 000 filas debería ser íntegra; id_roto={id_roto}"
 
     # Checkpoint debe estar en 50 000

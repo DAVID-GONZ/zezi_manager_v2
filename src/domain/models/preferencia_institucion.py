@@ -73,6 +73,11 @@ class PreferenciasDTO(DTODominio):
     registros_boletin_dedup_observaciones: bool = True
     # Clasificación de situación obligatoria al registrar comportamiento (convivencia_34).
     tipo_situacion_obligatorio: bool = False
+    # Ventana de retención de la bitácora en meses (obs_12 — T12).
+    # None = sin purga (política abierta). Default 60 meses = 5 años.
+    # La preferencia precarga la fecha propuesta en el diálogo de archivado;
+    # no dispara ninguna purga automática (R12).
+    retencion_auditoria_meses: int | None = 60
 
 
 class ActualizarPreferenciaDTO(DTODominio):

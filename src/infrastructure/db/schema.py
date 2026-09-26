@@ -1046,7 +1046,8 @@ SCHEMA: list[str] = [
                         'CREAR_USUARIO', 'EDITAR_USUARIO', 'RESETEAR_PASSWORD',
                         'CAMBIAR_ROL', 'DESACTIVAR_USUARIO', 'ACTIVAR_USUARIO',
                         'ACCESO_DENEGADO',
-                        'VER_COMO_INICIO', 'VER_COMO_FIN'
+                        'VER_COMO_INICIO', 'VER_COMO_FIN',
+                        'AUDITORIA_EXPORTADA', 'AUDITORIA_PURGADA'
                     )),
         ip_address  TEXT,
         fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

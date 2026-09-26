@@ -133,6 +133,27 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FILE: Path | None = None  # None → solo consola; Path → también archivo
 
+    # ------------------------------------------------------------------
+    # Auditoría — exportación (obs_12 — R7)
+    # ------------------------------------------------------------------
+    AUDITORIA_EXPORT_MAX_FILAS: int = Field(
+        default=50_000,
+        gt=0,
+        description=(
+            "Número máximo de filas que se pueden exportar en una sola operación. "
+            "Si el filtro activo supera este tope, el servicio lanza ReglaDeNegocioError "
+            "con código AUDITORIA_EXPORT_TOPE en lugar de truncar en silencio (R7)."
+        ),
+    )
+    # Directorio base donde se guardan los archivos de archivado (purga).
+    AUDITORIA_ARCHIVO_DIR: str = Field(
+        default="data/archivos_auditoria",
+        description=(
+            "Directorio relativo (a la raíz del proyecto) o absoluto donde se guardan "
+            "los archivos JSONL producidos por el archivado de la bitácora."
+        ),
+    )
+
     # Security logging (obs_03 — R4 / obs_06 — R13)
     # Default efectivo: logs/security.log (obs_06 activa el log por defecto).
     # El validador resolver_log_path convierte la ruta relativa en absoluta.

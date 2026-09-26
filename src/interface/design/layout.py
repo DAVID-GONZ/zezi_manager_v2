@@ -164,6 +164,14 @@ NAV_ITEMS: list[dict] = [
                 "icon": "settings",
                 "ruta": "/institucion/configuracion",
             },
+            # obs_11: bitácora visible para director y coordinador (la visibilidad
+            # efectiva la decide _rol_permitido_en_ruta, que consulta el registro
+            # central de rutas — R9).
+            {
+                "label": "Auditoría",
+                "icon": "history",
+                "ruta": "/institucion/auditoria",
+            },
         ],
     },
     {
@@ -175,6 +183,7 @@ NAV_ITEMS: list[dict] = [
             {"label": "Instituciones", "icon": "apartment", "ruta": "/admin/instituciones"},
             {"label": "Auditoría", "icon": "history", "ruta": "/admin/auditoria"},
             {"label": "Diagnóstico", "icon": "monitor_heart", "ruta": "/diagnostico"},
+            {"label": "Observabilidad", "icon": "monitor_heart", "ruta": "/admin/observabilidad"},
         ],
     },
 ]

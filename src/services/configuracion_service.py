@@ -11,6 +11,7 @@ from src.domain.exceptions import (
     NoEncontradoError,
     ReglaDeNegocioError,
 )
+from src.domain.models.auditoria import AccionCambio
 from src.domain.models.configuracion import (
     ActualizarConfiguracionAnioDTO,
     ActualizarInfoInstitucionalDTO,
@@ -21,7 +22,6 @@ from src.domain.models.configuracion import (
     NuevaConfiguracionAnioDTO,
     NuevoNivelDesempenoDTO,
 )
-from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.services.auditoria_helpers import auditar_cambio
 from src.services.solo_lectura import requiere_escritura

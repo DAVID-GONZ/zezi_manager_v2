@@ -12,9 +12,15 @@ Orden de arranque:
 from __future__ import annotations
 
 import logging
+import time
 
 from config import settings
 from container import Container
+
+# Instante de arranque del proceso (monotonic) — obs_13 T7.
+# Capturado al importar el módulo para que el uptime sea preciso.
+# Leído por ObservabilidadService.salud() para calcular el uptime.
+INICIADO_EN: float = time.monotonic()
 
 
 def inicializar_base_de_datos() -> bool:
@@ -220,16 +226,19 @@ def registrar_rutas_ui() -> None:
         disponibilidad_docente_page,
     )
     from src.interface.pages.admin.grupos import grupos_page
+    from src.interface.pages.admin.observabilidad import observabilidad_page
     from src.interface.pages.admin.plan_estudios import plan_estudios_page
     from src.interface.pages.admin.salas import salas_page
     from src.interface.pages.admin.usuarios import usuarios_page
     from src.interface.pages.director.gestion_usuarios import gestion_usuarios_page
+    from src.interface.pages.institucion.auditoria import auditoria_institucional_page
     from src.interface.pages.institucion.hub_institucion import hub_institucion_page
 
     registrar_pagina("/admin/usuarios", usuarios_page, roles=_ADMIN)
     registrar_pagina("/director/equipo", gestion_usuarios_page, roles=_DIRECTOR)
     registrar_pagina("/admin/instituciones", catalogo_instituciones_page, roles=_ADMIN)
     registrar_pagina("/admin/auditoria", auditoria_page, roles=_ADMIN)
+    registrar_pagina("/admin/observabilidad", observabilidad_page, roles=_ADMIN)
     registrar_pagina("/diagnostico", diagnostico_page, roles=_ADMIN)
     registrar_pagina("/admin/grupos", grupos_page, roles=_DIR_COORD)
     registrar_pagina("/admin/asignaturas", asignaturas_page, roles=_DIRECTOR)
@@ -239,6 +248,11 @@ def registrar_rutas_ui() -> None:
         "/institucion/configuracion",
         hub_institucion_page,
         roles=_DIRECTOR,
+    )
+    registrar_pagina(
+        "/institucion/auditoria",
+        auditoria_institucional_page,
+        roles=_DIR_COORD,
     )
     registrar_pagina("/admin/plan-estudios", plan_estudios_page, roles=_DIR_COORD)
     registrar_pagina(

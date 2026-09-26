@@ -5,9 +5,8 @@ SqliteAuditoriaRepository — implementación SQLite de IAuditoriaRepository.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-
-from src.domain.models.clock import ahora as _ahora
 
 from src.domain.models.auditoria import (
     AccionCambio,
@@ -17,7 +16,9 @@ from src.domain.models.auditoria import (
     SeveridadEvento,
     TipoEventoSesion,
 )
-from src.domain.policies.audit_chain import calcular_hash, primer_eslabon_roto
+from src.domain.models.clock import ahora as _ahora
+from src.domain.models.tenant import TenantScope
+from src.domain.policies.audit_chain import calcular_hash
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 
 # Número máximo de filas que se leen por lote en la verificación incremental.
@@ -529,7 +530,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 f"SELECT tipo_evento, COUNT(*) AS n FROM auditoria"
                 f" WHERE fecha_hora >= ?{hasta_filter}{inst_filter}"
                 f" GROUP BY tipo_evento",
-                [desde_iso] + hasta_param + inst_param,
+                [desde_iso, *hasta_param, *inst_param],
             ).fetchall()
             por_tipo: dict[str, int] = {r["tipo_evento"]: int(r["n"]) for r in rows_tipo}
 
@@ -538,7 +539,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 f"SELECT COUNT(*) FROM auditoria"
                 f" WHERE tipo_evento = 'LOGIN_EXITOSO' AND fecha_hora >= ?"
                 f"{inst_filter}",
-                [inicio_hoy_iso] + inst_param,
+                [inicio_hoy_iso, *inst_param],
             ).fetchone()
             logins_hoy = int(r_hoy[0])
 
@@ -547,7 +548,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 f"SELECT COUNT(DISTINCT COALESCE(usuario_id, usuario)) FROM auditoria"
                 f" WHERE tipo_evento = 'LOGIN_EXITOSO' AND fecha_hora >= ?"
                 f"{hasta_filter}{inst_filter}",
-                [desde_iso] + hasta_param + inst_param,
+                [desde_iso, *hasta_param, *inst_param],
             ).fetchone()
             usuarios_distintos = int(r_usu[0])
 
@@ -556,7 +557,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
                 f"SELECT COUNT(*) FROM auditoria"
                 f" WHERE tipo_evento = 'ACCESO_DENEGADO' AND severidad = 'CRITICA'"
                 f" AND fecha_hora >= ?{hasta_filter}{inst_filter}",
-                [desde_iso] + hasta_param + inst_param,
+                [desde_iso, *hasta_param, *inst_param],
             ).fetchone()
             denegados_criticos = int(r_den[0])
 
@@ -566,6 +567,55 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
             "usuarios_distintos": usuarios_distintos,
             "denegados_criticos": denegados_criticos,
         }
+
+    def uso_diario(self, dias: int = 14) -> list[dict]:
+        """
+        Devuelve una lista ``[{fecha, logins, denegados}]`` por día de la
+        ventana de ``dias`` días, incluidos los días sin actividad (ceros).
+
+        Implementa obs_13 T9: GROUP BY date(fecha_hora) en SQL.
+        """
+        from datetime import datetime as _dt, timedelta as _td
+        from src.domain.models.clock import ahora as _ahora
+
+        dias = max(1, dias)
+        ahora = _ahora()
+        desde = ahora - _td(days=dias)
+        desde_iso = _dt(desde.year, desde.month, desde.day).isoformat()
+
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    date(fecha_hora)            AS fecha,
+                    SUM(tipo_evento = 'LOGIN_EXITOSO')    AS logins,
+                    SUM(tipo_evento = 'ACCESO_DENEGADO')  AS denegados
+                FROM auditoria
+                WHERE fecha_hora >= ?
+                GROUP BY date(fecha_hora)
+                ORDER BY fecha ASC
+                """,
+                (desde_iso,),
+            ).fetchall()
+
+        # Indexar por fecha para rellenar los días vacíos
+        por_fecha: dict[str, dict] = {}
+        for r in rows:
+            por_fecha[r["fecha"]] = {
+                "fecha": r["fecha"],
+                "logins": int(r["logins"] or 0),
+                "denegados": int(r["denegados"] or 0),
+            }
+
+        # Completar los días sin actividad con ceros (T9)
+        resultado: list[dict] = []
+        for i in range(dias):
+            dia = (desde + _td(days=i + 1))
+            clave = _dt(dia.year, dia.month, dia.day).strftime("%Y-%m-%d")
+            resultado.append(
+                por_fecha.get(clave, {"fecha": clave, "logins": 0, "denegados": 0})
+            )
+        return resultado
 
     def listar_cambios_por_registro(
         self,
@@ -587,6 +637,151 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
         with self._get_conn() as conn:
             row = conn.execute("SELECT * FROM audit_log WHERE id = ?", (cambio_id,)).fetchone()
             return self._row_to_cambio(row) if row else None
+
+    # ------------------------------------------------------------------
+    # Tramo y retención (obs_12 — T2, T9)
+    # ------------------------------------------------------------------
+
+    def rango_de(
+        self,
+        tabla: str,
+        filtro: FiltroAuditoriaDTO,
+    ) -> tuple[int, int] | None:
+        """
+        Devuelve ``(id_min, id_max)`` del tramo que satisface ``filtro`` en
+        ``tabla``, o None si el tramo está vacío.
+        """
+        if tabla == "auditoria":
+            where, params = self._where_eventos(filtro)
+        else:
+            where, params = self._where_cambios(filtro)
+        sql = f"SELECT MIN(id), MAX(id) FROM {tabla}{where}"
+        with self._get_conn() as conn:
+            row = conn.execute(sql, params).fetchone()
+        if row is None or row[0] is None:
+            return None
+        return int(row[0]), int(row[1])
+
+    def listar_cambios_tramo(
+        self,
+        tabla: str,
+        id_desde: int,
+        id_hasta: int,
+        scope: TenantScope,
+        *,
+        lote: int = 5_000,
+    ) -> Iterator[list[RegistroCambio]]:
+        """
+        Itera por lotes las filas de ``tabla`` con id en ``[id_desde, id_hasta]``
+        respetando el scope de institución. Devuelve un iterador de listas.
+        """
+        if tabla == "auditoria":
+            row_fn = self._row_to_evento
+        else:
+            row_fn = self._row_to_cambio
+
+        # Construir cláusula de scope
+        scope_sql = ""
+        scope_params: list = []
+        if scope != "*" and scope is not None:
+            scope_sql = " AND institucion_id = ?"
+            scope_params.append(scope)
+
+        cursor_id = id_desde - 1
+        with self._get_conn() as conn:
+            while True:
+                rows = conn.execute(
+                    f"SELECT * FROM {tabla}"
+                    f" WHERE id >= ? AND id <= ? AND id > ?{scope_sql}"
+                    f" ORDER BY id ASC LIMIT ?",
+                    (id_desde, id_hasta, cursor_id, *scope_params, lote),
+                ).fetchall()
+                if not rows:
+                    break
+                batch = [row_fn(r) for r in rows]
+                yield batch
+                cursor_id = int(rows[-1]["id"])
+                if cursor_id >= id_hasta:
+                    break
+
+    def eliminar_hasta(
+        self,
+        tabla: str,
+        id_hasta: int,
+        scope: TenantScope,
+    ) -> int:
+        """
+        Elimina las filas de ``tabla`` con id <= id_hasta, respetando scope.
+
+        INVARIANTE APPEND-ONLY: solo invocado desde archivar_y_purgar
+        del servicio de retención, después del archivado verificado y antes
+        del evento AUDITORIA_PURGADA. Ver docstring del puerto.
+        """
+        scope_sql = ""
+        scope_params: list = []
+        if scope != "*" and scope is not None:
+            scope_sql = " AND institucion_id = ?"
+            scope_params.append(scope)
+
+        sql = f"DELETE FROM {tabla} WHERE id <= ?{scope_sql}"
+        with self._get_conn() as conn:
+            cursor = conn.execute(sql, (id_hasta, *scope_params))
+            if self._conn is None:
+                conn.commit()
+            return cursor.rowcount
+
+    def hash_de_fila(self, tabla: str, fila_id: int) -> str | None:
+        """Devuelve el hash_cadena almacenado para ``fila_id`` en ``tabla``, o None."""
+        return self._hash_de(tabla, fila_id)
+
+    def _verificar_tramo_ids(
+        self,
+        tabla: str,
+        id_desde: int,
+        id_hasta: int,
+    ) -> int | None:
+        """
+        Verifica el encadenamiento del tramo ``[id_desde, id_hasta]``.
+
+        Arranca con el hash previo de la fila anterior a ``id_desde`` (o GENESIS
+        si ``id_desde`` es el primer registro de la tabla). Recorre por lotes de
+        ``_LOTE`` filas dentro del rango. Devuelve el id del primer eslabón roto,
+        o None si el tramo es íntegro.
+
+        Usado por AuditoriaExportService para el veredicto de integridad del
+        tramo exportado sin afectar el checkpoint de la verificación incremental.
+        """
+        payload_de, row_a_entidad = self._mapeadores(tabla)
+
+        # El hash previo es el de la fila inmediatamente anterior a id_desde
+        # (None si no existe, lo que equivale a GENESIS para la primera fila).
+        with self._get_conn() as conn:
+            row_prev = conn.execute(
+                f"SELECT hash_cadena FROM {tabla} WHERE id < ? ORDER BY id DESC LIMIT 1",
+                (id_desde,),
+            ).fetchone()
+        hash_previo: str | None = row_prev[0] if row_prev is not None else None
+
+        cursor_id = id_desde - 1
+        with self._get_conn() as conn:
+            while True:
+                rows = conn.execute(
+                    f"SELECT * FROM {tabla}"
+                    f" WHERE hash_cadena IS NOT NULL AND id >= ? AND id <= ? AND id > ?"
+                    f" ORDER BY id ASC LIMIT ?",
+                    (id_desde, id_hasta, cursor_id, _LOTE),
+                ).fetchall()
+                if not rows:
+                    break
+                for r in rows:
+                    esperado = calcular_hash(hash_previo, payload_de(row_a_entidad(r)))
+                    if esperado != r["hash_cadena"]:
+                        return int(r["id"])
+                    hash_previo = r["hash_cadena"]
+                cursor_id = int(rows[-1]["id"])
+                if cursor_id >= id_hasta:
+                    break
+        return None
 
 
 __all__ = ["SqliteAuditoriaRepository"]

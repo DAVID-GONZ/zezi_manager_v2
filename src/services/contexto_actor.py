@@ -42,10 +42,19 @@ class ActorContexto:
     ip: str | None = None
 
 
-# Estado privado. Default ActorContexto() → actor desconocido.
-_actor_actual: contextvars.ContextVar[ActorContexto] = contextvars.ContextVar(
-    "zeci_actor_actual", default=ActorContexto()
+# Estado privado. Default None → actor desconocido; se inicializa en la primera lectura.
+_actor_actual: contextvars.ContextVar[ActorContexto | None] = contextvars.ContextVar(
+    "zeci_actor_actual", default=None
 )
+
+
+def _actor_actual_valor() -> ActorContexto:
+    """Devuelve el valor del actor activo, inicializando un actor anónimo si hace falta."""
+    actor = _actor_actual.get()
+    if actor is None:
+        actor = ActorContexto()
+        _actor_actual.set(actor)
+    return actor
 
 
 def activar_actor(
@@ -65,17 +74,17 @@ def actor_actual() -> int | None:
     `None` significa que no hay sesión activa (arranque sin sesión,
     seed, o tests que no necesitan auditoría).
     """
-    return _actor_actual.get().usuario_id
+    return _actor_actual_valor().usuario_id
 
 
 def actor_username() -> str | None:
     """Retorna el username del actor activo, o None si no está disponible."""
-    return _actor_actual.get().username
+    return _actor_actual_valor().username
 
 
 def actor_ip() -> str | None:
     """Retorna la IP del actor activo, o None si no está disponible."""
-    return _actor_actual.get().ip
+    return _actor_actual_valor().ip
 
 
 def limpiar_actor() -> None:

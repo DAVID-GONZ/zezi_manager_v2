@@ -23,12 +23,14 @@ import logging
 from nicegui import ui
 
 from container import Container
+from src.domain.policies.rbac_auditoria import puede_ver_historial
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
     confirm_dialog,
     custom_dialog,
     empty_state,
     form_dialog,
+    historial_cambios,
     stat_card,
     status_badge,
     toast_error,
@@ -47,10 +49,12 @@ from src.interface.design.components.form_fields import (
     filter_input,
     filter_select,
 )
+from src.interface.design.components.historial_cambios import HistorialItem
 from src.interface.design.layout import app_layout
 from src.interface.design.styles.tokens import Icons
 from src.interface.design.theme import ThemeManager
 from src.interface.presenters.academico.estudiantes_presenter import EstudiantesPresenter
+from src.interface.presenters.admin.historial_presenter import HistorialPresenter
 from src.services.estudiante_service import (
     ActualizarEstudianteDTO,
     ActualizarPIARDTO,
@@ -101,6 +105,52 @@ def estudiantes_page() -> None:
     # ── Estado mutable de la página (view-model en el presenter) ──────────────
     presenter = EstudiantesPresenter()
     _s = presenter.estado  # misma referencia: los refreshables leen el estado del presenter
+
+    # ── Historial de cambios (obs_10) ─────────────────────────────────────────
+    _historial_p = HistorialPresenter()
+    _hs = _historial_p.estado
+
+    @ui.refreshable
+    def _dialogo_historial_est() -> None:
+        if not _hs["abierto"]:
+            return
+        with ui.dialog().props("maximized persistent") as dlg:
+            dlg.open()
+            with ui.element("div").classes("panel-card u-pa-md").style("min-width:320px;max-width:640px;margin:auto"):
+                with ui.row().classes("form-row-center-md u-mb-md"):
+                    ui.label("Historial de cambios").classes("section-title-lg flex-1")
+                    btn_icon("close", on_click=lambda: (_historial_p.cerrar(), _dialogo_historial_est.refresh()))
+                if _hs["cargando"]:
+                    ui.spinner(size="md")
+                elif _hs["error"]:
+                    empty_state(icono="error_outline", titulo="Error", descripcion=str(_hs["error"]))
+                else:
+                    items = [
+                        HistorialItem(
+                            fecha=getattr(d.cambio, "timestamp_display", str(d.cambio.timestamp)),
+                            actor=d.actor_nombre,
+                            accion=d.cambio.accion.value if hasattr(d.cambio.accion, "value") else str(d.cambio.accion),
+                            campos=d.campos,
+                        )
+                        for d in _hs["items"]
+                    ]
+                    historial_cambios(items)
+
+    def _abrir_historial_estudiante(est_id: int) -> None:
+        _historial_p.abrir("estudiantes", est_id)
+        _dialogo_historial_est.refresh()
+        try:
+            from src.services.contexto_tenant import institucion_actual
+            scope = institucion_actual() or "*"
+        except Exception:
+            scope = "*"
+        try:
+            items = Container.auditoria_service().historial_de("estudiantes", est_id, scope)
+            _historial_p.set_items(items)
+        except Exception as exc:
+            logger.error("Error cargando historial de estudiante %s: %s", est_id, exc)
+            _historial_p.set_error(str(exc))
+        _dialogo_historial_est.refresh()
 
     # ── Carga inicial de datos de soporte ─────────────────────────────────────
     try:
@@ -342,6 +392,11 @@ def estudiantes_page() -> None:
                         def _fila_historial(_, f=fila):
                             _abrir_dialog_historial(f)
 
+                        def _fila_audit_historial(_, f=fila):
+                            est_id = f.get("id")
+                            if est_id is not None:
+                                _abrir_historial_estudiante(int(est_id))
+
                         with ui.element("tr").classes("est-table__row"):
                             # Nombre
                             with ui.element("td").classes("est-table__td est-table__td--left"):
@@ -415,6 +470,14 @@ def estudiantes_page() -> None:
                                     tooltip="Ver historial de movimientos",
                                     variante="ghost",
                                 )
+                                # obs_10: historial de cambios auditados
+                                if puede_ver_historial(ctx.usuario_rol):
+                                    btn_icon(
+                                        "manage_history",
+                                        on_click=_fila_audit_historial,
+                                        tooltip="Historial de cambios",
+                                        variante="ghost",
+                                    )
 
         @ui.refreshable
         def resultado_refreshable() -> None:
@@ -1115,6 +1178,7 @@ def estudiantes_page() -> None:
         page_subtitulo="Matrícula, estado y PIAR",
         page_icono=Icons.STUDENTS,
     )
+    _dialogo_historial_est()
 
 
 __all__ = ["estudiantes_page"]

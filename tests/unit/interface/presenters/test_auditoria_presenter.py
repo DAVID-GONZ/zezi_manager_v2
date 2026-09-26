@@ -10,8 +10,8 @@ from datetime import datetime
 from types import SimpleNamespace
 
 from src.interface.presenters.admin.auditoria_presenter import (
-    AuditoriaPresenter,
     _SIN_INSTITUCION_SENTINEL,
+    AuditoriaPresenter,
 )
 
 

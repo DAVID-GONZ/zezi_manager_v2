@@ -24,6 +24,7 @@ Principios:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import datetime
 
 from ..models.auditoria import (
@@ -195,6 +196,92 @@ class IAuditoriaRepository(ABC):
         `filtro.pagina` y `filtro.por_pagina`.
         """
         return 0
+
+    # =========================================================================
+    # Consultas de tramo (obs_12 — T2/T9)
+    # =========================================================================
+    #
+    # Métodos CONCRETOS con valor neutro por defecto; el repo SQLite los
+    # sobreescribe con SQL real. Los fakes de tests los heredan sin cambios.
+
+    def rango_de(
+        self,
+        tabla: str,
+        filtro: FiltroAuditoriaDTO,
+    ) -> tuple[int, int] | None:
+        """
+        Devuelve ``(id_min, id_max)`` del tramo que satisface ``filtro`` en
+        ``tabla`` ('audit_log' o 'auditoria'), o ``None`` si el tramo está vacío.
+
+        El tramo son los ids mínimo y máximo de las filas que cumplen los
+        criterios del filtro (incluyendo scope de institución). Se usa para
+        delimitar el tramo antes de exportar o purgar.
+        """
+        return None
+
+    def listar_cambios_tramo(
+        self,
+        tabla: str,
+        id_desde: int,
+        id_hasta: int,
+        scope: TenantScope,
+        *,
+        lote: int = 5_000,
+    ) -> Iterator[list[RegistroCambio]]:
+        """
+        Itera por lotes las filas de ``tabla`` en el rango ``[id_desde, id_hasta]``,
+        respetando el ``scope`` de institución.
+
+        Devuelve un iterador de listas (lotes de tamaño ``lote``). La iteración
+        por lotes evita materializar el tramo completo en memoria para tramos
+        grandes (R7 del diseño de obs_12).
+
+        Solo soporta la tabla 'audit_log'; para 'auditoria' los eventos de sesión
+        no tienen un campo RegistroCambio equivalente. El repo SQLite implementa
+        ambas tablas usando el mapeador correspondiente.
+        """
+        return iter([])
+
+    def eliminar_hasta(
+        self,
+        tabla: str,
+        id_hasta: int,
+        scope: TenantScope,
+    ) -> int:
+        """
+        Elimina las filas de ``tabla`` con ``id <= id_hasta`` que pertenezcan al
+        scope indicado.
+
+        INVARIANTE APPEND-ONLY: este es el único ``DELETE`` admisible en las
+        tablas de auditoría, y SOLO se invoca desde ``archivar_y_purgar`` del
+        servicio de retención, que lo hace:
+          1. Después de escribir el archivo de archivado.
+          2. Después de verificar el hash del archivo.
+          3. Dejando constancia del borrado en la propia bitácora
+             (evento ``AUDITORIA_PURGADA`` con ruta, hash, rango y filas).
+
+        No hay ``UPDATE``. El único ``DELETE`` admisible deja constancia.
+
+        Retorna el número de filas eliminadas.
+        """
+        return 0
+
+    def uso_diario(
+        self,
+        dias: int = 14,
+    ) -> list[dict]:
+        """
+        Devuelve una lista de dicts ``{fecha, logins, denegados}`` para cada
+        día de la ventana de ``dias`` días, calculados mediante
+        ``GROUP BY date(fecha_hora)`` sobre la tabla ``auditoria``.
+
+        Los días sin actividad se devuelven con ceros (obs_13 — T9).
+        Cada dict garantiza las claves: ``fecha`` (YYYY-MM-DD), ``logins`` (int),
+        ``denegados`` (int).
+
+        Los repos sin soporte devuelven ``[]`` (valor neutro).
+        """
+        return []
 
     def resumen_eventos(
         self,

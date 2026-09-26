@@ -18,6 +18,7 @@ columna actor con cascada de fallback (R9), diálogo de detalle con diff (T12/T1
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 from nicegui import ui
@@ -38,9 +39,10 @@ from src.interface.design.components.buttons import btn_icon, btn_secondary
 from src.interface.design.components.form_fields import filter_input, filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
+from src.domain.policies.rbac_auditoria import puede_exportar_bitacora, puede_purgar_bitacora
 from src.interface.presenters.admin.auditoria_presenter import (
-    AuditoriaPresenter,
     _SIN_INSTITUCION_SENTINEL,
+    AuditoriaPresenter,
 )
 from src.services.auditoria_service import (
     AccionCambio,
@@ -112,7 +114,7 @@ def auditoria_page() -> None:
         try:
             svc = Container.auditoria_service()
             filtro = presenter.construir_filtro(_POR_PAGINA + 1)
-            raw = list(svc.listar_cambios(filtro))
+            raw = list(svc.listar_cambios(filtro, scope="*"))  # obs_11: scope explícito
             presenter.estado["hay_siguiente_cambios"] = len(raw) > _POR_PAGINA
             cambios_pagina = raw[:_POR_PAGINA]
             presenter.set_cambios(cambios_pagina)
@@ -139,7 +141,7 @@ def auditoria_page() -> None:
         try:
             svc = Container.auditoria_service()
             filtro = presenter.construir_filtro(_POR_PAGINA + 1)
-            raw = list(svc.listar_eventos_sesion(filtro))
+            raw = list(svc.listar_eventos_sesion(filtro, scope="*"))  # obs_11: scope explícito
             presenter.estado["hay_siguiente_sesiones"] = len(raw) > _POR_PAGINA
             presenter.set_sesiones(raw[:_POR_PAGINA])
             # obs_08 R11: contar sin techo de paginación
@@ -320,6 +322,78 @@ def auditoria_page() -> None:
             else:
                 toast_success("Bitácora íntegra: la cadena de hashes cuadra")
 
+    # ── Exportación (obs_12, R1-R7) ───────────────────────────────────────
+    def _exportar(formato: str) -> None:
+        """Exporta el filtro activo al formato indicado ('csv' o 'pdf')."""
+        if not puede_exportar_bitacora(ctx.usuario_rol):
+            toast_error("No tienes permiso para exportar la bitácora.")
+            return
+        try:
+            svc = Container.auditoria_export_service()
+            filtro = presenter.construir_filtro(50_000)
+            scope = "*"  # admin es siempre cross-tenant en esta página
+            datos = svc.exportar(
+                tabla="audit_log",
+                filtro=filtro,
+                scope=scope,
+                formato=formato,
+                actor=ctx.usuario_nombre or ctx.usuario_id or "admin",
+                actor_id=ctx.usuario_id,
+            )
+            ext = "csv" if formato == "csv" else "pdf"
+            nombre = f"bitacora_export.{ext}"
+            ui.download(datos, filename=nombre)
+            toast_success(f"Exportación {formato.upper()} generada.")
+        except Exception as exc:
+            codigo = getattr(exc, "codigo", None)
+            if str(codigo) == "AUDITORIA_EXPORT_TOPE":
+                toast_error(str(exc))
+            else:
+                logger.error("Error al exportar auditoría: %s", exc)
+                toast_error("Error al generar la exportación.")
+
+    # ── Archivado y purga (obs_12, R8-R12) ────────────────────────────────
+    _purga_holder: list = []
+
+    def _abrir_dialog_purga() -> None:
+        """Abre el diálogo de confirmación de purga (R12)."""
+        if not puede_purgar_bitacora(ctx.usuario_rol):
+            toast_error("Solo el admin puede purgar la bitácora.")
+            return
+        if _purga_holder:
+            _purga_holder[0].open()
+
+    def _ejecutar_purga(hasta_str: str) -> None:
+        """Ejecuta el archivado y purga tras confirmación del usuario."""
+        if not puede_purgar_bitacora(ctx.usuario_rol):
+            toast_error("Solo el admin puede purgar la bitácora.")
+            return
+        try:
+            from datetime import datetime as _dt
+            hasta = _dt.fromisoformat(hasta_str)
+            svc = Container.auditoria_retencion_service()
+            resultado = svc.archivar_y_purgar(
+                tabla="audit_log",
+                hasta=hasta,
+                scope="*",
+                actor=ctx.usuario_nombre or str(ctx.usuario_id or "admin"),
+                actor_id=ctx.usuario_id,
+            )
+            msg = (
+                f"Purga completada: {resultado.filas_eliminadas} filas eliminadas "
+                f"(ids {resultado.id_desde}..{resultado.id_hasta}). "
+                f"Archivo: {resultado.ruta_archivo}"
+            )
+            toast_success(msg)
+            if _purga_holder:
+                _purga_holder[0].close()
+            _cargar_todo()
+            tabla_cambios.refresh()
+            tabla_sesiones.refresh()
+        except Exception as exc:
+            logger.error("Error al purgar auditoría: %s", exc)
+            toast_error(f"Error al purgar: {exc}")
+
     # ── Tablas (refreshable, solo lectura) ─────────────────────────────────
     @ui.refreshable
     def tabla_cambios() -> None:
@@ -480,10 +554,8 @@ def auditoria_page() -> None:
             # NUEVO: filtro de institución — solo admin (R1, R2)
             if ctx.usuario_rol == "admin":
                 _instituciones = []
-                try:
+                with contextlib.suppress(Exception):
                     _instituciones = Container.institucion_service().listar()
-                except Exception:
-                    pass
                 inst_opts = {None: "Todas las instituciones"}
                 inst_opts.update({i.id: i.nombre for i in _instituciones})
                 # obs_09 T12: opción «Sin institución» con centinela (R12)
@@ -521,6 +593,29 @@ def auditoria_page() -> None:
                             icon="verified_user",
                             size="sm",
                         )
+                        # obs_12: Exportar (R1, R2)
+                        if puede_exportar_bitacora(ctx.usuario_rol):
+                            with ui.button_group():
+                                btn_secondary(
+                                    "CSV",
+                                    on_click=lambda: _exportar("csv"),
+                                    icon="download",
+                                    size="sm",
+                                )
+                                btn_secondary(
+                                    "PDF",
+                                    on_click=lambda: _exportar("pdf"),
+                                    icon="picture_as_pdf",
+                                    size="sm",
+                                )
+                        # obs_12: Archivar y purgar (R12, solo admin)
+                        if puede_purgar_bitacora(ctx.usuario_rol):
+                            btn_secondary(
+                                "Archivar y purgar",
+                                on_click=_abrir_dialog_purga,
+                                icon="archive",
+                                size="sm",
+                            )
                         badge_integridad()
 
                 _render_filtros_comunes()
@@ -605,6 +700,80 @@ def auditoria_page() -> None:
             _cuerpo_detalle()
 
     _crear_dialogo_detalle()
+
+    # obs_12: diálogo de confirmación de purga (R12, R16)
+    def _crear_dialogo_purga() -> None:
+        if not puede_purgar_bitacora(ctx.usuario_rol):
+            return
+
+        # Pre-calcular el directorio de destino del archivo (R16).
+        _ruta_dir_purga = "data/archivos_auditoria"
+        try:
+            from pathlib import Path as _PPath
+            from config import settings as _cfg_settings
+            _d = _PPath(_cfg_settings.AUDITORIA_ARCHIVO_DIR)
+            if not _d.is_absolute():
+                import os as _os_purga
+                _d = _PPath(_os_purga.getcwd()) / _d
+            _ruta_dir_purga = str(_d)
+        except Exception:
+            pass
+
+        with custom_dialog(max_width="md", persistent=True) as dlg:
+            _purga_holder.append(dlg)
+            with ui.column().classes("u-stack-md"):
+                with ui.row().classes("form-row-between"):
+                    ui.label("Archivar y purgar bitácora").classes("form-dialog-title")
+                    btn_icon("close", on_click=dlg.close, tooltip="Cancelar")
+                ui.label(
+                    "Esta operación archiva las filas más antiguas y luego las elimina. "
+                    "El archivo JSONL se guarda localmente y su hash queda en la bitácora."
+                ).classes("text-sm text-secondary")
+                ui.separator()
+                _hasta_input = ui.input(
+                    "Fecha de corte (YYYY-MM-DD)",
+                    placeholder="p.ej. 2024-12-31",
+                ).classes("w-full")
+
+                # R16: mostrar filas afectadas y ruta destino antes de confirmar.
+                _count_label = ui.label(
+                    "Filas a eliminar: — (introduce la fecha de corte)"
+                ).classes("text-xs text-secondary u-mt-xs")
+                ui.label(
+                    f"Directorio de archivo: {_ruta_dir_purga}"
+                ).classes("text-xs text-secondary")
+
+                def _actualizar_conteo_purga(e) -> None:
+                    """Calcula las filas afectadas cuando el usuario introduce la fecha."""
+                    val = e.value if hasattr(e, "value") else str(e)
+                    if not val:
+                        _count_label.set_text("Filas a eliminar: — (introduce la fecha de corte)")
+                        return
+                    try:
+                        from datetime import datetime as _dtp
+                        from src.domain.models.auditoria import FiltroAuditoriaDTO as _FDTO
+                        hasta_dt = _dtp.fromisoformat(val)
+                        filtro_purga = _FDTO(hasta=hasta_dt, por_pagina=1)
+                        n = Container.auditoria_service().contar_cambios(filtro_purga)
+                        _count_label.set_text(f"Filas a eliminar: {n:,}")
+                    except Exception:
+                        _count_label.set_text("Filas a eliminar: — (fecha inválida)")
+
+                _hasta_input.on("change", _actualizar_conteo_purga)
+
+                ui.label(
+                    "Solo se eliminarán filas con timestamp anterior a esta fecha. "
+                    "La operación no es reversible."
+                ).classes("text-xs text-secondary")
+                with ui.row().classes("form-dialog-actions"):
+                    btn_secondary("Cancelar", on_click=dlg.close)
+                    btn_secondary(
+                        "Confirmar archivado y purga",
+                        on_click=lambda: _ejecutar_purga(_hasta_input.value),
+                        icon="archive",
+                    )
+
+    _crear_dialogo_purga()
 
     app_layout(
         ctx,
