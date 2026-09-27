@@ -77,7 +77,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--backend",
         default="sqlite",
-        choices=["sqlite"],
+        choices=["sqlite", "postgres"],
         help="Backend de BD para tests de repositorio",
     )
 
@@ -150,7 +150,8 @@ def db_seed(request):
 
     sa_conn = engine.connect()
     raw = sa_conn.connection.driver_connection
-    raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
+    if request.config.getoption("--backend") == "sqlite":
+        raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
 
     result = seed_test(sa_conn, anio=2025, hasher=_fast_hasher)
     sa_conn.commit()
@@ -203,7 +204,8 @@ def db_dev(request):
 
     sa_conn = engine.connect()
     raw = sa_conn.connection.driver_connection
-    raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
+    if request.config.getoption("--backend") == "sqlite":
+        raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
 
     result = seed_dev(
         sa_conn,

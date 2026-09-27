@@ -380,7 +380,7 @@
   {
     "id": "backend_09_cierre_dual",
     "nombre": "Suite verde en SQLite e infraestructura Postgres preparada",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "tests/conftest.py, tests/db_engine.py, src/infrastructure/db/, pyproject.toml",
     "operacion": "modificar",
     "sdd": true,

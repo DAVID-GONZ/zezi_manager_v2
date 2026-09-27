@@ -6,12 +6,11 @@ Punto de entrada único para toda la capa de acceso a datos.
 Los repositorios importan desde aquí; las capas superiores no importan
 nada de este módulo directamente.
 
-    from src.infrastructure.db import fetch_all, execute, get_scalar
-    from src.infrastructure.db import seed_base, seed_dev, seed_test
+    from src.infrastructure.db import metadata, seed_base, seed_dev, seed_test
 
 Submódulos:
-  connection  — get_connection, DB_PATH, verify_db_integrity
-  queries     — fetch_df, fetch_one, fetch_all, get_scalar, execute
+  connection  — get_connection (shim), DB_PATH, verify_db_integrity
+  queries     — fetch_df, fetch_one, fetch_all, get_scalar, execute (shim)
   schema      — metadata (create_all via metadata.create_all(engine))
   seed        — seed_base, seed_dev, seed_test, SeedResult
 """
@@ -24,13 +23,13 @@ from .seed import SeedResult, seed_base, seed_dev, seed_test
 __all__ = [
     "DB_PATH",
     "SeedResult",
-    # Escritura
+    # Escritura (shim — usar Container.engine() directamente en repos nuevos)
     "execute",
     "fetch_all",
-    # Lectura
+    # Lectura (shim)
     "fetch_df",
     "fetch_one",
-    # Conexión
+    # Conexión (shim)
     "get_connection",
     "get_scalar",
     "metadata",

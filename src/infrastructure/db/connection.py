@@ -1,21 +1,22 @@
 """
-Gestión de conexiones SQLite — ZECI Manager v2.0
-=================================================
+Shim de compatibilidad con la API de conexión — ZECI Manager v2.0
+==================================================================
 
-Principios de diseño:
-  - Sin efectos secundarios al importar (no hay logging ni I/O a nivel de módulo).
-  - `get_connection` acepta un `db_path` opcional para facilitar tests.
-  - La ruta de BD se resuelve en orden: argumento explícito → override de test
-    → config.py → fallback relativo al proyecto.
-  - WAL mode + foreign keys habilitados en cada conexión (son pragmas de sesión,
-    no persisten entre conexiones).
+Desde backend_07 la capa de acceso a datos usa SQLAlchemy Core directamente
+(Container.engine() / Container.connection()). Este módulo provee compatibilidad
+para los pocos llamadores que quedan fuera de esa migración:
+
+  verify_db_integrity() — /health, ObservabilidadService
+  get_connection()       — shim para tests e2e y tests de contenedor
+  DB_PATH                — ruta de la BD; leída por e2e_app.py
+
+No importa sqlite3: las operaciones de BD pasan por Container.engine().
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -33,8 +34,7 @@ def _resolve_db_path() -> Path:
     Determina la ruta de la BD en tiempo de ejecución.
 
     Orden de prioridad:
-      1. DB_PATH_OVERRIDE (variable de entorno) — solo activo durante tests
-         (PYTEST_CURRENT_TEST la activa pytest automáticamente).
+      1. DB_PATH_OVERRIDE (variable de entorno) — solo activo durante tests.
       2. DATABASE_PATH de config.py.
       3. Fallback: <raíz_del_proyecto>/data/app.db
     """
@@ -49,8 +49,6 @@ def _resolve_db_path() -> Path:
 
         return DATABASE_PATH
     except ImportError:
-        # config.py todavía no existe o el proyecto se importa en aislamiento.
-        # Se usa la ruta convencional relativa a la raíz del proyecto.
         project_root = Path(__file__).parents[3]
         return project_root / "data" / "app.db"
 
@@ -60,35 +58,7 @@ DB_PATH: Path = _resolve_db_path()
 
 
 # ---------------------------------------------------------------------------
-# Normalización de parámetros (compatibilidad con numpy/pandas)
-# ---------------------------------------------------------------------------
-
-
-def _normalize_param(value: object) -> object:
-    """
-    Convierte escalares numpy/pandas a tipos nativos de Python.
-    SQLite no acepta np.int64, np.float32, etc. directamente.
-    """
-    item = getattr(value, "item", None)
-    if callable(item):
-        try:
-            return item()
-        except Exception:
-            pass
-    return value
-
-
-def _normalize_params(params: tuple | list | None) -> tuple:
-    """Normaliza una secuencia de parámetros para SQLite."""
-    if not params:
-        return ()
-    if not isinstance(params, (tuple, list)):
-        params = (params,)
-    return tuple(_normalize_param(p) for p in params)
-
-
-# ---------------------------------------------------------------------------
-# Context manager de conexión
+# Context manager de conexión (shim sobre Container.engine())
 # ---------------------------------------------------------------------------
 
 
@@ -96,72 +66,29 @@ def _normalize_params(params: tuple | list | None) -> tuple:
 def get_connection(
     db_path: Path | str | None = None,
     timeout: float = 5.0,
-) -> Iterator[sqlite3.Connection]:
+) -> Iterator:
     """
-    Context manager que abre, configura y cierra una conexión SQLite.
+    Shim de compatibilidad: cede la conexión DBAPI del engine de Container.
 
-    Configuración aplicada en cada conexión:
-      - WAL mode: permite lecturas concurrentes sin bloquear escrituras.
-      - foreign_keys = ON: habilita integridad referencial (ON DELETE CASCADE, etc.).
-      - row_factory = sqlite3.Row: acceso a columnas por nombre.
-      - synchronous = NORMAL: balance razonable entre durabilidad y velocidad.
-      - cache_size = -64000: 64 MB de caché en memoria.
-
-    Args:
-        db_path:  Ruta explícita a la BD. Si es None se usa DB_PATH.
-                  Pasar ":memory:" para tests en memoria.
-        timeout:  Segundos de espera antes de lanzar OperationalError
-                  cuando la BD está bloqueada.
+    Para el backend SQLite devuelve un sqlite3.Connection real, de modo que
+    los llamadores que usen .cursor(), .execute() o row_factory siguen
+    funcionando sin cambios. El parámetro db_path ya no se usa; los tests
+    deben configurar el engine vía DB_PATH_OVERRIDE o DATABASE_PATH en el
+    entorno antes de que Container.engine() se inicialice.
 
     Yields:
-        sqlite3.Connection configurada y lista para usar.
-
-    Example:
-        >>> with get_connection() as conn:
-        ...     conn.execute("SELECT 1")
-
-        >>> # En tests
-        >>> with get_connection(":memory:") as conn:
-        ...     conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        Conexión DBAPI del engine activo (sqlite3.Connection para SQLite).
     """
-    path = (
-        Path(db_path)
-        if db_path and str(db_path) != ":memory:"
-        else (Path(":memory:") if db_path == ":memory:" else DB_PATH)
-    )
+    from container import Container
 
-    # Crear directorio de datos si no existe (solo para ficheros reales)
-    if str(path) != ":memory:":
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-    conn: sqlite3.Connection | None = None
+    conn = Container.engine().raw_connection()
     try:
-        conn = sqlite3.connect(
-            str(path),
-            check_same_thread=False,  # NiceGUI usa múltiples hilos
-            timeout=timeout,
-        )
-
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA foreign_keys=ON;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA cache_size=-64000;")
-        conn.row_factory = sqlite3.Row
-
-        logger.debug("Conexión abierta: %s", path)
         yield conn
-
-    except sqlite3.Error as exc:
-        logger.error("Error de conexión SQLite [%s]: %s", path, exc)
+    except Exception:
+        conn.rollback()
         raise
-
     finally:
-        if conn:
-            try:
-                conn.close()
-                logger.debug("Conexión cerrada: %s", path)
-            except Exception as exc:
-                logger.warning("Error cerrando conexión: %s", exc)
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -171,14 +98,19 @@ def get_connection(
 
 def verify_db_integrity(db_path: Path | str | None = None) -> bool:
     """
-    Ejecuta PRAGMA integrity_check sobre la BD.
+    Ejecuta PRAGMA integrity_check sobre la BD vía SQLAlchemy.
+
+    El parámetro db_path no se usa; la comprobación se realiza sobre el
+    engine activo del Container.
 
     Returns:
         True si la BD está íntegra.
     """
     try:
-        with get_connection(db_path) as conn:
-            result = conn.execute("PRAGMA integrity_check").fetchone()
+        from container import Container
+
+        with Container.engine().connect() as conn:
+            result = conn.exec_driver_sql("PRAGMA integrity_check").fetchone()
             ok = result[0] == "ok"
             if ok:
                 logger.info("Integridad de BD verificada: ok")
@@ -192,7 +124,6 @@ def verify_db_integrity(db_path: Path | str | None = None) -> bool:
 
 __all__ = [
     "DB_PATH",
-    "_normalize_params",  # usado internamente por queries.py
     "get_connection",
     "verify_db_integrity",
 ]

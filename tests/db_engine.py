@@ -27,4 +27,24 @@ def create_test_engine(backend: str = "sqlite"):
             dbapi_conn.execute("PRAGMA foreign_keys = ON")
 
         return engine
-    raise ValueError(f"Backend no soportado: {backend!r}. Backends disponibles: sqlite")
+
+    if backend == "postgres":
+        import os
+
+        import pytest
+        from sqlalchemy import text as _text
+
+        url = os.getenv("DATABASE_URL")
+        if not url:
+            pytest.skip("DATABASE_URL no definida — Postgres no disponible")
+        engine = create_engine(url, echo=False, pool_pre_ping=True)
+        try:
+            with engine.connect() as conn:
+                conn.execute(_text("SELECT 1"))
+        except Exception:
+            pytest.skip("Postgres no accesible (¿Docker corriendo?)")
+        return engine
+
+    raise ValueError(
+        f"Backend no soportado: {backend!r}. Backends disponibles: sqlite, postgres"
+    )
