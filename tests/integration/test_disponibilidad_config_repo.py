@@ -11,8 +11,8 @@ from src.domain.models.infraestructura import (
     DisponibilidadDocente,
     PesosGeneracion,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 from src.services.infraestructura_service import InfraestructuraService
 
@@ -21,7 +21,7 @@ from src.services.infraestructura_service import InfraestructuraService
 # =============================================================================
 
 def make_repo(db_conn):
-    return SqliteInfraestructuraRepository(conn=db_conn)
+    return SqlaInfraestructuraRepository(conn=db_conn)
 
 
 def make_service(db_conn):

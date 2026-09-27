@@ -354,9 +354,9 @@ DATABASE_URL: str = settings.DATABASE_URL
 
 __all__ = [
     "DATABASE_PATH",
-    "DB_CONFIG",
-    "DB_BACKEND",
     "DATABASE_URL",
+    "DB_BACKEND",
+    "DB_CONFIG",
     "IS_PRODUCTION",
     "ZONA_HORARIA",
     "Settings",

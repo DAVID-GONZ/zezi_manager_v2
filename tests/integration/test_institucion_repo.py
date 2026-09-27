@@ -2,7 +2,7 @@
 Tests de integración — multi-tenant (paso_24).
 
 Cubre:
-  - SqliteInstitucionRepository (listar, get, guardar, existe, por_defecto).
+  - SqlaInstitucionRepository (listar, get, guardar, existe, por_defecto).
   - Seed: institución #1 sembrada desde configuracion.nombre_institucion.
   - usuarios.institucion_id: backfill de existentes + nuevos asignados.
 """
@@ -10,19 +10,21 @@ from __future__ import annotations
 
 from src.domain.models.institucion import NuevaInstitucionDTO
 from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
-from src.infrastructure.db.repositories import (
-    SqliteInstitucionRepository,
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_institucion_repo import (
+    SqlaInstitucionRepository,
+)
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
 
 # =============================================================================
 # SqliteInstitucionRepository
 # =============================================================================
 
-class TestSqliteInstitucionRepository:
+class TestSqlaInstitucionRepository:
 
     def test_seed_crea_institucion_por_defecto(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         instituciones = repo.listar()
         assert len(instituciones) == 1
         assert instituciones[0].id == 1
@@ -30,18 +32,18 @@ class TestSqliteInstitucionRepository:
         assert instituciones[0].nombre == "Institución Educativa ZECI"
 
     def test_get_por_defecto(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         por_defecto = repo.get_por_defecto()
         assert por_defecto is not None
         assert por_defecto.id == 1
 
     def test_get_by_id(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         assert repo.get_by_id(1) is not None
         assert repo.get_by_id(999) is None
 
     def test_guardar_y_existe_nombre(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         nueva = NuevaInstitucionDTO(nombre="Colegio Nuevo", nit="900").to_institucion()
         guardada = repo.guardar(nueva)
         assert guardada.id is not None and guardada.id > 1
@@ -50,7 +52,7 @@ class TestSqliteInstitucionRepository:
         assert repo.existe_nombre("No Existe") is False
 
     def test_listar_solo_activas(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         db_conn.execute(
             "INSERT INTO instituciones (nombre, activa) VALUES ('Inactiva', 0)"
         )
@@ -65,14 +67,14 @@ class TestSqliteInstitucionRepository:
 class TestUsuarioInstitucion:
 
     def test_usuarios_sembrados_tienen_institucion(self, db_conn):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         usuarios = repo.listar_resumenes(FiltroUsuariosDTO(solo_activos=False))
         assert usuarios, "El seed debe crear usuarios"
         for u in usuarios:
             assert u.institucion_id == 1
 
     def test_usuario_nuevo_persiste_institucion(self, db_conn):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         dto = NuevoUsuarioDTO(
             usuario="tenant_user",
             nombre_completo="Tenant User",
@@ -84,7 +86,7 @@ class TestUsuarioInstitucion:
         assert leido.institucion_id == 1
 
     def test_filtro_por_institucion(self, db_conn):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         # Inserta un usuario en otra institución.
         db_conn.execute("INSERT INTO instituciones (nombre, activa) VALUES ('Otra', 1)")
         otra_id = db_conn.execute(
@@ -114,7 +116,7 @@ class TestUsuarioInstitucion:
 class TestSembrarDefaultsTenant:
 
     def test_siembra_catalogos_y_preferencias_del_tenant_nuevo(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         nueva = NuevaInstitucionDTO(nombre="Colegio Nuevo Tenant").to_institucion()
         creada = repo.guardar(nueva)
 
@@ -138,7 +140,7 @@ class TestSembrarDefaultsTenant:
         assert preferencias == 8
 
     def test_sembrar_defaults_tenant_es_idempotente(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         nueva = NuevaInstitucionDTO(nombre="Colegio Idempotente").to_institucion()
         creada = repo.guardar(nueva)
 
@@ -152,7 +154,7 @@ class TestSembrarDefaultsTenant:
         assert areas == 12
 
     def test_institucion_nueva_nace_con_flag_false(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         nueva = NuevaInstitucionDTO(nombre="Colegio Pendiente").to_institucion()
         creada = repo.guardar(nueva)
         assert creada.configuracion_inicial_completa is False
@@ -162,7 +164,7 @@ class TestSembrarDefaultsTenant:
         assert releida.configuracion_inicial_completa is False
 
     def test_institucion_1_queda_marcada_configurada_por_seed(self, db_conn):
-        repo = SqliteInstitucionRepository(conn=db_conn)
+        repo = SqlaInstitucionRepository(conn=db_conn)
         inst1 = repo.get_by_id(1)
         assert inst1 is not None
         assert inst1.configuracion_inicial_completa is True

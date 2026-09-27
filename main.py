@@ -25,44 +25,42 @@ INICIADO_EN: float = time.monotonic()
 
 def inicializar_base_de_datos() -> bool:
     """
-    Crea el schema si no existe y ejecuta el seed correspondiente al entorno:
+    Crea el schema y ejecuta el seed correspondiente al entorno:
 
       - development: seed_dev() si no hay grupos (primera instalación o BD vacía).
         seed_dev() incluye seed_base() internamente — no se llaman por separado.
-      - production/test:  seed_base() solo si la BD es nueva.
+      - production/test:  seed_base() solo si no hay datos.
     """
-    from src.infrastructure.db.connection import DB_PATH, get_connection
-    from src.infrastructure.db.schema import init_db
+    from sqlalchemy import text
 
-    es_nueva = not DB_PATH.exists()
-    ok = init_db()
-    if not ok:
-        logging.critical("Falló la inicialización del schema. Abortando.")
+    from src.infrastructure.db.schema import metadata
+
+    engine = Container.engine()
+    try:
+        metadata.create_all(engine)
+    except Exception as exc:
+        logging.critical("Falló la creación del schema: %s", exc)
         return False
 
-    if settings.is_development:
-        # Verificar si ya existen datos de desarrollo (grupos creados)
-        with get_connection() as conn:
-            tiene_grupos = conn.execute(
-                "SELECT COUNT(*) FROM grupos"
-            ).fetchone()[0] > 0
+    with engine.connect() as conn:
+        try:
+            tiene_grupos = conn.execute(text("SELECT COUNT(*) FROM grupos")).scalar_one() > 0
+        except Exception:
+            tiene_grupos = False
 
-        if not tiene_grupos:
-            logging.info(
-                "Entorno desarrollo — datos no detectados, ejecutando seed_dev"
-            )
-            from src.infrastructure.db.seed import seed_dev
-            with get_connection() as conn:
-                seed_dev(conn)
-                conn.commit()
-            logging.info("Seed dev completado")
-        else:
-            logging.info("Entorno desarrollo — datos ya presentes, seed omitido")
-
-    elif es_nueva:
+    if settings.is_development and not tiene_grupos:
+        logging.info("Entorno desarrollo — datos no detectados, ejecutando seed_dev")
+        from src.infrastructure.db.seed import seed_dev
+        with engine.connect() as conn:
+            seed_dev(conn)
+            conn.commit()
+        logging.info("Seed dev completado")
+    elif settings.is_development:
+        logging.info("Entorno desarrollo — datos ya presentes, seed omitido")
+    elif not tiene_grupos:
         logging.info("Base de datos nueva detectada — ejecutando seed base")
         from src.infrastructure.db.seed import seed_base
-        with get_connection() as conn:
+        with engine.connect() as conn:
             seed_base(conn)
             conn.commit()
         logging.info("Seed base completado")

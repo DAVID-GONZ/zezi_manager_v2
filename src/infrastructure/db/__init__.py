@@ -7,18 +7,18 @@ Los repositorios importan desde aquí; las capas superiores no importan
 nada de este módulo directamente.
 
     from src.infrastructure.db import fetch_all, execute, get_scalar
-    from src.infrastructure.db import init_db, seed_base, seed_dev, seed_test
+    from src.infrastructure.db import seed_base, seed_dev, seed_test
 
 Submódulos:
   connection  — get_connection, DB_PATH, verify_db_integrity
   queries     — fetch_df, fetch_one, fetch_all, get_scalar, execute
-  schema      — metadata, init_db, get_db_stats, create_schema
+  schema      — metadata (create_all via metadata.create_all(engine))
   seed        — seed_base, seed_dev, seed_test, SeedResult
 """
 
 from .connection import DB_PATH, get_connection, verify_db_integrity
 from .queries import execute, fetch_all, fetch_df, fetch_one, get_scalar
-from .schema import create_schema, get_db_stats, init_db, metadata
+from .schema import metadata
 from .seed import SeedResult, seed_base, seed_dev, seed_test
 
 __all__ = [
@@ -32,11 +32,7 @@ __all__ = [
     "fetch_one",
     # Conexión
     "get_connection",
-    "get_db_stats",
     "get_scalar",
-    # Esquema
-    "create_schema",
-    "init_db",
     "metadata",
     # Seed
     "seed_base",

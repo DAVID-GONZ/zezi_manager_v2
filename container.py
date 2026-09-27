@@ -109,122 +109,122 @@ class Container:
 
     @classmethod
     def configuracion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
-            SqliteConfiguracionRepository,
+        from src.infrastructure.db.repositories.sqla_configuracion_repo import (
+            SqlaConfiguracionRepository,
         )
-        return cls._get_or_create("configuracion_repo", SqliteConfiguracionRepository)
+        return cls._get_or_create("configuracion_repo", SqlaConfiguracionRepository)
 
     @classmethod
     def infraestructura_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-            SqliteInfraestructuraRepository,
+        from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+            SqlaInfraestructuraRepository,
         )
-        return cls._get_or_create("infraestructura_repo", SqliteInfraestructuraRepository)
+        return cls._get_or_create("infraestructura_repo", SqlaInfraestructuraRepository)
 
     @classmethod
     def institucion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_institucion_repo import (
-            SqliteInstitucionRepository,
+        from src.infrastructure.db.repositories.sqla_institucion_repo import (
+            SqlaInstitucionRepository,
         )
-        return cls._get_or_create("institucion_repo", SqliteInstitucionRepository)
+        return cls._get_or_create("institucion_repo", SqlaInstitucionRepository)
 
     @classmethod
     def usuario_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-            SqliteUsuarioRepository,
+        from src.infrastructure.db.repositories.sqla_usuario_repo import (
+            SqlaUsuarioRepository,
         )
-        return cls._get_or_create("usuario_repo", SqliteUsuarioRepository)
+        return cls._get_or_create("usuario_repo", SqlaUsuarioRepository)
 
     @classmethod
     def estudiante_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
-            SqliteEstudianteRepository,
+        from src.infrastructure.db.repositories.sqla_estudiante_repo import (
+            SqlaEstudianteRepository,
         )
-        return cls._get_or_create("estudiante_repo", SqliteEstudianteRepository)
+        return cls._get_or_create("estudiante_repo", SqlaEstudianteRepository)
 
     @classmethod
     def acudiente_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_acudiente_repo import (
-            SqliteAcudienteRepository,
+        from src.infrastructure.db.repositories.sqla_acudiente_repo import (
+            SqlaAcudienteRepository,
         )
-        return cls._get_or_create("acudiente_repo", SqliteAcudienteRepository)
+        return cls._get_or_create("acudiente_repo", SqlaAcudienteRepository)
 
     @classmethod
     def periodo_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-            SqlitePeriodoRepository,
+        from src.infrastructure.db.repositories.sqla_periodo_repo import (
+            SqlaPeriodoRepository,
         )
-        return cls._get_or_create("periodo_repo", SqlitePeriodoRepository)
+        return cls._get_or_create("periodo_repo", SqlaPeriodoRepository)
 
     @classmethod
     def asignacion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-            SqliteAsignacionRepository,
+        from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+            SqlaAsignacionRepository,
         )
-        return cls._get_or_create("asignacion_repo", SqliteAsignacionRepository)
+        return cls._get_or_create("asignacion_repo", SqlaAsignacionRepository)
 
     @classmethod
     def evaluacion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
-            SqliteEvaluacionRepository,
+        from src.infrastructure.db.repositories.sqla_evaluacion_repo import (
+            SqlaEvaluacionRepository,
         )
-        return cls._get_or_create("evaluacion_repo", SqliteEvaluacionRepository)
+        return cls._get_or_create("evaluacion_repo", SqlaEvaluacionRepository)
 
     @classmethod
     def asistencia_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_asistencia_repo import (
-            SqliteAsistenciaRepository,
+        from src.infrastructure.db.repositories.sqla_asistencia_repo import (
+            SqlaAsistenciaRepository,
         )
-        return cls._get_or_create("asistencia_repo", SqliteAsistenciaRepository)
+        return cls._get_or_create("asistencia_repo", SqlaAsistenciaRepository)
 
     @classmethod
     def cierre_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_cierre_repo import (
-            SqliteCierreRepository,
+        from src.infrastructure.db.repositories.sqla_cierre_repo import (
+            SqlaCierreRepository,
         )
-        return cls._get_or_create("cierre_repo", SqliteCierreRepository)
+        return cls._get_or_create("cierre_repo", SqlaCierreRepository)
 
     @classmethod
     def habilitacion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_habilitacion_repo import (
-            SqliteHabilitacionRepository,
+        from src.infrastructure.db.repositories.sqla_habilitacion_repo import (
+            SqlaHabilitacionRepository,
         )
-        return cls._get_or_create("habilitacion_repo", SqliteHabilitacionRepository)
+        return cls._get_or_create("habilitacion_repo", SqlaHabilitacionRepository)
 
     @classmethod
     def nivelacion_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_nivelacion_repo import (
-            SqliteNivelacionRepository,
+        from src.infrastructure.db.repositories.sqla_nivelacion_repo import (
+            SqlaNivelacionRepository,
         )
-        return cls._get_or_create("nivelacion_repo", SqliteNivelacionRepository)
+        return cls._get_or_create("nivelacion_repo", SqlaNivelacionRepository)
 
     @classmethod
     def convivencia_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-            SqliteConvivenciaRepository,
+        from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+            SqlaConvivenciaRepository,
         )
-        return cls._get_or_create("convivencia_repo", SqliteConvivenciaRepository)
+        return cls._get_or_create("convivencia_repo", SqlaConvivenciaRepository)
 
     @classmethod
     def alerta_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_alerta_repo import (
-            SqliteAlertaRepository,
+        from src.infrastructure.db.repositories.sqla_alerta_repo import (
+            SqlaAlertaRepository,
         )
-        return cls._get_or_create("alerta_repo", SqliteAlertaRepository)
+        return cls._get_or_create("alerta_repo", SqlaAlertaRepository)
 
     @classmethod
     def auditoria_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
-            SqliteAuditoriaRepository,
+        from src.infrastructure.db.repositories.sqla_auditoria_repo import (
+            SqlaAuditoriaRepository,
         )
-        return cls._get_or_create("auditoria_repo", SqliteAuditoriaRepository)
+        return cls._get_or_create("auditoria_repo", SqlaAuditoriaRepository)
 
     @classmethod
     def estadisticos_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_estadisticos_repo import (
-            SqliteEstadisticosRepository,
+        from src.infrastructure.db.repositories.sqla_estadisticos_repo import (
+            SqlaEstadisticosRepository,
         )
-        return cls._get_or_create("estadisticos_repo", SqliteEstadisticosRepository)
+        return cls._get_or_create("estadisticos_repo", SqlaEstadisticosRepository)
 
     # ══════════════════════════════════════════════════════
     # SERVICIOS — en orden de dependencia
@@ -269,15 +269,15 @@ class Container:
 
     @classmethod
     def preferencias_service(cls):
-        from src.infrastructure.db.repositories.sqlite_preferencias_repo import (
-            SqlitePreferenciasRepository,
+        from src.infrastructure.db.repositories.sqla_preferencias_repo import (
+            SqlaPreferenciasRepository,
         )
         from src.services.preferencias_institucion_service import (
             PreferenciasInstitucionService,
         )
         return cls._get_or_create(
             "preferencias_service",
-            lambda: PreferenciasInstitucionService(SqlitePreferenciasRepository()),
+            lambda: PreferenciasInstitucionService(SqlaPreferenciasRepository()),
         )
 
     @classmethod
@@ -333,10 +333,10 @@ class Container:
 
     @classmethod
     def siee_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_siee_repo import (
-            SqliteSIEERepository,
+        from src.infrastructure.db.repositories.sqla_siee_repo import (
+            SqlaSIEERepository,
         )
-        return cls._get_or_create("siee_repo", SqliteSIEERepository)
+        return cls._get_or_create("siee_repo", SqlaSIEERepository)
 
     @classmethod
     def evaluacion_service(cls):
@@ -478,10 +478,10 @@ class Container:
 
     @classmethod
     def plan_mejoramiento_repo(cls):
-        from src.infrastructure.db.repositories.sqlite_plan_mejoramiento_repo import (
-            SqlitePlanMejoramientoRepository,
+        from src.infrastructure.db.repositories.sqla_plan_mejoramiento_repo import (
+            SqlaPlanMejoramientoRepository,
         )
-        return cls._get_or_create("plan_mejoramiento_repo", SqlitePlanMejoramientoRepository)
+        return cls._get_or_create("plan_mejoramiento_repo", SqlaPlanMejoramientoRepository)
 
     @classmethod
     def plan_mejoramiento_service(cls):

@@ -17,10 +17,11 @@ from __future__ import annotations
 import sqlite3
 
 import pytest
+from sqlalchemy.exc import IntegrityError as SqlaIntegrityError
 
 from src.domain.models.infraestructura import Asignatura, Grupo, Jornada
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 from src.services.contexto_tenant import usar_institucion
 from src.services.infraestructura_service import InfraestructuraService
@@ -39,7 +40,7 @@ class TestScopeGruposAsignaturas:
 
     def test_listar_grupos_director_ve_solo_su_institucion(self, db_conn):
         """Con scope=institución, listar_grupos filtra; admin (None) ve todo."""
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = self._crear_institucion(db_conn, "Colegio B")
 
@@ -65,7 +66,7 @@ class TestScopeGruposAsignaturas:
         assert {"A100", "B100"}.issubset(codigos_admin)
 
     def test_listar_asignaturas_director_ve_solo_su_institucion(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = self._crear_institucion(db_conn, "Colegio C")
 
@@ -89,7 +90,7 @@ class TestScopeGruposAsignaturas:
         assert {"Robótica", "Astronomía"}.issubset(nombres_admin)
 
     def test_guardar_asigna_institucion_del_scope(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = self._crear_institucion(db_conn, "Colegio D")
 
@@ -101,7 +102,7 @@ class TestScopeGruposAsignaturas:
 
     def test_mismo_codigo_grupo_dos_instituciones_no_colisiona(self, db_conn):
         """UNIQUE(institucion_id, codigo): mismo codigo en dos tenants es válido."""
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = self._crear_institucion(db_conn, "Colegio E")
 
@@ -113,15 +114,15 @@ class TestScopeGruposAsignaturas:
         assert g1.institucion_id == 1 and g2.institucion_id == otra_id
 
     def test_mismo_codigo_grupo_misma_institucion_falla(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         with usar_institucion(1):
             svc.guardar_grupo(Grupo(codigo="UNICO1", grado=6))
-            with pytest.raises(sqlite3.IntegrityError):
+            with pytest.raises(SqlaIntegrityError):
                 svc.guardar_grupo(Grupo(codigo="UNICO1", grado=7))
 
     def test_mismo_nombre_asignatura_dos_instituciones_no_colisiona(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = self._crear_institucion(db_conn, "Colegio F")
 

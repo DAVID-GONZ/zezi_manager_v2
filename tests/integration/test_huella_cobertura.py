@@ -37,52 +37,51 @@ import sqlite3
 
 import pytest
 
-from src.infrastructure.db.repositories.sqlite_alerta_repo import (
-    SqliteAlertaRepository,
+from src.infrastructure.db.repositories.sqla_alerta_repo import (
+    SqlaAlertaRepository,
 )
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-    SqliteAsignacionRepository,
+from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+    SqlaAsignacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_asistencia_repo import (
-    SqliteAsistenciaRepository,
+from src.infrastructure.db.repositories.sqla_asistencia_repo import (
+    SqlaAsistenciaRepository,
 )
-from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
-    SqliteAuditoriaRepository,
+from src.infrastructure.db.repositories.sqla_auditoria_repo import (
+    SqlaAuditoriaRepository,
 )
-from src.infrastructure.db.repositories.sqlite_cierre_repo import (
-    SqliteCierreRepository,
+from src.infrastructure.db.repositories.sqla_cierre_repo import (
+    SqlaCierreRepository,
 )
-from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
-    SqliteConfiguracionRepository,
+from src.infrastructure.db.repositories.sqla_configuracion_repo import (
+    SqlaConfiguracionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-    SqliteConvivenciaRepository,
+from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+    SqlaConvivenciaRepository,
 )
-from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
-    SqliteEstudianteRepository,
+from src.infrastructure.db.repositories.sqla_estudiante_repo import (
+    SqlaEstudianteRepository,
 )
-from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
-    SqliteEvaluacionRepository,
+from src.infrastructure.db.repositories.sqla_evaluacion_repo import (
+    SqlaEvaluacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_habilitacion_repo import (
-    SqliteHabilitacionRepository,
+from src.infrastructure.db.repositories.sqla_habilitacion_repo import (
+    SqlaHabilitacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
-from src.infrastructure.db.repositories.sqlite_institucion_repo import (
-    SqliteInstitucionRepository,
+from src.infrastructure.db.repositories.sqla_institucion_repo import (
+    SqlaInstitucionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_nivelacion_repo import (
-    SqliteNivelacionRepository,
+from src.infrastructure.db.repositories.sqla_nivelacion_repo import (
+    SqlaNivelacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-    SqlitePeriodoRepository,
+from src.infrastructure.db.repositories.sqla_periodo_repo import (
+    SqlaPeriodoRepository,
 )
-from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
-from src.infrastructure.db.schema import create_schema
 from src.infrastructure.db.seed import SeedResult, _fast_hasher, seed_test
 from src.services.alerta_service import AlertaService
 from src.services.aprovisionamiento_institucion_service import (
@@ -118,16 +117,35 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture()
-def db() -> sqlite3.Connection:
+def db():
     """Conexion en memoria con seed_test. No hace commit — cada test es atomico."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
-    seed_test(conn, anio=2025, hasher=_fast_hasher)
-    conn.commit()
-    yield conn
-    conn.close()
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_test(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
+    yield CompatConnection(sa_conn)
+    sa_conn.close()
+    engine.dispose()
 
 
 @pytest.fixture()
@@ -188,8 +206,8 @@ def test_usuario_crear_huella(db: sqlite3.Connection) -> None:
     from src.domain.models.usuario import NuevoUsuarioDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteUsuarioRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaUsuarioRepository(conn=db)
     svc = UsuarioService(repo=repo, auditoria=auditoria)
 
     dto = NuevoUsuarioDTO(
@@ -218,8 +236,8 @@ def test_estudiante_matricular_huella(db: sqlite3.Connection, seed: SeedResult) 
     from src.domain.models.estudiante import NuevoEstudianteDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteEstudianteRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaEstudianteRepository(conn=db)
     svc = EstudianteService(repo=repo, auditoria=auditoria)
 
     dto = NuevoEstudianteDTO(
@@ -252,8 +270,8 @@ def test_periodo_cerrar_huella(db: sqlite3.Connection, seed: SeedResult) -> None
     que esta abierto pero no activo.
     """
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqlitePeriodoRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaPeriodoRepository(conn=db)
     svc = PeriodoService(repo=repo, auditoria=auditoria)
 
     # periodo_ids[1] es el segundo periodo — abierto y no activo
@@ -277,8 +295,8 @@ def test_periodo_cerrar_huella(db: sqlite3.Connection, seed: SeedResult) -> None
 def test_asignacion_desactivar_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """desactivar graba audit_log con usuario_id e institucion_id no nulos."""
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteAsignacionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaAsignacionRepository(conn=db)
     svc = AsignacionService(repo=repo, auditoria=auditoria)
 
     asignacion_id = seed.asignacion_ids[0]
@@ -308,8 +326,8 @@ def test_evaluacion_agregar_categoria_huella(db: sqlite3.Connection, seed: SeedR
     from src.domain.models.evaluacion import NuevaCategoriaDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteEvaluacionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaEvaluacionRepository(conn=db)
     # sin periodo_repo => _verificar_periodo_abierto no bloquea
     svc = EvaluacionService(repo=repo, auditoria=auditoria)
 
@@ -350,8 +368,8 @@ def test_habilitacion_programar_huella(db: sqlite3.Connection, seed: SeedResult)
     from src.domain.models.habilitacion import NuevaHabilitacionDTO, TipoHabilitacion
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteHabilitacionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaHabilitacionRepository(conn=db)
     svc = HabilitacionService(repo=repo, auditoria=auditoria)
 
     dto = NuevaHabilitacionDTO(
@@ -383,12 +401,12 @@ def test_cierre_reabrir_asignacion_huella(db: sqlite3.Connection, seed: SeedResu
     (incluso cuando borra 0 registros), por lo que no necesita cierres previos.
     """
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    cierre_repo = SqliteCierreRepository(conn=db)
-    eval_repo = SqliteEvaluacionRepository(conn=db)
-    periodo_repo = SqlitePeriodoRepository(conn=db)
-    config_repo = SqliteConfiguracionRepository(conn=db)
-    est_repo = SqliteEstudianteRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    cierre_repo = SqlaCierreRepository(conn=db)
+    eval_repo = SqlaEvaluacionRepository(conn=db)
+    periodo_repo = SqlaPeriodoRepository(conn=db)
+    config_repo = SqlaConfiguracionRepository(conn=db)
+    est_repo = SqlaEstudianteRepository(conn=db)
     svc = CierreService(
         cierre_repo=cierre_repo,
         evaluacion_repo=eval_repo,
@@ -421,8 +439,8 @@ def test_convivencia_registrar_comportamiento_huella(db: sqlite3.Connection, see
     from src.domain.models.convivencia import NuevoRegistroComportamientoDTO, TipoRegistro
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteConvivenciaRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaConvivenciaRepository(conn=db)
     svc = ConvivenciaService(repo=repo, auditoria_repo=auditoria)
 
     dto = NuevoRegistroComportamientoDTO(
@@ -461,8 +479,8 @@ def test_asistencia_registrar_huella(db: sqlite3.Connection, seed: SeedResult) -
     from src.domain.models.asistencia import EstadoAsistencia, RegistrarAsistenciaDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteAsistenciaRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaAsistenciaRepository(conn=db)
     svc = AsistenciaService(repo=repo, auditoria_repo=auditoria)
 
     dto = RegistrarAsistenciaDTO(
@@ -500,8 +518,8 @@ def test_alerta_configurar_huella(db: sqlite3.Connection, seed: SeedResult) -> N
     from src.domain.models.alerta import ConfiguracionAlerta, TipoAlerta
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteAlertaRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaAlertaRepository(conn=db)
     svc = AlertaService(repo=repo, auditoria_repo=auditoria)
 
     config = ConfiguracionAlerta(
@@ -537,8 +555,8 @@ def test_escenario_crear_huella(db: sqlite3.Connection, seed: SeedResult) -> Non
     from src.domain.models.infraestructura import EscenarioHorario
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
     svc = EscenarioHorarioService(repo=repo, auditoria_repo=auditoria)
     esc = EscenarioHorario(anio_id=seed.anio_id, nombre="Esc Huella Test")
 
@@ -564,8 +582,8 @@ def test_sala_crear_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     from src.domain.models.infraestructura import Sala
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
     svc = SalaService(repo=repo, auditoria_repo=auditoria)
     sala = Sala(nombre="Aula Huella", capacidad=30, tipo="aula", institucion_id=iid)
 
@@ -589,8 +607,8 @@ def test_sala_crear_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
 def test_franja_crear_plantilla_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """crear_plantilla_simple graba audit_log con tabla='plantillas_franja'."""
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
     svc = FranjaService(repo=repo, auditoria_repo=auditoria)
 
     with usar_actor(uid), usar_institucion(iid):
@@ -613,8 +631,8 @@ def test_franja_crear_plantilla_huella(db: sqlite3.Connection, seed: SeedResult)
 def test_restriccion_crear_config_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """crear_config_generacion graba audit_log con tabla='config_generacion'."""
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
 
     franja_svc = FranjaService(repo=repo, auditoria_repo=auditoria)
     with usar_actor(uid), usar_institucion(iid):
@@ -649,11 +667,11 @@ def test_horario_crear_bloque_huella(db: sqlite3.Connection, seed: SeedResult) -
     from src.domain.models.infraestructura import EscenarioHorario
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    infra_repo = SqliteInfraestructuraRepository(conn=db)
-    asig_repo = SqliteAsignacionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    infra_repo = SqlaInfraestructuraRepository(conn=db)
+    asig_repo = SqlaAsignacionRepository(conn=db)
     # HorarioService.usuario_repo debe tener carga_horaria_max → UsuarioService
-    usuario_svc = UsuarioService(repo=SqliteUsuarioRepository(conn=db))
+    usuario_svc = UsuarioService(repo=SqlaUsuarioRepository(conn=db))
 
     esc_svc = EscenarioHorarioService(repo=infra_repo, auditoria_repo=auditoria)
     with usar_actor(uid), usar_institucion(iid):
@@ -694,8 +712,8 @@ def test_catalogo_guardar_area_huella(db: sqlite3.Connection, seed: SeedResult) 
     from src.domain.models.infraestructura import AreaConocimiento
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
     svc = CatalogoAcademicoService(repo=repo, auditoria_repo=auditoria)
 
     with usar_actor(uid), usar_institucion(iid):
@@ -716,8 +734,8 @@ def test_configuracion_crear_anio_huella(db: sqlite3.Connection) -> None:
     from src.domain.models.configuracion import NuevaConfiguracionAnioDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteConfiguracionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaConfiguracionRepository(conn=db)
     svc = ConfiguracionService(repo=repo, auditoria_repo=auditoria)
 
     dto = NuevaConfiguracionAnioDTO(anio=2099, institucion_id=iid)
@@ -737,8 +755,8 @@ def test_configuracion_crear_anio_huella(db: sqlite3.Connection) -> None:
 def test_plan_estudios_guardar_grado_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """guardar_grado graba audit_log con usuario_id e institucion_id no nulos."""
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInfraestructuraRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInfraestructuraRepository(conn=db)
     svc = PlanEstudiosService(repo=repo, auditoria_repo=auditoria)
 
     with usar_actor(uid), usar_institucion(iid):
@@ -765,8 +783,8 @@ def test_institucion_crear_huella(db: sqlite3.Connection) -> None:
     from src.domain.models.institucion import NuevaInstitucionDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInstitucionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInstitucionRepository(conn=db)
     svc = InstitucionService(repo=repo, auditoria_repo=auditoria)
 
     dto = NuevaInstitucionDTO(nombre="IE Huella Test")
@@ -806,9 +824,9 @@ def test_plan_mejoramiento_agregar_actividad_huella(db: sqlite3.Connection, seed
 def test_nivelacion_agregar_actividad_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """agregar_actividad graba audit_log con usuario_id e institucion_id no nulos."""
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    niv_repo = SqliteNivelacionRepository(conn=db)
-    cierre_repo = SqliteCierreRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    niv_repo = SqlaNivelacionRepository(conn=db)
+    cierre_repo = SqlaCierreRepository(conn=db)
     svc = NivelacionService(repo=niv_repo, cierre_repo=cierre_repo, auditoria_repo=auditoria)
 
     if not seed.asignacion_ids or not seed.periodo_ids:
@@ -840,8 +858,8 @@ def test_aprovisionamiento_crear_institucion_huella(db: sqlite3.Connection) -> N
     from src.domain.models.institucion import NuevaInstitucionConDirectorDTO
 
     uid, iid = _ids(db)
-    auditoria = SqliteAuditoriaRepository(conn=db)
-    repo = SqliteInstitucionRepository(conn=db)
+    auditoria = SqlaAuditoriaRepository(conn=db)
+    repo = SqlaInstitucionRepository(conn=db)
     svc = AprovisionamientoInstitucionService(institucion_repo=repo, auditoria_repo=auditoria)
 
     dto = NuevaInstitucionConDirectorDTO(

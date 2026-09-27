@@ -6,15 +6,12 @@ tipo_situacion_obligatorio en el servicio y RBAC de escritura.
 """
 from __future__ import annotations
 
-import sqlite3
-
 import pytest
 
 from src.domain.models.convivencia import NuevoTipoSituacionDTO, TipoSituacion
-from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-    SqliteConvivenciaRepository,
+from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+    SqlaConvivenciaRepository,
 )
-from src.infrastructure.db.schema import create_schema
 from src.infrastructure.db.seed import _fast_hasher, seed_base
 from src.services.convivencia_service import ConvivenciaService
 
@@ -25,19 +22,38 @@ from src.services.convivencia_service import ConvivenciaService
 
 @pytest.fixture()
 def db():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
-    seed_base(conn, anio=2025, hasher=_fast_hasher)
-    conn.commit()
-    yield conn
-    conn.close()
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_base(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
+    yield CompatConnection(sa_conn)
+    sa_conn.close()
+    engine.dispose()
 
 
 @pytest.fixture()
 def repo(db):
-    return SqliteConvivenciaRepository(conn=db)
+    return SqlaConvivenciaRepository(conn=db)
 
 
 @pytest.fixture()

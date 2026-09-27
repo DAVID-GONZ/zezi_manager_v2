@@ -8,7 +8,7 @@
 
 ---
 
-## T1 — Adaptar _normalize_params a _adapt_params  [ ]
+## T1 — Adaptar _normalize_params a _adapt_params  [x]
 
 Renombrar y extender la función de normalización para que:
 1. Siga convirtiendo escalares numpy/pandas a nativos.
@@ -18,7 +18,7 @@ Renombrar y extender la función de normalización para que:
 
 ---
 
-## T2 — Migrar fetch_one y fetch_all  [ ]
+## T2 — Migrar fetch_one y fetch_all  [x]
 
 Reescribir ambas funciones para usar `Container.engine().connect()` con
 `exec_driver_sql(query, params)` (ver D2).
@@ -36,21 +36,21 @@ Tests que llaman fetch_one/fetch_all deben pasar.
 
 ---
 
-## T3 — Migrar get_scalar  [ ]
+## T3 — Migrar get_scalar  [x]
 
 Reescribir para usar `exec_driver_sql`. `result.scalar()` de SQLAlchemy
 es el equivalente directo.
 
 ---
 
-## T4 — Migrar fetch_df  [ ]
+## T4 — Migrar fetch_df  [x]
 
 Reescribir usando `pd.read_sql(text(query), conn, params=...)`.
 `pd.read_sql` acepta conexiones SQLAlchemy desde pandas 1.4+.
 
 ---
 
-## T5 — Migrar execute (resolución de D8)  [ ]
+## T5 — Migrar execute (resolución de D8)  [x]
 
 Reescribir `execute` con propagación de errores:
 - En caso de error, lanzar la excepción en lugar de devolver `False`.
@@ -62,7 +62,7 @@ Reescribir `execute` con propagación de errores:
 
 ---
 
-## T6 — Eliminar import de connection.py  [ ]
+## T6 — Eliminar import de connection.py  [x]
 
 Verificar que `queries.py` ya no importa `get_connection` ni
 `_normalize_params` de `connection.py`.
@@ -74,7 +74,7 @@ Verificar que `queries.py` ya no importa `get_connection` ni
 
 ---
 
-## T7 — Verificación de no regresión y cierre  [ ]
+## T7 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe scripts/init.py

@@ -7,7 +7,6 @@ T13 — test de rendimiento: 50 000 filas sembradas con cadena válida.
 """
 from __future__ import annotations
 
-import sqlite3
 import time
 
 import pytest
@@ -20,12 +19,9 @@ from src.domain.models.auditoria import (
     SeveridadEvento,
     TipoEventoSesion,
 )
-from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
-    SqliteAuditoriaRepository,
+from src.infrastructure.db.repositories.sqla_auditoria_repo import (
+    SqlaAuditoriaRepository,
 )
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-
 from src.infrastructure.db.schema import metadata
 
 # ---------------------------------------------------------------------------
@@ -35,18 +31,31 @@ from src.infrastructure.db.schema import metadata
 @pytest.fixture
 def conn():
     """Base de datos SQLite en memoria con el esquema completo."""
-    c = sqlite3.connect(":memory:")
-    c.row_factory = sqlite3.Row
-    engine = create_engine("sqlite://", creator=lambda: c, poolclass=StaticPool)
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     metadata.create_all(engine)
-    c.commit()
-    yield c
-    c.close()
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    compat = CompatConnection(sa_conn)
+    yield compat
+    sa_conn.close()
+    engine.dispose()
 
 
 @pytest.fixture
 def repo(conn):
-    return SqliteAuditoriaRepository(conn=conn)
+    return SqlaAuditoriaRepository(conn=conn)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +310,7 @@ def test_volumen_50000_filas_verificacion_incremental(conn):
     """
     UMBRAL_SEGUNDOS = 2.0  # la incremental sin cambios debe ser casi instantánea
 
-    repo = SqliteAuditoriaRepository(conn=conn)
+    repo = SqlaAuditoriaRepository(conn=conn)
 
     # Sembrar 50 000 filas con cadena válida usando registrar_cambios_masivos
     LOTE = 1_000

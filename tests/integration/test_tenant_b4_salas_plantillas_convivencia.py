@@ -22,14 +22,15 @@ from __future__ import annotations
 import sqlite3
 
 import pytest
+from sqlalchemy.exc import IntegrityError as SqlaIntegrityError
 
 from src.domain.models.convivencia import FiltroConvivenciaDTO
 from src.domain.models.infraestructura import Sala
-from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-    SqliteConvivenciaRepository,
+from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+    SqlaConvivenciaRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 from src.services.contexto_tenant import usar_institucion
 from src.services.convivencia_service import ConvivenciaService
@@ -79,7 +80,7 @@ def _crear_registro_comportamiento(
 class TestScopeSalasPlantillas:
 
     def test_listar_salas_director_ve_solo_su_institucion(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio B")
 
@@ -103,7 +104,7 @@ class TestScopeSalasPlantillas:
         assert {"Lab Física", "Lab Química"}.issubset(nombres_admin)
 
     def test_listar_plantillas_director_ve_solo_su_institucion(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio C")
 
@@ -126,7 +127,7 @@ class TestScopeSalasPlantillas:
         assert {"Mañana A", "Mañana B"}.issubset(nombres_admin)
 
     def test_crear_asigna_institucion_del_scope(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio D")
 
@@ -137,7 +138,7 @@ class TestScopeSalasPlantillas:
         assert plantilla.institucion_id == otra_id
 
     def test_mismo_nombre_sala_dos_instituciones_no_colisiona(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio E")
 
@@ -149,15 +150,15 @@ class TestScopeSalasPlantillas:
         assert s1.institucion_id == 1 and s2.institucion_id == otra_id
 
     def test_mismo_nombre_sala_misma_institucion_falla(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         with usar_institucion(1):
             svc.crear_sala(Sala(nombre="Aula Única"))
-            with pytest.raises(sqlite3.IntegrityError):
+            with pytest.raises(SqlaIntegrityError):
                 svc.crear_sala(Sala(nombre="Aula Única"))
 
     def test_mismo_nombre_plantilla_dos_instituciones_no_colisiona(self, db_conn):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio F")
 
@@ -171,7 +172,7 @@ class TestScopeSalasPlantillas:
     def test_plantilla_activa_es_por_institucion(self, db_conn):
         """El índice único de plantilla activa es por (institucion, jornada):
         dos instituciones pueden tener cada una su 'UNICA' activa a la vez."""
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         svc = InfraestructuraService(repo)
         otra_id = _crear_institucion(db_conn, "Colegio G")
 
@@ -199,7 +200,7 @@ class TestScopeConvivenciaAgregado:
     def test_listar_registros_cruza_grupos_se_scopea(self, db_conn, seed_result):
         """listar_registros sin grupo/estudiante cruza grupos: el director ve
         solo los de su institución; admin (None) ve todos."""
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         svc = ConvivenciaService(repo)
         periodo_id = seed_result.periodo_ids[0]
 
@@ -230,7 +231,7 @@ class TestScopeConvivenciaAgregado:
         assert {g1, g2}.issubset(grupos_admin)
 
     def test_contar_registros_respeta_scope(self, db_conn, seed_result):
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         periodo_id = seed_result.periodo_ids[0]
         otra_id = _crear_institucion(db_conn, "Colegio I")
 

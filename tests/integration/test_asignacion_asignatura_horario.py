@@ -5,17 +5,17 @@ import pytest
 
 from src.domain.models.asignacion import FiltroAsignacionesDTO
 from src.domain.models.infraestructura import NuevoHorarioDTO
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-    SqliteAsignacionRepository,
+from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+    SqlaAsignacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 
 
 def test_sin_asignaciones_huerfanas(db_conn, seed_result):
     """Toda asignación referencia asignatura y grupo existentes (sin huérfanos)."""
-    repo = SqliteAsignacionRepository(db_conn)
+    repo = SqlaAsignacionRepository(db_conn)
     asigs = repo.listar_info(FiltroAsignacionesDTO())
     assert len(asigs) > 0
     # Si listar_info resolvió nombres, no hay huérfanos — solo verificar campos no vacíos
@@ -26,8 +26,8 @@ def test_sin_asignaciones_huerfanas(db_conn, seed_result):
 
 def test_crear_bloque_coherente(db_conn, seed_result):
     """Bloque creado hereda grupo_id/asignatura_id/usuario_id de su asignación."""
-    infra = SqliteInfraestructuraRepository(db_conn)
-    asig_repo = SqliteAsignacionRepository(db_conn)
+    infra = SqlaInfraestructuraRepository(db_conn)
+    asig_repo = SqlaAsignacionRepository(db_conn)
 
     anio_id = seed_result.anio_id
     escenario = infra.get_escenario_activo(anio_id)
@@ -62,8 +62,8 @@ def test_crear_bloque_coherente(db_conn, seed_result):
 
 def test_listar_horario_escenario_nombres_resueltos(db_conn, seed_result):
     """listar_horario_escenario incluye nombres de asignatura y docente."""
-    infra = SqliteInfraestructuraRepository(db_conn)
-    asig_repo = SqliteAsignacionRepository(db_conn)
+    infra = SqlaInfraestructuraRepository(db_conn)
+    asig_repo = SqlaAsignacionRepository(db_conn)
 
     anio_id = seed_result.anio_id
     escenario = infra.get_escenario_activo(anio_id)

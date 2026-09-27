@@ -3,16 +3,16 @@ Tests de integración — PlantillaFranja + Franja repo (paso_15a).
 """
 
 from src.domain.models.infraestructura import Franja, PlantillaFranja
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _repo(conn) -> SqliteInfraestructuraRepository:
-    return SqliteInfraestructuraRepository(conn=conn)
+def _repo(conn) -> SqlaInfraestructuraRepository:
+    return SqlaInfraestructuraRepository(conn=conn)
 
 
 def _plantilla(nombre="Test UNICA", jornada="UNICA", dias=None) -> PlantillaFranja:

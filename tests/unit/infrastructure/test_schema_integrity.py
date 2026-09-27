@@ -11,10 +11,7 @@ Tras backend_04:
 """
 from __future__ import annotations
 
-import pytest
-
 from src.infrastructure.db.schema import metadata
-
 
 # ---------------------------------------------------------------------------
 # T1 — Helpers de introspección
@@ -23,12 +20,16 @@ from src.infrastructure.db.schema import metadata
 
 def pragma_table_info(conn, tabla: str) -> list[dict]:
     rows = conn.execute(f"PRAGMA table_info({tabla})").fetchall()
-    return [dict(r) for r in rows]
+    # PRAGMA table_info returns (cid, name, type, notnull, dflt_value, pk)
+    cols = ("cid", "name", "type", "notnull", "dflt_value", "pk")
+    return [dict(zip(cols, r, strict=False)) for r in rows]
 
 
 def pragma_fk_list(conn, tabla: str) -> list[dict]:
     rows = conn.execute(f"PRAGMA foreign_key_list({tabla})").fetchall()
-    return [dict(r) for r in rows]
+    # PRAGMA foreign_key_list returns (id, seq, table, from, to, on_update, on_delete, match)
+    cols = ("id", "seq", "table", "from", "to", "on_update", "on_delete", "match")
+    return [dict(zip(cols, r, strict=False)) for r in rows]
 
 
 # ---------------------------------------------------------------------------

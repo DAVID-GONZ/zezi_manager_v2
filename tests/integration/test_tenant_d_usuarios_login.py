@@ -21,8 +21,8 @@ import pytest
 
 from src.domain.models.usuario import NuevoUsuarioDTO, Rol
 from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
-from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
 from src.services.contexto_tenant import usar_institucion
 from src.services.usuario_service import UsuarioService
@@ -36,7 +36,7 @@ def _crear_institucion(conn: sqlite3.Connection, nombre: str) -> int:
 
 
 def _svc(conn: sqlite3.Connection) -> tuple[UsuarioService, BcryptAuthService]:
-    repo = SqliteUsuarioRepository(conn=conn)
+    repo = SqlaUsuarioRepository(conn=conn)
     auth = BcryptAuthService(repo=repo)
     return UsuarioService(repo=repo, auth_service=auth), auth
 

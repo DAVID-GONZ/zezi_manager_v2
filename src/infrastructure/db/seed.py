@@ -29,10 +29,11 @@ from __future__ import annotations
 import hashlib
 import logging
 import random
-import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+
+from sqlalchemy.engine import Connection
 
 from src.domain.models.catalogos_estandar import (
     AREAS_ESTANDAR_CO,
@@ -346,7 +347,7 @@ _FRANJAS_LECTIVAS_DEV = [
 
 
 def _get_or_insert(
-    conn: sqlite3.Connection,
+    conn: Connection,
     select_sql: str,
     select_params: tuple,
     insert_sql: str,
@@ -356,11 +357,11 @@ def _get_or_insert(
     Busca un registro; si no existe lo inserta.
     Retorna el id en ambos casos.
     """
-    row = conn.execute(select_sql, select_params).fetchone()
+    row = conn.exec_driver_sql(select_sql, select_params).fetchone()
     if row:
         return int(row[0])
-    conn.execute(insert_sql, insert_params)
-    row = conn.execute(select_sql, select_params).fetchone()
+    conn.exec_driver_sql(insert_sql, insert_params)
+    row = conn.exec_driver_sql(select_sql, select_params).fetchone()
     return int(row[0])
 
 
@@ -390,7 +391,7 @@ def _documento_ti() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _seed_plantillas(conn: sqlite3.Connection) -> list[int]:
+def _seed_plantillas(conn: Connection) -> list[int]:
     """
     Inserta las plantillas de observación por defecto (convivencia_12).
     Idempotente por texto: si una plantilla ya existe la reutiliza.
@@ -399,7 +400,7 @@ def _seed_plantillas(conn: sqlite3.Connection) -> list[int]:
     """
     ids: list[int] = []
     for texto, cat_nombre in _PLANTILLAS_DEFAULT:
-        row = conn.execute(
+        row = conn.exec_driver_sql(
             "SELECT id FROM categorias_observacion WHERE nombre = ?", (cat_nombre,)
         ).fetchone()
         cat_id = row[0] if row else None
@@ -417,7 +418,7 @@ def _seed_plantillas(conn: sqlite3.Connection) -> list[int]:
     return ids
 
 
-def _seed_categorias(conn: sqlite3.Connection) -> list[int]:
+def _seed_categorias(conn: Connection) -> list[int]:
     """
     Inserta las categorías de observación por defecto (convivencia_09).
     Idempotente por nombre: si una categoría ya existe la reutiliza.
@@ -439,7 +440,7 @@ def _seed_categorias(conn: sqlite3.Connection) -> list[int]:
     return ids
 
 
-def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
+def _seed_configuracion(conn: Connection, anio: int) -> int:
     """Crea o recupera la configuración del año. Retorna anio_id."""
     return _get_or_insert(
         conn,
@@ -456,209 +457,44 @@ def _seed_configuracion(conn: sqlite3.Connection, anio: int) -> int:
     )
 
 
-def _migrate_instituciones_identidad(conn: sqlite3.Connection) -> None:
-    """
-    Migración idempotente (mejora_06):
-    1. Añade columnas nuevas a instituciones si faltan.
-    2. Backfill desde configuracion_anio activa → instituciones #1.
-    """
-    existing = {row[1] for row in conn.execute("PRAGMA table_info(instituciones)").fetchall()}
-    new_cols = [
-        ("nombre_oficial", "TEXT"),
-        ("codigo_dane", "TEXT"),
-        ("rector", "TEXT"),
-        ("direccion", "TEXT"),
-        ("pais", "TEXT"),
-        ("departamento", "TEXT"),
-        ("municipio", "TEXT"),
-        ("telefono", "TEXT"),
-        ("logo_path", "TEXT"),
-        ("logo_url", "TEXT"),
-        ("resolucion_aprobacion", "TEXT"),
-        ("lema", "TEXT"),
-        ("email_institucional", "TEXT"),
-        ("jornada_principal", "TEXT"),
-        ("tipo_institucion", "TEXT"),
-        ("calendario", "TEXT"),
-    ]
-    for col, typ in new_cols:
-        if col not in existing:
-            conn.execute(f"ALTER TABLE instituciones ADD COLUMN {col} {typ}")
-
-    # Backfill: copiar datos de identidad desde config activa a institución #1
-    inst_row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
-    if not inst_row:
-        return
-    inst_id = int(inst_row[0])
-
-    config_row = conn.execute(
-        """
-        SELECT nombre_institucion, dane_code, rector, direccion, municipio,
-               telefono_institucion, logo_path, resolucion_aprobacion
-        FROM configuracion_anio
-        WHERE activo = 1
-        ORDER BY id DESC LIMIT 1
-        """
-    ).fetchone()
-    if not config_row:
-        return
-
-    conn.execute(
-        """
-        UPDATE instituciones SET
-            nombre_oficial        = COALESCE(nombre_oficial,        ?),
-            codigo_dane           = COALESCE(codigo_dane,           ?),
-            rector                = COALESCE(rector,                ?),
-            direccion             = COALESCE(direccion,             ?),
-            municipio             = COALESCE(municipio,             ?),
-            telefono              = COALESCE(telefono,              ?),
-            logo_path             = COALESCE(logo_path,             ?),
-            resolucion_aprobacion = COALESCE(resolucion_aprobacion, ?)
-        WHERE id = ?
-        """,
-        (
-            config_row[0],  # nombre_institucion → nombre_oficial
-            config_row[1],  # dane_code
-            config_row[2],  # rector
-            config_row[3],  # direccion
-            config_row[4],  # municipio
-            config_row[5],  # telefono_institucion → telefono
-            config_row[6],  # logo_path
-            config_row[7],  # resolucion_aprobacion
-            inst_id,
-        ),
-    )
-
-
-def _seed_preferencias_institucion(conn: sqlite3.Connection, institucion_id: int) -> None:
+def _seed_preferencias_institucion(conn: Connection, institucion_id: int) -> None:
     for categoria, clave, valor, tipo in PREF_DEFAULTS:
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT OR IGNORE INTO preferencias_institucion"
             "(institucion_id, categoria, clave, valor, tipo_valor) VALUES (?,?,?,?,?)",
             (institucion_id, categoria, clave, valor, tipo),
         )
 
 
-def _seed_catalogos_institucion(conn: sqlite3.Connection, institucion_id: int) -> None:
-    """Seed idempotente (mejora_07-T8): siembra áreas y categorías estándar colombianas por institución."""
+def _seed_catalogos_institucion(conn: Connection, institucion_id: int) -> None:
+    # Siembra áreas y categorías estándar colombianas por institución.
     for nombre, codigo in AREAS_ESTANDAR_CO:
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT OR IGNORE INTO areas_conocimiento(nombre, codigo, institucion_id) VALUES (?, ?, ?)",
             (nombre, codigo, institucion_id),
         )
     for nombre, es_positivo in CATEGORIAS_BASE_CO:
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT OR IGNORE INTO categorias_observacion(nombre, es_comportamental, institucion_id) VALUES (?, ?, ?)",
             (nombre, 1 if es_positivo else 0, institucion_id),
         )
 
 
-def _migrate_auditoria_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T7): añade institucion_id a auditoria y audit_log."""
-    for tabla in ("auditoria", "audit_log"):
-        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
-        if "institucion_id" not in existing:
-            conn.execute(
-                f"ALTER TABLE {tabla} ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-            )
-    # Backfill via JOIN con usuarios
-    conn.execute("""
-        UPDATE auditoria SET institucion_id = (
-            SELECT u.institucion_id FROM usuarios u WHERE u.id = auditoria.usuario_id
-        )
-        WHERE institucion_id IS NULL
-    """)
-    conn.execute("""
-        UPDATE audit_log SET institucion_id = (
-            SELECT u.institucion_id FROM usuarios u WHERE u.id = audit_log.usuario_id
-        )
-        WHERE institucion_id IS NULL
-    """)
-
-
-def _seed_config_grado_institucion(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Seed idempotente (mejora_07-T6): copia min/max/horas de grados a configuracion_grado_institucion."""
-    grados = conn.execute(
+def _seed_config_grado_institucion(conn: Connection, inst_id: int) -> None:
+    # Copia min/max/horas de grados a configuracion_grado_institucion.
+    grados = conn.exec_driver_sql(
         "SELECT id, min_estudiantes, max_estudiantes, horas_semanales FROM grados"
     ).fetchall()
     for grado in grados:
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO configuracion_grado_institucion
-                (grado_id, institucion_id, min_estudiantes, max_estudiantes, horas_semanales)
-            VALUES (?, ?, ?, ?, ?)
-            """,
+        conn.exec_driver_sql(
+            "INSERT OR IGNORE INTO configuracion_grado_institucion"
+            " (grado_id, institucion_id, min_estudiantes, max_estudiantes, horas_semanales)"
+            " VALUES (?, ?, ?, ?, ?)",
             (grado[0], inst_id, grado[1], grado[2], grado[3]),
         )
 
 
-def _migrate_franjas_reunion_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T5): añade institucion_id a franjas_reunion."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(franjas_reunion)").fetchall()}
-    if "institucion_id" not in existing:
-        conn.execute(
-            "ALTER TABLE franjas_reunion ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-        )
-    conn.execute(
-        "UPDATE franjas_reunion SET institucion_id = ? WHERE institucion_id IS NULL",
-        (inst_id,),
-    )
-
-
-def _migrate_acudientes_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T4): añade institucion_id a acudientes."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(acudientes)").fetchall()}
-    if "institucion_id" not in existing:
-        conn.execute(
-            "ALTER TABLE acudientes ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-        )
-    conn.execute(
-        "UPDATE acudientes SET institucion_id = ? WHERE institucion_id IS NULL",
-        (inst_id,),
-    )
-
-
-def _migrate_categorias_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T3): añade institucion_id a categorias_observacion y plantillas_observacion."""
-    for tabla in ("categorias_observacion", "plantillas_observacion"):
-        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
-        if "institucion_id" not in existing:
-            conn.execute(
-                f"ALTER TABLE {tabla} ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-            )
-        conn.execute(
-            f"UPDATE {tabla} SET institucion_id = ? WHERE institucion_id IS NULL",
-            (inst_id,),
-        )
-
-
-def _migrate_plan_estudios_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T2): añade institucion_id a plan_estudios."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(plan_estudios)").fetchall()}
-    if "institucion_id" not in existing:
-        conn.execute(
-            "ALTER TABLE plan_estudios ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-        )
-    conn.execute(
-        "UPDATE plan_estudios SET institucion_id = ? WHERE institucion_id IS NULL",
-        (inst_id,),
-    )
-
-
-def _migrate_areas_conocimiento_scoping(conn: sqlite3.Connection, inst_id: int) -> None:
-    """Migración idempotente (mejora_07-T1): añade institucion_id a areas_conocimiento."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(areas_conocimiento)").fetchall()}
-    if "institucion_id" not in existing:
-        conn.execute(
-            "ALTER TABLE areas_conocimiento ADD COLUMN institucion_id INTEGER REFERENCES instituciones(id)"
-        )
-    conn.execute(
-        "UPDATE areas_conocimiento SET institucion_id = ? WHERE institucion_id IS NULL",
-        (inst_id,),
-    )
-
-
-def _seed_institucion(conn: sqlite3.Connection) -> int:
+def _seed_institucion(conn: Connection) -> int:
     """
     Crea (si falta) la institución por defecto (#1) a partir del nombre
     institucional de la configuración del año, y hace **backfill** de todos
@@ -672,71 +508,64 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
     DESPUÉS de sembrar los usuarios (para backfillarlos). Retorna el id de
     la institución por defecto.
     """
-    row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
+    row = conn.exec_driver_sql("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
     if row:
         institucion_id = int(row[0])
     else:
-        nombre_row = conn.execute(
+        nombre_row = conn.exec_driver_sql(
             "SELECT nombre_institucion FROM configuracion_anio "
             "ORDER BY (activo = 1) DESC, id LIMIT 1"
         ).fetchone()
         nombre = nombre_row[0] if nombre_row and nombre_row[0] else "Institución Educativa"
-        conn.execute(
+        conn.exec_driver_sql(
             """INSERT INTO instituciones
                    (nombre, activa, pais, departamento, municipio, codigo_dane)
                VALUES (?, 1, ?, ?, ?, ?)""",
             (nombre, "Colombia", "Bogotá D.C.", "Bogotá D.C.", "111001000001"),
         )
         institucion_id = int(
-            conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()[0]
+            conn.exec_driver_sql("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()[0]
         )
 
     # Backfill: todos los usuarios sin tenant → institución por defecto.
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE usuarios SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     # Backfill (paso_27): toda configuración de año sin tenant → #1.
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE configuracion_anio SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     # Backfill (paso_29, frente B1): grupos y asignaturas sin tenant → #1.
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE grupos SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE asignaturas SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     # Backfill (paso_30, frente B2): estudiantes sin tenant → #1.
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE estudiantes SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
     # Backfill (paso_32, frente B4): salas y plantillas_franja sin tenant → #1.
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE salas SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE plantillas_franja SET institucion_id = ? WHERE institucion_id IS NULL",
         (institucion_id,),
     )
-    _migrate_instituciones_identidad(conn)
-    _migrate_areas_conocimiento_scoping(conn, institucion_id)
-    _migrate_plan_estudios_scoping(conn, institucion_id)
-    _migrate_categorias_scoping(conn, institucion_id)
-    _migrate_acudientes_scoping(conn, institucion_id)
-    _migrate_franjas_reunion_scoping(conn, institucion_id)
-    _migrate_auditoria_scoping(conn, institucion_id)
     _seed_config_grado_institucion(conn, institucion_id)
     _seed_catalogos_institucion(conn, institucion_id)
     _seed_preferencias_institucion(conn, institucion_id)
     # La institución #1 (demo) ya está configurada: no debe gatillar el
     # wizard de configuración inicial obligatoria (mejora_09a/09b).
-    conn.execute(
+    conn.exec_driver_sql(
         "UPDATE instituciones SET configuracion_inicial_completa = 1 WHERE id = ?",
         (institucion_id,),
     )
@@ -744,7 +573,7 @@ def _seed_institucion(conn: sqlite3.Connection) -> int:
 
 
 def _seed_segunda_institucion(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio: int,
     hasher: PasswordHasher,
 ) -> int:
@@ -824,7 +653,7 @@ def _seed_segunda_institucion(
         """,
         ("601", "Sexto A (Prueba)", 6, inst2_id),
     )
-    grupo2_id = conn.execute(
+    grupo2_id = conn.exec_driver_sql(
         "SELECT id FROM grupos WHERE institucion_id = ? AND codigo = ?",
         (inst2_id, "601"),
     ).fetchone()[0]
@@ -842,7 +671,7 @@ def _seed_segunda_institucion(
     )
 
     # Estudiante reutilizando un `numero_documento` de un estudiante de la #1.
-    doc_row = conn.execute(
+    doc_row = conn.exec_driver_sql(
         "SELECT numero_documento FROM estudiantes WHERE institucion_id = ? ORDER BY id LIMIT 1",
         (1,),
     ).fetchone()
@@ -863,24 +692,24 @@ def _seed_segunda_institucion(
     return inst2_id
 
 
-def _seed_configuracion_periodos(conn: sqlite3.Connection, anio_id: int) -> None:
-    existing = conn.execute(
+def _seed_configuracion_periodos(conn: Connection, anio_id: int) -> None:
+    existing = conn.exec_driver_sql(
         "SELECT id FROM configuracion_periodos WHERE anio_id = ?", (anio_id,)
     ).fetchone()
     if not existing:
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT INTO configuracion_periodos (anio_id, numero_periodos, pesos_iguales) "
             "VALUES (?, 4, 1)",
             (anio_id,),
         )
 
 
-def _seed_criterios_promocion(conn: sqlite3.Connection, anio_id: int) -> None:
-    existing = conn.execute(
+def _seed_criterios_promocion(conn: Connection, anio_id: int) -> None:
+    existing = conn.exec_driver_sql(
         "SELECT id FROM criterios_promocion WHERE anio_id = ?", (anio_id,)
     ).fetchone()
     if not existing:
-        conn.execute(
+        conn.exec_driver_sql(
             """
             INSERT INTO criterios_promocion (
                 anio_id, max_asignaturas_perdidas, permite_condicionada,
@@ -892,7 +721,7 @@ def _seed_criterios_promocion(conn: sqlite3.Connection, anio_id: int) -> None:
 
 
 def _seed_niveles_desempeno(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio_id: int,
     niveles: list[tuple] | None = None,
 ) -> list[int]:
@@ -919,14 +748,14 @@ def _seed_niveles_desempeno(
     return ids
 
 
-def _seed_alertas_config(conn: sqlite3.Connection, anio_id: int) -> None:
+def _seed_alertas_config(conn: Connection, anio_id: int) -> None:
     for tipo, umbral, doc, dir_, acud in _TIPOS_ALERTAS:
-        existing = conn.execute(
+        existing = conn.exec_driver_sql(
             "SELECT id FROM configuracion_alertas WHERE anio_id=? AND tipo_alerta=?",
             (anio_id, tipo),
         ).fetchone()
         if not existing:
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 INSERT INTO configuracion_alertas (
                     anio_id, tipo_alerta, umbral, activa,
@@ -937,7 +766,7 @@ def _seed_alertas_config(conn: sqlite3.Connection, anio_id: int) -> None:
             )
 
 
-def _seed_areas(conn: sqlite3.Connection) -> dict[str, int]:
+def _seed_areas(conn: Connection) -> dict[str, int]:
     """Retorna {nombre_area: id}."""
     area_map: dict[str, int] = {}
     for nombre, codigo, color in _AREAS:
@@ -953,7 +782,7 @@ def _seed_areas(conn: sqlite3.Connection) -> dict[str, int]:
 
 
 def _seed_asignaturas(
-    conn: sqlite3.Connection,
+    conn: Connection,
     area_map: dict[str, int],
     asignaturas: list[tuple] | None = None,
 ) -> dict[str, int]:
@@ -974,7 +803,7 @@ def _seed_asignaturas(
 
 
 def _seed_usuarios(
-    conn: sqlite3.Connection,
+    conn: Connection,
     usuarios: list[tuple],
     hasher: PasswordHasher,
     carga_horaria_max: int | None = None,
@@ -1000,7 +829,7 @@ def _seed_usuarios(
     if carga_horaria_max is not None:
         for usuario, _password, _nombre, _email, rol in usuarios:
             if rol == "profesor":
-                conn.execute(
+                conn.exec_driver_sql(
                     "UPDATE usuarios SET carga_horaria_max = ? WHERE usuario = ?",
                     (carga_horaria_max, usuario),
                 )
@@ -1008,7 +837,7 @@ def _seed_usuarios(
 
 
 def _seed_escenarios(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio_id: int,
 ) -> dict[str, int]:
     """
@@ -1035,7 +864,7 @@ def _seed_escenarios(
     return esc_map
 
 
-def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
+def _seed_plantilla_franjas(conn: Connection) -> int:
     """
     Crea la plantilla de rejilla por defecto 'Jornada única' (UNICA, activa,
     Lunes–Viernes) con 8 franjas (7 lectivas + 1 recreo) = 35 cupos/semana.
@@ -1059,7 +888,9 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
     )
 
     # Si ya tiene franjas, no volver a sembrarlas (idempotencia).
-    ya = conn.execute("SELECT COUNT(*) FROM franjas WHERE plantilla_id=?", (pid,)).fetchone()[0]
+    ya = conn.exec_driver_sql(
+        "SELECT COUNT(*) FROM franjas WHERE plantilla_id=?", (pid,)
+    ).fetchone()[0]
     if ya:
         return pid
 
@@ -1075,7 +906,7 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
         (pid, 7, "12:05", "13:00", "lectiva", None),
         (pid, 8, "13:00", "13:55", "lectiva", None),
     ]
-    conn.executemany(
+    conn.exec_driver_sql(
         """
         INSERT INTO franjas
             (plantilla_id, orden, hora_inicio, hora_fin, tipo, etiqueta)
@@ -1087,7 +918,7 @@ def _seed_plantilla_franjas(conn: sqlite3.Connection) -> int:
 
 
 def _seed_grupos(
-    conn: sqlite3.Connection,
+    conn: Connection,
     grupos: list[tuple],
 ) -> dict[str, int]:
     """Retorna {codigo_grupo: id}."""
@@ -1105,7 +936,7 @@ def _seed_grupos(
 
 
 def _seed_periodos(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio_id: int,
     anio: int,
 ) -> list[int]:
@@ -1138,7 +969,7 @@ def _seed_periodos(
 
 
 def _seed_asignaciones(
-    conn: sqlite3.Connection,
+    conn: Connection,
     usuario_map: dict[str, int],
     asig_map: dict[str, int],
     grupo_map: dict[str, int],
@@ -1179,7 +1010,7 @@ def _seed_asignaciones(
 
 
 def _seed_horarios(
-    conn: sqlite3.Connection,
+    conn: Connection,
     grupo_map: dict[str, int],
     periodo_ids: list[int],
     escenario_id: int,
@@ -1188,7 +1019,7 @@ def _seed_horarios(
     periodo_id = periodo_ids[0]
     count = 0
     for grupo_id in grupo_map.values():
-        asigs = conn.execute(
+        asigs = conn.exec_driver_sql(
             """
             SELECT id, usuario_id, asignatura_id
             FROM asignaciones
@@ -1203,12 +1034,12 @@ def _seed_horarios(
             if idx >= len(asigs):
                 break
             asig_id, usuario_id, asignatura_id = asigs[idx]
-            existing = conn.execute(
+            existing = conn.exec_driver_sql(
                 "SELECT id FROM horarios WHERE escenario_id=? AND grupo_id=? AND dia_semana=? AND hora_inicio=?",
                 (escenario_id, grupo_id, dia, hora_i),
             ).fetchone()
             if not existing:
-                conn.execute(
+                conn.exec_driver_sql(
                     """
                     INSERT INTO horarios
                         (grupo_id, asignatura_id, usuario_id, asignacion_id,
@@ -1232,7 +1063,7 @@ def _seed_horarios(
 
 
 def _seed_asignaciones_desde_plan(
-    conn: sqlite3.Connection,
+    conn: Connection,
     periodo_ids: list[int],
 ) -> list[int]:
     """
@@ -1244,19 +1075,24 @@ def _seed_asignaciones_desde_plan(
     """
     from collections import defaultdict
 
-    profs = conn.execute(
+    profs = conn.exec_driver_sql(
         "SELECT id, COALESCE(carga_horaria_max, 22) AS cap FROM usuarios "
         "WHERE rol='profesor' ORDER BY id"
     ).fetchall()
-    teachers = [r["id"] for r in profs]
-    cap = {r["id"]: r["cap"] for r in profs}
+    # profs rows: (id=0, cap=1)
+    teachers = [r[0] for r in profs]
+    cap = {r[0]: r[1] for r in profs}
     if not teachers:
         return []
 
-    grupos = conn.execute("SELECT id, grado FROM grupos WHERE grado IS NOT NULL").fetchall()
+    grupos = conn.exec_driver_sql("SELECT id, grado FROM grupos WHERE grado IS NOT NULL").fetchall()
+    # grupos rows: (id=0, grado=1)
     plan_por_grado: dict[int, list[tuple[int, int]]] = defaultdict(list)
-    for r in conn.execute("SELECT grado, asignatura_id, horas_semanales FROM plan_estudios"):
-        plan_por_grado[r["grado"]].append((r["asignatura_id"], r["horas_semanales"]))
+    for r in conn.exec_driver_sql(
+        "SELECT grado, asignatura_id, horas_semanales FROM plan_estudios"
+    ):
+        # plan rows: (grado=0, asignatura_id=1, horas_semanales=2)
+        plan_por_grado[r[0]].append((r[1], r[2]))
 
     ids: list[int] = []
     for periodo_id in periodo_ids:
@@ -1265,8 +1101,8 @@ def _seed_asignaciones_desde_plan(
         # Slots a cubrir, agrupados por asignatura (para continuidad de docente).
         por_asig: dict[int, list[tuple[int, int]]] = defaultdict(list)  # aid -> [(grupo_id, horas)]
         for g in grupos:
-            for aid, horas in plan_por_grado.get(g["grado"], []):
-                por_asig[aid].append((g["id"], horas))
+            for aid, horas in plan_por_grado.get(g[1], []):
+                por_asig[aid].append((g[0], horas))
 
         for aid, slots in por_asig.items():
             for gid, horas in slots:
@@ -1279,7 +1115,7 @@ def _seed_asignaciones_desde_plan(
                 tid = max(cand, key=lambda t: cap[t] - carga[t])
                 carga[tid] += horas
                 materias_de[tid].add(aid)
-                cur = conn.execute(
+                cur = conn.exec_driver_sql(
                     """INSERT OR IGNORE INTO asignaciones
                            (grupo_id, asignatura_id, usuario_id, periodo_id, activo)
                        VALUES (?, ?, ?, ?, 1)""",
@@ -1291,7 +1127,7 @@ def _seed_asignaciones_desde_plan(
 
 
 def _seed_horarios_completo(
-    conn: sqlite3.Connection,
+    conn: Connection,
     periodo_id: int,
     escenario_id: int,
 ) -> int:
@@ -1307,14 +1143,14 @@ def _seed_horarios_completo(
     Retorna el número de filas insertadas.
     """
     # 1. Idempotencia
-    ya = conn.execute(
+    ya = conn.exec_driver_sql(
         "SELECT COUNT(*) FROM horarios WHERE escenario_id=?", (escenario_id,)
     ).fetchone()[0]
     if ya:
         return 0
 
     # 2. Cargar asignaciones del periodo con sus horas del plan (fallback global)
-    asignaciones = conn.execute(
+    asignaciones = conn.exec_driver_sql(
         """
         SELECT a.id, a.grupo_id, a.usuario_id, a.asignatura_id,
                COALESCE(pe.horas_semanales, s.horas_semanales) AS horas_semanales
@@ -1382,7 +1218,7 @@ def _seed_horarios_completo(
         lecciones, asignacion_slot, strict=False
     ):
         dia, _orden, hi, hf = slot
-        conn.execute(
+        conn.exec_driver_sql(
             """
             INSERT INTO horarios
                 (grupo_id, asignatura_id, usuario_id, asignacion_id,
@@ -1399,7 +1235,7 @@ def _seed_horarios_completo(
 
 
 def _seed_estudiantes(
-    conn: sqlite3.Connection,
+    conn: Connection,
     grupo_map: dict[str, int],
     total: int,
     rng: random.Random,
@@ -1413,7 +1249,7 @@ def _seed_estudiantes(
     # estudiantes directamente con tenant. En seed_dev, _seed_estudiantes corre
     # DESPUÉS de _seed_institucion, así que ya existe #1; el backfill de
     # _seed_institucion cubre cualquier fila NULL residual (idempotente).
-    row = conn.execute("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
+    row = conn.exec_driver_sql("SELECT id FROM instituciones ORDER BY id LIMIT 1").fetchone()
     institucion_default = int(row[0]) if row else None
     por_grupo = max(1, total // len(grupo_map))
     for idx_g, (codigo_grupo, grupo_id) in enumerate(grupo_map.items()):
@@ -1460,7 +1296,7 @@ def _seed_estudiantes(
 
 
 def _seed_acudientes(
-    conn: sqlite3.Connection,
+    conn: Connection,
     estudiante_ids: list[int],
     rng: random.Random,
 ) -> list[int]:
@@ -1471,7 +1307,7 @@ def _seed_acudientes(
     ids: list[int] = []
     parentescos = ("padre", "madre")
     for i, est_id in enumerate(estudiante_ids):
-        existing = conn.execute(
+        existing = conn.exec_driver_sql(
             "SELECT acudiente_id FROM estudiante_acudiente WHERE estudiante_id=?",
             (est_id,),
         ).fetchone()
@@ -1498,7 +1334,7 @@ def _seed_acudientes(
             (numero_doc, f"{nombre} {apellido}", parentesco, celular),
         )
         # Vincular si no estaba vinculado ya
-        conn.execute(
+        conn.exec_driver_sql(
             """
             INSERT OR IGNORE INTO estudiante_acudiente
                 (estudiante_id, acudiente_id, es_principal)
@@ -1511,7 +1347,7 @@ def _seed_acudientes(
 
 
 def _seed_categorias_actividades(
-    conn: sqlite3.Connection,
+    conn: Connection,
     asignacion_ids: list[int],
     periodo_ids: list[int],
     limite_asignaciones: int = 30,
@@ -1527,7 +1363,7 @@ def _seed_categorias_actividades(
 
     for asig_id in asignacion_ids[:limite_asignaciones]:
         for cat_nombre, peso in _CATEGORIAS_EVALUACION:
-            existing_cat = conn.execute(
+            existing_cat = conn.exec_driver_sql(
                 "SELECT id FROM categorias WHERE nombre=? AND asignacion_id=? AND periodo_id=?",
                 (cat_nombre, asig_id, periodo_id),
             ).fetchone()
@@ -1535,11 +1371,11 @@ def _seed_categorias_actividades(
             if existing_cat:
                 cat_id = existing_cat[0]
             else:
-                conn.execute(
+                conn.exec_driver_sql(
                     "INSERT INTO categorias (nombre, peso, asignacion_id, periodo_id) VALUES (?,?,?,?)",
                     (cat_nombre, peso, asig_id, periodo_id),
                 )
-                cat_id = conn.execute(
+                cat_id = conn.exec_driver_sql(
                     "SELECT id FROM categorias WHERE nombre=? AND asignacion_id=? AND periodo_id=?",
                     (cat_nombre, asig_id, periodo_id),
                 ).fetchone()[0]
@@ -1548,7 +1384,7 @@ def _seed_categorias_actividades(
             # 2 actividades por categoría
             for num in range(1, 3):
                 act_nombre = f"{cat_nombre} {num}"
-                existing_act = conn.execute(
+                existing_act = conn.exec_driver_sql(
                     "SELECT id FROM actividades WHERE nombre=? AND categoria_id=?",
                     (act_nombre, cat_id),
                 ).fetchone()
@@ -1556,7 +1392,7 @@ def _seed_categorias_actividades(
                     actividad_ids.append(existing_act[0])
                 else:
                     fecha_act = date.today() - timedelta(days=num * 7)
-                    conn.execute(
+                    conn.exec_driver_sql(
                         """
                         INSERT INTO actividades
                             (nombre, descripcion, fecha, valor_maximo, estado, categoria_id)
@@ -1569,7 +1405,7 @@ def _seed_categorias_actividades(
                             cat_id,
                         ),
                     )
-                    act_id = conn.execute(
+                    act_id = conn.exec_driver_sql(
                         "SELECT id FROM actividades WHERE nombre=? AND categoria_id=?",
                         (act_nombre, cat_id),
                     ).fetchone()[0]
@@ -1580,7 +1416,7 @@ def _seed_categorias_actividades(
 
 
 def _seed_notas(
-    conn: sqlite3.Connection,
+    conn: Connection,
     actividad_ids: list[int],
     estudiante_ids: list[int],
     usuario_id: int,
@@ -1590,14 +1426,14 @@ def _seed_notas(
     count = 0
     for act_id in actividad_ids:
         for est_id in estudiante_ids:
-            existing = conn.execute(
+            existing = conn.exec_driver_sql(
                 "SELECT id FROM notas WHERE estudiante_id=? AND actividad_id=?",
                 (est_id, act_id),
             ).fetchone()
             if not existing:
                 # Distribución realista: mayoría entre 55 y 95
                 valor = round(rng.triangular(40.0, 100.0, 78.0), 1)
-                conn.execute(
+                conn.exec_driver_sql(
                     """
                     INSERT INTO notas (estudiante_id, actividad_id, valor, usuario_registro_id)
                     VALUES (?, ?, ?, ?)
@@ -1609,7 +1445,7 @@ def _seed_notas(
 
 
 def _seed_asistencias(
-    conn: sqlite3.Connection,
+    conn: Connection,
     estudiante_ids: list[int],
     grupo_map: dict[str, int],
     asignacion_ids: list[int],
@@ -1628,16 +1464,18 @@ def _seed_asistencias(
     periodo_id = periodo_ids[0]
     grupo_id_por_est = {
         row[0]: row[1]
-        for row in conn.execute(
+        for row in conn.exec_driver_sql(
             "SELECT id, grupo_id FROM estudiantes WHERE id IN ({})".format(
                 ",".join("?" * len(estudiante_ids))
             ),
-            estudiante_ids,
+            tuple(estudiante_ids),
         ).fetchall()
     }
     asig_por_grupo: dict[int, int] = {}
     for asig_id in asignacion_ids[:10]:
-        row = conn.execute("SELECT grupo_id FROM asignaciones WHERE id=?", (asig_id,)).fetchone()
+        row = conn.exec_driver_sql(
+            "SELECT grupo_id FROM asignaciones WHERE id=?", (asig_id,)
+        ).fetchone()
         if row:
             asig_por_grupo.setdefault(row[0], asig_id)
 
@@ -1656,7 +1494,7 @@ def _seed_asistencias(
             if not grupo_id or not asig_id:
                 continue
 
-            existing = conn.execute(
+            existing = conn.exec_driver_sql(
                 """
                 SELECT id FROM control_diario
                 WHERE estudiante_id=? AND grupo_id=? AND asignacion_id=? AND fecha=?
@@ -1678,7 +1516,7 @@ def _seed_asistencias(
             else:
                 estado = "E"
 
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 INSERT INTO control_diario (
                     estudiante_id, grupo_id, asignacion_id, periodo_id,
@@ -1692,7 +1530,7 @@ def _seed_asistencias(
 
 
 def _seed_observaciones(
-    conn: sqlite3.Connection,
+    conn: Connection,
     asignacion_ids: list[int],
     estudiante_ids: list[int],
     periodo_ids: list[int],
@@ -1712,13 +1550,13 @@ def _seed_observaciones(
         asig_id = asignacion_ids[i % len(asignacion_ids)] if asignacion_ids else None
         if not asig_id:
             continue
-        existing = conn.execute(
+        existing = conn.exec_driver_sql(
             "SELECT id FROM observaciones_periodo WHERE estudiante_id=? AND asignacion_id=? AND periodo_id=?",
             (est_id, asig_id, periodo_id),
         ).fetchone()
         if not existing:
             texto = plantillas[i % len(plantillas)]
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 INSERT INTO observaciones_periodo
                     (estudiante_id, asignacion_id, periodo_id, texto, es_publica, usuario_id)
@@ -1736,7 +1574,7 @@ def _seed_observaciones(
 
 
 def _seed_configuracion_siee(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio_id: int,
     modo: str = "mixto_subcategorias",
     porcentaje_autonomia_docente: float | None = None,
@@ -1758,13 +1596,13 @@ def _seed_configuracion_siee(
         ID del registro configuracion_siee.
     """
     # Upsert configuración SIEE
-    existing = conn.execute(
+    existing = conn.exec_driver_sql(
         "SELECT id FROM configuracion_siee WHERE anio_id = ?", (anio_id,)
     ).fetchone()
 
     if existing:
         siee_id = existing[0]
-        conn.execute(
+        conn.exec_driver_sql(
             """
             UPDATE configuracion_siee
                SET modo = ?, porcentaje_autonomia_docente = ?
@@ -1773,7 +1611,7 @@ def _seed_configuracion_siee(
             (modo, porcentaje_autonomia_docente, siee_id),
         )
     else:
-        conn.execute(
+        conn.exec_driver_sql(
             """
             INSERT INTO configuracion_siee
                 (anio_id, modo, porcentaje_autonomia_docente)
@@ -1781,19 +1619,19 @@ def _seed_configuracion_siee(
             """,
             (anio_id, modo, porcentaje_autonomia_docente),
         )
-        siee_id = conn.execute(
+        siee_id = conn.exec_driver_sql(
             "SELECT id FROM configuracion_siee WHERE anio_id = ?", (anio_id,)
         ).fetchone()[0]
 
     # Categorías institucionales
     cats = categorias_institucionales or _CATEGORIAS_INSTITUCIONALES_DEV
     for nombre, peso, permite_sub in cats:
-        existing_cat = conn.execute(
+        existing_cat = conn.exec_driver_sql(
             "SELECT id FROM categorias WHERE nombre = ? AND anio_id = ? AND es_institucional = 1",
             (nombre, anio_id),
         ).fetchone()
         if not existing_cat:
-            conn.execute(
+            conn.exec_driver_sql(
                 """
                 INSERT INTO categorias
                     (nombre, peso, anio_id, es_institucional, permite_subcategorias)
@@ -1811,7 +1649,7 @@ def _seed_configuracion_siee(
 
 
 def _seed_config_generacion(
-    conn: sqlite3.Connection,
+    conn: Connection,
     periodo_id: int,
     anio_id: int,
     plantilla_id: int,
@@ -1823,12 +1661,12 @@ def _seed_config_generacion(
     """
     import json as _json
 
-    existing = conn.execute(
+    existing = conn.exec_driver_sql(
         "SELECT id FROM config_generacion WHERE nombre = ?", ("Config inicial",)
     ).fetchone()
     if existing:
         return int(existing[0])
-    conn.execute(
+    conn.exec_driver_sql(
         """
         INSERT INTO config_generacion
             (nombre, periodo_id, anio_id, plantilla_id, estado,
@@ -1843,7 +1681,7 @@ def _seed_config_generacion(
             _json.dumps({"huecos": 1.0, "distribucion": 1.0, "compactacion": 0.5}),
         ),
     )
-    row = conn.execute(
+    row = conn.exec_driver_sql(
         "SELECT id FROM config_generacion WHERE nombre = ?", ("Config inicial",)
     ).fetchone()
     return int(row[0])
@@ -1890,54 +1728,34 @@ def _plan_para_grado(grado: int) -> list[tuple]:
     return _PLAN_MEDIA if grado >= 10 else _PLAN_BASICA
 
 
-def _migrate_entradas_seguimiento(conn: sqlite3.Connection) -> None:
-    """Migración idempotente (convivencia_35): datos legacy de seguimiento → entradas_seguimiento."""
-    conn.execute("""
-        INSERT INTO entradas_seguimiento (registro_id, texto, usuario_id, fecha)
-        SELECT rc.id, rc.seguimiento, rc.usuario_registro_id,
-               COALESCE(rc.fecha, CURRENT_TIMESTAMP)
-        FROM registro_comportamiento rc
-        WHERE rc.seguimiento IS NOT NULL
-          AND rc.id NOT IN (SELECT registro_id FROM entradas_seguimiento)
-    """)
-
-
-def _migrate_tipo_situacion(conn: sqlite3.Connection) -> None:
-    """Migración idempotente (convivencia_34): columna tipo_situacion_id + seed de tipos por institución."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(registro_comportamiento)").fetchall()}
-    if "tipo_situacion_id" not in existing:
-        conn.execute(
-            "ALTER TABLE registro_comportamiento ADD COLUMN tipo_situacion_id INTEGER REFERENCES tipos_situacion(id) ON DELETE SET NULL"
-        )
+def _seed_tipos_situacion(conn: Connection) -> None:
+    # Seed de tipos de situacion por institucion (Ley 1620, convivencia_34).
     from src.domain.models.catalogos_estandar import TIPOS_SITUACION_CO
 
-    for (inst_id,) in conn.execute("SELECT id FROM instituciones").fetchall():
+    for row in conn.exec_driver_sql("SELECT id FROM instituciones").fetchall():
         for nombre, nivel, descripcion in TIPOS_SITUACION_CO:
-            conn.execute(
-                "INSERT OR IGNORE INTO tipos_situacion(nombre, nivel, descripcion, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
-                (nombre, nivel, descripcion, inst_id),
+            conn.exec_driver_sql(
+                "INSERT OR IGNORE INTO tipos_situacion"
+                "(nombre, nivel, descripcion, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
+                (nombre, nivel, descripcion, row[0]),
             )
 
 
-def _migrate_medida_pedagogica(conn: sqlite3.Connection) -> None:
-    """Migración idempotente (convivencia_36): columna medida_id + seed de medidas por institución."""
-    existing = {r[1] for r in conn.execute("PRAGMA table_info(registro_comportamiento)").fetchall()}
-    if "medida_id" not in existing:
-        conn.execute(
-            "ALTER TABLE registro_comportamiento ADD COLUMN medida_id INTEGER REFERENCES medidas_pedagogicas(id) ON DELETE SET NULL"
-        )
+def _seed_medidas_pedagogicas(conn: Connection) -> None:
+    # Seed de medidas pedagogicas por institucion (Art. 43-44 Dec. 1965, convivencia_36).
     from src.domain.models.catalogos_estandar import MEDIDAS_PEDAGOGICAS_CO
 
-    for (inst_id,) in conn.execute("SELECT id FROM instituciones").fetchall():
+    for row in conn.exec_driver_sql("SELECT id FROM instituciones").fetchall():
         for nombre, descripcion, nivel_minimo in MEDIDAS_PEDAGOGICAS_CO:
-            conn.execute(
-                "INSERT OR IGNORE INTO medidas_pedagogicas(nombre, descripcion, nivel_minimo, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
-                (nombre, descripcion, nivel_minimo, inst_id),
+            conn.exec_driver_sql(
+                "INSERT OR IGNORE INTO medidas_pedagogicas"
+                "(nombre, descripcion, nivel_minimo, activa, institucion_id) VALUES (?, ?, ?, 1, ?)",
+                (nombre, descripcion, nivel_minimo, row[0]),
             )
 
 
 def _seed_plan_estudios(
-    conn: sqlite3.Connection,
+    conn: Connection,
     asignatura_ids: dict[str, int],
     grados: list[int],
     asignaturas: list[tuple] | None = None,
@@ -1950,6 +1768,11 @@ def _seed_plan_estudios(
       no todas las asignaturas en todos los grados.
     Idempotente vía INSERT OR IGNORE. Retorna el número de filas insertadas.
     """
+    institucion_row = conn.exec_driver_sql(
+        "SELECT id FROM instituciones ORDER BY id LIMIT 1"
+    ).fetchone()
+    institucion_id = int(institucion_row[0]) if institucion_row else None
+
     count = 0
     for grado in grados:
         if asignaturas is not None:
@@ -1960,9 +1783,9 @@ def _seed_plan_estudios(
             asig_id = asignatura_ids.get(codigo)
             if asig_id is None:
                 continue
-            cur = conn.execute(
-                "INSERT OR IGNORE INTO plan_estudios (grado, asignatura_id, horas_semanales) VALUES (?, ?, ?)",
-                (grado, asig_id, horas),
+            cur = conn.exec_driver_sql(
+                "INSERT OR IGNORE INTO plan_estudios (grado, asignatura_id, horas_semanales, institucion_id) VALUES (?, ?, ?, ?)",
+                (grado, asig_id, horas, institucion_id),
             )
             count += cur.rowcount
     return count
@@ -1974,7 +1797,7 @@ def _seed_plan_estudios(
 
 
 def seed_base(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio: int | None = None,
     hasher: PasswordHasher = _default_hasher,
 ) -> SeedResult:
@@ -2013,13 +1836,10 @@ def seed_base(
 
     # Tipos de situación por defecto — Ley 1620 (convivencia_34).
     # Debe correr DESPUÉS de _seed_institucion para que la institución exista.
-    _migrate_tipo_situacion(conn)
-
-    # Migrar datos legacy de seguimiento a entradas_seguimiento (convivencia_35).
-    _migrate_entradas_seguimiento(conn)
+    _seed_tipos_situacion(conn)
 
     # Medidas pedagógicas por defecto — Art. 43-44 Decreto 1965 (convivencia_36).
-    _migrate_medida_pedagogica(conn)
+    _seed_medidas_pedagogicas(conn)
 
     result.counts = {
         "niveles_desempeno": len(result.nivel_ids),
@@ -2033,7 +1853,7 @@ def seed_base(
 
 
 def seed_siee(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio_id: int,
     modo: str = "mixto_subcategorias",
     porcentaje_autonomia_docente: float | None = None,
@@ -2059,7 +1879,7 @@ def seed_siee(
 
 
 def seed_dev(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio: int | None = None,
     hasher: PasswordHasher = _default_hasher,
     total_estudiantes: int = 336,
@@ -2091,7 +1911,7 @@ def seed_dev(
 
     # Ejemplo de docente de media jornada (deja holgura total de capacidad sobre
     # la demanda del plan, para que la derivación de asignaciones cubra todo).
-    conn.execute("UPDATE usuarios SET carga_horaria_max=16 WHERE usuario='mrojas'")
+    conn.exec_driver_sql("UPDATE usuarios SET carga_horaria_max=16 WHERE usuario='mrojas'")
 
     result.asignatura_ids = _seed_asignaturas(conn, result.area_ids)
     _seed_plan_estudios(conn, result.asignatura_ids, list(range(6, 12)))
@@ -2106,7 +1926,7 @@ def seed_dev(
         (11, "Once"),
     ]
     for numero, nombre in _GRADOS_DEV:
-        conn.execute(
+        conn.exec_driver_sql(
             """INSERT OR IGNORE INTO grados
                    (numero, nombre, min_estudiantes, max_estudiantes, horas_semanales)
                VALUES (?, ?, 20, 40, 30)""",
@@ -2175,7 +1995,7 @@ def seed_dev(
         ("Cancha Polideportiva", "ed_fisica", 100),
     ]
     for nombre_sala, tipo_sala, cap_sala in _SALAS_ESPECIALES:
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT OR IGNORE INTO salas (nombre, tipo, capacidad) VALUES (?, ?, ?)",
             (nombre_sala, tipo_sala, cap_sala),
         )
@@ -2183,13 +2003,15 @@ def seed_dev(
     # Aula propia (salón base) por grupo: una por grupo, nombrada por su código.
     # Así el visualizador muestra un aula real para cada clase normal.
     for codigo, gid in grupo_map.items():
-        conn.execute(
+        conn.exec_driver_sql(
             "INSERT OR IGNORE INTO salas (nombre, tipo, capacidad) VALUES (?, 'aula', 40)",
             (f"Aula {codigo}",),
         )
-        srow = conn.execute("SELECT id FROM salas WHERE nombre = ?", (f"Aula {codigo}",)).fetchone()
+        srow = conn.exec_driver_sql(
+            "SELECT id FROM salas WHERE nombre = ?", (f"Aula {codigo}",)
+        ).fetchone()
         if srow:
-            conn.execute("UPDATE grupos SET sala_id = ? WHERE id = ?", (srow[0], gid))
+            conn.exec_driver_sql("UPDATE grupos SET sala_id = ? WHERE id = ?", (srow[0], gid))
 
     # Nota: NO se siembran límites diarios por docente por defecto. Imponer un
     # tope/mínimo diario a todos desactiva el coloreo óptimo (König) y obliga al
@@ -2223,7 +2045,9 @@ def seed_dev(
             "notas": n_notas,
             "asistencias": n_asist,
             "observaciones": n_obs,
-            "instituciones": conn.execute("SELECT COUNT(*) FROM instituciones").fetchone()[0],
+            "instituciones": conn.exec_driver_sql("SELECT COUNT(*) FROM instituciones").fetchone()[
+                0
+            ],
         }
     )
     result.log_resumen()
@@ -2231,7 +2055,7 @@ def seed_dev(
 
 
 def seed_test(
-    conn: sqlite3.Connection,
+    conn: Connection,
     anio: int = 2025,
     hasher: PasswordHasher = _fast_hasher,
 ) -> SeedResult:
@@ -2331,7 +2155,7 @@ def seed_test(
     )
 
     # Sala mínima para tests paso_17
-    conn.execute(
+    conn.exec_driver_sql(
         "INSERT OR IGNORE INTO salas (id, nombre, tipo, capacidad) VALUES (1, 'Aula Test', 'aula', 40)"
     )
 

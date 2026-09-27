@@ -344,7 +344,7 @@
   {
     "id": "backend_05_engine_factory",
     "nombre": "Factory de engine conmutable sqlite/postgres en Container",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "container.py, config.py, .env.example",
     "operacion": "modificar",
     "sdd": true,
@@ -353,7 +353,7 @@
   {
     "id": "backend_06_queries_sqlalchemy",
     "nombre": "queries.py sobre SQLAlchemy Core",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/infrastructure/db/queries.py",
     "operacion": "modificar",
     "sdd": true,
@@ -362,7 +362,7 @@
   {
     "id": "backend_07_repos_migracion",
     "nombre": "Migracion de 20 repos a SQLAlchemy Core en 3 olas",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/infrastructure/db/repositories/, src/domain/ports/, container.py, tests/",
     "operacion": "modificar",
     "sdd": true,
@@ -371,7 +371,7 @@
   {
     "id": "backend_08_recreacion_seed",
     "nombre": "Creacion de esquema y seed sobre SQLAlchemy",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/infrastructure/db/seed.py, src/infrastructure/db/schema.py, main.py, tests/conftest.py",
     "operacion": "modificar",
     "sdd": true,

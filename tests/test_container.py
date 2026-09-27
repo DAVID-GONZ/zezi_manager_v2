@@ -79,3 +79,57 @@ class TestContainer:
             Container.evaluacion_service()
         # Solo hay una entrada por componente — el cache no crece
         assert len(Container._cache) == len(set(Container._cache.keys()))
+
+
+class TestEngineFactory:
+    """Tests de backend_05_engine_factory (R1–R12)."""
+
+    @pytest.fixture(autouse=True)
+    def reset(self):
+        Container.reset()
+        yield
+        Container.reset()
+
+    def test_engine_sqlite_por_defecto(self, monkeypatch):
+        # R1, R2, R4
+        monkeypatch.delenv("DB_BACKEND", raising=False)
+        engine = Container.engine()
+        assert "sqlite" in str(engine.url)
+
+    def test_engine_es_singleton(self):
+        # R7
+        e1 = Container.engine()
+        e2 = Container.engine()
+        assert e1 is e2
+
+    def test_connection_context_manager(self):
+        # R8
+        from sqlalchemy import text
+        with Container.connection() as conn:
+            result = conn.execute(text("SELECT 1")).scalar()
+        assert result == 1
+
+    def test_sqlite_pragmas_aplicados(self):
+        # R5, R6
+        from sqlalchemy import text
+        with Container.connection() as conn:
+            jm = conn.execute(text("PRAGMA journal_mode")).scalar()
+            fk = conn.execute(text("PRAGMA foreign_keys")).scalar()
+        assert jm.lower() == "wal"
+        assert fk == 1
+
+    def test_connection_py_sigue_funcionando(self):
+        # R10
+        from src.infrastructure.db.connection import get_connection
+        with get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            assert cur.fetchone()[0] == 1
+
+    def test_config_documenta_db_backend_y_url(self):
+        # R12
+        from config import DATABASE_URL, DB_BACKEND, settings
+        assert DB_BACKEND == "sqlite"
+        assert isinstance(DATABASE_URL, str)
+        assert hasattr(settings, "DB_BACKEND")
+        assert hasattr(settings, "DATABASE_URL")

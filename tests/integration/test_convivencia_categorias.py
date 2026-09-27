@@ -6,15 +6,12 @@ aislamiento total. El repo recibe la conexión explícitamente.
 """
 from __future__ import annotations
 
-import sqlite3
-
 import pytest
 
 from src.domain.models.convivencia import CategoriaObservacion
-from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-    SqliteConvivenciaRepository,
+from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+    SqlaConvivenciaRepository,
 )
-from src.infrastructure.db.schema import create_schema
 from src.infrastructure.db.seed import _fast_hasher, seed_base
 
 # ---------------------------------------------------------------------------
@@ -24,14 +21,33 @@ from src.infrastructure.db.seed import _fast_hasher, seed_base
 @pytest.fixture()
 def db_cat():
     """Conexión en memoria con schema y seed_base aplicados."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
-    seed_base(conn, anio=2025, hasher=_fast_hasher)
-    conn.commit()
-    yield conn
-    conn.close()
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_base(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
+    yield CompatConnection(sa_conn)
+    sa_conn.close()
+    engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +56,7 @@ def db_cat():
 
 def test_listar_categorias_activas_incluye_seed(db_cat):
     """Después del seed_base deben existir al menos 7 categorías activas."""
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
     cats = repo.listar_categorias("*", solo_activas=True)
     assert len(cats) >= 7, f"Se esperaban >=7 categorías, hay {len(cats)}"
     nombres = {c.nombre for c in cats}
@@ -51,7 +67,7 @@ def test_listar_categorias_activas_incluye_seed(db_cat):
 
 def test_guardar_y_leer_categoria(db_cat):
     """Crear una categoría nueva y recuperarla por id."""
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
     nueva = CategoriaObservacion(nombre="Prueba nueva", es_comportamental=False)
     guardada = repo.guardar_categoria(nueva)
 
@@ -65,7 +81,7 @@ def test_guardar_y_leer_categoria(db_cat):
 
 def test_actualizar_categoria_desactivar(db_cat):
     """Desactivar una categoría; listar(solo_activas=True) ya no la incluye."""
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
 
     # Crear una categoría activa
     cat = repo.guardar_categoria(
@@ -93,14 +109,14 @@ def test_actualizar_categoria_desactivar(db_cat):
 
 def test_get_categoria_inexistente(db_cat):
     """get_categoria con id inexistente retorna None."""
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
     resultado = repo.get_categoria(99999)
     assert resultado is None
 
 
 def test_listar_plantillas_por_categoria(db_cat):
     """Filtrar plantillas por categoria_id retorna solo las de esa categoría."""
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
 
     # Obtener IDs de dos categorías sembradas
     cats = repo.listar_categorias("*", solo_activas=True)
@@ -133,7 +149,7 @@ def test_registrar_observacion_desde_plantilla_incrementa_uso(db_cat):
     from src.domain.models.convivencia import NuevaObservacionDTO
     from src.services.convivencia_service import ConvivenciaService
 
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
 
     # Obtener la primera plantilla activa del seed
     plantillas = repo.listar_plantillas("*", solo_activas=True)
@@ -201,7 +217,7 @@ def test_guardar_observacion_con_categoria(db_cat):
     """Crear una observación con categoria_id y verificar que se guarda y recupera."""
     from src.domain.models.convivencia import ObservacionPeriodo
 
-    repo = SqliteConvivenciaRepository(conn=db_cat)
+    repo = SqlaConvivenciaRepository(conn=db_cat)
 
     # Usar la primera categoría activa sembrada
     cats = repo.listar_categorias("*", solo_activas=True)

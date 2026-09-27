@@ -20,14 +20,14 @@ from __future__ import annotations
 
 from src.domain.models.estudiante import FiltroEstudiantesDTO
 from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
-from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
-    SqliteEstudianteRepository,
+from src.infrastructure.db.repositories.sqla_estudiante_repo import (
+    SqlaEstudianteRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
-from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
 from src.infrastructure.db.seed import _fast_hasher
 from src.services.contexto_tenant import usar_institucion
@@ -121,7 +121,7 @@ class TestAislamientoSegundaInstitucion:
     def test_director_inst2_solo_ve_sus_grupos(self, db_dev):
         conn, _ = db_dev
         _, inst2 = _ids_dos_instituciones(conn)
-        svc = InfraestructuraService(SqliteInfraestructuraRepository(conn=conn))
+        svc = InfraestructuraService(SqlaInfraestructuraRepository(conn=conn))
 
         with usar_institucion(inst2):
             grupos_inst2 = svc.listar_grupos()
@@ -144,7 +144,7 @@ class TestAislamientoSegundaInstitucion:
     def test_director_inst2_solo_ve_sus_estudiantes(self, db_dev):
         conn, _ = db_dev
         _, inst2 = _ids_dos_instituciones(conn)
-        svc = EstudianteService(SqliteEstudianteRepository(conn=conn))
+        svc = EstudianteService(SqlaEstudianteRepository(conn=conn))
 
         with usar_institucion(inst2):
             vistos = svc.listar_filtrado(FiltroEstudiantesDTO())
@@ -174,7 +174,7 @@ class TestLoginSimpleSegundaInstitucion:
         conn, _ = db_dev
         _, inst2 = _ids_dos_instituciones(conn)
         # El director de la #2 fue sembrado con _fast_hasher y password Prueba2025*.
-        repo = SqliteUsuarioRepository(conn=conn)
+        repo = SqlaUsuarioRepository(conn=conn)
         auth = BcryptAuthService(repo=repo)
         # Verifica que el hash sembrado corresponde a la contraseña conocida.
         usuario_inst2 = conn.execute(

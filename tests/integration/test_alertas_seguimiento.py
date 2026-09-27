@@ -9,13 +9,11 @@ Cubre:
 """
 from __future__ import annotations
 
-import sqlite3
-
 import pytest
 
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
-from src.infrastructure.db.repositories.sqlite_alerta_repo import SqliteAlertaRepository
-from src.infrastructure.db.schema import create_schema
+from src.infrastructure.db.repositories.sqla_alerta_repo import SqlaAlertaRepository
+from src.infrastructure.db.schema import metadata
 from src.infrastructure.db.seed import seed_test
 
 # ---------------------------------------------------------------------------
@@ -25,13 +23,33 @@ from src.infrastructure.db.seed import seed_test
 @pytest.fixture()
 def conn_con_schema():
     """Conexión SQLite en memoria con schema completo + seed de test."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    seed_test(conn)
-    conn.commit()
-    yield conn
-    conn.close()
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_test(sa_conn)
+    sa_conn.commit()
+    yield CompatConnection(sa_conn)
+    sa_conn.close()
+    engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -44,7 +62,7 @@ def test_crear_alerta_seguimiento_requerido(conn_con_schema):
     destino y verifica que el repositorio la devuelva con todos los campos.
     """
     conn = conn_con_schema
-    repo = SqliteAlertaRepository(conn)
+    repo = SqlaAlertaRepository(conn)
 
     # usuario_destino_id = 1 (admin_test, sembrado por seed_test)
     alerta = Alerta(
@@ -67,13 +85,17 @@ def test_crear_alerta_seguimiento_requerido(conn_con_schema):
 
 def test_migracion_check_idempotente():
     """
-    Llamar create_schema dos veces sobre la misma BD en memoria no debe
-    lanzar ninguna excepción (idempotencia garantizada por IF NOT EXISTS).
+    Llamar metadata.create_all dos veces sobre el mismo engine no debe
+    lanzar ninguna excepción (idempotencia garantizada por checkfirst=True).
     """
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    try:
-        create_schema(conn)
-        create_schema(conn)
-    finally:
-        conn.close()
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
+    metadata.create_all(engine)
+    engine.dispose()

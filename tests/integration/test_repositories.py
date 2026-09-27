@@ -1,5 +1,5 @@
 """
-Tests de integración — todos los repositorios SQLite.
+Tests de integración — todos los repositorios SQLAlchemy.
 
 Usa las fixtures db_seed / db_conn / seed_result definidas en conftest.py.
 Cada test recibe una BD en memoria nueva con datos de seed_test aplicados.
@@ -69,60 +69,60 @@ from src.domain.models.usuario import FiltroUsuariosDTO, Rol, Usuario
 # ─────────────────────────────────────────────────────────────────────────────
 # Importaciones de repositorios
 # ─────────────────────────────────────────────────────────────────────────────
-from src.infrastructure.db.repositories import (
-    SqliteAcudienteRepository,
-    SqliteAlertaRepository,
-    SqliteAsignacionRepository,
-    SqliteAsistenciaRepository,
-    SqliteAuditoriaRepository,
-    SqliteCierreRepository,
-    SqliteConfiguracionRepository,
-    SqliteConvivenciaRepository,
-    SqliteEstadisticosRepository,
-    SqliteEstudianteRepository,
-    SqliteEvaluacionRepository,
-    SqliteHabilitacionRepository,
-    SqliteInfraestructuraRepository,
-    SqlitePeriodoRepository,
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_acudiente_repo import SqlaAcudienteRepository
+from src.infrastructure.db.repositories.sqla_alerta_repo import SqlaAlertaRepository
+from src.infrastructure.db.repositories.sqla_asignacion_repo import SqlaAsignacionRepository
+from src.infrastructure.db.repositories.sqla_asistencia_repo import SqlaAsistenciaRepository
+from src.infrastructure.db.repositories.sqla_auditoria_repo import SqlaAuditoriaRepository
+from src.infrastructure.db.repositories.sqla_cierre_repo import SqlaCierreRepository
+from src.infrastructure.db.repositories.sqla_configuracion_repo import SqlaConfiguracionRepository
+from src.infrastructure.db.repositories.sqla_convivencia_repo import SqlaConvivenciaRepository
+from src.infrastructure.db.repositories.sqla_estadisticos_repo import SqlaEstadisticosRepository
+from src.infrastructure.db.repositories.sqla_estudiante_repo import SqlaEstudianteRepository
+from src.infrastructure.db.repositories.sqla_evaluacion_repo import SqlaEvaluacionRepository
+from src.infrastructure.db.repositories.sqla_habilitacion_repo import SqlaHabilitacionRepository
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
+from src.infrastructure.db.repositories.sqla_periodo_repo import SqlaPeriodoRepository
+from src.infrastructure.db.repositories.sqla_usuario_repo import SqlaUsuarioRepository
 
 # =============================================================================
 # SqliteUsuarioRepository
 # =============================================================================
 
-class TestSqliteUsuarioRepository:
+class TestSqlaUsuarioRepository:
 
     def test_get_by_username(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         usuario = repo.get_by_username("admin_test")
         assert usuario is not None
         assert usuario.rol == Rol.ADMIN
 
     def test_get_by_id(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         usuario = repo.get_by_id(uid)
         assert usuario is not None
         assert usuario.rol == Rol.PROFESOR
 
     def test_existe_usuario(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         assert repo.existe_usuario("prof_test") is True
         assert repo.existe_usuario("no_existe_xyz") is False
 
     def test_listar_filtrado_activos(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         usuarios = repo.listar_filtrado(FiltroUsuariosDTO(solo_activos=True))
         assert len(usuarios) >= 3
 
     def test_listar_filtrado_por_rol(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         profesores = repo.listar_filtrado(FiltroUsuariosDTO(rol=Rol.PROFESOR))
         assert all(u.rol == Rol.PROFESOR for u in profesores)
 
     def test_guardar_usuario(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         nuevo = Usuario(
             usuario="nuevo_test",
             nombre_completo="Nuevo Usuario",
@@ -137,7 +137,7 @@ class TestSqliteUsuarioRepository:
         assert recuperado is not None
 
     def test_actualizar_usuario(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         usuario = repo.get_by_id(uid)
         actualizado = usuario.model_copy(update={"telefono": "3001234567"})
@@ -146,7 +146,7 @@ class TestSqliteUsuarioRepository:
         assert recuperado.telefono == "3001234567"
 
     def test_desactivar_reactivar(self, db_conn, seed_result):
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         assert repo.desactivar(uid) is True
         assert repo.get_by_id(uid).activo is False
@@ -155,13 +155,13 @@ class TestSqliteUsuarioRepository:
 
     def test_debe_cambiar_password_default_false(self, db_conn, seed_result):
         # Los usuarios sembrados NO deben quedar forzados a cambiar contraseña.
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         assert repo.get_by_id(uid).debe_cambiar_password is False
 
     def test_marcar_debe_cambiar_password_round_trip(self, db_conn, seed_result):
         # A2: el flag persiste y se limpia vía marcar_debe_cambiar_password.
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         assert repo.marcar_debe_cambiar_password(uid, True) is True
         assert repo.get_by_id(uid).debe_cambiar_password is True
@@ -170,7 +170,7 @@ class TestSqliteUsuarioRepository:
 
     def test_guardar_persiste_flag_forzado(self, db_conn, seed_result):
         # A2: un usuario creado con debe_cambiar_password=True lo conserva.
-        repo = SqliteUsuarioRepository(conn=db_conn)
+        repo = SqlaUsuarioRepository(conn=db_conn)
         nuevo = Usuario(
             usuario="forzado_test",
             nombre_completo="Forzado Test",
@@ -185,17 +185,17 @@ class TestSqliteUsuarioRepository:
 # SqliteEstudianteRepository
 # =============================================================================
 
-class TestSqliteEstudianteRepository:
+class TestSqlaEstudianteRepository:
 
     def test_get_by_id(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         est = repo.get_by_id(eid)
         assert est is not None
         assert est.id == eid
 
     def test_get_by_documento(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         est = repo.get_by_id(eid)
         encontrado = repo.get_by_documento(est.numero_documento, 1)
@@ -203,25 +203,25 @@ class TestSqliteEstudianteRepository:
         assert encontrado.id == eid
 
     def test_existe_documento(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         est = repo.get_by_id(eid)
         assert repo.existe_documento(est.numero_documento, 1) is True
         assert repo.existe_documento("9999999999", 1) is False
 
     def test_listar_por_grupo(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         estudiantes = repo.listar_por_grupo(gid, 1)
         assert len(estudiantes) == 3
 
     def test_contar_por_grupo(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         assert repo.contar_por_grupo(gid, 1) == 3
 
     def test_get_resumen(self, db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         resumen = repo.get_resumen(eid)
         assert resumen is not None
@@ -230,7 +230,7 @@ class TestSqliteEstudianteRepository:
 
     def test_listar_resumenes(self, db_conn, seed_result):
         from src.domain.models.estudiante import FiltroEstudiantesDTO
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         resumenes = repo.listar_resumenes(FiltroEstudiantesDTO(grupo_id=gid))
         assert len(resumenes) == 3
@@ -238,7 +238,7 @@ class TestSqliteEstudianteRepository:
     def test_grupos_ids_restringe_conjunto(self, db_conn, seed_result):
         """grupos_ids no-None acota el listado a `grupo_id IN (...)`."""
         from src.domain.models.estudiante import FiltroEstudiantesDTO
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         resumenes = repo.listar_resumenes(FiltroEstudiantesDTO(grupos_ids=[gid]))
         assert all(r.grupo_id == gid for r in resumenes)
@@ -251,14 +251,14 @@ class TestSqliteEstudianteRepository:
     def test_grupos_ids_vacio_devuelve_cero(self, db_conn, seed_result):
         """Lista vacía (docente sin asignaciones) → 0 resultados, sin IN () inválido."""
         from src.domain.models.estudiante import FiltroEstudiantesDTO
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         assert repo.listar_resumenes(FiltroEstudiantesDTO(grupos_ids=[])) == []
         assert repo.listar_filtrado(FiltroEstudiantesDTO(grupos_ids=[])) == []
 
     def test_grupos_ids_none_no_restringe(self, db_conn, seed_result):
         """grupos_ids None (directivo/admin) → comportamiento previo intacto."""
         from src.domain.models.estudiante import FiltroEstudiantesDTO
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         todos = repo.listar_resumenes(FiltroEstudiantesDTO())
         assert len(todos) == len(seed_result.estudiante_ids)
 
@@ -272,7 +272,7 @@ class TestSqliteEstudianteRepository:
 
     def test_registrar_y_listar_historial(self, db_conn, seed_result):
         from src.domain.models.estudiante import TipoMovimiento
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         g_origen = seed_result.grupo_ids[0]
         g_destino = self._crear_grupo_destino(db_conn)
@@ -295,7 +295,7 @@ class TestSqliteEstudianteRepository:
     def test_sin_trigger_cambio_grupo_no_duplica(self, db_conn, seed_result):
         """Tras eliminar el trigger, un UPDATE crudo de grupo_id NO genera
         historial automático: el servicio es la única fuente de verdad."""
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         g_destino = self._crear_grupo_destino(db_conn, codigo="DEST2")
         repo.asignar_grupo(eid, g_destino)   # antes esto disparaba el trigger
@@ -306,10 +306,10 @@ class TestSqliteEstudianteRepository:
 # SqliteAcudienteRepository
 # =============================================================================
 
-class TestSqliteAcudienteRepository:
+class TestSqlaAcudienteRepository:
 
     def _crear_acudiente(self, db_conn, estudiante_id: int) -> Acudiente:
-        repo = SqliteAcudienteRepository(conn=db_conn)
+        repo = SqlaAcudienteRepository(conn=db_conn)
         ac = Acudiente(
             tipo_documento=TipoDocumentoAcudiente.CC,
             numero_documento="88888888",
@@ -326,7 +326,7 @@ class TestSqliteAcudienteRepository:
         return guardado
 
     def test_guardar_y_get_by_id(self, db_conn, seed_result):
-        repo = SqliteAcudienteRepository(conn=db_conn)
+        repo = SqlaAcudienteRepository(conn=db_conn)
         ac = Acudiente(
             tipo_documento=TipoDocumentoAcudiente.CC,
             numero_documento="77777777",
@@ -341,20 +341,20 @@ class TestSqliteAcudienteRepository:
     def test_vincular_y_listar(self, db_conn, seed_result):
         eid = seed_result.estudiante_ids[0]
         guardado = self._crear_acudiente(db_conn, eid)
-        repo = SqliteAcudienteRepository(conn=db_conn)
+        repo = SqlaAcudienteRepository(conn=db_conn)
         lista = repo.listar_por_estudiante(eid)
         assert any(a.id == guardado.id for a in lista)
 
     def test_get_principal(self, db_conn, seed_result):
         eid = seed_result.estudiante_ids[0]
         guardado = self._crear_acudiente(db_conn, eid)
-        repo = SqliteAcudienteRepository(conn=db_conn)
+        repo = SqlaAcudienteRepository(conn=db_conn)
         principal = repo.get_principal(eid)
         assert principal is not None
         assert principal.id == guardado.id
 
     def test_establecer_principal(self, db_conn, seed_result):
-        repo = SqliteAcudienteRepository(conn=db_conn)
+        repo = SqlaAcudienteRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[1]
         ac1 = repo.guardar(Acudiente(
             tipo_documento=TipoDocumentoAcudiente.CC,
@@ -379,24 +379,24 @@ class TestSqliteAcudienteRepository:
 # SqliteAsignacionRepository
 # =============================================================================
 
-class TestSqliteAsignacionRepository:
+class TestSqlaAsignacionRepository:
 
     def test_get_by_id(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         asig = repo.get_by_id(aid)
         assert asig is not None
         assert asig.id == aid
 
     def test_existe(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         asig = repo.get_by_id(aid)
         assert repo.existe(asig.grupo_id, asig.asignatura_id, asig.usuario_id, asig.periodo_id) is True
         assert repo.existe(9999, 9999, 9999, 9999) is False
 
     def test_get_info(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         info = repo.get_info(aid)
         assert info is not None
@@ -406,20 +406,20 @@ class TestSqliteAsignacionRepository:
         assert info.docente_nombre != ""
 
     def test_listar_por_grupo(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         infos = repo.listar_por_grupo(gid, pid, 1)
         assert len(infos) >= 1
 
     def test_listar_por_docente(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         infos = repo.listar_por_docente(uid, 1)
         assert len(infos) >= 1
 
     def test_desactivar_reactivar(self, db_conn, seed_result):
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         assert repo.desactivar(aid) is True
         assert repo.get_by_id(aid).activo is False
@@ -431,17 +431,17 @@ class TestSqliteAsignacionRepository:
 # SqliteEvaluacionRepository
 # =============================================================================
 
-class TestSqliteEvaluacionRepository:
+class TestSqlaEvaluacionRepository:
 
     def test_listar_categorias(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         cats = repo.listar_categorias(aid, pid)
         assert len(cats) >= 1
 
     def test_guardar_categoria(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         # Usar periodo_ids[1]: el seed solo crea categorías para el primer periodo
         pid = seed_result.periodo_ids[1]
@@ -450,21 +450,21 @@ class TestSqliteEvaluacionRepository:
         assert guardada.id is not None
 
     def test_suma_pesos_otras(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         suma = repo.suma_pesos_otras(aid, pid)
         assert 0 <= suma <= 1.0
 
     def test_listar_actividades(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         acts = repo.listar_actividades(aid, pid)
         assert len(acts) >= 1
 
     def test_guardar_nota_y_get(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         eid = seed_result.estudiante_ids[0]
@@ -478,7 +478,7 @@ class TestSqliteEvaluacionRepository:
         assert recuperada.valor == 85.0
 
     def test_guardar_notas_masivas(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         acts = repo.listar_actividades(aid, pid)
@@ -493,7 +493,7 @@ class TestSqliteEvaluacionRepository:
         assert count == len(notas)
 
     def test_guardar_puntos_extra(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
         eid = seed_result.estudiante_ids[0]
@@ -508,7 +508,7 @@ class TestSqliteEvaluacionRepository:
         assert recuperado.positivos == 3
 
     def test_listar_resultados_grupo(self, db_conn, seed_result):
-        repo = SqliteEvaluacionRepository(conn=db_conn)
+        repo = SqlaEvaluacionRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -520,7 +520,7 @@ class TestSqliteEvaluacionRepository:
 # SqliteAsistenciaRepository
 # =============================================================================
 
-class TestSqliteAsistenciaRepository:
+class TestSqlaAsistenciaRepository:
 
     def _make_control(self, estudiante_id, grupo_id, asignacion_id, periodo_id, estado="P"):
         return ControlDiario(
@@ -533,7 +533,7 @@ class TestSqliteAsistenciaRepository:
         )
 
     def test_registrar_y_get(self, db_conn, seed_result):
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
@@ -545,7 +545,7 @@ class TestSqliteAsistenciaRepository:
         assert recuperado.estado == EstadoAsistencia.PRESENTE
 
     def test_registrar_masivo(self, db_conn, seed_result):
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -557,7 +557,7 @@ class TestSqliteAsistenciaRepository:
         assert count == 3
 
     def test_resumen_por_estudiante(self, db_conn, seed_result):
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
@@ -568,7 +568,7 @@ class TestSqliteAsistenciaRepository:
         assert resumen.total_clases >= 1
 
     def test_contar_faltas_injustificadas(self, db_conn, seed_result):
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
@@ -578,7 +578,7 @@ class TestSqliteAsistenciaRepository:
         assert count >= 1
 
     def test_fechas_con_registro(self, db_conn, seed_result):
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
@@ -592,10 +592,10 @@ class TestSqliteAsistenciaRepository:
 # SqliteCierreRepository
 # =============================================================================
 
-class TestSqliteCierreRepository:
+class TestSqlaCierreRepository:
 
     def test_guardar_y_get_cierre_periodo(self, db_conn, seed_result):
-        repo = SqliteCierreRepository(conn=db_conn)
+        repo = SqlaCierreRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -610,7 +610,7 @@ class TestSqliteCierreRepository:
         assert recuperado.nota_definitiva == 75.0
 
     def test_upsert_cierre_periodo(self, db_conn, seed_result):
-        repo = SqliteCierreRepository(conn=db_conn)
+        repo = SqlaCierreRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -624,7 +624,7 @@ class TestSqliteCierreRepository:
         assert recuperado.nota_definitiva == 80.0  # reemplazó
 
     def test_guardar_y_get_cierre_anio(self, db_conn, seed_result):
-        repo = SqliteCierreRepository(conn=db_conn)
+        repo = SqlaCierreRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         anio_id = seed_result.anio_id
@@ -639,7 +639,7 @@ class TestSqliteCierreRepository:
         assert recuperado.nota_definitiva_anual == 72.0
 
     def test_guardar_y_actualizar_promocion(self, db_conn, seed_result):
-        repo = SqliteCierreRepository(conn=db_conn)
+        repo = SqlaCierreRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         anio_id = seed_result.anio_id
         promo = PromocionAnual(estudiante_id=eid, anio_id=anio_id)
@@ -655,10 +655,10 @@ class TestSqliteCierreRepository:
 # SqliteHabilitacionRepository
 # =============================================================================
 
-class TestSqliteHabilitacionRepository:
+class TestSqlaHabilitacionRepository:
 
     def test_guardar_y_get_habilitacion(self, db_conn, seed_result):
-        repo = SqliteHabilitacionRepository(conn=db_conn)
+        repo = SqlaHabilitacionRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -672,7 +672,7 @@ class TestSqliteHabilitacionRepository:
         assert recuperada.estado == EstadoHabilitacion.PENDIENTE
 
     def test_existe_habilitacion(self, db_conn, seed_result):
-        repo = SqliteHabilitacionRepository(conn=db_conn)
+        repo = SqlaHabilitacionRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[1]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -683,7 +683,7 @@ class TestSqliteHabilitacionRepository:
         assert repo.existe_habilitacion(eid, aid, TipoHabilitacion.PERIODO, pid) is True
 
     def test_actualizar_estado_habilitacion(self, db_conn, seed_result):
-        repo = SqliteHabilitacionRepository(conn=db_conn)
+        repo = SqlaHabilitacionRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[2]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -693,7 +693,7 @@ class TestSqliteHabilitacionRepository:
         assert repo.actualizar_estado_habilitacion(guardada.id, EstadoHabilitacion.REALIZADA)
 
     def test_guardar_y_actualizar_plan(self, db_conn, seed_result):
-        repo = SqliteHabilitacionRepository(conn=db_conn)
+        repo = SqlaHabilitacionRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -712,10 +712,10 @@ class TestSqliteHabilitacionRepository:
 # SqliteConvivenciaRepository
 # =============================================================================
 
-class TestSqliteConvivenciaRepository:
+class TestSqlaConvivenciaRepository:
 
     def test_guardar_y_get_observacion(self, db_conn, seed_result):
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -729,7 +729,7 @@ class TestSqliteConvivenciaRepository:
         assert recuperada.texto == "Buen desempeño general."
 
     def test_guardar_y_listar_registros(self, db_conn, seed_result):
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -744,7 +744,7 @@ class TestSqliteConvivenciaRepository:
         assert any(r.id == guardado.id for r in lista)
 
     def test_guardar_nota_comportamiento(self, db_conn, seed_result):
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -757,7 +757,7 @@ class TestSqliteConvivenciaRepository:
         assert recuperada.valor == 88.0
 
     def test_upsert_nota_comportamiento(self, db_conn, seed_result):
-        repo = SqliteConvivenciaRepository(conn=db_conn)
+        repo = SqlaConvivenciaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[1]
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -771,17 +771,17 @@ class TestSqliteConvivenciaRepository:
 # SqliteAlertaRepository
 # =============================================================================
 
-class TestSqliteAlertaRepository:
+class TestSqlaAlertaRepository:
 
     def test_guardar_config_y_get(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         anio_id = seed_result.anio_id
         cfg = repo.get_configuracion(anio_id, TipoAlerta.FALTAS_INJUSTIFICADAS)
         # El seed ya inserta configuraciones
         assert cfg is not None
 
     def test_guardar_alerta_y_get(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         alerta = Alerta(
             estudiante_id=eid,
@@ -795,7 +795,7 @@ class TestSqliteAlertaRepository:
         assert recuperada.resuelta is False
 
     def test_existe_pendiente(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         assert repo.existe_pendiente(eid, TipoAlerta.PROMEDIO_BAJO) is False
         repo.guardar_alerta(Alerta(
@@ -805,7 +805,7 @@ class TestSqliteAlertaRepository:
         assert repo.existe_pendiente(eid, TipoAlerta.PROMEDIO_BAJO) is True
 
     def test_resolver_alerta(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         guardada = repo.guardar_alerta(Alerta(
             estudiante_id=eid, tipo_alerta=TipoAlerta.MATERIAS_EN_RIESGO,
@@ -817,7 +817,7 @@ class TestSqliteAlertaRepository:
         assert recuperada.resuelta is True
 
     def test_guardar_alertas_masivas(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         alertas = [
             Alerta(
                 estudiante_id=eid,
@@ -831,7 +831,7 @@ class TestSqliteAlertaRepository:
         assert count == 3
 
     def test_contar_pendientes(self, db_conn, seed_result):
-        repo = SqliteAlertaRepository(conn=db_conn)
+        repo = SqlaAlertaRepository(conn=db_conn)
         eid = seed_result.estudiante_ids[0]
         repo.guardar_alerta(Alerta(
             estudiante_id=eid, tipo_alerta=TipoAlerta.PLAN_MEJORAMIENTO_VENCIDO,
@@ -845,10 +845,10 @@ class TestSqliteAlertaRepository:
 # SqliteAuditoriaRepository
 # =============================================================================
 
-class TestSqliteAuditoriaRepository:
+class TestSqlaAuditoriaRepository:
 
     def test_registrar_evento(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         evento = EventoSesion(
             usuario="admin_test",
@@ -860,7 +860,7 @@ class TestSqliteAuditoriaRepository:
         assert guardado.id is not None
 
     def test_listar_eventos(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         repo.registrar_evento(EventoSesion(
             usuario="admin_test", usuario_id=uid,
@@ -870,7 +870,7 @@ class TestSqliteAuditoriaRepository:
         assert len(eventos) >= 1
 
     def test_get_ultimo_login(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         repo.registrar_evento(EventoSesion(
             usuario="prof_test", usuario_id=uid,
@@ -880,7 +880,7 @@ class TestSqliteAuditoriaRepository:
         assert ultimo is not None
 
     def test_contar_fallos_recientes(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["prof_test"]
         repo.registrar_evento(EventoSesion(
             usuario="prof_test", usuario_id=uid,
@@ -890,7 +890,7 @@ class TestSqliteAuditoriaRepository:
         assert count >= 1
 
     def test_registrar_cambio(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         cambio = RegistroCambio(
             usuario_id=seed_result.usuario_ids["admin_test"],
             accion=AccionCambio.CREATE,
@@ -902,7 +902,7 @@ class TestSqliteAuditoriaRepository:
         assert guardado.id is not None
 
     def test_registrar_cambios_masivos(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         cambios = [
             RegistroCambio(usuario_id=uid, accion=AccionCambio.UPDATE,
@@ -915,7 +915,7 @@ class TestSqliteAuditoriaRepository:
     # -- Encadenamiento por hash (seguridad_03, M3) ----------------------------
 
     def test_eventos_se_encadenan_y_verifican(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         for _ in range(3):
             repo.registrar_evento(EventoSesion(
@@ -931,7 +931,7 @@ class TestSqliteAuditoriaRepository:
         assert repo.verificar_cadena_eventos() is None
 
     def test_evento_alterado_rompe_la_cadena(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         ids = [
             repo.registrar_evento(EventoSesion(
@@ -949,7 +949,7 @@ class TestSqliteAuditoriaRepository:
         assert repo.verificar_cadena_eventos() == ids[1]
 
     def test_cambios_se_encadenan_y_verifican(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         for i in range(3):
             repo.registrar_cambio(RegistroCambio(
@@ -959,7 +959,7 @@ class TestSqliteAuditoriaRepository:
         assert repo.verificar_cadena_cambios() is None
 
     def test_cambio_alterado_rompe_la_cadena(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         ids = [
             repo.registrar_cambio(RegistroCambio(
@@ -975,7 +975,7 @@ class TestSqliteAuditoriaRepository:
         assert repo.verificar_cadena_cambios() == ids[0]
 
     def test_cambios_masivos_encadenan_secuencialmente(self, db_conn, seed_result):
-        repo = SqliteAuditoriaRepository(conn=db_conn)
+        repo = SqlaAuditoriaRepository(conn=db_conn)
         uid = seed_result.usuario_ids["admin_test"]
         cambios = [
             RegistroCambio(usuario_id=uid, accion=AccionCambio.UPDATE,
@@ -998,15 +998,15 @@ class TestSqliteAuditoriaRepository:
 # SqliteInfraestructuraRepository
 # =============================================================================
 
-class TestSqliteInfraestructuraRepository:
+class TestSqlaInfraestructuraRepository:
 
     def test_listar_areas(self, db_conn, seed_result):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         areas = repo.listar_areas(1)
         assert len(areas) >= 1
 
     def test_guardar_area(self, db_conn, seed_result):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         area = AreaConocimiento(nombre="Nuevas Tecnologías", codigo="NT")
         guardada = repo.guardar_area(area)
         assert guardada.id is not None
@@ -1014,19 +1014,19 @@ class TestSqliteInfraestructuraRepository:
         assert recuperada.nombre == "Nuevas Tecnologías"
 
     def test_listar_asignaturas(self, db_conn, seed_result):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         asigs = repo.listar_asignaturas(1)
         assert len(asigs) >= 1
 
     def test_get_grupo(self, db_conn, seed_result):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         grupo = repo.get_grupo(gid)
         assert grupo is not None
         assert grupo.id == gid
 
     def test_guardar_grupo(self, db_conn, seed_result):
-        repo = SqliteInfraestructuraRepository(conn=db_conn)
+        repo = SqlaInfraestructuraRepository(conn=db_conn)
         grupo = Grupo(codigo="902", nombre="Noveno B", grado=9, jornada=Jornada.UNICA)
         guardado = repo.guardar_grupo(grupo)
         assert guardado.id is not None
@@ -1036,33 +1036,33 @@ class TestSqliteInfraestructuraRepository:
 # SqlitePeriodoRepository
 # =============================================================================
 
-class TestSqlitePeriodoRepository:
+class TestSqlaPeriodoRepository:
 
     def test_get_by_id(self, db_conn, seed_result):
-        repo = SqlitePeriodoRepository(conn=db_conn)
+        repo = SqlaPeriodoRepository(conn=db_conn)
         pid = seed_result.periodo_ids[0]
         periodo = repo.get_by_id(pid)
         assert periodo is not None
         assert periodo.id == pid
 
     def test_get_activo(self, db_conn, seed_result):
-        repo = SqlitePeriodoRepository(conn=db_conn)
+        repo = SqlaPeriodoRepository(conn=db_conn)
         periodo = repo.get_activo(seed_result.anio_id)
         # Debe haber al menos uno activo creado por el seed
         assert periodo is not None
 
     def test_listar_por_anio(self, db_conn, seed_result):
-        repo = SqlitePeriodoRepository(conn=db_conn)
+        repo = SqlaPeriodoRepository(conn=db_conn)
         periodos = repo.listar_por_anio(seed_result.anio_id)
         assert len(periodos) >= 1
 
     def test_suma_pesos_otros(self, db_conn, seed_result):
-        repo = SqlitePeriodoRepository(conn=db_conn)
+        repo = SqlaPeriodoRepository(conn=db_conn)
         suma = repo.suma_pesos_otros(seed_result.anio_id)
         assert suma >= 0
 
     def test_guardar_hito(self, db_conn, seed_result):
-        repo = SqlitePeriodoRepository(conn=db_conn)
+        repo = SqlaPeriodoRepository(conn=db_conn)
         pid = seed_result.periodo_ids[0]
         hito = HitoPeriodo(
             periodo_id=pid,
@@ -1080,26 +1080,26 @@ class TestSqlitePeriodoRepository:
 # SqliteConfiguracionRepository
 # =============================================================================
 
-class TestSqliteConfiguracionRepository:
+class TestSqlaConfiguracionRepository:
 
     def test_get_anio_activo(self, db_conn, seed_result):
-        repo = SqliteConfiguracionRepository(conn=db_conn)
+        repo = SqlaConfiguracionRepository(conn=db_conn)
         anio = repo.get_activa(1)
         assert anio is not None
 
     def test_get_anio_by_id(self, db_conn, seed_result):
-        repo = SqliteConfiguracionRepository(conn=db_conn)
+        repo = SqlaConfiguracionRepository(conn=db_conn)
         anio = repo.get_by_id(seed_result.anio_id)
         assert anio is not None
         assert anio.id == seed_result.anio_id
 
     def test_listar_niveles(self, db_conn, seed_result):
-        repo = SqliteConfiguracionRepository(conn=db_conn)
+        repo = SqlaConfiguracionRepository(conn=db_conn)
         niveles = repo.listar_niveles(seed_result.anio_id)
         assert len(niveles) == 4  # seed_test crea 4 niveles
 
     def test_get_criterios_promocion(self, db_conn, seed_result):
-        repo = SqliteConfiguracionRepository(conn=db_conn)
+        repo = SqlaConfiguracionRepository(conn=db_conn)
         criterios = repo.get_criterios(seed_result.anio_id)
         assert criterios is not None
 
@@ -1108,10 +1108,10 @@ class TestSqliteConfiguracionRepository:
 # SqliteEstadisticosRepository
 # =============================================================================
 
-class TestSqliteEstadisticosRepository:
+class TestSqlaEstadisticosRepository:
 
     def test_calcular_metricas_dashboard(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         metrics = repo.calcular_metricas_dashboard(gid, pid)
@@ -1119,21 +1119,21 @@ class TestSqliteEstadisticosRepository:
         assert metrics.total_estudiantes == 3
 
     def test_promedio_general_grupo(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         promedio = repo.promedio_general_grupo(gid, pid)
         assert 0.0 <= promedio <= 100.0
 
     def test_porcentaje_asistencia_global(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         pct = repo.porcentaje_asistencia_global(gid, pid)
         assert 0.0 <= pct <= 100.0
 
     def test_ranking_grupo(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         ranking = repo.ranking_grupo(gid, pid)
@@ -1141,7 +1141,7 @@ class TestSqliteEstadisticosRepository:
         assert all("posicion" in r and "nombre_completo" in r for r in ranking)
 
     def test_distribucion_estados_asistencia(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         aid = seed_result.asignacion_ids[0]
         pid = seed_result.periodo_ids[0]
@@ -1149,7 +1149,7 @@ class TestSqliteEstadisticosRepository:
         assert set(dist.keys()) == {"P", "FJ", "FI", "R", "E"}
 
     def test_consolidado_notas_grupo(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         consolidado = repo.consolidado_notas_grupo(gid, pid)
@@ -1157,7 +1157,7 @@ class TestSqliteEstadisticosRepository:
         assert all("nombre_completo" in r for r in consolidado)
 
     def test_consolidado_asistencia_grupo(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         pid = seed_result.periodo_ids[0]
         consolidado = repo.consolidado_asistencia_grupo(gid, pid)
@@ -1165,7 +1165,7 @@ class TestSqliteEstadisticosRepository:
         assert isinstance(consolidado, list)
 
     def test_contar_alertas_pendientes(self, db_conn, seed_result):
-        repo = SqliteEstadisticosRepository(conn=db_conn)
+        repo = SqlaEstadisticosRepository(conn=db_conn)
         gid = seed_result.grupo_ids[0]
         count = repo.contar_alertas_pendientes(gid)
         assert count >= 0

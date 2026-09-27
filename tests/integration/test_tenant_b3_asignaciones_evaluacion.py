@@ -25,11 +25,11 @@ from src.domain.models.asignacion import (
     FiltroAsignacionesDTO,
     NuevaAsignacionDTO,
 )
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-    SqliteAsignacionRepository,
+from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+    SqlaAsignacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 from src.services.asignacion_service import AsignacionService
 from src.services.contexto_tenant import usar_institucion
@@ -77,7 +77,7 @@ def _montar_dos_instituciones(db_conn, seed_result):
     asignatura_id = seed_result.asignatura_ids["MAT_T"]
     db_conn.commit()
 
-    repo = SqliteAsignacionRepository(conn=db_conn)
+    repo = SqlaAsignacionRepository(conn=db_conn)
     svc = AsignacionService(repo)
 
     # Asignación en la institución #2 (grupo nuevo). La de inst #1 ya la creó
@@ -164,7 +164,7 @@ class TestScopeAsignaciones:
     def test_repo_listar_plano_scopeado(self, db_conn, seed_result):
         """listar() (SELECT plano, sin JOIN) también scopea vía subconsulta."""
         _svc, ctx = _montar_dos_instituciones(db_conn, seed_result)
-        repo = SqliteAsignacionRepository(conn=db_conn)
+        repo = SqlaAsignacionRepository(conn=db_conn)
 
         plano_1 = repo.listar(FiltroAsignacionesDTO(
             periodo_id=ctx["periodo_id"], institucion_id=1
@@ -184,30 +184,30 @@ class TestScopeAsignaciones:
 class TestScopeCierres:
 
     def _cierre_svc(self, db_conn):
-        from src.infrastructure.db.repositories.sqlite_cierre_repo import (
-            SqliteCierreRepository,
+        from src.infrastructure.db.repositories.sqla_cierre_repo import (
+            SqlaCierreRepository,
         )
-        from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
-            SqliteConfiguracionRepository,
+        from src.infrastructure.db.repositories.sqla_configuracion_repo import (
+            SqlaConfiguracionRepository,
         )
-        from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
-            SqliteEstudianteRepository,
+        from src.infrastructure.db.repositories.sqla_estudiante_repo import (
+            SqlaEstudianteRepository,
         )
-        from src.infrastructure.db.repositories.sqlite_evaluacion_repo import (
-            SqliteEvaluacionRepository,
+        from src.infrastructure.db.repositories.sqla_evaluacion_repo import (
+            SqlaEvaluacionRepository,
         )
-        from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-            SqlitePeriodoRepository,
+        from src.infrastructure.db.repositories.sqla_periodo_repo import (
+            SqlaPeriodoRepository,
         )
         from src.services.cierre_service import CierreService
 
         return CierreService(
-            cierre_repo=SqliteCierreRepository(conn=db_conn),
-            evaluacion_repo=SqliteEvaluacionRepository(conn=db_conn),
-            periodo_repo=SqlitePeriodoRepository(conn=db_conn),
-            config_repo=SqliteConfiguracionRepository(conn=db_conn),
-            estudiante_repo=SqliteEstudianteRepository(conn=db_conn),
-            asignacion_repo=SqliteAsignacionRepository(conn=db_conn),
+            cierre_repo=SqlaCierreRepository(conn=db_conn),
+            evaluacion_repo=SqlaEvaluacionRepository(conn=db_conn),
+            periodo_repo=SqlaPeriodoRepository(conn=db_conn),
+            config_repo=SqlaConfiguracionRepository(conn=db_conn),
+            estudiante_repo=SqlaEstudianteRepository(conn=db_conn),
+            asignacion_repo=SqlaAsignacionRepository(conn=db_conn),
         )
 
     def test_resumen_cierres_institucional_scopeado(self, db_conn, seed_result):
@@ -256,7 +256,7 @@ class TestScopeEstadisticos:
         from src.services.estadisticos_service import EstadisticosService
 
         _svc, ctx = _montar_dos_instituciones(db_conn, seed_result)
-        infra_repo = SqliteInfraestructuraRepository(conn=db_conn)
+        infra_repo = SqlaInfraestructuraRepository(conn=db_conn)
         est_svc = EstadisticosService(_EstadRepoConteo(), infra_repo=infra_repo)
         periodo_id = ctx["periodo_id"]
 

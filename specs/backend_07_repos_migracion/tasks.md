@@ -17,7 +17,7 @@ Puerta obligatoria tras **cada** ola:
 
 ---
 
-## T1 — Crear RepositorioBase  [ ]
+## T1 — Crear RepositorioBase  [x]
 
 **Artefacto:** `src/infrastructure/db/repositories/base.py` con:
 - Constructor que acepta conexión SQLAlchemy.
@@ -29,7 +29,7 @@ Puerta obligatoria tras **cada** ola:
 
 ---
 
-## T2 — Ola 1: repos pequeños (preferencias, institucion, siee)  [ ]
+## T2 — Ola 1: repos pequeños (preferencias, institucion, siee)  [x]
 
 Migrar los 3 repos más pequeños (7+10+12 = 29 métodos):
 
@@ -46,38 +46,38 @@ Migrar los 3 repos más pequeños (7+10+12 = 29 métodos):
 
 ---
 
-## T3 — Ola 2a: repos medianos de negocio core (asignacion, periodo, configuracion)  [ ]
+## T3 — Ola 2a: repos medianos de negocio core (asignacion, periodo, configuracion)  [x]
 
 15+20+20 = 55 métodos.
 
 ---
 
-## T4 — Ola 2b: repos de evaluación (habilitacion, nivelacion, cierre, plan_mejoramiento)  [ ]
+## T4 — Ola 2b: repos de evaluación (habilitacion, nivelacion, cierre, plan_mejoramiento)  [x]
 
 16+16+17+21 = 70 métodos. Incluyen las notas con `Numeric(4,2)`.
 
 ---
 
-## T5 — Ola 2c: repos de asistencia y alertas (asistencia, alerta, acudiente, estadisticos)  [ ]
+## T5 — Ola 2c: repos de asistencia y alertas (asistencia, alerta, acudiente, estadisticos)  [x]
 
 18+17+18+20 = 73 métodos.
 
 ---
 
-## T6 — Ola 3a: repos grandes de identidad (usuario, estudiante)  [ ]
+## T6 — Ola 3a: repos grandes de identidad (usuario, estudiante)  [x]
 
 22+25 = 47 métodos. Incluyen los 12 `INSERT OR REPLACE` más frecuentes.
 
 ---
 
-## T7 — Ola 3b: repos de evaluación y auditoría (evaluacion, auditoria)  [ ]
+## T7 — Ola 3b: repos de evaluación y auditoría (evaluacion, auditoria)  [x]
 
 30+34 = 64 métodos. Auditoría es especial: la cadena SHA-256, la
 verificación incremental y los agregados SQL.
 
 ---
 
-## T8 — Ola 3c: repos grandes restantes (convivencia, infraestructura)  [ ]
+## T8 — Ola 3c: repos grandes restantes (convivencia, infraestructura)  [x]
 
 52+121 = 173 métodos. Infraestructura es el repo más grande del proyecto.
 
@@ -86,7 +86,7 @@ partirlo en sub-olas.
 
 ---
 
-## T9 — Test de conformidad: filtro de tenant  [ ]
+## T9 — Test de conformidad: filtro de tenant  [x]
 
 Crear `tests/unit/infrastructure/test_tenant_filter_conformance.py`:
 
@@ -98,7 +98,7 @@ repo y verificar que el filtro está presente.
 
 ---
 
-## T10 — Eliminar connection.py  [ ]
+## T10 — Eliminar connection.py  [~] (deuda DT-07-3: observabilidad_service + schema.py siguen usando connection.py)
 
 Una vez que todos los repos usan SQLAlchemy:
 1. Eliminar `src/infrastructure/db/connection.py`.
@@ -113,7 +113,7 @@ Debe estar vacío.
 
 ---
 
-## T11 — Verificación de no regresión y cierre  [ ]
+## T11 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe scripts/init.py

@@ -23,8 +23,8 @@ from src.domain.models.estudiante import (
     FiltroEstudiantesDTO,
     NuevoEstudianteDTO,
 )
-from src.infrastructure.db.repositories.sqlite_estudiante_repo import (
-    SqliteEstudianteRepository,
+from src.infrastructure.db.repositories.sqla_estudiante_repo import (
+    SqlaEstudianteRepository,
 )
 from src.services.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
@@ -42,7 +42,7 @@ class TestScopeEstudiantes:
         return int(cur.lastrowid)
 
     def _svc(self, conn) -> EstudianteService:
-        return EstudianteService(SqliteEstudianteRepository(conn=conn))
+        return EstudianteService(SqlaEstudianteRepository(conn=conn))
 
     def test_listar_filtrado_director_ve_solo_su_institucion(self, db_conn):
         """Con scope=institución, listar_filtrado filtra; admin (None) ve todo."""

@@ -28,26 +28,32 @@ if str(ROOT) not in sys.path:
 # ===========================================================================
 
 
-def _make_db() -> sqlite3.Connection:
-    """Crea una BD en memoria con schema + seed_test."""
-    from tests.db_engine import create_test_engine
+def _make_db():
+    """Crea una BD en memoria con schema + seed_test.
 
-    conn = create_test_engine()
-
+    Retorna (raw_conn, sa_conn, engine). El llamador mantiene referencias
+    a sa_conn y engine para evitar que GC cierre la conexión raw.
+    """
     from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool
 
     from src.infrastructure.db.schema import metadata
+    from src.infrastructure.db.seed import _fast_hasher, seed_test
 
-    engine = create_engine("sqlite://", creator=lambda: conn, poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     metadata.create_all(engine)
-    conn.commit()
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = sqlite3.Row
 
-    from src.infrastructure.db.seed import seed_test
+    seed_test(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
 
-    seed_test(conn)
-    conn.commit()
-    return conn
+    return raw, sa_conn, engine
 
 
 # ===========================================================================
@@ -138,9 +144,10 @@ class TestHidratacionDesdeBaseSembrada:
 
     @pytest.fixture(scope="class")
     def conn(self):
-        db = _make_db()
-        yield db
-        db.close()
+        raw, sa_conn, engine = _make_db()
+        yield raw
+        sa_conn.close()
+        engine.dispose()
 
     def _select_rows(self, conn: sqlite3.Connection, tabla: str) -> list[sqlite3.Row]:
         try:

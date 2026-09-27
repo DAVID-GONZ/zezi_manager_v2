@@ -1,5 +1,5 @@
 """
-Tests de integración para SqlitePlanMejoramientoRepository — backend_02c.
+Tests de integración para SqlaPlanMejoramientoRepository — backend_02c.
 
 Verifica que el repositorio sigue el patrón conn=None del resto de repos:
   - Aceptar una conexión inyectada y operar sobre ella.
@@ -18,8 +18,8 @@ from src.domain.models.plan_mejoramiento import (
     EstadoNotaCorte,
     NotaCortePlan,
 )
-from src.infrastructure.db.repositories.sqlite_plan_mejoramiento_repo import (
-    SqlitePlanMejoramientoRepository,
+from src.infrastructure.db.repositories.sqla_plan_mejoramiento_repo import (
+    SqlaPlanMejoramientoRepository,
 )
 
 pytestmark = pytest.mark.integration
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 
 
-def _hacer_corte(repo: SqlitePlanMejoramientoRepository, asignacion_id: int, periodo_id: int) -> CortePlan:
+def _hacer_corte(repo: SqlaPlanMejoramientoRepository, asignacion_id: int, periodo_id: int) -> CortePlan:
     """Crea y guarda un CortePlan mínimo."""
     return repo.guardar_corte(
         CortePlan(
@@ -50,14 +50,14 @@ def _hacer_corte(repo: SqlitePlanMejoramientoRepository, asignacion_id: int, per
 
 
 def test_repo_acepta_conn_inyectada(db_conn):
-    """SqlitePlanMejoramientoRepository(conn=db_conn) no lanza excepción."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    """SqlaPlanMejoramientoRepository(conn=db_conn) no lanza excepción."""
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     assert repo._conn is db_conn
 
 
 def test_repo_sin_conn_no_lanza_al_instanciar():
-    """SqlitePlanMejoramientoRepository() sin conn= instancia correctamente."""
-    repo = SqlitePlanMejoramientoRepository()
+    """SqlaPlanMejoramientoRepository() sin conn= instancia correctamente."""
+    repo = SqlaPlanMejoramientoRepository()
     assert repo._conn is None
 
 
@@ -68,7 +68,7 @@ def test_repo_sin_conn_no_lanza_al_instanciar():
 
 def test_guardar_y_obtener_corte(db_conn, seed_result):
     """guardar_corte persiste y get_corte recupera por (asignacion_id, periodo_id)."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 
@@ -84,7 +84,7 @@ def test_guardar_y_obtener_corte(db_conn, seed_result):
 
 def test_get_corte_by_id(db_conn, seed_result):
     """get_corte_by_id retorna el corte correcto por id."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 
@@ -97,7 +97,7 @@ def test_get_corte_by_id(db_conn, seed_result):
 
 def test_get_corte_inexistente_retorna_none(db_conn):
     """get_corte retorna None cuando no existe el corte."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     assert repo.get_corte(9999, 9999) is None
 
 
@@ -108,7 +108,7 @@ def test_get_corte_inexistente_retorna_none(db_conn):
 
 def test_guardar_y_obtener_nota_corte(db_conn, seed_result):
     """guardar_nota_corte y get_nota_corte hacen roundtrip correcto."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
     est_id = seed_result.estudiante_ids[0]
@@ -135,7 +135,7 @@ def test_guardar_y_obtener_nota_corte(db_conn, seed_result):
 
 def test_listar_notas_corte(db_conn, seed_result):
     """listar_notas_corte retorna todas las notas de un corte."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 
@@ -159,7 +159,7 @@ def test_listar_notas_corte(db_conn, seed_result):
 
 def test_actualizar_nota_corte(db_conn, seed_result):
     """actualizar_nota_corte cambia estado y nota_definitiva_plan."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
     est_id = seed_result.estudiante_ids[0]
@@ -193,7 +193,7 @@ def test_actualizar_nota_corte(db_conn, seed_result):
 
 def test_guardar_y_obtener_actividad(db_conn, seed_result):
     """guardar_actividad y get_actividad hacen roundtrip correcto."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 
@@ -217,7 +217,7 @@ def test_guardar_y_obtener_actividad(db_conn, seed_result):
 
 def test_listar_actividades(db_conn, seed_result):
     """listar_actividades retorna solo las del corte dado."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 
@@ -235,7 +235,7 @@ def test_listar_actividades(db_conn, seed_result):
 
 def test_suma_pesos_actividades(db_conn, seed_result):
     """suma_pesos_actividades retorna la suma correcta; 0.0 para corte vacío."""
-    repo = SqlitePlanMejoramientoRepository(conn=db_conn)
+    repo = SqlaPlanMejoramientoRepository(conn=db_conn)
     asig_id = seed_result.asignacion_ids[0]
     per_id = seed_result.periodo_ids[0]
 

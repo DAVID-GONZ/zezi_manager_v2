@@ -6,7 +6,7 @@ Tests para el panel de seguimientos pendientes del dashboard (convivencia_19).
 Cubre:
   - AlertaService.listar_alertas_para_usuario filtra por destinatario y tipo
   - Resultado vacío cuando no hay alertas para ese usuario
-  - SqliteAlertaRepository.listar_alertas_por_destinatario filtra correctamente
+  - SqlaAlertaRepository.listar_alertas_por_destinatario filtra correctamente
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 from src.domain.models.alerta import Alerta, NivelAlerta, TipoAlerta
-from src.infrastructure.db.repositories.sqlite_alerta_repo import SqliteAlertaRepository
+from src.infrastructure.db.repositories.sqla_alerta_repo import SqlaAlertaRepository
 from src.services.alerta_service import AlertaService
 
 # =============================================================================
@@ -98,30 +98,29 @@ class TestAlertaServiceListarParaUsuario:
 
 
 # =============================================================================
-# Tests de SqliteAlertaRepository
+# Tests de SqlaAlertaRepository
 # =============================================================================
 
 
-def _crear_bd_en_memoria() -> sqlite3.Connection:
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("""
-        CREATE TABLE alertas (
-            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-            estudiante_id           INTEGER NOT NULL DEFAULT 0,
-            tipo_alerta             TEXT    NOT NULL,
-            nivel                   TEXT    NOT NULL DEFAULT 'advertencia',
-            descripcion             TEXT    NOT NULL,
-            fecha_generacion        TEXT    NOT NULL,
-            resuelta                INTEGER NOT NULL DEFAULT 0,
-            fecha_resolucion        TEXT,
-            usuario_resolucion_id   INTEGER,
-            observacion_resolucion  TEXT,
-            usuario_destino_id      INTEGER
-        )
-    """)
-    conn.commit()
-    return conn
+def _crear_bd_en_memoria():
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    return CompatConnection(sa_conn)
 
 
 def _insertar_alerta(conn: sqlite3.Connection, tipo: str, usuario_destino_id: int,
@@ -142,14 +141,14 @@ def _insertar_alerta(conn: sqlite3.Connection, tipo: str, usuario_destino_id: in
     conn.commit()
 
 
-class TestSqliteAlertaRepoListarPorDestinatario:
+class TestSqlaAlertaRepoListarPorDestinatario:
 
     def test_filtra_por_usuario_destino(self):
         conn = _crear_bd_en_memoria()
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=10)
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=20)
 
-        repo = SqliteAlertaRepository(conn=conn)
+        repo = SqlaAlertaRepository(conn=conn)
         resultado = repo.listar_alertas_por_destinatario(usuario_destino_id=10)
 
         assert len(resultado) == 1
@@ -160,7 +159,7 @@ class TestSqliteAlertaRepoListarPorDestinatario:
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=5)
         _insertar_alerta(conn, "faltas_injustificadas", usuario_destino_id=5)
 
-        repo = SqliteAlertaRepository(conn=conn)
+        repo = SqlaAlertaRepository(conn=conn)
         resultado = repo.listar_alertas_por_destinatario(
             usuario_destino_id=5,
             tipo="seguimiento_requerido",
@@ -173,7 +172,7 @@ class TestSqliteAlertaRepoListarPorDestinatario:
         conn = _crear_bd_en_memoria()
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=99)
 
-        repo = SqliteAlertaRepository(conn=conn)
+        repo = SqlaAlertaRepository(conn=conn)
         resultado = repo.listar_alertas_por_destinatario(usuario_destino_id=1)
 
         assert resultado == []
@@ -183,7 +182,7 @@ class TestSqliteAlertaRepoListarPorDestinatario:
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=7, resuelta=0)
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=7, resuelta=1)
 
-        repo = SqliteAlertaRepository(conn=conn)
+        repo = SqlaAlertaRepository(conn=conn)
         resultado = repo.listar_alertas_por_destinatario(
             usuario_destino_id=7,
             solo_pendientes=True,
@@ -197,7 +196,7 @@ class TestSqliteAlertaRepoListarPorDestinatario:
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=7, resuelta=0)
         _insertar_alerta(conn, "seguimiento_requerido", usuario_destino_id=7, resuelta=1)
 
-        repo = SqliteAlertaRepository(conn=conn)
+        repo = SqlaAlertaRepository(conn=conn)
         resultado = repo.listar_alertas_por_destinatario(
             usuario_destino_id=7,
             solo_pendientes=False,

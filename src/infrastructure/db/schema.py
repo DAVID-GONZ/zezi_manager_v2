@@ -20,10 +20,24 @@ Módulos:
 from __future__ import annotations
 
 import logging
+
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime,
-    DDL, Float, ForeignKey, Index, Integer, MetaData,
-    Numeric, String, Table, Text, UniqueConstraint, event, text,
+    DDL,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    UniqueConstraint,
+    event,
+    text,
 )
 
 logger = logging.getLogger("DB.SCHEMA")
@@ -1434,63 +1448,4 @@ event.listen(metadata, "after_create", _tg_proteger_nota_periodo_cerrado.execute
 event.listen(metadata, "after_create", _tg_proteger_nota_periodo_cerrado_update.execute_if(dialect="sqlite"))
 event.listen(metadata, "after_create", _tg_resolver_alerta_aprobacion.execute_if(dialect="sqlite"))
 
-# ============================================================
-# FUNCIONES DE INICIALIZACIÓN
-# ============================================================
-
-
-def create_schema(conn) -> None:
-    """Aplica el schema a una conexión SQLite ya abierta. Idempotente."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.pool import StaticPool
-
-    engine = create_engine(
-        "sqlite://",
-        creator=lambda: conn,
-        poolclass=StaticPool,
-    )
-    metadata.create_all(engine)
-
-
-def init_db(db_path=None) -> bool:
-    """Inicializa el esquema completo en la BD configurada."""
-    from .connection import get_connection
-
-    try:
-        with get_connection() as conn:
-            create_schema(conn)
-            result = conn.execute("PRAGMA integrity_check").fetchone()
-            if result[0] != "ok":
-                logger.error(f"Integridad de BD fallida: {result[0]}")
-                return False
-            conn.commit()
-            logger.info(f"Schema inicializado — {len(metadata.tables)} tablas")
-            return True
-    except Exception as exc:
-        logger.error(f"Error crítico inicializando schema: {exc}")
-        return False
-
-
-def get_db_stats() -> dict:
-    """Retorna conteo de filas por tabla."""
-    from .connection import DB_PATH, get_connection
-
-    try:
-        with get_connection() as conn:
-            tables = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' "
-                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
-            ).fetchall()
-            stats = {
-                t[0]: conn.execute(f"SELECT COUNT(*) FROM {t[0]}").fetchone()[0]
-                for t in tables
-            }
-            if DB_PATH.exists():
-                stats["_db_size_mb"] = round(DB_PATH.stat().st_size / (1024**2), 2)
-            return stats
-    except Exception as exc:
-        logger.error(f"Error obteniendo estadísticas: {exc}")
-        return {}
-
-
-__all__ = ["metadata", "create_schema", "get_db_stats", "init_db"]
+__all__ = ["metadata"]

@@ -13,29 +13,25 @@ Cada test recibe una BD en memoria fresca (seed_dev) con servicios cableados.
 """
 from __future__ import annotations
 
-import sqlite3
 from types import SimpleNamespace
 
 import pytest
 
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-    SqliteAsignacionRepository,
+from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+    SqlaAsignacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_configuracion_repo import (
-    SqliteConfiguracionRepository,
+from src.infrastructure.db.repositories.sqla_configuracion_repo import (
+    SqlaConfiguracionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
-from src.infrastructure.db.repositories.sqlite_periodo_repo import (
-    SqlitePeriodoRepository,
+from src.infrastructure.db.repositories.sqla_periodo_repo import (
+    SqlaPeriodoRepository,
 )
-from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-
 from src.infrastructure.db.schema import metadata
 from src.infrastructure.db.seed import _fast_hasher, seed_dev
 from src.services.asignacion_service import (
@@ -54,20 +50,36 @@ from src.services.usuario_service import UsuarioService
 @pytest.fixture()
 def env():
     """BD en memoria con seed_dev y todos los servicios cableados a la conexión."""
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.row_factory = sqlite3.Row
-    engine = create_engine("sqlite://", creator=lambda: conn, poolclass=StaticPool)
-    metadata.create_all(engine)
-    conn.commit()
-    seed_dev(conn, anio=2025, hasher=_fast_hasher, total_estudiantes=8, seed_random=7)
-    conn.commit()
+    import sqlite3 as _sqlite3
 
-    infra_repo = SqliteInfraestructuraRepository(conn)
-    asig_repo = SqliteAsignacionRepository(conn)
-    usu_repo = SqliteUsuarioRepository(conn)
-    per_repo = SqlitePeriodoRepository(conn)
-    cfg_repo = SqliteConfiguracionRepository(conn)
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_dev(sa_conn, anio=2025, hasher=_fast_hasher, total_estudiantes=8, seed_random=7)
+    sa_conn.commit()
+    conn = CompatConnection(sa_conn)
+
+    infra_repo = SqlaInfraestructuraRepository(conn)
+    asig_repo = SqlaAsignacionRepository(conn)
+    usu_repo = SqlaUsuarioRepository(conn)
+    per_repo = SqlaPeriodoRepository(conn)
+    cfg_repo = SqlaConfiguracionRepository(conn)
 
     plan = PlanEstudiosService(repo=infra_repo)
     infra = InfraestructuraService(repo=infra_repo)
@@ -99,7 +111,8 @@ def env():
         config_id=cfg["id"], periodo_id=cfg["periodo_id"],
         anio_id=cfg["anio_id"], plantilla_id=cfg["plantilla_id"],
     )
-    conn.close()
+    sa_conn.close()
+    engine.dispose()
 
 
 # ───────────────────────────────────────────────────────────────────────────

@@ -19,22 +19,18 @@ camino óptimo (König) resuelve cuando la instancia es factible.
 from __future__ import annotations
 
 import random
-import sqlite3
 
 import pytest
 
-from src.infrastructure.db.repositories.sqlite_asignacion_repo import (
-    SqliteAsignacionRepository,
+from src.infrastructure.db.repositories.sqla_asignacion_repo import (
+    SqlaAsignacionRepository,
 )
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
-from src.infrastructure.db.repositories.sqlite_usuario_repo import (
-    SqliteUsuarioRepository,
+from src.infrastructure.db.repositories.sqla_usuario_repo import (
+    SqlaUsuarioRepository,
 )
-from sqlalchemy import create_engine
-from sqlalchemy.pool import StaticPool
-
 from src.infrastructure.db.schema import metadata
 from src.services.generador_horario_service import GeneradorHorarioService
 from src.services.horario_service import HorarioService
@@ -46,13 +42,28 @@ _DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
 
 
 def _conn():
-    c = sqlite3.connect(":memory:", check_same_thread=False)
-    c.execute("PRAGMA foreign_keys = ON")
-    c.row_factory = sqlite3.Row
-    engine = create_engine("sqlite://", creator=lambda: c, poolclass=StaticPool)
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
     metadata.create_all(engine)
-    c.commit()
-    return c
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    return CompatConnection(sa_conn)
 
 
 def _construir(conn, rng, holgado: bool) -> dict:
@@ -193,9 +204,9 @@ def _construir(conn, rng, holgado: bool) -> dict:
 
 
 def _wire(conn):
-    ir = SqliteInfraestructuraRepository(conn)
-    ar = SqliteAsignacionRepository(conn)
-    ur = SqliteUsuarioRepository(conn)
+    ir = SqlaInfraestructuraRepository(conn)
+    ar = SqlaAsignacionRepository(conn)
+    ur = SqlaUsuarioRepository(conn)
     usv = UsuarioService(repo=ur)
     plan = PlanEstudiosService(repo=ir)
     infra = InfraestructuraService(repo=ir)

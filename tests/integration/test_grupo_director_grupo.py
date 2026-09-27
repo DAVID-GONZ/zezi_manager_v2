@@ -12,8 +12,8 @@ ON DELETE SET NULL):
 from __future__ import annotations
 
 from src.domain.models.infraestructura import Grupo, Jornada
-from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
-    SqliteInfraestructuraRepository,
+from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
+    SqlaInfraestructuraRepository,
 )
 from src.services.contexto_tenant import usar_institucion
 
@@ -34,7 +34,7 @@ def _crear_usuario(conn, usuario: str) -> int:
 
 def test_guardar_y_releer_conserva_director_grupo_id(db_conn):
     """guardar_grupo persiste director_grupo_id; get_grupo lo relee."""
-    repo = SqliteInfraestructuraRepository(conn=db_conn)
+    repo = SqlaInfraestructuraRepository(conn=db_conn)
     uid = _crear_usuario(db_conn, "prof_dir_1")
 
     with usar_institucion(1):
@@ -49,7 +49,7 @@ def test_guardar_y_releer_conserva_director_grupo_id(db_conn):
 
 def test_grupo_sin_director_es_none(db_conn):
     """Un grupo sin director asignado se relee con director_grupo_id = None."""
-    repo = SqliteInfraestructuraRepository(conn=db_conn)
+    repo = SqlaInfraestructuraRepository(conn=db_conn)
     with usar_institucion(1):
         g = repo.guardar_grupo(
             Grupo(codigo="DIR101", grado=7, institucion_id=1)
@@ -61,7 +61,7 @@ def test_grupo_sin_director_es_none(db_conn):
 
 def test_actualizar_grupo_asigna_y_quita_director(db_conn):
     """actualizar_grupo escribe director_grupo_id (asignar y luego quitar)."""
-    repo = SqliteInfraestructuraRepository(conn=db_conn)
+    repo = SqlaInfraestructuraRepository(conn=db_conn)
     uid = _crear_usuario(db_conn, "prof_dir_2")
     with usar_institucion(1):
         g = repo.guardar_grupo(Grupo(codigo="DIR102", grado=8, institucion_id=1))
@@ -78,7 +78,7 @@ def test_actualizar_grupo_asigna_y_quita_director(db_conn):
 
 def test_listar_grupos_hidrata_director(db_conn):
     """listar_grupos rehidrata director_grupo_id de cada fila."""
-    repo = SqliteInfraestructuraRepository(conn=db_conn)
+    repo = SqlaInfraestructuraRepository(conn=db_conn)
     uid = _crear_usuario(db_conn, "prof_dir_3")
     with usar_institucion(1):
         repo.guardar_grupo(
@@ -90,7 +90,7 @@ def test_listar_grupos_hidrata_director(db_conn):
 
 def test_on_delete_set_null_al_borrar_usuario(db_conn):
     """Al borrar el usuario director, el grupo queda con director_grupo_id NULL."""
-    repo = SqliteInfraestructuraRepository(conn=db_conn)
+    repo = SqlaInfraestructuraRepository(conn=db_conn)
     uid = _crear_usuario(db_conn, "prof_dir_4")
     with usar_institucion(1):
         g = repo.guardar_grupo(

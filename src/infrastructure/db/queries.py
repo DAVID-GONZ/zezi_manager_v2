@@ -22,9 +22,50 @@ from typing import Any
 
 import pandas as pd
 
-from .connection import _normalize_params, get_connection
+from container import Container
 
 logger = logging.getLogger("DB.QUERIES")
+
+
+# ---------------------------------------------------------------------------
+# Adaptación de parámetros (T1)
+# ---------------------------------------------------------------------------
+
+
+def _adapt_scalar(value: object) -> object:
+    """Convierte escalares numpy/pandas a tipos nativos de Python.
+
+    SQLite no acepta np.int64, np.float32, etc. directamente.
+    """
+    item = getattr(value, "item", None)
+    if callable(item):
+        try:
+            return item()
+        except Exception:
+            pass
+    return value
+
+
+def _adapt_params(params: tuple | list | dict | None) -> tuple | dict:
+    """
+    Normaliza parámetros para SQLAlchemy / DBAPI.
+
+    - Convierte escalares numpy/pandas a tipos nativos de Python.
+    - Parámetros posicionales (tuple/list) → tuple (para exec_driver_sql con ?).
+    - Parámetros nominales (dict) → dict (para exec_driver_sql / text() con :nombre).
+    """
+    if not params:
+        return ()
+    if isinstance(params, dict):
+        return {k: _adapt_scalar(v) for k, v in params.items()}
+    if not isinstance(params, (tuple, list)):
+        params = (params,)
+    return tuple(_adapt_scalar(p) for p in params)
+
+
+# ---------------------------------------------------------------------------
+# Funciones de lectura
+# ---------------------------------------------------------------------------
 
 
 def fetch_df(
@@ -57,8 +98,11 @@ def fetch_df(
     """
     params = params or ()
     try:
-        with get_connection() as conn:
-            df = pd.read_sql(query, conn, params=_normalize_params(params))
+        with Container.engine().connect() as conn:
+            result = conn.exec_driver_sql(query, _adapt_params(params))
+            cols = list(result.keys())
+            rows = result.fetchall()
+            df = pd.DataFrame(rows, columns=cols)
             logger.debug("fetch_df: %d filas", len(df))
             return df
     except Exception as exc:
@@ -87,14 +131,15 @@ def fetch_one(
     """
     params = params or ()
     try:
-        with get_connection() as conn:
-            row = conn.execute(query, _normalize_params(params)).fetchone()
+        with Container.engine().connect() as conn:
+            result = conn.exec_driver_sql(query, _adapt_params(params))
+            row = result.mappings().first()
             if row is None:
                 logger.debug("fetch_one: sin resultados")
                 return None
-            result = dict(row)
-            logger.debug("fetch_one: %d columnas", len(result))
-            return result
+            result_dict = dict(row)
+            logger.debug("fetch_one: %d columnas", len(result_dict))
+            return result_dict
     except Exception as exc:
         logger.error("Error en fetch_one | query=%s | params=%s | error=%s", query, params, exc)
         return None
@@ -124,14 +169,15 @@ def fetch_all(
     """
     params = params or ()
     try:
-        with get_connection() as conn:
-            rows = conn.execute(query, _normalize_params(params)).fetchall()
+        with Container.engine().connect() as conn:
+            result = conn.exec_driver_sql(query, _adapt_params(params))
+            rows = result.mappings().all()
             if not rows:
                 logger.debug("fetch_all: sin resultados")
                 return []
-            result = [dict(row) for row in rows]
-            logger.debug("fetch_all: %d filas", len(result))
-            return result
+            result_list = [dict(row) for row in rows]
+            logger.debug("fetch_all: %d filas", len(result_list))
+            return result_list
     except Exception as exc:
         logger.error("Error en fetch_all | query=%s | params=%s | error=%s", query, params, exc)
         return []
@@ -164,8 +210,9 @@ def get_scalar(
     """
     params = params or ()
     try:
-        with get_connection() as conn:
-            row = conn.execute(query, _normalize_params(params)).fetchone()
+        with Container.engine().connect() as conn:
+            result = conn.exec_driver_sql(query, _adapt_params(params))
+            row = result.fetchone()
             if row is None:
                 logger.debug("get_scalar: sin resultados, retornando default=%s", default)
                 return default
@@ -174,6 +221,11 @@ def get_scalar(
     except Exception as exc:
         logger.error("Error en get_scalar | query=%s | params=%s | error=%s", query, params, exc)
         return default
+
+
+# ---------------------------------------------------------------------------
+# Función de escritura (T5)
+# ---------------------------------------------------------------------------
 
 
 def execute(
@@ -194,6 +246,9 @@ def execute(
         dict {'success': bool, 'lastrowid': int | None, 'rowcount': int}
              si return_metadata=True.
 
+    Raises:
+        Exception: Propaga cualquier error de escritura al llamador.
+
     Examples:
         >>> execute(
         ...     "INSERT INTO grupos (codigo, nombre) VALUES (?, ?)",
@@ -203,34 +258,26 @@ def execute(
 
         >>> result = execute(
         ...     "INSERT INTO estudiantes (nombre, apellido) VALUES (:nombre, :apellido)",
-        ...     {"nombre": "Ana", "apellido": "García"},
+        ...     {"nombre": "Ana", "apellido": "Garcia"},
         ...     return_metadata=True,
         ... )
         >>> nuevo_id = result["lastrowid"]
     """
     params = params or ()
-    try:
-        with get_connection() as conn:
-            cursor = conn.execute(
-                query, _normalize_params(params) if not isinstance(params, dict) else params
-            )
-            conn.commit()
-            logger.debug(
-                "execute: %d fila(s) afectada(s), lastrowid=%s", cursor.rowcount, cursor.lastrowid
-            )
-            if return_metadata:
-                return {
-                    "success": True,
-                    "lastrowid": cursor.lastrowid,
-                    "rowcount": cursor.rowcount,
-                }
-            return True
-
-    except Exception as exc:
-        logger.error("Error en execute | query=%s | params=%s | error=%s", query, params, exc)
+    with Container.engine().connect() as conn, conn.begin():
+        result = conn.exec_driver_sql(query, _adapt_params(params))
+        logger.debug(
+            "execute: %d fila(s) afectada(s), lastrowid=%s",
+            result.rowcount,
+            result.lastrowid,
+        )
         if return_metadata:
-            return {"success": False, "lastrowid": None, "rowcount": 0}
-        return False
+            return {
+                "success": True,
+                "lastrowid": result.lastrowid,
+                "rowcount": result.rowcount,
+            }
+        return True
 
 
 __all__ = ["execute", "fetch_all", "fetch_df", "fetch_one", "get_scalar"]

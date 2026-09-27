@@ -10,17 +10,14 @@ Usa sqlite3 en memoria + create_schema + seed_base.
 """
 from __future__ import annotations
 
-import sqlite3
-
 import pytest
 
 from src.domain.models.convivencia import (
     ObservacionPeriodo,
 )
-from src.infrastructure.db.repositories.sqlite_convivencia_repo import (
-    SqliteConvivenciaRepository,
+from src.infrastructure.db.repositories.sqla_convivencia_repo import (
+    SqlaConvivenciaRepository,
 )
-from src.infrastructure.db.schema import create_schema
 from src.infrastructure.db.seed import _fast_hasher, seed_base
 from src.services.convivencia_service import ConvivenciaService
 
@@ -46,11 +43,31 @@ class _FakeAsigSvc:
 @pytest.fixture()
 def db_conv14():
     """Conexión en memoria con schema, seed y datos mínimos de convivencia."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
-    seed_base(conn, anio=2025, hasher=_fast_hasher)
+    import sqlite3 as _sqlite3
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+    from tests.compat_conn import CompatConnection
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
+
+    metadata.create_all(engine)
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row
+    seed_base(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
+    conn = CompatConnection(sa_conn)
 
     # Institución ya sembrada por seed_base (_seed_institucion)
     # Grupo mínimo (para FK de RegistroComportamiento.grupo_id)
@@ -104,7 +121,8 @@ def db_conv14():
         "periodo_id":    periodo_id,
         "usuario_id":    usuario_id,
     }
-    conn.close()
+    sa_conn.close()
+    engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +136,7 @@ def test_promover_a_comportamiento_guarda_fk(db_conv14):
     """
     conn, ids = db_conv14
 
-    repo = SqliteConvivenciaRepository(conn=conn)
+    repo = SqlaConvivenciaRepository(conn=conn)
     # Proveemos un asignacion_svc_provider que resuelve el grupo_id del fixture
     svc = ConvivenciaService(
         repo=repo,
@@ -183,7 +201,7 @@ def test_promover_a_comportamiento_fk_on_delete_set_null(db_conv14):
     """
     conn, ids = db_conv14
 
-    repo = SqliteConvivenciaRepository(conn=conn)
+    repo = SqlaConvivenciaRepository(conn=conn)
     svc = ConvivenciaService(
         repo=repo,
         asignacion_svc_provider=lambda: _FakeAsigSvc(ids["grupo_id"]),

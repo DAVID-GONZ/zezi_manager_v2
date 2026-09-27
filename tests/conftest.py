@@ -19,7 +19,7 @@ Fixtures disponibles y su alcance:
 Uso típico en un test de repositorio:
 
     def test_listar_estudiantes(db_conn, seed_result):
-        repo = SqliteEstudianteRepository(conn=db_conn)
+        repo = SqlaEstudianteRepository(conn=db_conn)
         estudiantes = repo.listar_activos()
         assert len(estudiantes) == len(seed_result.estudiante_ids)
 
@@ -39,9 +39,11 @@ Aislamiento:
 from __future__ import annotations
 
 import logging
+import sqlite3 as _sqlite3
 
 import pytest
 
+from tests.compat_conn import CompatConnection
 from tests.db_engine import create_test_engine
 
 logging.disable(logging.CRITICAL)   # silenciar logs durante tests
@@ -101,21 +103,11 @@ def pytest_collection_modifyitems(config, items):
 # Helpers internos
 # ---------------------------------------------------------------------------
 
-def _apply_schema(conn) -> None:
-    """Aplica el MetaData de schema.py a la conexión entregada por create_test_engine."""
+def _apply_schema(engine) -> None:
+    """Aplica el MetaData de schema.py al engine entregado por create_test_engine."""
     # Import tardío para no romper si el módulo tiene errores durante discovery
-    from sqlalchemy import create_engine
-    from sqlalchemy.pool import StaticPool
-
     from src.infrastructure.db.schema import metadata
-
-    engine = create_engine(
-        "sqlite://",
-        creator=lambda: conn,
-        poolclass=StaticPool,
-    )
     metadata.create_all(engine)
-    conn.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -129,10 +121,13 @@ def db_schema(request):
     Alcance de sesión: se crea una vez y se comparte (solo lectura útil).
     No usar directamente en tests que modifican datos.
     """
-    conn = create_test_engine(request.config.getoption("--backend"))
-    _apply_schema(conn)
-    yield conn
-    conn.close()
+    engine = create_test_engine(request.config.getoption("--backend"))
+    _apply_schema(engine)
+    sa_conn = engine.connect()
+    compat = CompatConnection(sa_conn)
+    yield compat
+    sa_conn.close()
+    engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -146,18 +141,25 @@ def db_seed(request):
     Se recrea por cada test — aislamiento total.
 
     Yields:
-        tuple[Connection, SeedResult]
+        tuple[CompatConnection, SeedResult]
     """
     from src.infrastructure.db.seed import _fast_hasher, seed_test
 
-    conn = create_test_engine(request.config.getoption("--backend"))
-    _apply_schema(conn)
-    result = seed_test(conn, anio=2025, hasher=_fast_hasher)
-    conn.commit()
+    engine = create_test_engine(request.config.getoption("--backend"))
+    _apply_schema(engine)
 
-    yield conn, result
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
 
-    conn.close()
+    result = seed_test(sa_conn, anio=2025, hasher=_fast_hasher)
+    sa_conn.commit()
+
+    compat = CompatConnection(sa_conn)
+    yield compat, result
+
+    sa_conn.close()
+    engine.dispose()
 
 
 @pytest.fixture(scope="function")
@@ -192,21 +194,28 @@ def db_dev(request):
     Solo para tests de integración que necesitan datos realistas.
 
     Yields:
-        tuple[Connection, SeedResult]
+        tuple[CompatConnection, SeedResult]
     """
     from src.infrastructure.db.seed import _fast_hasher, seed_dev
 
-    conn = create_test_engine(request.config.getoption("--backend"))
-    _apply_schema(conn)
+    engine = create_test_engine(request.config.getoption("--backend"))
+    _apply_schema(engine)
+
+    sa_conn = engine.connect()
+    raw = sa_conn.connection.driver_connection
+    raw.row_factory = _sqlite3.Row   # needed by CompatConnection string-SQL reads
+
     result = seed_dev(
-        conn,
+        sa_conn,
         anio=2025,
         hasher=_fast_hasher,
         total_estudiantes=12,
         seed_random=42,
     )
-    conn.commit()
+    sa_conn.commit()
 
-    yield conn, result
+    compat = CompatConnection(sa_conn)
+    yield compat, result
 
-    conn.close()
+    sa_conn.close()
+    engine.dispose()

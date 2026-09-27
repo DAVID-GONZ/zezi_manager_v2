@@ -12,8 +12,8 @@ from datetime import date
 
 import pytest
 
-from src.infrastructure.db.repositories.sqlite_asistencia_repo import (
-    SqliteAsistenciaRepository,
+from src.infrastructure.db.repositories.sqla_asistencia_repo import (
+    SqlaAsistenciaRepository,
 )
 
 
@@ -21,7 +21,7 @@ class TestContarClasesDictadasDocente:
 
     def test_retorna_entero_con_seed(self, db_conn, seed_result):
         """El método no explota con la BD de seed y retorna un int."""
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         usuario_id = next(iter(seed_result.usuario_ids.values()))
         resultado = repo.contar_clases_dictadas_docente(usuario_id, anio=2025, mes=1)
         assert isinstance(resultado, int)
@@ -29,7 +29,7 @@ class TestContarClasesDictadasDocente:
 
     def test_mes_sin_datos_retorna_cero(self, db_conn, seed_result):
         """Mes muy lejano (2099-01) no tiene datos → 0."""
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         usuario_id = next(iter(seed_result.usuario_ids.values()))
         resultado = repo.contar_clases_dictadas_docente(usuario_id, anio=2099, mes=1)
         assert resultado == 0
@@ -39,7 +39,7 @@ class TestContarClasesDictadasDocente:
         Inserta 3 filas con la misma (asignacion_id, fecha) pero distintos
         estudiantes → debe contar como 1 clase, no 3.
         """
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
 
         # Usa el primer usuario y la primera asignación disponibles
         usuario_id = next(iter(seed_result.usuario_ids.values()))
@@ -98,7 +98,7 @@ class TestClasesDictadasPorAsignacion:
 
     def test_retorna_dict_con_seed(self, db_conn, seed_result):
         """El método retorna un dict[int, int] sin lanzar excepciones."""
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         usuario_id = next(iter(seed_result.usuario_ids.values()))
         resultado = repo.clases_dictadas_por_asignacion(usuario_id, anio=2025, mes=1)
         assert isinstance(resultado, dict)
@@ -109,7 +109,7 @@ class TestClasesDictadasPorAsignacion:
 
     def test_mes_sin_datos_retorna_dict_vacio(self, db_conn, seed_result):
         """Mes 2099-01 → dict vacío."""
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         usuario_id = next(iter(seed_result.usuario_ids.values()))
         resultado = repo.clases_dictadas_por_asignacion(usuario_id, anio=2099, mes=1)
         assert resultado == {}
@@ -118,7 +118,7 @@ class TestClasesDictadasPorAsignacion:
         """
         La suma de values() del desglose debe igualar contar_clases_dictadas_docente.
         """
-        repo = SqliteAsistenciaRepository(conn=db_conn)
+        repo = SqlaAsistenciaRepository(conn=db_conn)
         # Usa 'lopez' que es el primer profesor con asignaciones en seed_dev
         usuario_id = seed_result.usuario_ids.get(
             "lopez", next(iter(seed_result.usuario_ids.values()))
