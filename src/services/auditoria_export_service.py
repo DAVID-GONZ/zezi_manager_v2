@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 # Importar la lista canónica de campos sensibles desde auditoria_service.
 # No se duplica aquí para evitar que ambas listas diverjan (advertencia R6).
-from src.services.auditoria_service import _CAMPOS_SENSIBLES  # noqa: E402
+from src.services.auditoria_service import _CAMPOS_SENSIBLES
 
 logger = logging.getLogger("AUDITORIA.EXPORT")
 

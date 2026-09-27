@@ -14,7 +14,6 @@ Regla de capas: solo stdlib + pydantic.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from src.domain.models.base import DTODominio
 
@@ -39,7 +38,7 @@ class SaludDTO(DTODominio):
     tamanio_db_bytes: int
     """Tamaño del archivo de base de datos en bytes."""
 
-    ultimo_backup: Optional[datetime] = None
+    ultimo_backup: datetime | None = None
     """Fecha/hora del último backup conocido. None → sin backup registrado (R3)."""
 
 
@@ -51,15 +50,15 @@ class EntradaLogDTO(DTODominio):
     Los campos ausentes en la línea original quedan como None.
     """
 
-    timestamp: Optional[str] = None
-    usuario: Optional[str] = None
-    ip: Optional[str] = None
-    rol: Optional[str] = None
-    institucion_id: Optional[int] = None
-    tipo_evento: Optional[str] = None
-    motivo: Optional[str] = None
-    recurso: Optional[str] = None
-    objetivo: Optional[str] = None
+    timestamp: str | None = None
+    usuario: str | None = None
+    ip: str | None = None
+    rol: str | None = None
+    institucion_id: int | None = None
+    tipo_evento: str | None = None
+    motivo: str | None = None
+    recurso: str | None = None
+    objetivo: str | None = None
 
 
 class AlertaIPDTO(DTODominio):

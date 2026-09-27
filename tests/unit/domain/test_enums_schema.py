@@ -291,7 +291,7 @@ def test_enum_check_detecta_valores_extra() -> None:
     }
     # El CHECK para franjas.tipo = {lectiva, descanso, almuerzo} ya no empareja
     # con el fake TipoFranja que tiene 4 valores
-    checks = check_mod._parse_checks(check_mod.SCHEMA_PATH)
+    checks = check_mod._parse_checks()
     franjas_tipo_check = next(
         (vals for t, c, vals in checks if t == "franjas" and c == "tipo"), None
     )

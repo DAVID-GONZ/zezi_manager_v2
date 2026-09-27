@@ -1,5 +1,6 @@
 bcrypt
 openpyxl
+sqlalchemy>=2.0
 pandas
 pydantic
 pydantic-settings

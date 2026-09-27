@@ -363,8 +363,8 @@ def observabilidad_page() -> None:
         def on_limpiar(ip: str) -> None:
             """Limpia el estado de una IP y audita la acción (R11)."""
             try:
-                from src.domain.policies.alerta_ip import reset_ip
                 from src.domain.models.auditoria import TipoEventoSesion
+                from src.domain.policies.alerta_ip import reset_ip
                 from src.interface.context.eventos_sesion import construir_evento
 
                 reset_ip(ip)

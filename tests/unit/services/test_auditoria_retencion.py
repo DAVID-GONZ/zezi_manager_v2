@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -25,7 +25,6 @@ from src.domain.models.auditoria import (
     TipoEventoSesion,
 )
 from src.services.auditoria_retencion_service import AuditoriaRetencionService
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -106,14 +105,13 @@ class TestFalloEscritura:
             AuditoriaRetencionService,
             "_escribir_jsonl",
             side_effect=OSError("Disco lleno"),
-        ):
-            with pytest.raises(OSError, match="Disco lleno"):
-                svc.archivar_y_purgar(
-                    tabla="audit_log",
-                    hasta=datetime(2026, 12, 31),
-                    scope="*",
-                    actor="admin",
-                )
+        ), pytest.raises(OSError, match="Disco lleno"):
+            svc.archivar_y_purgar(
+                tabla="audit_log",
+                hasta=datetime(2026, 12, 31),
+                scope="*",
+                actor="admin",
+            )
 
         # La operación no llegó a eliminar ninguna fila
         assert repo._eliminados_hasta is None  # (a)
@@ -136,14 +134,13 @@ class TestFalloHashReleido:
         with patch(
             "src.services.auditoria_retencion_service._sha256_file",
             return_value="hash_incorrecto_que_no_coincide",
-        ):
-            with pytest.raises(ReglaDeNegocioError, match="Hash del archivo releído"):
-                svc.archivar_y_purgar(
-                    tabla="audit_log",
-                    hasta=datetime(2026, 12, 31),
-                    scope="*",
-                    actor="admin",
-                )
+        ), pytest.raises(ReglaDeNegocioError, match="Hash del archivo releído"):
+            svc.archivar_y_purgar(
+                tabla="audit_log",
+                hasta=datetime(2026, 12, 31),
+                scope="*",
+                actor="admin",
+            )
 
         # No se borró ninguna fila
         assert repo._eliminados_hasta is None  # (b)

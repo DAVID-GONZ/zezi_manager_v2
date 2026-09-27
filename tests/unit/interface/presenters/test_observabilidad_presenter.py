@@ -16,7 +16,6 @@ import pytest
 
 from src.interface.presenters.admin.observabilidad_presenter import ObservabilidadPresenter
 
-
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest.fixture

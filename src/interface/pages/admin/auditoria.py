@@ -24,6 +24,7 @@ import logging
 from nicegui import ui
 
 from container import Container
+from src.domain.policies.rbac_auditoria import puede_exportar_bitacora, puede_purgar_bitacora
 from src.domain.tablas_auditables import ETIQUETAS_TABLA
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components import (
@@ -39,7 +40,6 @@ from src.interface.design.components.buttons import btn_icon, btn_secondary
 from src.interface.design.components.form_fields import filter_input, filter_select
 from src.interface.design.layout import app_layout
 from src.interface.design.theme import ThemeManager
-from src.domain.policies.rbac_auditoria import puede_exportar_bitacora, puede_purgar_bitacora
 from src.interface.presenters.admin.auditoria_presenter import (
     _SIN_INSTITUCION_SENTINEL,
     AuditoriaPresenter,
@@ -188,7 +188,9 @@ def auditoria_page() -> None:
             ui.label(ts).classes("text-sm text-secondary")
             status_badge(accion_str, variante="neutral")
             reg_id = cambio.registro_id
-            ui.label(f"Registro #{reg_id}" if reg_id is not None else "—").classes("text-sm text-secondary")
+            ui.label(f"Registro #{reg_id}" if reg_id is not None else "—").classes(
+                "text-sm text-secondary"
+            )
 
         with ui.row().classes("form-row-inline u-mb-md"):
             ip = getattr(cambio, "ip_address", None)
@@ -203,19 +205,29 @@ def auditoria_page() -> None:
             ui.label("Campos modificados").classes("text-sm font-semibold u-mb-sm")
             # cabecera de columnas
             with ui.row().classes("form-row-inline u-mb-sm"):
-                ui.label("Campo").classes("text-xs font-semibold text-secondary").style("min-width:130px")
+                ui.label("Campo").classes("text-xs font-semibold text-secondary").style(
+                    "min-width:130px"
+                )
                 ui.label("Antes").classes("text-xs font-semibold text-secondary flex-1")
                 ui.label("Después").classes("text-xs font-semibold text-secondary flex-1")
-                ui.label("Tipo").classes("text-xs font-semibold text-secondary").style("min-width:100px")
+                ui.label("Tipo").classes("text-xs font-semibold text-secondary").style(
+                    "min-width:100px"
+                )
 
             for campo in dto.campos:
                 tipo_str = campo.tipo.value if hasattr(campo.tipo, "value") else str(campo.tipo)
-                variante, etiqueta_tipo = _DIFF_TIPO_VARIANTE.get(tipo_str, ("neutral", tipo_str.lower()))
+                variante, etiqueta_tipo = _DIFF_TIPO_VARIANTE.get(
+                    tipo_str, ("neutral", tipo_str.lower())
+                )
                 valor_ant = "•••" if campo.oculto else (campo.valor_anterior or "—")
                 valor_nue = "•••" if campo.oculto else (campo.valor_nuevo or "—")
                 with ui.row().classes("form-row-inline items-start py-1"):
-                    ui.label(campo.nombre).classes("text-sm font-mono").style("min-width:130px;word-break:break-all")
-                    ui.label(valor_ant).classes("text-sm text-secondary flex-1").style("word-break:break-all")
+                    ui.label(campo.nombre).classes("text-sm font-mono").style(
+                        "min-width:130px;word-break:break-all"
+                    )
+                    ui.label(valor_ant).classes("text-sm text-secondary flex-1").style(
+                        "word-break:break-all"
+                    )
                     ui.label(valor_nue).classes("text-sm flex-1").style("word-break:break-all")
                     ui.label(etiqueta_tipo).classes(f"badge badge-{variante}")
         else:
@@ -304,9 +316,7 @@ def auditoria_page() -> None:
 
     def _verificar_integridad(completa: bool = False) -> None:
         try:
-            _s["integridad"] = Container.auditoria_service().verificar_integridad(
-                completa=completa
-            )
+            _s["integridad"] = Container.auditoria_service().verificar_integridad(completa=completa)
         except Exception as exc:
             logger.error("Error al verificar integridad de auditoría: %s", exc)
             _s["integridad"] = None
@@ -370,6 +380,7 @@ def auditoria_page() -> None:
             return
         try:
             from datetime import datetime as _dt
+
             hasta = _dt.fromisoformat(hasta_str)
             svc = Container.auditoria_retencion_service()
             resultado = svc.archivar_y_purgar(
@@ -411,7 +422,12 @@ def auditoria_page() -> None:
             )
         else:
             columnas = [
-                {"name": "timestamp", "label": "Fecha y hora", "field": "timestamp", "sortable": True},
+                {
+                    "name": "timestamp",
+                    "label": "Fecha y hora",
+                    "field": "timestamp",
+                    "sortable": True,
+                },
                 {"name": "accion", "label": "Acción", "field": "accion", "sortable": True},
                 # obs_09 T12: etiqueta legible de tabla (R10) en lugar del nombre físico
                 {"name": "tabla", "label": "Tabla", "field": "tabla", "sortable": True},
@@ -421,7 +437,7 @@ def auditoria_page() -> None:
             ]
             filas = [
                 {
-                    "id": c.id,          # obs_09 T13: necesario para el row-click
+                    "id": c.id,  # obs_09 T13: necesario para el row-click
                     "timestamp": c.timestamp_display,
                     "accion": c.accion.value if hasattr(c.accion, "value") else str(c.accion),
                     # obs_09 T12: mostrar etiqueta legible de la tabla (R10)
@@ -452,7 +468,9 @@ def auditoria_page() -> None:
                 ).set_enabled(pagina > 1)
                 ui.label(f"Página {pagina}").classes("text-sm self-center px-2")
                 if total_cambios > 0:
-                    ui.label(f"{total_cambios} resultados").classes("text-sm text-secondary self-center px-2")
+                    ui.label(f"{total_cambios} resultados").classes(
+                        "text-sm text-secondary self-center px-2"
+                    )
                 btn_secondary(
                     "Siguiente",
                     on_click=lambda: _ir_pagina(pagina + 1, "cambios"),
@@ -493,20 +511,27 @@ def auditoria_page() -> None:
                     "usuario": e.usuario,
                     "ip": e.ip_address or "—",
                     "detalles": e.detalles or "—",
-                    "severidad": e.severidad.value if hasattr(e.severidad, "value") else str(e.severidad or ""),
+                    "severidad": e.severidad.value
+                    if hasattr(e.severidad, "value")
+                    else str(e.severidad or ""),
                     "sev_variante": _SEVERIDAD_VARIANTE.get(
                         e.severidad.value if hasattr(e.severidad, "value") else "", "neutral"
                     ),
                 }
                 for e in sesiones
             ]
-            tbl_sesiones = data_table(columnas, filas, titulo="Sesiones (auditoría)", filas_por_pagina=15)
+            tbl_sesiones = data_table(
+                columnas, filas, titulo="Sesiones (auditoría)", filas_por_pagina=15
+            )
             # Badge por fila usando slot de Quasar table (sin CSS nuevo).
-            tbl_sesiones.add_slot("body-cell-severidad", r"""
+            tbl_sesiones.add_slot(
+                "body-cell-severidad",
+                r"""
 <q-td :props="props">
     <span :class="`badge badge-${props.row.sev_variante}`">{{ props.row.severidad }}</span>
 </q-td>
-""")
+""",
+            )
 
         # obs_08 R11: mostrar total de resultados junto a la paginación
         if pagina > 1 or hay_sig:
@@ -519,7 +544,9 @@ def auditoria_page() -> None:
                 ).set_enabled(pagina > 1)
                 ui.label(f"Página {pagina}").classes("text-sm self-center px-2")
                 if total_sesiones > 0:
-                    ui.label(f"{total_sesiones} resultados").classes("text-sm text-secondary self-center px-2")
+                    ui.label(f"{total_sesiones} resultados").classes(
+                        "text-sm text-secondary self-center px-2"
+                    )
                 btn_secondary(
                     "Siguiente",
                     on_click=lambda: _ir_pagina(pagina + 1, "sesiones"),
@@ -576,121 +603,121 @@ def auditoria_page() -> None:
     # ── Contenido principal ────────────────────────────────────────────────
     def contenido() -> None:
         with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
-                with ui.row().classes("form-row-center u-mb-sm"):
-                    ThemeManager.icono("history", size=22, color="var(--color-primary)")
-                    ui.label("Registro de auditoría").classes("text-xl font-bold")
-                    ui.label("Solo lectura").classes("text-sm text-secondary ml-2")
-                    with ui.row().classes("form-row-center ml-auto"):
-                        btn_secondary(
-                            "Verificar integridad",
-                            on_click=lambda: _verificar_integridad(completa=False),
-                            icon="verified",
-                            size="sm",
-                        )
-                        btn_secondary(
-                            "Verificación completa",
-                            on_click=lambda: _verificar_integridad(completa=True),
-                            icon="verified_user",
-                            size="sm",
-                        )
-                        # obs_12: Exportar (R1, R2)
-                        if puede_exportar_bitacora(ctx.usuario_rol):
-                            with ui.button_group():
-                                btn_secondary(
-                                    "CSV",
-                                    on_click=lambda: _exportar("csv"),
-                                    icon="download",
-                                    size="sm",
-                                )
-                                btn_secondary(
-                                    "PDF",
-                                    on_click=lambda: _exportar("pdf"),
-                                    icon="picture_as_pdf",
-                                    size="sm",
-                                )
-                        # obs_12: Archivar y purgar (R12, solo admin)
-                        if puede_purgar_bitacora(ctx.usuario_rol):
+            with ui.row().classes("form-row-center u-mb-sm"):
+                ThemeManager.icono("history", size=22, color="var(--color-primary)")
+                ui.label("Registro de auditoría").classes("text-xl font-bold")
+                ui.label("Solo lectura").classes("text-sm text-secondary ml-2")
+                with ui.row().classes("form-row-center ml-auto"):
+                    btn_secondary(
+                        "Verificar integridad",
+                        on_click=lambda: _verificar_integridad(completa=False),
+                        icon="verified",
+                        size="sm",
+                    )
+                    btn_secondary(
+                        "Verificación completa",
+                        on_click=lambda: _verificar_integridad(completa=True),
+                        icon="verified_user",
+                        size="sm",
+                    )
+                    # obs_12: Exportar (R1, R2)
+                    if puede_exportar_bitacora(ctx.usuario_rol):
+                        with ui.button_group():
                             btn_secondary(
-                                "Archivar y purgar",
-                                on_click=_abrir_dialog_purga,
-                                icon="archive",
+                                "CSV",
+                                on_click=lambda: _exportar("csv"),
+                                icon="download",
                                 size="sm",
                             )
-                        badge_integridad()
+                            btn_secondary(
+                                "PDF",
+                                on_click=lambda: _exportar("pdf"),
+                                icon="picture_as_pdf",
+                                size="sm",
+                            )
+                    # obs_12: Archivar y purgar (R12, solo admin)
+                    if puede_purgar_bitacora(ctx.usuario_rol):
+                        btn_secondary(
+                            "Archivar y purgar",
+                            on_click=_abrir_dialog_purga,
+                            icon="archive",
+                            size="sm",
+                        )
+                    badge_integridad()
 
-                _render_filtros_comunes()
+            _render_filtros_comunes()
 
-                with ui.tabs().classes("w-full") as tabs:
-                    ui.tab("cambios", label="Cambios", icon="edit_note")
-                    ui.tab("sesiones", label="Sesiones", icon="login")
+            with ui.tabs().classes("w-full") as tabs:
+                ui.tab("cambios", label="Cambios", icon="edit_note")
+                ui.tab("sesiones", label="Sesiones", icon="login")
 
-                with ui.tab_panels(tabs, value="cambios").classes("w-full mt-0"):
-                    with ui.tab_panel("cambios"):
-                        with ui.row().classes("form-row-center-md u-mb-lg"):
-                            ui.label("Filtros:").classes("text-sm font-semibold")
-                            # obs_09 T12: selector dropdown de tabla (R10) —
-                            # reemplaza el filter_input libre
-                            filter_select(
-                                label="Tabla",
-                                options=_TABLA_OPCIONES,
-                                value=None,
-                                on_change=lambda e: (
-                                    presenter.set_tabla(e.value),
-                                    _on_filtros_cambio(),
-                                ),
-                                cls_extra="w-52",
-                            )
-                            accion_opts = {None: "Todas las acciones"}
-                            accion_opts.update(_ACCIONES_OPCIONES)
-                            filter_select(
-                                label="Acción",
-                                options=accion_opts,
-                                value=None,
-                                on_change=lambda e: (
-                                    presenter.set_accion(e.value),
-                                    _on_filtros_cambio(),
-                                ),
-                                cls_extra="w-40",
-                            )
-                            # obs_09 T12: filtro por registro_id (R11)
-                            filter_input(
-                                label="ID registro",
-                                placeholder="Opcional",
-                                on_change=lambda e: (
-                                    presenter.set_registro(e.value),
-                                    _on_filtros_cambio(),
-                                ),
-                                cls_extra="w-32",
-                            )
-                        tabla_cambios()
+            with ui.tab_panels(tabs, value="cambios").classes("w-full mt-0"):
+                with ui.tab_panel("cambios"):
+                    with ui.row().classes("form-row-center-md u-mb-lg"):
+                        ui.label("Filtros:").classes("text-sm font-semibold")
+                        # obs_09 T12: selector dropdown de tabla (R10) —
+                        # reemplaza el filter_input libre
+                        filter_select(
+                            label="Tabla",
+                            options=_TABLA_OPCIONES,
+                            value=None,
+                            on_change=lambda e: (
+                                presenter.set_tabla(e.value),
+                                _on_filtros_cambio(),
+                            ),
+                            cls_extra="w-52",
+                        )
+                        accion_opts = {None: "Todas las acciones"}
+                        accion_opts.update(_ACCIONES_OPCIONES)
+                        filter_select(
+                            label="Acción",
+                            options=accion_opts,
+                            value=None,
+                            on_change=lambda e: (
+                                presenter.set_accion(e.value),
+                                _on_filtros_cambio(),
+                            ),
+                            cls_extra="w-40",
+                        )
+                        # obs_09 T12: filtro por registro_id (R11)
+                        filter_input(
+                            label="ID registro",
+                            placeholder="Opcional",
+                            on_change=lambda e: (
+                                presenter.set_registro(e.value),
+                                _on_filtros_cambio(),
+                            ),
+                            cls_extra="w-32",
+                        )
+                    tabla_cambios()
 
-                    with ui.tab_panel("sesiones"):
-                        with ui.row().classes("form-row-center-md u-mb-lg"):
-                            ui.label("Filtros:").classes("text-sm font-semibold")
-                            evento_opts = {None: "Todos los eventos"}
-                            evento_opts.update(_EVENTOS_OPCIONES)
-                            filter_select(
-                                label="Tipo de evento",
-                                options=evento_opts,
-                                value=None,
-                                on_change=lambda e: (
-                                    presenter.set_tipo_evento(e.value),
-                                    _on_filtros_cambio(),
-                                ),
-                                cls_extra="w-48",
-                            )
-                            # obs_07 T12: filtro por severidad
-                            filter_select(
-                                label="Severidad",
-                                options=_SEVERIDAD_OPCIONES,
-                                value=None,
-                                on_change=lambda e: (
-                                    presenter.set_severidad(e.value),
-                                    _on_filtros_cambio(),
-                                ),
-                                cls_extra="w-40",
-                            )
-                        tabla_sesiones()
+                with ui.tab_panel("sesiones"):
+                    with ui.row().classes("form-row-center-md u-mb-lg"):
+                        ui.label("Filtros:").classes("text-sm font-semibold")
+                        evento_opts = {None: "Todos los eventos"}
+                        evento_opts.update(_EVENTOS_OPCIONES)
+                        filter_select(
+                            label="Tipo de evento",
+                            options=evento_opts,
+                            value=None,
+                            on_change=lambda e: (
+                                presenter.set_tipo_evento(e.value),
+                                _on_filtros_cambio(),
+                            ),
+                            cls_extra="w-48",
+                        )
+                        # obs_07 T12: filtro por severidad
+                        filter_select(
+                            label="Severidad",
+                            options=_SEVERIDAD_OPCIONES,
+                            value=None,
+                            on_change=lambda e: (
+                                presenter.set_severidad(e.value),
+                                _on_filtros_cambio(),
+                            ),
+                            cls_extra="w-40",
+                        )
+                    tabla_sesiones()
 
     # obs_09 T13: crear el diálogo de detalle una sola vez en el contexto de la
     # página, para que _cuerpo_detalle.refresh() funcione correctamente.
@@ -710,11 +737,12 @@ def auditoria_page() -> None:
         _ruta_dir_purga = "data/archivos_auditoria"
         try:
             from pathlib import Path as _PPath
+
             from config import settings as _cfg_settings
+
             _d = _PPath(_cfg_settings.AUDITORIA_ARCHIVO_DIR)
             if not _d.is_absolute():
-                import os as _os_purga
-                _d = _PPath(_os_purga.getcwd()) / _d
+                _d = _PPath.cwd() / _d
             _ruta_dir_purga = str(_d)
         except Exception:
             pass
@@ -739,9 +767,9 @@ def auditoria_page() -> None:
                 _count_label = ui.label(
                     "Filas a eliminar: — (introduce la fecha de corte)"
                 ).classes("text-xs text-secondary u-mt-xs")
-                ui.label(
-                    f"Directorio de archivo: {_ruta_dir_purga}"
-                ).classes("text-xs text-secondary")
+                ui.label(f"Directorio de archivo: {_ruta_dir_purga}").classes(
+                    "text-xs text-secondary"
+                )
 
                 def _actualizar_conteo_purga(e) -> None:
                     """Calcula las filas afectadas cuando el usuario introduce la fecha."""
@@ -751,9 +779,11 @@ def auditoria_page() -> None:
                         return
                     try:
                         from datetime import datetime as _dtp
-                        from src.domain.models.auditoria import FiltroAuditoriaDTO as _FDTO
+
+                        from src.domain.models.auditoria import FiltroAuditoriaDTO
+
                         hasta_dt = _dtp.fromisoformat(val)
-                        filtro_purga = _FDTO(hasta=hasta_dt, por_pagina=1)
+                        filtro_purga = FiltroAuditoriaDTO(hasta=hasta_dt, por_pagina=1)
                         n = Container.auditoria_service().contar_cambios(filtro_purga)
                         _count_label.set_text(f"Filas a eliminar: {n:,}")
                     except Exception:

@@ -10,7 +10,7 @@
 
 ---
 
-## T1 — Añadir variables de configuración  [ ]
+## T1 — Añadir variables de configuración  [x]
 
 En `config.py`, añadir `DB_BACKEND` y `DATABASE_URL` desde env vars con
 defaults.
@@ -25,7 +25,7 @@ Debe imprimir `sqlite`.
 
 ---
 
-## T2 — Crear la factory de engine  [ ]
+## T2 — Crear la factory de engine  [x]
 
 En `container.py`, implementar `_create_engine()` y `Container.engine()`
 según D1.
@@ -44,7 +44,7 @@ Para SQLite: event listener que aplica pragmas en cada conexión (D3).
 
 ---
 
-## T3 — Exponer Container.connection()  [ ]
+## T3 — Exponer Container.connection()  [x]
 
 Context manager que devuelve una conexión del engine:
 
@@ -63,7 +63,7 @@ def connection(cls):
 
 ---
 
-## T4 — Verificar arranque de la app  [ ]
+## T4 — Verificar arranque de la app  [x]
 
 Arrancar la app con `DB_BACKEND=sqlite` y verificar que funciona
 exactamente igual que antes. El engine se crea pero los repos siguen
@@ -77,7 +77,7 @@ TODO VERDE.
 
 ---
 
-## T5 — Verificación de no regresión y cierre  [ ]
+## T5 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe scripts/init.py

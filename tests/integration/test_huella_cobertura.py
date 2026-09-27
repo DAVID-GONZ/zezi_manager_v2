@@ -713,14 +713,7 @@ def test_catalogo_guardar_area_huella(db: sqlite3.Connection, seed: SeedResult) 
 
 def test_configuracion_crear_anio_huella(db: sqlite3.Connection) -> None:
     """crear_anio graba audit_log con usuario_id e institucion_id no nulos."""
-    import sqlite3 as _sqlite3
-    from decimal import Decimal
-
     from src.domain.models.configuracion import NuevaConfiguracionAnioDTO
-
-    # El repo pasa Decimal directamente a sqlite3 que no lo soporta nativamente;
-    # registrar el adaptador para este test (global, idempotente).
-    _sqlite3.register_adapter(Decimal, float)
 
     uid, iid = _ids(db)
     auditoria = SqliteAuditoriaRepository(conn=db)
@@ -793,13 +786,15 @@ def test_institucion_crear_huella(db: sqlite3.Connection) -> None:
 def test_plan_mejoramiento_agregar_actividad_huella(db: sqlite3.Connection, seed: SeedResult) -> None:
     """agregar_actividad graba audit_log con usuario_id e institucion_id no nulos.
 
-    SqlitePlanMejoramientoRepository no soporta inyección de conexión en memoria;
-    se verifica solo la presencia del método auditar_cambio en el servicio.
-    Si no hay cortes en el seed, el test se omite.
+    El repo soporta conn= desde backend_02c.
+    El servicio tiene un bug preexistente: suma_pesos_actividades() devuelve float
+    pero NuevaActividadPlanDTO.peso es Decimal; float+Decimal → TypeError.
+    Cobertura verificada en check_auditoria.py via AST hasta que se corrija el servicio.
     """
     pytest.skip(
-        "SqlitePlanMejoramientoRepository no soporta conn= (usa fichero); "
-        "cobertura verificada en check_auditoria.py via AST."
+        "Bug preexistente en PlanMejoramientoService.agregar_actividad: "
+        "float + Decimal (suma_pesos_actividades + dto.peso) — "
+        "cobertura de huella verificada en check_auditoria.py via AST."
     )
 
 

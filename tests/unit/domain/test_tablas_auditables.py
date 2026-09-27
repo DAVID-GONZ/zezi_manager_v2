@@ -1,26 +1,19 @@
 """
 Tests del catálogo de tablas auditables (obs_09 T1/T2).
 
-Regla: toda clave de ETIQUETAS_TABLA debe existir como tabla física en SCHEMA.
+Regla: toda clave de ETIQUETAS_TABLA debe existir como tabla física en metadata.
 El test protege contra entradas muertas, no exige exhaustividad.
 Una tabla desconocida devuelve su nombre físico (fallback R5).
 """
 from __future__ import annotations
 
-import re
-
 from src.domain.tablas_auditables import ETIQUETAS_TABLA, etiqueta_de_tabla
-from src.infrastructure.db.schema import SCHEMA
+from src.infrastructure.db.schema import metadata
 
 
 def _tablas_en_schema() -> set[str]:
-    """Extrae los nombres de tabla de las sentencias CREATE TABLE IF NOT EXISTS."""
-    patron = re.compile(r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(\w+)", re.IGNORECASE)
-    tablas: set[str] = set()
-    for ddl in SCHEMA:
-        for m in patron.finditer(ddl):
-            tablas.add(m.group(1))
-    return tablas
+    """Retorna el conjunto de nombres de tabla declarados en el MetaData."""
+    return set(metadata.tables.keys())
 
 
 class TestCatalogoCoberturaEsquema:
@@ -30,7 +23,7 @@ class TestCatalogoCoberturaEsquema:
         tablas_schema = _tablas_en_schema()
         claves_sin_tabla = [k for k in ETIQUETAS_TABLA if k not in tablas_schema]
         assert claves_sin_tabla == [], (
-            f"Las siguientes claves del catálogo no existen en SCHEMA: {claves_sin_tabla}"
+            f"Las siguientes claves del catálogo no existen en metadata: {claves_sin_tabla}"
         )
 
     def test_catalogo_no_vacio(self):

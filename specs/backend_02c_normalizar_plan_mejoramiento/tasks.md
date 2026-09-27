@@ -10,7 +10,7 @@
 
 ---
 
-## T1 — Auditar el estado actual  [ ]
+## T1 — Auditar el estado actual  [x]
 
 Medir:
 - Cuántos métodos usan `_get_conn()` (el context manager propio).
@@ -21,7 +21,7 @@ Medir:
 
 ---
 
-## T2 — Reescribir el constructor con conn=None  [ ]
+## T2 — Reescribir el constructor con conn=None  [x]
 
 Añadir `__init__(self, conn=None)` con `self._conn = conn`.
 
@@ -43,7 +43,7 @@ Eliminar las funciones de módulo `_db_path()` y `_get_conn()`.
 
 ---
 
-## T3 — Actualizar cada método para usar self._get_conn()  [ ]
+## T3 — Actualizar cada método para usar self._get_conn()  [x]
 
 Recorrer los ~15 métodos que hoy hacen `with _get_conn() as conn:` y
 cambiarlos a `with self._get_conn() as conn:`.
@@ -56,7 +56,7 @@ Cero errores (no hay referencias a funciones eliminadas).
 
 ---
 
-## T4 — Migrar tests a fixtures en memoria  [ ]
+## T4 — Migrar tests a fixtures en memoria  [x]
 
 Los tests de integración de plan_mejoramiento pasan a usar `db_conn` de
 conftest en lugar de conectar a `data/app.db`.
@@ -75,7 +75,7 @@ ejecución.
 
 ---
 
-## T5 — Verificar container.py  [ ]
+## T5 — Verificar container.py  [x]
 
 Verificar que `container.py` instancia el repo sin argumentos y que el
 comportamiento no cambia (usa `get_connection()` por defecto).
@@ -84,7 +84,7 @@ comportamiento no cambia (usa `get_connection()` por defecto).
 
 ---
 
-## T6 — Verificación de no regresión y cierre  [ ]
+## T6 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe scripts/init.py

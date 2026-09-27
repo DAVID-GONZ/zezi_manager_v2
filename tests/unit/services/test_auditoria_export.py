@@ -10,8 +10,6 @@ Cubre los requisitos R1-R7:
 """
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime
 
 import pytest
@@ -22,15 +20,12 @@ from src.domain.models.auditoria import (
     EventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
-    SeveridadEvento,
     TipoEventoSesion,
 )
 from src.services.auditoria_export_service import (
-    AuditoriaExportService,
     _CODIGO_TOPE,
-    _sha256_bytes,
+    AuditoriaExportService,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -137,7 +132,7 @@ class TestHojaVerificacion:
     def test_hoja_contiene_hash_primera_ultima_fila(self):
         """R2: la hoja lleva hash_cadena del primer y último registro."""
         cambios = [_hacer_cambio(1), _hacer_cambio(2)]
-        svc, repo = self._svc(cambios)
+        svc, _repo = self._svc(cambios)
         resultado = svc.exportar(
             tabla="audit_log",
             filtro=FiltroAuditoriaDTO(),
@@ -161,10 +156,10 @@ class TestHojaVerificacion:
           3. Re-encodear el resto con "utf-8" (sin BOM).
           4. Calcular SHA-256.
         """
-        import io as _io
         import hashlib as _hashlib
+        import io as _io
         cambios = [_hacer_cambio(1)]
-        svc, repo = self._svc(cambios)
+        svc, _repo = self._svc(cambios)
         resultado = svc.exportar(
             tabla="audit_log",
             filtro=FiltroAuditoriaDTO(),
@@ -174,12 +169,12 @@ class TestHojaVerificacion:
         )
         texto = resultado.decode("utf-8-sig")
         # Extraer el hash_contenido de la cabecera
-        hash_line = next(l for l in texto.splitlines() if "hash_contenido:" in l)
+        hash_line = next(linea for linea in texto.splitlines() if "hash_contenido:" in linea)
         hash_declarado = hash_line.split(": ", 1)[1].strip()
 
         # Procedimiento del documento §A: filtrar # y encodear con utf-8.
         lineas = _io.StringIO(texto).readlines()
-        datos_lineas = [l for l in lineas if not l.startswith("#")]
+        datos_lineas = [linea for linea in lineas if not linea.startswith("#")]
         datos_bytes = "".join(datos_lineas).encode("utf-8")
         hash_calculado = _hashlib.sha256(datos_bytes).hexdigest()
 

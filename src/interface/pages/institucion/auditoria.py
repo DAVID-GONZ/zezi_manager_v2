@@ -30,9 +30,9 @@ import logging
 from nicegui import ui
 
 from container import Container
+from src.domain.policies.rbac_auditoria import puede_exportar_bitacora
 from src.domain.tablas_auditables import ETIQUETAS_TABLA
 from src.interface.context.session_context import SessionContext
-from src.domain.policies.rbac_auditoria import puede_exportar_bitacora
 from src.interface.design.components import (
     custom_dialog,
     data_table,
@@ -90,18 +90,17 @@ _POR_PAGINA = 50
 def _render_sin_tenant(ctx) -> None:
     """Estado vacío explicativo cuando la sesión no tiene institución (R12)."""
     def _contenido() -> None:
-        with ui.element("div").classes("page-stack"):
-            with ui.element("div").classes("panel-card"):
-                empty_state(
-                    variante="default",
-                    icono="domain_disabled",
-                    titulo="Sin institución asignada",
-                    descripcion=(
-                        "Tu cuenta no tiene una institución asociada. "
-                        "Contacta al administrador del sistema para poder "
-                        "ver la bitácora de tu colegio."
-                    ),
-                )
+        with ui.element("div").classes("page-stack"), ui.element("div").classes("panel-card"):
+            empty_state(
+                variante="default",
+                icono="domain_disabled",
+                titulo="Sin institución asignada",
+                descripcion=(
+                    "Tu cuenta no tiene una institución asociada. "
+                    "Contacta al administrador del sistema para poder "
+                    "ver la bitácora de tu colegio."
+                ),
+            )
 
     app_layout(
         ctx,
@@ -484,20 +483,19 @@ def auditoria_institucional_page() -> None:
                 ui.label("Solo lectura").classes("text-sm text-secondary ml-2")
                 # obs_12 T16: botones de exportación (R1) — solo exportar, sin purga
                 if puede_exportar_bitacora(ctx.usuario_rol):
-                    with ui.row().classes("form-row-center ml-auto"):
-                        with ui.button_group():
-                            btn_secondary(
-                                "CSV",
-                                on_click=lambda: _exportar("csv"),
-                                icon="download",
-                                size="sm",
-                            )
-                            btn_secondary(
-                                "PDF",
-                                on_click=lambda: _exportar("pdf"),
-                                icon="picture_as_pdf",
-                                size="sm",
-                            )
+                    with ui.row().classes("form-row-center ml-auto"), ui.button_group():
+                        btn_secondary(
+                            "CSV",
+                            on_click=lambda: _exportar("csv"),
+                            icon="download",
+                            size="sm",
+                        )
+                        btn_secondary(
+                            "PDF",
+                            on_click=lambda: _exportar("pdf"),
+                            icon="picture_as_pdf",
+                            size="sm",
+                        )
 
             _render_filtros_comunes()
 

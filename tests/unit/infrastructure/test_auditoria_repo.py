@@ -24,7 +24,10 @@ from src.domain.policies.alerta_ip import MAX_FALLOS_IP, registrar_fallo_ip, res
 from src.infrastructure.db.repositories.sqlite_auditoria_repo import (
     SqliteAuditoriaRepository,
 )
-from src.infrastructure.db.schema import SCHEMA
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
+from src.infrastructure.db.schema import metadata
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -35,8 +38,8 @@ def conn():
     """Base de datos SQLite en memoria con el esquema completo."""
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
-    for ddl in SCHEMA:
-        c.execute(ddl)
+    engine = create_engine("sqlite://", creator=lambda: c, poolclass=StaticPool)
+    metadata.create_all(engine)
     c.commit()
     yield c
     c.close()

@@ -575,7 +575,9 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
 
         Implementa obs_13 T9: GROUP BY date(fecha_hora) en SQL.
         """
-        from datetime import datetime as _dt, timedelta as _td
+        from datetime import datetime as _dt
+        from datetime import timedelta as _td
+
         from src.domain.models.clock import ahora as _ahora
 
         dias = max(1, dias)
@@ -675,10 +677,7 @@ class SqliteAuditoriaRepository(IAuditoriaRepository):
         Itera por lotes las filas de ``tabla`` con id en ``[id_desde, id_hasta]``
         respetando el scope de institución. Devuelve un iterador de listas.
         """
-        if tabla == "auditoria":
-            row_fn = self._row_to_evento
-        else:
-            row_fn = self._row_to_cambio
+        row_fn = self._row_to_evento if tabla == "auditoria" else self._row_to_cambio
 
         # Construir cláusula de scope
         scope_sql = ""

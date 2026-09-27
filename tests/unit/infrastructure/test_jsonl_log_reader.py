@@ -13,15 +13,10 @@ Cubre:
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-from src.infrastructure.logging.jsonl_log_reader import JsonlLogReader, _TOPE_BYTES
-
+from src.infrastructure.logging.jsonl_log_reader import _TOPE_BYTES, JsonlLogReader
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

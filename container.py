@@ -15,6 +15,8 @@ instancias frescas de repositorios.
 from __future__ import annotations
 
 import logging
+import os
+from contextlib import contextmanager
 from typing import Any, ClassVar
 
 logger = logging.getLogger("CONTAINER")
@@ -47,6 +49,22 @@ class Container:
         """
         cls._cache.clear()
         logger.debug("Container reseteado")
+
+    # ──────────────────────────────────────────────────────
+    # Engine SQLAlchemy (backend_05)
+    # ──────────────────────────────────────────────────────
+
+    @classmethod
+    def engine(cls):
+        """Singleton del engine SQLAlchemy. Creado al primer acceso."""
+        return cls._get_or_create("engine", _create_engine)
+
+    @classmethod
+    @contextmanager
+    def connection(cls):
+        """Context manager que cede una conexión del engine SQLAlchemy."""
+        with cls.engine().connect() as conn:
+            yield conn
 
     # ──────────────────────────────────────────────────────
     # Helper interno
@@ -679,8 +697,8 @@ class Container:
 
     @classmethod
     def auditoria_export_service(cls):
-        from src.services.auditoria_export_service import AuditoriaExportService
         from config import settings
+        from src.services.auditoria_export_service import AuditoriaExportService
         return cls._get_or_create(
             "auditoria_export_service",
             lambda: AuditoriaExportService(
@@ -692,9 +710,10 @@ class Container:
 
     @classmethod
     def auditoria_retencion_service(cls):
-        from src.services.auditoria_retencion_service import AuditoriaRetencionService
-        from config import settings
         from pathlib import Path
+
+        from config import settings
+        from src.services.auditoria_retencion_service import AuditoriaRetencionService
         archivo_dir = Path(settings.AUDITORIA_ARCHIVO_DIR)
         if not archivo_dir.is_absolute():
             from pathlib import Path as _Path
@@ -781,3 +800,40 @@ class Container:
                 len(metodos),
             )
         return resultados
+
+
+# ---------------------------------------------------------------------------
+# Factory privada del engine (backend_05)
+# ---------------------------------------------------------------------------
+
+def _create_engine():
+    """Crea el engine SQLAlchemy según DB_BACKEND del entorno."""
+    from sqlalchemy import create_engine, event
+
+    from config import settings
+
+    backend = os.getenv("DB_BACKEND", "sqlite")
+    if backend == "sqlite":
+        url = f"sqlite:///{settings.DATABASE_PATH}"
+        engine = create_engine(url, echo=False)
+
+        @event.listens_for(engine, "connect")
+        def _set_sqlite_pragmas(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA cache_size=-64000")
+            cursor.close()
+
+        return engine
+
+    if backend == "postgres":
+        url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+        if not url:
+            raise ValueError(
+                "DATABASE_URL debe definirse cuando DB_BACKEND=postgres"
+            )
+        return create_engine(url, echo=False, pool_pre_ping=True)
+
+    raise ValueError(f"DB_BACKEND no soportado: {backend!r}")

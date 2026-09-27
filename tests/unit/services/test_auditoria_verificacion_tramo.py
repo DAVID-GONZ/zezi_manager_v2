@@ -21,6 +21,7 @@ Si alguien cambia el documento sin cambiar el código (o viceversa), este test f
 """
 from __future__ import annotations
 
+import contextlib
 import csv
 import hashlib
 import io
@@ -32,12 +33,9 @@ from src.domain.models.auditoria import (
     EventoSesion,
     FiltroAuditoriaDTO,
     RegistroCambio,
-    SeveridadEvento,
-    TipoEventoSesion,
 )
 from src.services.auditoria_export_service import (
     AuditoriaExportService,
-    _sha256_bytes,
 )
 
 # Constante GENESIS del protocolo de hash chain (docs/verificacion_bitacora.md §B)
@@ -215,10 +213,8 @@ def _parsear_campos_hash_de_fila_csv(fila: dict) -> dict:
             v = None
         # registro_id y usuario_id son enteros o None
         if c in ("registro_id", "usuario_id") and v is not None:
-            try:
+            with contextlib.suppress(ValueError):
                 v = int(v)
-            except ValueError:
-                pass
         campos[c] = v
     return campos
 
@@ -344,7 +340,7 @@ class TestVerificacionTramo:
         lineas = io.StringIO(csv_bytes.decode("utf-8-sig")).readlines()
 
         # Separar las líneas de comentario (#) de las de datos.
-        datos_lineas = [l for l in lineas if not l.startswith("#")]
+        datos_lineas = [linea for linea in lineas if not linea.startswith("#")]
         datos_str = "".join(datos_lineas)
 
         # Encodear con "utf-8" (sin BOM) — exactamente como dice el documento.
@@ -388,13 +384,12 @@ class TestVerificacionTramo:
 
         # Paso B1 del documento: leer el CSV omitiendo líneas de comentario.
         texto = csv_bytes.decode("utf-8-sig")
-        lineas_datos = [l for l in texto.splitlines(keepends=True) if not l.startswith("#")]
+        lineas_datos = [linea for linea in texto.splitlines(keepends=True) if not linea.startswith("#")]
         assert lineas_datos, "El CSV exportado no tiene filas de datos."
 
         reader = csv.DictReader(io.StringIO("".join(lineas_datos)))
 
         # Verificar que hash_cadena es una columna presente en el CSV.
-        primera_fila = None
         filas_csv = list(reader)
         assert filas_csv, "El CSV no tiene filas tras filtrar cabecera."
         assert "hash_cadena" in filas_csv[0], (
@@ -441,10 +436,10 @@ class TestVerificacionTramo:
         )
 
         texto = csv_bytes.decode("utf-8-sig")
-        lineas_datos = [l for l in texto.splitlines(keepends=True) if not l.startswith("#")]
+        lineas_datos = [linea for linea in texto.splitlines(keepends=True) if not linea.startswith("#")]
         reader = csv.DictReader(io.StringIO("".join(lineas_datos)))
 
         for fila in reader:
-            assert "hash_cadena" in fila and fila["hash_cadena"], (
+            assert fila.get("hash_cadena"), (
                 f"Fila id={fila.get('id')} tiene hash_cadena vacío o ausente."
             )

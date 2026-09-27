@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from pydantic import ValidationError
 
 from src.domain.models.observabilidad import (
     AlertaIPDTO,
@@ -21,7 +22,6 @@ from src.domain.models.observabilidad import (
     PuntoUsoDTO,
     SaludDTO,
 )
-
 
 # ── SaludDTO ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ class TestSaludDTO:
         assert s.ultimo_backup == ts
 
     def test_rechaza_campos_extra(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SaludDTO(integra=True, version="2.0", uptime_segundos=1.0, tamanio_db_bytes=0, campo_extra="x")
 
     def test_model_dump_no_dict(self):
@@ -70,7 +70,7 @@ class TestEntradaLogDTO:
         assert e.tipo_evento == "LOGIN_EXITOSO"
 
     def test_rechaza_campos_extra(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             EntradaLogDTO(campo_no_declarado="x")
 
     def test_model_dump_solo_campos_declarados(self):
@@ -91,7 +91,7 @@ class TestAlertaIPDTO:
         assert a.segundos_restantes == 120.0
 
     def test_rechaza_campos_extra(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             AlertaIPDTO(ip="x", fallos=1, segundos_restantes=1.0, extra="y")
 
     def test_model_dump(self):
@@ -115,7 +115,7 @@ class TestPuntoUsoDTO:
         assert p.denegados == 2
 
     def test_rechaza_campos_extra(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             PuntoUsoDTO(fecha="2026-09-24", logins=0, denegados=0, x="y")
 
     def test_model_dump(self):

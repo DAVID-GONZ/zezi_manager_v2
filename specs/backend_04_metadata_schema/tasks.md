@@ -19,7 +19,7 @@ Puerta obligatoria tras **cada** tarea:
 
 ---
 
-## T1 — Añadir sqlalchemy a requirements.txt  [ ]
+## T1 — Añadir sqlalchemy a requirements.txt  [x]
 
 Añadir `sqlalchemy>=2.0` a `requirements.txt` e instalar:
 
@@ -34,7 +34,7 @@ Añadir `sqlalchemy>=2.0` a `requirements.txt` e instalar:
 
 ---
 
-## T2 — Reescribir el módulo 1: Configuración institucional  [ ]
+## T2 — Reescribir el módulo 1: Configuración institucional  [x]
 
 Crear el `MetaData` y declarar las tablas del módulo 1 (`instituciones`,
 `configuracion_anio`, `preferencias_institucion`, `siee_*`).
@@ -50,7 +50,7 @@ se migran los demás módulos.
 
 ---
 
-## T3 — Reescribir módulos 2-4: Infraestructura, Usuarios, Periodos  [ ]
+## T3 — Reescribir módulos 2-4: Infraestructura, Usuarios, Periodos  [x]
 
 Declarar las tablas de infraestructura académica (`grados`, `grupos`,
 `salas`, `jornadas`, etc.), usuarios (`usuarios`, `acudientes`), y
@@ -64,14 +64,14 @@ o se elimina. Reportar la decisión al leader.
 
 ---
 
-## T4 — Reescribir módulos 5-7: Evaluación, Cierres, Habilitaciones  [ ]
+## T4 — Reescribir módulos 5-7: Evaluación, Cierres, Habilitaciones  [x]
 
 Incluye las tablas de notas con `Numeric(4, 2)` en lugar de `REAL`.
 Incluye plan_mejoramiento.
 
 ---
 
-## T5 — Reescribir módulos 8-9: Asistencia, Convivencia, Alertas  [ ]
+## T5 — Reescribir módulos 8-9: Asistencia, Convivencia, Alertas  [x]
 
 **Resolver D3:** las tablas con `ON CONFLICT REPLACE` pasan a
 `UniqueConstraint` estándar.
@@ -80,13 +80,13 @@ Incluye plan_mejoramiento.
 
 ---
 
-## T6 — Reescribir módulos 10-11: Informes, Auditoría  [ ]
+## T6 — Reescribir módulos 10-11: Informes, Auditoría  [x]
 
 Incluye `audit_log`, `auditoria`, `verificacion_auditoria`.
 
 ---
 
-## T7 — Índices y triggers como objetos SQLAlchemy  [ ]
+## T7 — Índices y triggers como objetos SQLAlchemy  [x]
 
 Declarar todos los índices con `Index(...)`.
 Declarar los triggers como `DDL(...)` con `event.listen`.
@@ -95,7 +95,7 @@ Eliminar las listas `INDICES` y `TRIGGERS`.
 
 ---
 
-## T8 — Resolver D4: CHECK constraints de deuda  [ ]
+## T8 — Resolver D4: CHECK constraints de deuda  [x]
 
 Añadir los 5 `CheckConstraint` faltantes:
 - `AccionCambio`
@@ -108,7 +108,7 @@ Verificar contra `scripts/check_enums.py` que la alineación es correcta.
 
 ---
 
-## T9 — Resolver D5: institucion_id NOT NULL  [ ]
+## T9 — Resolver D5: institucion_id NOT NULL  [x]
 
 En las tablas de scope que tienen `institucion_id` nullable, cambiarlo
 a `nullable=False` donde aplique.
@@ -118,7 +118,7 @@ nullable con justificación, antes de aplicar.
 
 ---
 
-## T10 — Eliminar las listas DDL antiguas  [ ]
+## T10 — Eliminar las listas DDL antiguas  [x]
 
 Una vez que todas las tablas están declaradas en el `MetaData`:
 1. Eliminar `SCHEMA`, `INDICES`, `TRIGGERS`.
@@ -132,7 +132,7 @@ Debe imprimir `65 tablas` (o el total tras D5/tenant_05).
 
 ---
 
-## T11 — Adaptar conftest.py a create_all  [ ]
+## T11 — Adaptar conftest.py a create_all  [x]
 
 `_apply_schema` pasa a usar `metadata.create_all()` en lugar de ejecutar
 strings DDL. Crear un engine SQLAlchemy sobre la conexión SQLite en memoria.
@@ -151,7 +151,7 @@ Adaptar las fixtures para que devuelvan la conexión del engine.
 
 ---
 
-## T12 — Adaptar tests de esquema  [ ]
+## T12 — Adaptar tests de esquema  [x]
 
 Los tests de `test_schema_integrity.py` que eran `xfail` por D1 y D2
 pasan a ser tests normales (sin `xfail`) — los defectos ya están resueltos.
@@ -161,7 +161,7 @@ directamente (tablas, columnas, FKs, índices).
 
 ---
 
-## T13 — Verificar equivalencia  [ ]
+## T13 — Verificar equivalencia  [x]
 
 Comparar el schema generado por `create_all()` contra el anterior:
 
@@ -174,7 +174,7 @@ Las diferencias deben ser solo las mejoras (D1-D5, D10).
 
 ---
 
-## T14 — Verificación de no regresión y cierre  [ ]
+## T14 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe scripts/init.py

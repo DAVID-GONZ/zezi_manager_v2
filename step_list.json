@@ -1,12 +1,12 @@
 [
   {
     "id": "convivencia_26_rutas_rail",
-    "nombre": "Rutas rail — redirect comportamiento y semántica de navegación",
+    "nombre": "Rutas rail â€” redirect comportamiento y semÃ¡ntica de navegaciÃ³n",
     "status": "done",
     "destino_v2": "src/interface/design/layout.py, main.py",
     "operacion": "modificar",
     "sdd": true,
-    "descripcion": "Rail semántico con /seguimiento→_AULA; comportamiento→redirect. Épica 21-26 completa."
+    "descripcion": "Rail semÃ¡ntico con /seguimientoâ†’_AULA; comportamientoâ†’redirect. Ã‰pica 21-26 completa."
   },
   {
     "id": "tenant_01_interceptor_eventos",
@@ -19,21 +19,21 @@
   },
   {
     "id": "tenant_02_tenant_scope_criticos",
-    "nombre": "TenantScope obligatorio en 10 métodos críticos de repositorio",
+    "nombre": "TenantScope obligatorio en 10 mÃ©todos crÃ­ticos de repositorio",
     "status": "done",
     "destino_v2": "src/domain/models/tenant.py, src/domain/models/alerta.py, src/domain/models/habilitacion.py, src/domain/ports/usuario_repo.py, src/domain/ports/alerta_repo.py, src/domain/ports/habilitacion_repo.py, src/domain/ports/infraestructura_repo.py, src/domain/ports/estadisticos_repo.py, src/infrastructure/db/repositories/sqlite_usuario_repo.py, src/infrastructure/db/repositories/sqlite_alerta_repo.py, src/infrastructure/db/repositories/sqlite_habilitacion_repo.py, src/infrastructure/db/repositories/sqlite_infraestructura_repo.py, src/infrastructure/db/repositories/sqlite_estadisticos_repo.py, src/services/, src/interface/pages/convivencia/alertas.py, src/interface/pages/convivencia/seguimiento.py, tests/unit/domain/test_tenant_scope.py",
     "operacion": "crear+modificar",
     "sdd": true,
-    "descripcion": "Fase 1B aislamiento multi-tenant. Define TenantScope (int|'*') y lo aplica como parámetro obligatorio (fail-fast) en los 10 métodos de repositorio que hoy retornan datos cross-tenant sin filtro."
+    "descripcion": "Fase 1B aislamiento multi-tenant. Define TenantScope (int|'*') y lo aplica como parÃ¡metro obligatorio (fail-fast) en los 10 mÃ©todos de repositorio que hoy retornan datos cross-tenant sin filtro."
   },
   {
     "id": "tenant_03_firmas_obligatorias_high",
-    "nombre": "Migrar 28 métodos HIGH a TenantScope obligatorio",
+    "nombre": "Migrar 28 mÃ©todos HIGH a TenantScope obligatorio",
     "status": "done",
     "destino_v2": "src/domain/ports/usuario_repo.py, src/domain/ports/estudiante_repo.py, src/domain/ports/asignacion_repo.py, src/domain/ports/configuracion_repo.py, src/domain/ports/acudiente_repo.py, src/domain/ports/convivencia_repo.py, src/domain/ports/infraestructura_repo.py, src/infrastructure/db/repositories/sqlite_usuario_repo.py, src/infrastructure/db/repositories/sqlite_estudiante_repo.py, src/infrastructure/db/repositories/sqlite_asignacion_repo.py, src/infrastructure/db/repositories/sqlite_configuracion_repo.py, src/infrastructure/db/repositories/sqlite_acudiente_repo.py, src/infrastructure/db/repositories/sqlite_convivencia_repo.py, src/infrastructure/db/repositories/sqlite_infraestructura_repo.py, src/services/usuario_service.py, src/services/estudiante_service.py, src/services/catalogo_academico_service.py, src/services/convivencia_service.py, src/services/configuracion_service.py, src/services/restriccion_generacion_service.py, src/services/plan_estudios_service.py, src/services/informe_service.py, src/services/asignacion_service.py, src/services/estadisticos_service.py, src/services/franja_service.py, src/services/sala_service.py, src/services/generador_horario_service.py, tests/unit/domain/test_tenant_scope.py",
     "operacion": "modificar",
     "sdd": true,
-    "descripcion": "Fase 1B (continuación) del plan de aislamiento multi-tenant. Migrar los 28 métodos HIGH que tienen institucion_id: int | None = None (default silencioso → fuga si el caller olvida pasar scope) a TenantScope obligatorio. _aplicar_scope retorna '*' para admin."
+    "descripcion": "Fase 1B (continuaciÃ³n) del plan de aislamiento multi-tenant. Migrar los 28 mÃ©todos HIGH que tienen institucion_id: int | None = None (default silencioso â†’ fuga si el caller olvida pasar scope) a TenantScope obligatorio. _aplicar_scope retorna '*' para admin."
   },
   {
     "id": "tenant_04_tests_aislamiento",
@@ -136,7 +136,7 @@
   },
   {
     "id": "obs_01_huella_actor",
-    "nombre": "Huella completa y atribuible — actor en contexto y helper único",
+    "nombre": "Huella completa y atribuible â€” actor en contexto y helper Ãºnico",
     "status": "done",
     "destino_v2": "src/services/contexto_actor.py, src/services/auditoria_helpers.py, src/domain/models/auditoria.py, container.py, src/services/usuario_service.py, src/services/estudiante_service.py, src/services/periodo_service.py, src/services/asignacion_service.py, src/services/evaluacion_service.py, src/services/cierre_service.py, src/services/habilitacion_service.py, src/services/contexto_tenant.py, src/services/solo_lectura.py, src/interface/context/session_context.py, src/interface/auth/route_guard.py, src/interface/pages/login.py, main.py, tests/unit/services/test_contexto_actor.py, tests/unit/services/test_auditoria_helpers.py, tests/integration/test_huella_actor.py",
     "operacion": "crear+modificar",
@@ -145,7 +145,7 @@
   },
   {
     "id": "obs_02_puerta_huella",
-    "nombre": "Puerta de huella — check_auditoria.py con lista de deuda",
+    "nombre": "Puerta de huella â€” check_auditoria.py con lista de deuda",
     "status": "done",
     "destino_v2": "scripts/check_auditoria.py, scripts/init.py, tests/unit/test_check_auditoria.py, tests/integration/test_huella_cobertura.py",
     "operacion": "crear+modificar",
@@ -163,7 +163,7 @@
   },
   {
     "id": "obs_04a_huella_convivencia_asistencia",
-    "nombre": "Huella en convivencia y asistencia (24 métodos)",
+    "nombre": "Huella en convivencia y asistencia (24 mÃ©todos)",
     "status": "done",
     "destino_v2": "src/services/convivencia_service.py, src/services/asistencia_service.py, src/services/alerta_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
@@ -172,7 +172,7 @@
   },
   {
     "id": "obs_04b_huella_infraestructura_horarios",
-    "nombre": "Huella en infraestructura, horarios, salas y franjas (~63 métodos)",
+    "nombre": "Huella en infraestructura, horarios, salas y franjas (~63 mÃ©todos)",
     "status": "done",
     "destino_v2": "src/services/infraestructura_service.py, src/services/restriccion_generacion_service.py, src/services/escenario_horario_service.py, src/services/horario_service.py, src/services/sala_service.py, src/services/franja_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
@@ -181,7 +181,7 @@
   },
   {
     "id": "obs_04c_huella_config_catalogos",
-    "nombre": "Huella en configuración, institución, catálogos y planes (~28 métodos)",
+    "nombre": "Huella en configuraciÃ³n, instituciÃ³n, catÃ¡logos y planes (~28 mÃ©todos)",
     "status": "done",
     "destino_v2": "src/services/configuracion_service.py, src/services/catalogo_academico_service.py, src/services/plan_estudios_service.py, src/services/institucion_service.py, src/services/plan_mejoramiento_service.py, src/services/nivelacion_service.py, src/services/aprovisionamiento_institucion_service.py, scripts/check_auditoria.py, tests/integration/",
     "operacion": "modificar",
@@ -199,7 +199,7 @@
   },
   {
     "id": "obs_05_admin_auditoria_ui",
-    "nombre": "Auditoría en admin — filtro por institución, paginación y KPIs de uso",
+    "nombre": "AuditorÃ­a en admin â€” filtro por instituciÃ³n, paginaciÃ³n y KPIs de uso",
     "status": "done",
     "destino_v2": "src/interface/pages/admin/auditoria.py, src/interface/presenters/admin/auditoria_presenter.py, src/interface/pages/inicio.py, src/services/auditoria_service.py",
     "operacion": "modificar",
@@ -208,7 +208,7 @@
   },
   {
     "id": "infra_01_retirar_weasyprint",
-    "nombre": "Retirar weasyprint — reportlab como motor único de PDF",
+    "nombre": "Retirar weasyprint â€” reportlab como motor Ãºnico de PDF",
     "status": "done",
     "destino_v2": "src/infrastructure/exporters/pdf_exporter.py, src/infrastructure/exporters/exporter_factory.py, src/infrastructure/exporters/null_exporter.py, src/infrastructure/exporters/openpyxl_exporter.py, src/domain/ports/service_ports.py, src/interface/pages/informes/boletin_anual.py, src/interface/pages/informes/boletin_periodo.py, tests/unit/infrastructure/test_exporters.py, requirements.txt",
     "operacion": "modificar",
@@ -217,7 +217,7 @@
   },
   {
     "id": "obs_06_identidad_y_ip",
-    "nombre": "Identidad del actor e IP en toda la bitácora",
+    "nombre": "Identidad del actor e IP en toda la bitÃ¡cora",
     "status": "done",
     "destino_v2": "src/interface/context/request_ip.py, src/interface/context/eventos_sesion.py, src/interface/context/session_context.py, src/interface/pages/login.py, src/interface/auth/route_guard.py, main.py, src/services/contexto_actor.py, src/services/solo_lectura.py, src/services/contexto_tenant.py, src/services/auditoria_helpers.py, src/domain/models/auditoria.py, src/infrastructure/db/schema.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, src/infrastructure/logging/security_logger.py, config.py, .env.example, tests/unit/services/test_contexto_actor.py, tests/unit/interface/context/test_request_ip.py, tests/unit/interface/test_emision_eventos.py",
     "operacion": "crear+modificar",
@@ -226,7 +226,7 @@
   },
   {
     "id": "obs_07_denegaciones_con_actor",
-    "nombre": "Denegaciones con actor y clasificación por severidad",
+    "nombre": "Denegaciones con actor y clasificaciÃ³n por severidad",
     "status": "done",
     "destino_v2": "progress/diagnostico_obs_07.md, src/domain/policies/severidad_evento.py, src/domain/models/auditoria.py, src/interface/context/eventos_sesion.py, src/interface/context/event_context.py, src/interface/context/session_context.py, src/interface/auth/route_guard.py, src/services/solo_lectura.py, src/services/contexto_tenant.py, src/services/auditoria_service.py, main.py, src/interface/presenters/admin/auditoria_presenter.py, src/interface/pages/admin/auditoria.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, tests/unit/domain/test_severidad_evento.py",
     "operacion": "crear+modificar",
@@ -235,7 +235,7 @@
   },
   {
     "id": "obs_08_integridad_incremental",
-    "nombre": "Verificación incremental de la cadena y agregados en SQL",
+    "nombre": "VerificaciÃ³n incremental de la cadena y agregados en SQL",
     "status": "done",
     "destino_v2": "src/domain/models/auditoria.py, src/domain/ports/auditoria_repo.py, src/infrastructure/db/schema.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, src/services/auditoria_service.py, src/interface/presenters/admin/auditoria_presenter.py, src/interface/pages/admin/auditoria.py, src/interface/pages/inicio.py, tests/unit/infrastructure/test_auditoria_volumen.py",
     "operacion": "crear+modificar",
@@ -262,7 +262,7 @@
   },
   {
     "id": "obs_11_auditoria_del_rector",
-    "nombre": "Bitácora institucional para el equipo directivo",
+    "nombre": "BitÃ¡cora institucional para el equipo directivo",
     "status": "done",
     "destino_v2": "src/interface/pages/institucion/auditoria.py, src/interface/presenters/institucion/auditoria_presenter.py, src/domain/policies/rbac_auditoria.py, src/services/auditoria_service.py, src/interface/pages/admin/auditoria.py, main.py, src/interface/design/layout.py, tests/unit/interface/auth/test_matriz_rutas_completa.py, tests/unit/services/test_tenant_isolation.py",
     "operacion": "crear+modificar",
@@ -271,7 +271,7 @@
   },
   {
     "id": "obs_12_exportacion_y_retencion",
-    "nombre": "Exportación verificable y retención de la bitácora",
+    "nombre": "ExportaciÃ³n verificable y retenciÃ³n de la bitÃ¡cora",
     "status": "done",
     "destino_v2": "src/services/auditoria_export_service.py, src/services/auditoria_retencion_service.py, src/domain/models/auditoria.py, src/domain/ports/auditoria_repo.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, src/infrastructure/db/schema.py, src/domain/policies/rbac_auditoria.py, src/services/preferencias_institucion_service.py, src/interface/pages/admin/auditoria.py, src/interface/pages/institucion/auditoria.py, docs/verificacion_bitacora.md, config.py, .env.example, container.py",
     "operacion": "crear+modificar",
@@ -289,11 +289,101 @@
   },
   {
     "id": "obs_14_correlacion_request_id",
-    "nombre": "Correlación por request_id (diferido a la API REST)",
+    "nombre": "CorrelaciÃ³n por request_id (diferido a la API REST)",
     "status": "spec_ready",
     "destino_v2": "src/services/contexto_peticion.py, main.py, src/interface/context/event_context.py, src/domain/models/auditoria.py, src/infrastructure/db/schema.py, src/infrastructure/db/repositories/sqlite_auditoria_repo.py, src/infrastructure/logging/security_logger.py, src/services/auditoria_helpers.py, src/services/observabilidad_service.py, src/interface/pages/admin/observabilidad.py, tests/unit/services/test_contexto_peticion.py",
     "operacion": "crear+modificar",
     "sdd": true,
     "descripcion": "NIVEL N3, DIFERIDO: no iniciar hasta que la API REST de backend_00 este en marcha. Cuando algo falla hoy hay tres rastros que no se pueden unir, porque no comparten ninguna clave: la excepcion con traza en el log de aplicacion identifica el punto del codigo, el evento de la tabla auditoria identifica al actor y el momento, y la fila de audit_log identifica la entidad afectada. Reconstruir este error ocurrio mientras este usuario guardaba esta observacion se hace correlacionando marcas de tiempo a ojo. Un identificador de peticion cobra su valor cuando hay peticiones con dueno claro y un consumidor que las correlacione (una API REST con clientes distintos, o un colector de logs); con NiceGUI, sesion de navegador, manejador global de excepciones ya registrando la traza completa y volumen manejable a mano, implementarlo antes seria pagar la complejidad sin cobrar el beneficio. Se especifica ahora, y no cuando toque, para que las decisiones de obs_06 sobre donde vive el contexto de peticion y que campos viajan se tomen sabiendo que va a colgar de ellas. El diseno anade contexto_peticion.py como cuarto ContextVar neutral con la misma forma que contexto_actor, contexto_tenant y solo_lectura; abre una unidad de correlacion por evento y no por sesion de websocket; adopta la cabecera entrante solo si valida el formato, para que un cliente no pueda inyectar contenido arbitrario en el log; y deja request_id FUERA del payload firmado, con el mismo criterio que institucion_id, porque falsear una correlacion no falsea de quien fue el hecho. DEPENDE de obs_06 y obs_13."
+  },
+  {
+    "id": "backend_01_test_taxonomy",
+    "nombre": "Taxonomia de tests con marker @pytest.mark.repo",
+    "status": "done",
+    "destino_v2": "tests/conftest.py, pyproject.toml",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 1 del backend. Clasificar los 194 archivos de test en agnosticos de BD y dependientes de BD. Marcado automatico con @pytest.mark.repo en pytest_collection_modifyitems por fixture (db_conn, db_seed, seed_result, db_dev) y por carpeta (tests/integration/). pytest -m repo selecciona solo los tests de BD; pytest -m 'not repo' el resto. No modifica ningun test existente."
+  },
+  {
+    "id": "backend_02_conftest_parametrizado",
+    "nombre": "Conftest parametrizado para engine inyectable",
+    "status": "done",
+    "destino_v2": "tests/conftest.py, tests/db_engine.py, pyproject.toml",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Fase 1 del backend. Parametrizar conftest.py para que las fixtures de BD funcionen sobre un engine inyectable via --backend=sqlite, no sobre sqlite3.connect(':memory:') hardcodeado. Crea tests/db_engine.py con create_test_engine(backend). Elimina import sqlite3 del conftest. Solo SQLite por ahora; la rama postgres se anade en backend_09."
+  },
+  {
+    "id": "backend_02b_tests_esquema",
+    "nombre": "Tests de esquema contra sqlite_master",
+    "status": "done",
+    "destino_v2": "tests/unit/infrastructure/test_schema_integrity.py",
+    "operacion": "crear",
+    "sdd": true,
+    "descripcion": "Fase 1 del backend. Suite que verifica equivalencia entre SCHEMA declarado y sqlite_master aplicado: tablas, columnas, FKs, indices, triggers y orden de creacion. Resuelve D11 (cero tests de esquema). D1 (orden de dependencias violado) y D2 (FK fantasma de grupos.sala_id) quedan como xfail con reason que referencia backend_04. Sin esta suite, backend_04 reescribe 1654 lineas de DDL sin red de seguridad."
+  },
+  {
+    "id": "backend_02c_normalizar_plan_mejoramiento",
+    "nombre": "Normalizar plan_mejoramiento al patron conn=None",
+    "status": "done",
+    "destino_v2": "src/infrastructure/db/repositories/sqlite_plan_mejoramiento_repo.py, tests/integration/",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 1 del backend. Resuelve D7: sqlite_plan_mejoramiento_repo.py es el unico repo que abre sqlite3.connect() a mano, sin check_same_thread=False, sin WAL, sin conn inyectable, y sus tests de integracion golpean data/app.db real. Adopta el patron __init__(self, conn=None) del resto, elimina _db_path() y _get_conn() propios, y migra tests a fixtures en memoria."
+  },
+  {
+    "id": "backend_04_metadata_schema",
+    "nombre": "Schema como MetaData/Table de SQLAlchemy Core",
+    "status": "done",
+    "destino_v2": "src/infrastructure/db/schema.py, tests/conftest.py, tests/unit/infrastructure/test_schema_integrity.py, requirements.txt",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 2 del backend â€” PUERTA DE APROBACION. Reescribe las 1654 lineas de DDL strings (65 tablas) como MetaData/Table de SQLAlchemy Core con tipos neutros. metadata.create_all() genera schema equivalente en SQLite. Resuelve D1 (orden de dependencias), D2 (FK fantasma), D3 (ON CONFLICT REPLACE en 10 tablas), D4 (5 CHECK faltantes), D5 (institucion_id nullable), D10 (trigger solo BEFORE INSERT). Absorbe tenant_05_desnormalizacion_transitivas. Entrada obligatoria: docs/auditoria_observabilidad_2026-09-08.md seccion 5.1. Introduce sqlalchemy>=2.0 como dependencia."
+  },
+  {
+    "id": "backend_05_engine_factory",
+    "nombre": "Factory de engine conmutable sqlite/postgres en Container",
+    "status": "in_progress",
+    "destino_v2": "container.py, config.py, .env.example",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 2 del backend â€” PUERTA DE APROBACION (toca container.py). Factory de engine SQLAlchemy conmutable por DB_BACKEND=sqlite|postgres. Container.engine() singleton y Container.connection() context manager. Pragmas de SQLite (WAL, foreign_keys, synchronous, cache_size) via event.listen en cada conexion nueva. connection.py sigue existiendo para repos no migrados. La app arranca con DB_BACKEND=sqlite sin cambios visibles."
+  },
+  {
+    "id": "backend_06_queries_sqlalchemy",
+    "nombre": "queries.py sobre SQLAlchemy Core",
+    "status": "spec_ready",
+    "destino_v2": "src/infrastructure/db/queries.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 2 del backend. Reescribe fetch_df, fetch_one, fetch_all, get_scalar y execute sobre Container.engine() en vez de get_connection() de connection.py. Usa exec_driver_sql para placeholders ? (compatible con SQL crudo existente). Resuelve D8: execute deja de tragar excepciones y devolver False silenciosamente; las escrituras fallidas se propagan al llamador. Los repos no requieren cambios: misma firma publica."
+  },
+  {
+    "id": "backend_07_repos_migracion",
+    "nombre": "Migracion de 20 repos a SQLAlchemy Core en 3 olas",
+    "status": "spec_ready",
+    "destino_v2": "src/infrastructure/db/repositories/, src/domain/ports/, container.py, tests/",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 2 del backend â€” el paso mas grande (~500 metodos, ~9000 LOC). Reescribe los 20 repos de SQL crudo a expresiones SQLAlchemy Core (select/insert/update/delete) en tres olas por tamano. Resuelve: ? a params nombrados, lastrowid a inserted_primary_key, INSERT OR REPLACE a upsert portable (D3), fechas SQLite a funciones neutras, 0 transacciones a conn.begin() (D6), y auditoria atomica con el cambio. Renombra sqlite_* a sqla_*. Crea RepositorioBase con filtro obligatorio de tenant (absorbe tenant_06 sin ORM). Puertos intactos; servicios e interfaz no cambian. Al cerrar, elimina connection.py y queries.py."
+  },
+  {
+    "id": "backend_08_recreacion_seed",
+    "nombre": "Creacion de esquema y seed sobre SQLAlchemy",
+    "status": "spec_ready",
+    "destino_v2": "src/infrastructure/db/seed.py, src/infrastructure/db/schema.py, main.py, tests/conftest.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Fase 2 del backend. metadata.create_all(engine) como punto unico de creacion de esquema. Seeds (seed_base, seed_dev, seed_test) reescritos con insert() de SQLAlchemy Core. Elimina las 9 funciones _migrate_* de seed.py (D9) que contradecian la decision de sin migraciones. main.py usa metadata.create_all() para inicializar la BD al arrancar. init.py verde con el nuevo mecanismo."
+  },
+  {
+    "id": "backend_09_cierre_dual",
+    "nombre": "Suite verde en SQLite e infraestructura Postgres preparada",
+    "status": "spec_ready",
+    "destino_v2": "tests/conftest.py, tests/db_engine.py, src/infrastructure/db/, pyproject.toml",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Cierre de la Fase 2. Auditoria y eliminacion de todo vestigio de sqlite3 en src/. Suite completa verde con --backend=sqlite (>=2590 tests). Implementa --backend=postgres en conftest con skip automatico si DATABASE_URL no esta definida o la base no es accesible (Docker no disponible). Triggers condicionales por dialecto. Limpieza final: connection.py, queries.py y sqlite_*_repo.py eliminados. Absorbe backend_03_postgres_test_infra, reubicado aqui por la revision del 2026-09-09."
   }
 ]

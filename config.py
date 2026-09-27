@@ -75,6 +75,18 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # Base de datos
     # ------------------------------------------------------------------
+    DB_BACKEND: Literal["sqlite", "postgres"] = Field(
+        default="sqlite",
+        description="Motor de base de datos: sqlite | postgres.",
+    )
+    DATABASE_URL: str = Field(
+        default="",
+        description=(
+            "URL de conexión completa para Postgres. "
+            "Ejemplo: postgresql+psycopg://user:pass@host:5432/zeci. "
+            "Ignorado cuando DB_BACKEND=sqlite."
+        ),
+    )
     DATABASE_PATH: Path = Field(
         default=_PROJECT_ROOT / "data" / "app.db",
         description="Ruta al archivo SQLite. Relativa a la raíz del proyecto.",
@@ -336,11 +348,15 @@ DATABASE_PATH: Path = settings.DATABASE_PATH
 DB_CONFIG: dict = settings.db_config
 IS_PRODUCTION: bool = settings.is_production
 ZONA_HORARIA: str = settings.ZONA_HORARIA
+DB_BACKEND: str = settings.DB_BACKEND
+DATABASE_URL: str = settings.DATABASE_URL
 
 
 __all__ = [
     "DATABASE_PATH",
     "DB_CONFIG",
+    "DB_BACKEND",
+    "DATABASE_URL",
     "IS_PRODUCTION",
     "ZONA_HORARIA",
     "Settings",

@@ -94,9 +94,8 @@ class JsonlLogReader(ILogReader):
                     # Se usa un campo "nivel" si existiera; sino se infiere de severidad.
                     # Para simplicidad, se deja pasar si no hay campo nivel.
                     pass
-                if tipo_evento is not None:
-                    if entrada.get("tipo_evento") != tipo_evento:
-                        continue
+                if tipo_evento is not None and entrada.get("tipo_evento") != tipo_evento:
+                    continue
 
                 entradas.append(entrada)
                 if len(entradas) >= n:

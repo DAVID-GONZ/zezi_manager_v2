@@ -46,7 +46,7 @@ logger = logging.getLogger("AUDITORIA.RETENCION")
 def _sha256_file(path: Path) -> str:
     """SHA-256 hex-digest del contenido de un archivo."""
     h = hashlib.sha256()
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         for bloque in iter(lambda: f.read(65536), b""):
             h.update(bloque)
     return h.hexdigest()
@@ -231,7 +231,7 @@ class AuditoriaRetencionService:
         h = hashlib.sha256()
         # Abrir en modo binario para evitar que Windows convierta \n → \r\n en disco,
         # lo que rompería la verificación posterior del hash del archivo.
-        with open(ruta, "wb") as f:
+        with ruta.open("wb") as f:
             # Primera línea: metadatos del archivado
             meta = {
                 "_tipo": "ARCHIVO_AUDITORIA",

@@ -90,6 +90,7 @@ norecursedirs = [".venv", ".claude", "roadmaps", "build", "dist"]
 markers = [
     "unit: prueba unitaria pura (sin BD ni UI real)",
     "integration: toca repositorios SQLite / escenarios multi-tenant",
+    "repo: test que depende del backend de BD (SQLite/futuro Postgres)",
     "slow: prueba lenta (estrés, generación combinatoria)",
     "e2e: flujo de UI real con nicegui.testing (headless)",
     "browser: flujo de navegador real con Playwright (opt-in)",

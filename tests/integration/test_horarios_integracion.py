@@ -33,7 +33,10 @@ from src.infrastructure.db.repositories.sqlite_periodo_repo import (
 from src.infrastructure.db.repositories.sqlite_usuario_repo import (
     SqliteUsuarioRepository,
 )
-from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
+from src.infrastructure.db.schema import metadata
 from src.infrastructure.db.seed import _fast_hasher, seed_dev
 from src.services.asignacion_service import (
     AsignacionService,
@@ -54,12 +57,8 @@ def env():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
-    for sql in SCHEMA:
-        conn.execute(sql)
-    for sql in INDICES:
-        conn.execute(sql)
-    for sql in TRIGGERS:
-        conn.execute(sql)
+    engine = create_engine("sqlite://", creator=lambda: conn, poolclass=StaticPool)
+    metadata.create_all(engine)
     conn.commit()
     seed_dev(conn, anio=2025, hasher=_fast_hasher, total_estudiantes=8, seed_random=7)
     conn.commit()

@@ -31,7 +31,10 @@ _conn_mod.DB_PATH = _DB  # get_connection() lee este global en cada llamada
 
 
 def _sembrar_bd() -> None:
-    from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
     from src.infrastructure.db.seed import seed_dev
 
     if _DB.exists():
@@ -39,12 +42,8 @@ def _sembrar_bd() -> None:
     con = sqlite3.connect(str(_DB))
     con.execute("PRAGMA foreign_keys = ON")
     con.row_factory = sqlite3.Row
-    for sql in SCHEMA:
-        con.execute(sql)
-    for sql in INDICES:
-        con.execute(sql)
-    for sql in TRIGGERS:
-        con.execute(sql)
+    engine = create_engine("sqlite://", creator=lambda: con, poolclass=StaticPool)
+    metadata.create_all(engine)
     # seed_dev ya siembra una SEGUNDA institución (aislamiento multi-tenant).
     seed_dev(con, anio=2025, total_estudiantes=6, seed_random=42)
     con.commit()

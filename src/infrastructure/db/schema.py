@@ -17,1610 +17,1462 @@ Módulos:
   10. Informes y PIAR
   11. Auditoría
 """
+from __future__ import annotations
 
 import logging
-from pathlib import Path
+from sqlalchemy import (
+    Boolean, CheckConstraint, Column, Date, DateTime,
+    DDL, Float, ForeignKey, Index, Integer, MetaData,
+    Numeric, String, Table, Text, UniqueConstraint, event, text,
+)
 
 logger = logging.getLogger("DB.SCHEMA")
 
-
-# =============================================================================
-# TABLAS
-# =============================================================================
-
-SCHEMA: list[str] = [
-    # -------------------------------------------------------------------------
-    # 1. CONFIGURACIÓN INSTITUCIONAL
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS instituciones (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre          TEXT    NOT NULL UNIQUE,
-        nit             TEXT,
-        codigo          TEXT,
-        activa          BOOLEAN NOT NULL DEFAULT 1,
-        fecha_creacion  DATE    NOT NULL DEFAULT CURRENT_DATE,
-
-        -- Identidad institucional (mejora_06)
-        nombre_oficial         TEXT,
-        codigo_dane            TEXT,
-        rector                 TEXT,
-        direccion              TEXT,
-        pais                   TEXT,
-        departamento           TEXT,
-        municipio              TEXT,
-        telefono               TEXT,
-        logo_path              TEXT,
-        logo_url               TEXT,
-        resolucion_aprobacion  TEXT,
-        lema                   TEXT,
-        email_institucional    TEXT,
-        jornada_principal      TEXT,
-        tipo_institucion       TEXT,
-        calendario             TEXT,
-        configuracion_inicial_completa BOOLEAN NOT NULL DEFAULT 0
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS configuracion_anio (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio                    INTEGER NOT NULL,
-        institucion_id          INTEGER REFERENCES instituciones(id),
-        fecha_inicio_clases     DATE,
-        fecha_fin_clases        DATE,
-
-        -- Datos institucionales (para boletines e informes)
-        nombre_institucion      TEXT    NOT NULL DEFAULT 'Institución Educativa',
-        dane_code               TEXT,
-        rector                  TEXT,
-        direccion               TEXT,
-        municipio               TEXT,
-        telefono_institucion    TEXT,
-        logo_path               TEXT,
-        resolucion_aprobacion   TEXT,
-
-        -- Reglas académicas base
-        nota_minima_aprobacion  REAL    NOT NULL DEFAULT 60.0
-                                CHECK(nota_minima_aprobacion >= 0
-                                  AND nota_minima_aprobacion <= 100),
-
-        -- Escala de notas configurable (boletines/informes)
-        nota_minima_escala      REAL    NOT NULL DEFAULT 0.0,
-        nota_maxima_escala      REAL    NOT NULL DEFAULT 100.0,
-
-        activo                  BOOLEAN NOT NULL DEFAULT 1,
-
-        UNIQUE(institucion_id, anio)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS niveles_desempeno (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id     INTEGER NOT NULL,
-        nombre      TEXT    NOT NULL,
-        rango_min   REAL    NOT NULL CHECK(rango_min >= 0 AND rango_min < 100),
-        rango_max   REAL    NOT NULL CHECK(rango_max > 0  AND rango_max <= 100),
-        descripcion TEXT,
-        orden       INTEGER NOT NULL DEFAULT 0,
-
-        UNIQUE(anio_id, nombre),
-        UNIQUE(anio_id, orden),
-        CHECK(rango_min < rango_max),
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS configuracion_periodos (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id         INTEGER NOT NULL UNIQUE,
-        numero_periodos INTEGER NOT NULL DEFAULT 4
-                        CHECK(numero_periodos BETWEEN 2 AND 6),
-        pesos_iguales   BOOLEAN NOT NULL DEFAULT 1,
-
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS criterios_promocion (
-        id                          INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id                     INTEGER NOT NULL UNIQUE,
-        max_asignaturas_perdidas    INTEGER NOT NULL DEFAULT 2,
-        permite_condicionada        BOOLEAN NOT NULL DEFAULT 1,
-        nota_minima_habilitacion    REAL    NOT NULL DEFAULT 60.0
-                                    CHECK(nota_minima_habilitacion >= 0
-                                      AND nota_minima_habilitacion <= 100),
-        nota_minima_anual           REAL    NOT NULL DEFAULT 60.0
-                                    CHECK(nota_minima_anual >= 0
-                                      AND nota_minima_anual <= 100),
-
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 2. INFRAESTRUCTURA ACADÉMICA
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS escenarios_horario (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id     INTEGER NOT NULL,
-        nombre      TEXT    NOT NULL,
-        descripcion TEXT,
-        activo      INTEGER NOT NULL DEFAULT 0,
-        created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-        UNIQUE(anio_id, nombre),
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS plantillas_franja (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre       TEXT    NOT NULL,
-        jornada      TEXT    NOT NULL DEFAULT 'UNICA'
-                     CHECK(jornada IN ('AM', 'PM', 'UNICA')),
-        dias_activos TEXT    NOT NULL DEFAULT 'Lunes,Martes,Miércoles,Jueves,Viernes',
-        activa       INTEGER NOT NULL DEFAULT 0,
-        created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
-        institucion_id INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS franjas (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        plantilla_id INTEGER NOT NULL,
-        orden        INTEGER NOT NULL CHECK(orden >= 1),
-        hora_inicio  TIME    NOT NULL,
-        hora_fin     TIME    NOT NULL,
-        tipo         TEXT    NOT NULL DEFAULT 'lectiva'
-                     CHECK(tipo IN ('lectiva', 'descanso', 'almuerzo')),
-        etiqueta     TEXT,
-        UNIQUE(plantilla_id, orden),
-        CHECK(hora_inicio < hora_fin),
-        FOREIGN KEY(plantilla_id) REFERENCES plantillas_franja(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS areas_conocimiento (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre         TEXT    NOT NULL,
-        codigo         TEXT,
-        color          TEXT,
-        institucion_id INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre),
-        UNIQUE(institucion_id, codigo)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS asignaturas (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre              TEXT    NOT NULL,
-        codigo              TEXT,
-        area_id             INTEGER,
-        horas_semanales     INTEGER NOT NULL DEFAULT 1 CHECK(horas_semanales > 0),
-        tipo_sala_requerido TEXT    DEFAULT NULL,
-        bloque_doble        INTEGER NOT NULL DEFAULT 0,
-        horas_consecutivas  INTEGER NOT NULL DEFAULT 1 CHECK(horas_consecutivas >= 1),
-        institucion_id      INTEGER REFERENCES instituciones(id),
-
-        UNIQUE(institucion_id, nombre),
-        UNIQUE(institucion_id, codigo),
-        FOREIGN KEY(area_id) REFERENCES areas_conocimiento(id) ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS grupos (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        codigo           TEXT    NOT NULL,
-        nombre           TEXT,
-        grado            INTEGER CHECK(grado BETWEEN 1 AND 13),
-        jornada          TEXT    NOT NULL DEFAULT 'UNICA'
-                         CHECK(jornada IN ('AM', 'PM', 'UNICA')),
-        capacidad_maxima INTEGER NOT NULL DEFAULT 40 CHECK(capacidad_maxima > 0),
-        sala_id          INTEGER,
-        institucion_id   INTEGER REFERENCES instituciones(id),
-        -- Director de grupo (convivencia_01): FK al usuario que dirige el grupo.
-        -- Autoridad por objeto, NO un Rol nuevo (un profesor sigue siendo
-        -- profesor pero dirige el grupo X). Nullable: un grupo puede no tener
-        -- director asignado. ON DELETE SET NULL: al borrar el usuario, el grupo
-        -- queda sin director en vez de romper la FK.
-        director_grupo_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-
-        UNIQUE(institucion_id, codigo)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS grados (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        numero          INTEGER NOT NULL UNIQUE CHECK(numero BETWEEN 1 AND 13),
-        nombre          TEXT,
-        min_estudiantes INTEGER NOT NULL DEFAULT 0  CHECK(min_estudiantes >= 0),
-        max_estudiantes INTEGER NOT NULL DEFAULT 40 CHECK(max_estudiantes >= 1),
-        horas_semanales INTEGER NOT NULL DEFAULT 0  CHECK(horas_semanales >= 0)
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 3. USUARIOS Y ACUDIENTES
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario             TEXT    NOT NULL UNIQUE,
-        password_hash       TEXT    NOT NULL,
-        nombre_completo     TEXT    NOT NULL,
-        email               TEXT,
-        telefono            TEXT,
-        rol                 TEXT    NOT NULL
-                            CHECK(rol IN ('admin', 'director', 'coordinador',
-                                          'profesor', 'estudiante', 'apoderado')),
-        activo              BOOLEAN NOT NULL DEFAULT 1,
-        -- Cambio forzado de contraseña (A2 — seguridad_01). Se activa al
-        -- crear/resetear sin contraseña explícita (temporal aleatoria); el
-        -- guard fuerza /cambiar-password hasta que el dueño la cambie. Default
-        -- 0 para no forzar a los usuarios existentes.
-        debe_cambiar_password BOOLEAN NOT NULL DEFAULT 0,
-        fecha_creacion      DATE    NOT NULL DEFAULT CURRENT_DATE,
-        ultima_sesion       DATETIME,
-        carga_horaria_max   INTEGER,
-        horas_extra         INTEGER NOT NULL DEFAULT 0 CHECK(horas_extra >= 0),
-
-        -- Multi-tenant (paso_24): institución a la que pertenece el usuario.
-        -- Nullable a nivel de schema para soportar migración + backfill; el
-        -- repo y el seed siempre asignan la institución por defecto.
-        institucion_id      INTEGER REFERENCES instituciones(id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS acudientes (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        tipo_documento    TEXT    NOT NULL DEFAULT 'CC'
-                          CHECK(tipo_documento IN ('CC', 'CE', 'TI', 'PASAPORTE')),
-        numero_documento  TEXT    NOT NULL,
-        nombre_completo   TEXT    NOT NULL,
-        parentesco        TEXT    NOT NULL
-                          CHECK(parentesco IN ('padre', 'madre', 'abuelo', 'abuela',
-                                               'tio', 'tia', 'hermano', 'hermana',
-                                               'tutor_legal', 'otro')),
-        celular           TEXT,
-        email             TEXT,
-        direccion         TEXT,
-        activo            BOOLEAN NOT NULL DEFAULT 1,
-        institucion_id    INTEGER REFERENCES instituciones(id),
-
-        -- Nullable: solo si tiene acceso al portal de acudientes (v3.0)
-        usuario_id        INTEGER UNIQUE,
-
-        UNIQUE(institucion_id, numero_documento),
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS estudiantes (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_publico        TEXT    UNIQUE,
-        tipo_documento    TEXT    NOT NULL DEFAULT 'TI'
-                          CHECK(tipo_documento IN ('TI', 'CC', 'CE', 'NUIP')),
-        numero_documento  TEXT    NOT NULL,
-        nombre            TEXT    NOT NULL,
-        apellido          TEXT    NOT NULL,
-        genero            TEXT    CHECK(genero IN ('M', 'F', 'OTRO')),
-        grupo_id          INTEGER,
-        posee_piar        BOOLEAN NOT NULL DEFAULT 0,
-        fecha_nacimiento  DATE,
-        direccion         TEXT,
-        fecha_ingreso     DATE    NOT NULL DEFAULT CURRENT_DATE,
-        estado_matricula  TEXT    NOT NULL DEFAULT 'activo'
-                          CHECK(estado_matricula IN ('activo', 'inactivo',
-                                                     'retirado', 'graduado')),
-        institucion_id    INTEGER REFERENCES instituciones(id),
-
-        UNIQUE(institucion_id, numero_documento),
-        FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS estudiante_acudiente (
-        estudiante_id  INTEGER NOT NULL,
-        acudiente_id   INTEGER NOT NULL,
-        es_principal   BOOLEAN NOT NULL DEFAULT 0,
-
-        PRIMARY KEY(estudiante_id, acudiente_id),
-        FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE,
-        FOREIGN KEY(acudiente_id)  REFERENCES acudientes(id)  ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS historial_estudiantes (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        grupo_origen_id     INTEGER,
-        grupo_destino_id    INTEGER,
-        fecha_movimiento    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        tipo_movimiento     TEXT     NOT NULL
-                            CHECK(tipo_movimiento IN ('TRASLADO', 'RETIRO',
-                                                      'REINGRESO', 'GRADUACION')),
-        motivo              TEXT,
-        usuario_registro_id INTEGER,
-
-        FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id) ON DELETE CASCADE,
-        FOREIGN KEY(grupo_origen_id)     REFERENCES grupos(id)      ON DELETE SET NULL,
-        FOREIGN KEY(grupo_destino_id)    REFERENCES grupos(id)      ON DELETE SET NULL,
-        FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)    ON DELETE SET NULL
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 4. PERIODOS Y ASIGNACIONES
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS periodos (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id             INTEGER NOT NULL,
-        nombre              TEXT    NOT NULL,
-        numero              INTEGER NOT NULL CHECK(numero >= 1),
-        fecha_inicio        DATE,
-        fecha_fin           DATE,
-        peso_porcentual     REAL    NOT NULL DEFAULT 25.0
-                            CHECK(peso_porcentual > 0 AND peso_porcentual <= 100),
-        activo              BOOLEAN NOT NULL DEFAULT 1,
-        cerrado             BOOLEAN NOT NULL DEFAULT 0,
-        fecha_cierre_real   DATETIME,
-
-        UNIQUE(anio_id, nombre),
-        UNIQUE(anio_id, numero),
-        CHECK(fecha_inicio IS NULL OR fecha_fin IS NULL OR fecha_inicio <= fecha_fin),
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS hitos_periodo (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        periodo_id  INTEGER NOT NULL,
-        tipo        TEXT    NOT NULL DEFAULT 'general'
-                    CHECK(tipo IN ('entrega_notas', 'inicio_habilitaciones',
-                                   'fin_habilitaciones', 'entrega_boletines',
-                                   'general')),
-        descripcion TEXT,
-        fecha_limite DATE,
-
-        FOREIGN KEY(periodo_id) REFERENCES periodos(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS asignaciones (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id        INTEGER NOT NULL,
-        asignatura_id   INTEGER NOT NULL,
-        usuario_id      INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
-        activo          BOOLEAN NOT NULL DEFAULT 1,
-
-        UNIQUE(grupo_id, asignatura_id, usuario_id, periodo_id),
-        FOREIGN KEY(grupo_id)      REFERENCES grupos(id)      ON DELETE CASCADE,
-        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)    ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)    ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS logros (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        asignacion_id   INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
-        descripcion     TEXT    NOT NULL,
-        orden           INTEGER NOT NULL DEFAULT 0,
-
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS horarios (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id        INTEGER NOT NULL,
-        asignatura_id   INTEGER NOT NULL,
-        usuario_id      INTEGER NOT NULL,
-        asignacion_id   INTEGER,
-        periodo_id      INTEGER,
-        escenario_id    INTEGER NOT NULL,
-        dia_semana      TEXT    NOT NULL
-                        CHECK(dia_semana IN ('Lunes', 'Martes', 'Miércoles',
-                                             'Jueves', 'Viernes', 'Sábado')),
-        hora_inicio     TIME    NOT NULL,
-        hora_fin        TIME    NOT NULL,
-        sala            TEXT    NOT NULL DEFAULT 'Aula',
-
-        UNIQUE(escenario_id, grupo_id, dia_semana, hora_inicio),
-        CHECK(hora_inicio < hora_fin),
-        FOREIGN KEY(grupo_id)      REFERENCES grupos(id)              ON DELETE CASCADE,
-        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id)         ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)            ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)        ON DELETE SET NULL,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)            ON DELETE CASCADE,
-        FOREIGN KEY(escenario_id)  REFERENCES escenarios_horario(id)  ON DELETE CASCADE
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 5. EVALUACIÓN
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS configuracion_siee (
-        id                              INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id                         INTEGER NOT NULL UNIQUE,
-        modo                            TEXT    NOT NULL DEFAULT 'libre'
-                                        CHECK(modo IN (
-                                            'libre',
-                                            'institucional_fijo',
-                                            'mixto_subcategorias',
-                                            'mixto_autonomia'
-                                        )),
-        porcentaje_autonomia_docente    REAL    CHECK(
-                                            porcentaje_autonomia_docente IS NULL
-                                            OR (porcentaje_autonomia_docente > 0
-                                                AND porcentaje_autonomia_docente <= 1)
-                                        ),
-
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS categorias (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre                  TEXT    NOT NULL,
-        peso                    REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
-
-        -- Categorías de docente: asignacion_id + periodo_id NOT NULL
-        -- Categorías institucionales: asignacion_id + periodo_id NULL, anio_id NOT NULL
-        asignacion_id           INTEGER,
-        periodo_id              INTEGER,
-        anio_id                 INTEGER,
-
-        -- Flags SIEE
-        es_institucional        INTEGER NOT NULL DEFAULT 0 CHECK(es_institucional IN (0,1)),
-        permite_subcategorias   INTEGER NOT NULL DEFAULT 0 CHECK(permite_subcategorias IN (0,1)),
-        categoria_padre_id      INTEGER,   -- solo para subcategorías (Caso 1)
-
-        UNIQUE(nombre, asignacion_id, periodo_id),
-        CHECK(
-            (asignacion_id IS NOT NULL AND periodo_id IS NOT NULL AND anio_id IS NULL)
-            OR
-            (asignacion_id IS NULL AND periodo_id IS NULL AND anio_id IS NOT NULL)
-        ),
-        FOREIGN KEY(asignacion_id)    REFERENCES asignaciones(id)       ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)       REFERENCES periodos(id)            ON DELETE CASCADE,
-        FOREIGN KEY(anio_id)          REFERENCES configuracion_anio(id)  ON DELETE CASCADE,
-        FOREIGN KEY(categoria_padre_id) REFERENCES categorias(id)        ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS actividades (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre          TEXT    NOT NULL,
-        descripcion     TEXT,
-        fecha           DATE,
-        valor_maximo    REAL    NOT NULL DEFAULT 100.0 CHECK(valor_maximo > 0),
-        estado          TEXT    NOT NULL DEFAULT 'borrador'
-                        CHECK(estado IN ('borrador', 'publicada', 'cerrada')),
-        categoria_id    INTEGER NOT NULL,
-
-        FOREIGN KEY(categoria_id) REFERENCES categorias(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS notas (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        actividad_id        INTEGER NOT NULL,
-        valor               REAL    NOT NULL CHECK(valor >= 0 AND valor <= 100),
-        usuario_registro_id INTEGER,
-        fecha_registro      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-        UNIQUE(estudiante_id, actividad_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id)  ON DELETE CASCADE,
-        FOREIGN KEY(actividad_id)        REFERENCES actividades(id)  ON DELETE CASCADE,
-        FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)     ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS puntos_extra (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        asignacion_id       INTEGER NOT NULL,
-        periodo_id          INTEGER NOT NULL,
-        tipo                TEXT    NOT NULL DEFAULT 'comportamental'
-                            CHECK(tipo IN ('comportamental', 'participacion', 'academico')),
-        positivos           INTEGER NOT NULL DEFAULT 0 CHECK(positivos >= 0),
-        negativos           INTEGER NOT NULL DEFAULT 0 CHECK(negativos >= 0),
-        observacion         TEXT,
-        fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-        UNIQUE(estudiante_id, asignacion_id, periodo_id, tipo) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)   ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)       ON DELETE CASCADE
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 6. CIERRES Y PROMOCIÓN
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS cierres_periodo (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        asignacion_id       INTEGER NOT NULL,
-        periodo_id          INTEGER NOT NULL,
-        nota_definitiva     REAL    NOT NULL
-                            CHECK(nota_definitiva >= 0 AND nota_definitiva <= 100),
-        desempeno_id        INTEGER,
-        logro_id            INTEGER,
-        fecha_cierre        DATE    NOT NULL DEFAULT CURRENT_DATE,
-        usuario_cierre_id   INTEGER,
-
-        UNIQUE(estudiante_id, asignacion_id, periodo_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)      ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id)     ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)         ON DELETE RESTRICT,
-        FOREIGN KEY(desempeno_id)      REFERENCES niveles_desempeno(id) ON DELETE SET NULL,
-        FOREIGN KEY(logro_id)          REFERENCES logros(id)           ON DELETE SET NULL,
-        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)        ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS cierres_anio (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER NOT NULL,
-        asignacion_id           INTEGER NOT NULL,
-        anio_id                 INTEGER NOT NULL,
-        nota_promedio_periodos  REAL    NOT NULL
-                                CHECK(nota_promedio_periodos >= 0
-                                  AND nota_promedio_periodos <= 100),
-        nota_habilitacion       REAL    CHECK(nota_habilitacion >= 0
-                                         AND nota_habilitacion <= 100),
-        nota_definitiva_anual   REAL    NOT NULL
-                                CHECK(nota_definitiva_anual >= 0
-                                  AND nota_definitiva_anual <= 100),
-        perdio                  BOOLEAN NOT NULL DEFAULT 0,
-        desempeno_id            INTEGER,
-        fecha_cierre            DATE    NOT NULL DEFAULT CURRENT_DATE,
-        usuario_cierre_id       INTEGER,
-
-        UNIQUE(estudiante_id, asignacion_id, anio_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)       ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id)      ON DELETE CASCADE,
-        FOREIGN KEY(anio_id)           REFERENCES configuracion_anio(id) ON DELETE RESTRICT,
-        FOREIGN KEY(desempeno_id)      REFERENCES niveles_desempeno(id)  ON DELETE SET NULL,
-        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)          ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS promocion_anual (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER NOT NULL,
-        anio_id                 INTEGER NOT NULL,
-        estado                  TEXT    NOT NULL DEFAULT 'pendiente'
-                                CHECK(estado IN ('promovido', 'reprobado',
-                                                 'condicional', 'pendiente')),
-        asignaturas_perdidas    INTEGER NOT NULL DEFAULT 0,
-        observacion             TEXT,
-        fecha_decision          DATE,
-        usuario_decision_id     INTEGER,
-
-        UNIQUE(estudiante_id, anio_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id)      REFERENCES estudiantes(id)        ON DELETE CASCADE,
-        FOREIGN KEY(anio_id)            REFERENCES configuracion_anio(id) ON DELETE RESTRICT,
-        FOREIGN KEY(usuario_decision_id) REFERENCES usuarios(id)          ON DELETE SET NULL
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 7. HABILITACIONES Y PLANES DE MEJORAMIENTO
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS habilitaciones (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        asignacion_id       INTEGER NOT NULL,
-        periodo_id          INTEGER,
-        tipo                TEXT    NOT NULL
-                            CHECK(tipo IN ('periodo', 'anual')),
-        nota_antes          REAL    CHECK(nota_antes >= 0 AND nota_antes <= 100),
-        nota_habilitacion   REAL    CHECK(nota_habilitacion >= 0
-                                     AND nota_habilitacion <= 100),
-        fecha               DATE,
-        estado              TEXT    NOT NULL DEFAULT 'pendiente'
-                            CHECK(estado IN ('pendiente', 'realizada',
-                                             'aprobada', 'reprobada')),
-        observacion         TEXT,
-        usuario_registro_id INTEGER,
-
-        -- periodo_id puede ser NULL solo si tipo = 'anual'
-        CHECK(tipo != 'periodo' OR periodo_id IS NOT NULL),
-        FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id)   ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)       REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)          REFERENCES periodos(id)      ON DELETE SET NULL,
-        FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)      ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS planes_mejoramiento (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER NOT NULL,
-        asignacion_id           INTEGER NOT NULL,
-        periodo_id              INTEGER NOT NULL,
-        descripcion_dificultad  TEXT    NOT NULL,
-        actividades_propuestas  TEXT    NOT NULL,
-        fecha_inicio            DATE    NOT NULL DEFAULT CURRENT_DATE,
-        fecha_seguimiento       DATE,
-        fecha_cierre            DATE,
-        estado                  TEXT    NOT NULL DEFAULT 'activo'
-                                CHECK(estado IN ('activo', 'cumplido', 'incumplido')),
-        observacion_cierre      TEXT,
-        usuario_id              INTEGER,
-
-        FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)   ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)      ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)      ON DELETE SET NULL
-    )
-    """,
-    # -------------------------------------------------------------------------
-    # 7b. PLAN DE MEJORAMIENTO (corte mid-periodo)
-    # -------------------------------------------------------------------------
-    """
-    CREATE TABLE IF NOT EXISTS cortes_plan (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        asignacion_id           INTEGER NOT NULL,
-        periodo_id              INTEGER NOT NULL,
-        fecha_ejecucion         DATE    NOT NULL DEFAULT CURRENT_DATE,
-        peso_registrado         REAL    NOT NULL CHECK(peso_registrado > 0 AND peso_registrado <= 1),
-        nota_umbral             REAL    NOT NULL CHECK(nota_umbral >= 0),
-        nota_minima_aprobacion  REAL    NOT NULL DEFAULT 60.0,
-        usuario_id              INTEGER,
-
-        UNIQUE(asignacion_id, periodo_id),
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS notas_corte_plan (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        corte_id                INTEGER NOT NULL,
-        estudiante_id           INTEGER NOT NULL,
-        asignacion_id           INTEGER NOT NULL,
-        periodo_id              INTEGER NOT NULL,
-        nota_al_corte           REAL    NOT NULL CHECK(nota_al_corte >= 0),
-        nota_definitiva_plan    REAL    CHECK(nota_definitiva_plan >= 0),
-        estado                  TEXT    NOT NULL DEFAULT 'sin_plan'
-                                CHECK(estado IN ('sin_plan', 'en_plan', 'aprobado', 'reprobado')),
-        usuario_cierre_id       INTEGER,
-
-        UNIQUE(corte_id, estudiante_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(corte_id)          REFERENCES cortes_plan(id)  ON DELETE CASCADE,
-        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)  ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)     ON DELETE CASCADE,
-        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS actividades_plan (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        corte_id        INTEGER NOT NULL,
-        asignacion_id   INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
-        nombre          TEXT    NOT NULL,
-        descripcion     TEXT,
-        peso            REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
-        fecha           DATE,
-        usuario_id      INTEGER,
-
-        FOREIGN KEY(corte_id)      REFERENCES cortes_plan(id)   ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)       ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)       ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS notas_actividad_plan (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        actividad_plan_id   INTEGER NOT NULL,
-        estudiante_id       INTEGER NOT NULL,
-        asignacion_id       INTEGER NOT NULL,
-        periodo_id          INTEGER NOT NULL,
-        valor               REAL    CHECK(valor >= 0 AND valor <= 100),
-        usuario_id          INTEGER,
-
-        UNIQUE(actividad_plan_id, estudiante_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(actividad_plan_id) REFERENCES actividades_plan(id) ON DELETE CASCADE,
-        FOREIGN KEY(estudiante_id)     REFERENCES estudiantes(id)      ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id)     ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)         ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)        REFERENCES usuarios(id)         ON DELETE SET NULL
-    )
-    """,
-    # 7c. NIVELACIÓN
-    """
-    CREATE TABLE IF NOT EXISTS actividades_nivelacion (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        asignacion_id   INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
-        nombre          TEXT    NOT NULL,
-        descripcion     TEXT,
-        peso            REAL    NOT NULL CHECK(peso > 0 AND peso <= 1),
-        fecha           DATE,
-        usuario_id      INTEGER,
-
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)     ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)     ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS notas_nivelacion (
-        id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-        actividad_nivelacion_id  INTEGER NOT NULL,
-        estudiante_id            INTEGER NOT NULL,
-        asignacion_id            INTEGER NOT NULL,
-        periodo_id               INTEGER NOT NULL,
-        valor                    REAL    CHECK(valor >= 0 AND valor <= 100),
-        usuario_id               INTEGER,
-
-        UNIQUE(actividad_nivelacion_id, estudiante_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(actividad_nivelacion_id) REFERENCES actividades_nivelacion(id) ON DELETE CASCADE,
-        FOREIGN KEY(estudiante_id)           REFERENCES estudiantes(id)             ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)           REFERENCES asignaciones(id)            ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)              REFERENCES periodos(id)                ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)              REFERENCES usuarios(id)                ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS cierres_nivelacion (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        asignacion_id     INTEGER NOT NULL,
-        periodo_id        INTEGER NOT NULL,
-        fecha_cierre      DATE    NOT NULL DEFAULT CURRENT_DATE,
-        usuario_cierre_id INTEGER,
-
-        UNIQUE(asignacion_id, periodo_id),
-        FOREIGN KEY(asignacion_id)     REFERENCES asignaciones(id) ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)        REFERENCES periodos(id)     ON DELETE CASCADE,
-        FOREIGN KEY(usuario_cierre_id) REFERENCES usuarios(id)     ON DELETE SET NULL
-    )
-    """,
-    # 8. ASISTENCIA Y CONVIVENCIA
-    """
-    CREATE TABLE IF NOT EXISTS tipos_situacion (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre         TEXT    NOT NULL,
-        nivel          INTEGER NOT NULL DEFAULT 1 CHECK(nivel BETWEEN 1 AND 3),
-        descripcion    TEXT,
-        protocolo      TEXT,
-        activa         BOOLEAN NOT NULL DEFAULT 1,
-        institucion_id INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS medidas_pedagogicas (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre         TEXT    NOT NULL,
-        descripcion    TEXT,
-        nivel_minimo   INTEGER NOT NULL DEFAULT 1 CHECK(nivel_minimo BETWEEN 1 AND 3),
-        activa         BOOLEAN NOT NULL DEFAULT 1,
-        institucion_id INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS categorias_observacion (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre            TEXT    NOT NULL,
-        es_comportamental BOOLEAN NOT NULL DEFAULT 0,
-        activa            BOOLEAN NOT NULL DEFAULT 1,
-        institucion_id    INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS plantillas_observacion (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        texto          TEXT    NOT NULL,
-        categoria_id   INTEGER REFERENCES categorias_observacion(id) ON DELETE SET NULL,
-        uso_count      INTEGER NOT NULL DEFAULT 0,
-        activa         BOOLEAN NOT NULL DEFAULT 1,
-        institucion_id INTEGER REFERENCES instituciones(id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS control_diario (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER NOT NULL,
-        grupo_id            INTEGER NOT NULL,
-        asignacion_id       INTEGER NOT NULL,
-        periodo_id          INTEGER NOT NULL,
-        fecha               DATE    NOT NULL,
-        estado              TEXT    NOT NULL DEFAULT 'P'
-                            CHECK(estado IN ('P', 'FJ', 'FI', 'R', 'E')),
-        hora_entrada        TIME,
-        hora_salida         TIME,
-        uniforme            BOOLEAN NOT NULL DEFAULT 1,
-        materiales          BOOLEAN NOT NULL DEFAULT 1,
-        observacion         TEXT,
-        usuario_registro_id INTEGER,
-        fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-        UNIQUE(estudiante_id, grupo_id, asignacion_id, fecha) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id)   ON DELETE CASCADE,
-        FOREIGN KEY(grupo_id)            REFERENCES grupos(id)        ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id)       REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)          REFERENCES periodos(id)      ON DELETE CASCADE,
-        FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)      ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS observaciones_periodo (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id   INTEGER  NOT NULL,
-        asignacion_id   INTEGER  NOT NULL,
-        periodo_id      INTEGER  NOT NULL,
-        texto           TEXT     NOT NULL,
-        es_publica      BOOLEAN  NOT NULL DEFAULT 1,
-        fecha_registro  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        usuario_id      INTEGER,
-        -- Clasificación por categoría (convivencia_11): NULL = sin categoría asignada.
-        categoria_id    INTEGER  REFERENCES categorias_observacion(id) ON DELETE SET NULL,
-        -- Origen del texto (convivencia_11/12): 'libre' = ingresado directamente;
-        -- 'plantilla' = generado desde el catálogo de plantillas.
-        origen          TEXT     NOT NULL DEFAULT 'libre'
-                        CHECK(origen IN ('libre', 'plantilla')),
-        -- Vínculo al registro de comportamiento creado por promoción (convivencia_14).
-        -- NULL = la observación no ha sido promovida aún.
-        -- ON DELETE SET NULL: si se elimina el registro de comportamiento, la
-        -- observación vuelve a estado "sin promover" en lugar de borrarse.
-        registro_comportamiento_id INTEGER
-                        REFERENCES registro_comportamiento(id) ON DELETE SET NULL,
-
-        FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)   ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)  ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)      ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)      ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS registro_comportamiento (
-        id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER  NOT NULL,
-        grupo_id                INTEGER  NOT NULL,
-        periodo_id              INTEGER  NOT NULL,
-        fecha                   DATE     NOT NULL DEFAULT CURRENT_DATE,
-        tipo                    TEXT     NOT NULL
-                                CHECK(tipo IN ('fortaleza', 'dificultad',
-                                               'compromiso', 'citacion_acudiente',
-                                               'descargo')),
-        descripcion             TEXT     NOT NULL,
-        seguimiento             TEXT,
-        requiere_firma          BOOLEAN  NOT NULL DEFAULT 0,
-        acudiente_notificado    BOOLEAN  NOT NULL DEFAULT 0,
-        usuario_registro_id     INTEGER,
-        -- Clasificación legal Ley 1620 (convivencia_34): NULL = sin clasificar.
-        tipo_situacion_id       INTEGER REFERENCES tipos_situacion(id) ON DELETE SET NULL,
-        -- Medida pedagógica asociada (convivencia_36): NULL = sin medida asignada.
-        medida_id               INTEGER REFERENCES medidas_pedagogicas(id) ON DELETE SET NULL,
-
-        FOREIGN KEY(estudiante_id)       REFERENCES estudiantes(id) ON DELETE CASCADE,
-        FOREIGN KEY(grupo_id)            REFERENCES grupos(id)      ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)          REFERENCES periodos(id)    ON DELETE CASCADE,
-        FOREIGN KEY(usuario_registro_id) REFERENCES usuarios(id)   ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS entradas_seguimiento (
-        id          INTEGER  PRIMARY KEY AUTOINCREMENT,
-        registro_id INTEGER  NOT NULL,
-        fecha       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        texto       TEXT     NOT NULL,
-        usuario_id  INTEGER,
-        FOREIGN KEY(registro_id) REFERENCES registro_comportamiento(id) ON DELETE CASCADE,
-        FOREIGN KEY(usuario_id)  REFERENCES usuarios(id) ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS nota_comportamiento_periodo (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        estudiante_id   INTEGER NOT NULL,
-        grupo_id        INTEGER NOT NULL,
-        periodo_id      INTEGER NOT NULL,
-        valor           REAL    NOT NULL CHECK(valor >= 0 AND valor <= 100),
-        desempeno_id    INTEGER,
-        observacion     TEXT,
-        usuario_id      INTEGER,
-
-        UNIQUE(estudiante_id, grupo_id, periodo_id) ON CONFLICT REPLACE,
-        FOREIGN KEY(estudiante_id) REFERENCES estudiantes(id)        ON DELETE CASCADE,
-        FOREIGN KEY(grupo_id)      REFERENCES grupos(id)             ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)    REFERENCES periodos(id)           ON DELETE CASCADE,
-        FOREIGN KEY(desempeno_id)  REFERENCES niveles_desempeno(id)  ON DELETE SET NULL,
-        FOREIGN KEY(usuario_id)    REFERENCES usuarios(id)           ON DELETE SET NULL
-    )
-    """,
-    # 9. ALERTAS
-    """
-    CREATE TABLE IF NOT EXISTS configuracion_alertas (
-        id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-        anio_id                 INTEGER NOT NULL,
-        tipo_alerta             TEXT    NOT NULL
-                                CHECK(tipo_alerta IN (
-                                    'faltas_injustificadas',
-                                    'promedio_bajo',
-                                    'materias_en_riesgo',
-                                    'plan_mejoramiento_vencido',
-                                    'habilitacion_pendiente',
-                                    'seguimiento_requerido'
-                                )),
-        umbral                  REAL    NOT NULL,
-        activa                  BOOLEAN NOT NULL DEFAULT 1,
-        notificar_docente       BOOLEAN NOT NULL DEFAULT 1,
-        notificar_director      BOOLEAN NOT NULL DEFAULT 0,
-        notificar_acudiente     BOOLEAN NOT NULL DEFAULT 0,
-
-        UNIQUE(anio_id, tipo_alerta),
-        FOREIGN KEY(anio_id) REFERENCES configuracion_anio(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS alertas (
-        id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER  NOT NULL,
-        tipo_alerta             TEXT     NOT NULL
-                                CHECK(tipo_alerta IN (
-                                    'faltas_injustificadas',
-                                    'promedio_bajo',
-                                    'materias_en_riesgo',
-                                    'plan_mejoramiento_vencido',
-                                    'habilitacion_pendiente',
-                                    'seguimiento_requerido'
-                                )),
-        nivel                   TEXT     NOT NULL DEFAULT 'advertencia'
-                                CHECK(nivel IN ('info', 'advertencia', 'critica')),
-        descripcion             TEXT     NOT NULL,
-        fecha_generacion        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        resuelta                BOOLEAN  NOT NULL DEFAULT 0,
-        fecha_resolucion        DATETIME,
-        usuario_resolucion_id   INTEGER,
-        observacion_resolucion  TEXT,
-        usuario_destino_id      INTEGER  REFERENCES usuarios(id) ON DELETE SET NULL,
-
-        FOREIGN KEY(estudiante_id)          REFERENCES estudiantes(id) ON DELETE CASCADE,
-        FOREIGN KEY(usuario_resolucion_id)  REFERENCES usuarios(id)   ON DELETE SET NULL
-    )
-    """,
-    # 10. INFORMES Y PIAR
-    """
-    CREATE TABLE IF NOT EXISTS boletines_emitidos (
-        id                  INTEGER  PRIMARY KEY AUTOINCREMENT,
-        estudiante_id       INTEGER  NOT NULL,
-        periodo_id          INTEGER,
-        anio_id             INTEGER  NOT NULL,
-        tipo                TEXT     NOT NULL
-                            CHECK(tipo IN ('periodo', 'anual')),
-        fecha_generacion    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        fecha_entrega       DATE,
-        entregado           BOOLEAN  NOT NULL DEFAULT 0,
-        usuario_generador_id INTEGER,
-
-        -- periodo_id es NULL solo en boletines anuales
-        CHECK(tipo != 'periodo' OR periodo_id IS NOT NULL),
-        FOREIGN KEY(estudiante_id)        REFERENCES estudiantes(id)        ON DELETE CASCADE,
-        FOREIGN KEY(periodo_id)           REFERENCES periodos(id)           ON DELETE SET NULL,
-        FOREIGN KEY(anio_id)              REFERENCES configuracion_anio(id) ON DELETE CASCADE,
-        FOREIGN KEY(usuario_generador_id) REFERENCES usuarios(id)          ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS piar (
-        id                      INTEGER  PRIMARY KEY AUTOINCREMENT,
-        estudiante_id           INTEGER  NOT NULL,
-        anio_id                 INTEGER  NOT NULL,
-        descripcion_necesidad   TEXT     NOT NULL,
-        ajustes_evaluativos     TEXT,
-        ajustes_pedagogicos     TEXT,
-        profesionales_apoyo     TEXT,
-        fecha_elaboracion       DATE     NOT NULL DEFAULT CURRENT_DATE,
-        fecha_revision          DATE,
-        usuario_elaboracion_id  INTEGER,
-
-        UNIQUE(estudiante_id, anio_id),
-        FOREIGN KEY(estudiante_id)          REFERENCES estudiantes(id)        ON DELETE CASCADE,
-        FOREIGN KEY(anio_id)                REFERENCES configuracion_anio(id) ON DELETE CASCADE,
-        FOREIGN KEY(usuario_elaboracion_id) REFERENCES usuarios(id)          ON DELETE SET NULL
-    )
-    """,
-    # 11. AUDITORÍA
-    """
-    CREATE TABLE IF NOT EXISTS auditoria (
-        id          INTEGER  PRIMARY KEY AUTOINCREMENT,
-        usuario     TEXT     NOT NULL,
-        usuario_id  INTEGER,
-        tipo_evento TEXT     NOT NULL
-                    CHECK(tipo_evento IN (
-                        'LOGIN_EXITOSO', 'LOGIN_FALLIDO', 'LOGOUT',
-                        'CREAR_USUARIO', 'EDITAR_USUARIO', 'RESETEAR_PASSWORD',
-                        'CAMBIAR_ROL', 'DESACTIVAR_USUARIO', 'ACTIVAR_USUARIO',
-                        'ACCESO_DENEGADO',
-                        'VER_COMO_INICIO', 'VER_COMO_FIN',
-                        'AUDITORIA_EXPORTADA', 'AUDITORIA_PURGADA'
-                    )),
-        ip_address  TEXT,
-        fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        detalles    TEXT,
-
-        -- NUEVO (obs_06): sujeto de la acción (usuario impersonado, gestionado, etc.).
-        -- Entra en el payload firmado de la cadena SHA-256.
-        objetivo    TEXT,
-
-        -- NUEVO (obs_06): clasificación de severidad. obs_07 la consumirá.
-        -- No entra en el payload firmado (es clasificación, no contenido de evento).
-        -- CHECK declarado aquí porque la columna nace con este DDL (no aplica
-        -- la restricción de CLAUDE.md sobre ALTER TABLE; ver §5 del diseño).
-        severidad   TEXT NOT NULL DEFAULT 'INFO'
-                    CHECK(severidad IN ('INFO', 'ADVERTENCIA', 'CRITICA')),
-
-        -- Encadenamiento por hash (seguridad_03, M3): SHA256(hash_previo||payload)
-        -- del registro anterior de esta tabla. NULL = registro pre-cadena
-        -- (anterior a la migración); la verificación arranca desde el primer
-        -- hash_cadena no nulo. El repo lo calcula al insertar; el mapper de
-        -- dominio lo descarta (los modelos Pydantic prohíben campos extra).
-        hash_cadena TEXT,
-
-        -- Multi-tenant informacional (mejora_07-T7): scope de la institución.
-        -- No participa en el hash SHA-256.
-        institucion_id  INTEGER REFERENCES instituciones(id),
-
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS audit_log (
-        id              INTEGER  PRIMARY KEY AUTOINCREMENT,
-        usuario_id      INTEGER,
-
-        -- NUEVO (obs_06, R8): snapshot del username en el momento del cambio.
-        -- Sobrevive al borrado del usuario (igual que auditoria.usuario).
-        -- ENTRA en el hash SHA-256 (R11): cambiar el username rompe la cadena.
-        usuario         TEXT,
-
-        -- NUEVO (obs_06, R8): IP del actor en el momento del cambio.
-        -- ENTRA en el hash SHA-256 (R11): cambiar la IP rompe la cadena.
-        ip_address      TEXT,
-
-        accion          TEXT     NOT NULL,
-        tabla           TEXT     NOT NULL,
-        registro_id     INTEGER,
-        valor_anterior  TEXT,
-        valor_nuevo     TEXT,
-        timestamp       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-        -- Encadenamiento por hash (seguridad_03, M3): ver tabla `auditoria`.
-        -- Campos en el hash: usuario, usuario_id, ip_address, accion, tabla,
-        --   registro_id, valor_anterior, valor_nuevo, timestamp.
-        -- Campo fuera del hash: institucion_id (scope informacional, igual que
-        --   en `auditoria` desde mejora_07-T7).
-        hash_cadena     TEXT,
-
-        -- Multi-tenant informacional (mejora_07-T7): scope de la institución.
-        -- No participa en el hash SHA-256.
-        institucion_id  INTEGER REFERENCES instituciones(id),
-
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-    )
-    """,
-    # obs_08: punto de control para la verificación incremental de la cadena.
-    # Metadato operativo: no participa en ninguna cadena (no tiene hash_cadena).
-    # Si se pierde, la siguiente verificación arranca desde el origen y lo
-    # reconstruye. Almacena una fila por tabla auditada ('auditoria'/'audit_log').
-    """
-    CREATE TABLE IF NOT EXISTS verificacion_auditoria (
-        tabla          TEXT     PRIMARY KEY,   -- 'auditoria' | 'audit_log'
-        ultimo_id      INTEGER  NOT NULL,      -- última fila verificada como íntegra
-        ultimo_hash    TEXT     NOT NULL,      -- hash_cadena de esa fila: semilla del tramo siguiente
-        verificado_en  DATETIME NOT NULL
-    )
-    """,
-    # 12. GENERADOR DE HORARIOS
-    """
-    CREATE TABLE IF NOT EXISTS disponibilidad_docente (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id   INTEGER NOT NULL,
-        dia_semana   TEXT    NOT NULL
-                     CHECK(dia_semana IN ('Lunes','Martes','Miércoles',
-                                          'Jueves','Viernes','Sábado')),
-        franja_orden INTEGER NOT NULL CHECK(franja_orden >= 1),
-        disponible   INTEGER NOT NULL DEFAULT 1,
-        UNIQUE(usuario_id, dia_semana, franja_orden),
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS config_generacion (
-        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre               TEXT    NOT NULL UNIQUE,
-        periodo_id           INTEGER NOT NULL,
-        anio_id              INTEGER NOT NULL,
-        plantilla_id         INTEGER NOT NULL,
-        estado               TEXT    NOT NULL DEFAULT 'borrador'
-                             CHECK(estado IN ('borrador','generado','aplicado')),
-        grupos_json          TEXT    NOT NULL DEFAULT '[]',
-        pesos_json           TEXT    NOT NULL DEFAULT
-                             '{"huecos":1.0,"distribucion":1.0,"compactacion":0.5}',
-        restricciones_json   TEXT    NOT NULL DEFAULT '{}',
-        escenario_destino_id INTEGER,
-        created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
-        updated_at           TEXT    NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY(periodo_id)           REFERENCES periodos(id)            ON DELETE CASCADE,
-        FOREIGN KEY(anio_id)              REFERENCES configuracion_anio(id)  ON DELETE CASCADE,
-        FOREIGN KEY(plantilla_id)         REFERENCES plantillas_franja(id)   ON DELETE CASCADE,
-        FOREIGN KEY(escenario_destino_id) REFERENCES escenarios_horario(id)  ON DELETE SET NULL
-    )
-    """,
-    # salas, ventanas_grupo, bloques_anclados, franjas_reunion, limites_docente
-    """
-    CREATE TABLE IF NOT EXISTS salas (
-        id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre    TEXT    NOT NULL,
-        tipo      TEXT    NOT NULL DEFAULT 'aula'
-                  CHECK(tipo IN ('aula','laboratorio','computo','ed_fisica','otro')),
-        capacidad INTEGER NOT NULL DEFAULT 30 CHECK(capacidad >= 1),
-        institucion_id INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, nombre)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS ventanas_grupo (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        grupo_id            INTEGER,
-        grado               INTEGER,
-        franjas_permitidas  TEXT    NOT NULL DEFAULT '[]',
-        CHECK((grupo_id IS NULL) != (grado IS NULL)),
-        FOREIGN KEY(grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS bloques_anclados (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        escenario_id  INTEGER NOT NULL,
-        asignacion_id INTEGER NOT NULL,
-        dia_semana    TEXT    NOT NULL
-                      CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
-        franja_orden  INTEGER NOT NULL CHECK(franja_orden >= 1),
-        sala_id       INTEGER,
-        UNIQUE(escenario_id, dia_semana, franja_orden, asignacion_id),
-        FOREIGN KEY(escenario_id)  REFERENCES escenarios_horario(id) ON DELETE CASCADE,
-        FOREIGN KEY(asignacion_id) REFERENCES asignaciones(id)       ON DELETE CASCADE,
-        FOREIGN KEY(sala_id)       REFERENCES salas(id)              ON DELETE SET NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS franjas_reunion (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre         TEXT    NOT NULL,
-        docentes_json  TEXT    NOT NULL DEFAULT '[]',
-        dia_semana     TEXT    NOT NULL
-                       CHECK(dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')),
-        franja_orden   INTEGER NOT NULL CHECK(franja_orden >= 1),
-        modo           TEXT    NOT NULL DEFAULT 'preferente'
-                       CHECK(modo IN ('estricta','preferente')),
-        institucion_id INTEGER REFERENCES instituciones(id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS limites_docente (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id    INTEGER NOT NULL UNIQUE,
-        min_horas_dia INTEGER NOT NULL DEFAULT 0 CHECK(min_horas_dia >= 0),
-        max_horas_dia INTEGER NOT NULL DEFAULT 8 CHECK(max_horas_dia >= 1),
-        CHECK(min_horas_dia <= max_horas_dia),
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-    )
-    """,
-    # plan_estudios (paso_19; mejora_07-T2 añade institucion_id)
-    """
-    CREATE TABLE IF NOT EXISTS plan_estudios (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        grado           INTEGER NOT NULL CHECK(grado >= 1 AND grado <= 13),
-        asignatura_id   INTEGER NOT NULL,
-        horas_semanales INTEGER NOT NULL CHECK(horas_semanales >= 1 AND horas_semanales <= 40),
-        institucion_id  INTEGER REFERENCES instituciones(id),
-        UNIQUE(institucion_id, grado, asignatura_id),
-        FOREIGN KEY(asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
-    )
-    """,
-    # configuracion_grado_institucion (mejora_07-T6)
-    # Tabla puente: configuración por-institución de un grado global.
-    """
-    CREATE TABLE IF NOT EXISTS configuracion_grado_institucion (
-        id               INTEGER PRIMARY KEY AUTOINCREMENT,
-        grado_id         INTEGER NOT NULL REFERENCES grados(id) ON DELETE CASCADE,
-        institucion_id   INTEGER NOT NULL REFERENCES instituciones(id),
-        min_estudiantes  INTEGER NOT NULL DEFAULT 0 CHECK(min_estudiantes >= 0),
-        max_estudiantes  INTEGER NOT NULL DEFAULT 40 CHECK(max_estudiantes >= 1),
-        horas_semanales  INTEGER NOT NULL DEFAULT 0 CHECK(horas_semanales >= 0),
-        UNIQUE(grado_id, institucion_id)
-    )
-    """,
-    # preferencias_institucion (mejora_08): preferencias configurables por tenant.
-    """
-    CREATE TABLE IF NOT EXISTS preferencias_institucion (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        institucion_id INTEGER NOT NULL REFERENCES instituciones(id) ON DELETE CASCADE,
-        categoria      TEXT    NOT NULL,
-        clave          TEXT    NOT NULL,
-        valor          TEXT,
-        tipo_valor     TEXT    NOT NULL DEFAULT 'str'
-                       CHECK(tipo_valor IN ('str','int','float','bool','json')),
-        UNIQUE(institucion_id, clave)
-    )
-    """,
-]
-
-
-# =============================================================================
+metadata = MetaData()
+
+# ============================================================
+# 1. CONFIGURACIÓN INSTITUCIONAL
+# ============================================================
+
+instituciones = Table(
+    "instituciones", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("nit", String),
+    Column("codigo", String),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("fecha_creacion", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("nombre_oficial", String),
+    Column("codigo_dane", String),
+    Column("rector", String),
+    Column("direccion", String),
+    Column("pais", String),
+    Column("departamento", String),
+    Column("municipio", String),
+    Column("telefono", String),
+    Column("logo_path", String),
+    Column("logo_url", String),
+    Column("resolucion_aprobacion", String),
+    Column("lema", String),
+    Column("email_institucional", String),
+    Column("jornada_principal", String),
+    Column("tipo_institucion", String),
+    Column("calendario", String),
+    Column("configuracion_inicial_completa", Boolean, nullable=False, server_default="0"),
+    UniqueConstraint("nombre"),
+    # D4: CHECKs faltantes
+    CheckConstraint(
+        "jornada_principal IS NULL OR jornada_principal IN ('AM','PM','UNICA')",
+        name="ck_instituciones_jornada",
+    ),
+    CheckConstraint(
+        "tipo_institucion IS NULL OR tipo_institucion IN ('publica','privada')",
+        name="ck_instituciones_tipo",
+    ),
+    CheckConstraint(
+        "calendario IS NULL OR calendario IN ('A','B')",
+        name="ck_instituciones_calendario",
+    ),
+)
+
+configuracion_anio = Table(
+    "configuracion_anio", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio", Integer, nullable=False),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    Column("fecha_inicio_clases", Date),
+    Column("fecha_fin_clases", Date),
+    Column("nombre_institucion", String, nullable=False, server_default="Institución Educativa"),
+    Column("dane_code", String),
+    Column("rector", String),
+    Column("direccion", String),
+    Column("municipio", String),
+    Column("telefono_institucion", String),
+    Column("logo_path", String),
+    Column("resolucion_aprobacion", String),
+    Column("nota_minima_aprobacion", Float, nullable=False, server_default="60.0"),
+    Column("nota_minima_escala", Float, nullable=False, server_default="0.0"),
+    Column("nota_maxima_escala", Float, nullable=False, server_default="100.0"),
+    Column("activo", Boolean, nullable=False, server_default="1"),
+    UniqueConstraint("institucion_id", "anio"),
+    CheckConstraint(
+        "nota_minima_aprobacion >= 0 AND nota_minima_aprobacion <= 100",
+        name="ck_config_anio_nota_min",
+    ),
+)
+
+niveles_desempeno = Table(
+    "niveles_desempeno", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("rango_min", Float, nullable=False),
+    Column("rango_max", Float, nullable=False),
+    Column("descripcion", String),
+    Column("orden", Integer, nullable=False, server_default="0"),
+    UniqueConstraint("anio_id", "nombre"),
+    UniqueConstraint("anio_id", "orden"),
+    CheckConstraint("rango_min >= 0 AND rango_min < 100", name="ck_niveles_rango_min"),
+    CheckConstraint("rango_max > 0 AND rango_max <= 100", name="ck_niveles_rango_max"),
+    CheckConstraint("rango_min < rango_max", name="ck_niveles_rango"),
+)
+
+configuracion_periodos = Table(
+    "configuracion_periodos", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("numero_periodos", Integer, nullable=False, server_default="4"),
+    Column("pesos_iguales", Boolean, nullable=False, server_default="1"),
+    UniqueConstraint("anio_id"),
+    CheckConstraint("numero_periodos BETWEEN 2 AND 6", name="ck_config_per_numero"),
+)
+
+criterios_promocion = Table(
+    "criterios_promocion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("max_asignaturas_perdidas", Integer, nullable=False, server_default="2"),
+    Column("permite_condicionada", Boolean, nullable=False, server_default="1"),
+    Column("nota_minima_habilitacion", Float, nullable=False, server_default="60.0"),
+    Column("nota_minima_anual", Float, nullable=False, server_default="60.0"),
+    UniqueConstraint("anio_id"),
+    CheckConstraint(
+        "nota_minima_habilitacion >= 0 AND nota_minima_habilitacion <= 100",
+        name="ck_criterios_nota_hab",
+    ),
+    CheckConstraint(
+        "nota_minima_anual >= 0 AND nota_minima_anual <= 100",
+        name="ck_criterios_nota_anual",
+    ),
+)
+
+# ============================================================
+# 2. INFRAESTRUCTURA ACADÉMICA
+# ============================================================
+
+escenarios_horario = Table(
+    "escenarios_horario", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("descripcion", String),
+    Column("activo", Integer, nullable=False, server_default="0"),
+    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
+    UniqueConstraint("anio_id", "nombre"),
+)
+
+plantillas_franja = Table(
+    "plantillas_franja", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("jornada", String, nullable=False, server_default="UNICA"),
+    Column("dias_activos", String, nullable=False, server_default="Lunes,Martes,Miércoles,Jueves,Viernes"),
+    Column("activa", Integer, nullable=False, server_default="0"),
+    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    CheckConstraint("jornada IN ('AM', 'PM', 'UNICA')", name="ck_plantillas_jornada"),
+)
+
+franjas = Table(
+    "franjas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("plantilla_id", Integer, ForeignKey("plantillas_franja.id", ondelete="CASCADE"), nullable=False),
+    Column("orden", Integer, nullable=False),
+    Column("hora_inicio", String, nullable=False),
+    Column("hora_fin", String, nullable=False),
+    Column("tipo", String, nullable=False, server_default="lectiva"),
+    Column("etiqueta", String),
+    UniqueConstraint("plantilla_id", "orden"),
+    CheckConstraint("orden >= 1", name="ck_franjas_orden"),
+    CheckConstraint("hora_inicio < hora_fin", name="ck_franjas_horas"),
+    CheckConstraint("tipo IN ('lectiva', 'descanso', 'almuerzo')", name="ck_franjas_tipo"),
+)
+
+areas_conocimiento = Table(
+    "areas_conocimiento", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("codigo", String),
+    Column("color", String),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    UniqueConstraint("institucion_id", "codigo"),
+)
+
+asignaturas = Table(
+    "asignaturas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("codigo", String),
+    Column("area_id", Integer, ForeignKey("areas_conocimiento.id", ondelete="SET NULL")),
+    Column("horas_semanales", Integer, nullable=False, server_default="1"),
+    Column("tipo_sala_requerido", String),
+    Column("bloque_doble", Integer, nullable=False, server_default="0"),
+    Column("horas_consecutivas", Integer, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    UniqueConstraint("institucion_id", "codigo"),
+    CheckConstraint("horas_semanales > 0", name="ck_asig_horas"),
+    CheckConstraint("horas_consecutivas >= 1", name="ck_asig_consecutivas"),
+)
+
+grados = Table(
+    "grados", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("numero", Integer, nullable=False),
+    Column("nombre", String),
+    Column("min_estudiantes", Integer, nullable=False, server_default="0"),
+    Column("max_estudiantes", Integer, nullable=False, server_default="40"),
+    Column("horas_semanales", Integer, nullable=False, server_default="0"),
+    UniqueConstraint("numero"),
+    CheckConstraint("numero BETWEEN 1 AND 13", name="ck_grados_numero"),
+    CheckConstraint("min_estudiantes >= 0", name="ck_grados_min_est"),
+    CheckConstraint("max_estudiantes >= 1", name="ck_grados_max_est"),
+    CheckConstraint("horas_semanales >= 0", name="ck_grados_horas"),
+)
+
+salas = Table(
+    "salas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("tipo", String, nullable=False, server_default="aula"),
+    Column("capacidad", Integer, nullable=False, server_default="30"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    CheckConstraint("tipo IN ('aula','laboratorio','computo','ed_fisica','otro')", name="ck_salas_tipo"),
+    CheckConstraint("capacidad >= 1", name="ck_salas_capacidad"),
+)
+
+# grupos va en módulo 2 aunque referencia usuarios (módulo 3);
+# create_all() resuelve el orden por las FKs declaradas como strings.
+grupos = Table(
+    "grupos", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("codigo", String, nullable=False),
+    Column("nombre", String),
+    Column("grado", Integer),
+    Column("jornada", String, nullable=False, server_default="UNICA"),
+    Column("capacidad_maxima", Integer, nullable=False, server_default="40"),
+    # D2: FK real a salas
+    Column("sala_id", Integer, ForeignKey("salas.id", ondelete="SET NULL")),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    Column("director_grupo_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("institucion_id", "codigo"),
+    CheckConstraint("grado BETWEEN 1 AND 13", name="ck_grupos_grado"),
+    CheckConstraint("jornada IN ('AM', 'PM', 'UNICA')", name="ck_grupos_jornada"),
+    CheckConstraint("capacidad_maxima > 0", name="ck_grupos_capacidad"),
+)
+
+ventanas_grupo = Table(
+    "ventanas_grupo", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE")),
+    Column("grado", Integer),
+    Column("franjas_permitidas", String, nullable=False, server_default="[]"),
+    CheckConstraint("(grupo_id IS NULL) != (grado IS NULL)", name="ck_ventanas_exclusivo"),
+)
+
+# bloques_anclados referencia asignaciones (módulo 4) — string FK
+bloques_anclados = Table(
+    "bloques_anclados", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("escenario_id", Integer, ForeignKey("escenarios_horario.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("dia_semana", String, nullable=False),
+    Column("franja_orden", Integer, nullable=False),
+    Column("sala_id", Integer, ForeignKey("salas.id", ondelete="SET NULL")),
+    UniqueConstraint("escenario_id", "dia_semana", "franja_orden", "asignacion_id"),
+    CheckConstraint(
+        "dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')",
+        name="ck_bloques_dia",
+    ),
+    CheckConstraint("franja_orden >= 1", name="ck_bloques_franja"),
+)
+
+franjas_reunion = Table(
+    "franjas_reunion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("docentes_json", String, nullable=False, server_default="[]"),
+    Column("dia_semana", String, nullable=False),
+    Column("franja_orden", Integer, nullable=False),
+    Column("modo", String, nullable=False, server_default="preferente"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    CheckConstraint(
+        "dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')",
+        name="ck_franjas_reunion_dia",
+    ),
+    CheckConstraint("franja_orden >= 1", name="ck_franjas_reunion_orden"),
+    CheckConstraint("modo IN ('estricta','preferente')", name="ck_franjas_reunion_modo"),
+)
+
+# limites_docente y disponibilidad_docente referencian usuarios (módulo 3) — string FK
+limites_docente = Table(
+    "limites_docente", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False),
+    Column("min_horas_dia", Integer, nullable=False, server_default="0"),
+    Column("max_horas_dia", Integer, nullable=False, server_default="8"),
+    UniqueConstraint("usuario_id"),
+    CheckConstraint("min_horas_dia >= 0", name="ck_limites_min"),
+    CheckConstraint("max_horas_dia >= 1", name="ck_limites_max"),
+    CheckConstraint("min_horas_dia <= max_horas_dia", name="ck_limites_rango"),
+)
+
+disponibilidad_docente = Table(
+    "disponibilidad_docente", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False),
+    Column("dia_semana", String, nullable=False),
+    Column("franja_orden", Integer, nullable=False),
+    Column("disponible", Integer, nullable=False, server_default="1"),
+    UniqueConstraint("usuario_id", "dia_semana", "franja_orden"),
+    CheckConstraint(
+        "dia_semana IN ('Lunes','Martes','Miércoles','Jueves','Viernes','Sábado')",
+        name="ck_disp_dia",
+    ),
+    CheckConstraint("franja_orden >= 1", name="ck_disp_franja"),
+)
+
+# config_generacion referencia periodos (módulo 4) — string FK
+config_generacion = Table(
+    "config_generacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("plantilla_id", Integer, ForeignKey("plantillas_franja.id", ondelete="CASCADE"), nullable=False),
+    Column("estado", String, nullable=False, server_default="borrador"),
+    Column("grupos_json", String, nullable=False, server_default="[]"),
+    Column(
+        "pesos_json", String, nullable=False,
+        server_default='{"huecos":1.0,"distribucion":1.0,"compactacion":0.5}',
+    ),
+    Column("restricciones_json", String, nullable=False, server_default="{}"),
+    Column("escenario_destino_id", Integer, ForeignKey("escenarios_horario.id", ondelete="SET NULL")),
+    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
+    Column("updated_at", String, nullable=False, server_default=text("datetime('now')")),
+    UniqueConstraint("nombre"),
+    CheckConstraint("estado IN ('borrador','generado','aplicado')", name="ck_config_gen_estado"),
+)
+
+plan_estudios = Table(
+    "plan_estudios", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("grado", Integer, nullable=False),
+    Column("asignatura_id", Integer, ForeignKey("asignaturas.id", ondelete="CASCADE"), nullable=False),
+    Column("horas_semanales", Integer, nullable=False),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "grado", "asignatura_id"),
+    CheckConstraint("grado >= 1 AND grado <= 13", name="ck_plan_est_grado"),
+    CheckConstraint("horas_semanales >= 1 AND horas_semanales <= 40", name="ck_plan_est_horas"),
+)
+
+configuracion_grado_institucion = Table(
+    "configuracion_grado_institucion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("grado_id", Integer, ForeignKey("grados.id", ondelete="CASCADE"), nullable=False),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id"), nullable=False),
+    Column("min_estudiantes", Integer, nullable=False, server_default="0"),
+    Column("max_estudiantes", Integer, nullable=False, server_default="40"),
+    Column("horas_semanales", Integer, nullable=False, server_default="0"),
+    UniqueConstraint("grado_id", "institucion_id"),
+    CheckConstraint("min_estudiantes >= 0", name="ck_cfg_grado_min"),
+    CheckConstraint("max_estudiantes >= 1", name="ck_cfg_grado_max"),
+    CheckConstraint("horas_semanales >= 0", name="ck_cfg_grado_horas"),
+)
+
+preferencias_institucion = Table(
+    "preferencias_institucion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id", ondelete="CASCADE"), nullable=False),
+    Column("categoria", String, nullable=False),
+    Column("clave", String, nullable=False),
+    Column("valor", String),
+    Column("tipo_valor", String, nullable=False, server_default="str"),
+    UniqueConstraint("institucion_id", "clave"),
+    CheckConstraint("tipo_valor IN ('str','int','float','bool','json')", name="ck_pref_inst_tipo_valor"),
+    # D4
+    CheckConstraint(
+        "categoria IN ('academicas','convivencia','apariencia')",
+        name="ck_pref_inst_categoria",
+    ),
+)
+
+# ============================================================
+# 3. USUARIOS Y ACUDIENTES
+# ============================================================
+
+usuarios = Table(
+    "usuarios", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("usuario", String, nullable=False),
+    Column("password_hash", String, nullable=False),
+    Column("nombre_completo", String, nullable=False),
+    Column("email", String),
+    Column("telefono", String),
+    Column("rol", String, nullable=False),
+    Column("activo", Boolean, nullable=False, server_default="1"),
+    Column("debe_cambiar_password", Boolean, nullable=False, server_default="0"),
+    Column("fecha_creacion", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("ultima_sesion", DateTime),
+    Column("carga_horaria_max", Integer),
+    Column("horas_extra", Integer, nullable=False, server_default="0"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("usuario"),
+    CheckConstraint(
+        "rol IN ('admin', 'director', 'coordinador', 'profesor', 'estudiante', 'apoderado')",
+        name="ck_usuarios_rol",
+    ),
+    CheckConstraint("horas_extra >= 0", name="ck_usuarios_horas_extra"),
+)
+
+acudientes = Table(
+    "acudientes", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("tipo_documento", String, nullable=False, server_default="CC"),
+    Column("numero_documento", String, nullable=False),
+    Column("nombre_completo", String, nullable=False),
+    Column("parentesco", String, nullable=False),
+    Column("celular", String),
+    Column("email", String),
+    Column("direccion", String),
+    Column("activo", Boolean, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("usuario_id"),
+    UniqueConstraint("institucion_id", "numero_documento"),
+    CheckConstraint("tipo_documento IN ('CC', 'CE', 'TI', 'PASAPORTE')", name="ck_acud_tipo_doc"),
+    CheckConstraint(
+        "parentesco IN ('padre', 'madre', 'abuelo', 'abuela', 'tio', 'tia',"
+        " 'hermano', 'hermana', 'tutor_legal', 'otro')",
+        name="ck_acud_parentesco",
+    ),
+)
+
+estudiantes = Table(
+    "estudiantes", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("id_publico", String),
+    Column("tipo_documento", String, nullable=False, server_default="TI"),
+    Column("numero_documento", String, nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("apellido", String, nullable=False),
+    Column("genero", String),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="SET NULL")),
+    Column("posee_piar", Boolean, nullable=False, server_default="0"),
+    Column("fecha_nacimiento", Date),
+    Column("direccion", String),
+    Column("fecha_ingreso", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("estado_matricula", String, nullable=False, server_default="activo"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("id_publico"),
+    UniqueConstraint("institucion_id", "numero_documento"),
+    CheckConstraint("tipo_documento IN ('TI', 'CC', 'CE', 'NUIP')", name="ck_est_tipo_doc"),
+    CheckConstraint("genero IN ('M', 'F', 'OTRO')", name="ck_est_genero"),
+    CheckConstraint(
+        "estado_matricula IN ('activo', 'inactivo', 'retirado', 'graduado')",
+        name="ck_est_estado",
+    ),
+)
+
+estudiante_acudiente = Table(
+    "estudiante_acudiente", metadata,
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False, primary_key=True),
+    Column("acudiente_id", Integer, ForeignKey("acudientes.id", ondelete="CASCADE"), nullable=False, primary_key=True),
+    Column("es_principal", Boolean, nullable=False, server_default="0"),
+)
+
+historial_estudiantes = Table(
+    "historial_estudiantes", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("grupo_origen_id", Integer, ForeignKey("grupos.id", ondelete="SET NULL")),
+    Column("grupo_destino_id", Integer, ForeignKey("grupos.id", ondelete="SET NULL")),
+    Column("fecha_movimiento", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("tipo_movimiento", String, nullable=False),
+    Column("motivo", String),
+    Column("usuario_registro_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint(
+        "tipo_movimiento IN ('TRASLADO', 'RETIRO', 'REINGRESO', 'GRADUACION')",
+        name="ck_hist_tipo",
+    ),
+)
+
+# ============================================================
+# 4. PERIODOS Y ASIGNACIONES
+# ============================================================
+
+periodos = Table(
+    "periodos", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("numero", Integer, nullable=False),
+    Column("fecha_inicio", Date),
+    Column("fecha_fin", Date),
+    Column("peso_porcentual", Float, nullable=False, server_default="25.0"),
+    Column("activo", Boolean, nullable=False, server_default="1"),
+    Column("cerrado", Boolean, nullable=False, server_default="0"),
+    Column("fecha_cierre_real", DateTime),
+    UniqueConstraint("anio_id", "nombre"),
+    UniqueConstraint("anio_id", "numero"),
+    CheckConstraint("numero >= 1", name="ck_periodos_numero"),
+    CheckConstraint("peso_porcentual > 0 AND peso_porcentual <= 100", name="ck_periodos_peso"),
+    CheckConstraint(
+        "fecha_inicio IS NULL OR fecha_fin IS NULL OR fecha_inicio <= fecha_fin",
+        name="ck_periodos_fechas",
+    ),
+)
+
+hitos_periodo = Table(
+    "hitos_periodo", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("tipo", String, nullable=False, server_default="general"),
+    Column("descripcion", String),
+    Column("fecha_limite", Date),
+    CheckConstraint(
+        "tipo IN ('entrega_notas', 'inicio_habilitaciones', 'fin_habilitaciones',"
+        " 'entrega_boletines', 'general')",
+        name="ck_hitos_tipo",
+    ),
+)
+
+asignaciones = Table(
+    "asignaciones", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False),
+    Column("asignatura_id", Integer, ForeignKey("asignaturas.id", ondelete="CASCADE"), nullable=False),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("activo", Boolean, nullable=False, server_default="1"),
+    UniqueConstraint("grupo_id", "asignatura_id", "usuario_id", "periodo_id"),
+)
+
+logros = Table(
+    "logros", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("descripcion", String, nullable=False),
+    Column("orden", Integer, nullable=False, server_default="0"),
+)
+
+horarios = Table(
+    "horarios", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False),
+    Column("asignatura_id", Integer, ForeignKey("asignaturas.id", ondelete="CASCADE"), nullable=False),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="SET NULL")),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE")),
+    Column("escenario_id", Integer, ForeignKey("escenarios_horario.id", ondelete="CASCADE"), nullable=False),
+    Column("dia_semana", String, nullable=False),
+    Column("hora_inicio", String, nullable=False),
+    Column("hora_fin", String, nullable=False),
+    Column("sala", String, nullable=False, server_default="Aula"),
+    UniqueConstraint("escenario_id", "grupo_id", "dia_semana", "hora_inicio"),
+    CheckConstraint(
+        "dia_semana IN ('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado')",
+        name="ck_horarios_dia",
+    ),
+    CheckConstraint("hora_inicio < hora_fin", name="ck_horarios_horas"),
+)
+
+# ============================================================
+# 5. EVALUACIÓN
+# ============================================================
+
+configuracion_siee = Table(
+    "configuracion_siee", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("modo", String, nullable=False, server_default="libre"),
+    Column("porcentaje_autonomia_docente", Float),
+    UniqueConstraint("anio_id"),
+    CheckConstraint(
+        "modo IN ('libre', 'institucional_fijo', 'mixto_subcategorias', 'mixto_autonomia')",
+        name="ck_siee_modo",
+    ),
+    CheckConstraint(
+        "porcentaje_autonomia_docente IS NULL OR"
+        " (porcentaje_autonomia_docente > 0 AND porcentaje_autonomia_docente <= 1)",
+        name="ck_siee_pct",
+    ),
+)
+
+categorias = Table(
+    "categorias", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("peso", Float, nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE")),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE")),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE")),
+    Column("es_institucional", Integer, nullable=False, server_default="0"),
+    Column("permite_subcategorias", Integer, nullable=False, server_default="0"),
+    Column("categoria_padre_id", Integer, ForeignKey("categorias.id", ondelete="SET NULL")),
+    UniqueConstraint("nombre", "asignacion_id", "periodo_id"),
+    CheckConstraint("peso > 0 AND peso <= 1", name="ck_cats_peso"),
+    CheckConstraint("es_institucional IN (0,1)", name="ck_cats_institucional"),
+    CheckConstraint("permite_subcategorias IN (0,1)", name="ck_cats_subcats"),
+    CheckConstraint(
+        "(asignacion_id IS NOT NULL AND periodo_id IS NOT NULL AND anio_id IS NULL)"
+        " OR (asignacion_id IS NULL AND periodo_id IS NULL AND anio_id IS NOT NULL)",
+        name="ck_cats_scope",
+    ),
+)
+
+actividades = Table(
+    "actividades", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("descripcion", String),
+    Column("fecha", Date),
+    Column("valor_maximo", Float, nullable=False, server_default="100.0"),
+    Column("estado", String, nullable=False, server_default="borrador"),
+    Column("categoria_id", Integer, ForeignKey("categorias.id", ondelete="CASCADE"), nullable=False),
+    CheckConstraint("valor_maximo > 0", name="ck_acts_valor"),
+    CheckConstraint("estado IN ('borrador', 'publicada', 'cerrada')", name="ck_acts_estado"),
+)
+
+notas = Table(
+    "notas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("actividad_id", Integer, ForeignKey("actividades.id", ondelete="CASCADE"), nullable=False),
+    Column("valor", Float, nullable=False),
+    Column("usuario_registro_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("fecha_registro", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    UniqueConstraint("estudiante_id", "actividad_id"),  # D3: sin ON CONFLICT REPLACE
+    CheckConstraint("valor >= 0 AND valor <= 100", name="ck_notas_valor"),
+)
+
+puntos_extra = Table(
+    "puntos_extra", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("tipo", String, nullable=False, server_default="comportamental"),
+    Column("positivos", Integer, nullable=False, server_default="0"),
+    Column("negativos", Integer, nullable=False, server_default="0"),
+    Column("observacion", String),
+    Column("fecha_actualizacion", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    UniqueConstraint("estudiante_id", "asignacion_id", "periodo_id", "tipo"),  # D3
+    CheckConstraint("tipo IN ('comportamental', 'participacion', 'academico')", name="ck_puntos_tipo"),
+    CheckConstraint("positivos >= 0", name="ck_puntos_pos"),
+    CheckConstraint("negativos >= 0", name="ck_puntos_neg"),
+)
+
+# ============================================================
+# 6. CIERRES Y PROMOCIÓN
+# ============================================================
+
+cierres_periodo = Table(
+    "cierres_periodo", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="RESTRICT"), nullable=False),
+    Column("nota_definitiva", Float, nullable=False),
+    Column("desempeno_id", Integer, ForeignKey("niveles_desempeno.id", ondelete="SET NULL")),
+    Column("logro_id", Integer, ForeignKey("logros.id", ondelete="SET NULL")),
+    Column("fecha_cierre", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("usuario_cierre_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("estudiante_id", "asignacion_id", "periodo_id"),  # D3
+    CheckConstraint("nota_definitiva >= 0 AND nota_definitiva <= 100", name="ck_cierres_p_nota"),
+)
+
+cierres_anio = Table(
+    "cierres_anio", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="RESTRICT"), nullable=False),
+    Column("nota_promedio_periodos", Float, nullable=False),
+    Column("nota_habilitacion", Float),
+    Column("nota_definitiva_anual", Float, nullable=False),
+    Column("perdio", Boolean, nullable=False, server_default="0"),
+    Column("desempeno_id", Integer, ForeignKey("niveles_desempeno.id", ondelete="SET NULL")),
+    Column("fecha_cierre", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("usuario_cierre_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("estudiante_id", "asignacion_id", "anio_id"),  # D3
+    CheckConstraint(
+        "nota_promedio_periodos >= 0 AND nota_promedio_periodos <= 100",
+        name="ck_cierres_a_prom",
+    ),
+    CheckConstraint(
+        "nota_habilitacion IS NULL OR (nota_habilitacion >= 0 AND nota_habilitacion <= 100)",
+        name="ck_cierres_a_hab",
+    ),
+    CheckConstraint(
+        "nota_definitiva_anual >= 0 AND nota_definitiva_anual <= 100",
+        name="ck_cierres_a_def",
+    ),
+)
+
+promocion_anual = Table(
+    "promocion_anual", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="RESTRICT"), nullable=False),
+    Column("estado", String, nullable=False, server_default="pendiente"),
+    Column("asignaturas_perdidas", Integer, nullable=False, server_default="0"),
+    Column("observacion", String),
+    Column("fecha_decision", Date),
+    Column("usuario_decision_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("estudiante_id", "anio_id"),  # D3
+    CheckConstraint(
+        "estado IN ('promovido', 'reprobado', 'condicional', 'pendiente')",
+        name="ck_prom_estado",
+    ),
+)
+
+# ============================================================
+# 7. HABILITACIONES Y MEJORAMIENTO
+# ============================================================
+
+habilitaciones = Table(
+    "habilitaciones", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="SET NULL")),
+    Column("tipo", String, nullable=False),
+    Column("nota_antes", Float),
+    Column("nota_habilitacion", Float),
+    Column("fecha", Date),
+    Column("estado", String, nullable=False, server_default="pendiente"),
+    Column("observacion", String),
+    Column("usuario_registro_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint("tipo IN ('periodo', 'anual')", name="ck_habil_tipo"),
+    CheckConstraint(
+        "nota_antes IS NULL OR (nota_antes >= 0 AND nota_antes <= 100)",
+        name="ck_habil_nota_antes",
+    ),
+    CheckConstraint(
+        "nota_habilitacion IS NULL OR (nota_habilitacion >= 0 AND nota_habilitacion <= 100)",
+        name="ck_habil_nota",
+    ),
+    CheckConstraint(
+        "estado IN ('pendiente', 'realizada', 'aprobada', 'reprobada')",
+        name="ck_habil_estado",
+    ),
+    CheckConstraint("tipo != 'periodo' OR periodo_id IS NOT NULL", name="ck_habil_periodo_req"),
+)
+
+planes_mejoramiento = Table(
+    "planes_mejoramiento", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("descripcion_dificultad", String, nullable=False),
+    Column("actividades_propuestas", String, nullable=False),
+    Column("fecha_inicio", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("fecha_seguimiento", Date),
+    Column("fecha_cierre", Date),
+    Column("estado", String, nullable=False, server_default="activo"),
+    Column("observacion_cierre", String),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint("estado IN ('activo', 'cumplido', 'incumplido')", name="ck_planes_estado"),
+)
+
+cortes_plan = Table(
+    "cortes_plan", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("fecha_ejecucion", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("peso_registrado", Float, nullable=False),
+    Column("nota_umbral", Float, nullable=False),
+    Column("nota_minima_aprobacion", Float, nullable=False, server_default="60.0"),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("asignacion_id", "periodo_id"),
+    CheckConstraint("peso_registrado > 0 AND peso_registrado <= 1", name="ck_cortes_peso"),
+    CheckConstraint("nota_umbral >= 0", name="ck_cortes_umbral"),
+)
+
+notas_corte_plan = Table(
+    "notas_corte_plan", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("corte_id", Integer, ForeignKey("cortes_plan.id", ondelete="CASCADE"), nullable=False),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("nota_al_corte", Float, nullable=False),
+    Column("nota_definitiva_plan", Float),
+    Column("estado", String, nullable=False, server_default="sin_plan"),
+    Column("usuario_cierre_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("corte_id", "estudiante_id"),  # D3
+    CheckConstraint("nota_al_corte >= 0", name="ck_notas_corte_al_corte"),
+    CheckConstraint(
+        "nota_definitiva_plan IS NULL OR nota_definitiva_plan >= 0",
+        name="ck_notas_corte_def",
+    ),
+    CheckConstraint(
+        "estado IN ('sin_plan', 'en_plan', 'aprobado', 'reprobado')",
+        name="ck_notas_corte_estado",
+    ),
+)
+
+actividades_plan = Table(
+    "actividades_plan", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("corte_id", Integer, ForeignKey("cortes_plan.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("descripcion", String),
+    Column("peso", Float, nullable=False),
+    Column("fecha", Date),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint("peso > 0 AND peso <= 1", name="ck_act_plan_peso"),
+)
+
+notas_actividad_plan = Table(
+    "notas_actividad_plan", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("actividad_plan_id", Integer, ForeignKey("actividades_plan.id", ondelete="CASCADE"), nullable=False),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("valor", Float),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("actividad_plan_id", "estudiante_id"),  # D3
+    CheckConstraint(
+        "valor IS NULL OR (valor >= 0 AND valor <= 100)",
+        name="ck_nota_act_plan_valor",
+    ),
+)
+
+actividades_nivelacion = Table(
+    "actividades_nivelacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("nombre", String, nullable=False),
+    Column("descripcion", String),
+    Column("peso", Float, nullable=False),
+    Column("fecha", Date),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint("peso > 0 AND peso <= 1", name="ck_act_nivel_peso"),
+)
+
+notas_nivelacion = Table(
+    "notas_nivelacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("actividad_nivelacion_id", Integer, ForeignKey("actividades_nivelacion.id", ondelete="CASCADE"), nullable=False),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("valor", Float),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("actividad_nivelacion_id", "estudiante_id"),  # D3
+    CheckConstraint(
+        "valor IS NULL OR (valor >= 0 AND valor <= 100)",
+        name="ck_nota_nivel_valor",
+    ),
+)
+
+cierres_nivelacion = Table(
+    "cierres_nivelacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("fecha_cierre", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("usuario_cierre_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("asignacion_id", "periodo_id"),
+)
+
+# ============================================================
+# 8. ASISTENCIA Y CONVIVENCIA
+# ============================================================
+
+tipos_situacion = Table(
+    "tipos_situacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("nivel", Integer, nullable=False, server_default="1"),
+    Column("descripcion", String),
+    Column("protocolo", String),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    CheckConstraint("nivel BETWEEN 1 AND 3", name="ck_tipos_sit_nivel"),
+)
+
+medidas_pedagogicas = Table(
+    "medidas_pedagogicas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("descripcion", String),
+    Column("nivel_minimo", Integer, nullable=False, server_default="1"),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+    CheckConstraint("nivel_minimo BETWEEN 1 AND 3", name="ck_medidas_nivel"),
+)
+
+categorias_observacion = Table(
+    "categorias_observacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("nombre", String, nullable=False),
+    Column("es_comportamental", Boolean, nullable=False, server_default="0"),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    UniqueConstraint("institucion_id", "nombre"),
+)
+
+plantillas_observacion = Table(
+    "plantillas_observacion", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("texto", String, nullable=False),
+    Column("categoria_id", Integer, ForeignKey("categorias_observacion.id", ondelete="SET NULL")),
+    Column("uso_count", Integer, nullable=False, server_default="0"),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+)
+
+control_diario = Table(
+    "control_diario", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("fecha", Date, nullable=False),
+    Column("estado", String, nullable=False, server_default="P"),
+    Column("hora_entrada", String),
+    Column("hora_salida", String),
+    Column("uniforme", Boolean, nullable=False, server_default="1"),
+    Column("materiales", Boolean, nullable=False, server_default="1"),
+    Column("observacion", String),
+    Column("usuario_registro_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("fecha_actualizacion", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    UniqueConstraint("estudiante_id", "grupo_id", "asignacion_id", "fecha"),  # D3
+    CheckConstraint("estado IN ('P', 'FJ', 'FI', 'R', 'E')", name="ck_ctrl_estado"),
+)
+
+# registro_comportamiento se declara antes que observaciones_periodo
+# porque observaciones_periodo lo referencia
+registro_comportamiento = Table(
+    "registro_comportamiento", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("fecha", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("tipo", String, nullable=False),
+    Column("descripcion", String, nullable=False),
+    Column("seguimiento", String),
+    Column("requiere_firma", Boolean, nullable=False, server_default="0"),
+    Column("acudiente_notificado", Boolean, nullable=False, server_default="0"),
+    Column("usuario_registro_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("tipo_situacion_id", Integer, ForeignKey("tipos_situacion.id", ondelete="SET NULL")),
+    Column("medida_id", Integer, ForeignKey("medidas_pedagogicas.id", ondelete="SET NULL")),
+    CheckConstraint(
+        "tipo IN ('fortaleza', 'dificultad', 'compromiso', 'citacion_acudiente', 'descargo')",
+        name="ck_reg_comp_tipo",
+    ),
+)
+
+observaciones_periodo = Table(
+    "observaciones_periodo", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("asignacion_id", Integer, ForeignKey("asignaciones.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("texto", String, nullable=False),
+    Column("es_publica", Boolean, nullable=False, server_default="1"),
+    Column("fecha_registro", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("categoria_id", Integer, ForeignKey("categorias_observacion.id", ondelete="SET NULL")),
+    Column("origen", String, nullable=False, server_default="libre"),
+    Column("registro_comportamiento_id", Integer, ForeignKey("registro_comportamiento.id", ondelete="SET NULL")),
+    CheckConstraint("origen IN ('libre', 'plantilla')", name="ck_obs_origen"),
+)
+
+entradas_seguimiento = Table(
+    "entradas_seguimiento", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("registro_id", Integer, ForeignKey("registro_comportamiento.id", ondelete="CASCADE"), nullable=False),
+    Column("fecha", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("texto", String, nullable=False),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+)
+
+nota_comportamiento_periodo = Table(
+    "nota_comportamiento_periodo", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("grupo_id", Integer, ForeignKey("grupos.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="CASCADE"), nullable=False),
+    Column("valor", Float, nullable=False),
+    Column("desempeno_id", Integer, ForeignKey("niveles_desempeno.id", ondelete="SET NULL")),
+    Column("observacion", String),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("estudiante_id", "grupo_id", "periodo_id"),  # D3
+    CheckConstraint("valor >= 0 AND valor <= 100", name="ck_nota_comp_valor"),
+)
+
+# ============================================================
+# 9. ALERTAS
+# ============================================================
+
+configuracion_alertas = Table(
+    "configuracion_alertas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("tipo_alerta", String, nullable=False),
+    Column("umbral", Float, nullable=False),
+    Column("activa", Boolean, nullable=False, server_default="1"),
+    Column("notificar_docente", Boolean, nullable=False, server_default="1"),
+    Column("notificar_director", Boolean, nullable=False, server_default="0"),
+    Column("notificar_acudiente", Boolean, nullable=False, server_default="0"),
+    UniqueConstraint("anio_id", "tipo_alerta"),
+    CheckConstraint(
+        "tipo_alerta IN ('faltas_injustificadas', 'promedio_bajo', 'materias_en_riesgo',"
+        " 'plan_mejoramiento_vencido', 'habilitacion_pendiente', 'seguimiento_requerido')",
+        name="ck_cfg_alertas_tipo",
+    ),
+)
+
+alertas = Table(
+    "alertas", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("tipo_alerta", String, nullable=False),
+    Column("nivel", String, nullable=False, server_default="advertencia"),
+    Column("descripcion", String, nullable=False),
+    Column("fecha_generacion", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("resuelta", Boolean, nullable=False, server_default="0"),
+    Column("fecha_resolucion", DateTime),
+    Column("usuario_resolucion_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("observacion_resolucion", String),
+    Column("usuario_destino_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint(
+        "tipo_alerta IN ('faltas_injustificadas', 'promedio_bajo', 'materias_en_riesgo',"
+        " 'plan_mejoramiento_vencido', 'habilitacion_pendiente', 'seguimiento_requerido')",
+        name="ck_alertas_tipo",
+    ),
+    CheckConstraint("nivel IN ('info', 'advertencia', 'critica')", name="ck_alertas_nivel"),
+)
+
+# ============================================================
+# 10. INFORMES Y PIAR
+# ============================================================
+
+boletines_emitidos = Table(
+    "boletines_emitidos", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("periodo_id", Integer, ForeignKey("periodos.id", ondelete="SET NULL")),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("tipo", String, nullable=False),
+    Column("fecha_generacion", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("fecha_entrega", Date),
+    Column("entregado", Boolean, nullable=False, server_default="0"),
+    Column("usuario_generador_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    CheckConstraint("tipo IN ('periodo', 'anual')", name="ck_boletines_tipo"),
+    CheckConstraint("tipo != 'periodo' OR periodo_id IS NOT NULL", name="ck_boletines_periodo"),
+)
+
+piar = Table(
+    "piar", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("estudiante_id", Integer, ForeignKey("estudiantes.id", ondelete="CASCADE"), nullable=False),
+    Column("anio_id", Integer, ForeignKey("configuracion_anio.id", ondelete="CASCADE"), nullable=False),
+    Column("descripcion_necesidad", String, nullable=False),
+    Column("ajustes_evaluativos", String),
+    Column("ajustes_pedagogicos", String),
+    Column("profesionales_apoyo", String),
+    Column("fecha_elaboracion", Date, nullable=False, server_default=text("CURRENT_DATE")),
+    Column("fecha_revision", Date),
+    Column("usuario_elaboracion_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    UniqueConstraint("estudiante_id", "anio_id"),
+)
+
+# ============================================================
+# 11. AUDITORÍA
+# ============================================================
+
+auditoria = Table(
+    "auditoria", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("usuario", String, nullable=False),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("tipo_evento", String, nullable=False),
+    Column("ip_address", String),
+    Column("fecha_hora", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("detalles", String),
+    Column("objetivo", String),
+    Column("severidad", String, nullable=False, server_default="INFO"),
+    Column("hash_cadena", String),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    CheckConstraint(
+        "tipo_evento IN ('LOGIN_EXITOSO', 'LOGIN_FALLIDO', 'LOGOUT', 'CREAR_USUARIO',"
+        " 'EDITAR_USUARIO', 'RESETEAR_PASSWORD', 'CAMBIAR_ROL', 'DESACTIVAR_USUARIO',"
+        " 'ACTIVAR_USUARIO', 'ACCESO_DENEGADO', 'VER_COMO_INICIO', 'VER_COMO_FIN',"
+        " 'AUDITORIA_EXPORTADA', 'AUDITORIA_PURGADA')",
+        name="ck_auditoria_evento",
+    ),
+    CheckConstraint(
+        "severidad IN ('INFO', 'ADVERTENCIA', 'CRITICA')",
+        name="ck_auditoria_severidad",
+    ),
+)
+
+audit_log = Table(
+    "audit_log", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("usuario_id", Integer, ForeignKey("usuarios.id", ondelete="SET NULL")),
+    Column("usuario", String),
+    Column("ip_address", String),
+    Column("accion", String, nullable=False),
+    Column("tabla", String, nullable=False),
+    Column("registro_id", Integer),
+    Column("valor_anterior", String),
+    Column("valor_nuevo", String),
+    Column("timestamp", DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("hash_cadena", String),
+    Column("institucion_id", Integer, ForeignKey("instituciones.id")),
+    # D4: CHECK faltante
+    CheckConstraint(
+        "accion IN ('CREATE','UPDATE','DELETE','READ')",
+        name="ck_audit_log_accion",
+    ),
+)
+
+# Sin FKs — TEXT PRIMARY KEY
+verificacion_auditoria = Table(
+    "verificacion_auditoria", metadata,
+    Column("tabla", String, primary_key=True),
+    Column("ultimo_id", Integer, nullable=False),
+    Column("ultimo_hash", String, nullable=False),
+    Column("verificado_en", DateTime, nullable=False),
+)
+
+# ============================================================
 # ÍNDICES
-# =============================================================================
+# ============================================================
 
-INDICES: list[str] = [
-    # configuracion_anio
-    "CREATE INDEX IF NOT EXISTS idx_config_anio        ON configuracion_anio(anio)",
-    # Multi-tenant
-    "CREATE INDEX IF NOT EXISTS idx_config_institucion ON configuracion_anio(institucion_id)",
-    # usuarios (multi-tenant)
-    "CREATE INDEX IF NOT EXISTS idx_usuarios_institucion ON usuarios(institucion_id)",
-    # niveles_desempeno
-    "CREATE INDEX IF NOT EXISTS idx_niveles_anio        ON niveles_desempeno(anio_id)",
-    # asignaturas
-    "CREATE INDEX IF NOT EXISTS idx_asig_area           ON asignaturas(area_id)",
-    # Multi-tenant: scope por institución.
-    "CREATE INDEX IF NOT EXISTS idx_asig_institucion    ON asignaturas(institucion_id)",
-    # grupos (multi-tenant)
-    "CREATE INDEX IF NOT EXISTS idx_grupos_institucion  ON grupos(institucion_id)",
-    # Consultas: filtro por director_grupo_id.
-    "CREATE INDEX IF NOT EXISTS idx_grupos_director      ON grupos(director_grupo_id)",
-    # estudiantes
-    "CREATE INDEX IF NOT EXISTS idx_est_grupo           ON estudiantes(grupo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_est_estado          ON estudiantes(estado_matricula)",
-    "CREATE INDEX IF NOT EXISTS idx_est_documento       ON estudiantes(numero_documento)",
-    # estudiantes (multi-tenant): scope por institución)
-    "CREATE INDEX IF NOT EXISTS idx_est_institucion     ON estudiantes(institucion_id)",
-    # acudientes
-    "CREATE INDEX IF NOT EXISTS idx_acud_documento      ON acudientes(numero_documento)",
-    # periodos
-    "CREATE INDEX IF NOT EXISTS idx_periodos_anio       ON periodos(anio_id)",
-    "CREATE INDEX IF NOT EXISTS idx_periodos_activo     ON periodos(activo)",
-    # asignaciones (tabla pivot crítica)
-    "CREATE INDEX IF NOT EXISTS idx_asignac_usuario     ON asignaciones(usuario_id)",
-    "CREATE INDEX IF NOT EXISTS idx_asignac_grupo       ON asignaciones(grupo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_asignac_asignatura  ON asignaciones(asignatura_id)",
-    "CREATE INDEX IF NOT EXISTS idx_asignac_periodo     ON asignaciones(periodo_id)",
-    # logros
-    "CREATE INDEX IF NOT EXISTS idx_logros_asignacion   ON logros(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_logros_periodo      ON logros(periodo_id)",
-    # escenarios_horario
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_escenario_activo_unico ON escenarios_horario(anio_id) WHERE activo = 1",
-    "CREATE INDEX IF NOT EXISTS idx_escenarios_anio     ON escenarios_horario(anio_id)",
-    # plantillas_franja / franjas
-    # Multi-tenant: unicidad de plantilla activa por (institucion, jornada),
-    # no global — cada institución puede tener su propia plantilla activa por jornada.
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_activa_jornada ON plantillas_franja(institucion_id, jornada) WHERE activa = 1",
-    "CREATE INDEX IF NOT EXISTS idx_franjas_plantilla ON franjas(plantilla_id)",
-    "CREATE INDEX IF NOT EXISTS idx_plantilla_institucion ON plantillas_franja(institucion_id)",
-    # horarios
-    "CREATE INDEX IF NOT EXISTS idx_horarios_grupo      ON horarios(grupo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_horarios_usuario    ON horarios(usuario_id)",
-    "CREATE INDEX IF NOT EXISTS idx_horarios_periodo    ON horarios(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_horarios_escenario  ON horarios(escenario_id)",
-    # categorias y actividades
-    "CREATE INDEX IF NOT EXISTS idx_cats_asignacion     ON categorias(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_cats_periodo        ON categorias(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_acts_categoria      ON actividades(categoria_id)",
-    "CREATE INDEX IF NOT EXISTS idx_acts_fecha          ON actividades(fecha)",
-    # notas
-    "CREATE INDEX IF NOT EXISTS idx_notas_estudiante    ON notas(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_actividad     ON notas(actividad_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_fecha         ON notas(fecha_registro)",
-    # cierres_periodo
-    "CREATE INDEX IF NOT EXISTS idx_cierres_p_est       ON cierres_periodo(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_cierres_p_per       ON cierres_periodo(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_cierres_p_asig      ON cierres_periodo(asignacion_id)",
-    # cierres_anio
-    "CREATE INDEX IF NOT EXISTS idx_cierres_a_est       ON cierres_anio(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_cierres_a_anio      ON cierres_anio(anio_id)",
-    # promocion_anual
-    "CREATE INDEX IF NOT EXISTS idx_prom_est            ON promocion_anual(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_prom_anio           ON promocion_anual(anio_id)",
-    "CREATE INDEX IF NOT EXISTS idx_prom_estado         ON promocion_anual(estado)",
-    # habilitaciones
-    "CREATE INDEX IF NOT EXISTS idx_habil_est           ON habilitaciones(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_habil_asig          ON habilitaciones(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_habil_estado        ON habilitaciones(estado)",
-    # planes_mejoramiento
-    "CREATE INDEX IF NOT EXISTS idx_planes_est          ON planes_mejoramiento(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_planes_periodo      ON planes_mejoramiento(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_planes_estado       ON planes_mejoramiento(estado)",
-    # control_diario
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_fecha          ON control_diario(fecha)",
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_estudiante     ON control_diario(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_grupo          ON control_diario(grupo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_asignacion     ON control_diario(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_periodo        ON control_diario(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ctrl_estado         ON control_diario(estado)",
-    # tipos_situacion (convivencia_34)
-    "CREATE INDEX IF NOT EXISTS idx_tipos_situacion_inst ON tipos_situacion(institucion_id)",
-    # medidas_pedagogicas (convivencia_36)
-    "CREATE INDEX IF NOT EXISTS idx_medidas_inst ON medidas_pedagogicas(institucion_id)",
-    # categorias_observacion (convivencia_09)
-    "CREATE INDEX IF NOT EXISTS ix_categorias_obs_activa ON categorias_observacion(activa)",
-    # plantillas_observacion (convivencia_12)
-    "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_categoria ON plantillas_observacion(categoria_id)",
-    "CREATE INDEX IF NOT EXISTS ix_plantillas_obs_activa    ON plantillas_observacion(activa)",
-    # observaciones_periodo
-    "CREATE INDEX IF NOT EXISTS idx_obs_estudiante      ON observaciones_periodo(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_obs_periodo         ON observaciones_periodo(periodo_id)",
-    # registro_comportamiento
-    "CREATE INDEX IF NOT EXISTS idx_comp_estudiante     ON registro_comportamiento(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_comp_periodo        ON registro_comportamiento(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_comp_tipo           ON registro_comportamiento(tipo)",
-    "CREATE INDEX IF NOT EXISTS idx_comp_tipo_situacion ON registro_comportamiento(tipo_situacion_id)",
-    # entradas_seguimiento
-    "CREATE INDEX IF NOT EXISTS idx_seg_registro ON entradas_seguimiento(registro_id)",
-    "CREATE INDEX IF NOT EXISTS idx_seg_fecha    ON entradas_seguimiento(fecha)",
-    # alertas
-    "CREATE INDEX IF NOT EXISTS idx_alertas_est         ON alertas(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_alertas_tipo        ON alertas(tipo_alerta)",
-    "CREATE INDEX IF NOT EXISTS idx_alertas_resuelta    ON alertas(resuelta)",
-    # historial_estudiantes
-    "CREATE INDEX IF NOT EXISTS idx_hist_estudiante     ON historial_estudiantes(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_hist_fecha          ON historial_estudiantes(fecha_movimiento)",
-    # piar
-    "CREATE INDEX IF NOT EXISTS idx_piar_est            ON piar(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_piar_anio           ON piar(anio_id)",
-    # auditoría
-    "CREATE INDEX IF NOT EXISTS idx_audit_usuario_id    ON auditoria(usuario_id)",
-    "CREATE INDEX IF NOT EXISTS idx_audit_fecha         ON auditoria(fecha_hora)",
-    "CREATE INDEX IF NOT EXISTS idx_audit_tipo          ON auditoria(tipo_evento)",
-    "CREATE INDEX IF NOT EXISTS idx_auditoria_institucion ON auditoria(institucion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_auditlog_usuario    ON audit_log(usuario_id)",
-    "CREATE INDEX IF NOT EXISTS idx_auditlog_tabla      ON audit_log(tabla)",
-    "CREATE INDEX IF NOT EXISTS idx_auditlog_timestamp  ON audit_log(timestamp)",
-    "CREATE INDEX IF NOT EXISTS idx_audit_log_institucion ON audit_log(institucion_id)",
-    # actividades_nivelacion
-    "CREATE INDEX IF NOT EXISTS idx_act_nivel_asig    ON actividades_nivelacion(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_act_nivel_periodo  ON actividades_nivelacion(periodo_id)",
-    # notas_nivelacion
-    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_act     ON notas_nivelacion(actividad_nivelacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_est     ON notas_nivelacion(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_nota_nivel_asig    ON notas_nivelacion(asignacion_id)",
-    # cierres_nivelacion
-    "CREATE INDEX IF NOT EXISTS idx_cierre_nivel_asig  ON cierres_nivelacion(asignacion_id)",
-    # cortes_plan / plan de mejoramiento
-    "CREATE INDEX IF NOT EXISTS idx_cortes_plan_asig    ON cortes_plan(asignacion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_cortes_plan_per     ON cortes_plan(periodo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_corte_corte   ON notas_corte_plan(corte_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_corte_est     ON notas_corte_plan(estudiante_id)",
-    "CREATE INDEX IF NOT EXISTS idx_act_plan_corte      ON actividades_plan(corte_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_act  ON notas_actividad_plan(actividad_plan_id)",
-    "CREATE INDEX IF NOT EXISTS idx_notas_act_plan_est  ON notas_actividad_plan(estudiante_id)",
-    # disponibilidad_docente
-    "CREATE INDEX IF NOT EXISTS idx_disponibilidad_docente ON disponibilidad_docente(usuario_id, dia_semana)",
-    # config_generacion
-    "CREATE INDEX IF NOT EXISTS idx_config_generacion_periodo ON config_generacion(periodo_id, estado)",
-    # salas (paso_17)
-    "CREATE INDEX IF NOT EXISTS idx_salas_tipo           ON salas(tipo)",
-    "CREATE INDEX IF NOT EXISTS idx_salas_institucion    ON salas(institucion_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ventanas_grupo       ON ventanas_grupo(grupo_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ventanas_grado       ON ventanas_grupo(grado)",
-    "CREATE INDEX IF NOT EXISTS idx_bloques_anclados_esc ON bloques_anclados(escenario_id)",
-    "CREATE INDEX IF NOT EXISTS idx_franjas_reunion      ON franjas_reunion(dia_semana, franja_orden)",
-    "CREATE INDEX IF NOT EXISTS idx_limites_docente      ON limites_docente(usuario_id)",
-    # plan_estudios (paso_19)
-    "CREATE INDEX IF NOT EXISTS idx_plan_estudios_grado  ON plan_estudios(grado)",
-    # configuracion_grado_institucion (mejora_07-T6)
-    "CREATE INDEX IF NOT EXISTS idx_cfg_grado_inst ON configuracion_grado_institucion(institucion_id)",
-    # preferencias_institucion (mejora_08)
-    "CREATE INDEX IF NOT EXISTS idx_pref_inst ON preferencias_institucion(institucion_id)",
-]
+# configuracion_anio
+Index("idx_config_anio", configuracion_anio.c.anio)
+Index("idx_config_institucion", configuracion_anio.c.institucion_id)
+# usuarios
+Index("idx_usuarios_institucion", usuarios.c.institucion_id)
+# niveles_desempeno
+Index("idx_niveles_anio", niveles_desempeno.c.anio_id)
+# asignaturas
+Index("idx_asig_area", asignaturas.c.area_id)
+Index("idx_asig_institucion", asignaturas.c.institucion_id)
+# grupos
+Index("idx_grupos_institucion", grupos.c.institucion_id)
+Index("idx_grupos_director", grupos.c.director_grupo_id)
+# estudiantes
+Index("idx_est_grupo", estudiantes.c.grupo_id)
+Index("idx_est_estado", estudiantes.c.estado_matricula)
+Index("idx_est_documento", estudiantes.c.numero_documento)
+Index("idx_est_institucion", estudiantes.c.institucion_id)
+# acudientes
+Index("idx_acud_documento", acudientes.c.numero_documento)
+# periodos
+Index("idx_periodos_anio", periodos.c.anio_id)
+Index("idx_periodos_activo", periodos.c.activo)
+# asignaciones
+Index("idx_asignac_usuario", asignaciones.c.usuario_id)
+Index("idx_asignac_grupo", asignaciones.c.grupo_id)
+Index("idx_asignac_asignatura", asignaciones.c.asignatura_id)
+Index("idx_asignac_periodo", asignaciones.c.periodo_id)
+# logros
+Index("idx_logros_asignacion", logros.c.asignacion_id)
+Index("idx_logros_periodo", logros.c.periodo_id)
+# escenarios_horario — parcial único
+Index(
+    "idx_escenario_activo_unico",
+    escenarios_horario.c.anio_id,
+    unique=True,
+    sqlite_where=text("activo = 1"),
+)
+Index("idx_escenarios_anio", escenarios_horario.c.anio_id)
+# plantillas_franja / franjas — parcial único multi-tenant
+Index(
+    "idx_plantilla_activa_jornada",
+    plantillas_franja.c.institucion_id,
+    plantillas_franja.c.jornada,
+    unique=True,
+    sqlite_where=text("activa = 1"),
+)
+Index("idx_franjas_plantilla", franjas.c.plantilla_id)
+Index("idx_plantilla_institucion", plantillas_franja.c.institucion_id)
+# horarios
+Index("idx_horarios_grupo", horarios.c.grupo_id)
+Index("idx_horarios_usuario", horarios.c.usuario_id)
+Index("idx_horarios_periodo", horarios.c.periodo_id)
+Index("idx_horarios_escenario", horarios.c.escenario_id)
+# categorias y actividades
+Index("idx_cats_asignacion", categorias.c.asignacion_id)
+Index("idx_cats_periodo", categorias.c.periodo_id)
+Index("idx_acts_categoria", actividades.c.categoria_id)
+Index("idx_acts_fecha", actividades.c.fecha)
+# notas
+Index("idx_notas_estudiante", notas.c.estudiante_id)
+Index("idx_notas_actividad", notas.c.actividad_id)
+Index("idx_notas_fecha", notas.c.fecha_registro)
+# cierres_periodo
+Index("idx_cierres_p_est", cierres_periodo.c.estudiante_id)
+Index("idx_cierres_p_per", cierres_periodo.c.periodo_id)
+Index("idx_cierres_p_asig", cierres_periodo.c.asignacion_id)
+# cierres_anio
+Index("idx_cierres_a_est", cierres_anio.c.estudiante_id)
+Index("idx_cierres_a_anio", cierres_anio.c.anio_id)
+# promocion_anual
+Index("idx_prom_est", promocion_anual.c.estudiante_id)
+Index("idx_prom_anio", promocion_anual.c.anio_id)
+Index("idx_prom_estado", promocion_anual.c.estado)
+# habilitaciones
+Index("idx_habil_est", habilitaciones.c.estudiante_id)
+Index("idx_habil_asig", habilitaciones.c.asignacion_id)
+Index("idx_habil_estado", habilitaciones.c.estado)
+# planes_mejoramiento
+Index("idx_planes_est", planes_mejoramiento.c.estudiante_id)
+Index("idx_planes_periodo", planes_mejoramiento.c.periodo_id)
+Index("idx_planes_estado", planes_mejoramiento.c.estado)
+# control_diario
+Index("idx_ctrl_fecha", control_diario.c.fecha)
+Index("idx_ctrl_estudiante", control_diario.c.estudiante_id)
+Index("idx_ctrl_grupo", control_diario.c.grupo_id)
+Index("idx_ctrl_asignacion", control_diario.c.asignacion_id)
+Index("idx_ctrl_periodo", control_diario.c.periodo_id)
+Index("idx_ctrl_estado", control_diario.c.estado)
+# tipos_situacion
+Index("idx_tipos_situacion_inst", tipos_situacion.c.institucion_id)
+# medidas_pedagogicas
+Index("idx_medidas_inst", medidas_pedagogicas.c.institucion_id)
+# categorias_observacion
+Index("ix_categorias_obs_activa", categorias_observacion.c.activa)
+# plantillas_observacion
+Index("ix_plantillas_obs_categoria", plantillas_observacion.c.categoria_id)
+Index("ix_plantillas_obs_activa", plantillas_observacion.c.activa)
+# observaciones_periodo
+Index("idx_obs_estudiante", observaciones_periodo.c.estudiante_id)
+Index("idx_obs_periodo", observaciones_periodo.c.periodo_id)
+# registro_comportamiento
+Index("idx_comp_estudiante", registro_comportamiento.c.estudiante_id)
+Index("idx_comp_periodo", registro_comportamiento.c.periodo_id)
+Index("idx_comp_tipo", registro_comportamiento.c.tipo)
+Index("idx_comp_tipo_situacion", registro_comportamiento.c.tipo_situacion_id)
+# entradas_seguimiento
+Index("idx_seg_registro", entradas_seguimiento.c.registro_id)
+Index("idx_seg_fecha", entradas_seguimiento.c.fecha)
+# alertas
+Index("idx_alertas_est", alertas.c.estudiante_id)
+Index("idx_alertas_tipo", alertas.c.tipo_alerta)
+Index("idx_alertas_resuelta", alertas.c.resuelta)
+# historial_estudiantes
+Index("idx_hist_estudiante", historial_estudiantes.c.estudiante_id)
+Index("idx_hist_fecha", historial_estudiantes.c.fecha_movimiento)
+# piar
+Index("idx_piar_est", piar.c.estudiante_id)
+Index("idx_piar_anio", piar.c.anio_id)
+# auditoría
+Index("idx_audit_usuario_id", auditoria.c.usuario_id)
+Index("idx_audit_fecha", auditoria.c.fecha_hora)
+Index("idx_audit_tipo", auditoria.c.tipo_evento)
+Index("idx_auditoria_institucion", auditoria.c.institucion_id)
+Index("idx_auditlog_usuario", audit_log.c.usuario_id)
+Index("idx_auditlog_tabla", audit_log.c.tabla)
+Index("idx_auditlog_timestamp", audit_log.c.timestamp)
+Index("idx_audit_log_institucion", audit_log.c.institucion_id)
+# actividades_nivelacion
+Index("idx_act_nivel_asig", actividades_nivelacion.c.asignacion_id)
+Index("idx_act_nivel_periodo", actividades_nivelacion.c.periodo_id)
+# notas_nivelacion
+Index("idx_nota_nivel_act", notas_nivelacion.c.actividad_nivelacion_id)
+Index("idx_nota_nivel_est", notas_nivelacion.c.estudiante_id)
+Index("idx_nota_nivel_asig", notas_nivelacion.c.asignacion_id)
+# cierres_nivelacion
+Index("idx_cierre_nivel_asig", cierres_nivelacion.c.asignacion_id)
+# cortes_plan / plan de mejoramiento
+Index("idx_cortes_plan_asig", cortes_plan.c.asignacion_id)
+Index("idx_cortes_plan_per", cortes_plan.c.periodo_id)
+Index("idx_notas_corte_corte", notas_corte_plan.c.corte_id)
+Index("idx_notas_corte_est", notas_corte_plan.c.estudiante_id)
+Index("idx_act_plan_corte", actividades_plan.c.corte_id)
+Index("idx_notas_act_plan_act", notas_actividad_plan.c.actividad_plan_id)
+Index("idx_notas_act_plan_est", notas_actividad_plan.c.estudiante_id)
+# disponibilidad_docente
+Index("idx_disponibilidad_docente", disponibilidad_docente.c.usuario_id, disponibilidad_docente.c.dia_semana)
+# config_generacion
+Index("idx_config_generacion_periodo", config_generacion.c.periodo_id, config_generacion.c.estado)
+# salas
+Index("idx_salas_tipo", salas.c.tipo)
+Index("idx_salas_institucion", salas.c.institucion_id)
+Index("idx_ventanas_grupo", ventanas_grupo.c.grupo_id)
+Index("idx_ventanas_grado", ventanas_grupo.c.grado)
+Index("idx_bloques_anclados_esc", bloques_anclados.c.escenario_id)
+Index("idx_franjas_reunion", franjas_reunion.c.dia_semana, franjas_reunion.c.franja_orden)
+Index("idx_limites_docente", limites_docente.c.usuario_id)
+# plan_estudios
+Index("idx_plan_estudios_grado", plan_estudios.c.grado)
+# configuracion_grado_institucion
+Index("idx_cfg_grado_inst", configuracion_grado_institucion.c.institucion_id)
+# preferencias_institucion
+Index("idx_pref_inst", preferencias_institucion.c.institucion_id)
 
-
-# =============================================================================
+# ============================================================
 # TRIGGERS
-# =============================================================================
+# ============================================================
 
-TRIGGERS: list[str] = [
-    # La suma de pesos de categorías para una asignación+periodo no puede superar 1.0
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias
-    BEFORE INSERT ON categorias
-    BEGIN
-        SELECT RAISE(ABORT, 'La suma de pesos de las categorías supera el 100%')
-        WHERE (
-            SELECT COALESCE(SUM(peso), 0)
-            FROM   categorias
-            WHERE  asignacion_id = NEW.asignacion_id
-              AND  periodo_id    = NEW.periodo_id
-        ) + NEW.peso > 1.001;
-    END
-    """,
-    # Igual que el anterior pero para UPDATE (cuando se edita el peso)
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias_update
-    BEFORE UPDATE OF peso ON categorias
-    BEGIN
-        SELECT RAISE(ABORT, 'La suma de pesos de las categorías supera el 100%')
-        WHERE (
-            SELECT COALESCE(SUM(peso), 0)
-            FROM   categorias
-            WHERE  asignacion_id = NEW.asignacion_id
-              AND  periodo_id    = NEW.periodo_id
-              AND  id           != NEW.id
-        ) + NEW.peso > 1.001;
-    END
-    """,
-    # Actualiza ultima_sesion en usuarios cuando hay un LOGIN_EXITOSO en auditoria
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_actualizar_ultima_sesion
-    AFTER INSERT ON auditoria
-    WHEN NEW.tipo_evento = 'LOGIN_EXITOSO' AND NEW.usuario_id IS NOT NULL
-    BEGIN
-        UPDATE usuarios
-        SET    ultima_sesion = CURRENT_TIMESTAMP
-        WHERE  id = NEW.usuario_id;
-    END
-    """,
-    # Impide eliminar un periodo que ya tiene cierres registrados
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_proteger_periodo_con_cierres
-    BEFORE DELETE ON periodos
-    BEGIN
-        SELECT RAISE(ABORT, 'No se puede eliminar un periodo con cierres de notas registrados')
-        WHERE EXISTS (
-            SELECT 1 FROM cierres_periodo WHERE periodo_id = OLD.id
-        );
-    END
-    """,
-    # Impide modificar notas en un periodo cerrado
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_proteger_nota_periodo_cerrado
-    BEFORE INSERT ON notas
-    BEGIN
-        SELECT RAISE(ABORT, 'No se pueden registrar notas en un periodo cerrado')
-        WHERE EXISTS (
-            SELECT 1
-            FROM   actividades  act
-            JOIN   categorias   cat ON cat.id = act.categoria_id
-            JOIN   periodos     per ON per.id = cat.periodo_id
-            WHERE  act.id  = NEW.actividad_id
-              AND  per.cerrado = 1
-        );
-    END
-    """,
-    """
-    CREATE TRIGGER IF NOT EXISTS tg_resolver_alerta_aprobacion
-    AFTER INSERT ON cierres_periodo
-    BEGIN
-        UPDATE alertas
-        SET    resuelta          = 1,
-               fecha_resolucion  = CURRENT_TIMESTAMP,
-               observacion_resolucion = 'Resuelto automáticamente al aprobar el periodo'
-        WHERE  estudiante_id = NEW.estudiante_id
-          AND  tipo_alerta   = 'promedio_bajo'
-          AND  resuelta      = 0;
-    END
-    """,
-]
+_tg_validar_peso_categorias = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias
+BEFORE INSERT ON categorias
+BEGIN
+    SELECT RAISE(ABORT, 'La suma de pesos de las categorías supera el 100%%')
+    WHERE (
+        SELECT COALESCE(SUM(peso), 0)
+        FROM   categorias
+        WHERE  asignacion_id = NEW.asignacion_id
+          AND  periodo_id    = NEW.periodo_id
+    ) + NEW.peso > 1.001;
+END
+""")
 
-# =============================================================================
-# INICIALIZACIÓN
-# =============================================================================
+_tg_validar_peso_categorias_update = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_validar_peso_categorias_update
+BEFORE UPDATE OF peso ON categorias
+BEGIN
+    SELECT RAISE(ABORT, 'La suma de pesos de las categorías supera el 100%%')
+    WHERE (
+        SELECT COALESCE(SUM(peso), 0)
+        FROM   categorias
+        WHERE  asignacion_id = NEW.asignacion_id
+          AND  periodo_id    = NEW.periodo_id
+          AND  id           != NEW.id
+    ) + NEW.peso > 1.001;
+END
+""")
+
+_tg_actualizar_ultima_sesion = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_actualizar_ultima_sesion
+AFTER INSERT ON auditoria
+WHEN NEW.tipo_evento = 'LOGIN_EXITOSO' AND NEW.usuario_id IS NOT NULL
+BEGIN
+    UPDATE usuarios
+    SET    ultima_sesion = CURRENT_TIMESTAMP
+    WHERE  id = NEW.usuario_id;
+END
+""")
+
+_tg_proteger_periodo_con_cierres = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_proteger_periodo_con_cierres
+BEFORE DELETE ON periodos
+BEGIN
+    SELECT RAISE(ABORT, 'No se puede eliminar un periodo con cierres de notas registrados')
+    WHERE EXISTS (
+        SELECT 1 FROM cierres_periodo WHERE periodo_id = OLD.id
+    );
+END
+""")
+
+_tg_proteger_nota_periodo_cerrado = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_proteger_nota_periodo_cerrado
+BEFORE INSERT ON notas
+BEGIN
+    SELECT RAISE(ABORT, 'No se pueden registrar notas en un periodo cerrado')
+    WHERE EXISTS (
+        SELECT 1
+        FROM   actividades  act
+        JOIN   categorias   cat ON cat.id = act.categoria_id
+        JOIN   periodos     per ON per.id = cat.periodo_id
+        WHERE  act.id  = NEW.actividad_id
+          AND  per.cerrado = 1
+    );
+END
+""")
+
+# D10: trigger BEFORE UPDATE separado para proteger notas en periodo cerrado
+_tg_proteger_nota_periodo_cerrado_update = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_proteger_nota_periodo_cerrado_update
+BEFORE UPDATE ON notas
+BEGIN
+    SELECT RAISE(ABORT, 'No se pueden modificar notas en un periodo cerrado')
+    WHERE EXISTS (
+        SELECT 1
+        FROM   actividades  act
+        JOIN   categorias   cat ON cat.id = act.categoria_id
+        JOIN   periodos     per ON per.id = cat.periodo_id
+        WHERE  act.id  = NEW.actividad_id
+          AND  per.cerrado = 1
+    );
+END
+""")
+
+_tg_resolver_alerta_aprobacion = DDL("""
+CREATE TRIGGER IF NOT EXISTS tg_resolver_alerta_aprobacion
+AFTER INSERT ON cierres_periodo
+BEGIN
+    UPDATE alertas
+    SET    resuelta          = 1,
+           fecha_resolucion  = CURRENT_TIMESTAMP,
+           observacion_resolucion = 'Resuelto automáticamente al aprobar el periodo'
+    WHERE  estudiante_id = NEW.estudiante_id
+      AND  tipo_alerta   = 'promedio_bajo'
+      AND  resuelta      = 0;
+END
+""")
+
+event.listen(metadata, "after_create", _tg_validar_peso_categorias.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_validar_peso_categorias_update.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_actualizar_ultima_sesion.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_proteger_periodo_con_cierres.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_proteger_nota_periodo_cerrado.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_proteger_nota_periodo_cerrado_update.execute_if(dialect="sqlite"))
+event.listen(metadata, "after_create", _tg_resolver_alerta_aprobacion.execute_if(dialect="sqlite"))
+
+# ============================================================
+# FUNCIONES DE INICIALIZACIÓN
+# ============================================================
 
 
 def create_schema(conn) -> None:
-    """
-    Aplica SCHEMA, INDICES y TRIGGERS a una conexión SQLite ya abierta.
+    """Aplica el schema a una conexión SQLite ya abierta. Idempotente."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
 
-    Útil para tests de integración que trabajan con una BD en memoria:
-        conn = sqlite3.connect(':memory:')
-        create_schema(conn)
-
-    No hace commit — la gestión de la transacción es responsabilidad del llamador.
-    """
-    conn.execute("PRAGMA foreign_keys = ON")
-    if not hasattr(conn, "row_factory") or conn.row_factory is None:
-        import sqlite3 as _sqlite3
-
-        conn.row_factory = _sqlite3.Row
-    for sql in SCHEMA:
-        conn.execute(sql)
-    for sql in INDICES:
-        conn.execute(sql)
-    for sql in TRIGGERS:
-        conn.execute(sql)
+    engine = create_engine(
+        "sqlite://",
+        creator=lambda: conn,
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
 
 
-def init_db(db_path: Path | None = None) -> bool:
-    """
-    Inicializa el esquema completo de la base de datos.
-
-    Ejecuta en orden:
-      1. CREATE TABLE IF NOT EXISTS   — idempotente (única fuente de verdad)
-      2. CREATE INDEX IF NOT EXISTS   — idempotente
-      3. CREATE TRIGGER IF NOT EXISTS — idempotente
-      4. PRAGMA integrity_check
-
-    Args:
-        db_path: Ruta opcional a la BD. Si es None usa la configurada en connection.py.
-
-    Returns:
-        True si la inicialización fue exitosa.
-    """
+def init_db(db_path=None) -> bool:
+    """Inicializa el esquema completo en la BD configurada."""
     from .connection import get_connection
 
     try:
         with get_connection() as conn:
-            # ------------------------------------------------------------------
-            # Tablas
-            # ------------------------------------------------------------------
-            for i, sql in enumerate(SCHEMA, 1):
-                try:
-                    conn.execute(sql)
-                    logger.debug(f"Tabla {i}/{len(SCHEMA)} verificada")
-                except Exception as exc:
-                    logger.error(f"Error en tabla {i}: {exc}")
-                    raise
-
-            # ------------------------------------------------------------------
-            # Índices
-            # ------------------------------------------------------------------
-            for i, sql in enumerate(INDICES, 1):
-                try:
-                    conn.execute(sql)
-                    logger.debug(f"Índice {i}/{len(INDICES)} verificado")
-                except Exception as exc:
-                    logger.error(f"Error en índice {i}: {exc}")
-                    raise
-
-            # ------------------------------------------------------------------
-            # Triggers
-            # ------------------------------------------------------------------
-            for i, sql in enumerate(TRIGGERS, 1):
-                try:
-                    conn.execute(sql)
-                    logger.debug(f"Trigger {i}/{len(TRIGGERS)} verificado")
-                except Exception as exc:
-                    logger.error(f"Error en trigger {i}: {exc}")
-                    raise
-
-            # ------------------------------------------------------------------
-            # Integridad
-            # ------------------------------------------------------------------
+            create_schema(conn)
             result = conn.execute("PRAGMA integrity_check").fetchone()
             if result[0] != "ok":
                 logger.error(f"Integridad de BD fallida: {result[0]}")
                 return False
-
             conn.commit()
-
-            logger.info(
-                f"Schema inicializado — "
-                f"{len(SCHEMA)} tablas, "
-                f"{len(INDICES)} índices, "
-                f"{len(TRIGGERS)} triggers"
-            )
+            logger.info(f"Schema inicializado — {len(metadata.tables)} tablas")
             return True
-
     except Exception as exc:
         logger.error(f"Error crítico inicializando schema: {exc}")
         return False
 
 
 def get_db_stats() -> dict:
-    """Retorna conteo de filas por tabla y tamaño de la BD."""
+    """Retorna conteo de filas por tabla."""
     from .connection import DB_PATH, get_connection
 
     try:
@@ -1629,26 +1481,16 @@ def get_db_stats() -> dict:
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT LIKE 'sqlite_%' ORDER BY name"
             ).fetchall()
-
             stats = {
-                t[0]: conn.execute(f"SELECT COUNT(*) FROM {t[0]}").fetchone()[0] for t in tables
+                t[0]: conn.execute(f"SELECT COUNT(*) FROM {t[0]}").fetchone()[0]
+                for t in tables
             }
-
             if DB_PATH.exists():
                 stats["_db_size_mb"] = round(DB_PATH.stat().st_size / (1024**2), 2)
-
             return stats
-
     except Exception as exc:
         logger.error(f"Error obteniendo estadísticas: {exc}")
         return {}
 
 
-__all__ = [
-    "INDICES",
-    "SCHEMA",
-    "TRIGGERS",
-    "create_schema",
-    "get_db_stats",
-    "init_db",
-]
+__all__ = ["metadata", "create_schema", "get_db_stats", "init_db"]

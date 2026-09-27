@@ -32,7 +32,10 @@ from src.infrastructure.db.repositories.sqlite_infraestructura_repo import (
 from src.infrastructure.db.repositories.sqlite_usuario_repo import (
     SqliteUsuarioRepository,
 )
-from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
+from src.infrastructure.db.schema import metadata
 from src.services.generador_horario_service import GeneradorHorarioService
 from src.services.horario_service import HorarioService
 from src.services.infraestructura_service import InfraestructuraService
@@ -46,12 +49,8 @@ def _conn():
     c = sqlite3.connect(":memory:", check_same_thread=False)
     c.execute("PRAGMA foreign_keys = ON")
     c.row_factory = sqlite3.Row
-    for sql in SCHEMA:
-        c.execute(sql)
-    for sql in INDICES:
-        c.execute(sql)
-    for sql in TRIGGERS:
-        c.execute(sql)
+    engine = create_engine("sqlite://", creator=lambda: c, poolclass=StaticPool)
+    metadata.create_all(engine)
     c.commit()
     return c
 

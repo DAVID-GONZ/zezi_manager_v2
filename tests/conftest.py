@@ -39,9 +39,10 @@ Aislamiento:
 from __future__ import annotations
 
 import logging
-import sqlite3
 
 import pytest
+
+from tests.db_engine import create_test_engine
 
 logging.disable(logging.CRITICAL)   # silenciar logs durante tests
 
@@ -55,44 +56,65 @@ pytest_plugins = ["nicegui.testing.user_plugin"]
 
 
 # ---------------------------------------------------------------------------
-# Auto-marcado por ubicación
+# Auto-marcado por ubicación y por fixture de BD
 # ---------------------------------------------------------------------------
 # Así `-m "not integration"` (modo `rapido` del runner / hook pre-push) excluye
 # de verdad la carpeta integration/, sin tener que decorar cada test a mano.
 # Los tests bajo unit/ reciben `unit`; los de integration/, `integration`.
+#
+# El marker `repo` identifica tests que dependen del backend de BD (SQLite/Postgres).
+# Se aplica por dos vías:
+#   1. Por carpeta: todo test en tests/integration/ recibe `repo` además de `integration`.
+#   2. Por fixture: todo test que solicite db_conn, db_seed, seed_result o db_dev
+#      recibe `repo` aunque esté fuera de integration/.
+
+_BD_FIXTURES = frozenset({"db_conn", "db_seed", "seed_result", "db_dev"})
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--backend",
+        default="sqlite",
+        choices=["sqlite"],
+        help="Backend de BD para tests de repositorio",
+    )
+
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
         ruta = str(item.fspath).replace("\\", "/")
         if "/tests/integration/" in ruta:
             item.add_marker("integration")
+            item.add_marker("repo")
         elif "/tests/unit/" in ruta:
             item.add_marker("unit")
         elif "/tests/e2e/" in ruta:
             item.add_marker("e2e")
         elif "/tests/browser/" in ruta:
             item.add_marker("browser")
+        # Marcado por fixture para tests fuera de integration/
+        if _BD_FIXTURES & set(item.fixturenames):
+            item.add_marker("repo")
 
 
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
 
-def _apply_schema(conn: sqlite3.Connection) -> None:
-    """Aplica SCHEMA, INDICES y TRIGGERS a una conexión en memoria."""
+def _apply_schema(conn) -> None:
+    """Aplica el MetaData de schema.py a la conexión entregada por create_test_engine."""
     # Import tardío para no romper si el módulo tiene errores durante discovery
-    from src.infrastructure.db.schema import INDICES, SCHEMA, TRIGGERS
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
 
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.row_factory = sqlite3.Row
+    from src.infrastructure.db.schema import metadata
 
-    for sql in SCHEMA:
-        conn.execute(sql)
-    for sql in INDICES:
-        conn.execute(sql)
-    for sql in TRIGGERS:
-        conn.execute(sql)
-
+    engine = create_engine(
+        "sqlite://",
+        creator=lambda: conn,
+        poolclass=StaticPool,
+    )
+    metadata.create_all(engine)
     conn.commit()
 
 
@@ -101,13 +123,13 @@ def _apply_schema(conn: sqlite3.Connection) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
-def db_schema() -> sqlite3.Connection:
+def db_schema(request):
     """
     BD en memoria con el schema aplicado y sin datos.
     Alcance de sesión: se crea una vez y se comparte (solo lectura útil).
     No usar directamente en tests que modifican datos.
     """
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn = create_test_engine(request.config.getoption("--backend"))
     _apply_schema(conn)
     yield conn
     conn.close()
@@ -118,17 +140,17 @@ def db_schema() -> sqlite3.Connection:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="function")
-def db_seed():
+def db_seed(request):
     """
     BD en memoria con seed_test aplicado.
     Se recrea por cada test — aislamiento total.
 
     Yields:
-        tuple[sqlite3.Connection, SeedResult]
+        tuple[Connection, SeedResult]
     """
     from src.infrastructure.db.seed import _fast_hasher, seed_test
 
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn = create_test_engine(request.config.getoption("--backend"))
     _apply_schema(conn)
     result = seed_test(conn, anio=2025, hasher=_fast_hasher)
     conn.commit()
@@ -163,18 +185,18 @@ def seed_result(db_seed):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def db_dev():
+def db_dev(request):
     """
     BD en memoria con seed_dev aplicado (dataset completo).
     Alcance de módulo — compartida entre tests del mismo archivo.
     Solo para tests de integración que necesitan datos realistas.
 
     Yields:
-        tuple[sqlite3.Connection, SeedResult]
+        tuple[Connection, SeedResult]
     """
     from src.infrastructure.db.seed import _fast_hasher, seed_dev
 
-    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn = create_test_engine(request.config.getoption("--backend"))
     _apply_schema(conn)
     result = seed_dev(
         conn,

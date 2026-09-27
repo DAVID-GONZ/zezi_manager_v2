@@ -8,7 +8,7 @@
 
 ---
 
-## T1 — Helpers de introspección DDL  [ ]
+## T1 — Helpers de introspección DDL  [x]
 
 En `test_schema_integrity.py`, crear funciones auxiliares que:
 
@@ -22,7 +22,7 @@ En `test_schema_integrity.py`, crear funciones auxiliares que:
 
 ---
 
-## T2 — Test de tablas existentes (R1)  [ ]
+## T2 — Test de tablas existentes (R1)  [x]
 
 Verificar que toda tabla extraída de `SCHEMA` existe en
 `sqlite_master` de la base aplicada.
@@ -41,7 +41,7 @@ def test_todas_las_tablas_existen(db_schema):
 
 ---
 
-## T3 — Test de columnas por tabla (R2)  [ ]
+## T3 — Test de columnas por tabla (R2)  [x]
 
 Para cada tabla, comparar las columnas declaradas en el DDL contra
 `PRAGMA table_info(tabla)`. Verificar nombre y tipo.
@@ -51,7 +51,7 @@ nombre y tipo afinidad. Los constraints se verifican en T4.
 
 ---
 
-## T4 — Test de foreign keys (R3)  [ ]
+## T4 — Test de foreign keys (R3)  [x]
 
 Para cada tabla:
 1. Extraer FKs del DDL.
@@ -64,7 +64,7 @@ Para cada tabla:
 
 ---
 
-## T5 — Test de orden de dependencias (R6)  [ ]
+## T5 — Test de orden de dependencias (R6)  [x]
 
 Recorrer `SCHEMA` en orden. Para cada tabla, verificar que todas las tablas
 que referencia ya aparecieron antes en la lista.
@@ -74,21 +74,21 @@ con reason `"D1: orden de dependencias violado — se resuelve en backend_04"`.
 
 ---
 
-## T6 — Test de índices (R4)  [ ]
+## T6 — Test de índices (R4)  [x]
 
 Verificar que todo índice declarado en `INDICES` existe en `sqlite_master`
 con `type='index'`.
 
 ---
 
-## T7 — Test de triggers (R5)  [ ]
+## T7 — Test de triggers (R5)  [x]
 
 Verificar que todo trigger declarado en `TRIGGERS` existe en `sqlite_master`
 con `type='trigger'`.
 
 ---
 
-## T8 — Verificación de no regresión y cierre  [ ]
+## T8 — Verificación de no regresión y cierre  [x]
 
 ```
 .venv/Scripts/python.exe -m pytest tests/unit/infrastructure/test_schema_integrity.py -v

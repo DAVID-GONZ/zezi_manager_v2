@@ -12,20 +12,17 @@ nada de este módulo directamente.
 Submódulos:
   connection  — get_connection, DB_PATH, verify_db_integrity
   queries     — fetch_df, fetch_one, fetch_all, get_scalar, execute
-  schema      — init_db, get_db_stats, SCHEMA, INDICES, TRIGGERS
+  schema      — metadata, init_db, get_db_stats, create_schema
   seed        — seed_base, seed_dev, seed_test, SeedResult
 """
 
 from .connection import DB_PATH, get_connection, verify_db_integrity
 from .queries import execute, fetch_all, fetch_df, fetch_one, get_scalar
-from .schema import INDICES, SCHEMA, TRIGGERS, get_db_stats, init_db
+from .schema import create_schema, get_db_stats, init_db, metadata
 from .seed import SeedResult, seed_base, seed_dev, seed_test
 
 __all__ = [
     "DB_PATH",
-    "INDICES",
-    "SCHEMA",
-    "TRIGGERS",
     "SeedResult",
     # Escritura
     "execute",
@@ -38,7 +35,9 @@ __all__ = [
     "get_db_stats",
     "get_scalar",
     # Esquema
+    "create_schema",
     "init_db",
+    "metadata",
     # Seed
     "seed_base",
     "seed_dev",

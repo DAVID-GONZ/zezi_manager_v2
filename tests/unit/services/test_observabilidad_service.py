@@ -11,16 +11,12 @@ Cubre:
 """
 from __future__ import annotations
 
-from datetime import datetime
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.domain.models.observabilidad import AlertaIPDTO, EntradaLogDTO, PuntoUsoDTO, SaludDTO
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.log_reader import ILogReader
 from src.services.observabilidad_service import ObservabilidadService
-
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 

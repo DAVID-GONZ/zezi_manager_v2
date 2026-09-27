@@ -30,14 +30,17 @@ if str(ROOT) not in sys.path:
 
 def _make_db() -> sqlite3.Connection:
     """Crea una BD en memoria con schema + seed_test."""
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    from tests.db_engine import create_test_engine
 
-    from src.infrastructure.db.schema import SCHEMA
+    conn = create_test_engine()
 
-    for stmt in SCHEMA:
-        conn.execute(stmt)
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from src.infrastructure.db.schema import metadata
+
+    engine = create_engine("sqlite://", creator=lambda: conn, poolclass=StaticPool)
+    metadata.create_all(engine)
     conn.commit()
 
     from src.infrastructure.db.seed import seed_test

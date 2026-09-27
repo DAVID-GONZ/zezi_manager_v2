@@ -166,14 +166,14 @@ class ObservabilidadService:
         None es la respuesta correcta: mentir con un cero sería peor.
         """
         try:
-            from pathlib import Path
-            from config import settings
             from datetime import datetime
+            from pathlib import Path
+
+            from config import settings
 
             archivo_dir_str = settings.AUDITORIA_ARCHIVO_DIR
             archivo_dir = Path(archivo_dir_str)
             if not archivo_dir.is_absolute():
-                from config import settings as _s
                 archivo_dir = Path(__file__).parent.parent / archivo_dir_str
 
             if not archivo_dir.exists():
