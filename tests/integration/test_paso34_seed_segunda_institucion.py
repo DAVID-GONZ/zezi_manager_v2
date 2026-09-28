@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from src.domain.models.estudiante import FiltroEstudiantesDTO
 from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_estudiante_repo import (
     SqlaEstudianteRepository,
 )
@@ -30,7 +31,6 @@ from src.infrastructure.db.repositories.sqla_usuario_repo import (
     SqlaUsuarioRepository,
 )
 from src.infrastructure.db.seed import _fast_hasher
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
 from src.services.infraestructura_service import InfraestructuraService
 

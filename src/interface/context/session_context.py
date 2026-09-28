@@ -346,8 +346,8 @@ class SessionContext:
         try:
             from container import Container
             from src.domain.models.auditoria import TipoEventoSesion
-            from src.interface.context.eventos_sesion import construir_evento
             from src.infrastructure.context.contexto_actor import actor_username
+            from src.interface.context.eventos_sesion import construir_evento
 
             tipo = TipoEventoSesion.VER_COMO_INICIO if inicio else TipoEventoSesion.VER_COMO_FIN
             verbo = "inicia" if inicio else "finaliza"

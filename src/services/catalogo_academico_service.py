@@ -13,8 +13,8 @@ from typing import Any
 
 from src.domain.exceptions import NoEncontradoError, ReglaDeNegocioError
 from src.domain.models.auditoria import AccionCambio
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 # El servicio se utiliza también con repositorios falsos en tests; las
 # anotaciones no deben exigir una importación concreta del repositorio.

@@ -37,6 +37,8 @@ import sqlite3
 
 import pytest
 
+from src.infrastructure.context.contexto_actor import usar_actor
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_alerta_repo import (
     SqlaAlertaRepository,
 )
@@ -92,8 +94,6 @@ from src.services.asistencia_service import AsistenciaService
 from src.services.catalogo_academico_service import CatalogoAcademicoService
 from src.services.cierre_service import CierreService
 from src.services.configuracion_service import ConfiguracionService
-from src.infrastructure.context.contexto_actor import usar_actor
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.convivencia_service import ConvivenciaService
 from src.services.escenario_horario_service import EscenarioHorarioService
 from src.services.estudiante_service import EstudianteService

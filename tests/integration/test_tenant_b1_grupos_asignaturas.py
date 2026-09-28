@@ -20,10 +20,10 @@ import pytest
 from sqlalchemy.exc import IntegrityError as SqlaIntegrityError
 
 from src.domain.models.infraestructura import Asignatura, Grupo, Jornada
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.infraestructura_service import InfraestructuraService
 
 # =============================================================================

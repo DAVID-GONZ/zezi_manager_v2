@@ -28,8 +28,8 @@ from src.domain.models.nivelacion import (
 from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.nivelacion_repo import INivelacionRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 @dataclass(frozen=True)

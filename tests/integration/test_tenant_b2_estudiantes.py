@@ -23,10 +23,10 @@ from src.domain.models.estudiante import (
     FiltroEstudiantesDTO,
     NuevoEstudianteDTO,
 )
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_estudiante_repo import (
     SqlaEstudianteRepository,
 )
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
 
 # =============================================================================

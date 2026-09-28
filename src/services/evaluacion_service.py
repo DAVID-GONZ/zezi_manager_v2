@@ -43,8 +43,8 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.siee_repo import ISIEERepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 @dataclass

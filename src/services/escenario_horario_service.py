@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import EscenarioHorario, HorarioInfo
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class EscenarioHorarioService:

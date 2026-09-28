@@ -18,8 +18,8 @@ from src.domain.models.institucion import (
     NuevaInstitucionDTO,
 )
 from src.domain.ports.institucion_repo import IInstitucionRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class InstitucionService:

@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.interface.context.session_context import SessionContext
 from src.infrastructure.context.solo_lectura import activar_solo_lectura, es_solo_lectura
+from src.interface.context.session_context import SessionContext
 
 
 @pytest.fixture(autouse=True)

@@ -24,8 +24,8 @@ from src.domain.models.periodo import (
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class PeriodoService:

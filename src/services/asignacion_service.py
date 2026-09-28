@@ -25,8 +25,8 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 # =============================================================================
 # DTOs de resultado (consumidos por las vistas — se re-exportan desde aquí)

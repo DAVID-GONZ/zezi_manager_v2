@@ -49,8 +49,8 @@ from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.service_ports import IExporterService
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 if TYPE_CHECKING:
     from src.services.asignacion_service import AsignacionService

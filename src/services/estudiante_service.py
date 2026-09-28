@@ -29,8 +29,8 @@ from src.domain.models.piar import PIAR, ActualizarPIARDTO, NuevoPIARDTO
 from src.domain.ports.acudiente_repo import IAcudienteRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class EstudianteService:

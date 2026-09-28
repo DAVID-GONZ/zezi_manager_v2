@@ -25,6 +25,7 @@ from src.domain.models.asignacion import (
     FiltroAsignacionesDTO,
     NuevaAsignacionDTO,
 )
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_asignacion_repo import (
     SqlaAsignacionRepository,
 )
@@ -32,7 +33,6 @@ from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
 from src.services.asignacion_service import AsignacionService
-from src.infrastructure.context.contexto_tenant import usar_institucion
 
 # =============================================================================
 # Helpers de montaje (dos instituciones con grupos + asignaciones)

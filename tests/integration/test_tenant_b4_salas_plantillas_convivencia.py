@@ -26,13 +26,13 @@ from sqlalchemy.exc import IntegrityError as SqlaIntegrityError
 
 from src.domain.models.convivencia import FiltroConvivenciaDTO
 from src.domain.models.infraestructura import Sala
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_convivencia_repo import (
     SqlaConvivenciaRepository,
 )
 from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.convivencia_service import ConvivenciaService
 from src.services.infraestructura_service import InfraestructuraService
 

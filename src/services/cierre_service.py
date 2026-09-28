@@ -28,8 +28,8 @@ from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class CierreService:

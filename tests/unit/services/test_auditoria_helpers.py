@@ -7,9 +7,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from src.domain.models.auditoria import AccionCambio
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.contexto_actor import limpiar_actor, usar_actor
 from src.infrastructure.context.contexto_tenant import usar_institucion
+from src.services.auditoria_helpers import auditar_cambio
 
 
 def test_repo_none_no_lanza():

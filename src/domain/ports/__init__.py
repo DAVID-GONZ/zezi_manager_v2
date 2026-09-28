@@ -1,5 +1,4 @@
 from .acudiente_repo import IAcudienteRepository
-from .portal_provider import PortalContext, PortalProvider, SubItem
 from .alerta_repo import IAlertaRepository
 from .asignacion_repo import IAsignacionRepository
 from .asistencia_repo import IAsistenciaRepository
@@ -13,6 +12,7 @@ from .evaluacion_repo import IEvaluacionRepository
 from .habilitacion_repo import IHabilitacionRepository
 from .infraestructura_repo import IInfraestructuraRepository
 from .periodo_repo import IPeriodoRepository
+from .portal_provider import PortalContext, PortalProvider, SubItem
 from .service_ports import (
     IAuthenticationService,
     IExporterService,
@@ -22,9 +22,6 @@ from .usuario_repo import IUsuarioRepository
 
 __all__ = [
     "IAcudienteRepository",
-    "PortalContext",
-    "PortalProvider",
-    "SubItem",
     "IAlertaRepository",
     "IAsignacionRepository",
     "IAsistenciaRepository",
@@ -42,4 +39,7 @@ __all__ = [
     "INotificationService",
     "IPeriodoRepository",
     "IUsuarioRepository",
+    "PortalContext",
+    "PortalProvider",
+    "SubItem",
 ]

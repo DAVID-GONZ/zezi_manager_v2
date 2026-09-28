@@ -21,10 +21,10 @@ import pytest
 
 from src.domain.models.usuario import NuevoUsuarioDTO, Rol
 from src.infrastructure.auth.bcrypt_auth_service import BcryptAuthService
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_usuario_repo import (
     SqlaUsuarioRepository,
 )
-from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.usuario_service import UsuarioService
 
 

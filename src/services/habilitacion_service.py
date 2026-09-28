@@ -26,9 +26,9 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.cierre_repo import ICierreRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.habilitacion_repo import IHabilitacionRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.contexto_tenant import institucion_actual
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class HabilitacionService:

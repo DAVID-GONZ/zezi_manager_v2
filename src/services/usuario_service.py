@@ -43,8 +43,8 @@ from src.domain.policies.rbac_usuarios import (
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.service_ports import IAuthenticationService
 from src.domain.ports.usuario_repo import IUsuarioRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class UsuarioService:

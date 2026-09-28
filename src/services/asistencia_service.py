@@ -21,8 +21,8 @@ from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.asistencia_repo import IAsistenciaRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class AsistenciaService:

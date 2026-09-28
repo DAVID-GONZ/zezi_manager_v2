@@ -12,10 +12,10 @@ ON DELETE SET NULL):
 from __future__ import annotations
 
 from src.domain.models.infraestructura import Grupo, Jornada
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
-from src.infrastructure.context.contexto_tenant import usar_institucion
 
 
 def _crear_usuario(conn, usuario: str) -> int:

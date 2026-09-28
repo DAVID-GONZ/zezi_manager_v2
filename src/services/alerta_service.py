@@ -23,9 +23,9 @@ from src.domain.models.auditoria import AccionCambio
 from src.domain.ports.alerta_repo import IAlertaRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
-from src.services.auditoria_helpers import auditar_cambio
 from src.infrastructure.context.contexto_tenant import institucion_actual
 from src.infrastructure.context.solo_lectura import requiere_escritura
+from src.services.auditoria_helpers import auditar_cambio
 
 
 class AlertaService:
