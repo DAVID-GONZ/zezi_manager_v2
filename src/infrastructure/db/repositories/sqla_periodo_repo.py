@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IPeriodoRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IPeriodoRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from datetime import timedelta

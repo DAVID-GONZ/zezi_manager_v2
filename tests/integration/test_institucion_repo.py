@@ -29,7 +29,7 @@ class TestSqlaInstitucionRepository:
         assert len(instituciones) == 1
         assert instituciones[0].id == 1
         # El nombre proviene de configuracion.nombre_institucion (seed_test).
-        assert instituciones[0].nombre == "Institución Educativa ZECI"
+        assert instituciones[0].nombre == "Institución Educativa Demo"
 
     def test_get_por_defecto(self, db_conn):
         repo = SqlaInstitucionRepository(conn=db_conn)

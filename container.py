@@ -1,5 +1,5 @@
 """
-container.py — Composition Root de ZECI Manager v2.0
+container.py — Composition Root de AVEDRA v2.0
 ======================================================
 Punto único de instanciación de toda la infraestructura.
 

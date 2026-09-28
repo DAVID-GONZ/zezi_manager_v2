@@ -1,4 +1,4 @@
-"""Base para repositorios SQLAlchemy Core — ZECI Manager v2.0."""
+"""Base para repositorios SQLAlchemy Core — AVEDRA v2.0."""
 from __future__ import annotations
 
 from contextlib import contextmanager

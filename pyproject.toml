@@ -1,7 +1,7 @@
 [project]
-name = "zeci-manager-v2"
+name = "avedra"
 version = "0.1.0"
-description = "Add your description here"
+description = "AVEDRA — Administración y Visualización Educativa para la Dirección y el Registro Académico"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

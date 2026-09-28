@@ -1,5 +1,5 @@
 """
-DTOs transversales — ZECI Manager v2.0
+DTOs transversales — AVEDRA v2.0
 =======================================
 
 Este módulo contiene los DTOs que cruzan módulos y no pertenecen

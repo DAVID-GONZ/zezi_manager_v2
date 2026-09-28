@@ -44,7 +44,7 @@ class ActorContexto:
 
 # Estado privado. Default None → actor desconocido; se inicializa en la primera lectura.
 _actor_actual: contextvars.ContextVar[ActorContexto | None] = contextvars.ContextVar(
-    "zeci_actor_actual", default=None
+    "avedra_actor_actual", default=None
 )
 
 

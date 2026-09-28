@@ -38,7 +38,7 @@ def _make_record(
 ) -> logging.LogRecord:
     """Crea un LogRecord con atributos extra inyectados directamente."""
     record = logging.LogRecord(
-        name="zeci.security",
+        name="avedra.security",
         level=level,
         pathname="",
         lineno=0,
@@ -167,7 +167,7 @@ class TestSecurityLoggerNiveles:
     """Verifica que cada método emite al nivel correcto."""
 
     def setup_method(self):
-        """Instalar un handler de captura en el logger zeci.security."""
+        """Instalar un handler de captura en el logger avedra.security."""
         self.records: list[logging.LogRecord] = []
         self.handler = _CapturingHandler(self.records)
         # Referenciar directamente el logger del módulo para evitar ambigüedad

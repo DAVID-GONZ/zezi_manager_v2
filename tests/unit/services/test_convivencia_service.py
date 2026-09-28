@@ -730,7 +730,7 @@ class TestConceptoComportamiento:
         assert "Reporte" in wb.sheetnames
         assert "Estadísticos" in wb.sheetnames
         ws = wb["Reporte"]
-        # Membrete presente (ya no hardcodeado a ZECI — defaults a "Institución Educativa")
+        # Membrete presente (ya no hardcodeado a AVEDRA — defaults a "Institución Educativa")
         assert ws.cell(1, 1).value is not None
         assert len(ws.cell(1, 1).value) > 0
         # Datos del estudiante presentes

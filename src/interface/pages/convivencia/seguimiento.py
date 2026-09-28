@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/seguimiento.py
 ==============================================
-Hub de Seguimiento (maestro-detalle) — ZECI Manager v2.0.
+Hub de Seguimiento (maestro-detalle) — AVEDRA v2.0.
 
 Regla de capas:
   Esta página NO importa ningún símbolo de src.domain.models.*

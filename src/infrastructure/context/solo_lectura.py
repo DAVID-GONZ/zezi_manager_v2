@@ -37,7 +37,7 @@ _log = logging.getLogger("SOLO_LECTURA")
 
 # Estado privado. Default False → comportamiento normal sin impersonación.
 _solo_lectura: contextvars.ContextVar[bool] = contextvars.ContextVar(
-    "zeci_solo_lectura", default=False
+    "avedra_solo_lectura", default=False
 )
 
 

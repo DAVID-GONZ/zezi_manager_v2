@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/plantillas.py
 =============================================
-Delegate de compatibilidad — ZECI Manager v2.0 (convivencia_33).
+Delegate de compatibilidad — AVEDRA v2.0 (convivencia_33).
 
 La gestión de plantillas fue fusionada en la página unificada
 `/convivencia/configuracion`. Esta página se conserva solo como redirect

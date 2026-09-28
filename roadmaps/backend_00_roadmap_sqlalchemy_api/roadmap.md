@@ -1,8 +1,13 @@
-# backend_00 — Roadmap: evolución backend + fork Vue
+# backend_00 — Roadmap: evolución backend + split a Vue
 
-## Decisión de David (2026-07-27)
+> **Revisión 2026-09-27:** la estrategia de "fork" se reemplazó por un **split
+> en 3 repos** (`avedra-backend`, `avedra-frontend`, `avedra-shared-contracts`).
+> NiceGUI pasa a repo legacy separado, no se queda en el backend.
+> Plan de ejecución completo: `roadmaps/repo_split_00_pasos.md`.
 
-La estrategia tiene **dos etapas claras** con un fork de por medio:
+## Decisión de David (2026-07-27, revisada 2026-09-27)
+
+La estrategia tiene **dos etapas claras** con un split de repos de por medio:
 
 ### Etapa A — App NiceGUI completamente funcional + backend sólido
 
@@ -13,14 +18,17 @@ La estrategia tiene **dos etapas claras** con un fork de por medio:
 5. Desplegar en la nube con Postgres + canales de tiempo real.
 6. Design system portable (tokens JSON, CSS desacoplado, contratos de componentes).
 
-### Etapa B — Fork para comercialización
+### Etapa B — Split de repos + frontend Vue para comercialización
 
-1. **Fork del proyecto** → front Vue que consume la API ya probada.
-   Tres productos del mismo fork:
+1. **Split en 3 repos** (ver `repo_split_00_pasos.md`):
+   - `avedra-backend` — dominio, servicios, API REST (sin NiceGUI)
+   - `avedra-frontend` — Vue 3 + Vite, consume la API
+   - `avedra-shared-contracts` — OpenAPI, DTOs, enums, design tokens
+   - `avedra-legacy-nicegui` — repo actual archivado como referencia
+2. **Tres productos del frontend Vue:**
    - **App web** (navegador, online-offline con PWA/Service Worker).
-   - **App WebView2** (empaquetada para escritorio, con SQLite local).
-   - **Versión navegador** (la misma PWA desplegada en la nube).
-2. **App Android** — desarrollo posterior, consume la misma API REST.
+   - **App WebView2** (empaquetada para escritorio con Tauri v2, ~3MB).
+   - **App Android** (Capacitor, consume la misma API REST).
 
 ### Decisión de stack técnico para la Etapa B (2026-07-27)
 
@@ -68,18 +76,22 @@ Evaluadas las opciones (Vue, React, Svelte, Next.js, Nest.js), se elige:
 - **React Native** — Requiere reescribir UI en componentes nativos. Capacitor reutiliza
   el mismo código Vue.
 
-### Estructura del fork (un código, tres productos)
+### Estructura del frontend (un código, tres productos)
 
 ```
-zeci-vue/
-├── src/                    ← código Vue compartido
-│   ├── components/         ← design system (consume tokens.json)
+avedra-frontend/
+├── src/
+│   ├── api/                ← cliente generado desde OpenAPI (avedra-shared-contracts)
+│   ├── components/         ← design system Vue (consume tokens del contrato)
+│   ├── composables/        ← lógica reactiva reutilizable
 │   ├── views/              ← páginas por módulo
 │   ├── stores/             ← Pinia (estado + cola de sync offline)
-│   ├── api/                ← cliente REST + SSE
-│   └── service-worker.ts   ← PWA offline (vite-plugin-pwa)
+│   ├── router/             ← Vue Router
+│   ├── styles/             ← tokens.css + theme.css
+│   └── types/              ← tipos generados + propios
 ├── src-tauri/              ← config Tauri (escritorio)
 ├── capacitor.config.ts     ← config Capacitor (Android)
+├── .claude/                ← agentes + skills diseño + referencias Vue
 └── vite.config.ts          ← build para web
 ```
 
@@ -89,6 +101,9 @@ Builds:
 - `npm run tauri build` → `.exe` WebView2 (~3MB).
 - `npx cap sync && npx cap build android` → APK.
 
+> **Nota:** la estructura completa del frontend, sus agentes Claude, skills de
+> diseño, anti AI-slop y referencias Vue están en `repo_split_00_pasos.md` §5.2.
+
 ### Principios confirmados
 
 - **Todo en modo desarrollo.** No hay datos de producción. La BD se recrea desde
@@ -97,8 +112,11 @@ Builds:
   con datos de producción que preservar, no ahora.
 - **SQLAlchemy Core** (no ORM completo ni SQL crudo duplicado), porque hay que
   mantener dos dialectos de por vida.
-- **NiceGUI se mantiene como el front principal** durante toda la Etapa A. La
-  versión NiceGUI sigue sirviendo como producto de uso propio y referencia funcional.
+- **NiceGUI se mantiene como el front principal** durante toda la Etapa A. Al
+  completarse el split (Etapa B), NiceGUI pasa a repo legacy (`avedra-legacy-nicegui`)
+  como referencia de migración — NO se queda dentro del backend. El implementer
+  del frontend lee cada página NiceGUI como blueprint antes de reescribirla en Vue
+  (protocolo en `repo_split_00_pasos.md` §5.3).
 
 ---
 
@@ -329,50 +347,67 @@ Objetivo: tokens y contratos en formato que Vue pueda consumir en la Etapa B.
 
 ---
 
-# TRANSICIÓN — División de repositorios
+# TRANSICIÓN — Split de repositorios
 
-> Ejecutar **entre la Fase 5 y la Fase 6**. Es el punto natural de corte:
-> `tokens.json` ya existe como contrato compartido, la API está desplegada,
-> y el código Vue necesita su propio ciclo de build.
+> **Actualizado 2026-09-27.** Esta sección es un resumen. El plan de ejecución
+> completo con 7 fases y 37 pasos está en `roadmaps/repo_split_00_pasos.md`.
 
-## Fase 5.5 — División de repos (1–2 días)
+## Fase 5.5 — Split en 3 repos (7–10 días)
 
-- **backend_18b_split_repos** 🕓 — Dividir el monorepo en repositorios independientes:
+Ejecutar **entre la Fase 5 y la Fase 6**. Es el punto natural de corte:
+la API está expuesta, los tokens están en formato neutral, y el frontend
+Vue necesita su propio ciclo de build, agentes y CI.
 
-  | Repo | Contenido | Ciclo de release |
-  | --- | --- | --- |
-  | `zeci-api` | Dominio, servicios, repos SQLAlchemy, API REST, auth JWT, event bus, NiceGUI (uso propio), seeds, tests Python | Deploy al servidor (Railway/VPS) |
-  | `zeci-vue` | Componentes Vue, vistas, stores Pinia, PWA, `src-tauri/`, `capacitor.config.ts` | Build → 3 artefactos (PWA, .exe, APK) |
-  | `zeci-tokens` (opcional) | `tokens.json` + scripts de generación (→ CSS, → TS, → Python) | Paquete consumido por los otros dos |
+| Repo | Contenido | Ciclo de release |
+| --- | --- | --- |
+| `avedra-backend` | Dominio, servicios, repos SQLAlchemy, API REST (FastAPI), auth JWT, event bus, seeds, tests Python, deploy | Deploy al servidor (Railway/VPS) |
+| `avedra-frontend` | Vue 3 + Vite, componentes, vistas, stores Pinia, PWA, `src-tauri/`, Capacitor, agentes Claude + skills diseño | Build → 3 artefactos (PWA, .exe, APK) |
+| `avedra-shared-contracts` | OpenAPI spec, DTOs como JSON Schema, enums, design tokens (CSS + JSON), CLASS_CONTRACT | Paquete versionado consumido por los otros dos |
+| `avedra-legacy-nicegui` | Repo actual congelado como referencia para la migración de páginas a Vue | Solo lectura — NO archivar hasta migración completa |
 
-  - La app NiceGUI se queda en `zeci-api` (producto de uso propio + referencia funcional).
-  - El contrato de la API es el OpenAPI spec generado por FastAPI (`/api/openapi.json`).
-    `zeci-vue` lo consume en desarrollo; no necesita repo separado.
-  - *criterio_done*: cada repo arranca, buildea y corre tests de forma independiente.
-  - *pista*: `git filter-branch` o `git subtree split` para conservar historial,
-    o simplemente copiar y empezar historial limpio (más simple para un dev solo).
+**Cambios clave vs. la versión anterior de este roadmap:**
+
+1. NiceGUI **NO se queda** en el backend. Sale a su propio repo legacy.
+2. Los contratos compartidos **NO son opcionales** — son repo obligatorio
+   con OpenAPI + DTOs + tokens (no solo tokens).
+3. El split incluye **agentes Claude por repo**, con skills de diseño,
+   anti AI-slop, y un protocolo de referencia legacy→Vue para la migración.
+4. Se usa `git filter-repo` (no `filter-branch`) para conservar historial.
+
+- *criterio_done*: cada repo arranca, buildea y corre tests independientemente;
+  el frontend genera su cliente API desde el contrato compartido.
+- *plan detallado*: `roadmaps/repo_split_00_pasos.md` (Fases 0–7).
 
 ---
 
-# ETAPA B — Fork Vue (producto comercial)
+# ETAPA B — Frontend Vue (producto comercial)
 
-> Prerrequisito: Etapa A completa + repos divididos.
-> Todo el trabajo de la Etapa B ocurre en `zeci-vue`.
-> `zeci-api` solo recibe cambios si la API necesita un endpoint nuevo.
+> Prerrequisito: Etapa A completa + repos divididos (Fase 5.5).
+> Todo el trabajo de la Etapa B ocurre en `avedra-frontend`.
+> `avedra-backend` solo recibe cambios si la API necesita un endpoint nuevo.
+> Cambios de API → regenerar contrato en `avedra-shared-contracts` → regenerar
+> cliente en frontend (flujo detallado en `repo_split_00_pasos.md` §cross-repo).
 
 ## Fase 6 — Scaffolding Vue 3 + Vite (1–2 semanas)
 
-- **backend_19_scaffold** 🕓 — Inicializar `zeci-vue` con `npm create vite@latest`
+- **backend_19_scaffold** 🕓 — Inicializar `avedra-frontend` con `npm create vite@latest`
   template `vue-ts`. Instalar stack: Vue Router, Pinia, VueUse, Axios.
+  Generar cliente API desde `avedra-shared-contracts/openapi/avedra-openapi.yaml`.
   `vite.config.ts` con alias y proxy a la API FastAPI en desarrollo.
-  - *criterio_done*: `npm run dev` arranca; proxy a `/api` conecta con FastAPI.
-- **backend_20_tokens_vue** 🕓 — Pipeline que consume `tokens.json` y genera
-  variables CSS + constantes TypeScript. Tema claro/oscuro automático.
+  - *criterio_done*: `npm run dev` arranca; proxy a `/api` conecta con FastAPI;
+    cliente API generado con tipos TypeScript.
+  - *nota*: corresponde a Fase 4 de `repo_split_00_pasos.md`.
+- **backend_20_tokens_vue** 🕓 — Importar tokens desde `avedra-shared-contracts`:
+  `tokens.css` como global, `tokens.json` para valores en TS.
+  Tema claro/oscuro automático con `prefers-color-scheme` + toggle.
   - *criterio_done*: tokens Aula Serena disponibles como `var(--ink-700)` en Vue.
-- **backend_21_libreria_componentes** 🕓 — Componentes Vue que implementan los
-  contratos de Fase 5 sobre Naive UI o PrimeVue (evaluar cuál se personaliza
-  mejor con los 187 tokens). Mismas variantes, mismos estados.
+- **backend_21_libreria_componentes** 🕓 — Componentes Vue headless accesibles
+  sobre **Radix Vue** (o **shadcn-vue**), estilados con tokens propios del
+  design system. Mismas variantes, mismos estados del CLASS_CONTRACT.
+  Iconos via **Iconify** (colección lucide).
   - *criterio_done*: los 18 componentes portados y visibles en una página de catálogo.
+  - *nota*: corresponde a `fork_ui_vue_00_roadmap` Fase 2 (vue_04–vue_06).
+  - *librerías aprobadas*: ver `repo_split_00_pasos.md` §5.2.2 design-system-rules.
 
 ## Fase 7 — Vistas Vue + motor de sincronización offline (4–8 semanas)
 
@@ -454,7 +489,7 @@ o conectado a la API en la nube.
   - *pista*: Tauri v2 requiere Rust instalado (`rustup`). El build descarga
     dependencias automáticamente.
 - **backend_29_tauri_sqlite** 🕓 — Plugin `tauri-plugin-sql` para SQLite local:
-  - Crear/abrir BD en `%APPDATA%/zeci/data.db`.
+  - Crear/abrir BD en `%APPDATA%/AVEDRA/data.db`.
   - Al primer arranque: crear schema + `seed_base` (institución vacía lista
     para que el usuario configure).
   - El store Pinia detecta modo local (Tauri) vs. remoto (API) y redirige
@@ -482,7 +517,7 @@ Objetivo: app Android nativa que funciona offline con SQLite local y
 sincroniza con la API cuando hay red.
 
 - **backend_32_capacitor_init** 🕓 — Inicializar Capacitor en el proyecto Vue:
-  - `npx cap init "ZECI" "com.zeci.app"`.
+  - `npx cap init "AVEDRA" "com.AVEDRA.app"`.
   - `npx cap add android`.
   - Configurar `capacitor.config.ts`: `webDir: 'dist'`, server URL para dev.
   - *pista*: necesita Android Studio instalado. `npx cap open android` abre
@@ -536,7 +571,7 @@ sincroniza con la API cuando hay red.
 | 5 — Design system portable | 3–5 días | absorbido en paralelo |
 | **Subtotal Etapa A** | **~5–8 semanas** | **~2.5–4 meses** |
 | **TRANSICIÓN** | | |
-| 5.5 — División de repos | 1–2 días | ~1 semana |
+| 5.5 — Split en 3 repos | 7–10 días | ~2 semanas |
 | **ETAPA B** | | |
 | 6 — Scaffold Vue 3 + Vite | 1–2 semanas | 2–3 semanas |
 | 7 — Vistas + motor offline | 4–8 semanas | 2–4 meses |
@@ -560,22 +595,24 @@ ETAPA A (monorepo — NiceGUI + backend sólido)
                                     [F5 Design system] (paralelo)
 
                                           ↓
-                              ╔═══════════════════════╗
-                              ║ F5.5 DIVIDIR REPOS    ║
-                              ║ zeci-api / zeci-vue   ║
-                              ╚═══════════════════════╝
+                         ╔══════════════════════════════════╗
+                         ║ F5.5 SPLIT EN 3 REPOS            ║
+                         ║ avedra-backend / avedra-frontend      ║
+                         ║ avedra-shared-contracts              ║
+                         ║ avedra-legacy-nicegui (referencia)   ║
+                         ║ (ver repo_split_00_pasos.md)       ║
+                         ╚══════════════════════════════════╝
                                           ↓
 
-ETAPA B (zeci-vue — producto comercial, tres plataformas)
+ETAPA B (avedra-frontend — producto comercial, tres plataformas)
 ══════════════════════════════════════════════════════════════
 
   [F6 Scaffold Vue] → [F7 Vistas + motor offline] ──┬── [F8 PWA]
-                                                     ├── [F9 Tauri .exe]
-                                                     └── [F10 Capacitor Android]
-                                                              ↓
-                                                     Cuatro productos:
-                                                     • PWA instalable (offline)
-                                                     • Web en nube (navegador)
-                                                     • .exe ~3MB (SQLite local)
-                                                     • APK Android (SQLite + sync)
+       ↑                      ↑                      ├── [F9 Tauri .exe]
+  lee legacy NiceGUI    lee legacy NiceGUI            └── [F10 Capacitor Android]
+  como blueprint        como blueprint
+                                                     Tres productos:
+  avedra-shared-contracts ──→ genera cliente API        • PWA instalable (offline)
+  avedra-backend ──→ API REST + contratos               • .exe ~3MB (SQLite local)
+                                                      • APK Android (SQLite + sync)
 ```

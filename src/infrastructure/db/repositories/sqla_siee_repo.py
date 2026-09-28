@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de ISIEERepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de ISIEERepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from sqlalchemy import delete, func, insert, select, update

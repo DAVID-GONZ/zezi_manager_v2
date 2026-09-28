@@ -1,7 +1,7 @@
 """
 src/domain/models/clock.py
 ==========================
-Origen único del instante actual en ZECI Manager v2.0.
+Origen único del instante actual en AVEDRA v2.0.
 
 Provee ``hoy()`` y ``ahora()`` en la zona horaria configurada
 (``config.ZONA_HORARIA``, por omisión ``"America/Bogota"``).

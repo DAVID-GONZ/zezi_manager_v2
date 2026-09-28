@@ -1,5 +1,5 @@
 """
-Schema de base de datos — ZECI Manager v2.0
+Schema de base de datos — AVEDRA v2.0
 ============================================
 Todas las tablas siguen el orden de dependencias FK:
 una tabla solo aparece después de las tablas a las que referencia.

@@ -48,7 +48,7 @@ class TestUsuario:
             id=1,
             usuario="c.lopez",
             nombre_completo="Carlos López García",
-            email="c.lopez@zeci.edu.co",
+            email="c.lopez@avedra.edu.co",
             telefono="3101234567",
             rol=Rol.PROFESOR,
         )
@@ -141,7 +141,7 @@ class TestUsuario:
             usuario="p.garcia",
             nombre_completo="Pedro García",
             rol=Rol.PROFESOR,
-            email="p.garcia@zeci.edu.co",
+            email="p.garcia@avedra.edu.co",
         )
         u = dto.to_usuario()
         assert isinstance(u, Usuario)

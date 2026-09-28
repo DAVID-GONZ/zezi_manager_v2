@@ -3,7 +3,7 @@ Tests de la política alerta_ip (obs_03).
 
 Cubre:
   - Fallos se acumulan por IP.
-  - Al superar MAX_FALLOS_IP se emite advertencia al logger zeci.security.
+  - Al superar MAX_FALLOS_IP se emite advertencia al logger avedra.security.
   - IP vacía se ignora.
   - La ventana expira y los fallos se reinician.
   - reset_ip limpia solo la IP especificada.

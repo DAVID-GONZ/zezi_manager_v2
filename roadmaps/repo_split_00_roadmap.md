@@ -17,9 +17,9 @@ La meta no es “reorganizar por estética”, sino evitar:
 
 Se adopta una división por repositorios y responsabilidades:
 
-- `zeci-backend`: fuente de verdad del negocio, repositorios, servicios, modelos y API REST
-- `zeci-frontend`: cliente Vue 3 + Vite, PWA/Tauri/Capacitor según roadmap
-- `zeci-shared-contracts`: contratos compartidos (OpenAPI, DTOs, enums, design tokens y documentación de frontera API/UI)
+- `avedra-backend`: fuente de verdad del negocio, repositorios, servicios, modelos y API REST
+- `avedra-frontend`: cliente Vue 3 + Vite, PWA/Tauri/Capacitor según roadmap
+- `avedra-shared-contracts`: contratos compartidos (OpenAPI, DTOs, enums, design tokens y documentación de frontera API/UI)
 
 Se considera `NiceGUI` como legado funcional, no como repositorio activo de la nueva arquitectura.
 
@@ -42,12 +42,12 @@ Esto hace que una estructura monolítica sea contraria al objetivo:
 
 ## Estructura de repositorios
 
-### 1) zeci-backend
+### 1) avedra-backend
 
 Debe contener la lógica del sistema y la API:
 
 ```text
-zeci-backend/
+avedra-backend/
 ├── app/
 │   ├── api/
 │   │   ├── deps.py
@@ -105,12 +105,12 @@ Responsabilidades:
 
 ---
 
-### 2) zeci-frontend
+### 2) avedra-frontend
 
 Debe contener la capa de cliente y experiencia de usuario:
 
 ```text
-zeci-frontend/
+avedra-frontend/
 ├── src/
 │   ├── app/
 │   │   ├── router/
@@ -166,15 +166,15 @@ Responsabilidades:
 
 ---
 
-### 3) zeci-shared-contracts
+### 3) avedra-shared-contracts
 
 Debe contener el contrato explícito y shared entre backend y frontend:
 
 ```text
-zeci-shared-contracts/
+avedra-shared-contracts/
 ├── openapi/
-│   ├── zeci-openapi.yaml
-│   └── zeci-openapi.json
+│   ├── avedra-openapi.yaml
+│   └── avedra-openapi.json
 ├── dto/
 │   ├── auth.json
 │   ├── estudiante.json
@@ -224,7 +224,7 @@ Los contracts no deben ser “docs de referencia” sueltas. Deben ser generados
 python scripts/generate_openapi.py
 
 # Shared
-cp openapi/zeci-openapi.yaml ../zeci-shared-contracts/openapi/
+cp openapi/avedra-openapi.yaml ../avedra-shared-contracts/openapi/
 
 # Frontend
 npm run generate:api
@@ -257,8 +257,8 @@ NiceGUI no debe ser tratado como el futuro activo del producto. Debe quedar como
 
 Opción A — mejor para claridad:
 
-- mantener el repo actual como `zeci-legacy-nicegui`
-- crear `zeci-backend` y `zeci-frontend` como activos
+- mantener el repo actual como `avedra-legacy-nicegui`
+- crear `avedra-backend` y `avedra-frontend` como activos
 
 Opción B — si se quiere mantener el repo actual para historial:
 
@@ -284,9 +284,9 @@ git branch backup/pre-split
 
 ### Paso 2: crear los repos nuevos en GitHub
 
-- `https://github.com/<usuario>/zeci-backend`
-- `https://github.com/<usuario>/zeci-frontend`
-- opcional: `https://github.com/<usuario>/zeci-shared-contracts`
+- `https://github.com/<usuario>/avedra-backend`
+- `https://github.com/<usuario>/avedra-frontend`
+- opcional: `https://github.com/<usuario>/avedra-shared-contracts`
 
 ### Paso 3: conservar el repo original como legado
 
@@ -314,7 +314,7 @@ git filter-repo \
 Luego se conecta el nuevo origen:
 
 ```bash
-git remote add origin https://github.com/<usuario>/zeci-backend.git
+git remote add origin https://github.com/<usuario>/avedra-backend.git
 git branch -M main
 git push -u origin main
 ```
@@ -322,10 +322,10 @@ git push -u origin main
 ### Paso 5: crear frontend desde cero
 
 ```bash
-npm create vite@latest zeci-frontend -- --template vue-ts
-cd zeci-frontend
+npm create vite@latest avedra-frontend -- --template vue-ts
+cd avedra-frontend
 git init
-git remote add origin https://github.com/<usuario>/zeci-frontend.git
+git remote add origin https://github.com/<usuario>/avedra-frontend.git
 git add .
 git commit -m "Initial Vue frontend"
 git push -u origin main
@@ -334,10 +334,10 @@ git push -u origin main
 ### Paso 6: crear repo de contratos compartidos
 
 ```bash
-mkdir zeci-shared-contracts
-cd zeci-shared-contracts
+mkdir avedra-shared-contracts
+cd avedra-shared-contracts
 git init
-git remote add origin https://github.com/<usuario>/zeci-shared-contracts.git
+git remote add origin https://github.com/<usuario>/avedra-shared-contracts.git
 ```
 
 ---
@@ -396,9 +396,9 @@ Esto evita que el UI se rompa con un backend actualizado sin avisar.
 
 El split se considera correcto cuando se cumple todo esto:
 
-- `zeci-backend` tiene dominio, servicios, repositorios e infraestructura
-- `zeci-frontend` tiene Vue 3 + router + stores + cliente API
-- `zeci-shared-contracts` tiene OpenAPI y DTOs versionados
+- `avedra-backend` tiene dominio, servicios, repositorios e infraestructura
+- `avedra-frontend` tiene Vue 3 + router + stores + cliente API
+- `avedra-shared-contracts` tiene OpenAPI y DTOs versionados
 - NiceGUI queda archivado o en legado como referencia
 - no hay código activo de UI mezclado en backend
 - la API y la UI se pueden evolucionar independientemente pero con contrato explícito

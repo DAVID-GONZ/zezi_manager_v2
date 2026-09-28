@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IInstitucionRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IInstitucionRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from sqlalchemy import func, insert, select, update

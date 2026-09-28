@@ -1,5 +1,5 @@
 """
-login.py — Página de inicio de sesión de ZECI Manager v2.0
+login.py — Página de inicio de sesión de AVEDRA v2.0
 """
 
 from __future__ import annotations

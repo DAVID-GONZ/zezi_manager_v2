@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/notas_convivencia.py
 ====================================================
-Notas de comportamiento por periodo — ZECI Manager v2.0.
+Notas de comportamiento por periodo — AVEDRA v2.0.
 
 Regla de capas:
   Esta página NO importa ningún símbolo de src.domain.models.*

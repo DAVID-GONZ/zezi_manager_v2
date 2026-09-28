@@ -6,6 +6,13 @@
 > cuando se active).
 > **Meta estratégica:** Etapa B del plan — un código, tres productos (Vue web + Tauri
 > escritorio + Capacitor Android). Ver `decision-stack-frontend`, `estrategia-backend-vue-fork`.
+>
+> **Revisión 2026-09-27:** la estrategia evolucionó de "fork" a **split en 3 repos**
+> (`avedra-backend`, `avedra-frontend`, `avedra-shared-contracts`). El trabajo de este
+> roadmap ocurre en `avedra-frontend`. NiceGUI pasa a `avedra-legacy-nicegui` como
+> referencia de migración (cada página se lee antes de reescribirla en Vue).
+> Agentes Claude, skills de diseño, anti AI-slop y librerías aprobadas documentados
+> en `repo_split_00_pasos.md` §5.2–5.4.
 
 ## Contexto
 
@@ -94,6 +101,89 @@ de render** (Python → componentes Vue).
 
 - **vue_14_paridad_final** — Checklist de paridad funcional/visual/a11y NiceGUI ↔ Vue.
   Regresión visual (ver `testing_ui_roadmap`) verde. Congelar la UI NiceGUI como legacy.
+
+---
+
+## Evaluación de skills externos: ui-ux-pro-max-skill
+
+> Revisión 2026-09-28. Fuente: `github.com/nextlevelbuilder/ui-ux-pro-max-skill`
+> (7 skills: ui-ux-pro-max, design-system, design, ui-styling, brand, banner-design, slides).
+
+### Resumen del repositorio
+
+Kit de 7 skills de Claude Code orientado a diseño genérico y branding:
+
+| Skill | Contenido | Stack |
+| --- | --- | --- |
+| **ui-ux-pro-max** | DB buscable: 79 estilos, 192 paletas, 74 pairings tipográficos, 119 guías UX, 105 iconos, 17 presets GSAP, 25 tipos de chart, 22 stacks. Script Python de búsqueda BM25. | Python |
+| **design-system** | Arquitectura de tokens 3 capas (primitives→semantic→component), templates de slides, validación de tokens. | Python |
+| **ui-styling** | shadcn/ui + Tailwind + Radix UI. Catálogo de componentes, theming, accesibilidad, responsive. References detallados. | React/Next.js |
+| **brand** | Identidad de marca, voz, messaging, asset management. Scripts Node.js para sync brand→tokens. | Node.js |
+| **design** | Hub unificado: rutas a sub-skills. Logo con Gemini AI, CIP (identidad corporativa), banners, iconos SVG, social photos. | Python + Gemini API |
+| **banner-design** | Banners multi-formato: redes sociales, ads, web, print. 22 estilos artísticos. | CSS/HTML |
+| **slides** | Presentaciones HTML con Chart.js, copywriting, estrategias de slides. | HTML/JS |
+
+### Lo que SÍ aporta a AVEDRA
+
+1. **ui-ux-pro-max — guías UX y prioridades de accesibilidad.** Su framework de
+   prioridades (accesibilidad > touch/interacción > performance > estilo > layout)
+   complementa nuestro `/design-check`. Las 119 guías UX y los patrones de
+   interacción táctil (targets ≥ 44px, spacing, feedback states) son universales
+   y aplicables sin adaptación.
+
+2. **ui-styling — references de accesibilidad y responsive.** Los documentos
+   `shadcn-accessibility.md` (ARIA, keyboard nav, focus management, screen reader)
+   y `tailwind-responsive.md` (mobile-first, breakpoints, container queries)
+   enriquecen nuestro `design-system-rules.md`. shadcn-vue es wrapper de Radix Vue,
+   que es una de nuestras librerías aprobadas.
+
+3. **design-system — naming de tokens 3 capas.** Nuestra arquitectura ya tiene
+   `tokens.css` como fuente única, pero no distingue formalmente entre primitivos
+   (raw values), semánticos (purpose) y de componente (component-specific). Adoptar
+   esta taxonomía mejoraría la escalabilidad del sistema de tokens cuando el frontend
+   Vue crezca.
+
+### Lo que NO aporta (descartar)
+
+| Skill | Razón de descarte |
+| --- | --- |
+| **brand** | AVEDRA ya tiene "Aula Serena" definido. No hay necesidad de branding generativo. Los scripts Node.js no encajan con nuestro toolchain Python. |
+| **banner-design** | AVEDRA es una herramienta de gestión educativa, no un producto de marketing. Sin caso de uso. |
+| **slides** | Irrelevante para el producto. |
+| **design** (logo/CIP/social) | Generación de logos e identidad corporativa con Gemini AI no aplica. El logo y la identidad ya están decididos. |
+| **ui-styling** (código) | Todos los ejemplos son React/JSX. Copiarlos a un proyecto Vue causaría confusión. Los conceptos transfieren; el código no. |
+
+### Riesgos de incorporación directa
+
+1. **Conflicto de design system.** Su enfoque es "shadcn/ui defaults + Tailwind
+   utilities". El nuestro es "tokens Aula Serena primero, headless components
+   estilados con CSS portable". Importar su approach de styling socavaría la
+   estrategia de portabilidad CSS que costó el trabajo de `design-system-core-adapter`.
+
+2. **Framework mismatch.** React ≠ Vue. JSX ≠ SFC. `useForm` ≠ `vee-validate`.
+   Los references necesitan reescritura, no copia.
+
+3. **AI-slop amplificado.** Irónicamente, importar un skill genérico masivo
+   aumentaría los patrones que el anti AI-slop intenta prevenir: padding
+   genérico, colores por defecto, layouts monótonos, componentes sin estados.
+
+4. **Dependencias externas.** Gemini API, MuAPI, Node.js scripts. Nuestro
+   toolchain es Python puro.
+
+### Decisión: cherry-pick adaptado, no incorporación wholesale
+
+**Sí adoptar (adaptados a Vue + Aula Serena):**
+
+| Qué | De dónde | Cómo integrarlo | Fase |
+| --- | --- | --- | --- |
+| Framework de prioridades UX (accesibilidad > touch > perf > estilo > layout) | ui-ux-pro-max | Incorporar como sección en `/design-check` | Fase 2 (vue_04) |
+| Guías de interacción táctil (targets, spacing, feedback) | ui-ux-pro-max | Agregar a `design-system-rules.md` como sección "Touch & Mobile" | Fase 4 (vue_10) |
+| Patrones ARIA para componentes headless | ui-styling/shadcn-accessibility.md | Adaptar a Radix Vue en `/a11y-check` | Fase 2 (vue_04) |
+| Breakpoints y responsive patterns | ui-styling/tailwind-responsive.md | Adaptar a nuestros tokens de breakpoint en `design-system-rules.md` | Fase 4 (vue_10) |
+| Taxonomía tokens 3 capas | design-system | Evaluar refactor de `tokens.css` en primitives/semantic/component | Fase 1 (vue_02) |
+
+**No adoptar:** todo lo demás (brand, banner, slides, logo, CIP, social photos,
+scripts Node.js, ejemplos React).
 
 ---
 

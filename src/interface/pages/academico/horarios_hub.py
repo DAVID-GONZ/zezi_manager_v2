@@ -1,7 +1,7 @@
 """
 src/interface/pages/academico/horarios_hub.py
 =============================================
-Hub unificado de horarios — ZECI Manager v2.0
+Hub unificado de horarios — AVEDRA v2.0
 Ruta: /academico/horarios-hub
 Acceso: todos los roles autenticados
 

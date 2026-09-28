@@ -1,5 +1,5 @@
 """
-Implementación SQLAlchemy Core de IEstadisticosRepository — ZECI Manager v2.0.
+Implementación SQLAlchemy Core de IEstadisticosRepository — AVEDRA v2.0.
 
 Este repositorio es estrictamente de solo lectura: solo SELECT y agregaciones.
 No hace INSERT, UPDATE ni DELETE.

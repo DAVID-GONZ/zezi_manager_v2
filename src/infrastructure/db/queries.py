@@ -1,5 +1,5 @@
 """
-Funciones de consulta SQL — ZECI Manager v2.0
+Funciones de consulta SQL — AVEDRA v2.0
 =============================================
 
 API de acceso a datos de bajo nivel. Usada exclusivamente por los

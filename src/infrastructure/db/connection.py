@@ -1,5 +1,5 @@
 """
-Shim de compatibilidad con la API de conexión — ZECI Manager v2.0
+Shim de compatibilidad con la API de conexión — AVEDRA v2.0
 ==================================================================
 
 Desde backend_07 la capa de acceso a datos usa SQLAlchemy Core directamente

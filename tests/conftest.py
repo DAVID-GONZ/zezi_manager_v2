@@ -1,5 +1,5 @@
 """
-conftest.py — Fixtures de base de datos para ZECI Manager v2.0
+conftest.py — Fixtures de base de datos para AVEDRA v2.0
 ===============================================================
 
 Fixtures disponibles y su alcance:

@@ -3,7 +3,7 @@ Tests de configuración de modelos de dominio — datos_02_model_config_base
 =========================================================================
 
 T2 — Hidratación desde base sembrada en memoria.
-T7 — Test estructural: toda clase que derive de BaseModel debe derivar de ZeciModel.
+T7 — Test estructural: toda clase que derive de BaseModel debe derivar de AvedraModel.
 """
 
 from __future__ import annotations
@@ -62,12 +62,12 @@ def _make_db():
 
 
 class TestConfigBase:
-    """Verifica que ZeciModel, EntidadDominio y DTODominio tengan la config correcta."""
+    """Verifica que AvedraModel, EntidadDominio y DTODominio tengan la config correcta."""
 
-    def test_zecimodel_config(self):
-        from src.domain.models.base import ZeciModel
+    def test_avedramodel_config(self):
+        from src.domain.models.base import AvedraModel
 
-        cfg = ZeciModel.model_config
+        cfg = AvedraModel.model_config
         assert cfg.get("from_attributes") is True
         assert cfg.get("str_strip_whitespace") is True
         assert cfg.get("validate_assignment") is True
@@ -109,9 +109,9 @@ class TestConfigBase:
 
     def test_str_strip_whitespace(self):
         """Los valores de texto se deben recortar (R11)."""
-        from src.domain.models.base import ZeciModel
+        from src.domain.models.base import AvedraModel
 
-        class ModeloPrueba(ZeciModel):
+        class ModeloPrueba(AvedraModel):
             nombre: str
 
         obj = ModeloPrueba(nombre="  hola mundo  ")
@@ -119,9 +119,9 @@ class TestConfigBase:
 
     def test_validate_assignment(self):
         """Las asignaciones post-construcción deben validarse (R14, R15)."""
-        from src.domain.models.base import ZeciModel
+        from src.domain.models.base import AvedraModel
 
-        class ModeloPrueba(ZeciModel):
+        class ModeloPrueba(AvedraModel):
             valor: int
 
         obj = ModeloPrueba(valor=5)
@@ -326,12 +326,12 @@ class TestHidratacionDesdeBaseSembrada:
 
 
 # ===========================================================================
-# T7 — Test estructural: toda clase de dominio debe derivar de ZeciModel
+# T7 — Test estructural: toda clase de dominio debe derivar de AvedraModel
 # ===========================================================================
 
-# Lista de excepciones explícitas (clases que NO deben derivar de ZeciModel).
+# Lista de excepciones explícitas (clases que NO deben derivar de AvedraModel).
 # Vacía al cerrar el paso, permite documentar casos legítimos futuros.
-_EXCEPCIONES_ZECIMODEL: set[str] = set()
+_EXCEPCIONES_AVEDRAMODEL: set[str] = set()
 
 
 def _iter_modelos() -> list[tuple[str, type]]:
@@ -362,21 +362,21 @@ def _iter_modelos() -> list[tuple[str, type]]:
 class TestEstructuraHerencia:
     """
     Verifica que toda clase derivada de BaseModel en src/domain/models/
-    derive también de ZeciModel (R1, R2, R3, D4).
+    derive también de AvedraModel (R1, R2, R3, D4).
     """
 
-    def test_toda_clase_deriva_de_zecimodel(self):
-        from src.domain.models.base import ZeciModel
+    def test_toda_clase_deriva_de_avedramodel(self):
+        from src.domain.models.base import AvedraModel
 
         violaciones = []
         for modname, cls in _iter_modelos():
             nombre_cls = f"{modname}.{cls.__name__}"
-            if nombre_cls in _EXCEPCIONES_ZECIMODEL:
+            if nombre_cls in _EXCEPCIONES_AVEDRAMODEL:
                 continue
-            if not issubclass(cls, ZeciModel):
+            if not issubclass(cls, AvedraModel):
                 violaciones.append(nombre_cls)
 
         assert not violaciones, (
-            "Las siguientes clases derivan de BaseModel pero NO de ZeciModel:\n"
+            "Las siguientes clases derivan de BaseModel pero NO de AvedraModel:\n"
             + "\n".join(f"  - {v}" for v in sorted(violaciones))
         )

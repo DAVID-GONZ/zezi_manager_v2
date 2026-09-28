@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/comportamiento.py
 =================================================
-Delegate de compatibilidad — ZECI Manager v2.0 (convivencia_26_rutas_rail).
+Delegate de compatibilidad — AVEDRA v2.0 (convivencia_26_rutas_rail).
 
 `comportamiento` dejó de ser una página propia tras la reorganización de
 convivencia: su lectura vive en el hub de Seguimiento y su creación en

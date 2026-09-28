@@ -1,7 +1,7 @@
 """
 src/interface/pages/academico/estudiantes.py
 =============================================
-Página de gestión de estudiantes y PIAR — ZECI Manager v2.0
+Página de gestión de estudiantes y PIAR — AVEDRA v2.0
 Ruta: /estudiantes
 
 Secciones:

@@ -1,5 +1,5 @@
 """
-main.py — Punto de entrada de ZECI Manager v2.0
+main.py — Punto de entrada de AVEDRA v2.0
 =================================================
 Orden de arranque:
   1. Configurar logging

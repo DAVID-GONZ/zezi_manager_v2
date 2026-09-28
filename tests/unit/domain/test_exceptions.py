@@ -7,6 +7,7 @@ Cubre R1–R8, R16, R18, R19, R20 del paso datos_01_excepciones_dominio.
 from __future__ import annotations
 
 from src.domain.exceptions import (
+    AvedraError,
     CategoriaError,
     CodigoError,
     ConflictoError,
@@ -16,7 +17,6 @@ from src.domain.exceptions import (
     OperacionSoloLecturaError,
     PermisoDenegadoError,
     ReglaDeNegocioError,
-    ZeciError,
 )
 
 # ---------------------------------------------------------------------------
@@ -59,10 +59,10 @@ def test_fuera_de_institucion_es_permission_error():  # R1
 
 
 # ---------------------------------------------------------------------------
-# R2 — Todas las familias son subclases de ZeciError
+# R2 — Todas las familias son subclases de AvedraError
 # ---------------------------------------------------------------------------
 
-def test_todas_las_familias_son_zeci_error():  # R2
+def test_todas_las_familias_son_avedra_error():  # R2
     for cls in (
         ReglaDeNegocioError,
         NoEncontradoError,
@@ -73,15 +73,15 @@ def test_todas_las_familias_son_zeci_error():  # R2
         OperacionFueraDeInstitucionError,
     ):
         exc = cls("msg")
-        assert isinstance(exc, ZeciError), f"{cls.__name__} no es ZeciError"
+        assert isinstance(exc, AvedraError), f"{cls.__name__} no es AvedraError"
 
 
 # ---------------------------------------------------------------------------
-# R3 — ZeciError NO es subclase de ValueError
+# R3 — AvedraError NO es subclase de ValueError
 # ---------------------------------------------------------------------------
 
-def test_zecierror_no_es_value_error():  # R3
-    assert not issubclass(ZeciError, ValueError)
+def test_avedraerror_no_es_value_error():  # R3
+    assert not issubclass(AvedraError, ValueError)
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def test_zecierror_no_es_value_error():  # R3
 def test_mro_permiso_denegado():  # R4
     mro = PermisoDenegadoError.__mro__
     # Los primeros 5 deben ser exactamente estos (en orden)
-    expected = [PermisoDenegadoError, ZeciError, PermissionError, OSError, Exception]
+    expected = [PermisoDenegadoError, AvedraError, PermissionError, OSError, Exception]
     assert mro[:5] == tuple(expected), f"MRO inesperado: {mro[:5]}"
 
 
@@ -211,8 +211,8 @@ def test_no_quedan_raises_genericos_en_servicios():  # R18
     assert not encontrados, f"Quedan raises genéricos: {encontrados}"
 
 
-def test_zecierror_lanzados_usan_codigoerror():  # R20
-    """Cada ZeciError lanzado desde servicios usa un miembro de CodigoError."""
+def test_avedraerror_lanzados_usan_codigoerror():  # R20
+    """Cada AvedraError lanzado desde servicios usa un miembro de CodigoError."""
     import pathlib
 
     # Solo verifica que no se pasan strings literales fuera del enum
@@ -220,8 +220,8 @@ def test_zecierror_lanzados_usan_codigoerror():  # R20
     servicios = sorted(pathlib.Path("src/services").glob("*.py"))
     for f in servicios:
         src = f.read_text("utf-8")
-        # Si el archivo importa ZeciError o sus subclases, debe importar de src.domain.exceptions
-        if "ZeciError" in src or "NoEncontradoError" in src or "ConflictoError" in src:
+        # Si el archivo importa AvedraError o sus subclases, debe importar de src.domain.exceptions
+        if "AvedraError" in src or "NoEncontradoError" in src or "ConflictoError" in src:
             assert "from src.domain.exceptions import" in src, (
                 f"{f} usa excepciones de dominio pero no importa de src.domain.exceptions"
             )

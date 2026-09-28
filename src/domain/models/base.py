@@ -1,10 +1,10 @@
 """
-Base común de modelos de dominio — ZECI Manager v2.0
+Base común de modelos de dominio — AVEDRA v2.0
 ======================================================
 
 Define las tres clases raíz de las que derivan todos los modelos:
 
-  ZeciModel       — base común: from_attributes, str_strip_whitespace,
+  AvedraModel       — base común: from_attributes, str_strip_whitespace,
                     validate_assignment.
 
   EntidadDominio  — + extra="ignore": tolera columnas SELECT * que el
@@ -30,8 +30,8 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
-class ZeciModel(BaseModel):
-    """Base común a todos los modelos de dominio de ZECI Manager."""
+class AvedraModel(BaseModel):
+    """Base común a todos los modelos de dominio de AVEDRA."""
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -40,7 +40,7 @@ class ZeciModel(BaseModel):
     )
 
 
-class EntidadDominio(ZeciModel):
+class EntidadDominio(AvedraModel):
     """
     Base para modelos que representan una fila de tabla.
 
@@ -59,7 +59,7 @@ class EntidadDominio(ZeciModel):
     )
 
 
-class DTODominio(ZeciModel):
+class DTODominio(AvedraModel):
     """
     Base para modelos de transporte de datos entre capas.
 
@@ -140,6 +140,7 @@ UrlStr = Annotated[str, StringConstraints(max_length=2048)]
 
 
 __all__ = [
+    "AvedraModel",
     "CodigoStr",
     "DTODominio",
     "DaneStr",
@@ -160,5 +161,4 @@ __all__ = [
     "TextoLargoStr",
     "TextoMedioStr",
     "UrlStr",
-    "ZeciModel",
 ]

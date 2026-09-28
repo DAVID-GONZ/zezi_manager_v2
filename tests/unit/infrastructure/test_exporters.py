@@ -270,11 +270,11 @@ class TestReporteConvivenciaGrupoExcel:
     def test_membrete_presente(self):
         resultado = generar_reporte_convivencia_grupo_excel(
             filas=[_FILA_CONV], titulo="Reporte", grupo="5A", periodo="P1",
-            inst_nombre="INSTITUCIÓN EDUCATIVA ZECI",
+            inst_nombre="INSTITUCION EDUCATIVA DEMO",
         )
         wb = openpyxl.load_workbook(io.BytesIO(resultado))
         ws = wb["Reporte"]
-        assert ws.cell(1, 1).value == "INSTITUCIÓN EDUCATIVA ZECI"
+        assert ws.cell(1, 1).value == "INSTITUCION EDUCATIVA DEMO"
 
     def test_estadisticos_membrete(self):
         resultado = generar_reporte_convivencia_grupo_excel(

@@ -1,5 +1,5 @@
 """
-Módulo de Nivelación — ZECI Manager v2
+Módulo de Nivelación — AVEDRA v2
 =======================================
 Entidades para el proceso de nivelación posterior al cierre de período.
 

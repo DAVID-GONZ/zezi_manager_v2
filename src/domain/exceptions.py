@@ -1,10 +1,10 @@
 """
-Jerarquía de excepciones de dominio de ZECI Manager.
+Jerarquía de excepciones de dominio de AVEDRA.
 
 La herencia doble (ValueError / PermissionError / RuntimeError) es un puente
 transitorio: permite que los 92 `except ValueError`, 7 `except PermissionError` y
 9 `except (ValueError, RuntimeError)` de src/interface/ sigan funcionando sin tocar
-esa capa. Los mixins se retirarán cuando la interfaz migre a capturar ZeciError.
+esa capa. Los mixins se retirarán cuando la interfaz migre a capturar AvedraError.
 """
 import enum
 from collections.abc import Mapping
@@ -44,7 +44,7 @@ class CodigoError(enum.StrEnum):
     EXPORTADOR_NO_DISPONIBLE = "EXPORTADOR_NO_DISPONIBLE"
 
 
-class ZeciError(Exception):
+class AvedraError(Exception):
     """Raíz de toda condición de error originada en las reglas del negocio."""
     codigo: ClassVar[CodigoError]
     categoria: ClassVar[CategoriaError]
@@ -69,27 +69,27 @@ class ZeciError(Exception):
         }
 
 
-class ReglaDeNegocioError(ZeciError, ValueError):
+class ReglaDeNegocioError(AvedraError, ValueError):
     codigo = CodigoError.REGLA_NEGOCIO
     categoria = CategoriaError.VALIDACION
 
 
-class NoEncontradoError(ZeciError, ValueError):
+class NoEncontradoError(AvedraError, ValueError):
     codigo = CodigoError.NO_ENCONTRADO
     categoria = CategoriaError.NO_ENCONTRADO
 
 
-class ConflictoError(ZeciError, ValueError):
+class ConflictoError(AvedraError, ValueError):
     codigo = CodigoError.CONFLICTO
     categoria = CategoriaError.CONFLICTO
 
 
-class PermisoDenegadoError(ZeciError, PermissionError):
+class PermisoDenegadoError(AvedraError, PermissionError):
     codigo = CodigoError.PERMISO_DENEGADO
     categoria = CategoriaError.PERMISO
 
 
-class DependenciaNoDisponibleError(ZeciError, RuntimeError):
+class DependenciaNoDisponibleError(AvedraError, RuntimeError):
     codigo = CodigoError.DEPENDENCIA_NO_DISPONIBLE
     categoria = CategoriaError.DEPENDENCIA
 

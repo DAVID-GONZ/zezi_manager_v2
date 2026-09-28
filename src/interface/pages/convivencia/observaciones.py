@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/observaciones.py
 ================================================
-Página de observaciones de periodo — ZECI Manager v2.0.
+Página de observaciones de periodo — AVEDRA v2.0.
 
 Vista dual (convivencia_37):
   - ZONA SUPERIOR: observador cronológico del estudiante con exportación

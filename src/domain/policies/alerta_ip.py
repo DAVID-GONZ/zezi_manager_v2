@@ -4,7 +4,7 @@ alerta_ip.py — Política de alertas por IP (obs_03).
 
 Detecta ráfagas de intentos de login fallido desde una misma IP en
 una ventana de tiempo. Al superar el umbral emite una advertencia
-al logger ``zeci.security`` para que el administrador pueda investigar.
+al logger ``avedra.security`` para que el administrador pueda investigar.
 
 Diseño (análogo a login_throttle.py):
   - Estado privado en un dict de PROCESO (no ContextVar): las alertas
@@ -12,7 +12,7 @@ Diseño (análogo a login_throttle.py):
   - La clave es la IP normalizada (strip).
   - No importa interfaz ni infraestructura. Solo stdlib.
   - No llama a ISecurityLogger (I/O circular): emite directamente a
-    ``logging.getLogger("zeci.security")``, que es recogido por el
+    ``logging.getLogger("avedra.security")``, que es recogido por el
     handler configurado en infrastructure/logging/security_logger.py.
 
 Regla de capas: solo stdlib.
@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 MAX_FALLOS_IP: int = 5
 VENTANA_SEGUNDOS: int = 300  # 5 minutos
 
-_logger = logging.getLogger("zeci.security")
+_logger = logging.getLogger("avedra.security")
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def registrar_fallo_ip(ip: str) -> None:
     Registra un intento de login fallido desde ``ip``.
 
     Si la IP acumula ``MAX_FALLOS_IP`` fallos dentro de ``VENTANA_SEGUNDOS``
-    segundos, emite una advertencia al logger ``zeci.security``.
+    segundos, emite una advertencia al logger ``avedra.security``.
     Una IP vacía se ignora.
     """
     clave = _normalizar(ip)

@@ -1,5 +1,5 @@
 """
-config.py — Configuración centralizada de ZECI Manager v2.0
+config.py — Configuración centralizada de AVEDRA v2.0
 ============================================================
 
 Fuentes de configuración (en orden de prioridad):
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     # Entorno
     # ------------------------------------------------------------------
     APP_ENV: Literal["development", "production", "test"] = "development"
-    APP_NAME: str = "ZECI Manager"
+    APP_NAME: str = "AVEDRA"
     APP_VERSION: str = "2.0.0"
 
     # ------------------------------------------------------------------
@@ -83,7 +83,7 @@ class Settings(BaseSettings):
         default="",
         description=(
             "URL de conexión completa para Postgres. "
-            "Ejemplo: postgresql+psycopg://user:pass@host:5432/zeci. "
+            "Ejemplo: postgresql+psycopg://user:pass@host:5432/avedra."
             "Ignorado cuando DB_BACKEND=sqlite."
         ),
     )

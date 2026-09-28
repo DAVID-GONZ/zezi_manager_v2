@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IAcudienteRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IAcudienteRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from sqlalchemy import delete, insert, select, update

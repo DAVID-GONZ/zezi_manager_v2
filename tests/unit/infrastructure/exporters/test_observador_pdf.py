@@ -18,7 +18,7 @@ def _datos_minimos() -> dict:
             "grado": "9°",
         },
         "institucion": {
-            "nombre": "IE ZECI",
+            "nombre": "IE Demo",
             "DANE": "111001000001",
             "rector": "Carlos García",
         },

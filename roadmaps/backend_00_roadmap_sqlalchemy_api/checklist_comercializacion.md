@@ -1,4 +1,4 @@
-# Checklist de comercialización — ZECI Manager
+# Checklist de comercialización — AVEDRA
 
 > Complementa el roadmap técnico (`roadmap.md`). Estos son los requisitos
 > **además de la funcionalidad** para transformar el proyecto en producto comercial.

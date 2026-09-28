@@ -553,7 +553,7 @@ def generar_observador_pdf(datos: dict) -> bytes:
     # 10. Pie con fecha de generación
     story.append(Spacer(1, 8))
     story.append(Paragraph(
-        f"Documento generado el {_date.today().strftime('%d/%m/%Y')} — Sistema ZECI Manager",
+        f"Documento generado el {_date.today().strftime('%d/%m/%Y')} — Sistema AVEDRA",
         _S_FOOTER,
     ))
 

@@ -174,11 +174,11 @@ class TestAlertaIP:
         reset_all()
         self.records: list[logging.LogRecord] = []
         self.handler = _CapturingHandler(self.records)
-        logging.getLogger("zeci.security").addHandler(self.handler)
+        logging.getLogger("avedra.security").addHandler(self.handler)
         logging.disable(logging.NOTSET)
 
     def teardown_method(self):
-        logging.getLogger("zeci.security").removeHandler(self.handler)
+        logging.getLogger("avedra.security").removeHandler(self.handler)
         logging.disable(logging.CRITICAL)
         reset_all()
 

@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IAsistenciaRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IAsistenciaRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from datetime import date

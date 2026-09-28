@@ -471,7 +471,7 @@ def generar_observador_excel(datos: dict) -> bytes:
 
     # ── 9. Pie con fecha de generación ──────────────────────────────────
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
-    cell = ws.cell(row, 1, f"Documento generado el {_date.today().strftime('%d/%m/%Y')} — Sistema ZECI Manager")
+    cell = ws.cell(row, 1, f"Documento generado el {_date.today().strftime('%d/%m/%Y')} — Sistema AVEDRA")
     cell.font = Font(size=8, italic=True, color="718096")
     cell.alignment = Alignment(horizontal="right")
 

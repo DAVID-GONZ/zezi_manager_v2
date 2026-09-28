@@ -1,7 +1,7 @@
 """
 src/interface/pages/academico/registro_asistencia.py
 =====================================================
-Página de registro de asistencia diaria — ZECI Manager v2.0.
+Página de registro de asistencia diaria — AVEDRA v2.0.
 
 Regla de capas (estricta):
   Esta página NO importa ningún símbolo de src.domain.models.*.

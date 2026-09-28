@@ -1,15 +1,31 @@
-# seguridad_web_00 — Roadmap de seguridad: deploy web, PostgreSQL, PWA / WebView2
+# seguridad_web_00 — Roadmap de seguridad: deploy web, PostgreSQL, PWA / Tauri / Capacitor
 
-## Contexto (David, 2026-07-29)
+> **Revisión 2026-09-27:** la arquitectura evolucionó de monorepo con "FastAPI montado
+> en NiceGUI" a **split en 3 repos** (`avedra-backend`, `avedra-frontend`,
+> `avedra-shared-contracts`). NiceGUI pasa a legado. Los controles de seguridad se
+> distribuyen entre repos: backend (API, auth, DB, throttle) y frontend (CSP, PWA,
+> Tauri, CORS client-side). Ver `repo_split_00_pasos.md`.
 
-ZECI Manager está evolucionando hacia despliegue en la nube con PostgreSQL (ORM SQLAlchemy),
-API REST (FastAPI montado en NiceGUI) y distribución como PWA/app de escritorio vía WebView2.
+## Contexto (David, 2026-07-29, revisado 2026-09-27)
+
+AVEDRA está evolucionando hacia despliegue en la nube con PostgreSQL (SQLAlchemy Core),
+API REST (FastAPI standalone en `avedra-backend`) y distribución como PWA / app escritorio
+(Tauri v2) / app Android (Capacitor) desde `avedra-frontend`.
+
 Este roadmap cubre **todos** los controles de seguridad necesarios para ese escenario,
 desde los bloqueantes de primer deploy hasta la higiene operacional continua.
 
 No es un roadmap de migración: el código de seguridad existente (`seguridad_01..04`) se
 mantiene como base. Este roadmap extiende, endurece y complementa lo ya hecho para el
 nuevo contexto de producción multi-usuario en la nube.
+
+### Distribución de responsabilidad de seguridad por repo
+
+| Repo | Controles |
+| --- | --- |
+| `avedra-backend` | Auth (bcrypt, JWT), throttle, RBAC, multi-tenant scope, auditoría, rate limiting API, secrets, TLS/proxy, headers HTTP, backups, logging seguridad |
+| `avedra-frontend` | CSP (ajustada a Vue, no a Quasar), service worker seguro, Tauri origen restringido, actualización segura del .exe, CORS client-side |
+| `avedra-shared-contracts` | Versionado de contratos (no exponer campos internos en DTOs públicos), validación de schemas |
 
 ---
 
@@ -39,7 +55,7 @@ nuevo contexto de producción multi-usuario en la nube.
 | **N0 — Bloqueante** | Sin esto la app NO puede ir a producción. |
 | **N1 — Primer mes** | Sin esto la app es vulnerable poco después de estar live. |
 | **N2 — Con API REST** | Aplica cuando se completen las Fases 3–4 del `backend_00` roadmap. |
-| **N3 — Con PWA/WebView2** | Aplica cuando se complete la Fase 2 del `backend_00` roadmap. |
+| **N3 — Con PWA/Tauri/Capacitor** | Aplica en Etapa B, cuando `avedra-frontend` esté en producción. |
 | **N4 — Continuo** | Higiene operacional permanente; no tiene fecha de "done". |
 
 ## Criterio de dificultad
@@ -85,15 +101,19 @@ Deben completarse dentro del primer mes de estar live.
 
 | ID | Nombre | Dificultad | Spec |
 | --- | --- | --- | --- |
-| S08 | Content Security Policy ajustada a NiceGUI/Quasar | Código-Alto | `seguridad_web_08_csp_nicegui` |
+| S08 | Content Security Policy (NiceGUI→Quasar en Etapa A; Vue en Etapa B) | Código-Alto | `seguridad_web_08_csp` |
 | S09 | Logging de seguridad y alertas | Código-Bajo | `seguridad_web_09_logging_alertas` |
 | S10 | Backups automatizados y plan de rollback | Infra | `seguridad_web_10_backup_rollback` |
 | S11 | CI/CD seguro (secrets, gates, builds reproducibles) | Config | `seguridad_web_11_cicd_seguro` |
 
 ### Notas N1
 
-- **S08** tiene dificultad Alta porque NiceGUI + Quasar inyectan scripts inline y
-  conectan WebSocket. La CSP necesita iteración en staging antes de activarse en prod.
+- **S08** tiene dificultad Alta. En **Etapa A** (NiceGUI): Quasar inyecta scripts
+  inline y conecta WebSocket, la CSP necesita iteración en staging. En **Etapa B**
+  (Vue en `avedra-frontend`): la CSP es más simple (sin WebSocket permanente ni scripts
+  inline de Quasar), pero debe cubrir el service worker y los CDN de fuentes/iconos.
+  Post-split, la CSP se configura en `avedra-backend` (headers del reverse proxy) pero
+  debe ajustarse al contenido que sirve `avedra-frontend`.
 - **S09** complementa la cadena de auditoría existente con logging de eventos de
   seguridad y alertas operacionales (logins fallidos masivos, operaciones sensibles).
 - **S11** asegura que el pipeline de CI nunca exponga secretos y que solo código con
@@ -101,9 +121,10 @@ Deben completarse dentro del primer mes de estar live.
 
 ---
 
-## N2 — Con la API REST (Fase 3 del backend_00 roadmap)
+## N2 — Con la API REST (Fase 3 del backend_00 roadmap → `avedra-backend`)
 
-No aplican antes de que exista `backend_12_fastapi_mount` completado.
+No aplican antes de que la API REST esté operativa en `avedra-backend`.
+Post-split: estos controles viven en `avedra-backend`.
 
 | ID | Nombre | Dificultad | Spec |
 | --- | --- | --- | --- |
@@ -116,28 +137,37 @@ No aplican antes de que exista `backend_12_fastapi_mount` completado.
 - **S13** activa el `jwt_handler.py` que ya existe pero hoy no se usa (diferido en B4
   del épico anterior). Debe incluir revocación y rotación de refresh tokens.
 - **S12** es rápido pero crítico: un CORS mal configurado expone la API completa
-  a cualquier origen.
+  a cualquier origen. Post-split, `avedra-backend` debe permitir solo el origen de
+  `avedra-frontend` (dominio de producción + localhost en desarrollo).
 - **S14** es independiente del rate limiting de login (S05); protege endpoints de la
   API REST contra abuso (scraping, fuerza bruta en endpoints no autenticados).
 
 ---
 
-## N3 — Con PWA / WebView2 (Fase 2 del backend_00 roadmap)
+## N3 — Con PWA / Tauri / Capacitor (Etapa B → `avedra-frontend`)
 
-No aplican antes de que exista `backend_10_nicegui_native` completado.
+No aplican antes de que `avedra-frontend` esté en producción con sus empaquetados.
+Post-split: estos controles viven en `avedra-frontend`.
 
 | ID | Nombre | Dificultad | Spec |
 | --- | --- | --- | --- |
 | S15 | PWA service worker seguro | Código-Bajo | `seguridad_web_15_pwa_sw` |
-| S16 | WebView2: origen restringido y APIs nativas | Código-Bajo | `seguridad_web_16_webview2` |
-| S17 | Actualización segura del .exe | Código-Alto | `seguridad_web_17_exe_actualizacion` |
+| S16 | Tauri: origen restringido y APIs nativas | Código-Bajo | `seguridad_web_16_tauri` |
+| S17 | Actualización segura del .exe (Tauri updater) | Código-Alto | `seguridad_web_17_exe_actualizacion` |
+| S17b | Capacitor: permisos Android y almacenamiento seguro | Código-Bajo | `seguridad_web_17b_capacitor` |
 
 ### Notas N3
 
 - **S15** impide que el service worker cachee tokens o datos sensibles, que quedarían
   expuestos si otra app del mismo origen accede al cache.
-- **S17** es lo más complejo de esta fase: el binario debe verificar la firma del
-  paquete de actualización antes de instalarlo para prevenir supply chain attacks.
+- **S16** cambia de WebView2 directo a **Tauri v2** (que usa WebView2 internamente).
+  Tauri tiene su propio modelo de permisos (`capabilities` en `tauri.conf.json`) que
+  restringe qué APIs nativas puede invocar el frontend. Configurar deny-by-default.
+- **S17** es lo más complejo: Tauri v2 incluye un updater nativo que verifica firma
+  del paquete antes de instalar. Configurar con clave pública embebida en el binario.
+- **S17b** (nuevo): Capacitor en Android necesita: permisos mínimos en `AndroidManifest.xml`,
+  almacenamiento seguro para tokens (`@capacitor/preferences` con cifrado), y validación
+  de certificado SSL (certificate pinning opcional).
 
 ---
 
@@ -152,39 +182,55 @@ No tienen fecha de "done"; son prácticas que se mantienen indefinidamente.
 
 ---
 
-## Dependencias entre specs y el backend_00 roadmap
+## Dependencias entre specs, repos y el backend_00 roadmap
 
 ```
-backend_00 Fase 1 (SQLAlchemy + Postgres)
+avedra-backend — backend_00 Fase 2 (SQLAlchemy + Postgres)
     └── S05 (throttle persistente) — necesita Postgres disponible
-    └── S07 (multi-tenant en Postgres) — verifica que ORM respeta scope
+    └── S07 (multi-tenant en Postgres) — verifica que scope funciona en SQLAlchemy
 
-backend_00 Fase 3 (FastAPI montado)
-    └── S12 CORS
-    └── S13 JWT / API keys
+avedra-backend — backend_00 Fase 3 (API REST standalone)
+    └── S12 CORS — configurar orígenes permitidos (dominio de avedra-frontend)
+    └── S13 JWT / API keys — auth para la API que avedra-frontend consume
     └── S14 rate limiting API
 
-backend_00 Fase 2 (.exe / WebView2)
-    └── S15 service worker
-    └── S16 WebView2 origen
-    └── S17 actualización segura
+avedra-frontend — Etapa B (PWA + Tauri + Capacitor)
+    └── S15 service worker seguro
+    └── S16 Tauri origen restringido
+    └── S17 actualización segura del .exe
+    └── S17b Capacitor permisos Android
+
+Cross-repo (avedra-shared-contracts)
+    └── No exponer campos internos (password_hash, audit_chain) en DTOs públicos
+    └── Validar que el OpenAPI spec no filtra modelos de infraestructura
 ```
 
 Los ítems N0 (S01–S07) son **independientes** del roadmap de backend: pueden
-completarse en paralelo a las Fases 0 y 1 del backend.
+completarse en paralelo a las Fases 0 y 1 del backend. Post-split, todos
+los N0 viven en `avedra-backend`.
 
 ---
 
 ## Orden recomendado de arranque
 
+**En `avedra-backend` (Etapa A):**
+
 1. **S01 + S02 + S04** en paralelo (pura infra/config, cero riesgo de regresión).
 2. **S06** (pip audit) antes de cualquier deploy; toma < 30 minutos.
 3. **S03 + S07** una vez que el harness SQLAlchemy esté verde (Fase 1 backend).
-4. **S05** al migrar a Postgres (depende de Fase 1 backend).
+4. **S05** al migrar a Postgres (depende de Fase 2 backend).
 5. **S08 + S09 + S10 + S11** en las primeras semanas en producción.
-6. **S12–S14** cuando la API REST esté lista.
-7. **S15–S17** cuando el empaquetado de escritorio esté listo.
-8. **S18 + S19** desde el primer día de producción, sin fin.
+6. **S12–S14** cuando la API REST esté standalone en `avedra-backend`.
+
+**En `avedra-frontend` (Etapa B, post-split):**
+
+7. **S08** (revisitar CSP para Vue — más simple que para NiceGUI/Quasar).
+8. **S15–S17** cuando PWA + Tauri estén listos.
+9. **S17b** cuando Capacitor Android esté listo.
+
+**Continuo (ambos repos):**
+
+10. **S18 + S19** desde el primer día de producción, sin fin.
 
 ---
 
@@ -195,6 +241,6 @@ completarse en paralelo a las Fases 0 y 1 del backend.
 | N0 (S01–S07) | 2–4 días | S01/S02/S04/S06 son horas; S05 es el más costoso |
 | N1 (S08–S11) | 3–6 días | S08 puede llevar más por iteración en CSP |
 | N2 (S12–S14) | 2–4 días | Depende de alcance de la API |
-| N3 (S15–S17) | 3–5 días | S17 es la parte más compleja |
+| N3 (S15–S17b) `avedra-frontend` | 4–6 días | S17 la más compleja; S17b es nuevo (Capacitor) |
 | N4 (S18–S19) | Continuo | S19 puede requerir presupuesto externo |
-| **Total** | **~10–19 días** | Distribuidos a lo largo del roadmap backend |
+| **Total** | **~11–21 días** | Distribuidos entre `avedra-backend` (N0–N2) y `avedra-frontend` (N3) |

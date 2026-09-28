@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 
 # ── 1. Apuntar la conexión global a una BD temporal (NUNCA la real) ──────────
-_DB = Path(os.environ.setdefault("ZECI_E2E_DB", str(Path(tempfile.gettempdir()) / "zeci_e2e.db")))
+_DB = Path(os.environ.setdefault("AVEDRA_E2E_DB", str(Path(tempfile.gettempdir()) / "avedra_e2e.db")))
 os.environ["DB_PATH_OVERRIDE"] = str(_DB)  # respetado por connection._resolve_db_path bajo pytest
 
 import src.infrastructure.db.connection as _conn_mod  # noqa: E402
@@ -50,9 +50,9 @@ def _sembrar_bd() -> None:
     con.close()
 
 
-if os.environ.get("ZECI_E2E_SEEDED") != "1":
+if os.environ.get("AVEDRA_E2E_SEEDED") != "1":
     _sembrar_bd()
-    os.environ["ZECI_E2E_SEEDED"] = "1"
+    os.environ["AVEDRA_E2E_SEEDED"] = "1"
 
 # ── 2. Registrar la app (igual que main(), sin init de BD real ni ui.run real) ─
 from container import Container  # noqa: E402

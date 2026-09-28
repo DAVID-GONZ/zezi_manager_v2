@@ -1,5 +1,5 @@
 """
-theme.py — ThemeManager para ZECI Manager v2.0
+theme.py — ThemeManager para AVEDRA v2.0
 ================================================
 Inyecta el CSS del design system en NiceGUI y provee
 utilidades de renderizado de iconos Material Symbols.

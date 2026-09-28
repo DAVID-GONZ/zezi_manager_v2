@@ -43,7 +43,7 @@ _log = logging.getLogger("CONTEXTO_TENANT")
 
 # Estado privado. Default None → sin scope (admin / arranque sin sesión).
 _institucion_actual: contextvars.ContextVar[int | None] = contextvars.ContextVar(
-    "zeci_institucion_actual", default=None
+    "avedra_institucion_actual", default=None
 )
 
 

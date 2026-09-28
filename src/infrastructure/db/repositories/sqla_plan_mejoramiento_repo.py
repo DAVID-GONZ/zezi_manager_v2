@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IPlanMejoramientoRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IPlanMejoramientoRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from datetime import date

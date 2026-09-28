@@ -1,7 +1,7 @@
 """
 src/interface/pages/convivencia/configuracion_convivencia.py
 ============================================================
-Vista unificada de Configuración de convivencia — ZECI Manager v2.0.
+Vista unificada de Configuración de convivencia — AVEDRA v2.0.
 
 Fusiona las anteriores páginas de Categorías y Plantillas en un layout
 side-by-side. Categorías (izquierda, flex:2) solo es visible y editable

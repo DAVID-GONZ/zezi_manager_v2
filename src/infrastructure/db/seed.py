@@ -1,5 +1,5 @@
 """
-Seed de base de datos — ZECI Manager v2.0
+Seed de base de datos — AVEDRA v2.0
 ==========================================
 
 Tres modos de uso:
@@ -216,35 +216,35 @@ _GRUPOS_DEV = [
 
 # (usuario, password, nombre_completo, email, rol)
 _USUARIOS_BASE = [
-    ("admin", "Admin2025*", "Carlos Alberto Administrador", "admin@zeci.edu.co", "admin"),
+    ("admin", "Admin2025*", "Carlos Alberto Administrador", "admin@avedra.edu.co", "admin"),
 ]
 
 _USUARIOS_DEV = [
-    ("director", "Director2025*", "María Elena Directora", "director@zeci.edu.co", "director"),
+    ("director", "Director2025*", "María Elena Directora", "director@avedra.edu.co", "director"),
     (
         "coordinador",
         "Coord2025*",
         "Jorge Iván Coordinador",
-        "coordinador@zeci.edu.co",
+        "coordinador@avedra.edu.co",
         "coordinador",
     ),
-    ("rgomez", "Pass2025*", "Ricardo Gómez Ríos", "rgomez@zeci.edu.co", "profesor"),
-    ("cmoreno", "Pass2025*", "Claudia Moreno Díaz", "cmoreno@zeci.edu.co", "profesor"),
-    ("jvargas", "Pass2025*", "Javier Vargas Peña", "jvargas@zeci.edu.co", "profesor"),
-    ("amartinez", "Pass2025*", "Ana Martínez Soto", "amartinez@zeci.edu.co", "profesor"),
-    ("pjimenez", "Pass2025*", "Paula Jiménez Lara", "pjimenez@zeci.edu.co", "profesor"),
-    ("dortiz", "Pass2025*", "Diego Ortiz Cano", "dortiz@zeci.edu.co", "profesor"),
-    ("lcastro", "Pass2025*", "Laura Castro Mejía", "lcastro@zeci.edu.co", "profesor"),
-    ("fherrera", "Pass2025*", "Felipe Herrera Gil", "fherrera@zeci.edu.co", "profesor"),
-    ("mrojas", "Pass2025*", "Marcela Rojas Niño", "mrojas@zeci.edu.co", "profesor"),
-    ("gsalazar", "Pass2025*", "Gloria Salazar Ruiz", "gsalazar@zeci.edu.co", "profesor"),
-    ("hmedina", "Pass2025*", "Héctor Medina Pardo", "hmedina@zeci.edu.co", "profesor"),
-    ("swhite", "Pass2025*", "Sarah White Jones", "swhite@zeci.edu.co", "profesor"),
-    ("ablack", "Pass2025*", "Andrés Black Mora", "ablack@zeci.edu.co", "profesor"),
-    ("nrivera", "Pass2025*", "Natalia Rivera Lozano", "nrivera@zeci.edu.co", "profesor"),
-    ("ocastano", "Pass2025*", "Oscar Castaño Vélez", "ocastano@zeci.edu.co", "profesor"),
-    ("vmolina", "Pass2025*", "Valentina Molina Cruz", "vmolina@zeci.edu.co", "profesor"),
-    ("tbeltran", "Pass2025*", "Tomás Beltrán Acosta", "tbeltran@zeci.edu.co", "profesor"),
+    ("rgomez", "Pass2025*", "Ricardo Gómez Ríos", "rgomez@avedra.edu.co", "profesor"),
+    ("cmoreno", "Pass2025*", "Claudia Moreno Díaz", "cmoreno@avedra.edu.co", "profesor"),
+    ("jvargas", "Pass2025*", "Javier Vargas Peña", "jvargas@avedra.edu.co", "profesor"),
+    ("amartinez", "Pass2025*", "Ana Martínez Soto", "amartinez@avedra.edu.co", "profesor"),
+    ("pjimenez", "Pass2025*", "Paula Jiménez Lara", "pjimenez@avedra.edu.co", "profesor"),
+    ("dortiz", "Pass2025*", "Diego Ortiz Cano", "dortiz@avedra.edu.co", "profesor"),
+    ("lcastro", "Pass2025*", "Laura Castro Mejía", "lcastro@avedra.edu.co", "profesor"),
+    ("fherrera", "Pass2025*", "Felipe Herrera Gil", "fherrera@avedra.edu.co", "profesor"),
+    ("mrojas", "Pass2025*", "Marcela Rojas Niño", "mrojas@avedra.edu.co", "profesor"),
+    ("gsalazar", "Pass2025*", "Gloria Salazar Ruiz", "gsalazar@avedra.edu.co", "profesor"),
+    ("hmedina", "Pass2025*", "Héctor Medina Pardo", "hmedina@avedra.edu.co", "profesor"),
+    ("swhite", "Pass2025*", "Sarah White Jones", "swhite@avedra.edu.co", "profesor"),
+    ("ablack", "Pass2025*", "Andrés Black Mora", "ablack@avedra.edu.co", "profesor"),
+    ("nrivera", "Pass2025*", "Natalia Rivera Lozano", "nrivera@avedra.edu.co", "profesor"),
+    ("ocastano", "Pass2025*", "Oscar Castaño Vélez", "ocastano@avedra.edu.co", "profesor"),
+    ("vmolina", "Pass2025*", "Valentina Molina Cruz", "vmolina@avedra.edu.co", "profesor"),
+    ("tbeltran", "Pass2025*", "Tomás Beltrán Acosta", "tbeltran@avedra.edu.co", "profesor"),
 ]
 
 # (profesor_usuario, [codigos_asignatura])
@@ -453,7 +453,7 @@ def _seed_configuracion(conn: Connection, anio: int) -> int:
             nombre_institucion, activo
         ) VALUES (?, ?, ?, ?, ?, 1)
         """,
-        (anio, f"{anio}-01-20", f"{anio}-12-15", 60.0, "Institución Educativa ZECI"),
+        (anio, f"{anio}-01-20", f"{anio}-12-15", 60.0, "Institución Educativa Demo"),
     )
 
 

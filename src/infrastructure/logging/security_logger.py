@@ -16,7 +16,7 @@ Configuración:
   - settings.SECURITY_LOG_MAX_BYTES: Tamaño máximo por archivo (default 10 MB).
   - settings.SECURITY_LOG_BACKUP_COUNT: Número de archivos de respaldo (default 30).
 
-El logger `zeci.security` NO propaga al root logger (evita duplicados en consola).
+El logger `avedra.security` NO propaga al root logger (evita duplicados en consola).
 """
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def _construir_handler() -> logging.Handler:
     return handler
 
 
-_logger = logging.getLogger("zeci.security")
+_logger = logging.getLogger("avedra.security")
 # Nivel explícito: sin esto, getEffectiveLevel() caminaría hasta el root
 # (WARNING por defecto) filtrando los INFO del logger. El logger gestiona
 # su propio destino (RotatingFile/Null); no necesita la jerarquía de root.
@@ -115,7 +115,7 @@ _logger.propagate = False
 
 class SecurityLogger(ISecurityLogger):
     """
-    Implementación concreta de ISecurityLogger sobre el logger `zeci.security`.
+    Implementación concreta de ISecurityLogger sobre el logger `avedra.security`.
 
     Emite registros JSON serializados mediante _JsonSecurityFormatter.
     Solo los campos en _CAMPOS_PERMITIDOS aparecen en cada registro.

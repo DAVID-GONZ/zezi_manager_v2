@@ -385,5 +385,95 @@
     "operacion": "modificar",
     "sdd": true,
     "descripcion": "Cierre de la Fase 2. Auditoria y eliminacion de todo vestigio de sqlite3 en src/. Suite completa verde con --backend=sqlite (>=2590 tests). Implementa --backend=postgres en conftest con skip automatico si DATABASE_URL no esta definida o la base no es accesible (Docker no disponible). Triggers condicionales por dialecto. Limpieza final: connection.py, queries.py y sqlite_*_repo.py eliminados. Absorbe backend_03_postgres_test_infra, reubicado aqui por la revision del 2026-09-09."
+  },
+  {
+    "id": "rebrand_01_strings_ui",
+    "nombre": "Strings visibles al usuario: ZECI Manager a AVEDRA",
+    "status": "done",
+    "destino_v2": "config.py, main.py, src/interface/pages/login.py, src/interface/design/theme.py, src/infrastructure/exporters/observador_pdf.py, src/infrastructure/exporters/observador_excel.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Paso 1 del rebrand. Cambia los strings que el usuario final ve: APP_NAME en config.py de ZECI Manager a AVEDRA, pie de pagina de documentos exportados (observador_pdf.py y observador_excel.py) de Sistema ZECI Manager a Sistema AVEDRA, y docstrings de main.py, login.py y theme.py. Sin cambio de logica."
+  },
+  {
+    "id": "rebrand_02_loggers_internos",
+    "nombre": "Loggers, ContextVars, clases base y docstrings internos: ZECI a AVEDRA",
+    "status": "done",
+    "destino_v2": "src/infrastructure/logging/security_logger.py, src/domain/policies/alerta_ip.py, src/infrastructure/context/solo_lectura.py, src/infrastructure/context/contexto_tenant.py, src/infrastructure/context/contexto_actor.py, src/domain/models/base.py, src/domain/exceptions.py, src/domain/models/dtos.py, src/domain/models/nivelacion.py, src/domain/models/clock.py, src/infrastructure/db/schema.py, src/infrastructure/db/queries.py, src/infrastructure/db/connection.py, src/infrastructure/db/repositories/base.py, src/infrastructure/db/repositories/sqla_acudiente_repo.py, src/infrastructure/db/repositories/sqla_alerta_repo.py, src/infrastructure/db/repositories/sqla_asignacion_repo.py, src/infrastructure/db/repositories/sqla_asistencia_repo.py, src/infrastructure/db/repositories/sqla_cierre_repo.py, src/infrastructure/db/repositories/sqla_configuracion_repo.py, src/infrastructure/db/repositories/sqla_estadisticos_repo.py, src/infrastructure/db/repositories/sqla_estudiante_repo.py, src/infrastructure/db/repositories/sqla_habilitacion_repo.py, src/infrastructure/db/repositories/sqla_institucion_repo.py, src/infrastructure/db/repositories/sqla_nivelacion_repo.py, src/infrastructure/db/repositories/sqla_periodo_repo.py, src/infrastructure/db/repositories/sqla_plan_mejoramiento_repo.py, src/infrastructure/db/repositories/sqla_preferencias_repo.py, src/infrastructure/db/repositories/sqla_siee_repo.py, src/infrastructure/db/repositories/sqla_usuario_repo.py, src/interface/pages/academico/horarios_hub.py, src/interface/pages/academico/estudiantes.py, src/interface/pages/academico/registro_asistencia.py, src/interface/pages/convivencia/categorias.py, src/interface/pages/convivencia/comportamiento.py, src/interface/pages/convivencia/configuracion_convivencia.py, src/interface/pages/convivencia/notas_convivencia.py, src/interface/pages/convivencia/observaciones.py, src/interface/pages/convivencia/plantillas.py, src/interface/pages/convivencia/seguimiento.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Paso 2 del rebrand. Renombra el logger zeci.security a avedra.security (2 archivos), las 3 ContextVars zeci_* a avedra_* (3 archivos), la clase base ZeciModel a AvedraModel y ZeciError a AvedraError (2 archivos con impacto en herencia), y ~35 docstrings de modulo que dicen ZECI Manager v2.0. Al cerrar, grep -r zeci src/ solo retorna seed.py. QUIEBRA tests hasta que se ejecute rebrand_04."
+  },
+  {
+    "id": "rebrand_03_seed_data",
+    "nombre": "Seed data: emails @zeci.edu.co y nombre de institucion demo",
+    "status": "done",
+    "destino_v2": "src/infrastructure/db/seed.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Paso 3 del rebrand. Cambia los 17 emails de usuarios de ejemplo de @zeci.edu.co a @avedra.edu.co y el nombre de institucion en configuracion de anio de Institucion Educativa ZECI a Institucion Educativa Demo (AVEDRA es la marca del software, no el nombre de un colegio). Solo afecta bases nuevas. Al cerrar, grep -ri zeci src/ retorna 0."
+  },
+  {
+    "id": "rebrand_04_tests",
+    "nombre": "Tests: imports AvedraModel/AvedraError, logger avedra.security, fixtures",
+    "status": "done",
+    "destino_v2": "tests/unit/domain/test_model_config.py, tests/unit/domain/test_exceptions.py, tests/unit/infrastructure/test_auditoria_repo.py, tests/unit/infrastructure/test_security_logger.py, tests/unit/domain/test_alerta_ip.py, tests/unit/domain/test_configuracion_usuario_auditoria.py, tests/unit/infrastructure/test_exporters.py, tests/unit/infrastructure/exporters/test_observador_pdf.py, tests/integration/test_institucion_repo.py, tests/unit/services/test_convivencia_service.py, tests/e2e/e2e_app.py, tests/conftest.py",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Paso 4 del rebrand. Restaura la suite verde tras rebrand_02: actualiza imports de ZeciModel a AvedraModel (~20 ocurrencias en test_model_config.py), ZeciError a AvedraError (~15 en test_exceptions.py), logger zeci.security a avedra.security (3 archivos), emails @zeci.edu.co a @avedra.edu.co en fixtures, nombre de institucion ZECI a Demo en asserts, y variables de entorno ZECI_E2E_* a AVEDRA_E2E_* en e2e_app.py. DEBE ejecutarse inmediatamente despues de rebrand_02 en el mismo commit."
+  },
+  {
+    "id": "rebrand_05_pyproject",
+    "nombre": "pyproject.toml: name y description a AVEDRA",
+    "status": "done",
+    "destino_v2": "pyproject.toml",
+    "operacion": "modificar",
+    "sdd": true,
+    "descripcion": "Paso 5 del rebrand. Cambia [project].name de zeci-manager-v2 a avedra y actualiza la description con el nombre completo AVEDRA. Es el cierre del rebrand antes del split de repos (Paso 6 se absorbe en repo_split_00_pasos). Al cerrar, grep -ri zeci en todo el proyecto retorna 0 y init.py esta verde."
+  },
+  {
+    "id": "split_01_adapt_backend",
+    "nombre": "Adaptar avedra-backend: stub FastAPI, limpiar NiceGUI de pyproject/init/container",
+    "status": "spec_ready",
+    "destino_v2": "avedra-backend: app/, pyproject.toml, scripts/init.py, container.py",
+    "operacion": "crear+modificar",
+    "sdd": false,
+    "descripcion": "Fase 2.3-2.6 del repo split. Tras git filter-repo, el backend aun referencia NiceGUI. Crea stub FastAPI (app/main.py factory, deps.py, routes/), limpia pyproject.toml de dependencias NiceGUI y agrega fastapi+uvicorn, adapta init.py eliminando chequeos de design system, limpia container.py de registros de interfaz. Criterio: 0 imports de src.interface, tests verdes."
+  },
+  {
+    "id": "split_02_shared_contracts",
+    "nombre": "Extraer OpenAPI stub y DTOs a avedra-shared-contracts",
+    "status": "spec_ready",
+    "destino_v2": "avedra-shared-contracts: openapi/, dto/ | avedra-backend: scripts/export_schemas.py",
+    "operacion": "crear",
+    "sdd": false,
+    "descripcion": "Fase 3.2-3.3 del repo split. Crea OpenAPI 3.1 stub con endpoints planificados (marcados x-status: planned) y script export_schemas.py que recorre src/domain/models/ y exporta cada modelo Pydantic como JSON Schema. Los design tokens se copian manualmente (paso 3.4)."
+  },
+  {
+    "id": "split_03_agents_backend",
+    "nombre": "Agentes Claude y CLAUDE.md para avedra-backend + avedra-shared-contracts",
+    "status": "spec_ready",
+    "destino_v2": "avedra-backend: .claude/, CLAUDE.md, scripts/generar_estructura.py | avedra-shared-contracts: CLAUDE.md",
+    "operacion": "crear+modificar",
+    "sdd": false,
+    "descripcion": "Fase 5.1+5.5+5.6 del repo split. Crea .claude/agents/ (leader, implementer, reviewer, spec_author) adaptados al contexto backend-only: sin reglas de design system, con regla de contrato API, scope src/+app/. Adapta generar_estructura.py (sin NOISE_DIRS de roadmaps, con app/). Crea CLAUDE.md para shared-contracts (repo de solo lectura, flujo backend->contracts->frontend)."
+  },
+  {
+    "id": "split_04_agents_frontend",
+    "nombre": "Agentes, skills, referencias y anti AI-slop para avedra-frontend",
+    "status": "spec_ready",
+    "destino_v2": "avedra-frontend: .claude/, CLAUDE.md",
+    "operacion": "crear",
+    "sdd": false,
+    "descripcion": "Fase 5.2-5.4 del repo split. 17 archivos: 5 agents (leader, implementer, reviewer, spec_author, design_reviewer), 5 skills (/design-check, /deslop-ui, /component-audit, /a11y-check, /migrate-page), 3 references (vue-patterns, composable-catalog, design-system-rules), settings.json y CLAUDE.md. Incluye reglas anti AI-slop (7 categorias) en reviewer y protocolo legacy-to-Vue en migrate-page."
+  },
+  {
+    "id": "split_05_cicd",
+    "nombre": "CI/CD cruzado: GitHub Actions para contratos entre repos",
+    "status": "spec_ready",
+    "destino_v2": "avedra-backend: .github/workflows/publish-contract.yml, scripts/check_contract_drift.sh | avedra-frontend: .github/workflows/validate-contract.yml",
+    "operacion": "crear",
+    "sdd": false,
+    "descripcion": "Fase 6 del repo split. Crea publish-contract.yml (backend: genera OpenAPI+DTOs y abre PR en shared-contracts cuando cambian routes/ o models/), validate-contract.yml (frontend: regenera cliente API y crea issue si typecheck falla), y check_contract_drift.sh (compara OpenAPI actual vs. shared-contracts, exit 1 si difieren). Requiere secret CONTRACTS_PAT en ambos repos."
   }
 ]

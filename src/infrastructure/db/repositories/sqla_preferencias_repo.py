@@ -1,4 +1,4 @@
-"""Implementación SQLAlchemy Core de IPreferenciasRepository — ZECI Manager v2.0."""
+"""Implementación SQLAlchemy Core de IPreferenciasRepository — AVEDRA v2.0."""
 from __future__ import annotations
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
