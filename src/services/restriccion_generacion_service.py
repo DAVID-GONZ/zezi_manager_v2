@@ -30,8 +30,8 @@ from src.domain.models.infraestructura import (
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.contexto_tenant import institucion_actual
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.contexto_tenant import institucion_actual
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class RestriccionGeneracionService:
@@ -240,7 +240,7 @@ class RestriccionGeneracionService:
 
     def listar_franjas_reunion(self) -> list[FranjaReunion]:
         """Lista las franjas de reunión del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_franjas_reunion(institucion_id=institucion_actual() or "*")
 
@@ -252,7 +252,7 @@ class RestriccionGeneracionService:
     def crear_franja_reunion(self, f: FranjaReunion) -> FranjaReunion:
         """Crea una franja de reunión inyectando el tenant si falta."""
         if f.institucion_id is None:
-            from src.services.contexto_tenant import institucion_actual
+            from src.infrastructure.context.contexto_tenant import institucion_actual
 
             inst_id = institucion_actual()
             if inst_id is None:

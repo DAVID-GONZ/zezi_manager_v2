@@ -23,7 +23,7 @@ from src.domain.models.infraestructura import Asignatura, Grupo, Jornada
 from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
-from src.services.contexto_tenant import usar_institucion
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.infraestructura_service import InfraestructuraService
 
 # =============================================================================

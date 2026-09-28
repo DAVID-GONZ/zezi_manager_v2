@@ -1,4 +1,5 @@
 from .acudiente_repo import IAcudienteRepository
+from .portal_provider import PortalContext, PortalProvider, SubItem
 from .alerta_repo import IAlertaRepository
 from .asignacion_repo import IAsignacionRepository
 from .asistencia_repo import IAsistenciaRepository
@@ -21,6 +22,9 @@ from .usuario_repo import IUsuarioRepository
 
 __all__ = [
     "IAcudienteRepository",
+    "PortalContext",
+    "PortalProvider",
+    "SubItem",
     "IAlertaRepository",
     "IAsignacionRepository",
     "IAsistenciaRepository",

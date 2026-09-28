@@ -237,7 +237,7 @@ def _modulo_visible(item: dict) -> bool:
         if m is None:
             return True
         from container import Container
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         inst_id = institucion_actual()
         if inst_id is None:

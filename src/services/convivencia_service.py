@@ -50,7 +50,7 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.convivencia_repo import IConvivenciaRepository
 from src.domain.ports.service_ports import IExporterService
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 if TYPE_CHECKING:
     from src.services.asignacion_service import AsignacionService
@@ -122,7 +122,7 @@ class ConvivenciaService:
         """Resuelve tenant: explícito â†’ sesión â†’ id_por_defecto â†’ None."""
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -185,7 +185,7 @@ class ConvivenciaService:
         if self._preferencias_svc_provider is None:
             return PreferenciasDTO()
         try:
-            from src.services.contexto_tenant import institucion_actual
+            from src.infrastructure.context.contexto_tenant import institucion_actual
 
             inst_id = institucion_actual()
             if inst_id is None:
@@ -215,7 +215,7 @@ class ConvivenciaService:
         (ya aparecen como observación pública y duplicarlos no aporta valor).
         """
         from src.domain.models.convivencia import TIPO_REGISTRO_DISPLAY
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         prefs = self._get_prefs_convivencia()
         tipos = set(prefs.registros_boletin_tipos)
@@ -277,7 +277,7 @@ class ConvivenciaService:
         Orden: activas A-Z â†’ inactivas â†’ "Sin categoría".
         Items incluyen fecha, autor y texto (para boletín de periodo).
         """
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         categorias = self._repo.listar_categorias(institucion_id=institucion_actual() or "*", solo_activas=False)
         cat_map = {c.id: c for c in categorias if c.id is not None}
@@ -399,7 +399,7 @@ class ConvivenciaService:
             concepto = ultimo_con_nota.observacion
 
         # â”€â”€ Observaciones públicas agrupadas por categoría â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         _scope = institucion_actual() or "*"
         categorias = self._repo.listar_categorias(institucion_id=_scope, solo_activas=False)
@@ -492,7 +492,7 @@ class ConvivenciaService:
         if cfg is None or not cfg.activa:
             return
 
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         conteo = self._repo.contar_registros(filtro, institucion_id=institucion_actual() or "*")
         if conteo < cfg.umbral:
@@ -756,7 +756,7 @@ class ConvivenciaService:
         grupo ni estudiante) se acota por la institución del scope (director â†’
         su institución; admin / arranque â†’ None = todas) vía join a `grupos`.
         """
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_registros(filtro, institucion_id=institucion_actual() or "*")
 
@@ -996,7 +996,7 @@ class ConvivenciaService:
         estudiantes = self._estudiante_svc_provider().listar_por_grupo(grupo_id)
 
         # Registros negativos por estudiante (1 consulta).
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         registros = self._repo.listar_registros(
             FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id, por_pagina=None),
@@ -1081,7 +1081,7 @@ class ConvivenciaService:
             c.estudiante_id: c for c in self.listar_conceptos_grupo(grupo_id, periodo_id)
         }
 
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         _scope = institucion_actual() or "*"
         tipos_situacion = self._repo.listar_tipos_situacion(institucion_id=_scope, solo_activas=False)
@@ -1323,7 +1323,7 @@ class ConvivenciaService:
 
     def listar_tipos_situacion(self, solo_activas: bool = True) -> list[TipoSituacion]:
         """Retorna los tipos de situación activos del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_tipos_situacion(
             solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
@@ -1418,7 +1418,7 @@ class ConvivenciaService:
 
     def listar_medidas_pedagogicas(self, solo_activas: bool = True) -> list[MedidaPedagogica]:
         """Retorna las medidas pedagógicas del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_medidas(
             solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
@@ -1514,7 +1514,7 @@ class ConvivenciaService:
         solo_activas: bool = True,
     ) -> list[CategoriaObservacion]:
         """Retorna el catálogo de categorías del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_categorias(
             solo_activas=solo_activas, institucion_id=institucion_actual() or "*"
@@ -1594,7 +1594,7 @@ class ConvivenciaService:
         self, categoria_id: int | None = None
     ) -> list[PlantillaObservacion]:
         """Retorna TODAS las plantillas (activas e inactivas), opcionalmente filtradas por categoría."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas(
             categoria_id=categoria_id, solo_activas=False, institucion_id=institucion_actual() or "*"
@@ -1688,7 +1688,7 @@ class ConvivenciaService:
 
     def listar_plantillas(self, categoria_id: int | None = None) -> list[PlantillaObservacion]:
         """Retorna las plantillas activas del tenant activo, filtradas por categoría opcional."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas(
             categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual() or "*"
@@ -1806,7 +1806,7 @@ class ConvivenciaService:
         Retorna las plantillas activas más usadas, opcionalmente filtradas
         por categoría. Limitado a `limite` resultados (default 5).
         """
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas(
             categoria_id=categoria_id, solo_activas=True, institucion_id=institucion_actual() or "*"
@@ -2042,7 +2042,7 @@ class ConvivenciaService:
         alertas_activas: list[str] = []
         if self._alerta_repo is not None:
             try:
-                from src.services.contexto_tenant import institucion_actual as _ia
+                from src.infrastructure.context.contexto_tenant import institucion_actual as _ia
 
                 _scope = _ia() or "*"
                 filtro_alertas = FiltroAlertasDTO(
@@ -2160,7 +2160,7 @@ class ConvivenciaService:
         periodo_nombre_map: dict[int, str] = {p.id: p.nombre for p in periodos}
 
         # â”€â”€ Catálogos (lookup sin N+1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         _scope = institucion_actual() or "*"
         tipos_sit_map: dict[int, str] = {

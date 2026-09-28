@@ -83,7 +83,7 @@ class AuditoriaService:
         """Registra un evento de sesión (delegado al repositorio)."""
         if evento.institucion_id is None:
             try:
-                from src.services.contexto_tenant import institucion_actual
+                from src.infrastructure.context.contexto_tenant import institucion_actual
 
                 evento = evento.model_copy(update={"institucion_id": institucion_actual()})
             except Exception:

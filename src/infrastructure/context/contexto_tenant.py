@@ -87,7 +87,7 @@ def verificar_pertenencia(institucion_id_objeto: int | None) -> None:
                 MOTIVO_CROSS_TENANT,
                 severidad_de,
             )
-            from src.services.contexto_actor import actor_actual, actor_ip, actor_username
+            from src.infrastructure.context.contexto_actor import actor_actual, actor_ip, actor_username
             uid = actor_actual()
             # obs_07 T7: añadir motivo y derivar severidad (CRITICA para cross-tenant).
             Container.auditoria_service().registrar_evento(

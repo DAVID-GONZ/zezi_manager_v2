@@ -20,7 +20,7 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.horario_service import HorarioService
-from src.services.solo_lectura import OperacionSoloLecturaError, activar_solo_lectura
+from src.infrastructure.context.solo_lectura import OperacionSoloLecturaError, activar_solo_lectura
 
 # ===========================================================================
 # Fake repos

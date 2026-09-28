@@ -160,7 +160,7 @@ pueden usar este módulo — importaría interfaz desde servicios. Construyen
 
 ```python
 # solo_lectura.verificar_escritura() y contexto_tenant, en vez de str(uid or "anon")
-from src.services.contexto_actor import actor_actual, actor_ip, actor_username
+from src.infrastructure.context.contexto_actor import actor_actual, actor_ip, actor_username
 
 uid = actor_actual()
 EventoSesion(

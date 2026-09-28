@@ -551,7 +551,7 @@ class GeneradorHorarioService:
         # es el repo (sin scope); `self._infraestructura.listar_salas()` ya viene
         # acotado por institución, así que se acotan los grupos al mismo tenant
         # para que `sala_id` resuelva contra el mismo conjunto de salas.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         sala_grupo_nombre: dict[int, str] = {}
         # T2 (horario_01): aula base por grupo, para que `ocupado_sala` la

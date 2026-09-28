@@ -16,7 +16,7 @@ import contextlib
 import pytest
 
 from src.domain.models.usuario import FiltroUsuariosDTO, NuevoUsuarioDTO
-from src.services.solo_lectura import (
+from src.infrastructure.context.solo_lectura import (
     OperacionSoloLecturaError,
     activar_solo_lectura,
     es_solo_lectura,
@@ -170,8 +170,8 @@ def test_denegacion_escritura_con_actor_activo_lleva_usuario_id_y_severidad_adve
     from unittest.mock import MagicMock
 
     from src.domain.models.auditoria import EventoSesion, SeveridadEvento, TipoEventoSesion
-    from src.services.contexto_actor import usar_actor
-    from src.services.solo_lectura import activar_solo_lectura, verificar_escritura
+    from src.infrastructure.context.contexto_actor import usar_actor
+    from src.infrastructure.context.solo_lectura import activar_solo_lectura, verificar_escritura
 
     capturado: list[EventoSesion] = []
 
@@ -208,8 +208,8 @@ def test_denegacion_cross_tenant_con_actor_activo_lleva_usuario_id_y_severidad_c
     from unittest.mock import MagicMock
 
     from src.domain.models.auditoria import EventoSesion, SeveridadEvento, TipoEventoSesion
-    from src.services.contexto_actor import usar_actor
-    from src.services.contexto_tenant import usar_institucion, verificar_pertenencia
+    from src.infrastructure.context.contexto_actor import usar_actor
+    from src.infrastructure.context.contexto_tenant import usar_institucion, verificar_pertenencia
 
     capturado: list[EventoSesion] = []
 

@@ -576,7 +576,7 @@ class TestTrasladar:
         # Grupo destino de OTRA institución → rechazado al verificar pertenencia.
         # El rechazo es una OperacionFueraDeInstitucionError (PermissionError),
         # no un ValueError: es una violación de aislamiento tenant, no de validación.
-        from src.services.contexto_tenant import (
+        from src.infrastructure.context.contexto_tenant import (
             OperacionFueraDeInstitucionError,
             usar_institucion,
         )

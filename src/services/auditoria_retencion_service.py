@@ -315,7 +315,7 @@ class AuditoriaRetencionService:
                 severidad=SeveridadEvento.ADVERTENCIA,
             )
             try:
-                from src.services.contexto_tenant import institucion_actual
+                from src.infrastructure.context.contexto_tenant import institucion_actual
                 inst_id = institucion_actual()
                 if inst_id is not None:
                     evento = evento.model_copy(update={"institucion_id": inst_id})

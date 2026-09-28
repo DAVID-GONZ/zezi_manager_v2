@@ -139,7 +139,7 @@ class SessionContext:
     @staticmethod
     def _sincronizar_solo_lectura(valor: bool) -> None:
         """Refleja el flag de impersonación en la capa de servicios."""
-        from src.services.solo_lectura import activar_solo_lectura
+        from src.infrastructure.context.solo_lectura import activar_solo_lectura
 
         activar_solo_lectura(valor)
 
@@ -154,7 +154,7 @@ class SessionContext:
         obs_06: ahora propaga también username e ip para que auditar_cambio
         pueda resolver la identidad completa sin parámetros explícitos.
         """
-        from src.services.contexto_actor import activar_actor
+        from src.infrastructure.context.contexto_actor import activar_actor
 
         activar_actor(actor_id, username, ip)
 
@@ -169,7 +169,7 @@ class SessionContext:
         efectivo es el del objetivo (no admin), así que queda scopeado a la
         institución del objetivo; al salir vuelve a None (admin real).
         """
-        from src.services.contexto_tenant import activar_institucion
+        from src.infrastructure.context.contexto_tenant import activar_institucion
 
         scope = None if rol == "admin" else institucion_id
         activar_institucion(scope)
@@ -347,7 +347,7 @@ class SessionContext:
             from container import Container
             from src.domain.models.auditoria import TipoEventoSesion
             from src.interface.context.eventos_sesion import construir_evento
-            from src.services.contexto_actor import actor_username
+            from src.infrastructure.context.contexto_actor import actor_username
 
             tipo = TipoEventoSesion.VER_COMO_INICIO if inicio else TipoEventoSesion.VER_COMO_FIN
             verbo = "inicia" if inicio else "finaliza"

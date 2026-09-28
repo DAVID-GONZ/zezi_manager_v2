@@ -228,7 +228,7 @@ def test_registrar_comportamiento_tipo_obligatorio_sin_id_falla(repo, db):
 
     from src.domain.models.convivencia import NuevoRegistroComportamientoDTO
     from src.domain.models.preferencia_institucion import PreferenciasDTO
-    from src.services.contexto_tenant import usar_institucion
+    from src.infrastructure.context.contexto_tenant import usar_institucion
     from src.services.convivencia_service import ConvivenciaService
 
     prefs_dto = PreferenciasDTO(tipo_situacion_obligatorio=True)

@@ -357,7 +357,7 @@ class TestScopeContextvar:
     """`get_activa()` sin argumento resuelve el tenant del contextvar."""
 
     def test_get_activa_resuelve_institucion_del_contextvar(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         svc, _ = _make_service()
         # Año activo en institución 1 y en institución 2.
@@ -373,7 +373,7 @@ class TestScopeContextvar:
         assert activa.institucion_id == 2
 
     def test_id_explicito_tiene_prioridad_sobre_contextvar(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         svc, _ = _make_service()
         a1 = svc.crear_anio(NuevaConfiguracionAnioDTO(anio=2025, institucion_id=1))

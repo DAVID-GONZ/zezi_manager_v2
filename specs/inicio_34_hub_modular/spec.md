@@ -162,7 +162,7 @@ def _modulo_permitido(ruta: str) -> bool:
     try:
         from container import Container
         from src.domain.modulos import modulo_de_ruta
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
         m = modulo_de_ruta(ruta)
         if m is None:
             return True

@@ -20,7 +20,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 
-from src.domain.portal_provider import PortalContext, PortalProvider, SubItem
+from src.domain.ports.portal_provider import PortalContext, PortalProvider, SubItem
 
 logger = logging.getLogger("PORTAL.RESUMEN")
 

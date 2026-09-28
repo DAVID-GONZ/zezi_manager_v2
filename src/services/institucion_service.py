@@ -19,7 +19,7 @@ from src.domain.models.institucion import (
 )
 from src.domain.ports.institucion_repo import IInstitucionRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class InstitucionService:

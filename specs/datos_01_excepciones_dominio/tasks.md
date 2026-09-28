@@ -47,7 +47,7 @@ servicio**, no solo al final (design §6.4).
       `OperacionSoloLecturaError` de `src.domain.exceptions` y re-exportarla
       (**sin redefinirla ni subclasearla**, design §6.2). `__all__`, el mensaje por
       defecto y el cuerpo de `verificar_escritura()` / `requiere_escritura` no cambian.
-  Verifica: `.venv/Scripts/python.exe -c "from src.domain.exceptions import OperacionSoloLecturaError as A;from src.services.solo_lectura import OperacionSoloLecturaError as B;assert A is B;assert issubclass(A,PermissionError);print('OK — misma clase, sigue PermissionError')"`
+  Verifica: `.venv/Scripts/python.exe -c "from src.domain.exceptions import OperacionSoloLecturaError as A;from src.infrastructure.context.solo_lectura import OperacionSoloLecturaError as B;assert A is B;assert issubclass(A,PermissionError);print('OK — misma clase, sigue PermissionError')"`
   Produce: `src/services/solo_lectura.py` modificado
 
 - [ ] **T4**: Modificar `src/services/contexto_tenant.py` para importar
@@ -55,7 +55,7 @@ servicio**, no solo al final (design §6.4).
       `verificar_pertenencia()` añade `detalles={"institucion_esperada": scope}` y
       **no** incluye el `institucion_id` del objeto ajeno (R12). El resto del módulo
       no cambia.
-  Verifica: `.venv/Scripts/python.exe -c "from src.domain.exceptions import OperacionFueraDeInstitucionError as A;from src.services.contexto_tenant import OperacionFueraDeInstitucionError as B;assert A is B;assert issubclass(A,PermissionError);print('OK — misma clase, sigue PermissionError')"`
+  Verifica: `.venv/Scripts/python.exe -c "from src.domain.exceptions import OperacionFueraDeInstitucionError as A;from src.infrastructure.context.contexto_tenant import OperacionFueraDeInstitucionError as B;assert A is B;assert issubclass(A,PermissionError);print('OK — misma clase, sigue PermissionError')"`
   Produce: `src/services/contexto_tenant.py` modificado
 
 - [ ] **T5**: Confirmar que los dos mecanismos de permiso no regresionan: la suite de

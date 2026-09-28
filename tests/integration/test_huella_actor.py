@@ -13,8 +13,8 @@ from src.infrastructure.db.repositories.sqla_auditoria_repo import (
     SqlaAuditoriaRepository,
 )
 from src.infrastructure.db.seed import _fast_hasher, seed_base
-from src.services.contexto_actor import usar_actor
-from src.services.contexto_tenant import usar_institucion
+from src.infrastructure.context.contexto_actor import usar_actor
+from src.infrastructure.context.contexto_tenant import usar_institucion
 
 
 @pytest.fixture()
@@ -107,7 +107,7 @@ def test_sin_contexto_actor_usuario_id_es_none(db):
     """Sin contexto de actor, usuario_id en audit_log debe ser None."""
     from src.domain.models.auditoria import AccionCambio
     from src.services.auditoria_helpers import auditar_cambio
-    from src.services.contexto_actor import limpiar_actor
+    from src.infrastructure.context.contexto_actor import limpiar_actor
 
     repo = SqlaAuditoriaRepository(conn=db)
 

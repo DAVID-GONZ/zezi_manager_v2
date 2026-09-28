@@ -14,7 +14,7 @@ import logging
 from nicegui import ui
 
 from src.domain.modulos import Modulo, modulos_con_pagina
-from src.domain.portal_provider import SubItem
+from src.domain.ports.portal_provider import SubItem
 from src.interface.context.session_context import SessionContext
 from src.interface.design.components.buttons import btn_secondary
 from src.interface.design.components.followup_panel import FollowupItem, followup_panel

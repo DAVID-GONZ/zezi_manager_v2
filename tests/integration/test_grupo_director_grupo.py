@@ -15,7 +15,7 @@ from src.domain.models.infraestructura import Grupo, Jornada
 from src.infrastructure.db.repositories.sqla_infraestructura_repo import (
     SqlaInfraestructuraRepository,
 )
-from src.services.contexto_tenant import usar_institucion
+from src.infrastructure.context.contexto_tenant import usar_institucion
 
 
 def _crear_usuario(conn, usuario: str) -> int:

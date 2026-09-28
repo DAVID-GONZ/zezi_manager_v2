@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.domain.portal_provider import PortalContext, SubItem
+from src.domain.ports.portal_provider import PortalContext, SubItem
 
 logger = logging.getLogger("PORTAL.CONVIVENCIA")
 

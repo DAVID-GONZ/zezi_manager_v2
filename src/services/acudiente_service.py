@@ -26,7 +26,7 @@ class AcudienteService:
         """Resuelve tenant: explícito → sesión → id_por_defecto → None."""
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -40,13 +40,13 @@ class AcudienteService:
 
     def listar(self, activos_solo: bool = False) -> list:
         """Retorna todos los acudientes del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar(activos_solo=activos_solo, institucion_id=institucion_actual())
 
     def buscar_por_documento(self, numero: str):
         """Busca un acudiente por documento dentro del tenant activo."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.buscar_por_documento(numero, institucion_id=institucion_actual())
 

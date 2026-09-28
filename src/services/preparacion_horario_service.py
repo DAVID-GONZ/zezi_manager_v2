@@ -139,7 +139,7 @@ class PreparacionHorarioService:
         # exigen un TenantScope explícito, así que se normaliza a "*"
         # (equivalente a "sin filtrar", coherente con el resto del código
         # multi-tenant — ver generador_horario_service).
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual() or "*"
 

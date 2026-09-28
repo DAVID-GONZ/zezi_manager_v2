@@ -20,7 +20,7 @@ from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.configuracion_service import ConfiguracionService
-from src.services.contexto_tenant import (
+from src.infrastructure.context.contexto_tenant import (
     OperacionFueraDeInstitucionError,
     activar_institucion,
     usar_institucion,

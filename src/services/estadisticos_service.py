@@ -23,7 +23,7 @@ from src.domain.models.configuracion import NivelDesempeno
 from src.domain.models.dtos import DashboardMetricsDTO
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.domain.ports.estadisticos_repo import IEstadisticosRepository
-from src.services.contexto_tenant import institucion_actual
+from src.infrastructure.context.contexto_tenant import institucion_actual
 
 logger = logging.getLogger("ESTADISTICOS_SERVICE")
 
@@ -227,7 +227,7 @@ class EstadisticosService:
         # los grupos del periodo, así que sin filtro mezclaría instituciones en
         # el dashboard del directivo. None (admin / arranque) → ve todo;
         # institución → solo sus grupos vía listar_grupos(institucion_id=...).
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         filas: list[dict] = []
         for g in self._infra_repo.listar_grupos(institucion_id=institucion_actual() or "*"):

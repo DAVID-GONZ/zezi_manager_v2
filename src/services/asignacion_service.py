@@ -26,7 +26,7 @@ from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 # =============================================================================
 # DTOs de resultado (consumidos por las vistas — se re-exportan desde aquí)
@@ -223,7 +223,7 @@ class AsignacionService:
         """
         if self._infra_repo is None:
             return 0
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         grupos = self._infra_repo.listar_grupos(
             grado=grado, institucion_id=institucion_actual() or "*"
@@ -641,7 +641,7 @@ class AsignacionService:
         """
         if filtro.institucion_id is not None:
             return filtro
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return filtro.model_copy(update={"institucion_id": institucion_actual()})
 
@@ -662,7 +662,7 @@ class AsignacionService:
         Scope multi-tenant (paso_31): None (admin / arranque) → sin filtro;
         director → su institución.
         """
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_por_docente(usuario_id, institucion_actual() or "*", periodo_id)
 

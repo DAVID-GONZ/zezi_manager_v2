@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.services.contexto_tenant import (
+from src.infrastructure.context.contexto_tenant import (
     OperacionFueraDeInstitucionError,
     activar_institucion,
     institucion_actual,

@@ -211,7 +211,7 @@ svc = ConfiguracionService(repo)
 # R5: sin institucion retorna defaults
 config_sin_inst = ConfiguracionAnio(id=1, anio=2025, institucion_id=None)
 repo.get_by_id.return_value = config_sin_inst
-with patch('src.services.contexto_tenant.verificar_pertenencia'):
+with patch('src.infrastructure.context.contexto_tenant.verificar_pertenencia'):
     info = svc.get_info_institucional(1)
 assert info.nombre_institucion == 'Institución Educativa'
 assert info.dane_code is None

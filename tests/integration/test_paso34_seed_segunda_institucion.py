@@ -30,7 +30,7 @@ from src.infrastructure.db.repositories.sqla_usuario_repo import (
     SqlaUsuarioRepository,
 )
 from src.infrastructure.db.seed import _fast_hasher
-from src.services.contexto_tenant import usar_institucion
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
 from src.services.infraestructura_service import InfraestructuraService
 

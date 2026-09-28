@@ -40,8 +40,8 @@ def auditar_cambio(
     if repo is None:
         return
     try:
-        from src.services.contexto_actor import actor_actual, actor_ip, actor_username
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_actor import actor_actual, actor_ip, actor_username
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         uid = usuario_id if usuario_id is not None else actor_actual()
         iid = institucion_id if institucion_id is not None else institucion_actual()

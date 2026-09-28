@@ -520,13 +520,13 @@ class _SpyResumenRepo(FakeUsuarioRepo):
 class TestAutoScopeInstitucion:
     @pytest.fixture(autouse=True)
     def _reset_scope(self):
-        from src.services.contexto_tenant import activar_institucion
+        from src.infrastructure.context.contexto_tenant import activar_institucion
         activar_institucion(None)
         yield
         activar_institucion(None)
 
     def test_listar_resumenes_auto_scopea_director(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         repo = _SpyResumenRepo()
         svc = UsuarioService(repo)
@@ -542,7 +542,7 @@ class TestAutoScopeInstitucion:
         assert repo.ultimo_filtro.institucion_id is None
 
     def test_filtro_explicito_admin_no_se_pisa(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         repo = _SpyResumenRepo()
         svc = UsuarioService(repo)
@@ -552,7 +552,7 @@ class TestAutoScopeInstitucion:
         assert repo.ultimo_filtro.institucion_id == 3
 
     def test_solo_activos_se_conserva_al_auto_scopear(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         repo = _SpyResumenRepo()
         svc = UsuarioService(repo)
@@ -562,7 +562,7 @@ class TestAutoScopeInstitucion:
         assert repo.ultimo_filtro.solo_activos is False
 
     def test_listar_para_ver_como_auto_scopea(self):
-        from src.services.contexto_tenant import usar_institucion
+        from src.infrastructure.context.contexto_tenant import usar_institucion
 
         repo = _SpyResumenRepo()
         svc = UsuarioService(repo)

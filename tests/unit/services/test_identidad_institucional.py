@@ -103,7 +103,7 @@ class TestGetInfoInstitucionalSinInstitucion:
         config = _make_config(institucion_id=None)
         svc = _make_svc(config)
 
-        with patch("src.services.contexto_tenant.verificar_pertenencia"):
+        with patch("src.infrastructure.context.contexto_tenant.verificar_pertenencia"):
             info = svc.get_info_institucional(1)
 
         assert isinstance(info, InformacionInstitucionalDTO)
@@ -127,7 +127,7 @@ class TestGetInfoInstitucionalConInstitucion:
         inst = _make_institucion(id=7)
 
         with (
-            patch("src.services.contexto_tenant.verificar_pertenencia"),
+            patch("src.infrastructure.context.contexto_tenant.verificar_pertenencia"),
             patch("container.Container") as mock_container,
         ):
             mock_container.institucion_service.return_value.get.return_value = inst
@@ -153,7 +153,7 @@ class TestActualizarInfoInstitucionalSinInstitucion:
         dto = ActualizarInfoInstitucionalDTO(rector="Dr. Nuevo")
 
         with (
-            patch("src.services.contexto_tenant.verificar_pertenencia"),
+            patch("src.infrastructure.context.contexto_tenant.verificar_pertenencia"),
             pytest.raises(ReglaDeNegocioError),
         ):
             svc.actualizar_info_institucional(1, dto)
@@ -176,7 +176,7 @@ class TestActualizarInfoInstitucionalDelegaEnInstitucion:
         )
 
         with (
-            patch("src.services.contexto_tenant.verificar_pertenencia"),
+            patch("src.infrastructure.context.contexto_tenant.verificar_pertenencia"),
             patch("container.Container") as mock_container,
         ):
             mock_inst_svc = MagicMock()

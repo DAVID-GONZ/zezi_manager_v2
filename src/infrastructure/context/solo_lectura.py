@@ -66,7 +66,7 @@ def verificar_escritura() -> None:
                 MOTIVO_SOLO_LECTURA,
                 severidad_de,
             )
-            from src.services.contexto_actor import actor_actual, actor_ip, actor_username
+            from src.infrastructure.context.contexto_actor import actor_actual, actor_ip, actor_username
             uid = actor_actual()
             # obs_07 T7: añadir motivo y derivar severidad (ADVERTENCIA para solo_lectura).
             Container.auditoria_service().registrar_evento(

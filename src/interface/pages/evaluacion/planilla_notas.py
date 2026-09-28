@@ -145,7 +145,7 @@ def planilla_notas_page() -> None:
         _historial_p.abrir("actividades", act_id)
         _dialogo_historial.refresh()
         try:
-            from src.services.contexto_tenant import institucion_actual
+            from src.infrastructure.context.contexto_tenant import institucion_actual
             scope = institucion_actual() or "*"
         except Exception:
             scope = "*"

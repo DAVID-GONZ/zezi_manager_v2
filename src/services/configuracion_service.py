@@ -24,7 +24,7 @@ from src.domain.models.configuracion import (
 )
 from src.domain.ports.configuracion_repo import IConfiguracionRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class ConfiguracionService:
@@ -58,7 +58,7 @@ class ConfiguracionService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -136,7 +136,7 @@ class ConfiguracionService:
         # Autorización a nivel de objeto (paso_36): el año debe pertenecer a la
         # institución activa (se verifica contra el registro leído; scope None
         # → admin cross-tenant).
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(config.institucion_id)
         self._repo.activar(anio_id)
@@ -191,7 +191,7 @@ class ConfiguracionService:
         # Autorización a nivel de objeto (paso_36): choke point de las lecturas
         # y mutaciones por anio_id (actualizar_info_institucional, niveles,
         # criterios, config académica). Verifica el tenant del registro leído.
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(config.institucion_id)
         return config
@@ -391,7 +391,7 @@ class ConfiguracionService:
                 f"No existe configuración con id {anio_id}.",
                 detalles={"recurso": "configuracion_anio", "id": anio_id},
             )
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(config.institucion_id)
         return config

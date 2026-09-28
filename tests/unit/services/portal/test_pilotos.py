@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from src.domain.portal_provider import PortalContext, SubItem
+from src.domain.ports.portal_provider import PortalContext, SubItem
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ def test_session_context_satisface_portal_context():
 
 def test_container_portal_provider_convivencia():
     from container import Container
-    from src.domain.portal_provider import PortalProvider
+    from src.domain.ports.portal_provider import PortalProvider
     p = Container.portal_provider("convivencia")
     assert p is not None
     assert isinstance(p, PortalProvider)
@@ -205,7 +205,7 @@ def test_container_portal_provider_convivencia():
 
 def test_container_portal_provider_evaluacion():
     from container import Container
-    from src.domain.portal_provider import PortalProvider
+    from src.domain.ports.portal_provider import PortalProvider
     p = Container.portal_provider("evaluacion")
     assert p is not None
     assert isinstance(p, PortalProvider)

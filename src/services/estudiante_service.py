@@ -30,7 +30,7 @@ from src.domain.ports.acudiente_repo import IAcudienteRepository
 from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class EstudianteService:
@@ -92,7 +92,7 @@ class EstudianteService:
         # Autorización a nivel de objeto (paso_36): el estudiante debe pertenecer
         # a la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo. Scope None (admin/seed) → pasa.
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(est.institucion_id)
         return est
@@ -112,7 +112,7 @@ class EstudianteService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -317,7 +317,7 @@ class EstudianteService:
             raise NoEncontradoError(f"El grupo destino (id {grupo_destino_id}) no existe.")
         # Aislamiento por institución: no se traslada a un grupo de otra
         # institución. Scope None (admin/seed) → pasa.
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(grupo_destino.institucion_id)
 
@@ -387,7 +387,7 @@ class EstudianteService:
         """
         if filtro.institucion_id is not None:
             return filtro
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return filtro.model_copy(update={"institucion_id": institucion_actual()})
 
@@ -402,7 +402,7 @@ class EstudianteService:
         Scope multi-tenant (paso_30): None (admin / arranque) → sin filtro;
         director → su institución.
         """
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_por_grupo(
             grupo_id,
@@ -540,7 +540,7 @@ class EstudianteService:
         # de "no existe PIAR" de abajo produzca el mensaje habitual.
         est = self._repo.get_by_id(estudiante_id)
         if est is not None:
-            from src.services.contexto_tenant import verificar_pertenencia
+            from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
             verificar_pertenencia(est.institucion_id)
         piar_actual = self._repo.get_piar(estudiante_id, anio_id)

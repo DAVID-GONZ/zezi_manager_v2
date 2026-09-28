@@ -5,7 +5,7 @@ Tests unitarios para src/services/contexto_actor.py
 
 from __future__ import annotations
 
-from src.services.contexto_actor import (
+from src.infrastructure.context.contexto_actor import (
     ActorContexto,
     activar_actor,
     actor_actual,

@@ -23,7 +23,7 @@ from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import DiaSemana, Franja, PlantillaFranja
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class FranjaService:
@@ -52,7 +52,7 @@ class FranjaService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -74,7 +74,7 @@ class FranjaService:
         """
         if obj is None:
             raise NoEncontradoError(f"{etiqueta} no existe.")
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
 
@@ -111,14 +111,14 @@ class FranjaService:
         """Lista las plantillas de franja del scope actual (admin ve todas)."""
         # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
         # director → su institución.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_plantillas_franja(institucion_id=institucion_actual() or "*")
 
     def plantilla_activa(self, jornada: str = "UNICA") -> PlantillaFranja | None:
         """Retorna la plantilla activa de una jornada para la institución del scope."""
         # Scope multi-tenant (paso_32): la plantilla activa es por institución.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.get_plantilla_activa(jornada, institucion_id=institucion_actual() or "*")
 

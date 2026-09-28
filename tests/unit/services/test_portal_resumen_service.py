@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.domain.portal_provider import PortalContext, SubItem
+from src.domain.ports.portal_provider import PortalContext, SubItem
 from src.services.portal_resumen_service import (
     PortalResumenService,
     ResumenGlobalDTO,

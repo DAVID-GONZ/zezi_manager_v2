@@ -44,7 +44,7 @@ from src.domain.ports.auditoria_repo import IAuditoriaRepository
 from src.domain.ports.service_ports import IAuthenticationService
 from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class UsuarioService:
@@ -84,7 +84,7 @@ class UsuarioService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -103,7 +103,7 @@ class UsuarioService:
         # Autorización a nivel de objeto (paso_36): el target debe pertenecer a
         # la institución activa. Se verifica contra el institucion_id LEÍDO del
         # repo, no el que pueda venir del caller. Scope None (admin/seed) → pasa.
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(usuario.institucion_id)
         return usuario
@@ -469,7 +469,7 @@ class UsuarioService:
         periodo_id: int | None = None,
     ) -> list[DocenteInfoDTO]:
         """Retorna los docentes con su carga académica calculada (scoped por tenant)."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_docentes_info(
             periodo_id=periodo_id,
@@ -490,7 +490,7 @@ class UsuarioService:
         """
         if filtro.institucion_id is not None:
             return filtro
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is None:

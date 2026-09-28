@@ -26,7 +26,7 @@ from src.domain.models.estudiante import (
 from src.infrastructure.db.repositories.sqla_estudiante_repo import (
     SqlaEstudianteRepository,
 )
-from src.services.contexto_tenant import usar_institucion
+from src.infrastructure.context.contexto_tenant import usar_institucion
 from src.services.estudiante_service import EstudianteService
 
 # =============================================================================

@@ -35,7 +35,7 @@ from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.usuario_repo import IUsuarioRepository
 from src.services.auditoria_service import AuditoriaService
 from src.services.configuracion_service import ConfiguracionService
-from src.services.contexto_tenant import activar_institucion, usar_institucion
+from src.infrastructure.context.contexto_tenant import activar_institucion, usar_institucion
 from src.services.convivencia_service import ConvivenciaService
 from src.services.estudiante_service import EstudianteService
 from src.services.usuario_service import UsuarioService

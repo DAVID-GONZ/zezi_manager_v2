@@ -14,7 +14,7 @@ from typing import Any
 from src.domain.exceptions import NoEncontradoError, ReglaDeNegocioError
 from src.domain.models.auditoria import AccionCambio
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 # El servicio se utiliza también con repositorios falsos en tests; las
 # anotaciones no deben exigir una importación concreta del repositorio.
@@ -57,7 +57,7 @@ class CatalogoAcademicoService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -79,7 +79,7 @@ class CatalogoAcademicoService:
         """
         if obj is None:
             raise NoEncontradoError(f"{etiqueta} no existe.")
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
 
@@ -87,7 +87,7 @@ class CatalogoAcademicoService:
 
     def listar_areas(self) -> list[AreaConocimiento]:
         """Lista las áreas del tenant activo (o todas si admin/sin sesión)."""
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_areas(institucion_id=institucion_actual() or "*")
 
@@ -139,7 +139,7 @@ class CatalogoAcademicoService:
         # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro de
         # institución (ve todo); director → su institución. NO se cae al
         # id_por_defecto aquí: admin debe ver todas las instituciones.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_asignaturas(area_id=area_id, institucion_id=institucion_actual() or "*")
 
@@ -191,7 +191,7 @@ class CatalogoAcademicoService:
         """Lista los grupos del scope actual, opcionalmente filtrados por grado."""
         # Scope multi-tenant (paso_29): None (admin / arranque) → sin filtro;
         # director → su institución.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_grupos(grado=grado, institucion_id=institucion_actual() or "*")
 

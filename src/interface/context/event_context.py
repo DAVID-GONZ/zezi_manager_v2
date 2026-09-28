@@ -34,7 +34,7 @@ def instalar_interceptor_tenant() -> None:
             if ctx is None:
                 # Sin sesión activa: limpiar el actor para evitar valores
                 # obsoletos heredados de la task padre (obs_07, T6).
-                from src.services.contexto_actor import limpiar_actor
+                from src.infrastructure.context.contexto_actor import limpiar_actor
                 limpiar_actor()
         except RuntimeError as exc:
             if "can only be used within a UI context" not in str(exc):

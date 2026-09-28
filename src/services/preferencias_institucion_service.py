@@ -13,7 +13,7 @@ from src.domain.models.preferencia_institucion import (
     TipoValor,
 )
 from src.domain.ports.preferencias_repo import IPreferenciasRepository
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 CLAVES_CONOCIDAS: frozenset[str] = frozenset(
     {

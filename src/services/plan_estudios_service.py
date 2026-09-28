@@ -16,8 +16,8 @@ from src.domain.models.infraestructura import (
 )
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.contexto_tenant import institucion_actual
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.contexto_tenant import institucion_actual
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class PlanEstudiosService:
@@ -42,7 +42,7 @@ class PlanEstudiosService:
         """Resuelve tenant: explícito → sesión → id_por_defecto → None."""
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:

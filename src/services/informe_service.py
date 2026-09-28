@@ -569,7 +569,7 @@ class InformeService:
         if self._estudiante_repo is None:
             raise ReglaDeNegocioError("InformeService no tiene estudiante_repo configurado.")
 
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
         fmt = FormatoInforme(formato)
         estudiantes = self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*")
 
@@ -769,7 +769,7 @@ class InformeService:
             TIPO_REGISTRO_DISPLAY,
             FiltroConvivenciaDTO,
         )
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
         estudiantes = sorted(
             self._estudiante_repo.listar_por_grupo(grupo_id, institucion_actual() or "*"),
             key=lambda e: f"{getattr(e, 'apellido', '')} {getattr(e, 'nombre', '')}".lower(),
@@ -800,7 +800,7 @@ class InformeService:
 
             # Batch: registros del grupo en el periodo
             try:
-                from src.services.contexto_tenant import institucion_actual
+                from src.infrastructure.context.contexto_tenant import institucion_actual
 
                 regs_all = _repo.listar_registros(
                     FiltroConvivenciaDTO(grupo_id=grupo_id, periodo_id=periodo_id),
@@ -907,7 +907,7 @@ class InformeService:
                     len(_repo.listar_observaciones_por_estudiante(est.id, p.id, solo_publicas=True))
                     for p in periodos
                 )
-                from src.services.contexto_tenant import institucion_actual
+                from src.infrastructure.context.contexto_tenant import institucion_actual
 
                 _inst_scope = institucion_actual() or "*"
                 reg_cnt = sum(

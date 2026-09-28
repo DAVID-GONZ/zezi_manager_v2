@@ -218,7 +218,7 @@ def _cargar_detalle(_s: dict, ctx: SessionContext) -> None:
 def _cargar_alertas(_s: dict) -> None:
     """Carga alertas SEGUIMIENTO_REQUERIDO del estudiante seleccionado."""
     from src.services.alerta_service import FiltroAlertasDTO, TipoAlerta
-    from src.services.contexto_tenant import institucion_actual
+    from src.infrastructure.context.contexto_tenant import institucion_actual
 
     est_id = _s["sel_estudiante_id"]
     if not est_id:

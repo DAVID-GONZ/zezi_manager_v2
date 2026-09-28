@@ -240,7 +240,7 @@ def observaciones_page() -> None:
         _historial_p.abrir(tabla, registro_id)
         _dialogo_historial_obs.refresh()
         try:
-            from src.services.contexto_tenant import institucion_actual
+            from src.infrastructure.context.contexto_tenant import institucion_actual
             scope = institucion_actual() or "*"
         except Exception:
             scope = "*"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from src.services.contexto_actor import actor_actual, limpiar_actor
+from src.infrastructure.context.contexto_actor import actor_actual, limpiar_actor
 
 
 def _make_storage(**kwargs):

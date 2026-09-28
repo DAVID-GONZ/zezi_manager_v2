@@ -29,7 +29,7 @@ from src.domain.ports.estudiante_repo import IEstudianteRepository
 from src.domain.ports.evaluacion_repo import IEvaluacionRepository
 from src.domain.ports.periodo_repo import IPeriodoRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class CierreService:
@@ -140,7 +140,7 @@ class CierreService:
         actividades = self._eval_repo.listar_actividades(asignacion_id, periodo_id)
 
         # Obtener estudiantes del grupo
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         estudiantes = self._estudiante_repo.listar_por_grupo(
             ctx.grupo_id, institucion_actual() or "*", solo_activos=True
@@ -206,7 +206,7 @@ class CierreService:
         config = self._config_repo.get_by_id(anio_id)
         nota_minima = config.nota_minima_aprobacion if config else 60.0
 
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         estudiantes = self._estudiante_repo.listar_por_grupo(
             grupo_id, institucion_actual() or "*", solo_activos=True
@@ -377,7 +377,7 @@ class CierreService:
 
         try:
             from src.domain.models.asignacion import FiltroAsignacionesDTO
-            from src.services.contexto_tenant import institucion_actual
+            from src.infrastructure.context.contexto_tenant import institucion_actual
 
             # Scope multi-tenant (paso_31): este agregado cruza TODAS las
             # asignaciones del periodo (todos los grupos), así que un director

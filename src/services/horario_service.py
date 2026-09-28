@@ -34,8 +34,8 @@ from src.domain.models.infraestructura import (
 from src.domain.ports.asignacion_repo import IAsignacionRepository
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.contexto_tenant import institucion_actual
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.contexto_tenant import institucion_actual
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 # ---------------------------------------------------------------------------
 # Constantes y helpers de módulo

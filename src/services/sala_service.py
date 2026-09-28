@@ -22,7 +22,7 @@ from src.domain.models.auditoria import AccionCambio
 from src.domain.models.infraestructura import Sala
 from src.domain.ports.infraestructura_repo import IInfraestructuraRepository
 from src.services.auditoria_helpers import auditar_cambio
-from src.services.solo_lectura import requiere_escritura
+from src.infrastructure.context.solo_lectura import requiere_escritura
 
 
 class SalaService:
@@ -51,7 +51,7 @@ class SalaService:
         """
         if institucion_id is not None:
             return institucion_id
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         scope = institucion_actual()
         if scope is not None:
@@ -73,7 +73,7 @@ class SalaService:
         """
         if obj is None:
             raise NoEncontradoError(f"{etiqueta} no existe.")
-        from src.services.contexto_tenant import verificar_pertenencia
+        from src.infrastructure.context.contexto_tenant import verificar_pertenencia
 
         verificar_pertenencia(obj.institucion_id)
 
@@ -83,7 +83,7 @@ class SalaService:
         """Lista las salas del scope actual (admin ve todas)."""
         # Scope multi-tenant (paso_32): None (admin / arranque) → sin filtro;
         # director → su institución.
-        from src.services.contexto_tenant import institucion_actual
+        from src.infrastructure.context.contexto_tenant import institucion_actual
 
         return self._repo.listar_salas(institucion_id=institucion_actual() or "*")
 
