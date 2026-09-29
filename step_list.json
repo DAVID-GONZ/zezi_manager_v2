@@ -470,7 +470,7 @@
   {
     "id": "backend_16_tokens_neutrales",
     "nombre": "tokens.json como fuente canonica del design system (W3C Design Tokens)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "tokens.json, scripts/sync_tokens.py, src/interface/design/styles/tokens.css, tests/unit/design/test_tokens_roundtrip.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -479,7 +479,7 @@
   {
     "id": "backend_17_contratos_componentes",
     "nombre": "Catalogo de 18 componentes del design system como spec independiente",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "docs/design_system/components.md, scripts/extract_component_info.py",
     "operacion": "crear",
     "sdd": false,
@@ -488,7 +488,7 @@
   {
     "id": "backend_18_css_desacoplado",
     "nombre": "Auditoria de portabilidad CSS y verificacion Core/Adapter",
-    "status": "spec_ready",
+    "status": "in_progress",
     "destino_v2": "docs/design_system/portability_audit.md, docs/design_system/portability_test.html, scripts/audit_css_portability.py",
     "operacion": "crear",
     "sdd": false,
@@ -538,5 +538,14 @@
     "operacion": "crear",
     "sdd": false,
     "descripcion": "Fase 6 del repo split. Crea publish-contract.yml (backend: genera OpenAPI+DTOs y abre PR en shared-contracts cuando cambian routes/ o models/), validate-contract.yml (frontend: regenera cliente API y crea issue si typecheck falla), y check_contract_drift.sh (compara OpenAPI actual vs. shared-contracts, exit 1 si difieren). Requiere secret CONTRACTS_PAT en ambos repos."
+  },
+  {
+    "id": "deploy_01_render_live",
+    "nombre": "Deploy en vivo: avedra-backend en Render + Neon",
+    "status": "spec_ready",
+    "destino_v2": "avedra-backend: Dockerfile, render.yaml, docs/deploy.md (adaptar del monorepo)",
+    "operacion": "crear+modificar",
+    "sdd": false,
+    "descripcion": "Deploy real del backend en Render free tier apuntando a Neon Postgres. DEPENDE de split_01 (avedra-backend limpio sin NiceGUI). Los archivos de referencia ya existen en el monorepo (Dockerfile, render.yaml, docs/deploy.md creados en backend_13); este paso los adapta al repo backend separado, conecta el repo en render.com, configura las env vars (DATABASE_URL de Neon, JWT_SECRET, STORAGE_SECRET) y verifica /api/v1/health desde internet. El deploy del monorepo completo (NiceGUI + API) queda diferido hasta que haya presupuesto o se migre a VPS."
   }
 ]
