@@ -6,7 +6,7 @@
 >
 > 📖 **Referencia por método (firma + docstring):**
 > [`docs/api_reference/dominio_puertos.md`](api_reference/dominio_puertos.md)
-> — generada desde el código con `tools/gen_api_reference.py`. Este documento
+> — snapshot generado (el script `gen_api_reference.py` ya no existe). Este documento
 > resume responsabilidades; la referencia lista cada método con su firma exacta.
 
 ## Modulo: `acudiente_repo.py`

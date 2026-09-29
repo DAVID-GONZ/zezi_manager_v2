@@ -1,8 +1,6 @@
-# API Reference — ZECI Manager v2.0
+# API Reference — AVEDRA
 
-> Referencia por método **generada automáticamente** desde el código (`tools/gen_api_reference.py`). Cada método muestra su firma exacta y la primera línea de su docstring; los que no tienen docstring aparecen marcados `⚠️ sin docstring`. Complementa los documentos de arquitectura de `docs/` (que explican el *por qué* y las responsabilidades).
-
-Regenerar: `python tools/gen_api_reference.py`
+> Referencia por método **generada como snapshot** (el script `gen_api_reference.py` ya no existe). Cada método muestra su firma exacta y la primera línea de su docstring; los que no tienen docstring aparecen marcados `⚠️ sin docstring`. Complementa los documentos de arquitectura de `docs/` (que explican el *por qué* y las responsabilidades).
 
 | Capa | Documento | Cobertura de docstrings |
 |---|---|---|

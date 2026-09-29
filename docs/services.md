@@ -1,11 +1,11 @@
 # Capa de Servicios (Application Services)
 
-La capa de servicios (`src/services/`) representa los **Casos de Uso** de la aplicación ZECI Manager v2.0. Actúa como el orquestador principal del sistema, coordinando la lógica de negocio, validando permisos y restricciones, y sirviendo como puente absoluto entre la capa de presentación (API/Controladores) y los modelos de dominio.
+La capa de servicios (`src/services/`) representa los **Casos de Uso** de la aplicación AVEDRA. Actúa como el orquestador principal del sistema, coordinando la lógica de negocio, validando permisos y restricciones, y sirviendo como puente absoluto entre la capa de presentación (API/Controladores) y los modelos de dominio.
 
 > 📖 **Referencia por método (firma + docstring):**
 > [`docs/api_reference/servicios.md`](api_reference/servicios.md) — generada
-> desde el código con `tools/gen_api_reference.py`. Este documento describe
-> **responsabilidades**; la referencia enumera los 351 métodos con su firma exacta.
+> snapshot generado (el script `gen_api_reference.py` ya no existe). Este documento
+> describe **responsabilidades**; la referencia enumera los métodos con su firma exacta.
 
 ## Principios de Diseño
 
@@ -226,7 +226,7 @@ de renderizar cada página protegida (ver `docs/architecture.md` §7.3–7.4).
 
 ## Trazabilidad y Auditoría (Cross-cutting concern)
 
-Una característica vital de la capa de Servicios de ZECI Manager v2.0 es su trazabilidad invisible. Todos los métodos que causan mutaciones invocan el método protegido `_auditar()`.
+Una característica vital de la capa de Servicios de AVEDRA es su trazabilidad invisible. Todos los métodos que causan mutaciones invocan el método protegido `_auditar()`.
 
 ```python
 def _auditar(

@@ -1,12 +1,12 @@
 # Capa de Modelos de Dominio (Entidades Pydantic)
 
-Este documento describe las entidades que conforman el núcleo de la lógica de negocio en **ZECI Manager v2.0**. Estas entidades están implementadas en `src/domain/models/` y utilizan **Pydantic v2** para garantizar la validación estricta de tipos y datos en tiempo de ejecución.
+Este documento describe las entidades que conforman el núcleo de la lógica de negocio en **AVEDRA**. Estas entidades están implementadas en `src/domain/models/` y utilizan **Pydantic v2** para garantizar la validación estricta de tipos y datos en tiempo de ejecución.
 
 > 📖 **Referencia detallada:** el catálogo campo a campo está en
 > [`docs/schema.md`](schema.md); la referencia por método (validators,
 > propiedades, métodos de dominio con firma exacta) está en
 > [`docs/api_reference/dominio_modelos.md`](api_reference/dominio_modelos.md),
-> generada con `tools/gen_api_reference.py`.
+> snapshot generado (el script `gen_api_reference.py` ya no existe).
 
 ## Principios de Diseño
 
@@ -17,9 +17,14 @@ De acuerdo con la Arquitectura Limpia adoptada por el proyecto:
 
 ## Entidades Principales
 
-El sistema está compuesto por **19 módulos de dominio** (`src/domain/models/`,
+El sistema está compuesto por **19 módulos de dominio** principales (`src/domain/models/`,
 incluyendo `dtos.py`) que definen las entidades principales, agregados y objetos
-de valor (Value Objects).
+de valor (Value Objects). Además existen módulos de soporte: `base.py` (clase base),
+`busqueda.py` (modelos de búsqueda), `catalogos_estandar.py` (catálogos estándar),
+`clock.py` (abstracción de tiempo), `decimal_types.py` (tipos decimales),
+`observabilidad.py` (logging estructurado), `preferencia_institucion.py` (preferencias
+por institución), `scheduling.py` (modelos de programación) y `tenant.py` (contexto
+multi-tenant).
 
 > Además de los modelos, el dominio incluye el paquete `src/domain/policies/` con
 > **funciones puras de reglas transversales** (no son entidades): `rbac_usuarios`
@@ -108,12 +113,7 @@ Sistema de plan de mejoramiento basado en cortes con notas ponderadas (distinto 
 - `NotaActividadPlan` — nota de un estudiante en una actividad del plan (celda).
 - `CalculadorPlan` — utilidades de cálculo (nota al corte, umbral, nota definitiva).
 
-### 19. PIAR (`piar.py`)
-*(Existente, refactorizado como módulo independiente)*
-
-Ver entrada 14 — el módulo fue renumerado al incorporar los nuevos módulos 17 y 18.
-
-### 20. Institución (`institucion.py`) *(Nuevo — multi-tenant, paso_24)*
+### 19. Institución (`institucion.py`) *(Nuevo — multi-tenant, paso_24)*
 Primer ladrillo del modelo multi-tenant: catálogo de instituciones (tenants).
 - `Institucion` — entidad tenant. `nombre` obligatorio y normalizado (≤200);
   `nit`/`codigo` opcionales (identificadores externos, p.ej. DANE); *soft state*
@@ -127,4 +127,4 @@ Primer ladrillo del modelo multi-tenant: catálogo de instituciones (tenants).
 
 ## Consideraciones de Mutabilidad
 
-Por defecto, la mayoría de los modelos en ZECI Manager v2.0 están diseñados para ser mutables (`frozen=False` en Pydantic), lo que permite a los **Servicios de Aplicación** cambiar el estado de las entidades antes de enviarlas al repositorio para su persistencia. Sin embargo, entidades de registro histórico como `Auditoria` son tratadas semánticamente como objetos inmutables.
+Por defecto, la mayoría de los modelos en AVEDRA están diseñados para ser mutables (`frozen=False` en Pydantic), lo que permite a los **Servicios de Aplicación** cambiar el estado de las entidades antes de enviarlas al repositorio para su persistencia. Sin embargo, entidades de registro histórico como `Auditoria` son tratadas semánticamente como objetos inmutables.

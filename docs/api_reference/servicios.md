@@ -1,6 +1,6 @@
 # API Reference — Servicios
 
-> Generado automáticamente desde `src/services/` por `tools/gen_api_reference.py` (firmas del fuente + primera línea del docstring). Los métodos sin docstring se marcan `⚠️ sin docstring`. **No editar a mano** — re-generar con el script.
+> Generado automáticamente desde `src/services/` por `gen_api_reference.py` (firmas del fuente + primera línea del docstring). Los métodos sin docstring se marcan `⚠️ sin docstring`. **Snapshot** — el script generador ya no existe.
 
 **Cobertura de docstrings:** 420/420 métodos (100%).
 

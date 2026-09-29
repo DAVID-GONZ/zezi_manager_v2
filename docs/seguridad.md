@@ -1,7 +1,7 @@
 # Seguridad — despliegue y decisiones
 
 > Registro de decisiones de seguridad del épico `seguridad_01..04` y guía de
-> despliegue de ZECI Manager v2.0. Complementa `docs/decisions.md`.
+> despliegue de AVEDRA. Complementa `docs/decisions.md`.
 
 ## Despliegue con TLS (M2)
 

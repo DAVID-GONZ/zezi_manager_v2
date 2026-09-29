@@ -1,4 +1,4 @@
-# Arquitectura — ZECI Manager v2.0
+# Arquitectura — AVEDRA
 
 > Referencia arquitectónica central para todos los agentes y colaboradores.
 > Documento **autocontenido**: este archivo es la fuente de verdad de la
@@ -9,7 +9,7 @@
 
 ## 0. Panorama
 
-ZECI Manager es un sistema de gestión académica (matrícula, evaluación,
+AVEDRA es un sistema de gestión académica (matrícula, evaluación,
 asistencia, convivencia, horarios, informes) construido sobre **Arquitectura
 Limpia / Puertos y Adaptadores**.
 
@@ -17,7 +17,7 @@ Limpia / Puertos y Adaptadores**.
 |---|---|
 | Lenguaje | Python 3.11+ |
 | UI | NiceGUI (servidor web + WebSocket) |
-| Persistencia | SQLite (SQL crudo, sin ORM), modo WAL |
+| Persistencia | SQLite / PostgreSQL vía SQLAlchemy (repos `sqla_*`); repos `sqlite_*` legacy en migración |
 | Validación | Pydantic v2 (entidades de dominio + settings) |
 | Autenticación | `bcrypt` (rounds=12) + cookie de sesión firmada de NiceGUI |
 | Composición | `container.py` (composition root, singleton lazy) |
@@ -311,11 +311,13 @@ guardarraíles de seguridad en `docs/verification.md`.
 | `docs/modelos.md` | Catálogo de entidades de dominio |
 | `docs/schema.md` | Referencia detallada campo a campo de los modelos |
 | `docs/dominio.md` | Puertos (repositorios + servicios externos) |
-| `docs/repositorio.md` | Adaptadores SQLite |
+| `docs/repositorio.md` | Adaptadores de persistencia (SQLite legacy + SQLAlchemy) |
 | `docs/services.md` | Casos de uso y responsabilidades por servicio |
 | `docs/infraestructura.md` | Adaptadores no-BD (auth, exporters, notificaciones, contexto) |
 | `docs/seguridad.md` | Decisiones de seguridad y guía de despliegue |
 | `docs/page_patterns.md` | Patrones canónicos de la capa de interfaz |
 | `docs/verification.md` | Criterios de *done* ejecutables |
 | `docs/decisions.md` | Registro de decisiones de arquitectura (ADR) |
-| `docs/api_reference.md` | Referencia por método (firma + docstring) de dominio, servicios e infraestructura, **generada automáticamente** desde el código |
+| `docs/api_reference.md` | Referencia por método (firma + docstring) — snapshot congelado (el script generador ya no existe) |
+| `docs/deploy.md` | Guía de despliegue en nube (Render + Neon, tier gratuito) |
+| `docs/verificacion_bitacora.md` | Guía de verificación de integridad de la bitácora exportada para auditores externos |

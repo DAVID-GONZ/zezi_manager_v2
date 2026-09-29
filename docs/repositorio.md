@@ -1,12 +1,12 @@
-# Capa de Repositorios (ZECI Manager v2.0)
+# Capa de Repositorios — AVEDRA
 
-Este documento describe la arquitectura y los detalles de implementación de la capa de repositorios en el proyecto **ZECI Manager v2.0**. La capa de repositorios actúa como un puente entre la lógica de dominio (casos de uso) y la infraestructura de almacenamiento (base de datos SQLite), siguiendo los principios de la **Arquitectura Limpia (Clean Architecture)**.
+Este documento describe la arquitectura y los detalles de implementación de la capa de repositorios en el proyecto **AVEDRA**. La capa de repositorios actúa como un puente entre la lógica de dominio (casos de uso) y la infraestructura de almacenamiento (SQLite local / PostgreSQL en nube vía SQLAlchemy), siguiendo los principios de la **Arquitectura Limpia (Clean Architecture)**.
 
 > 📖 **Referencia por método:** los contratos (con firma + docstring) están en
 > [`docs/api_reference/dominio_puertos.md`](api_reference/dominio_puertos.md); las
 > implementaciones SQLite, en
 > [`docs/api_reference/infraestructura.md`](api_reference/infraestructura.md).
-> Ambas se generan con `tools/gen_api_reference.py`.
+> Ambas son snapshots generados (el script `gen_api_reference.py` ya no existe).
 
 ## 1. Arquitectura y Patrón Repositorio
 
@@ -89,10 +89,14 @@ estudiante_service = EstudianteService(repo=estudiante_repo)
 
 ## 5. Mapeo de Datos (SQL Raw vs ORM)
 
-En ZECI Manager v2.0, los repositorios SQLite utilizan **SQL crudo (Raw SQL)** a través de la librería estándar de Python (`sqlite3`) en lugar de un ORM pesado. Esto ofrece:
-- Mayor control sobre las consultas y optimizaciones precisas.
-- Un mejor rendimiento general.
-- Menos dependencias externas.
+En AVEDRA coexisten dos generaciones de repositorios:
+
+- **`sqlite_*` (legacy):** SQL crudo vía `sqlite3`. Ofrecen control directo sobre
+  las consultas pero están en proceso de migración.
+- **`sqla_*` (actual):** SQLAlchemy Core/ORM, portables entre SQLite y PostgreSQL.
+  Son los que usa el deploy en nube (Render + Neon Postgres).
+
+Ambas implementaciones cumplen el mismo puerto de dominio y se intercambian en `container.py` según `DB_BACKEND`.
 
 Los repositorios se encargan manualmente de mapear los resultados (filas) devueltos por la base de datos hacia las entidades o modelos de dominio (como DataClasses o Pydantic models).
 

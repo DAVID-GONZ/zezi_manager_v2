@@ -6,7 +6,7 @@ La capa de infraestructura implementa los **Puertos (Interfaces)** definidos por
 
 > 📖 **Referencia por método (firma + docstring):**
 > [`docs/api_reference/infraestructura.md`](api_reference/infraestructura.md) —
-> generada desde el código con `tools/gen_api_reference.py`. Nota: los repos
+> snapshot generado (el script `gen_api_reference.py` ya no existe). Nota: los repos
 > SQLite muestran baja cobertura de docstring **por diseño** — el contrato (y su
 > docstring) vive en el puerto del dominio, no en la implementación.
 

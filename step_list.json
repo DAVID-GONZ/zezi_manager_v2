@@ -488,7 +488,7 @@
   {
     "id": "backend_18_css_desacoplado",
     "nombre": "Auditoria de portabilidad CSS y verificacion Core/Adapter",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "docs/design_system/portability_audit.md, docs/design_system/portability_test.html, scripts/audit_css_portability.py",
     "operacion": "crear",
     "sdd": false,

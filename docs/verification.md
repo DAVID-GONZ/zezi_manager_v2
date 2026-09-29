@@ -204,11 +204,11 @@ find . -name "__pycache__" -not -path "./.venv/*" | head -5
 # 3. Sin prints de debug (fuera de logging)
 grep -r "^[[:space:]]*print(" src/ --include="*.py" | grep -v "# debug-ok"
 
-# 4. Regenerar la referencia de API por método (si cambiaron firmas/docstrings)
-python tools/gen_api_reference.py
-git diff --stat docs/api_reference.md docs/api_reference/
+# 4. Referencia de API por método
+# NOTA: el script gen_api_reference.py ya no existe.
+# Los docs en docs/api_reference/ son snapshots congelados.
 ```
 
-> La referencia por método (`docs/api_reference/`) se **genera desde el código**,
-> nunca se edita a mano. Si `git diff` muestra cambios tras regenerar, commitéalos
-> junto al cambio de código que los produjo.
+> La referencia por método (`docs/api_reference/`) es un **snapshot congelado**;
+> el script generador (`gen_api_reference.py`) ya no existe. Los archivos se
+> conservan como referencia pero pueden no reflejar el estado actual del código.

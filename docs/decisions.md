@@ -1,6 +1,6 @@
 # Registro de decisiones de arquitectura (ADR)
 
-> Bitácora de las decisiones estructurales de ZECI Manager v2.0. Cada entrada
+> Bitácora de las decisiones estructurales de AVEDRA. Cada entrada
 > resume el problema, la decisión y su consecuencia. Complementa
 > `docs/architecture.md` (el *qué* vigente) explicando el *por qué*.
 > Las decisiones de seguridad puntuales viven en `docs/seguridad.md`.

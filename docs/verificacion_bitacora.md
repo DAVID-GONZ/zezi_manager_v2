@@ -2,7 +2,7 @@
 
 > **Público objetivo:** un tercero (un auditor, la Secretaría de Educación, un
 > apoderado o un experto forense) que ha recibido un archivo exportado por
-> ZECI Manager y quiere comprobar, **sin acceso a la aplicación**, que el
+> AVEDRA y quiere comprobar, **sin acceso a la aplicación**, que el
 > contenido no ha sido alterado desde que se exportó.
 >
 > Herramientas necesarias: Python 3.8+ (o cualquier shell con `sha256sum`/
@@ -12,7 +12,7 @@
 
 ## Qué contiene el archivo exportado
 
-Un archivo CSV exportado por ZECI Manager tiene dos partes:
+Un archivo CSV exportado por AVEDRA tiene dos partes:
 
 1. **Hoja de verificación** — un bloque de líneas que empiezan con `#` al
    inicio del archivo. Contiene los hashes y el veredicto de integridad del
@@ -65,7 +65,7 @@ aplicación.
 
 ## Parte B: verificar la cadena SHA-256 del tramo
 
-La bitácora de ZECI Manager encadena cada registro con el anterior mediante
+La bitácora de AVEDRA encadena cada registro con el anterior mediante
 SHA-256. La verificación de la cadena garantiza que ninguna fila fue editada,
 insertada o borrada **dentro** de la base de datos antes de la exportación.
 

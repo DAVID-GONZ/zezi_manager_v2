@@ -1,6 +1,6 @@
 # API Reference — Infraestructura
 
-> Generado automáticamente desde `src/infrastructure/` por `tools/gen_api_reference.py` (firmas del fuente + primera línea del docstring). Los métodos sin docstring se marcan `⚠️ sin docstring`. **No editar a mano** — re-generar con el script.
+> Generado automáticamente desde `src/infrastructure/` por `gen_api_reference.py` (firmas del fuente + primera línea del docstring). Los métodos sin docstring se marcan `⚠️ sin docstring`. **Snapshot** — el script generador ya no existe.
 
 **Cobertura de docstrings:** 35/429 métodos (8%).
 
