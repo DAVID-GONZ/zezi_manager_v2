@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: avedra
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_BACKEND
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_SECRET
+        generateValue: true
+      - key: PORT
+        value: "8080"
+      - key: HOST
+        value: "127.0.0.1"

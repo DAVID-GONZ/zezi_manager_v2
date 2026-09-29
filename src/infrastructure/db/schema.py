@@ -171,7 +171,7 @@ escenarios_horario = Table(
     Column("nombre", String, nullable=False),
     Column("descripcion", String),
     Column("activo", Integer, nullable=False, server_default="0"),
-    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
+    Column("created_at", String, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
     UniqueConstraint("anio_id", "nombre"),
 )
 
@@ -182,7 +182,7 @@ plantillas_franja = Table(
     Column("jornada", String, nullable=False, server_default="UNICA"),
     Column("dias_activos", String, nullable=False, server_default="Lunes,Martes,Miércoles,Jueves,Viernes"),
     Column("activa", Integer, nullable=False, server_default="0"),
-    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
+    Column("created_at", String, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
     Column("institucion_id", Integer, ForeignKey("instituciones.id")),
     UniqueConstraint("institucion_id", "nombre"),
     CheckConstraint("jornada IN ('AM', 'PM', 'UNICA')", name="ck_plantillas_jornada"),
@@ -365,8 +365,8 @@ config_generacion = Table(
     ),
     Column("restricciones_json", String, nullable=False, server_default="{}"),
     Column("escenario_destino_id", Integer, ForeignKey("escenarios_horario.id", ondelete="SET NULL")),
-    Column("created_at", String, nullable=False, server_default=text("datetime('now')")),
-    Column("updated_at", String, nullable=False, server_default=text("datetime('now')")),
+    Column("created_at", String, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+    Column("updated_at", String, nullable=False, server_default=text("CURRENT_TIMESTAMP")),
     UniqueConstraint("nombre"),
     CheckConstraint("estado IN ('borrador','generado','aplicado')", name="ck_config_gen_estado"),
 )

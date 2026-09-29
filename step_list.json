@@ -461,7 +461,7 @@
   {
     "id": "backend_13_deploy_cloud",
     "nombre": "Deploy en nube con tier gratuito (Render + Neon Postgres)",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "Dockerfile, render.yaml, docs/deploy.md, .env.example",
     "operacion": "crear+modificar",
     "sdd": false,
