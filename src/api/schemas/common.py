@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,7 +17,7 @@ class ErrorResponse(BaseModel):
     code: str
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     items: list[T]

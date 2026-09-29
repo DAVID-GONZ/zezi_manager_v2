@@ -434,7 +434,7 @@
   {
     "id": "backend_10_fastapi_mount",
     "nombre": "Router FastAPI montado en NiceGUI bajo /api/v1",
-    "status": "in_progress",
+    "status": "done",
     "destino_v2": "src/api/router.py, src/api/deps.py, src/api/errors.py, src/api/schemas/common.py, main.py, config.py, .env.example",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -443,7 +443,7 @@
   {
     "id": "backend_11_api_auth",
     "nombre": "Autenticacion JWT para la API REST",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/api/auth.py, src/api/security.py, src/api/schemas/auth.py, src/api/router.py, main.py, tests/unit/api/test_api_auth.py",
     "operacion": "crear+modificar",
     "sdd": true,
@@ -452,7 +452,7 @@
   {
     "id": "backend_12_endpoints_crud",
     "nombre": "Endpoints CRUD completos por modulo en 3 olas",
-    "status": "spec_ready",
+    "status": "done",
     "destino_v2": "src/api/routes/, src/api/schemas/, src/api/deps.py, src/api/router.py, scripts/export_openapi.py, tests/unit/api/",
     "operacion": "crear+modificar",
     "sdd": true,

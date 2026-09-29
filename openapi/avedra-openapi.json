@@ -1,0 +1,4183 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AVEDRA API",
+    "description": "API REST de AVEDRA — Asistencia, Convivencia y Evaluacion",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Autentica un usuario y retorna un token JWT.\n\nFlujo:\n  1. Rate-limit por IP.\n  2. Autenticar via BcryptAuthService (Container).\n  3. Generar token JWT con claims del usuario.\n  4. Auditar el resultado (exitoso o fallido).",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Listar Usuarios",
+        "description": "Lista usuarios con filtros opcionales (rol, activo).",
+        "operationId": "listar_usuarios_api_v1_usuarios_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rol"
+            }
+          },
+          {
+            "name": "activo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Activo"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_UsuarioResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Crear Usuario",
+        "description": "Crea un usuario nuevo.",
+        "operationId": "crear_usuario_api_v1_usuarios_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevoUsuarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/{usuario_id}": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Obtener Usuario",
+        "description": "Obtiene un usuario por id.",
+        "operationId": "obtener_usuario_api_v1_usuarios__usuario_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Actualizar Usuario",
+        "description": "Actualiza nombre, email o telefono de un usuario.",
+        "operationId": "actualizar_usuario_api_v1_usuarios__usuario_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarUsuarioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/{usuario_id}/desactivar": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Desactivar Usuario",
+        "description": "Desactiva un usuario (soft delete).",
+        "operationId": "desactivar_usuario_api_v1_usuarios__usuario_id__desactivar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/{usuario_id}/reactivar": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Reactivar Usuario",
+        "description": "Reactiva un usuario desactivado.",
+        "operationId": "reactivar_usuario_api_v1_usuarios__usuario_id__reactivar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/{usuario_id}/cambiar-rol": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Cambiar Rol",
+        "description": "Cambia el rol de un usuario.",
+        "operationId": "cambiar_rol_api_v1_usuarios__usuario_id__cambiar_rol_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambiarRolRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/{usuario_id}/resetear-password": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Resetear Password",
+        "description": "Resetea la contrasena de un usuario. Retorna la temporal si no se dio una explicita.",
+        "operationId": "resetear_password_api_v1_usuarios__usuario_id__resetear_password_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetearPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estudiantes": {
+      "get": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Listar Estudiantes",
+        "description": "Lista estudiantes con filtros opcionales.",
+        "operationId": "listar_estudiantes_api_v1_estudiantes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_EstudianteResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Matricular Estudiante",
+        "description": "Matricula un estudiante nuevo.",
+        "operationId": "matricular_estudiante_api_v1_estudiantes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevoEstudianteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstudianteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estudiantes/{estudiante_id}": {
+      "get": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Obtener Estudiante",
+        "description": "Obtiene un estudiante por id.",
+        "operationId": "obtener_estudiante_api_v1_estudiantes__estudiante_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstudianteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Actualizar Estudiante",
+        "description": "Actualiza datos de un estudiante.",
+        "operationId": "actualizar_estudiante_api_v1_estudiantes__estudiante_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarEstudianteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstudianteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estudiantes/{estudiante_id}/retirar": {
+      "post": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Retirar Estudiante",
+        "description": "Retira un estudiante del establecimiento.",
+        "operationId": "retirar_estudiante_api_v1_estudiantes__estudiante_id__retirar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetirarEstudianteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstudianteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/estudiantes/carga-masiva": {
+      "post": {
+        "tags": [
+          "estudiantes"
+        ],
+        "summary": "Carga Masiva",
+        "description": "Carga masiva de estudiantes desde CSV.",
+        "operationId": "carga_masiva_api_v1_estudiantes_carga_masiva_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_carga_masiva_api_v1_estudiantes_carga_masiva_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CargaMasivaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/contexto/grupos": {
+      "get": {
+        "tags": [
+          "contexto"
+        ],
+        "summary": "Listar Grupos",
+        "description": "Lista todos los grupos del catalogo (opcionalmente filtrados por grado).",
+        "operationId": "listar_grupos_api_v1_contexto_grupos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grado"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrupoResponse"
+                  },
+                  "title": "Response Listar Grupos Api V1 Contexto Grupos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contexto/asignaturas": {
+      "get": {
+        "tags": [
+          "contexto"
+        ],
+        "summary": "Listar Asignaturas",
+        "description": "Lista todas las asignaturas del catalogo (opcionalmente por area).",
+        "operationId": "listar_asignaturas_api_v1_contexto_asignaturas_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AsignaturaResponse"
+                  },
+                  "title": "Response Listar Asignaturas Api V1 Contexto Asignaturas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contexto/periodos": {
+      "get": {
+        "tags": [
+          "contexto"
+        ],
+        "summary": "Listar Periodos",
+        "description": "Lista los periodos de un anio lectivo.",
+        "operationId": "listar_periodos_api_v1_contexto_periodos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PeriodoResponse"
+                  },
+                  "title": "Response Listar Periodos Api V1 Contexto Periodos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contexto/periodos/activo": {
+      "get": {
+        "tags": [
+          "contexto"
+        ],
+        "summary": "Periodo Activo",
+        "description": "Retorna el periodo activo del anio lectivo.",
+        "operationId": "periodo_activo_api_v1_contexto_periodos_activo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contexto/anio-activo": {
+      "get": {
+        "tags": [
+          "contexto"
+        ],
+        "summary": "Anio Activo",
+        "description": "Retorna la configuracion del anio lectivo activo.",
+        "operationId": "anio_activo_api_v1_contexto_anio_activo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/asistencia/estados": {
+      "get": {
+        "tags": [
+          "asistencia"
+        ],
+        "summary": "Estados Por Grupo Y Fecha",
+        "description": "Retorna los estados de asistencia registrados para el grupo en la fecha.\ndict[estudiante_id, {estado, observacion}]",
+        "operationId": "estados_por_grupo_y_fecha_api_v1_asistencia_estados_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "asignacion_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Fecha"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asistencia/masiva": {
+      "post": {
+        "tags": [
+          "asistencia"
+        ],
+        "summary": "Guardar Masiva",
+        "description": "Guarda la asistencia de un grupo en una fecha (en lote).",
+        "operationId": "guardar_masiva_api_v1_asistencia_masiva_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarAsistenciaMasivaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/asistencia/resumen-grupo": {
+      "get": {
+        "tags": [
+          "asistencia"
+        ],
+        "summary": "Resumen Grupo",
+        "description": "Retorna el resumen de asistencia de todos los estudiantes del grupo.",
+        "operationId": "resumen_grupo_api_v1_asistencia_resumen_grupo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "asignacion_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResumenAsistenciaResponse"
+                  },
+                  "title": "Response Resumen Grupo Api V1 Asistencia Resumen Grupo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/convivencia/observaciones": {
+      "get": {
+        "tags": [
+          "convivencia"
+        ],
+        "summary": "Listar Observaciones",
+        "description": "Lista observaciones de un estudiante (opcionalmente filtradas por periodo).",
+        "operationId": "listar_observaciones_api_v1_convivencia_observaciones_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ObservacionResponse"
+                  },
+                  "title": "Response Listar Observaciones Api V1 Convivencia Observaciones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "convivencia"
+        ],
+        "summary": "Registrar Observacion",
+        "description": "Registra o actualiza una observacion narrativa.",
+        "operationId": "registrar_observacion_api_v1_convivencia_observaciones_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevaObservacionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservacionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/convivencia/resumen-grupo": {
+      "get": {
+        "tags": [
+          "convivencia"
+        ],
+        "summary": "Resumen Convivencia Grupo",
+        "description": "Resumen de convivencia (notas, observaciones, alertas) de todos los estudiantes.",
+        "operationId": "resumen_convivencia_grupo_api_v1_convivencia_resumen_grupo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResumenConvivenciaResponse"
+                  },
+                  "title": "Response Resumen Convivencia Grupo Api V1 Convivencia Resumen Grupo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/convivencia/notas-grupo": {
+      "get": {
+        "tags": [
+          "convivencia"
+        ],
+        "summary": "Notas Grupo",
+        "description": "Retorna las notas de comportamiento de todos los estudiantes del grupo.",
+        "operationId": "notas_grupo_api_v1_convivencia_notas_grupo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotaComportamientoResponse"
+                  },
+                  "title": "Response Notas Grupo Api V1 Convivencia Notas Grupo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/convivencia/vista-360/{estudiante_id}": {
+      "get": {
+        "tags": [
+          "convivencia"
+        ],
+        "summary": "Vista 360",
+        "description": "Perfil 360 de convivencia de un estudiante en un periodo.",
+        "operationId": "vista_360_api_v1_convivencia_vista_360__estudiante_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluacion/planilla": {
+      "get": {
+        "tags": [
+          "evaluacion"
+        ],
+        "summary": "Obtener Planilla",
+        "description": "Retorna la planilla de notas del grupo con definitivas calculadas.",
+        "operationId": "obtener_planilla_api_v1_evaluacion_planilla_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "asignacion_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanillaEstudianteResponse"
+                  },
+                  "title": "Response Obtener Planilla Api V1 Evaluacion Planilla Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluacion/notas-masivas": {
+      "post": {
+        "tags": [
+          "evaluacion"
+        ],
+        "summary": "Registrar Notas Masivas",
+        "description": "Registra notas para multiples estudiantes en una actividad.",
+        "operationId": "registrar_notas_masivas_api_v1_evaluacion_notas_masivas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarNotasMasivasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/evaluacion/siee": {
+      "get": {
+        "tags": [
+          "evaluacion"
+        ],
+        "summary": "Get Configuracion Siee",
+        "description": "Retorna la configuracion SIEE del anio lectivo.",
+        "operationId": "get_configuracion_siee_api_v1_evaluacion_siee_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracionSIEEResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/informes/boletin-periodo/{estudiante_id}": {
+      "get": {
+        "tags": [
+          "informes"
+        ],
+        "summary": "Boletin Periodo",
+        "description": "Genera el boletin de un estudiante para un periodo (PDF o Excel).",
+        "operationId": "boletin_periodo_api_v1_informes_boletin_periodo__estudiante_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          },
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pdf",
+              "title": "Formato"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/informes/boletin-anual/{estudiante_id}": {
+      "get": {
+        "tags": [
+          "informes"
+        ],
+        "summary": "Boletin Anual",
+        "description": "Genera el boletin anual de un estudiante (PDF o Excel).",
+        "operationId": "boletin_anual_api_v1_informes_boletin_anual__estudiante_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estudiante_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Estudiante Id"
+            }
+          },
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "anio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pdf",
+              "title": "Formato"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/informes/notas": {
+      "get": {
+        "tags": [
+          "informes"
+        ],
+        "summary": "Informe Notas",
+        "description": "Genera el informe de notas del grupo (Excel o PDF).",
+        "operationId": "informe_notas_api_v1_informes_notas_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "asignacion_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "fecha_desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Fecha Desde"
+            }
+          },
+          {
+            "name": "fecha_hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Fecha Hasta"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "excel",
+              "title": "Formato"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/informes/asistencia": {
+      "get": {
+        "tags": [
+          "informes"
+        ],
+        "summary": "Informe Asistencia",
+        "description": "Genera el informe de asistencia del grupo (Excel o PDF).",
+        "operationId": "informe_asistencia_api_v1_informes_asistencia_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "grupo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Grupo Id"
+            }
+          },
+          {
+            "name": "asignacion_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "fecha_desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Fecha Desde"
+            }
+          },
+          {
+            "name": "fecha_hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Fecha Hasta"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "excel",
+              "title": "Formato"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configuracion/anio-activo": {
+      "get": {
+        "tags": [
+          "configuracion"
+        ],
+        "summary": "Get Anio Activo",
+        "description": "Retorna la configuracion del anio lectivo activo de la institucion.",
+        "operationId": "get_anio_activo_api_v1_configuracion_anio_activo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracionAnioResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/configuracion/info-institucional/{anio_id}": {
+      "get": {
+        "tags": [
+          "configuracion"
+        ],
+        "summary": "Get Info Institucional",
+        "description": "Retorna la informacion institucional del anio lectivo.",
+        "operationId": "get_info_institucional_api_v1_configuracion_info_institucional__anio_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "configuracion"
+        ],
+        "summary": "Actualizar Info Institucional",
+        "description": "Actualiza la informacion institucional del anio lectivo.",
+        "operationId": "actualizar_info_institucional_api_v1_configuracion_info_institucional__anio_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarInfoInstitucionalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracionAnioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configuracion/niveles/{anio_id}": {
+      "get": {
+        "tags": [
+          "configuracion"
+        ],
+        "summary": "Listar Niveles",
+        "description": "Lista los niveles de desempeno configurados para el anio.",
+        "operationId": "listar_niveles_api_v1_configuracion_niveles__anio_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "anio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/eventos": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Listar Eventos",
+        "description": "Lista eventos de sesion (login, logout, fallos) paginados.",
+        "operationId": "listar_eventos_api_v1_auditoria_eventos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Usuario Id"
+            }
+          },
+          {
+            "name": "tipo_evento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Evento"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_EventoSesionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/cambios": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Listar Cambios",
+        "description": "Lista cambios del audit_log paginados.",
+        "operationId": "listar_cambios_api_v1_auditoria_cambios_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Usuario Id"
+            }
+          },
+          {
+            "name": "tabla",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tabla"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "title": "Per Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_RegistroCambioResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/integridad": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Verificar Integridad",
+        "description": "Verifica el encadenamiento por hash de las tablas de auditoria.",
+        "operationId": "verificar_integridad_api_v1_auditoria_integridad_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "completa",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Completa"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegridadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActualizarEstudianteRequest": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apellido"
+          },
+          "genero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genero"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          },
+          "direccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direccion"
+          },
+          "grupo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grupo Id"
+          },
+          "posee_piar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posee Piar"
+          }
+        },
+        "type": "object",
+        "title": "ActualizarEstudianteRequest"
+      },
+      "ActualizarInfoInstitucionalRequest": {
+        "properties": {
+          "nombre_institucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Institucion"
+          },
+          "dane_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dane Code"
+          },
+          "rector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rector"
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio"
+          },
+          "direccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direccion"
+          }
+        },
+        "type": "object",
+        "title": "ActualizarInfoInstitucionalRequest"
+      },
+      "ActualizarUsuarioRequest": {
+        "properties": {
+          "nombre_completo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Completo"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          }
+        },
+        "type": "object",
+        "title": "ActualizarUsuarioRequest"
+      },
+      "AsignaturaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "area_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Id"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "AsignaturaResponse"
+      },
+      "Body_carga_masiva_api_v1_estudiantes_carga_masiva_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_carga_masiva_api_v1_estudiantes_carga_masiva_post"
+      },
+      "CambiarRolRequest": {
+        "properties": {
+          "nuevo_rol": {
+            "type": "string",
+            "title": "Nuevo Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nuevo_rol"
+        ],
+        "title": "CambiarRolRequest"
+      },
+      "CargaMasivaResponse": {
+        "properties": {
+          "insertados": {
+            "type": "integer",
+            "title": "Insertados"
+          },
+          "errores": {
+            "items": {},
+            "type": "array",
+            "title": "Errores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insertados",
+          "errores"
+        ],
+        "title": "CargaMasivaResponse"
+      },
+      "ConfiguracionAnioResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "anio": {
+            "type": "integer",
+            "title": "Anio"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          },
+          "nota_minima_aprobacion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Minima Aprobacion"
+          },
+          "nota_minima_escala": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Minima Escala"
+          },
+          "nota_maxima_escala": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Maxima Escala"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "anio",
+          "activo"
+        ],
+        "title": "ConfiguracionAnioResponse"
+      },
+      "ConfiguracionSIEEResponse": {
+        "properties": {
+          "anio_id": {
+            "type": "integer",
+            "title": "Anio Id"
+          },
+          "modo": {
+            "type": "string",
+            "title": "Modo",
+            "default": "LIBRE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio_id"
+        ],
+        "title": "ConfiguracionSIEEResponse"
+      },
+      "EstadoAsistenciaItem": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "observacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "estado"
+        ],
+        "title": "EstadoAsistenciaItem",
+        "description": "Item de asistencia para guardar en lote."
+      },
+      "EstudianteResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "id_publico": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Publico"
+          },
+          "tipo_documento": {
+            "type": "string",
+            "title": "Tipo Documento"
+          },
+          "numero_documento": {
+            "type": "string",
+            "title": "Numero Documento"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "title": "Apellido"
+          },
+          "genero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genero"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          },
+          "direccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direccion"
+          },
+          "grupo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grupo Id"
+          },
+          "posee_piar": {
+            "type": "boolean",
+            "title": "Posee Piar"
+          },
+          "fecha_ingreso": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Ingreso"
+          },
+          "estado_matricula": {
+            "type": "string",
+            "title": "Estado Matricula"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo_documento",
+          "numero_documento",
+          "nombre",
+          "apellido",
+          "posee_piar",
+          "fecha_ingreso",
+          "estado_matricula"
+        ],
+        "title": "EstudianteResponse"
+      },
+      "EventoSesionResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          },
+          "tipo_evento": {
+            "type": "string",
+            "title": "Tipo Evento"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          },
+          "detalles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalles"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad",
+            "default": "INFO"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "usuario",
+          "tipo_evento",
+          "fecha_hora"
+        ],
+        "title": "EventoSesionResponse"
+      },
+      "GrupoResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "grado": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grado"
+          },
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "GrupoResponse"
+      },
+      "GuardarAsistenciaMasivaRequest": {
+        "properties": {
+          "grupo_id": {
+            "type": "integer",
+            "title": "Grupo Id"
+          },
+          "asignacion_id": {
+            "type": "integer",
+            "title": "Asignacion Id"
+          },
+          "periodo_id": {
+            "type": "integer",
+            "title": "Periodo Id"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "lista": {
+            "items": {
+              "$ref": "#/components/schemas/EstadoAsistenciaItem"
+            },
+            "type": "array",
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grupo_id",
+          "asignacion_id",
+          "periodo_id",
+          "fecha",
+          "lista"
+        ],
+        "title": "GuardarAsistenciaMasivaRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "HealthResponse"
+      },
+      "IntegridadResponse": {
+        "properties": {
+          "eventos_ok": {
+            "type": "boolean",
+            "title": "Eventos Ok"
+          },
+          "cambios_ok": {
+            "type": "boolean",
+            "title": "Cambios Ok"
+          },
+          "evento_roto_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evento Roto Id"
+          },
+          "cambio_roto_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cambio Roto Id"
+          },
+          "alcance": {
+            "type": "string",
+            "title": "Alcance",
+            "default": "incremental"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eventos_ok",
+          "cambios_ok"
+        ],
+        "title": "IntegridadResponse"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "Body del POST /auth/login."
+      },
+      "NotaComportamientoResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "grupo_id": {
+            "type": "integer",
+            "title": "Grupo Id"
+          },
+          "periodo_id": {
+            "type": "integer",
+            "title": "Periodo Id"
+          },
+          "valor": {
+            "type": "number",
+            "title": "Valor"
+          },
+          "observacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "grupo_id",
+          "periodo_id",
+          "valor"
+        ],
+        "title": "NotaComportamientoResponse"
+      },
+      "NuevaObservacionRequest": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "asignacion_id": {
+            "type": "integer",
+            "title": "Asignacion Id"
+          },
+          "periodo_id": {
+            "type": "integer",
+            "title": "Periodo Id"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "categoria_id": {
+            "type": "integer",
+            "title": "Categoria Id"
+          },
+          "es_publica": {
+            "type": "boolean",
+            "title": "Es Publica",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "asignacion_id",
+          "periodo_id",
+          "texto",
+          "categoria_id"
+        ],
+        "title": "NuevaObservacionRequest"
+      },
+      "NuevoEstudianteRequest": {
+        "properties": {
+          "tipo_documento": {
+            "type": "string",
+            "title": "Tipo Documento",
+            "default": "TI"
+          },
+          "numero_documento": {
+            "type": "string",
+            "title": "Numero Documento"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "title": "Apellido"
+          },
+          "genero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genero"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          },
+          "direccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direccion"
+          },
+          "grupo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grupo Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numero_documento",
+          "nombre",
+          "apellido"
+        ],
+        "title": "NuevoEstudianteRequest"
+      },
+      "NuevoUsuarioRequest": {
+        "properties": {
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "nombre_completo": {
+            "type": "string",
+            "title": "Nombre Completo"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "usuario",
+          "nombre_completo",
+          "rol"
+        ],
+        "title": "NuevoUsuarioRequest"
+      },
+      "ObservacionResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "asignacion_id": {
+            "type": "integer",
+            "title": "Asignacion Id"
+          },
+          "periodo_id": {
+            "type": "integer",
+            "title": "Periodo Id"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "categoria_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categoria Id"
+          },
+          "es_publica": {
+            "type": "boolean",
+            "title": "Es Publica",
+            "default": true
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "asignacion_id",
+          "periodo_id",
+          "texto"
+        ],
+        "title": "ObservacionResponse"
+      },
+      "PaginatedResponse_EstudianteResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EstudianteResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "title": "PaginatedResponse[EstudianteResponse]"
+      },
+      "PaginatedResponse_EventoSesionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventoSesionResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "title": "PaginatedResponse[EventoSesionResponse]"
+      },
+      "PaginatedResponse_RegistroCambioResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RegistroCambioResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "title": "PaginatedResponse[RegistroCambioResponse]"
+      },
+      "PaginatedResponse_UsuarioResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UsuarioResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page"
+        ],
+        "title": "PaginatedResponse[UsuarioResponse]"
+      },
+      "PeriodoResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero"
+          },
+          "anio_id": {
+            "type": "integer",
+            "title": "Anio Id"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "numero",
+          "anio_id",
+          "activo"
+        ],
+        "title": "PeriodoResponse"
+      },
+      "PlanillaEstudianteResponse": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "nombre_completo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Completo"
+          },
+          "definitiva": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definitiva"
+          },
+          "promedio_ajustado": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promedio Ajustado"
+          },
+          "notas": {
+            "title": "Notas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id"
+        ],
+        "title": "PlanillaEstudianteResponse"
+      },
+      "RegistrarNotaItem": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "actividad_id": {
+            "type": "integer",
+            "title": "Actividad Id"
+          },
+          "valor": {
+            "type": "number",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "actividad_id",
+          "valor"
+        ],
+        "title": "RegistrarNotaItem"
+      },
+      "RegistrarNotasMasivasRequest": {
+        "properties": {
+          "grupo_id": {
+            "type": "integer",
+            "title": "Grupo Id"
+          },
+          "asignacion_id": {
+            "type": "integer",
+            "title": "Asignacion Id"
+          },
+          "periodo_id": {
+            "type": "integer",
+            "title": "Periodo Id"
+          },
+          "anio_id": {
+            "type": "integer",
+            "title": "Anio Id"
+          },
+          "actividad_id": {
+            "type": "integer",
+            "title": "Actividad Id"
+          },
+          "notas": {
+            "items": {
+              "$ref": "#/components/schemas/RegistrarNotaItem"
+            },
+            "type": "array",
+            "title": "Notas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grupo_id",
+          "asignacion_id",
+          "periodo_id",
+          "anio_id",
+          "actividad_id",
+          "notas"
+        ],
+        "title": "RegistrarNotasMasivasRequest"
+      },
+      "RegistroCambioResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "usuario_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Id"
+          },
+          "usuario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          },
+          "tabla": {
+            "type": "string",
+            "title": "Tabla"
+          },
+          "registro_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registro Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accion",
+          "tabla",
+          "timestamp"
+        ],
+        "title": "RegistroCambioResponse"
+      },
+      "ResetearPasswordRequest": {
+        "properties": {
+          "nueva_password": {
+            "type": "string",
+            "title": "Nueva Password",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ResetearPasswordRequest"
+      },
+      "ResumenAsistenciaResponse": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "total_clases": {
+            "type": "integer",
+            "title": "Total Clases",
+            "default": 0
+          },
+          "presentes": {
+            "type": "integer",
+            "title": "Presentes",
+            "default": 0
+          },
+          "faltas_justificadas": {
+            "type": "integer",
+            "title": "Faltas Justificadas",
+            "default": 0
+          },
+          "faltas_injustificadas": {
+            "type": "integer",
+            "title": "Faltas Injustificadas",
+            "default": 0
+          },
+          "retrasos": {
+            "type": "integer",
+            "title": "Retrasos",
+            "default": 0
+          },
+          "excusas": {
+            "type": "integer",
+            "title": "Excusas",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id"
+        ],
+        "title": "ResumenAsistenciaResponse"
+      },
+      "ResumenConvivenciaResponse": {
+        "properties": {
+          "estudiante_id": {
+            "type": "integer",
+            "title": "Estudiante Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "num_observaciones": {
+            "type": "integer",
+            "title": "Num Observaciones",
+            "default": 0
+          },
+          "num_registros_negativos": {
+            "type": "integer",
+            "title": "Num Registros Negativos",
+            "default": 0
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "nivel_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Nombre"
+          },
+          "supera_umbral": {
+            "type": "boolean",
+            "title": "Supera Umbral",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudiante_id",
+          "nombre"
+        ],
+        "title": "ResumenConvivenciaResponse"
+      },
+      "RetirarEstudianteRequest": {
+        "properties": {
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "title": "RetirarEstudianteRequest"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in"
+        ],
+        "title": "TokenResponse",
+        "description": "Respuesta exitosa del login: token JWT + metadata."
+      },
+      "UsuarioResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "nombre_completo": {
+            "type": "string",
+            "title": "Nombre Completo"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "debe_cambiar_password": {
+            "type": "boolean",
+            "title": "Debe Cambiar Password"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Creacion"
+          },
+          "ultima_sesion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Sesion"
+          },
+          "institucion_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institucion Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "usuario",
+          "nombre_completo",
+          "rol",
+          "activo",
+          "debe_cambiar_password",
+          "fecha_creacion"
+        ],
+        "title": "UsuarioResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -103,8 +103,8 @@ def registrar_rutas_internas(app) -> None:
         return JSONResponse(status_code=500, content={"detail": "Error interno"})
 
     # --- API REST (backend_10) ---
-    from src.api.router import api_router, docs_router
     from src.api.errors import avedra_error_handler
+    from src.api.router import api_router, docs_router
     from src.domain.exceptions import AvedraError
 
     app.include_router(api_router)

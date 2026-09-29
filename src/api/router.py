@@ -4,9 +4,37 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from config import settings
+from src.api.auth import auth_router
+from src.api.routes.asistencia import router as asistencia_router
+from src.api.routes.auditoria import router as auditoria_router
+from src.api.routes.configuracion import router as configuracion_router
+from src.api.routes.contexto import router as contexto_router
+from src.api.routes.convivencia import router as convivencia_router
+from src.api.routes.estudiantes import router as estudiantes_router
+from src.api.routes.evaluacion import router as evaluacion_router
+from src.api.routes.informes import router as informes_router
+from src.api.routes.usuarios import router as usuarios_router
 from src.api.schemas.common import HealthResponse
 
 api_router = APIRouter(prefix="/api/v1")
+
+# --- Autenticacion JWT (backend_11) ---
+api_router.include_router(auth_router)
+
+# --- Modulos CRUD (backend_12, OLA 1) ---
+api_router.include_router(usuarios_router)
+api_router.include_router(estudiantes_router)
+api_router.include_router(contexto_router)
+
+# --- Modulos CRUD (backend_12, OLA 2) ---
+api_router.include_router(asistencia_router)
+api_router.include_router(convivencia_router)
+api_router.include_router(evaluacion_router)
+
+# --- Modulos CRUD (backend_12, OLA 3) ---
+api_router.include_router(informes_router)
+api_router.include_router(configuracion_router)
+api_router.include_router(auditoria_router)
 
 
 @api_router.get("/health", response_model=HealthResponse)
