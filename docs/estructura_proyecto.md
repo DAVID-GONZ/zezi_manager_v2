@@ -1,7 +1,7 @@
 # Estructura del proyecto — zeci_manager_v2
 
 > Generado automáticamente por `scripts/generar_estructura.py`
-> Fecha: 2026-09-27 08:35
+> Fecha: 2026-09-28 23:54
 > Raíz: `C:\Users\579j\Documents\DOCUMENTOS_B\Proyecto_Control_Asitencia\app_v2\zeci_manager_v2`
 
 **Excluidas (caché/entornos):** *.egg-info, .claude, .git, .mypy_cache, .nicegui, .pytest_cache, .ruff_cache, .tox, .venv, .vscode, __pycache__, build, dist, node_modules
@@ -25,14 +25,18 @@ zeci_manager_v2/
 │   │   ├── dominio_puertos.md
 │   │   ├── infraestructura.md
 │   │   └── servicios.md
-│   ├── analisis_arquitectura.md
+│   ├── 📁 **design_system/**
+│   │   ├── components.md
+│   │   ├── portability_audit.md
+│   │   └── portability_test.html
 │   ├── api_reference.md
 │   ├── architecture.md
-│   ├── auditoria_observabilidad_2026-09-08.md
 │   ├── conventions.md
 │   ├── decisions.md
+│   ├── deploy.md
 │   ├── dominio.md
 │   ├── estructura_proyecto.md
+│   ├── estructura_tests.md
 │   ├── infraestructura.md
 │   ├── modelos.md
 │   ├── page_patterns.md
@@ -40,19 +44,54 @@ zeci_manager_v2/
 │   ├── schema.md
 │   ├── seguridad.md
 │   ├── services.md
-│   ├── spec_author.md
 │   ├── verificacion_bitacora.md
 │   └── verification.md
 ├── 📁 **logs/**
 │   └── security.log
+├── 📁 **openapi/**
+│   └── avedra-openapi.json
 ├── 📁 **scripts/**
+│   ├── audit_css_portability.py
 │   ├── check_auditoria.py
 │   ├── check_enums.py
+│   ├── export_openapi.py
+│   ├── extract_component_info.py
 │   ├── generar_estructura.py
 │   ├── init.py
 │   ├── run_tests.py
 │   └── sync_tokens.py
 ├── 📁 **src/**
+│   ├── 📁 **api/**
+│   │   ├── 📁 **routes/**
+│   │   │   ├── __init__.py
+│   │   │   ├── asistencia.py
+│   │   │   ├── auditoria.py
+│   │   │   ├── configuracion.py
+│   │   │   ├── contexto.py
+│   │   │   ├── convivencia.py
+│   │   │   ├── estudiantes.py
+│   │   │   ├── evaluacion.py
+│   │   │   ├── informes.py
+│   │   │   └── usuarios.py
+│   │   ├── 📁 **schemas/**
+│   │   │   ├── __init__.py
+│   │   │   ├── asistencia.py
+│   │   │   ├── auditoria.py
+│   │   │   ├── auth.py
+│   │   │   ├── common.py
+│   │   │   ├── configuracion.py
+│   │   │   ├── contexto.py
+│   │   │   ├── convivencia.py
+│   │   │   ├── estudiantes.py
+│   │   │   ├── evaluacion.py
+│   │   │   ├── informes.py
+│   │   │   └── usuarios.py
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── deps.py
+│   │   ├── errors.py
+│   │   ├── router.py
+│   │   └── security.py
 │   ├── 📁 **domain/**
 │   │   ├── 📁 **models/**
 │   │   │   ├── __init__.py
@@ -114,6 +153,7 @@ zeci_manager_v2/
 │   │   │   ├── nivelacion_repo.py
 │   │   │   ├── periodo_repo.py
 │   │   │   ├── plan_mejoramiento_repo.py
+│   │   │   ├── portal_provider.py
 │   │   │   ├── preferencias_repo.py
 │   │   │   ├── security_logger.py
 │   │   │   ├── service_ports.py
@@ -121,7 +161,6 @@ zeci_manager_v2/
 │   │   │   └── usuario_repo.py
 │   │   ├── exceptions.py
 │   │   ├── modulos.py
-│   │   ├── portal_provider.py
 │   │   └── tablas_auditables.py
 │   ├── 📁 **infrastructure/**
 │   │   ├── 📁 **auth/**
@@ -130,7 +169,10 @@ zeci_manager_v2/
 │   │   │   └── jwt_handler.py
 │   │   ├── 📁 **context/**
 │   │   │   ├── __init__.py
-│   │   │   └── context_initializer.py
+│   │   │   ├── context_initializer.py
+│   │   │   ├── contexto_actor.py
+│   │   │   ├── contexto_tenant.py
+│   │   │   └── solo_lectura.py
 │   │   ├── 📁 **db/**
 │   │   │   ├── 📁 **repositories/**
 │   │   │   │   ├── __init__.py
@@ -154,27 +196,7 @@ zeci_manager_v2/
 │   │   │   │   ├── sqla_plan_mejoramiento_repo.py
 │   │   │   │   ├── sqla_preferencias_repo.py
 │   │   │   │   ├── sqla_siee_repo.py
-│   │   │   │   ├── sqla_usuario_repo.py
-│   │   │   │   ├── sqlite_acudiente_repo.py
-│   │   │   │   ├── sqlite_alerta_repo.py
-│   │   │   │   ├── sqlite_asignacion_repo.py
-│   │   │   │   ├── sqlite_asistencia_repo.py
-│   │   │   │   ├── sqlite_auditoria_repo.py
-│   │   │   │   ├── sqlite_cierre_repo.py
-│   │   │   │   ├── sqlite_configuracion_repo.py
-│   │   │   │   ├── sqlite_convivencia_repo.py
-│   │   │   │   ├── sqlite_estadisticos_repo.py
-│   │   │   │   ├── sqlite_estudiante_repo.py
-│   │   │   │   ├── sqlite_evaluacion_repo.py
-│   │   │   │   ├── sqlite_habilitacion_repo.py
-│   │   │   │   ├── sqlite_infraestructura_repo.py
-│   │   │   │   ├── sqlite_institucion_repo.py
-│   │   │   │   ├── sqlite_nivelacion_repo.py
-│   │   │   │   ├── sqlite_periodo_repo.py
-│   │   │   │   ├── sqlite_plan_mejoramiento_repo.py
-│   │   │   │   ├── sqlite_preferencias_repo.py
-│   │   │   │   ├── sqlite_siee_repo.py
-│   │   │   │   └── sqlite_usuario_repo.py
+│   │   │   │   └── sqla_usuario_repo.py
 │   │   │   ├── __init__.py
 │   │   │   ├── connection.py
 │   │   │   ├── queries.py
@@ -432,8 +454,6 @@ zeci_manager_v2/
 │       ├── catalogo_academico_service.py
 │       ├── cierre_service.py
 │       ├── configuracion_service.py
-│       ├── contexto_actor.py
-│       ├── contexto_tenant.py
 │       ├── convivencia_service.py
 │       ├── escenario_horario_service.py
 │       ├── estadisticos_service.py
@@ -456,17 +476,19 @@ zeci_manager_v2/
 │       ├── preparacion_horario_service.py
 │       ├── restriccion_generacion_service.py
 │       ├── sala_service.py
-│       ├── solo_lectura.py
 │       └── usuario_service.py
 ├── AGENTS.md
 ├── CHECKPOINTS.md
 ├── CLAUDE.md
 ├── config.py
 ├── container.py
+├── Dockerfile
 ├── main.py
 ├── pyproject.toml
+├── render.yaml
 ├── requirements.txt
-└── step_list.json
+├── step_list.json
+└── tokens.json
 ```
 
 
@@ -474,16 +496,18 @@ zeci_manager_v2/
 
 ## Estadísticas rápidas
 
-- **Total archivos:** 404
+- **Total archivos:** 421
 - **Por extensión:**
-  - `.py`: 331
+  - `.py`: 342
   - `.css`: 36
-  - `.md`: 28
-  - `.json`: 2
+  - `.md`: 29
+  - `.json`: 4
+  - `(sin extensión)`: 2
   - `.toml`: 1
+  - `.yaml`: 1
   - `.txt`: 1
   - `.db`: 1
   - `.log`: 1
-  - `(sin extensión)`: 1
   - `.conf`: 1
+  - `.html`: 1
   - `.ts`: 1

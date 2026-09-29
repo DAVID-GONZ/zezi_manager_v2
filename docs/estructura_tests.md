@@ -1,7 +1,7 @@
 # Estructura de tests — zeci_manager_v2
 
 > Generado automáticamente por `scripts/generar_estructura.py`
-> Fecha: 2026-09-27 08:36
+> Fecha: 2026-09-28 23:54
 
 ---
 
@@ -45,8 +45,13 @@ tests/
 │   ├── test_tenant_b4_salas_plantillas_convivencia.py
 │   └── test_tenant_d_usuarios_login.py
 ├── 📁 **unit/**
+│   ├── 📁 **api/**
+│   │   ├── __init__.py
+│   │   ├── test_api_auth.py
+│   │   └── test_api_backend_12.py
 │   ├── 📁 **design/**
 │   │   ├── __init__.py
+│   │   ├── test_tokens_roundtrip.py
 │   │   └── test_tokens_sync.py
 │   ├── 📁 **domain/**
 │   │   ├── __init__.py
@@ -231,6 +236,7 @@ tests/
 │   ├── test_config_secretos.py
 │   └── test_config_secrets.py
 ├── __init__.py
+├── compat_conn.py
 ├── conftest.py
 ├── db_engine.py
 └── test_container.py
@@ -241,6 +247,6 @@ tests/
 
 ## Estadísticas rápidas
 
-- **Total archivos:** 213
+- **Total archivos:** 218
 - **Por extensión:**
-  - `.py`: 213
+  - `.py`: 218
