@@ -304,46 +304,75 @@ SQLAlchemy Core detrás de los mismos puertos.
 ## Fase 3 — API REST + autenticación (1–2 semanas)
 
 Objetivo: exponer los servicios como API REST con contrato estable.
+Specs completas en `specs/backend_10_*`, `specs/backend_11_*`, `specs/backend_12_*`.
 
-- **backend_10_fastapi_mount** 🕓 — Router FastAPI montado en NiceGUI. Estructura
-  `src/interface/api/`.
-  - *criterio_done*: `/api/health` + OpenAPI docs sirviendo junto a la UI.
+- **backend_10_fastapi_mount** 🕓 — APIRouter montado en la app FastAPI que NiceGUI
+  expone internamente, bajo prefijo `/api/v1`. Estructura `src/interface/api/`
+  (router, deps, errors, schemas). Exception handlers para `AvedraError` →
+  404/409/422/403. CORS configurable. OpenAPI docs en `/api/docs`.
+  - *criterio_done*: `/api/v1/health` responde 200, Swagger UI visible, app NiceGUI intacta.
 - **backend_11_api_auth** 🕓 — Auth JWT independiente de la sesión NiceGUI. Reusa
-  `AuthService` existente.
-  - *criterio_done*: login emite token; middleware valida rol/tenant.
-- **backend_12_endpoints_crud** 🕓 — Endpoints que reusan `Container.*_service`.
-  Modelos Pydantic → serialización directa. Diseñar para **lotes offline** (recibir
-  arrays de registros con timestamps para futura sincronización).
-  - *criterio_done*: CRUD completo con tests de API; OpenAPI exportable.
+  `JWTHandler` (stdlib pura) y `BcryptAuthService` existentes. Endpoint
+  `POST /api/v1/auth/login`. Dependencia `get_current_user` que setea las 3
+  ContextVars (tenant, actor, solo_lectura). `require_role(*roles)`. Rate limiter
+  en memoria (5/5 min por IP). Auditoría LOGIN_API via obs_06.
+  - *criterio_done*: login emite token; endpoint protegido valida rol/tenant;
+    6 tests de auth pasan.
+- **backend_12_endpoints_crud** 🕓 — Endpoints en 3 olas que reusan
+  `Container.*_service()`. Ola 1: usuarios/estudiantes/contexto. Ola 2:
+  asistencia/convivencia/evaluación (con lotes offline). Ola 3:
+  informes (PDF/Excel streaming) + configuración + auditoría.
+  Schemas Pydantic de response (nunca exponer password_hash).
+  Script `export_openapi.py` → `openapi/avedra-openapi.json`.
+  - *criterio_done*: CRUD completo, tests de API, OpenAPI 3.1 exportable.
 
 ## Fase 4 — Despliegue nube + tiempo real (1–2 semanas)
 
 Objetivo: app desplegada en la nube con Postgres y canales de push.
 
-- **backend_13_deploy_postgres** 🕓 — Despliegue de la app NiceGUI + Postgres en un
-  proveedor cloud (Railway, Render, VPS, etc.). Config de producción, variables de
-  entorno, seed de producción (`seed_base`).
-  - *criterio_done*: app accesible desde internet con Postgres.
-- **backend_14_event_bus** 🕓 — Bus de eventos interno: servicios emiten eventos de
-  dominio sin conocer el transporte.
+> **Revisión 2026-09-28 (decisión de David):** el deploy en Postgres pago no
+> es viable por costo. `backend_13` se redefine para usar servicios de tier
+> gratuito (Render free + Neon Postgres free). `backend_14` y `backend_15`
+> (event bus + WebSocket/SSE) quedan **diferidos al post-split**: requieren
+> un frontend Vue que consuma los eventos y no aportan al criterio de done
+> del split. Se reevalúan cuando haya frontend Vue funcional.
+
+- **backend_13_deploy_cloud** 🕓 — Deploy con **tiers gratuitos**: Render free
+  (750 h/mes, spin-down 15 min) + Neon Postgres free (0.5 GB always-free).
+  Dockerfile mínimo, render.yaml, documentación paso a paso en `docs/deploy.md`.
+  Verificación de `metadata.create_all()` y `seed_base` contra Postgres real.
+  HTTPS incluido por Render. Alternativas documentadas: Fly.io + Supabase.
+  - *criterio_done*: app accesible desde internet con Postgres; o documentación
+    completa lista para deploy cuando David decida.
+- **backend_14_event_bus** 🕓 — **DIFERIDO al post-split.** Bus de eventos
+  interno: servicios emiten eventos de dominio sin conocer el transporte.
+  No aporta al split ni al frontend Vue inicial.
   - *criterio_done*: servicio publica evento; test verifica suscriptores.
-- **backend_15_ws_endpoint** 🕓 — Endpoint WebSocket/SSE con auth y filtrado por
-  tenant. Reenvía eventos del bus a clientes suscritos.
+- **backend_15_ws_endpoint** 🕓 — **DIFERIDO al post-split.** Endpoint
+  WebSocket/SSE con auth y filtrado por tenant. Requiere frontend que consuma.
   - *criterio_done*: cliente recibe en vivo un evento emitido por un servicio.
 
-## Fase 5 — Design system portable (3–5 días, paralelo desde Fase 2)
+## Fase 5 — Design system portable (3–5 días, paralelo desde Fase 3)
 
 Objetivo: tokens y contratos en formato que Vue pueda consumir en la Etapa B.
+Specs completas en `specs/backend_16_*`, `specs/backend_17_*`, `specs/backend_18_*`.
+**Puede ejecutarse en paralelo con la Fase 3.**
 
-- **backend_16_tokens_neutrales** 🕓 — Fuente canónica a JSON (estilo W3C Design
-  Tokens). `sync_tokens.py` genera `tokens.css` + `tokens.py` **desde el JSON**.
-  - *criterio_done*: `tokens.json` es la fuente; `test_tokens_sync` verifica derivados.
-- **backend_17_contratos_componentes** 🕓 — Documentar los 18 componentes (variantes,
-  props, estados, clases CSS) como spec independiente de NiceGUI.
-  - *criterio_done*: `docs/design_system/components.md` cubre los 18 componentes.
-- **backend_18_css_desacoplado** 🕓 — Auditar y aislar dependencias de Quasar en el
-  CSS para que sea reutilizable fuera de NiceGUI.
-  - *criterio_done*: informe de dependencias Quasar + CSS portable verificado.
+- **backend_16_tokens_neutrales** 🕓 — Fuente canónica `tokens.json` (formato W3C
+  Design Tokens, 3 capas: primitivos/semánticos/componente). `sync_tokens.py`
+  invertido: lee JSON → genera `tokens.css` + `tokens.py` + `tokens.ts`. Las 187
+  variables actuales clasificadas. Round-trip verificado.
+  - *criterio_done*: `tokens.json` es la fuente; `test_tokens_roundtrip` verde;
+    app se ve idéntica.
+- **backend_17_contratos_componentes** 🕓 — Catálogo en `docs/design_system/components.md`
+  con los 18 componentes del CLASS_CONTRACT documentados con 7 dimensiones
+  (propósito, variantes, estados, clases, tokens, a11y, ejemplo).
+  - *criterio_done*: `components.md` cubre los 18 componentes.
+- **backend_18_css_desacoplado** 🕓 — Auditoría automatizada de portabilidad CSS:
+  clasificación core vs. adapter, ratio de portabilidad, selectores de framework,
+  `!important` por archivo. HTML de test que renderiza los 18 componentes con solo
+  tokens.css + CSS core, sin NiceGUI.
+  - *criterio_done*: informe `portability_audit.md` + HTML de test verificado.
 
 ---
 

@@ -102,6 +102,25 @@ def registrar_rutas_internas(app) -> None:
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"detail": "Error interno"})
 
+    # --- API REST (backend_10) ---
+    from src.api.router import api_router, docs_router
+    from src.api.errors import avedra_error_handler
+    from src.domain.exceptions import AvedraError
+
+    app.include_router(api_router)
+    app.include_router(docs_router)
+    app.add_exception_handler(AvedraError, avedra_error_handler)
+
+    # CORS para el futuro frontend Vue
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 
 def registrar_rutas_ui() -> None:
     """

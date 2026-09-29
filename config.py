@@ -128,6 +128,10 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = Field(default=8080, gt=0, le=65535)
     RELOAD: bool = False  # True solo en desarrollo con hot-reload
+    CORS_ORIGINS: list[str] = Field(
+        default=["http://localhost:5173"],
+        description="Orígenes permitidos para CORS (frontend Vue dev server).",
+    )
 
     # ------------------------------------------------------------------
     # Zona horaria de referencia (datos_08)
@@ -350,9 +354,11 @@ IS_PRODUCTION: bool = settings.is_production
 ZONA_HORARIA: str = settings.ZONA_HORARIA
 DB_BACKEND: str = settings.DB_BACKEND
 DATABASE_URL: str = settings.DATABASE_URL
+CORS_ORIGINS: list[str] = settings.CORS_ORIGINS
 
 
 __all__ = [
+    "CORS_ORIGINS",
     "DATABASE_PATH",
     "DATABASE_URL",
     "DB_BACKEND",

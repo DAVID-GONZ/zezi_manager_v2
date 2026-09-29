@@ -20,13 +20,13 @@ Esto elimina la clase de bugs de propagacion de ContextVar que afecta a NiceGUI.
 ## Scope
 
 ```
-src/interface/api/                            (NUEVO — paquete API)
-src/interface/api/router.py                   (router principal)
-src/interface/api/middleware/                  (NUEVO)
-src/interface/api/middleware/tenant.py         (middleware de tenant)
-src/interface/api/middleware/auth.py           (middleware de JWT)
-src/interface/api/deps.py                     (dependencias FastAPI)
-src/interface/api/endpoints/                   (NUEVO)
+src/api/                            (NUEVO — paquete API)
+src/api/router.py                   (router principal)
+src/api/middleware/                  (NUEVO)
+src/api/middleware/tenant.py         (middleware de tenant)
+src/api/middleware/auth.py           (middleware de JWT)
+src/api/deps.py                     (dependencias FastAPI)
+src/api/endpoints/                   (NUEVO)
 tests/unit/interface/api/test_middleware.py    (NUEVO)
 tests/integration/api/test_tenant_api.py      (NUEVO)
 ```
@@ -38,7 +38,7 @@ tests/integration/api/test_tenant_api.py      (NUEVO)
 **Corresponde a roadmap `backend_10_fastapi_mount`.**
 
 ```python
-# src/interface/api/router.py
+# src/api/router.py
 from fastapi import FastAPI
 
 api_app = FastAPI(
@@ -60,7 +60,7 @@ app.mount("/api", api_app)
 ### T2 — Modelo TenantContext inmutable  [ ]
 
 ```python
-# src/interface/api/middleware/tenant.py
+# src/api/middleware/tenant.py
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ class TenantContext:
 **Corresponde a roadmap `backend_11_api_auth`.**
 
 ```python
-# src/interface/api/middleware/auth.py
+# src/api/middleware/auth.py
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class JWTTenantMiddleware(BaseHTTPMiddleware):
@@ -123,7 +123,7 @@ Test con JWT invalido → 401.
 ### T4 — Dependencia FastAPI para inyectar tenant  [ ]
 
 ```python
-# src/interface/api/deps.py
+# src/api/deps.py
 from fastapi import Request, Depends
 
 def get_tenant(request: Request) -> TenantContext:

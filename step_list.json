@@ -432,6 +432,69 @@
     "descripcion": "Paso 5 del rebrand. Cambia [project].name de zeci-manager-v2 a avedra y actualiza la description con el nombre completo AVEDRA. Es el cierre del rebrand antes del split de repos (Paso 6 se absorbe en repo_split_00_pasos). Al cerrar, grep -ri zeci en todo el proyecto retorna 0 y init.py esta verde."
   },
   {
+    "id": "backend_10_fastapi_mount",
+    "nombre": "Router FastAPI montado en NiceGUI bajo /api/v1",
+    "status": "in_progress",
+    "destino_v2": "src/api/router.py, src/api/deps.py, src/api/errors.py, src/api/schemas/common.py, main.py, config.py, .env.example",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Fase 3 del backend. NiceGUI internamente usa FastAPI; el paso anade un APIRouter con prefijo /api/v1 al mismo proceso. Expone /api/v1/health, exception handlers para AvedraError que mapean a 404/409/422/403, CORS configurable via CORS_ORIGINS, y documentacion OpenAPI en /api/docs. Crea la estructura src/interface/api/ sin tocar la UI NiceGUI. Prerequisito de backend_11 y backend_12."
+  },
+  {
+    "id": "backend_11_api_auth",
+    "nombre": "Autenticacion JWT para la API REST",
+    "status": "spec_ready",
+    "destino_v2": "src/api/auth.py, src/api/security.py, src/api/schemas/auth.py, src/api/router.py, main.py, tests/unit/api/test_api_auth.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Fase 3 del backend. Endpoint POST /api/v1/auth/login que autentica con BcryptAuthService existente y retorna JWT firmado con JWTHandler existente (stdlib pura, HS256). Dependencia get_current_user que extrae el token del header Authorization, verifica firma/expiracion y setea las 3 ContextVars (tenant, actor, solo_lectura). Dependencia require_role parametrizable. Rate limiter en memoria (5 intentos/5 min por IP). Auditoria LOGIN_API via obs_06. DEPENDE de backend_10."
+  },
+  {
+    "id": "backend_12_endpoints_crud",
+    "nombre": "Endpoints CRUD completos por modulo en 3 olas",
+    "status": "spec_ready",
+    "destino_v2": "src/api/routes/, src/api/schemas/, src/api/deps.py, src/api/router.py, scripts/export_openapi.py, tests/unit/api/",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Fase 3 del backend. Capa delgada de endpoints que llaman a Container.*_service() existentes. Ola 1 (core): usuarios CRUD, estudiantes CRUD+carga masiva, contexto academico (instituciones, periodos, grupos, asignaturas, asignaciones). Ola 2 (negocio): asistencia (registro en lote), convivencia (observaciones CRUD, seguimiento 360, comportamiento), evaluacion (planilla, notas en lote, cierre). Ola 3 (informes+admin): boletines PDF streaming, consolidados Excel, configuracion SIEE, auditoria paginada. Los endpoints de escritura criticos aceptan arrays con timestamp_local para futura sincronizacion offline. Al cerrar, scripts/export_openapi.py genera OpenAPI 3.1. DEPENDE de backend_10 y backend_11."
+  },
+  {
+    "id": "backend_13_deploy_cloud",
+    "nombre": "Deploy en nube con tier gratuito (Render + Neon Postgres)",
+    "status": "spec_ready",
+    "destino_v2": "Dockerfile, render.yaml, docs/deploy.md, .env.example",
+    "operacion": "crear+modificar",
+    "sdd": false,
+    "descripcion": "Fase 4 del backend. RESTRICCION: sin presupuesto para servicios pagos. Deploy con Render free tier (750 h/mes, spin-down 15 min) + Neon free tier Postgres (0.5 GB always-free serverless). Dockerfile minimo con Python 3.11-slim. render.yaml con env vars. Verificacion de metadata.create_all() y seed_base contra Postgres real. HTTPS incluido por Render. Documentacion paso a paso en docs/deploy.md con alternativas (Fly.io + Supabase). DEPENDE de backend_10, backend_11, backend_12."
+  },
+  {
+    "id": "backend_16_tokens_neutrales",
+    "nombre": "tokens.json como fuente canonica del design system (W3C Design Tokens)",
+    "status": "spec_ready",
+    "destino_v2": "tokens.json, scripts/sync_tokens.py, src/interface/design/styles/tokens.css, tests/unit/design/test_tokens_roundtrip.py",
+    "operacion": "crear+modificar",
+    "sdd": true,
+    "descripcion": "Fase 5 del backend. Invierte el flujo del design system: tokens.json (formato W3C, 3 capas: primitivos/semanticos/componente) pasa a ser la fuente unica, y sync_tokens.py genera tokens.css + tokens.py + tokens.ts desde el JSON. Las 187 variables actuales se clasifican en las 3 capas. Round-trip verificado: JSON->CSS->comparar con original. El JSON viaja a avedra-shared-contracts como contrato del design system. PARALELO con Fase 3."
+  },
+  {
+    "id": "backend_17_contratos_componentes",
+    "nombre": "Catalogo de 18 componentes del design system como spec independiente",
+    "status": "spec_ready",
+    "destino_v2": "docs/design_system/components.md, scripts/extract_component_info.py",
+    "operacion": "crear",
+    "sdd": false,
+    "descripcion": "Fase 5 del backend. Documenta los 18 componentes del CLASS_CONTRACT (badge, button, card, stat-card, alert, page-header, section-panel, input, select, checkbox, table, dialog, menu, toast, tabs, activity-feed, layout, form-field) con 7 dimensiones cada uno: proposito, variantes, estados, clases CSS, tokens consumidos, a11y y ejemplo. El catalogo viaja a avedra-shared-contracts como referencia para el implementer de Vue. PARALELO con Fase 3."
+  },
+  {
+    "id": "backend_18_css_desacoplado",
+    "nombre": "Auditoria de portabilidad CSS y verificacion Core/Adapter",
+    "status": "spec_ready",
+    "destino_v2": "docs/design_system/portability_audit.md, docs/design_system/portability_test.html, scripts/audit_css_portability.py",
+    "operacion": "crear",
+    "sdd": false,
+    "descripcion": "Fase 5 del backend. Cierra la Fase 5 del design system portable. Auditoria automatizada que clasifica los ~3200 LOC de CSS en core portable vs. adapter a reescribir, cuantifica !important, extrae selectores de framework (.q-*, .ag-*, .nicegui-*) y genera informe con ratio de portabilidad y recomendaciones para Vue. Incluye HTML de test que renderiza los 18 componentes con solo tokens.css + CSS core, sin NiceGUI. PARALELO con Fase 3."
+  },
+  {
     "id": "split_01_adapt_backend",
     "nombre": "Adaptar avedra-backend: stub FastAPI, limpiar NiceGUI de pyproject/init/container",
     "status": "spec_ready",
